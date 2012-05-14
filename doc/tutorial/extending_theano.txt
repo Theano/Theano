@@ -142,43 +142,107 @@ Op example
                 return eval_points
             return self.grad(inputs, eval_points)
 
-Test it!
+Try it!
 
 .. code-block:: python
 
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp()(x))
     import numpy
-    inp = numpy.random.rand(5, 5)
+    inp = numpy.random.rand(5, 4)
     out = f(inp)
     assert numpy.allclose(inp * 2, out)
     print inp
     print out
 
+How to test it
+--------------
+
+Theano has some functions to simplify testing. Those help test the
+infer_shape, grad and R_op method. Put the following code in a file
+and execute with the `nosetests` program to run it.
+
+Basic tests
+===========
+
+Basic tests are done by you just by using the Op and checking it
+return the right answer. If you detect an error, you must raise an
+exception. You can use the `assert` keywork to raise automatically an
+AssertionError.
+
+.. code-block:: python
+
+    from theano.tests import unittest_tools as utt
+    from theano import config
+    class test_Double(utt.InferShapeTester):
+        def setUp(self):
+            super(test_Double, self).setUp()
+            self.op_class = DoubleOp
+            self.op = DoubleOp()
+
+        def test_basic(self):
+            x = theano.tensor.matrix()
+            f = theano.function([x], self.op(x))
+            inp = numpy.asarray(numpy.random.rand(5, 4), dtype=config.floatX)
+            out = f(inp)
+	    # Compare to result computed to the expected value.
+            assert numpy.allclose(inp * 2, out)
+
+Testing the infer_shape
+=======================
+
+When a class inherit from the InferShapeTester class, it get the
+`self._compile_and_check` method that test the Op infer_shape
+method. It checks if the optimized graph obtained give the correct
+values. It also tests that the Op get removed from the
+graph. `self._compile_and_check with` compile theano function. So it
+take as parameter the list of inputs and outputs that verify. Then
+with a list of real values to pass the the compiled function (don't
+use symetic shape!). It also take the class op the op to verify that
+it get removed from the graph.
+
+If there is an error, the function raises an exection. If you want to
+see it fail, you can implement a wrong infer_shape.
+
+.. code-block:: python
+
+        def test_infer_shape(self):
+            x = theano.tensor.matrix()
+            self._compile_and_check([x],  # theano.function inputs
+                                    [self.op(x)],  # theano.function outputs
+                                    # Always use not square matrix!
+                                    # inputs data
+                                    [numpy.asarray(numpy.random.rand(5, 4),
+                                                   dtype=config.floatX)],
+                                    # Op that should be removed from the graph.
+                                    self.op_class)
+
 Testing the gradient
---------------------
+====================
 
 The function :ref:`verify_grad <validating_grad>`
 verifies the gradient of an Op or Theano graph. It compares the
 analytic (symbolically computed) gradient and the numeric
 gradient (computed through the Finite Difference Method).
 
-To verify the grad method of the DoubleOp, you can use this:
+If there is an error, the function raises an exection. If you want to
+see it fail, you can implement a wrong gradient (for instance removing
+the multiplication by 2).
 
 .. code-block:: python
 
-   import numpy
-   import theano.tests
-   theano.tests.unittest_tools.verify_grad(DoubleOp(), [numpy.random.rand(5,7,2)])
-
-If nothing happens, then it works! If you want to see it fail, you can
-implement a wrong gradient (for instance removing the multiplication by 2).
+        def test_grad(self):
+            theano.tests.unittest_tools.verify_grad(self.op,
+                                                    [numpy.random.rand(5, 7, 2)])
 
 Testing the Rop
----------------
+===============
 
-The functions :func:`RopLop_checker.check_mat_rop_lop`,
-:func:`RopLop_checker.check_rop_lop` and :func:`RopLop_checker.check_nondiff_rop` allow to test the implemntation of the Rop of one function.
+The class :class:`RopLop_checker`, give the functions
+:func:`RopLop_checker.check_mat_rop_lop`,
+:func:`RopLop_checker.check_rop_lop` and
+:func:`RopLop_checker.check_nondiff_rop` that allow to test the
+implementation of the Rop method of one Op.
 
 To verify the Rop method of the DoubleOp, you can use this:
 
@@ -186,19 +250,18 @@ To verify the Rop method of the DoubleOp, you can use this:
 
    import numpy
    import theano.tests
-   from theano.tensor.tests.test_rop import RopLop_checker
-   class test_Double(RopLop_checker):
+   from theano.tests.test_rop import RopLop_checker
+   class test_DoubleRop(RopLop_checker):
        def setUp(self):
-           super(test_Double, self).setUp()
+           super(test_DoubleRop, self).setUp()
        def test_double_rop(self):
-           self.check_rop_lop(DoubleOp()(self.x), self.in_shape)
-	   assert False
+           self.check_rop_lop(DoubleRop()(self.x), self.in_shape)
 
 You can use `nosetests` to run it as all other test in Theano or you can run it like that in a python shell:
 
 .. code-block:: python
 
-   t = test_Double("test_double_rop")
+   t = test_DoubleRop("test_double_rop")
    t.setUp()
    t.test_double_rop()
 
