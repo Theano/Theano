@@ -1078,6 +1078,25 @@ def local_fill_to_alloc(node):
         return rval
 
 
+@gof.local_optimizer([T.fill])
+def local_useless_fill(node):
+    """fill(s,v) -> v
+
+    This optimization is only needed in FAST_COMPILE to make the code
+    more readable. Normally, it is done by the local_fill_to_alloc
+    opt.
+
+    """
+    if node.op == T.fill:
+        r, v = node.inputs
+        if v.type == node.outputs[0].type:
+            # this is a useless fill, erase it.
+            return [v]
+compile.optdb['canonicalize'].register('local_useless_fill',
+                                       in2out(local_useless_fill),
+                                       1.1, 'fast_compile')
+
+
 @register_specialize
 @register_stabilize
 @register_canonicalize
