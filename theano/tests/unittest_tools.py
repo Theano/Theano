@@ -172,6 +172,7 @@ class InferShapeTester(unittest.TestCase):
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
                            excluding=None):
+        """This test the infer_shape method only"""
         mode = self.mode
         if excluding:
             mode = mode.excluding(*excluding)
