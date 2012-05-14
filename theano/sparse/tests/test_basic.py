@@ -632,6 +632,33 @@ class test_csm(unittest.TestCase):
                     spmat.indptr, numpy.asarray(spmat.shape, 'int32')),
                     [spmat.data], structured=True)
     
+    def test_csm_sparser(self):
+        """
+        Test support for gradients sparse than the input.
+        """
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+                y = tensor.ivector()
+                z = tensor.ivector()
+                s = tensor.ivector()
+                
+                a = as_sparse_variable(sp_types[format](random_lil((4, 3),
+                    dtype, 1)))
+                
+                f = theano.function([x, y, z, s], tensor.grad(dense_from_sparse(
+                    a * CSM(format)(x, y, z, s)).sum(), x))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                res = f(spmat.data, spmat.indices, spmat.indptr,
+                    numpy.asarray(spmat.shape, 'int32'))
+                
+                assert len(spmat.data) == len(res)
+    
     def test_csm(self):
         sp_types = {'csc': sp.csc_matrix,
             'csr': sp.csr_matrix}
