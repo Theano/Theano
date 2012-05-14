@@ -675,6 +675,8 @@ class test_csm(unittest.TestCase):
                 # Sparse advanced indexing produces unsorted sparse matrices
                 a = as_sparse_variable(sp_types[format]([[1,2,1], [1,2,1],
                     [1,2,1], [1,2,1]], dtype=dtype)[list(reversed(range(4)))])
+                # Make sure it's unsorted
+                assert numpy.any(a.data.indices[:-1] > a.data.indices[1:])
                 
                 f = theano.function([x, y, z, s], tensor.grad(tensor.sum(
                     dense_from_sparse(a * CSM(format)(x, y, z, s))), x))
