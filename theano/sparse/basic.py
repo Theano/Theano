@@ -719,6 +719,19 @@ CSR = CSM('csr')
 
 
 class CSMGrad(gof.op.Op):
+    """
+    This Op computes the gradient of the CSM Op. CSM creates a matrix from
+    data, indices, and ind_ptr vectors; it's gradient is the gradient of
+    the data vector only. There are two complexities to calculate this gradient:
+    1. The gradient may be sparser than the input matrix defined by (data,
+    indices, ind_ptr). In this case, the data vector of the gradient will have
+    less elements than the data vector of the input because sparse formats
+    remove 0s. Since we are only returning the gradient of the data vector, the
+    relevant 0s need to be added back.
+    2. The elements in the sparse dimension are not guaranteed to be sorted.
+    Therefore, the input data vector may have a different order than the
+    gradient data vector.
+    """
     def __init__(self, kmap=None):
         self.kmap = kmap
         if self.kmap is None:
