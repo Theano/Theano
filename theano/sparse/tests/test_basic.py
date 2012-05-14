@@ -634,7 +634,7 @@ class test_csm(unittest.TestCase):
     
     def test_csm_sparser(self):
         """
-        Test support for gradients sparse than the input.
+        Test support for gradients sparser than the input.
         """
         sp_types = {'csc': sp.csc_matrix,
             'csr': sp.csr_matrix}
@@ -658,6 +658,37 @@ class test_csm(unittest.TestCase):
                     numpy.asarray(spmat.shape, 'int32'))
                 
                 assert len(spmat.data) == len(res)
+    
+    def test_csm_unsorted(self):
+        """
+        Test support for gradients of unsorted inputs.
+        """
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csr', 'csc', ]:
+            for dtype in ['float32', 'float64']:
+                x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+                y = tensor.ivector()
+                z = tensor.ivector()
+                s = tensor.ivector()
+                # Sparse advanced indexing produces unsorted sparse matrices
+                a = as_sparse_variable(sp_types[format]([[1,2,1], [1,2,1],
+                    [1,2,1], [1,2,1]], dtype=dtype)[list(reversed(range(4)))])
+                
+                f = theano.function([x, y, z, s], tensor.grad(tensor.sum(
+                    dense_from_sparse(a * CSM(format)(x, y, z, s))), x))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype,
+                    12))[list(reversed(range(4)))]
+                
+                res = f(spmat.data, spmat.indices, spmat.indptr,
+                    numpy.asarray(spmat.shape, 'int32'))
+                
+                col1 = sp_types[format]((res, spmat.indices, spmat.indptr),
+                    shape=numpy.asarray(spmat.shape, 'int32'))[:, 1].data
+                
+                assert numpy.all(col1 == 2)
     
     def test_csm(self):
         sp_types = {'csc': sp.csc_matrix,
