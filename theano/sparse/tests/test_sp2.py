@@ -84,5 +84,41 @@ class test_structured_add_s_v(unittest.TestCase):
                 
                 assert numpy.all(out.toarray() == spones.multiply(spmat + mat))
 
+
+class test_mul_s_v(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_structured_add_s_v_grad(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csr', 'csc']:
+            for dtype in ['float32', 'float64']:
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                mat = numpy.ones(3, dtype=dtype)
+                
+                S.verify_grad_sparse(S2.mul_s_v,
+                    [spmat, mat], structured=True)
+    
+    def test_mul_s_v(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csr', 'csc']:
+            for dtype in ['float32', 'float64']:
+                x = S.SparseType(format, dtype=dtype)()
+                y = T.vector(dtype=dtype)
+                f = theano.function([x, y], S2.mul_s_v(x, y))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                spones = spmat.copy()
+                spones.data = numpy.ones_like(spones.data)
+                mat = numpy.ones(3, dtype=dtype)
+                
+                out = f(spmat, mat)
+                
+                assert numpy.all(out.toarray() == (spmat.toarray() * mat))
+
 if __name__ == '__main__':
     unittest.main()
