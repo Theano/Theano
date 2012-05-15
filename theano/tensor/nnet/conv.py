@@ -840,10 +840,10 @@ class ConvOp(Op):
         return [din, dw]
 
     def c_headers(self):
-        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
+        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<omp.h>' ]
 
     def c_code_cache_version(self):
-        return (6)
+        return (7)
 
     def c_support_code(self):
         return """
@@ -1936,8 +1936,15 @@ if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
 if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
 
 #pragma omp parallel for schedule(static)
-for(int b=0;b< %(self_bsize)s;b++){
-  for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
+// We merge the 2 loop into one to make it easier to parallelize on both
+// This is the equivalent of those 2 lines.
+//for(int b=0;b< %(self_bsize)s;b++){
+// for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
+for(int batch_kern_idx=0;
+    batch_kern_idx < %(self_bsize)s * %(self_nkern)s;
+    batch_kern_idx++){
+    int b = batch_kern_idx / %(self_nkern)s;
+    int n_kern = batch_kern_idx %% %(self_nkern)s;
 
     %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
@@ -2062,8 +2069,8 @@ for(int b=0;b< %(self_bsize)s;b++){
         }//for iter_n
       }//for iter_m
     }//for stack_size
-  }//for n_kern
-}//for b
+}//for b and n_kern
+
 Py_XDECREF(img2d);
 Py_XDECREF(filtersflipped);
 """
