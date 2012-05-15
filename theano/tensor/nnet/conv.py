@@ -202,20 +202,6 @@ class ConvOp(Op):
     #valid time, full time
     speed_unroll_patch_shape=[1.2967290878295898, 5.5283889770507812]
 
-    def c_compile_args(self):
-        #when the ksph==(1,1) gcc 4.3.0 segfault during the compilation with -O3.
-        #This don't happen at -O2
-        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1,1):
-            return ['-O2']
-        else: return []
-
-    def c_no_compile_args(self):
-        #when the ksph==(1,1) gcc 4.3.0 segfault during the compilation with -O3.
-        #This don't happen at -O2
-        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1,1):
-            return ['-O3']
-        else: return []
-
     @staticmethod
     def getOutputShape(inshp, kshp, stride=(1,1), mode='valid'):
         """
@@ -881,16 +867,29 @@ using namespace std;
             return True
         return False
 
-
     def c_libraries(self):
         if self.use_blas():
             return blas.ldflags()
         return []
 
+    def c_no_compile_args(self):
+        #when the ksph==(1,1) gcc 4.3.0 segfault during the
+        #compilation with -O3.  This don't happen at -O2
+        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1, 1):
+            return ['-O3']
+        else:
+            return []
+
     def c_compile_args(self):
+        ret = []
+
         if self.use_blas():
-            return blas.ldflags(libs=False, flags=True)
-        return []
+            ret = blas.ldflags(libs=False, flags=True)
+        if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1, 1):
+            ret += ['-O2']
+        ret += ['-fopenmp']
+
+        return ret
 
     def c_lib_dirs(self):
         if self.use_blas():
