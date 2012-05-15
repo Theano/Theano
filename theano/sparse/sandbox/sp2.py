@@ -8,7 +8,7 @@ from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
     mul_s_s, mul_s_d, dot,
     CSMProperties, CSM, register_specialize,
-    _is_sparse_variable, CSC, CSR,
+    _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse)
 from theano.sparse.sandbox.sp import sp_sum
@@ -452,6 +452,158 @@ def structured_add(x):
     x and scalar y.
     """
     # see decorator for function body
+
+
+class MulSV(gof.op.Op):
+    '''Multiplication of sparse matrix by a broadcasted dense vector.'''
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x = as_sparse_variable(x)
+        y = tensor.as_tensor_variable(y)
+
+        assert y.type.ndim == 1
+
+        if x.type.dtype != y.type.dtype:
+            raise NotImplementedError()
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype=x.type.dtype,
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x) and not _is_sparse(y)
+        assert x.shape[1] == y.shape[0]
+        out[0] = x.__class__(x.toarray() * y)
+
+    def grad(self, (x, y), (gz,)):
+        assert _is_sparse_variable(x) and _is_dense_variable(y)
+        assert _is_sparse_variable(gz)
+        return mul_s_v(gz, y), sp_sum(x * gz, axis=0, sparse_grad=True)
+mul_s_v = MulSV()
+
+
+class MulSVCSR(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, a_data, a_indices, a_indptr, b):
+        assert b.type.ndim == 1
+        return gof.Apply(self, [a_data, a_indices, a_indptr, b],
+                               [tensor.tensor(b.dtype, (False,))])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        _data, _indices, _indptr, _b, = inputs
+        _zout, = outputs
+        if node.inputs[0].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for a')
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+
+        return """
+        if (%(_b)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1");
+            %(fail)s;
+        }
+        if (%(_data)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
+            %(fail)s;
+        }
+        if (%(_indices)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
+            %(fail)s;
+        }
+        if (%(_indptr)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
+            %(fail)s;
+        }
+
+        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
+
+        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
+
+        if (!%(_zout)s
+            || %(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]
+            || !PyArray_ISCONTIGUOUS(%(_zout)s))
+        {
+            Py_XDECREF(%(_zout)s);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
+                    %(_indices)s->dimensions, %(_b)s->descr->type_num);
+        }
+
+        { //makes it compile even though labels jump over variable definitions.
+            const npy_intp nnz = %(_indices)s->dimensions[0];
+            //TODO: error checking with this
+            const npy_intp N =  %(_indptr)s->dimensions[0]-1;
+
+            const dtype_%(_data)s * const __restrict__ data = (dtype_%(_data)s*)%(_data)s->data;
+            const npy_int32 * const __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
+            const npy_int32 * const __restrict__ indices = (npy_int32 *)%(_indices)s->data;
+
+            const dtype_%(_b)s* __restrict__ Db = (dtype_%(_b)s*)%(_b)s->data;
+
+            dtype_%(_zout)s * const __restrict__ zout = (dtype_%(_zout)s*)%(_zout)s->data;
+
+            const npy_intp Sb = %(_b)s->strides[0] / %(_b)s->descr->elsize;
+
+            // loop over rows
+            for (npy_int32 j = 0; j < N; ++j)
+            {
+                // for each non-null value in the sparse column
+                for (npy_int32 i_idx = indptr[j]; i_idx < indptr[j+1]; ++i_idx)
+                {
+                    // extract row index of non-null value
+                    npy_int32 i = indices[i_idx];
+
+                    zout[i_idx] = data[i_idx] * Db[i * Sb];
+                }
+            }
+        }
+
+        """ % dict(locals(), **sub)
+mul_s_v_csr = MulSVCSR()
+
+
+@gof.local_optimizer([mul_s_v])
+def local_mul_s_v(node):
+    if node.op == mul_s_v:
+        x, y = node.inputs
+
+        x_is_sparse_variable = _is_sparse_variable(x)
+
+        if x_is_sparse_variable:
+            svar = x
+            dvar = y
+        else:
+            svar = y
+            dvar = x
+
+        if dvar.type.ndim != 1:
+            return False
+        elif svar.type.format == 'csr':
+            CSx = CSR
+            mul_s_v_csx = mul_s_v_csr
+        else:
+            return False
+
+        s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
+
+        c_data = mul_s_v_csx(s_val, s_ind, s_ptr, dvar)
+
+        return [CSx(c_data, s_ind, s_ptr, s_shape)]
+
+    return False
+register_specialize(local_mul_s_v)
+
 
 class StructuredAddSV(gof.op.Op):
     '''Structured addition of a sparse matrix and a dense vector.
