@@ -162,7 +162,7 @@ AddConfigVar('nocleanup',
 AddConfigVar('on_unused_input',
              "What to do if a variable in the 'inputs' list of "
              " theano.function() is not used in the graph.",
-             EnumStr('raise' 'warn', 'ignore'),
+             EnumStr('raise', 'warn', 'ignore'),
              in_c_key=False)
 
 # This flag is used when we import Theano to initialize global variables.
