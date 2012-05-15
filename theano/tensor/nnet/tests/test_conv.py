@@ -25,7 +25,8 @@ class TestConv2D(unittest.TestCase):
                  N_image_shape=None, N_filter_shape=None,
                  input=None, filters=None,
                  unroll_batch=None, unroll_kern=None, unroll_patch=None,
-                 verify_grad=True, should_raise=False):
+                 verify_grad=True, should_raise=False,
+                 speed_only=False):
 
         if N_image_shape is None:
             N_image_shape = [T.get_constant_value(T.
@@ -64,6 +65,8 @@ class TestConv2D(unittest.TestCase):
             if should_raise:
                 raise Exception(
                 "ConvOp should have generated an error")
+        if speed_only:
+            return
 
         ############# REFERENCE IMPLEMENTATION ############
         s = 1.
@@ -368,3 +371,16 @@ class TestConv2D(unittest.TestCase):
         """
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid',
              verify_grad=False)
+        self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid', verify_grad=False)
+
+    def speed(self):
+        self.validate((10, 10, 16, 16), (5, 10, 8, 8), 'valid',
+                      verify_grad=False,
+                      unroll_patch=True, speed_only=True)
+        """
+        shape: (10, 10, 16, 16), (5, 10, 8, 8)
+        num threads       1          2          4
+        // kern      5.54e-03s  3.12e-03s  1.99e-03s
+        // batch     4.22e-03s  1.59e-03s  1.25e-03s
+        // kern_batch3-5-03s    2.51e-03s  9.15e-04s
+        """
