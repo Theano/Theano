@@ -531,17 +531,11 @@ class MulSVCSR(gof.Op):
         if( %(_indptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s || %(_zout)s->dimensions[0] != %(_indices)s->dimensions[0])
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
                     %(_indices)s->dimensions, %(_b)s->descr->type_num);
-        }
-
-        if (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError,
-     "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
         }
 
         { //makes it compile even though labels jump over variable definitions.
