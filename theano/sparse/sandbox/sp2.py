@@ -531,7 +531,9 @@ class MulSVCSR(gof.Op):
         if( %(_indptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if (!%(_zout)s || %(_zout)s->dimensions[0] != %(_indices)s->dimensions[0])
+        if (!%(_zout)s
+            || %(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]
+            || !PyArray_ISCONTIGUOUS(%(_zout)s))
         {
             Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
@@ -553,7 +555,7 @@ class MulSVCSR(gof.Op):
 
             const npy_intp Sb = %(_b)s->strides[0] / %(_b)s->descr->elsize;
 
-            // loop over columns
+            // loop over rows
             for (npy_int32 j = 0; j < N; ++j)
             {
                 // for each non-null value in the sparse column
@@ -562,7 +564,6 @@ class MulSVCSR(gof.Op):
                     // extract row index of non-null value
                     npy_int32 i = indices[i_idx];
 
-                    // write resulting gradient to sparse output
                     zout[i_idx] = data[i_idx] * Db[i * Sb];
                 }
             }
