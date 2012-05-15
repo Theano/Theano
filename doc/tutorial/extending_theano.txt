@@ -167,7 +167,7 @@ Basic tests
 
 Basic tests are done by you just by using the Op and checking it
 return the right answer. If you detect an error, you must raise an
-exception. You can use the `assert` keywork to raise automatically an
+exception. You can use the `assert` keyword to raise automatically an
 AssertionError.
 
 .. code-block:: python
@@ -191,17 +191,18 @@ AssertionError.
 Testing the infer_shape
 =======================
 
-When a class inherit from the InferShapeTester class, it get the
-`self._compile_and_check` method that test the Op infer_shape
-method. It checks if the optimized graph obtained give the correct
-values. It also tests that the Op get removed from the
-graph. `self._compile_and_check with` compile theano function. So it
-take as parameter the list of inputs and outputs that verify. Then
+When a class inherits from the InferShapeTester class, it gets the
+`self._compile_and_check` method that tests the Op infer_shape
+method. It checks if the optimized graph obtained gives the correct
+values. It also tests that the Op gets removed from the
+graph. `self._compile_and_check` compiles a Theano function. So it
+takes as parameter the list of inputs and outputs Theano variable
+that is passed to `theano.function`. Then
 with a list of real values to pass the the compiled function (don't
-use symetic shape!). It also take the class op the op to verify that
+use symmetric shape!). It also takes the class op to verify that
 it get removed from the graph.
 
-If there is an error, the function raises an exection. If you want to
+If there is an error, the function raises an exception. If you want to
 see it fail, you can implement a wrong infer_shape.
 
 .. code-block:: python
@@ -225,7 +226,7 @@ verifies the gradient of an Op or Theano graph. It compares the
 analytic (symbolically computed) gradient and the numeric
 gradient (computed through the Finite Difference Method).
 
-If there is an error, the function raises an exection. If you want to
+If there is an error, the function raises an exception. If you want to
 see it fail, you can implement a wrong gradient (for instance removing
 the multiplication by 2).
 
