@@ -843,7 +843,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>' ]
 
     def c_code_cache_version(self):
-        return (5)
+        return (6)
 
     def c_support_code(self):
         return """
@@ -1204,14 +1204,14 @@ int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
+//assertions
+if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
+
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
-
-    //assertions
-    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 
     %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
@@ -1691,14 +1691,15 @@ int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
+//assertions
+if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
+
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
-    //assertions
-    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 """%d
     ret+=my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
     ret+=my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;",unroll_bsize*unroll_ksize)
@@ -1928,14 +1929,15 @@ if ((!%(z)s)
   //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
 
+//assertions
+if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+
+#pragma omp parallel for schedule(static)
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
-
-    //assertions
-    if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-    if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
 
     %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
