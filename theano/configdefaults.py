@@ -16,6 +16,15 @@ AddConfigVar('floatX',
         EnumStr('float64', 'float32'),
         )
 
+AddConfigVar('openmp',
+             "Enable or not parallel computation on the CPU with OpenMP. "
+             "It is the default value used when creating an Op that support it"
+             ". The best is to define it via Theano configuration "
+             "file or with the environment variable THEANO_FLAGS.",
+             BoolParam(True),
+             in_c_key=False,
+         )
+
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX',

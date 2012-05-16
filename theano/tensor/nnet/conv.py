@@ -136,7 +136,9 @@ class ConvOp(Op):
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode',
             'unroll_batch', 'unroll_kern', 'unroll_patch',
             'imshp_logical', 'kshp_logical', 'kshp_logical_top_aligned']
-    """These attributes uniquely identify the behaviour of this op for given inputs"""
+    """These attributes uniquely identify the behaviour of this op for
+    given inputs. Do not set openmp here.
+    """
 
 #the value of speed_unroll_batch_kern,speed_unroll_patch_noshape,speed_unroll_patch_shape
 #have bean calculated on maggie36 when their is only 1 session logged on and only this was running.
@@ -232,7 +234,8 @@ class ConvOp(Op):
             kshp_logical=None,
             kshp_logical_top_aligned=True,
             verbose=0,
-            version=-1):
+            version=-1,
+            openmp=None):
         """
         Initializes a ConvOp with given output_mode (full/valid). All other
         parameters are optional and are only used to generate more optimized c
@@ -343,6 +346,9 @@ class ConvOp(Op):
         self.dy=dy
         self.verbose=verbose
         self.version=version
+        if openmp == None:
+            openmp = config.openmp
+        self.openmp = openmp
 
         # a triple
         self.imshp_logical = self.imshp
@@ -469,6 +475,8 @@ class ConvOp(Op):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
+        if not hasattr(self, "openmp"):
+            self.openmp = False
         self._rehash()
 
     def _rehash(self):
@@ -843,7 +851,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<omp.h>' ]
 
     def c_code_cache_version(self):
-        return (7)
+        return (7, self.openmp)
 
     def c_support_code(self):
         return """
@@ -887,7 +895,8 @@ using namespace std;
             ret = blas.ldflags(libs=False, flags=True)
         if theano.gof.cmodule.gcc_version() in ['4.3.0'] and self.kshp==(1, 1):
             ret += ['-O2']
-        ret += ['-fopenmp']
+        if self.openmp:
+            ret += ['-fopenmp']
 
         return ret
 
