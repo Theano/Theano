@@ -24,7 +24,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, izip, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
-        basic, clip, constant, default, dot, inc_subtensor, set_subtensor,
+        clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, sort, SortOp, argsort, ArgSortOp,)
+        tile, patternbroadcast)
 from theano.tests import unittest_tools as utt
 
 
@@ -433,7 +433,7 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     # cases we need to add it manually.
     if not name.endswith('Tester'):
         name += "Tester"
-    if kwargs.has_key('inplace'):
+    if 'inplace' in kwargs:
         if kwargs['inplace']:
             _expected = expected
             if not isinstance(_expected, dict):
@@ -451,37 +451,42 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     return makeTester(name, op, expected, checks, **kwargs)
 
 
-_good_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
-                                     not_same_dimensions=(rand(2, 2), rand(2)),
-                                     scalar=(rand(2, 3), rand(1, 1)),
-                                     row=(rand(2, 3), rand(1, 3)),
-                                     column=(rand(2, 3), rand(2, 1)),
-                                     integers=(randint(2, 3), randint(2, 3)),
-                                     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
-                                     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
-                                     complex1=(randcomplex(2, 3), randcomplex(2, 3)),
-                                     complex2=(randcomplex(2, 3), rand(2, 3)),
-                                     # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     # complex3=(rand(2,3),randcomplex(2,3)),
-                                     empty=(numpy.asarray([]), numpy.asarray([1])),
-                                     )
+_good_broadcast_binary_normal = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    not_same_dimensions=(rand(2, 2), rand(2)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    integers=(randint(2, 3), randint(2, 3)),
+    dtype_mixup_1=(rand(2, 3), randint(2, 3)),
+    dtype_mixup_2=(randint(2, 3), rand(2, 3)),
+    complex1=(randcomplex(2, 3), randcomplex(2, 3)),
+    complex2=(randcomplex(2, 3), rand(2, 3)),
+    # Disabled as we test the case where we reuse the same output as the
+    # first inputs.
+    # complex3=(rand(2,3),randcomplex(2,3)),
+    empty=(numpy.asarray([]), numpy.asarray([1])),
+    )
 
-_bad_build_broadcast_binary_normal = dict()  # not_same_dimensions = (rand(2), rand(2, 2)))
+_bad_build_broadcast_binary_normal = dict()
 
-_bad_runtime_broadcast_binary_normal = dict(bad_shapes=(rand(2, 3), rand(3, 2)),
-                                            bad_row=(rand(2, 3), rand(1, 2)))
+_bad_runtime_broadcast_binary_normal = dict(
+    bad_shapes=(rand(2, 3), rand(3, 2)),
+    bad_row=(rand(2, 3), rand(1, 2)))
 
-_grad_broadcast_binary_normal = dict(same_shapes=(rand(2, 3), rand(2, 3)),
-                                     scalar=(rand(2, 3), rand(1, 1)),
-                                     row=(rand(2, 3), rand(1, 3)),
-                                     column=(rand(2, 3), rand(2, 1)),
-                                     #This don't work as verify grad don't support that
-                                     #empty=(numpy.asarray([]), numpy.asarray([1]))
-                                     #complex1=(randcomplex(2,3),randcomplex(2,3)),
-                                     #complex2=(randcomplex(2,3),rand(2,3)),
-                                     # Disabled as we test the case where we reuse the same output as the first inputs.
-                                     #complex3=(rand(2,3),randcomplex(2,3)),
-                                     )
+_grad_broadcast_binary_normal = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    #This don't work as verify grad don't support that
+    #empty=(numpy.asarray([]), numpy.asarray([1]))
+    #complex1=(randcomplex(2,3),randcomplex(2,3)),
+    #complex2=(randcomplex(2,3),rand(2,3)),
+    # Disabled as we test the case where we reuse the same output as the
+    # first inputs.
+    #complex3=(rand(2,3),randcomplex(2,3)),
+    )
 
 
 def check_floatX(inputs, rval):
@@ -507,28 +512,38 @@ def check_floatX(inputs, rval):
         return rval
 
 
-AddTester = makeBroadcastTester(op = add,
-                                  expected = lambda *inputs: check_floatX(inputs, reduce(lambda x, y: x + y, inputs)),
-                                  good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
-                                              four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
-                                              **_good_broadcast_binary_normal),
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal)
+AddTester = makeBroadcastTester(
+    op=add,
+    expected = lambda *inputs: check_floatX(
+        inputs, reduce(lambda x, y: x + y, inputs)),
+    good = dict(
+        three_inputs_same_shapes=(rand(2, 3),
+                                  rand(2, 3),
+                                  rand(2, 3)),
+        four_inputs_broadcast=(rand(2, 3),
+                               rand(1, 3),
+                               rand(2, 1),
+                               rand(1, 1)),
+        **_good_broadcast_binary_normal),
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal)
 
 
-AddInplaceTester = makeBroadcastTester(op = inplace.add_inplace,
-                                         expected = lambda x, y: x + y,
-                                         good = _good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         inplace = True)
+AddInplaceTester = makeBroadcastTester(
+    op = inplace.add_inplace,
+    expected = lambda x, y: x + y,
+    good = _good_broadcast_binary_normal,
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal,
+    inplace = True)
 
-SubTester = makeBroadcastTester(op = sub,
-                                  expected = lambda x, y: check_floatX((x, y), x - y),
-                                  good = _good_broadcast_binary_normal,
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                  grad = _grad_broadcast_binary_normal)
+SubTester = makeBroadcastTester(
+    op = sub,
+    expected = lambda x, y: check_floatX((x, y), x - y),
+    good = _good_broadcast_binary_normal,
+    bad_build = _bad_build_broadcast_binary_normal,
+    bad_runtime = _bad_runtime_broadcast_binary_normal,
+    grad = _grad_broadcast_binary_normal)
 
 SubInplaceTester = makeBroadcastTester(op = inplace.sub_inplace,
                                          expected = lambda x, y: x - y,
@@ -5665,135 +5680,6 @@ def test_transpose():
     assert t3d.shape == (2, 4, 3)
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
-
-
-class test_sort(unittest.TestCase):
-
-    def setUp(self):
-        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        self.m_val = self.rng.rand(3, 2)
-        self.v_val = self.rng.rand(4)
-
-    def test1(self):
-        a = theano.tensor.dmatrix()
-        w = sort(a)
-        f = theano.function([a], w)
-        assert numpy.allclose(f(self.m_val), numpy.sort(self.m_val))
-
-    def test2(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        w = sort(a, axis)
-        f = theano.function([a, axis], w)
-        for axis_val in 0, 1:
-            assert numpy.allclose(
-                    f(self.m_val, axis_val),
-                    numpy.sort(self.m_val, axis_val))
-
-    def test3(self):
-        a = theano.tensor.dvector()
-        w2 = sort(a)
-        f = theano.function([a], w2)
-        assert numpy.allclose(f(self.v_val), numpy.sort(self.v_val))
-
-    def test4(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        l = sort(a, axis, "mergesort")
-        f = theano.function([a, axis], l)
-        for axis_val in 0, 1:
-            assert numpy.allclose(
-                    f(self.m_val, axis_val),
-                    numpy.sort(self.m_val, axis_val))
-
-    def test5(self):
-        a = theano.tensor.dmatrix()
-        axis = theano.tensor.scalar()
-        a1 = SortOp("mergesort", [])
-        a2 = SortOp("quicksort", [])
-
-        #All the below should give true
-        assert a1 != a2
-        assert a1 == SortOp("mergesort", [])
-        assert a2 == SortOp("quicksort", [])
-
-    def test_None(self):
-        a = theano.tensor.dmatrix()
-        l = sort(a, None)
-        f = theano.function([a], l)
-        assert numpy.allclose(f(self.m_val),
-                numpy.sort(self.m_val, None))
-
-
-class TensorInferShapeTester(utt.InferShapeTester):
-    def test_sort(self):
-        x = tensor.matrix()
-        self._compile_and_check(
-                [x],
-                [sort(x)],
-                [numpy.random.randn(10, 40).astype(config.floatX)],
-                SortOp)
-        self._compile_and_check(
-                [x],
-                [sort(x, axis=None)],
-                [numpy.random.randn(10, 40).astype(config.floatX)],
-                SortOp)
-
-
-
-def test_argsort():
-    #Set up
-    rng = numpy.random.RandomState(seed=utt.fetch_seed())
-    m_val = rng.rand(3, 2)
-    v_val = rng.rand(4)
-
-    #Example 1
-    a = theano.tensor.dmatrix()
-    w = argsort(a)
-    f = theano.function([a], w)
-    assert numpy.allclose(f(m_val), numpy.argsort(m_val))
-
-    #Example 2
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    w = argsort(a, axis)
-    f = theano.function([a, axis], w)
-    for axis_val in 0, 1:
-        assert numpy.allclose(
-                f(m_val, axis_val),
-                numpy.argsort(m_val, axis_val))
-
-    #Example 3
-    a = theano.tensor.dvector()
-    w2 = argsort(a)
-    f = theano.function([a], w2)
-    assert numpy.allclose(f(v_val), numpy.argsort(v_val))
-
-    #Example 4
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    l = argsort(a, axis, "mergesort")
-    f = theano.function([a, axis], l)
-    for axis_val in 0, 1:
-        assert numpy.allclose(
-                f(m_val, axis_val),
-                numpy.argsort(m_val, axis_val))
-
-    #Example 5
-    a = theano.tensor.dmatrix()
-    axis = theano.tensor.scalar()
-    a1 = ArgSortOp("mergesort", [])
-    a2 = ArgSortOp("quicksort", [])
-    #All the below should give true
-    assert a1 != a2
-    assert a1 == ArgSortOp("mergesort", [])
-    assert a2 == ArgSortOp("quicksort", [])
-
-    #Example 6: Testing axis=None
-    a = theano.tensor.dmatrix()
-    w2 = argsort(a, None)
-    f = theano.function([a], w2)
-    assert numpy.allclose(f(m_val), numpy.argsort(m_val, None))
 
 
 if __name__ == '__main__':

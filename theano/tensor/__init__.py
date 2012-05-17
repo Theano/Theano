@@ -1,7 +1,6 @@
 """Define the tensor toplevel"""
 __docformat__ = "restructuredtext en"
 
-
 import warnings
 
 from basic import *
@@ -31,6 +30,7 @@ import sharedvar  # adds shared-variable constructors
 # `theano.shared` and `tensor._shared`.
 from sharedvar import tensor_constructor as _shared
 
+
 def shared(*args, **kw):
     """
     Backward-compatibility wrapper around `tensor._shared`.
@@ -52,3 +52,5 @@ import nnet  # used for softmax, sigmoid, etc.
 
 from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian
+
+from theano.tensor.sort import sort
