@@ -5724,6 +5724,13 @@ class test_sort(unittest.TestCase):
         assert numpy.allclose(f(self.m_val),
                 numpy.sort(self.m_val, None))
 
+    def test_grad(self):
+        a = theano.tensor.dvector()
+        cost = numpy.power(sort(a), 2).sum()
+        g = theano.tensor.grad(cost, a)
+        f = theano.function([a], g)
+        assert f([7, 10, 2]) == [2, 4, 6]
+
 
 class TensorInferShapeTester(utt.InferShapeTester):
     def test_sort(self):
@@ -5738,7 +5745,6 @@ class TensorInferShapeTester(utt.InferShapeTester):
                 [sort(x, axis=None)],
                 [numpy.random.randn(10, 40).astype(config.floatX)],
                 SortOp)
-
 
 
 def test_argsort():
