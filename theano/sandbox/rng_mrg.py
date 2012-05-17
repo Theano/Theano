@@ -175,6 +175,9 @@ class mrg_uniform_base(Op):
     def grad(self,inputs,ograd):
         return [None for i in inputs]
 
+    def R_op(self, inputs, eval_points):
+        return [None for i in eval_points]
+
 
 class mrg_uniform(mrg_uniform_base):
     #CPU VERSION
