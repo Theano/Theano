@@ -166,7 +166,7 @@ Basic tests
 ===========
 
 Basic tests are done by you just by using the Op and checking that it
-return the right answer. If you detect an error, you must raise an
+returns the right answer. If you detect an error, you must raise an
 exception. You can use the `assert` keyword to automatically raise an
 ``AssertionError``.
 
