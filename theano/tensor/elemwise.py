@@ -1748,7 +1748,7 @@ class Prod(CAReduceDtype):
             return "Prod{%s}" % ", ".join(map(str, self.axis))
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
 
 class MulWithoutZeros(scalar.BinaryScalarOp):

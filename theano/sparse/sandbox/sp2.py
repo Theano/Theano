@@ -113,6 +113,9 @@ class MulSDCSC(gof.Op):
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
 
+    def c_code_cache_version(self):
+        return (1,)
+
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
@@ -202,6 +205,9 @@ class MulSDCSR(gof.Op):
         assert b.type.ndim == 2
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
+    def c_code_cache_version(self):
+        return (1,)
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
@@ -499,6 +505,9 @@ class MulSVCSR(gof.Op):
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, inputs, outputs, sub):
         _data, _indices, _indptr, _b, = inputs
         _zout, = outputs
@@ -659,6 +668,9 @@ class StrucutedAddSVCSR(gof.Op):
         assert b.type.ndim == 1
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         _data, _indices, _indptr, _b, = inputs

@@ -256,10 +256,8 @@ def Rop(f, wrt, eval_points):
             eval_point = as_tensor_variable(eval_point)
 
         try:
-            wrt_dim = len(wrt_elem.type.broadcastable)
-            eval_dim = len(eval_point.type.broadcastable)
 
-            if wrt_dim != eval_dim:
+            if wrt_elem.type.ndim != eval_point.type.ndim:
                 raise ValueError('Element ' +
                                  str(i) +
                                  ' of wrt/eval_point have mismatched ' +
@@ -267,9 +265,9 @@ def Rop(f, wrt, eval_points):
                                  str(wrt_dim) +
                                  ' versus ' +
                                  str(eval_dim))
-        except:
-            # wrt_elem and eval_point can be non-tensor variable which do
-            # not have broadcastable flags
+        except AttributeError:
+            # wrt_elem and eval_point don't always have ndim like random type
+            # Tensor, Sparse and CudaNdArray have the ndim attribute
             pass
 
     seen_nodes = {}
