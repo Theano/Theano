@@ -1268,7 +1268,8 @@ SecondSameRankTester = makeTester(
                                 multi_dtype_checks((4, 5), (5, 4)),
                                 multi_dtype_checks((1, 5), (5, 4)),
                             )),
-                            mode=get_default_mode().excluding('local_fill_to_alloc')
+                            mode=get_default_mode().excluding('local_fill_to_alloc',
+                                                              'local_useless_fill')
                         )
 
 ### Alloc
