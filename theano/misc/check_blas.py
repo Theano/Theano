@@ -197,6 +197,7 @@ if __name__ == "__main__":
         GTX285/3.0        0.40s
         C1060/3.2         0.46s
         GTX550Ti/4.0      0.57s
+        520M/3.2          3.19s with bumblebee on Ubuntu 12.04
         GT220/3.2RC       3.80s
         GT210/4.0         6.35s
         8500GT/3.0       10.68s
