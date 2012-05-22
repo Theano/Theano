@@ -2407,7 +2407,7 @@ class T_Scan(unittest.TestCase):
             srng = theano.tensor.shared_randomstreams.RandomStreams(seed)
             sl_o = theano.tensor.tanh(theano.tensor.dot(_W, (_u + _y + \
                      srng.uniform(size=v_h0.shape) *
-                                  numpy.float32(1e-6))))
+                                  numpy.asarray(1e-6, dtype=floatX))))
             return sl_o
 
         u = theano.tensor.matrix('U')
