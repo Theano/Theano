@@ -1,3 +1,4 @@
+import copy
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
@@ -31,6 +32,12 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+
+#The CPU tests already compare C/Py, so we only check C/GPU
+mode_with_gpu = copy.copy(mode_with_gpu)
+mode_without_gpu = copy.copy(mode_without_gpu)
+mode_with_gpu.check_py_code = False
+mode_without_gpu.check_py_code = False
 
 
 def my_rand(*shape):
