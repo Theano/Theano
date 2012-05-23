@@ -184,9 +184,8 @@ class Stack(VM):
     """
 
     def __init__(self, nodes, thunks, pre_call_clear,
-            storage_map, compute_map,
-            env, allow_gc,
-            callback=None):
+                 storage_map, compute_map, env, allow_gc,
+                 dependencies=None, callback=None):
         super(Stack, self).__init__(nodes, thunks, pre_call_clear)
 
         self.allow_gc = allow_gc
@@ -211,16 +210,11 @@ class Stack(VM):
                 for prereq in ords[node]:
                     node.destroy_dependencies += prereq.outputs
 
-        dependencies = self.dependencies = {}
-        for k in storage_map:
-            dependencies[k] = []
-            if k.owner and k.clients:
-                ls = []
-                is_output = 0
-                for cl in k.clients:
-                    if cl[0] is not 'output':
-                        ls += cl[0].outputs
-                dependencies[k] += ls
+        self.dependencies = dependencies
+
+        if self.allow_gc and self.dependencies is None:
+            raise ValueError("Must set dependencies when using GC")
+
         if config.profile:
             self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
                                     "t64": 8, "128": 16}
@@ -454,6 +448,19 @@ class VM_Linker(link.LocalLinker):
         # admittedly confusing, and it could use some cleaning up. The base
         # Linker object should probably go away completely.
 
+    def compute_gc_dependencies(self, smap):
+        dependencies = {}
+        for k in smap:
+            dependencies[k] = []
+            if k.owner and k.clients:
+                ls = []
+                is_output = 0
+                for cl in k.clients:
+                    if cl[0] is not 'output':
+                        ls += cl[0].outputs
+                dependencies[k] += ls
+        return dependencies
+
     def make_vm(self, nodes, thunks,
             input_storage, output_storage, storage_map,
             post_thunk_clear,
@@ -467,10 +474,14 @@ class VM_Linker(link.LocalLinker):
         if self.callback is not None:
             if self.use_cloop:
                 logger.warn('CLoop does not support callback, using Stack VM.')
+            deps = None
+            if self.allow_gc:
+                deps = self.compute_gc_dependencies(storage_map)
             vm = Stack(
                     nodes, thunks, pre_call_clear,
                     storage_map, compute_map,
                     self.env, self.allow_gc,
+                    dependencies=deps,
                     callback=self.callback)
         elif self.use_cloop:
             # create a map from nodes to ints and vars to ints
@@ -499,6 +510,14 @@ class VM_Linker(link.LocalLinker):
             if nodes:
                 assert type(storage_map_list[0]) is list
                 assert type(compute_map_list[0]) is list
+
+            if self.allow_gc:
+                dependency_map=self.compute_gc_dependencies(storage_map)
+                dependency_map_list = [
+                    [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
+                    for i in xrange(len(vars_idx_inv))]
+            else:
+                dependency_map_list = None
 
             # build the pointers to node inputs and offsets
             base_input_output_list = []
@@ -566,6 +585,7 @@ class VM_Linker(link.LocalLinker):
                     node_prereqs=node_prereqs,
                     node_output_size=node_output_size,
                     update_storage=update_storage,
+                    dependencies=dependency_map_list,
                     )
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
@@ -583,10 +603,14 @@ class VM_Linker(link.LocalLinker):
                             thunks,
                             pre_call_clear)
             else:
+                deps = None
+                if self.allow_gc:
+                    deps = self.compute_gc_dependencies(storage_map)
                 vm = Stack(
                         nodes, thunks, pre_call_clear,
                         storage_map, compute_map,
-                        self.env, self.allow_gc
+                        self.env, self.allow_gc,
+                        dependencies=deps
                         )
         return vm
 
