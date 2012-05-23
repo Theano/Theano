@@ -262,9 +262,9 @@ def Rop(f, wrt, eval_points):
                                  str(i) +
                                  ' of wrt/eval_point have mismatched ' +
                                  'dimensionality: ' +
-                                 str(wrt_dim) +
+                                 str(wrt_elem.type.ndim) +
                                  ' versus ' +
-                                 str(eval_dim))
+                                 str(eval_point.type.ndim))
         except AttributeError:
             # wrt_elem and eval_point don't always have ndim like random type
             # Tensor, Sparse and CudaNdArray have the ndim attribute
