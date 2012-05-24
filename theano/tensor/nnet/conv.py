@@ -322,7 +322,9 @@ class ConvOp(Op):
             raise Exception("In ConvOp, when using unroll_batch and unroll_nkern, all shape are needed")
 
 
-        if not all_shape:
+        if not all_shape or config.openmp:
+            #TODO: check number of core available when we set the default for openmp
+            #http://bytes.com/topic/python/answers/825616-how-can-i-check-nbr-cores-computer
             unroll_patch = True
 
         if imshp is not None:
