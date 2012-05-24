@@ -374,9 +374,26 @@ class TestConv2D(unittest.TestCase):
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid', verify_grad=False)
 
     def speed(self):
-        self.validate((10, 10, 16, 16), (5, 10, 8, 8), 'valid',
-                      verify_grad=False,
-                      unroll_patch=True, speed_only=True)
+        filter_shape = (5, 10, 8, 8)
+        for image_shape in [(10, 10, 10, 10), (10, 10, 16, 16), (10, 10, 64, 64)]:
+            print image_shape
+            for border_mode in ['valid', 'full']:
+
+                input = theano.shared(numpy.random.random(image_shape))
+                filters = theano.shared(numpy.random.random(filter_shape))
+
+                output = conv.conv2d(input, filters, image_shape, filter_shape,
+                                     border_mode,
+                                     unroll_patch=True)
+                mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
+                    allow_gc=False,
+                    use_cloop=True))
+                theano_conv = theano.function([], output, mode=mode)
+                theano_conv.fn(n_calls=10)
+                theano_conv.fn.update_profile(theano_conv.profile)
+                print border_mode, theano_conv.profile.apply_time.values(),
+                print theano_conv.profile.apply_callcount.values()
+
         """
         shape: (10, 10, 16, 16), (5, 10, 8, 8)
         num threads       1          2          4
