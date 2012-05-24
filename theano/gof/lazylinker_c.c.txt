@@ -861,17 +861,6 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
               Py_INCREF(tmp);
               PyList_SetItem(self->var_value_cells[dst], 0, tmp);
             }
-
-	  // Free all intermediate values (outputs and updates have
-	  // already been copied above).
-	  if (self->allow_gc)
-	    {
-	      for (int i = 0; i < self->n_vars; ++i)
-		{
-		  Py_INCREF(Py_None);
-		  PyList_SetItem(self->var_value_cells[i], 0, Py_None);
-		}
-	    }
         }
     }
   Py_DECREF(one);
@@ -955,7 +944,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.14);
+  PyObject *result = PyFloat_FromDouble(0.15);
   return result;
 }
 
