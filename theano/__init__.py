@@ -78,7 +78,12 @@ from compile import \
 from misc.safe_asarray import _asarray
 
 import theano.tests
-test = theano.tests.TheanoNoseTester().test
+if hasattr(theano.tests, "TheanoNoseTester"):
+    test = theano.tests.TheanoNoseTester().test
+else:
+    def test():
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
 
 FancyModule = Module
 
