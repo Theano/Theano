@@ -327,10 +327,17 @@ class TestGpuGemv(TestCase, BaseGemv,
     mode = mode_with_gpu
     dtype = 'float32'
 
-    # As all input are transfered to the gpu, this allow to make all
-    # the gemv inplace.
-    gemv = gpu_gemv_inplace
+    gemv = gpu_gemv_no_inplace
     gemv_inplace = gpu_gemv_inplace
+    # Mimic shared constructors registry
+    @staticmethod
+    def shared(val):
+        # If we don't put shared on the GPU, we won't be able to test
+        # the no inplace version as the added transfer will make them inplace.
+        try:
+            return tcn.shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
 
 
 class TestGpuGemvNoTransfer(TestCase, BaseGemv,
@@ -435,7 +442,7 @@ class TestVectorMatrixDot(TestCase):
     def test_gemv2(self):
         ''' test vector1+dot(vector2,matrix) '''
         v1 = theano.shared(numpy.array(numpy.random.rand(5), dtype='float32'))
-        v2 = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
+        v2 = tensor._shared(numpy.array(numpy.random.rand(2), dtype='float32'))
         m = theano.shared(numpy.array(numpy.random.rand(5, 2),
             dtype='float32'))
 
