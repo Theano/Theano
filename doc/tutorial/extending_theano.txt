@@ -211,6 +211,10 @@ see it fail, you can implement an incorrect ``infer_shape``.
 
 .. code-block:: python
 
+    from theano.tests import unittest_tools as utt
+    from theano import config
+    class test_Double(utt.InferShapeTester):
+        # [...] as previous tests.
         def test_infer_shape(self):
             x = theano.tensor.matrix()
             self._compile_and_check([x],  # theano.function inputs
