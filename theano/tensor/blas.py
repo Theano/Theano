@@ -378,6 +378,12 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
                     "ATLAS, make sure to compile it with dynamics library.")
 
     for t in config.blas.ldflags.split():
+        #Remove extra quote.
+        if t.startswith("'") or t.startswith('"'):
+            t = t[1:]
+        if t.endswith("'") or t.endswith('"'):
+            t = t[:-1]
+
         try:
             t0, t1, t2 = t[0:3]
             assert t0 == '-'
