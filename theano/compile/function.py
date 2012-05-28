@@ -44,10 +44,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     :param name: an optional name for this function. The profile mode will print the time spent in this function.
 
-    :rtype: Function instance
-    :returns: a callable object that will compute the outputs (given the inputs)
-    and update the implicit function arguments according to the `updates`.
-
     :param rebuild_strict: True (Default) is the safer and better tested setting, in which case
     `givens` must substitute new variables with the same Type as the variables they replace.
     False is a you-better-know-what-you-are-doing setting, that permits `givens` to replace
@@ -71,6 +67,10 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     :param on_unused_input: What to do if a variable in the 'inputs' list is
     not used in the graph. Possible values are 'raise', 'warn', 'ignore' and None.
+
+    :rtype: Function instance
+    :returns: a callable object that will compute the outputs (given the inputs)
+    and update the implicit function arguments according to the `updates`.
 
     :note: Regarding givens: Be careful to make sure that these substitutions are
     independent--behaviour when Var1 of one pair appears in the graph leading to Var2 in
