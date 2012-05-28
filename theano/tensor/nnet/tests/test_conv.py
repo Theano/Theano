@@ -374,30 +374,28 @@ class TestConv2D(unittest.TestCase):
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid', verify_grad=False)
 
     def speed(self):
-        filter_shape = (5, 10, 8, 8)
-        for image_shape in [(10, 10, 10, 10), (10, 10, 16, 16), (10, 10, 64, 64)]:
-            print image_shape
-            for border_mode in ['valid', 'full']:
+        for filter_shape in [(1, 5, 4, 4), (5, 5, 4, 4)]:
+            print filter_shape
+            for image_shape in [(1, 5, 6, 6),
+                                #(10, 10, 10, 10),
+                                #(10, 10, 16, 16),
+                                #(10, 10, 32, 32)
+                                ]:
+                print image_shape
+                for border_mode in ['valid', 'full']:
 
-                input = theano.shared(numpy.random.random(image_shape))
-                filters = theano.shared(numpy.random.random(filter_shape))
+                    input = theano.shared(numpy.random.random(image_shape))
+                    filters = theano.shared(numpy.random.random(filter_shape))
 
-                output = conv.conv2d(input, filters, image_shape, filter_shape,
-                                     border_mode,
-                                     unroll_patch=True)
-                mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
-                    allow_gc=False,
-                    use_cloop=True))
-                theano_conv = theano.function([], output, mode=mode)
-                theano_conv.fn(n_calls=10)
-                theano_conv.fn.update_profile(theano_conv.profile)
-                print border_mode, theano_conv.profile.apply_time.values(),
-                print theano_conv.profile.apply_callcount.values()
-
-        """
-        shape: (10, 10, 16, 16), (5, 10, 8, 8)
-        num threads       1          2          4
-        // kern      5.54e-03s  3.12e-03s  1.99e-03s
-        // batch     4.22e-03s  1.59e-03s  1.25e-03s
-        // kern_batch3-5-03s    2.51e-03s  9.15e-04s
-        """
+                    output = conv.conv2d(input, filters,
+                                         image_shape, filter_shape,
+                                         border_mode,
+                                         unroll_patch=True)
+                    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
+                        allow_gc=False,
+                        use_cloop=True))
+                    theano_conv = theano.function([], output, mode=mode)
+                    t1 = time.time()
+                    theano_conv.fn(n_calls=500)
+                    t2 = time.time()
+                    print border_mode, t2 - t1, 100

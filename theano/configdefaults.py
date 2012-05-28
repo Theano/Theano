@@ -5,7 +5,7 @@ import subprocess
 from theano.configparser import (
         AddConfigVar, BoolParam, ConfigParam, EnumStr, IntParam,
         TheanoConfigParser)
-
+from theano.misc.cpucount import cpuCount
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -16,12 +16,35 @@ AddConfigVar('floatX',
         EnumStr('float64', 'float32'),
         )
 
+#http://pyprocessing.berlios.de/
+#True if the environment variable OMP_NUM_THREADS!=1 or
+#if we detect more then 1 CPU core. Otherwise False.
+default_openmp = True
+var = os.getenv('OMP_NUM_THREADS', None)
+if var:
+    try:
+        int(var)
+    except ValueError:
+        raise TypeError("The environment variable OMP_NUM_THREADS"
+                        " should be a number, got '%s'." % var)
+    else:
+        default_openmp = not int(var) == 1
+else:
+    count = cpuCount()
+    if count == -1:
+        _logger.warning("We are not able to detect the number of CPU cores."
+                        " We disable openmp by default. To remove this"
+                        " warning, set the environment variable"
+                        " OMP_NUM_THREADS to the number of threads you"
+                        " want theano to use.")
+    default_openmp = count > 1
+
 AddConfigVar('openmp',
              "Enable or not parallel computation on the CPU with OpenMP. "
              "It is the default value used when creating an Op that support it"
              ". The best is to define it via Theano configuration "
              "file or with the environment variable THEANO_FLAGS.",
-             BoolParam(True),
+             BoolParam(default_openmp),
              in_c_key=False,
          )
 

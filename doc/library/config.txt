@@ -173,7 +173,8 @@ import theano and print the config variable, as in:
 
     Bool value: either True or False
 
-    Default: True
+    Default: True if the environment variable OMP_NUM_THREADS!=1 or
+             if we detect more then 1 CPU core. Otherwise False.
 
     Enable or not parallel computation on the CPU with OpenMP.
     It is the default value used when creating an Op that support it.
