@@ -321,10 +321,11 @@ class ConvOp(Op):
         if (unroll_batch>0 or unroll_kern>0) and not all_shape:
             raise Exception("In ConvOp, when using unroll_batch and unroll_nkern, all shape are needed")
 
+        if openmp is None:
+            openmp = theano.config.openmp
 
         if not all_shape or config.openmp:
-            #TODO: check number of core available when we set the default for openmp
-            #http://bytes.com/topic/python/answers/825616-how-can-i-check-nbr-cores-computer
+            # Only this version is parallelized
             unroll_patch = True
 
         if imshp is not None:
