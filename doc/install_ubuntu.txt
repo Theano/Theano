@@ -1,9 +1,10 @@
+.. _install_ubuntu:
 
-.. _install_centos6:
+Easy Installation of an optimized Theano on Ubuntu
+==================================================
 
-
-Easy Installation of an optimized Theano on CentOS 6
-====================================================
+These instruction was done for Ubuntu 11.04, 11.10 and 12.04. You can
+probably do something similar on older computer.
 
 .. note::
 
@@ -35,16 +36,17 @@ Easy Installation of an optimized Theano on CentOS 6
    raise this error.
 
 
-
 Installation steps
 ~~~~~~~~~~~~~~~~~~
 
- 1) ``sudo yum install python-devel python-nose python-setuptools gcc
-    gcc-gfortran gcc-c++ blas-devel lapack-devel atlas-devel``
- 2) ``sudo easy_install pip``
- 3) ``sudo pip install numpy==1.6.1``
- 4) ``sudo pip install scipy==0.10.1``
- 5) ``sudo pip install Theano``
+Ubuntu 11.10/12.04:
+ 1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
+ 2) ``sudo pip install Theano``
+
+Ubuntu 11.04:
+ 1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev``
+ 2) ``sudo pip install Theano``
+
 
 
 Test the newly installed packages
@@ -76,6 +78,10 @@ configuration information. Then, it will print the running time of the same
 benchmarks for your installation. Try to find a CPU similar to yours in
 the table, and check that the single-threaded timings are roughly the same.
 
+Theano should link to a parallel version of Blas and use all cores
+when possible. By default it should use all cores. Set the environment
+variable "OMP_NUM_THREADS=N" to specify to use N threads.
+
 
 Updating Theano
 ~~~~~~~~~~~~~~~
@@ -88,14 +94,84 @@ to update only Theano:
     sudo pip install --upgrade --no-deps theano
 
 
-If you want to also update NumPy/SciPy, you can run this:
+If you want to also installed NumPy/SciPy with pip instead of the
+system package, you can run this:
 
 .. code-block:: bash
 
     sudo pip install --upgrade theano
+
 
 Bleeding edge
 ~~~~~~~~~~~~~
 
 Do like in the section "Updating Theano", but use
 ``git+git://github.com/Theano/Theano.git`` instead of ``theano``.
+
+
+Contributed GPU instruction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Basic configuration for the GPU :ref:`gpu_linux`.
+
+Ubuntu 11.10/12.04 (probably work on 11.04 too):
+
+.. code-block:: bash
+
+   sudo apt-add-repository ppa:ubuntu-x-swat/x-updates
+   sudo apt-get update
+   sudo apt-get install nvidia-current
+
+Then you need to fetch latest CUDA tool kit (download ubuntu 11.04 32/64bit package)
+from `here <http://developer.nvidia.com/cuda-downloads>`_.
+
+Then you install it like this:
+
+.. code-block:: bash
+
+    chmod a+x XXX.sh
+    sudo ./XXX.sh
+
+You probably need to change the default version of gcc as 
+`explained by Benjamin J. McCann <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_:
+
+
+
+
+.. code-block:: bash
+
+   sudo apt-get install nvidia-cuda-toolkit g++-4.4 gcc-4.4
+   # On Ubuntu 11.10 and 12.04, you probably need to change gcc-4.5 to gcc-4.6 on the next line.
+   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.5 40 --slave /usr/bin/g++ g++ /usr/bin/g++-4.5
+   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.4 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.4
+   sudo update-alternatives --config gcc
+
+Test GPU configuration
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+    THEANO_FLAGS=floatX=float32,device=gpu python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
+
+.. note::
+
+   Ubuntu 10.04 LTS: default gcc version 4.4.3. gcc 4.1.2, 4.3.4 availables.
+
+   Ubuntu 11.04: default gcc version 4.5.2. gcc 4.4.5 availables.
+
+   Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 availables.
+
+   Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 availables.
+
+
+
+
+
+
+
+
+
+
+
+
+
