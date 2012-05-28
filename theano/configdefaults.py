@@ -46,7 +46,8 @@ AddConfigVar('int_division',
 AddConfigVar('device',
         ("Default device for computations. If gpu*, change the default to try "
          "to move computation to it and to put shared variable of float32 "
-         "on it."),
+         "on it. Do not use upper case letters, only lower case even if "
+         "NVIDIA use capital letters."),
         EnumStr('cpu', 'gpu',
             'gpu0', 'gpu1', 'gpu2', 'gpu3',
             'gpu4', 'gpu5', 'gpu6', 'gpu7',

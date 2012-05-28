@@ -115,6 +115,9 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+    Do not use upper case letters, only lower case even if NVIDIA use
+    capital letters.
+
 .. attribute:: force_device
 
     Bool value: either ``True`` or ``False``
