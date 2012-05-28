@@ -1,4 +1,5 @@
 import sys
+import time
 
 from theano.gof.python25 import partial
 
@@ -85,23 +86,27 @@ class ReplaceValidate(History, Validator):
     def on_attach(self, env):
         History.on_attach(self, env)
         Validator.on_attach(self, env)
-        for attr in ('replace_validate', 'replace_all_validate'):
+        for attr in ('replace_validate', 'replace_all_validate',
+                     'replace_all_validate_time'):
             if hasattr(env, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
+        env.replace_all_validate_time = 0
 
     def on_detach(self, env):
         History.on_detach(self, env)
         Validator.on_detach(self, env)
         del env.replace_validate
         del env.replace_all_validate
+        del env.replace_all_validate_time
 
     def replace_validate(self, env, r, new_r, reason=None):
         self.replace_all_validate(env, [(r, new_r)], reason=reason)
 
     def replace_all_validate(self, env, replacements, reason=None):
+        t0 = time.time()
         chk = env.checkpoint()
         for r, new_r in replacements:
             try:
@@ -121,6 +126,8 @@ class ReplaceValidate(History, Validator):
         except Exception, e:
             env.revert(chk)
             raise
+        t1 = time.time()
+        env.replace_all_validate_time += t1 - t0
 
 
 class NodeFinder(dict, Bookkeeper):
