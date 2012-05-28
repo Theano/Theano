@@ -155,7 +155,13 @@ def print_from(i, node, *thunks):
     print "parents:", ", ".join(str(input.step) for input in node.inputs)
 
 def print_input_shapes(i, node, *thunks):
-    print "input shapes:", ", ".join(str(input.value.shape) if hasattr(input.value, 'shape') else 'N/A' for input in node.inputs)
+    shapes = []
+    for input in node.inputs:
+        if hasattr(input.value, 'shape'):
+            shapes.append(str(input.value.shape))
+        else:
+            shapes.append('N/A')
+    print "input shapes:", ", ".join(shapes)
 
 def print_input_types(i, node, *thunks):
     print "input types:", ", ".join(str(type(input.value)) for input in node.inputs)
