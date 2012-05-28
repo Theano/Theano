@@ -199,12 +199,22 @@ def compile(smod, initial_values=None):
     return rval
 
 @symbolic_module
-def LR(x=None, y=None, v=None, c=None, l2_coef = None):
-    x = x if x else T.dmatrix()     #our points, one point per row
-    y = y if y else T.dmatrix()     #targets , one per row
-    v = v if v else T.dmatrix()     #first layer weights
-    c = c if c else T.dvector()     #first layer weights
-    l2_coef = l2_coef if l2_coef else T.dscalar()
+def LR(x=None, y=None, v=None, c=None, l2_coef=None):
+    # our points, one point per row
+    if x is None:
+        x = T.dmatrix()
+    # targets , one per row
+    if y is None:
+        y = T.dmatrix()
+    # first layer weights
+    if v is None:
+        v = T.dmatrix()
+    # first layer biases
+    if c is None:
+        c = T.dvector()
+
+    if l2_coef is None:
+        l2_coef = T.dscalar()
 
     pred = T.dot(x, v) + c
     sse = T.sum((pred - y) * (pred - y))
@@ -220,9 +230,15 @@ def LR(x=None, y=None, v=None, c=None, l2_coef = None):
 
 @symbolic_module
 def Layer(x=None, w=None, b=None):
-    x = x if x else T.dmatrix()     #our points, one point per row
-    w = w if w else T.dmatrix()     #first layer weights
-    b = b if b else T.dvector()     #first layer bias
+    # our points, one point per row
+    if x is None:
+        x = T.dmatrix()
+    # first layer weights
+    if w is None:
+        w = T.dmatrix()
+    # first layer bias
+    if b is None:
+        b = T.dvector()
     y = T.tanh(T.dot(x, w) + b)
     @symbolicmethod
     def params(): return [w,b]
@@ -230,8 +246,12 @@ def Layer(x=None, w=None, b=None):
 
 @symbolic_module
 def NNet(x=None, y=None, n_hid_layers=2):
-    x = x if x else T.dmatrix()     #our points, one point per row
-    y = y if y else T.dmatrix()     #targets , one per row
+    # our points, one point per row
+    if x is None:
+        x = T.dmatrix()
+    # targets , one per row
+    if y is None:
+        y = T.dmatrix()
     layers = []
     _x = x
     for i in xrange(n_hid_layers):
@@ -348,7 +368,8 @@ if 0:
         def include(self, symbolic_module, name=None):
             """This redefines the symbols in the kwargs
             """
-            name = symbolic_module.name if name is None else name
+            if name is None:
+                name = symbolic_module.name
 
         def __init__(self, constructor_fn=None):
             """ A constructor fn builds
