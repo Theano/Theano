@@ -1,9 +1,11 @@
-import theano
 import numpy as np
-from theano import tensor as T
-from theano.tests import unittest_tools as utt
+import numpy
 
+import theano
+from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import *
+from theano import tensor as T
+from theano import tensor, function, scalar
 
 
 class TestBinCountOp(utt.InferShapeTester):
@@ -185,3 +187,79 @@ class TestRepeatOp(utt.InferShapeTester):
         def repeat_(a):
             return RepeatOp()(a, 3)
         utt.verify_grad(repeat_, [a])
+
+
+class TestBartlett(utt.InferShapeTester):
+
+    def setUp(self):
+        super(TestBartlett, self).setUp()
+        self.op_class = Bartlett
+        self.op = bartlett
+
+    def test_perform(self):
+        x = tensor.lscalar()
+        f = function([x], self.op(x))
+        M = numpy.random.random_integers(3, 50, size=())
+        assert numpy.allclose(f(M), numpy.bartlett(M))
+        assert numpy.allclose(f(0), numpy.bartlett(0))
+        assert numpy.allclose(f(-1), numpy.bartlett(-1))
+        b = numpy.array([17], dtype='uint8')
+        assert numpy.allclose(f(b[0]), numpy.bartlett(b[0]))
+
+    def test_infer_shape(self):
+        x = tensor.lscalar()
+        self._compile_and_check([x], [self.op(x)],
+                                [numpy.random.random_integers(3, 50, size=())],
+                                self.op_class)
+
+if __name__ == "__main__":
+    t = TestBartlett('setUp')
+    t.setUp()
+    t.test_perform()
+    t.test_infer_shape()
+
+
+class TestFillDiagonal(utt.InferShapeTester):
+
+    rng = numpy.random.RandomState(43)
+
+    def setUp(self):
+        super(TestFillDiagonal, self).setUp()
+        self.op_class = FillDiagonal
+        self.op = fill_diagonal
+
+    def test_perform(self):
+        x = tensor.dmatrix()
+        y = tensor.dscalar()
+        f = function([x, y], fill_diagonal(x, y))
+        a = numpy.random.rand(8, 5)
+        val = numpy.random.rand()
+        out = f(a, val)
+        numpy.fill_diagonal(a, val)
+        # remember that numpy.fill_diagonal works in place
+        assert numpy.allclose(out, a)
+
+    def test_gradient(self):
+        utt.verify_grad(fill_diagonal, [numpy.random.rand(5, 8),
+                                        numpy.random.rand()],
+                        n_tests=1, rng=TestFillDiagonal.rng)
+        #  TODO: check why gradient wrto val does not match when a has
+        # more rows than cols: might be problem with testing procedure
+        utt.verify_grad(fill_diagonal, [numpy.random.rand(8, 5),
+                                        numpy.random.rand()],
+                        n_tests=1, rng=TestFillDiagonal.rng)
+
+    def test_infer_shape(self):
+        x = tensor.dmatrix()
+        y = tensor.dscalar()
+        self._compile_and_check([x, y], [self.op(x, y)],
+                                [numpy.random.rand(8, 5), numpy.random.rand()],
+                                self.op_class)
+
+if __name__ == "__main__":
+    t = TestFillDiagonal('setUp')
+    t.setUp()
+    t.test_perform()
+    t.test_gradient()
+    t.test_infer_shape()
+
