@@ -3,7 +3,7 @@ import numpy as np
 from theano import tensor as T
 from theano.tests import unittest_tools as utt
 
-from theano.extra_ops import *
+from theano.tensor.extra_ops import *
 
 
 class TestBinCountOp(utt.InferShapeTester):

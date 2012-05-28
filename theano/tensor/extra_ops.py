@@ -1,6 +1,6 @@
 import theano
 import numpy as np
-from theano import tensor as T
+import basic
 
 
 class DiffOp(theano.Op):
@@ -31,7 +31,7 @@ class DiffOp(theano.Op):
         return hash(type(self)) ^ hash(self.n) ^ hash(self.axis)
 
     def make_node(self, x):
-        x = T.as_tensor_variable(x)
+        x = basic.as_tensor_variable(x)
         return theano.Apply(self, [x], [x.type()])
 
     def perform(self, node, inputs, output_storage):
@@ -49,8 +49,8 @@ class DiffOp(theano.Op):
         z = outputs_gradients[0]
 
         def _grad_helper(z):
-            pre = T.concatenate([[0.], z])
-            app = T.concatenate([z, [0.]])
+            pre = basic.concatenate([[0.], z])
+            app = basic.concatenate([z, [0.]])
             return pre - app
 
         for k in range(self.n):
@@ -120,7 +120,7 @@ class BinCountOp(theano.Op):
         return hash(type(self)) ^ hash(self.minlength)
 
     def make_node(self, x, weights):
-        x = T.as_tensor_variable(x)
+        x = basic.as_tensor_variable(x)
 
         if x.dtype not in BinCountOp.compatible_type:
             raise TypeError("Inputs dtype must be an integer.")
@@ -131,7 +131,7 @@ class BinCountOp(theano.Op):
             weights = theano.gof.Constant(theano.gof.Generic(), None)
             out_type = x.type()
         else:
-            weights = T.as_tensor_variable(weights)
+            weights = basic.as_tensor_variable(weights)
             out_type = weights.type()
             if weights.ndim != 1:
                 raise TypeError("Weights cannot have a number of"
@@ -154,9 +154,9 @@ class BinCountOp(theano.Op):
 
     def infer_shape(self, node, ins_shapes):
         x = node.inputs[0]
-        m = T.max(x) + 1
+        m = basic.max(x) + 1
         if self.minlength != None:
-            m = T.maximum(m, self.minlength)
+            m = basic.maximum(m, self.minlength)
         return [[m]]
 
     def __str__(self):
