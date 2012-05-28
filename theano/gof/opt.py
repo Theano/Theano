@@ -500,7 +500,9 @@ def MergeOptMerge(opt):
     opt introduced additional similarities.
     """
     merger = merge_optimizer
-    return SeqOptimizer([merger, opt, merger])
+    opt = SeqOptimizer([merger, opt, merger])
+    opt.name = "MergeOptMerge"
+    return opt
 
 
 def pre_constant_merge(vars):
