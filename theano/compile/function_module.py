@@ -1022,8 +1022,6 @@ class FunctionMaker(object):
             optimizer_profile = optimizer(fgraph)
             end_optimizer = time.time()
             opt_time = end_optimizer - start_optimizer
-            mode.optimizer_time += opt_time
-
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
@@ -1183,7 +1181,6 @@ class FunctionMaker(object):
 
         linker_time = end_linker - start_linker
         _logger.debug('Linker took %f seconds', linker_time)
-        self.mode.linker_time += linker_time
         if self.profile:
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
