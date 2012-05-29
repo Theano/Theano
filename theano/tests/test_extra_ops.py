@@ -99,3 +99,29 @@ class TestDiffOp(utt.InferShapeTester):
         for k in range(TestDiffOp.nb):
             dg = theano.function([x], T.grad(T.sum(diff(x, n=k)), x))
             utt.verify_grad(DiffOp(n=k), [a])
+
+
+class TestSqueezeOp(utt.InferShapeTester):
+    def setUp(self):
+        super(TestSqueezeOp, self).setUp()
+        self.op_class = SqueezeOp
+        self.op = SqueezeOp(out_nd=1)
+
+    def test_squeezeOp(self):
+        x = T.dmatrix('x')
+        a = np.random.random((1, 50))
+
+        f = theano.function([x], squeeze(x, out_nd=1))
+        assert np.allclose(np.squeeze(a), f(a))
+
+        x = T.dtensor4('x')
+        f = theano.function([x], squeeze(x, out_nd=2))
+
+        a = np.random.random((1, 1, 2, 3))
+        assert np.allclose(np.squeeze(a), f(a))
+
+        a = np.random.random((1, 2, 2, 1))
+        assert np.allclose(np.squeeze(a), f(a))
+
+        a = np.random.random((4, 1, 2, 1))
+        assert np.allclose(np.squeeze(a), f(a))

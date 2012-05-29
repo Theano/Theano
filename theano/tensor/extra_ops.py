@@ -184,3 +184,63 @@ def bincount(x, weights=None, minlength=None):
 
     """
     return BinCountOp(minlength=minlength)(x, weights)
+
+
+class SqueezeOp(theano.Op):
+    """Remove single-dimensional entries from the shape of an array.
+
+    It returns the input array, but with with all or a subset of the
+    dimensions of length 1 removed. This is always x itself or a view
+    into x. Wraping of numpy.squeeze.
+
+    Parameter:
+    x -- Input data, tensor variable.
+    out_nd -- Output number of dimension for this op.
+
+    """
+
+    def __init__(self, out_nd):
+        self.out_nd = out_nd
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.out_nd == other.out_nd)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.out_nd)
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)
+        out_type = theano.tensor.TensorType(dtype=x.dtype,
+                              broadcastable=[False] * self.out_nd)
+        return theano.Apply(self, [x], [out_type()])
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage[0]
+        squeezed = np.squeeze(x)
+        if squeezed.ndim != self.out_nd:
+            raise TypeError("The number of dimension specified "
+                            "is different from the one calculated.")
+        z[0] = squeezed
+
+    def grad(self, inputs, outputs_gradients):
+        return [None for i in inputs]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def squeeze(x, out_nd):
+    """Remove single-dimensional entries from the shape of an array.
+
+    It returns the input array, but with with all or a subset of the
+    dimensions of length 1 removed. This is always x itself or a view
+    into x. Wraping of numpy.squeeze.
+
+    Parameter:
+    x -- Input data, tensor variable.
+    out_nd -- Output number of dimension for this op.
+
+    """
+    return SqueezeOp(out_nd=out_nd)(x)
