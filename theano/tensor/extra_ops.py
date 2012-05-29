@@ -43,8 +43,8 @@ class DiffOp(theano.Op):
         inputs = inputs[0]
 
         if inputs.ndim != 1:
-            raise TypeError("Grad is not implemented for inputs with"
-                            "number of dimension other than 1.")
+            raise NotImplementedError("Grad is not implemented for inputs with"
+                                      "number of dimension other than 1.")
 
         z = outputs_gradients[0]
 
