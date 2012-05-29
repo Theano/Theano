@@ -125,3 +125,10 @@ class TestSqueezeOp(utt.InferShapeTester):
 
         a = np.random.random((4, 1, 2, 1))
         assert np.allclose(np.squeeze(a), f(a))
+
+    def test_grad(self):
+        x = T.dtensor4('x')
+        a = np.random.random((1, 1, 3, 4))
+
+        gf = theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
+        utt.verify_grad(SqueezeOp(out_nd=2), [a])

@@ -225,7 +225,8 @@ class SqueezeOp(theano.Op):
         z[0] = squeezed
 
     def grad(self, inputs, outputs_gradients):
-        return [None for i in inputs]
+        out = outputs_gradients[0]
+        return [out.reshape(inputs[0].shape)]
 
     def __str__(self):
         return self.__class__.__name__
