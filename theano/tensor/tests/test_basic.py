@@ -3964,6 +3964,15 @@ class T_scalarfromtensor(unittest.TestCase):
         self.assertTrue(isinstance(v, numpy.int64))
         self.assertTrue(v.shape == (),v.shape)
 
+class T_load_tensor(unittest.TestCase):
+    def test0(self):
+        data = numpy.arange(5)
+        filename = "_load_tensor_test_1.npz"
+        numpy.savez(filename, data)
+        x = tensor.load(filename, 'int64')
+        y = x*2
+        fn = function([], [y])
+        assert (fn() == data*2).all()
 
 class test_grad(unittest.TestCase):
     class O(gof.op.Op):

@@ -2021,6 +2021,38 @@ def cast(x, dtype):
             'imag(), angle() or abs()'))
     return _cast_mapping[dtype](x)
 
+##########################
+# Disk Access
+##########################
+
+class LoadFromDisk(Op):
+    """
+    @note: Non-differentiable.
+    """
+    def __init__(self, path, dtype):
+        self.path = path
+        self.dtype = dtype
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.path == other.path and
+                self.dtype == other.dtype)
+
+    def __hash__(self):
+        return hash((type(self), self.path, self.dtype))
+
+    def make_node(self):
+        return gof.Apply(self, [], [tensor(self.dtype, broadcastable=(False,))])
+
+    def perform(self, node, inp, out):
+        d = numpy.load(self.path)
+        out[0][0] = d[d.keys()[0]].astype(self.dtype)
+
+    def __str__(self):
+        return "Load: %s"%self.path
+
+def load(path, dtype='float64'):
+    return LoadFromDisk(path, dtype)()
 
 ##########################
 # Unary Operations
