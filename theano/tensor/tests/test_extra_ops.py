@@ -132,3 +132,56 @@ class TestSqueezeOp(utt.InferShapeTester):
 
         gf = theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
         utt.verify_grad(SqueezeOp(out_nd=2), [a])
+
+
+class TestRepeatOp(utt.InferShapeTester):
+    nb = 5
+
+    def setUp(self):
+        super(TestRepeatOp, self).setUp()
+        self.op_class = RepeatOp
+        self.op = RepeatOp()
+
+    def test_repeatOp(self):
+        x = T.dmatrix('x')
+        a = np.random.random((30, 50))
+
+        for axis in [None] + range(len(a.shape)):
+            for repeats in range(TestRepeatOp.nb):
+                f = theano.function([x], repeat(x, repeats, axis=axis))
+                assert np.allclose(np.repeat(a, repeats, axis=axis), f(a))
+
+    def test_infer_shape(self):
+        x = T.dvector('x')
+        m = T.iscalars('m')
+        a = np.random.random(50)
+
+        self._compile_and_check([x, m],
+                                [repeat(x, m)],
+                                [a, 2],
+                                self.op_class)
+
+        x = T.dmatrix('x')
+        a = np.random.random((40, 50))
+        for axis in range(len(a.shape)):
+            self._compile_and_check([x, m],
+                                    [repeat(x, m, axis=axis)],
+                                    [a, 2],
+                                    self.op_class)
+
+        m = T.lvector('m')
+        repeats = np.random.random_integers(5, size=(40, ))
+        self._compile_and_check([x, m],
+                                [repeat(x, m, axis=0)],
+                                [a, repeats],
+                                self.op_class)
+
+    def test_grad(self):
+        x = T.dvector('x')
+        a = np.random.random(50)
+
+        gf = theano.function([x], T.grad(T.sum(repeat(x, 3)), x))
+
+        def repeat_(a):
+            return RepeatOp()(a, 3)
+        utt.verify_grad(repeat_, [a])

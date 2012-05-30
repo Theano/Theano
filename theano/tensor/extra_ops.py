@@ -245,3 +245,101 @@ def squeeze(x, out_nd):
 
     """
     return SqueezeOp(out_nd=out_nd)(x)
+
+
+class RepeatOp(theano.Op):
+    """Repeat elements of an array.
+
+    It returns an array which has the same shape as x, except
+    along the given axis. The axis is used to speficy along which
+    axis to repeat values. By default, use the flattened input
+    array, and return a flat output array.
+
+    The number of repetitions for each element is repeat.
+    repeats is broadcasted to fit the shape of the given axis.
+
+    Parameter:
+    x -- Input data, tensor variable.
+    repeats -- int, tensor variable.
+
+    Keywords arguments:
+    axis -- int, optional.
+
+    """
+
+    def __init__(self, axis=None):
+        self.axis = axis
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.axis == other.axis)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axis)
+
+    def make_node(self, x, repeats):
+        x = basic.as_tensor_variable(x)
+        repeats = basic.as_tensor_variable(repeats)
+        if self.axis == None:
+            out_type = theano.tensor.TensorType(dtype=x.dtype,
+                                                broadcastable=[False])
+        else:
+            out_type = x.type
+        return theano.Apply(self, [x, repeats], [out_type()])
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        repeats = inputs[1]
+        z = output_storage[0]
+        z[0] = np.repeat(x, repeats=repeats, axis=self.axis)
+
+    def grad(self, inputs, outputs_gradients):
+        repeats = inputs[1]
+        out = outputs_gradients[0]
+        if inputs[0].ndim != 1:
+            raise NotImplementedError()
+        if repeats.ndim != 0:
+            raise NotImplementedError()
+        return [out.reshape([inputs[0].shape[0], repeats]).sum(axis=1), None]
+
+    def infer_shape(self, node, ins_shapes):
+        i0_shapes = ins_shapes[0]
+        repeats = node.inputs[1]
+        out_shape = list(i0_shapes)
+
+        if self.axis == None:
+            res = 0
+            for d in i0_shapes:
+                res = res + d
+            out_shape = (res * repeats, )
+        else:
+            if repeats.ndim == 0:
+                out_shape[self.axis] = out_shape[self.axis] * repeats
+            else:
+                out_shape[self.axis] = theano.tensor.sum(repeats)
+        return [out_shape]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def repeat(x, repeats, axis=None):
+    """Repeat elements of an array.
+
+    It returns an array which has the same shape as x, except
+    along the given axis. The axis is used to speficy along which
+    axis to repeat values. By default, use the flattened input
+    array, and return a flat output array.
+
+    The number of repetitions for each element is repeat.
+    repeats is broadcasted to fit the shape of the given axis.
+
+    Parameter:
+    x -- Input data, tensor variable.
+    repeats -- int, tensor variable.
+
+    Keywords arguments:
+    axis -- int, optional.
+
+    """
+    return RepeatOp(axis=axis)(x, repeats)
