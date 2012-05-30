@@ -843,7 +843,7 @@ class GpuDownsampleFactorMax(GpuOp):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (4)
+        return (5)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -896,7 +896,8 @@ class GpuDownsampleFactorMax(GpuOp):
             }
         }
         {
-            dim3 grid(dims[0] * dims[1], dims[2]);
+            dim3 grid(std::min(dims[0] * dims[1], 65535),
+                      dims[2]);
             //dim3 block(std::min(dims[3], 512));
             //TODO: implement this by supporting more outputs than threads
             dim3 block(dims[3]);
@@ -943,53 +944,59 @@ class GpuDownsampleFactorMax(GpuOp):
            float *z, int zS0, int zS1, int zS2, int zS3)
         {
             float cur_max, cur_x;
-            int i0 = blockIdx.x %% D0;
-            int i1 = blockIdx.x / D0;
-            int i2 = blockIdx.y;
+            for(int block_x_idx = blockIdx.x;
+                block_x_idx < D0 * D1;
+                block_x_idx += gridDim.x){
 
-            extern __shared__ float xbuf[]; //size [xD3]
+                int i0 = block_x_idx %% D0;
+                int i1 = block_x_idx / D0;
+                int i2 = blockIdx.y;
 
-            for (int r2 = 0;
-                 (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
-                 ++r2)
-            {
-                __syncthreads();
-                // load the current row of the image into shared memory
-                for (int j = threadIdx.x; j < xD3; j += blockDim.x)
+                extern __shared__ float xbuf[]; //size [xD3]
+
+                for (int r2 = 0;
+                     (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
+                     ++r2)
                 {
-                    xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
-                }
-                __syncthreads();
-
-                // initialize our max if this is the first row we're loading
-                cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
-
-                // do a mini-reduction over the pf3 relevant elements
-                // in the current row
-
-                if (%(ignore_border)s)
-                {
-                    for (int k = 0; k < pf3; ++k)
+                    __syncthreads();
+                    // load the current row of the image into shared memory
+                    for (int j = threadIdx.x; j < xD3; j += blockDim.x)
                     {
-                        cur_x = xbuf[threadIdx.x*pf3+k];
-                        cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                        xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
                     }
-                }
-                else
-                {
-                    for (int k = 0; k < pf3; ++k)
+                    __syncthreads();
+
+                    // initialize our max if this is the
+                    // first row we're loading
+                    cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
+
+                    // do a mini-reduction over the pf3 relevant elements
+                    // in the current row
+
+                    if (%(ignore_border)s)
                     {
-                        if (threadIdx.x*pf3 + k < xD3)
+                        for (int k = 0; k < pf3; ++k)
                         {
                             cur_x = xbuf[threadIdx.x*pf3+k];
                             cur_max = (cur_x > cur_max) ? cur_x : cur_max;
                         }
                     }
+                    else
+                    {
+                        for (int k = 0; k < pf3; ++k)
+                        {
+                            if (threadIdx.x*pf3 + k < xD3)
+                            {
+                                cur_x = xbuf[threadIdx.x*pf3+k];
+                                cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                            }
+                        }
+                    }
                 }
-            }
 
-            //store the result to global memory
-            z[i0*zS0 + i1*zS1 + i2*zS2 + threadIdx.x*zS3] = cur_max;
+                //store the result to global memory
+                z[i0*zS0 + i1*zS1 + i2*zS2 + threadIdx.x*zS3] = cur_max;
+            }
         }
         """ % locals()
 
@@ -1019,8 +1026,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         return Apply(self, [x, z, gz], [x.type()])
 
     def c_code_cache_version(self):
-        #return ()
-        return (5,)
+        return (6,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -1062,7 +1068,8 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // make sure we cover every x row when ignore border isset and
             // there's a border present to be ignored
             int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
-            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
+            dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
+                      CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
             dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
 
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
@@ -1136,72 +1143,76 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // various .S. variables are strides
 
             float cur_max, cur_x, my_z, my_gz;
-            int i0 = blockIdx.x;       // image row
-            int i1 = 0;                // image col
-            // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
-            // (as needed to cover all x rows)
-            int i2 = blockIdx.y;
-            int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
-            int z_col = x_col/ds1;     // z_col corresponding to this x_col
+            for(int i0 = blockIdx.x;
+                i0 < D0;
+                i0 += gridDim.x){
+
+                int i1 = 0;                // image col
+                // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
+                // (as needed to cover all x rows)
+                int i2 = blockIdx.y;
+                int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
+                int z_col = x_col/ds1;     // z_col corresponding to this x_col
 
 
-            //TODO: raise occupancy.  Use threadIdx.y to run several
-            //      iterations of this i1 loop in parallel
+                //TODO: raise occupancy.  Use threadIdx.y to run several
+                //      iterations of this i1 loop in parallel
 
-            for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
-            {
-                for(int col_iter = 0;
-                    col_iter * blockDim.x <= xD3 ; col_iter++){
+                for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
+                {
+                    for(int col_iter = 0;
+                        col_iter * blockDim.x <= xD3 ; col_iter++){
 
-                    //The if inside is to don't do the division if we
-                    // need only 1 col_iter
+                        //The if inside is to don't do the division if we
+                        // need only 1 col_iter
 
-                    if(blockDim.x != xD3)
-                    {
-                        x_col = threadIdx.x + col_iter * blockDim.x;
-                        z_col = x_col/ds1;
-                    }
+                        if(blockDim.x != xD3)
+                        {
+                            x_col = threadIdx.x + col_iter * blockDim.x;
+                            z_col = x_col/ds1;
+                        }
 
-                    if (%(ignore_border)s && x_col >= ds1 * D3)
-                    {
-                        // This happens only if x_col was ignored
-                        // (via ignore_border)
-                        // TODO: if ignore_border is False, this is impossible
-                        //        and we don't even need to generate this code.
+                        if (%(ignore_border)s && x_col >= ds1 * D3)
+                        {
+                            // This happens only if x_col was ignored
+                            // (via ignore_border)
+                            // TODO: if ignore_border is False, this is impossible
+                            //        and we don't even need to generate this code.
 
-                        my_gz = 0.0f;
+                            my_gz = 0.0f;
 
-                        //any fp number suffices for my_z, so we don't even
-                        //need to set it to anything in particular.
+                            //any fp number suffices for my_z, so we don't even
+                            //need to set it to anything in particular.
 
-                    }
-                    else
-                    {
-                        // this is effectively:
-                        // my_gz = gz[image_row][image_col][z_row][z_col]
-                        // my_z  = z[image_row][image_col][z_row][z_col]
-                        my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 +
-                                   z_col*gzS3];
-                        my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 +
-                                   z_col* zS3];
-                    }
-                    if(x_col<xD3){
-                        for (int x_row = i2*ds0;
-                              (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
+                        }
+                        else
                         {
                             // this is effectively:
-                            // gx[image_row][image_col][x_row][x_col]
-                            //   = (my_z == x[image_row][image_col][
-                            //                x_row][x_col]) ? my_gz : 0.0f;
-                            gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                               x_row*xD3 + x_col]
-                               = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
-                                            x_col*xS3]) ? my_gz : 0.0f;
+                            // my_gz = gz[image_row][image_col][z_row][z_col]
+                            // my_z  = z[image_row][image_col][z_row][z_col]
+                            my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 +
+                                       z_col*gzS3];
+                            my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 +
+                                       z_col* zS3];
                         }
-                    //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                    //   x_row*xD3 + x_col] = -999;
-}
+                        if(x_col<xD3){
+                            for (int x_row = i2*ds0;
+                                  (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
+                            {
+                                // this is effectively:
+                                // gx[image_row][image_col][x_row][x_col]
+                                //   = (my_z == x[image_row][image_col][
+                                //                x_row][x_col]) ? my_gz : 0.0f;
+                                gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
+                                   x_row*xD3 + x_col]
+                                   = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
+                                                x_col*xS3]) ? my_gz : 0.0f;
+                            }
+                        //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
+                        //   x_row*xD3 + x_col] = -999;
+                        }
 
+                    }
                 }
             }
         }
