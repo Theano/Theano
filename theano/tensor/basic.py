@@ -2027,6 +2027,11 @@ def cast(x, dtype):
 
 class LoadFromDisk(Op):
     """
+    An operation to load an array from disk
+
+    See Also
+        load
+
     @note: Non-differentiable.
     """
     def __init__(self, dtype, broadcastable):
@@ -2056,6 +2061,18 @@ class LoadFromDisk(Op):
         return "Load: %s, %s"%(self.dtype, self.broadcastable)
 
 def load(path, dtype, broadcastable):
+    """
+    Load an array from a .npz file
+
+    >>> from theano import *
+    >>> path = Variable(Generic())
+    >>> x = tensor.load(path, 'int64', (False,))
+    >>> y = x*2
+    >>> fn = function([path], y)
+    >>> fn("stored-array.npz")
+    array([0, 2, 4, 6, 8], dtype=int64)
+    """
+
     return LoadFromDisk(dtype, broadcastable)(path)
 
 ##########################
