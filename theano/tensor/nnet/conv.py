@@ -854,7 +854,7 @@ class ConvOp(Op):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<omp.h>' ]
 
     def c_code_cache_version(self):
-        return (7, self.openmp)
+        return (8, self.openmp)
 
     def c_support_code(self):
         return """
@@ -1947,7 +1947,9 @@ if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(
 if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
 if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
 
-#pragma omp parallel for schedule(static)
+//The if on the number of loop make a speed up for small array.
+//with g++ 4.5.1. The compiler should be smart enough to do this himself!
+#pragma omp parallel for schedule(static) if(%(self_bsize)s * %(self_nkern)s > 1)
 // We merge the 2 loop into one to make it easier to parallelize on both
 // This is the equivalent of those 2 lines.
 //for(int b=0;b< %(self_bsize)s;b++){

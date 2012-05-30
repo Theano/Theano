@@ -25,8 +25,7 @@ class TestConv2D(unittest.TestCase):
                  N_image_shape=None, N_filter_shape=None,
                  input=None, filters=None,
                  unroll_batch=None, unroll_kern=None, unroll_patch=None,
-                 verify_grad=True, should_raise=False,
-                 speed_only=False):
+                 verify_grad=True, should_raise=False):
 
         if N_image_shape is None:
             N_image_shape = [T.get_constant_value(T.
@@ -65,8 +64,6 @@ class TestConv2D(unittest.TestCase):
             if should_raise:
                 raise Exception(
                 "ConvOp should have generated an error")
-        if speed_only:
-            return
 
         ############# REFERENCE IMPLEMENTATION ############
         s = 1.
@@ -374,28 +371,38 @@ class TestConv2D(unittest.TestCase):
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid', verify_grad=False)
 
     def speed(self):
-        for filter_shape in [(1, 5, 4, 4), (5, 5, 4, 4)]:
-            print filter_shape
-            for image_shape in [(1, 5, 6, 6),
-                                #(10, 10, 10, 10),
+        n_calls = 20000
+        print "n_calls", n_calls
+        for border_mode in ['valid', 'full']:
+            print
+            print border_mode
+            for openmp in [False, True]:
+                print "OpenMP", openmp
+                image_shapes = [(1, 5, 6, 6),
+                                (10, 5, 6, 6),
                                 #(10, 10, 16, 16),
                                 #(10, 10, 32, 32)
-                                ]:
-                print image_shape
-                for border_mode in ['valid', 'full']:
+                ]
+                print "image_shape", image_shapes
+                for image_shape in image_shapes:
+                    filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
+                    print "filter_shapes", filter_shapes
+                    for filter_shape in filter_shapes:
 
-                    input = theano.shared(numpy.random.random(image_shape))
-                    filters = theano.shared(numpy.random.random(filter_shape))
+                        input = theano.shared(numpy.random.random(image_shape))
+                        filters = theano.shared(numpy.random.random(filter_shape))
 
-                    output = conv.conv2d(input, filters,
-                                         image_shape, filter_shape,
-                                         border_mode,
-                                         unroll_patch=True)
-                    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
-                        allow_gc=False,
-                        use_cloop=True))
-                    theano_conv = theano.function([], output, mode=mode)
-                    t1 = time.time()
-                    theano_conv.fn(n_calls=500)
-                    t2 = time.time()
-                    print border_mode, t2 - t1, 100
+                        output = conv.conv2d(input, filters,
+                                             image_shape, filter_shape,
+                                             border_mode,
+                                             unroll_patch=True,
+                                             openmp=openmp)
+                        mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
+                            allow_gc=False,
+                            use_cloop=True))
+                        theano_conv = theano.function([], output, mode=mode)
+                        t1 = time.time()
+                        theano_conv.fn(n_calls=n_calls)
+                        t2 = time.time()
+                        print t2 - t1,
+                    print
