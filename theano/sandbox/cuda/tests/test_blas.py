@@ -1,3 +1,4 @@
+import copy
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
@@ -31,6 +32,12 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+
+#The CPU tests already compare C/Py, so we only check C/GPU
+mode_with_gpu = copy.copy(mode_with_gpu)
+mode_without_gpu = copy.copy(mode_without_gpu)
+mode_with_gpu.check_py_code = False
+mode_without_gpu.check_py_code = False
 
 
 def my_rand(*shape):
@@ -269,6 +276,8 @@ def test_downsample():
             (1, 1, 10, 1023),
             (1, 1, 1025, 10),
             (1, 1, 1023, 10),
+            (65536, 1, 10, 10),
+            (1, 65536, 10, 10),
              ]
 
     numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
@@ -299,6 +308,14 @@ def test_downsample():
                     for node in f2.maker.env.toposort()])
                 assert numpy.allclose(f(), f2())
 
+                # The grad is too slow on GT220 GPU
+                # This cause the computer to freeze...
+                # Remove this when it get optimized enought
+                # This only bypass the last 2 checks
+                # Those tests where passing in all Mode on a GTX470
+                if shp[0] > 30000 or shp[1] > 30000:
+                    continue
+
                 g = pfunc(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
@@ -314,7 +331,7 @@ def test_downsample():
                             for node in g.maker.env.toposort()])
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
                             for node in g2.maker.env.toposort()])
-                assert numpy.allclose(g(), g2())
+                assert numpy.allclose(g(), g2()), shp
 
                 # We already check that the gpu version return
                 # the same value as the gpu version for
