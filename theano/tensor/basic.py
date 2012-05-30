@@ -2029,30 +2029,34 @@ class LoadFromDisk(Op):
     """
     @note: Non-differentiable.
     """
-    def __init__(self, path, dtype):
-        self.path = path
+    def __init__(self, dtype, broadcastable):
         self.dtype = dtype
+        self.broadcastable = broadcastable
 
     def __eq__(self, other):
         return (type(self) == type(other) and
-                self.path == other.path and
+                self.broadcastable == other.broadcastable and
                 self.dtype == other.dtype)
 
     def __hash__(self):
-        return hash((type(self), self.path, self.dtype))
+        return hash((type(self), self.dtype, self.broadcastable))
 
-    def make_node(self):
-        return gof.Apply(self, [], [tensor(self.dtype, broadcastable=(False,))])
+    def make_node(self, path):
+        if isinstance(path, str):
+            path = Constant(Generic(), path)
+        return gof.Apply(self, [path], [tensor(self.dtype,
+                                        broadcastable=self.broadcastable)])
 
     def perform(self, node, inp, out):
-        d = numpy.load(self.path)
+        path = inp[0]
+        d = numpy.load(path)
         out[0][0] = d[d.keys()[0]].astype(self.dtype)
 
     def __str__(self):
-        return "Load: %s"%self.path
+        return "Load: %s, %s"%(self.dtype, self.broadcastable)
 
-def load(path, dtype='float64'):
-    return LoadFromDisk(path, dtype)()
+def load(path, dtype, broadcastable):
+    return LoadFromDisk(dtype, broadcastable)(path)
 
 ##########################
 # Unary Operations

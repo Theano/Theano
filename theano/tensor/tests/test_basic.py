@@ -3969,10 +3969,11 @@ class T_load_tensor(unittest.TestCase):
         data = numpy.arange(5)
         filename = "_load_tensor_test_1.npz"
         numpy.savez(filename, data)
-        x = tensor.load(filename, 'int64')
+        path = Variable(Generic())
+        x = tensor.load(path, 'int64', (False,))
         y = x*2
-        fn = function([], [y])
-        assert (fn() == data*2).all()
+        fn = function([path], [y])
+        assert (fn(filename) == data*2).all()
 
 class test_grad(unittest.TestCase):
     class O(gof.op.Op):
