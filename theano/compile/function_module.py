@@ -1049,6 +1049,7 @@ class FunctionMaker(object):
             mode.optimizer_time += opt_time
             if profile:
                 profile.optimizer_time += opt_time
+                profile.validate_time += env.validate_time
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface
