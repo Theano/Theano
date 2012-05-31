@@ -566,7 +566,7 @@ def clone(i, o, copy_inputs = True):
     :type o: list
     :param o: output L{Variable}s
     :type copy_inputs: bool
-    :param copy_inputs: if True, the inputs will be copied (defaults to False)
+    :param copy_inputs: if True, the inputs will be copied (defaults to True)
 
     Copies the subgraph contained between i and o and returns the
     outputs of that copy (corresponding to o).
