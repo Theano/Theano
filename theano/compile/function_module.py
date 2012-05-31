@@ -1030,6 +1030,8 @@ class FunctionMaker(object):
 
         # make the env (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
         env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
+        env.profile = profile
+
         self.env = env
 
         # Fetch the optimizer and linker
@@ -1049,7 +1051,6 @@ class FunctionMaker(object):
             mode.optimizer_time += opt_time
             if profile:
                 profile.optimizer_time += opt_time
-                profile.validate_time += env.validate_time
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface

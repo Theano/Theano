@@ -154,7 +154,8 @@ class SeqOptimizer(Optimizer, list):
         Applies each L{Optimizer} in self in turn.
         """
         l = []
-        validate_before = env.validate_time
+        if env.profile:
+            validate_before = env.profile.validate_time
         nb_node_before = len(env.nodes)
         for optimizer in self:
             try:
@@ -176,7 +177,7 @@ class SeqOptimizer(Optimizer, list):
             elif hasattr(self,"__name__"): print self.__name__,
             print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(env.nodes))
             print " time %.3fs for validate " % (
-                env.validate_time - validate_before)
+                env.profile.validate_time - validate_before)
             ll=[]
             for opt in self:
                 if hasattr(opt,"__name__"):

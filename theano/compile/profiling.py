@@ -53,8 +53,11 @@ def _atexit_print_fn():
 #        for ps in [ps for ps in _atexit_print_list[1:]
 #                   if not isinstance(ps, ScanProfileStats)]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
-                         "vm_call_time", "optimizer_time", "linker_time"]:
+                         "vm_call_time", "optimizer_time", "linker_time",
+                         "validate_time"]:
                 setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+
+            #merge dictonary
             for attr in ["apply_time", "apply_callcount",
                          "apply_cimpl", "outputs_size"]:
                 cum_attr = getattr(cum, attr)

@@ -72,11 +72,11 @@ class Validator:
             t0 = time.time()
             ret = env.execute_callbacks('validate')
             t1 = time.time()
-            env.validate_time += t1 - t0
+            if env.profile:
+                env.profile.validate_time += t1 - t0
             return ret
 
         env.validate = validate
-        env.validate_time = 0
 
         def consistent():
             try:
@@ -89,7 +89,6 @@ class Validator:
     def on_detach(self, env):
         del env.validate
         del env.consistent
-        del env.validate_time
 
 
 class ReplaceValidate(History, Validator):
