@@ -162,7 +162,7 @@ if cuda_available:
                 # symlink simultaneously.
                 # If that happens, we verify that the existing symlink is
                 # indeed working.
-                if e.errno != errno.EEXIST or not ok():
+                if getattr(e, 'errno', None) != errno.EEXIST or not ok():
                     raise
     try:
         # This only test if the cuda driver is available and if there
@@ -333,10 +333,10 @@ def use(device,
                 cuda_enabled = True
             print >> sys.stderr, "Using gpu device %d: %s" % (
                 active_device_number(), active_device_name())
-        except (EnvironmentError, ValueError), e:
+        except (EnvironmentError, ValueError, RuntimeError), e:
             _logger.error(("ERROR: Not using GPU."
-                " Initialisation of device %i failed:\n%s"),
-                device, e)
+                           " Initialisation of device %s failed:\n%s"),
+                          str(device), e)
             cuda_enabled = False
             if force:
                 e.args += (("You asked to force this device and it failed."
