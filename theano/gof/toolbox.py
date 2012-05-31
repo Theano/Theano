@@ -63,10 +63,20 @@ class History:
 class Validator:
 
     def on_attach(self, env):
-        if hasattr(env, 'validate'):
-            raise AlreadyThere("Validator feature is already present or in"
-                               " conflict with another plugin.")
-        env.validate = lambda: env.execute_callbacks('validate')
+        for attr in ('validate', 'validate_time'):
+            if hasattr(env, attr):
+                raise AlreadyThere("Validator feature is already present or in"
+                                   " conflict with another plugin.")
+
+        def validate():
+            t0 = time.time()
+            ret = env.execute_callbacks('validate')
+            t1 = time.time()
+            env.validate_time += t1 - t0
+            return ret
+
+        env.validate = validate
+        env.validate_time = 0
 
         def consistent():
             try:
@@ -79,6 +89,7 @@ class Validator:
     def on_detach(self, env):
         del env.validate
         del env.consistent
+        del env.validate_time
 
 
 class ReplaceValidate(History, Validator):
@@ -86,27 +97,23 @@ class ReplaceValidate(History, Validator):
     def on_attach(self, env):
         History.on_attach(self, env)
         Validator.on_attach(self, env)
-        for attr in ('replace_validate', 'replace_all_validate',
-                     'replace_all_validate_time'):
+        for attr in ('replace_validate', 'replace_all_validate'):
             if hasattr(env, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
-        env.replace_all_validate_time = 0
 
     def on_detach(self, env):
         History.on_detach(self, env)
         Validator.on_detach(self, env)
         del env.replace_validate
         del env.replace_all_validate
-        del env.replace_all_validate_time
 
     def replace_validate(self, env, r, new_r, reason=None):
         self.replace_all_validate(env, [(r, new_r)], reason=reason)
 
     def replace_all_validate(self, env, replacements, reason=None):
-        t0 = time.time()
         chk = env.checkpoint()
         for r, new_r in replacements:
             try:
@@ -126,8 +133,6 @@ class ReplaceValidate(History, Validator):
         except Exception, e:
             env.revert(chk)
             raise
-        t1 = time.time()
-        env.replace_all_validate_time += t1 - t0
 
 
 class NodeFinder(dict, Bookkeeper):

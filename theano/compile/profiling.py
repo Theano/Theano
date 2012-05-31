@@ -120,6 +120,11 @@ class ProfileStats(object):
     optimizer_time = 0.0
     # time spent optimizing graph (FunctionMaker.__init__)
 
+    validate_time = 0.0
+    # time spent in env.validate
+    # This is a subset of optimizer_time that is dominated by toposort()
+    # when the destorymap feature is included.
+
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
 
@@ -392,10 +397,14 @@ class ProfileStats(object):
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
+        print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'
                         ' CUDA code generation/compiling): %es' %
                         self.linker_time)
         print >> file, ''
+
+        # The validation time is a subset of optimizer_time
+        assert self.validate_time < self.optimizer_time
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_applies_to_print=20):
