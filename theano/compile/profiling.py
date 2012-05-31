@@ -38,12 +38,14 @@ AddConfigVar('profiling.time_thunks',
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
+    printed = 0
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
             ps.summary(file=_atexit_print_file)
+            printed += 1
         else:
             print 'Skipping empty Profile'
-    if len(_atexit_print_list) > 1:
+    if printed > 1:
     # Make a global profile
         cum = copy.copy(_atexit_print_list[0])
         cum.message = "Sum of all printed profiles at exit"
