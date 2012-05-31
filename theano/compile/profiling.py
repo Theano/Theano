@@ -402,7 +402,7 @@ class ProfileStats(object):
         if local_time > 0:
             self.summary_ops(file, n_ops_to_print)
             self.summary_nodes(file, n_applies_to_print)
-        else:
+        elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
 
