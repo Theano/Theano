@@ -5,6 +5,7 @@ from copy import copy
 import graph
 import utils
 import toolbox
+from python25 import all
 from theano import config
 
 
@@ -144,6 +145,18 @@ class Env(utils.object2):
         # sets up node so it belongs to this env
         if hasattr(node, 'env') and node.env is not self:
             raise Exception("%s is already owned by another env" % node)
+        if (hasattr(node.op, 'view_map') and
+            not all([isinstance(view, (list, tuple))
+                     for view in node.op.view_map.values()])):
+            raise Exception("Op '%s' have a bad view map '%s',"
+                            " the values must be tuples or lists." % (
+                                str(node.op), str(node.op.view_map)))
+        if (hasattr(node.op, 'destroy_map') and
+            not all([isinstance(destroy, (list, tuple))
+                     for destroy in node.op.destroy_map.values()])):
+            raise Exception("Op '%s' have a bad destroy map '%s',"
+                            " the values must be tuples or lists." % (
+                                str(node.op), str(node.op.destroy_map)))
         node.env = self
         node.deps = {}
         #self.execute_callbacks('on_setup_node', node)
