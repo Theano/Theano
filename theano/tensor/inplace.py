@@ -1,4 +1,3 @@
-
 from basic import _scal_elemwise #, _transpose_inplace
 from theano import scalar as scal
 import elemwise
@@ -151,6 +150,10 @@ def arccos_inplace(a):
 @_scal_inplace
 def sin_inplace(a):
     """sine of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arcsin_inplace(a):
+    """arcsine of `a` (inplace on `a`)"""
 
 @_scal_inplace
 def tan_inplace(a):

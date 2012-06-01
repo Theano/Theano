@@ -2037,6 +2037,25 @@ class Sin(UnaryScalarOp):
 sin = Sin(upgrade_to_float, name='sin')
 
 
+class Arcsin(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arcsin(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = asin(%(x)s);" % locals()
+arcsin = Arcsin(upgrade_to_float, name='arcsin')
+
+
 class Tan(UnaryScalarOp):
     def impl(self, x):
         return numpy.tan(x)

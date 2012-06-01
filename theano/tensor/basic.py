@@ -2576,6 +2576,11 @@ def sin(a):
     """sine of a"""
 
 
+@_scal_elemwise_with_nfunc('arcsin', 1, 1)
+def arcsin(a):
+    """arcsine of a"""
+
+
 @_scal_elemwise_with_nfunc('tan', 1, 1)
 def tan(a):
     """tangent of a"""

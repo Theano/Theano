@@ -1035,6 +1035,9 @@ _grad_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1-1e-7, (2, 
                                   #empty = (numpy.asarray([]),),
                                   )
 
+_good_broadcast_unary_arcsin = _good_broadcast_unary_arccos
+
+_grad_broadcast_unary_arcsin = _grad_broadcast_unary_arccos
 
 SinTester = makeBroadcastTester(op = tensor.sin,
                                   expected = numpy.sin,
@@ -1044,6 +1047,17 @@ SinInplaceTester = makeBroadcastTester(op = inplace.sin_inplace,
                                          expected = numpy.sin,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
+                                         inplace = True)
+
+ArcsinTester = makeBroadcastTester(op = tensor.arcsin,
+                                  expected = numpy.arcsin,
+                                  good = _good_broadcast_unary_arcsin,
+                                  grad = _grad_broadcast_unary_arcsin)
+
+ArcsinInplaceTester = makeBroadcastTester(op = inplace.arcsin_inplace,
+                                         expected = numpy.arcsin,
+                                         good = _good_broadcast_unary_arcsin,
+                                         grad = _grad_broadcast_unary_arcsin,
                                          inplace = True)
 
 CosTester = makeBroadcastTester(op = tensor.cos,
