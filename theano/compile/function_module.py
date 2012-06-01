@@ -994,11 +994,16 @@ class FunctionMaker(object):
         # we allow ProfileMode to provide a ProfileStats object
         # using this somewhat awkward mechanism.
         mode_profile = getattr(mode, 'profile', None)
-        if (profile is not None) and (mode_profile is not None):
+        if (profile is not None and
+            profile is not False and
+            mode_profile is not None):
             raise TypeError(
                     'profile passed via both "mode" and "profile" arguments')
         self.profile = profile = profile or mode_profile
-
+        if profile:
+            # We preload the cache here to don't have its timming
+            # included in optimization that compile function.
+            theano.gof.cc.get_module_cache()
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         self.orig_outputs = outputs
         unpack_single = False
