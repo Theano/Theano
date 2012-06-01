@@ -91,7 +91,7 @@ class TestDiffOp(utt.InferShapeTester):
 
     def test_grad(self):
         x = T.vector('x')
-        a = np.random.random(500)
+        a = np.random.random(50)
 
         gf = theano.function([x], T.grad(T.sum(diff(x)), x))
         utt.verify_grad(self.op, [a])
