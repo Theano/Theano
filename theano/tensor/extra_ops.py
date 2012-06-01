@@ -393,11 +393,6 @@ class Bartlett(gof.Op):
 
     def perform(self, node, inputs, out_):
         M = inputs[0]
-        if (not M.dtype.name.startswith('int')) and \
-              (not M.dtype.startswith('uint')):
-        # dtype is an instance of numpy dtype class here
-            raise TypeError('%s only works on integers'
-                            % self.__class__.__name__)
         out, = out_
         out[0] = numpy.bartlett(M)
 
@@ -460,12 +455,6 @@ class FillDiagonal(gof.Op):
         return gof.Apply(self, [a, val], [a.type()])
 
     def perform(self, node, inputs, output_storage):
-        if inputs[0].ndim < 2:
-            raise TypeError('%s: first parameter must have at least'
-                            ' two dimensions' % self.__class__.__name__)
-        elif inputs[1].ndim != 0:
-            raise TypeError('%s: second parameter must be a scalar'
-                            % self.__class__.__name__)
         a = inputs[0].copy()
         val = inputs[1]
         numpy.fill_diagonal(a, val)
@@ -478,8 +467,7 @@ class FillDiagonal(gof.Op):
         """
         a, val = inp
         grad = cost_grad[0]
-        if (a.dtype == 'complex64' or a.dtype == 'complex128' or
-            val.dtype == 'complex64' or val.dtype == 'complex128'):
+        if (a.dtype.startswith('complex')):
             return [None, None]
         elif a.ndim > 2:
             raise NotImplementedError('%s: gradient is currently implemented'

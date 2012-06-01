@@ -211,6 +211,9 @@ class TestBartlett(utt.InferShapeTester):
         self._compile_and_check([x], [self.op(x)],
                                 [numpy.random.random_integers(3, 50, size=())],
                                 self.op_class)
+        self._compile_and_check([x], [self.op(x)], [0], self.op_class)
+        self._compile_and_check([x], [self.op(x)], [1], self.op_class)
+
 
 if __name__ == "__main__":
     t = TestBartlett('setUp')
