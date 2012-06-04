@@ -2585,6 +2585,7 @@ def arcsin(a):
 def tan(a):
     """tangent of a"""
 
+
 @_scal_elemwise_with_nfunc('arctan', 1, 1)
 def arctan(a):
     """arctangent of a"""
@@ -2593,6 +2594,11 @@ def arctan(a):
 @_scal_elemwise_with_nfunc('cosh', 1, 1)
 def cosh(a):
     """hyperbolic cosine of a"""
+
+
+@_scal_elemwise_with_nfunc('arccosh', 1, 1)
+def arccosh(a):
+    """hyperbolic arc cosine of a"""
 
 
 @_scal_elemwise_with_nfunc('sinh', 1, 1)

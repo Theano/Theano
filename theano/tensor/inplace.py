@@ -168,6 +168,10 @@ def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arccosh_inplace(a):
+    """hyperbolic arc cosine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def sinh_inplace(a):
     """hyperbolic sine of `a` (inplace on `a`)"""
 

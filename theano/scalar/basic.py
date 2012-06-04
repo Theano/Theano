@@ -2116,6 +2116,25 @@ class Cosh(UnaryScalarOp):
 cosh = Cosh(upgrade_to_float, name='cosh')
 
 
+class ArcCosh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arccosh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = acosh(%(x)s);" % locals()
+arccosh = ArcCosh(upgrade_to_float, name='arccosh')
+
+
 class Sinh(UnaryScalarOp):
     """
     sinh(x) = (exp(x) - exp(-x)) / 2

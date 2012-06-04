@@ -1069,6 +1069,8 @@ CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
                                          good = _good_broadcast_unary_wide,
                                          grad = _grad_broadcast_unary_wide,
                                          inplace = True)
+
+
 ArccosTester = makeBroadcastTester(op = tensor.arccos,
                                   expected = numpy.arccos,
                                   good = _good_broadcast_unary_arccos,
@@ -1107,8 +1109,6 @@ ArctanTester = makeBroadcastTester(op = tensor.tan,
                                    good = _good_broadcast_unary_wide,
                                    grad = _grad_broadcast_unary_wide,
                                    grad_rtol=tan_grad_rtol)
-
-
 ArctanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
                                           expected = numpy.tan,
                                           good = _good_broadcast_unary_wide,
@@ -1126,6 +1126,25 @@ CoshInplaceTester = makeBroadcastTester(op = inplace.cosh_inplace,
                                           good = _good_broadcast_unary_normal,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
+
+
+_good_broadcast_unary_arccosh = dict(normal = (rand_ranged(1, 1000, (2, 3)),),
+                                     integers = (randint_ranged(1, 1000, (2, 3)),),
+                                     complex = (randc128_ranged(1, 1000, (2, 3)),),
+                                     empty = (numpy.asarray([]),),)
+_grad_broadcast_unary_arccosh = dict(normal = (rand_ranged(1, 1000, (2, 3)),),)
+
+
+ArccoshTester = makeBroadcastTester(op = tensor.arccosh,
+                                    expected = numpy.arccosh,
+                                    good = _good_broadcast_unary_arccosh,
+                                    grad = _grad_broadcast_unary_arccosh)
+ArccoshInplaceTester = makeBroadcastTester(op = inplace.arccosh_inplace,
+                                           expected = numpy.arccosh,
+                                           good = _good_broadcast_unary_arccosh,
+                                           grad = _grad_broadcast_unary_arccosh,
+                                           inplace = True)
+
 
 SinhTester = makeBroadcastTester(op = tensor.sinh,
                                    expected = numpy.sinh,
