@@ -2021,7 +2021,6 @@ def cast(x, dtype):
             'imag(), angle() or abs()'))
     return _cast_mapping[dtype](x)
 
-
 ##########################
 # Unary Operations
 ##########################

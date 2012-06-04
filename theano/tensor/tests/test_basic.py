@@ -3964,7 +3964,6 @@ class T_scalarfromtensor(unittest.TestCase):
         self.assertTrue(isinstance(v, numpy.int64))
         self.assertTrue(v.shape == (),v.shape)
 
-
 class test_grad(unittest.TestCase):
     class O(gof.op.Op):
         def __init__(self):

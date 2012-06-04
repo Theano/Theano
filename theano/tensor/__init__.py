@@ -30,6 +30,7 @@ import sharedvar  # adds shared-variable constructors
 # `theano.shared` and `tensor._shared`.
 from sharedvar import tensor_constructor as _shared
 
+from io import *
 
 def shared(*args, **kw):
     """
