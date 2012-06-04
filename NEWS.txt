@@ -88,6 +88,8 @@ New Features
  * Garbage collection of intermediate results during Theano function calls
    for Ops with C code (Pascal L.)
  * Theano flags compiledir_format now support the parameter numpy_version.
+ * Theano GPU variables, shared variable and constant now support <, <=,
+   > and >= as as those not on the GPU.
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't
