@@ -1944,6 +1944,25 @@ class Exp(UnaryScalarOp):
 exp = Exp(upgrade_to_float, name='exp')
 
 
+class Exp2(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.exp2(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            return gz * exp2(x) * log(numpy.cast[x.type](2)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = exp2(%(x)s);" % locals()
+exp2 = Exp2(upgrade_to_float, name='exp2')
+
+
 class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x * x

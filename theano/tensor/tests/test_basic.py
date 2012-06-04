@@ -951,6 +951,17 @@ ExpInplaceTester = makeBroadcastTester(op = inplace.exp_inplace,
                                          inplace = True)
 
 
+Exp2Tester = makeBroadcastTester(op = tensor.exp2,
+                                  expected = numpy.exp2,
+                                  good = _good_broadcast_unary_normal,
+                                  grad = _grad_broadcast_unary_normal)
+Exp2InplaceTester = makeBroadcastTester(op = inplace.exp2_inplace,
+                                         expected = numpy.exp2,
+                                         good = _good_broadcast_unary_normal,
+                                         grad = _grad_broadcast_unary_normal,
+                                         inplace = True)
+
+
 _good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
                                       integers = (randint_ranged(1, 5, (2, 3)),),
                                       complex = (randc128_ranged(1, 5, (2,3)),),

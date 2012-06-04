@@ -88,6 +88,10 @@ def exp_inplace(a):
     """e^`a` (inplace on `a`)"""
 
 @_scal_inplace
+def exp2_inplace(a):
+    """2^`a` (inplace on `a`)"""
+
+@_scal_inplace
 def neg_inplace(a):
     """-a (inplace on a)"""
 
