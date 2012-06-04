@@ -45,7 +45,7 @@ class LoadFromDisk(Op):
         out[0][0] = result
 
     def __str__(self):
-        return "Load: dtype:%s, broadcastable:%s, mmep:%s"%self._info
+        return "Load{dtype:%s, broadcastable:%s, mmep:%s}"%self._info
 
 def load(path, dtype, broadcastable, mmap_mode=None):
     """
