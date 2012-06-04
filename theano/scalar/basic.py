@@ -2018,7 +2018,7 @@ class Cos(UnaryScalarOp):
 cos = Cos(upgrade_to_float, name='cos')
 
 
-class Arccos(UnaryScalarOp):
+class ArcCos(UnaryScalarOp):
     def impl(self, x):
         return numpy.arccos(x)
 
@@ -2034,7 +2034,7 @@ class Arccos(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = acos(%(x)s);" % locals()
-arccos = Arccos(upgrade_to_float, name='arccos')
+arccos = ArcCos(upgrade_to_float, name='arccos')
 
 
 class Sin(UnaryScalarOp):
@@ -2056,7 +2056,7 @@ class Sin(UnaryScalarOp):
 sin = Sin(upgrade_to_float, name='sin')
 
 
-class Arcsin(UnaryScalarOp):
+class ArcSin(UnaryScalarOp):
     def impl(self, x):
         return numpy.arcsin(x)
 
@@ -2072,7 +2072,7 @@ class Arcsin(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = asin(%(x)s);" % locals()
-arcsin = Arcsin(upgrade_to_float, name='arcsin')
+arcsin = ArcSin(upgrade_to_float, name='arcsin')
 
 
 class Tan(UnaryScalarOp):
@@ -2094,7 +2094,7 @@ class Tan(UnaryScalarOp):
 tan = Tan(upgrade_to_float, name='tan')
 
 
-class Arctan(UnaryScalarOp):
+class ArcTan(UnaryScalarOp):
     def impl(self, x):
         return numpy.arctan(x)
 
@@ -2110,7 +2110,7 @@ class Arctan(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = atan(%(x)s);" % locals()
-arctan = Arctan(upgrade_to_float, name='arctan')
+arctan = ArcTan(upgrade_to_float, name='arctan')
 
 
 class Cosh(UnaryScalarOp):

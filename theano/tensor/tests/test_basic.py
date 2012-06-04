@@ -908,304 +908,285 @@ FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
         expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
         good=_good_broadcast_unary_normal_no_complex,
         grad=_grad_broadcast_unary_normal,
-        inplace = True)
+        inplace=True)
 
-RoundHalfToEvenTester = makeBroadcastTester(op = tensor.round_half_to_even,
-                                  expected = numpy.round,
-                                  good = _good_broadcast_unary_normal_float_no_complex)
+RoundHalfToEvenTester = makeBroadcastTester(
+    op=tensor.round_half_to_even,
+    expected=numpy.round,
+    good=_good_broadcast_unary_normal_float_no_complex)
 # TODO: Why complex are accepted in the next one?
-RoundHalfToEvenInplaceTester = makeBroadcastTester(op = inplace.round_half_to_even_inplace,
-                                         expected = numpy.round,
-                                         good = _good_broadcast_unary_normal_float,
-                                         inplace = True)
+RoundHalfToEvenInplaceTester = makeBroadcastTester(
+    op=inplace.round_half_to_even_inplace,
+    expected=numpy.round,
+    good=_good_broadcast_unary_normal_float,
+    inplace=True)
 
 #numpy.vectorize don't handle correctly empty ndarray.
 #see in their file numpy/lib/function_base.py in class vectorize.__call__
 #This happen in float32 mode.
-RoundHalfAwayFromZeroTester = makeBroadcastTester(op = tensor.round_half_away_from_zero,
-                                  expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                  good = _good_broadcast_unary_normal_float_no_empty_no_complex)#_good_broadcast_unary_normal_float)
-RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(op = inplace.round_half_away_from_zero_inplace,
-                                         expected = theano.scalar.basic.round_half_away_from_zero_vec,
-                                         good = _good_broadcast_unary_normal_float_no_empty_no_complex,
-                                         inplace = True)
+RoundHalfAwayFromZeroTester = makeBroadcastTester(
+    op=tensor.round_half_away_from_zero,
+    expected=theano.scalar.basic.round_half_away_from_zero_vec,
+    good=_good_broadcast_unary_normal_float_no_empty_no_complex)
+    #_good_broadcast_unary_normal_float)
+RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(
+    op=inplace.round_half_away_from_zero_inplace,
+    expected=theano.scalar.basic.round_half_away_from_zero_vec,
+    good=_good_broadcast_unary_normal_float_no_empty_no_complex,
+    inplace=True)
 
-SqrTester = makeBroadcastTester(op = tensor.sqr,
-                                  expected = numpy.square,
-                                  good = _good_broadcast_unary_normal,
-                                  grad = _grad_broadcast_unary_normal)
-SqrInplaceTester = makeBroadcastTester(op = inplace.sqr_inplace,
-                                         expected = numpy.square,
-                                         good = _good_broadcast_unary_normal,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
+SqrTester = makeBroadcastTester(op=tensor.sqr,
+                                expected=numpy.square,
+                                good=_good_broadcast_unary_normal,
+                                grad=_grad_broadcast_unary_normal)
+SqrInplaceTester = makeBroadcastTester(op=inplace.sqr_inplace,
+                                       expected=numpy.square,
+                                       good=_good_broadcast_unary_normal,
+                                       grad=_grad_broadcast_unary_normal,
+                                       inplace=True)
 
-ExpTester = makeBroadcastTester(op = tensor.exp,
-                                  expected = numpy.exp,
-                                  good = _good_broadcast_unary_normal,
-                                  grad = _grad_broadcast_unary_normal)
-ExpInplaceTester = makeBroadcastTester(op = inplace.exp_inplace,
-                                         expected = numpy.exp,
-                                         good = _good_broadcast_unary_normal,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
+ExpTester = makeBroadcastTester(op=tensor.exp,
+                                expected=numpy.exp,
+                                good=_good_broadcast_unary_normal,
+                                grad=_grad_broadcast_unary_normal)
+ExpInplaceTester = makeBroadcastTester(op=inplace.exp_inplace,
+                                       expected=numpy.exp,
+                                       good=_good_broadcast_unary_normal,
+                                       grad=_grad_broadcast_unary_normal,
+                                       inplace=True)
 
+Exp2Tester = makeBroadcastTester(op=tensor.exp2,
+                                 expected=numpy.exp2,
+                                 good=_good_broadcast_unary_normal,
+                                 grad=_grad_broadcast_unary_normal)
+Exp2InplaceTester = makeBroadcastTester(op=inplace.exp2_inplace,
+                                        expected=numpy.exp2,
+                                         good=_good_broadcast_unary_normal,
+                                         grad=_grad_broadcast_unary_normal,
+                                         inplace=True)
 
-Exp2Tester = makeBroadcastTester(op = tensor.exp2,
-                                  expected = numpy.exp2,
-                                  good = _good_broadcast_unary_normal,
-                                  grad = _grad_broadcast_unary_normal)
-Exp2InplaceTester = makeBroadcastTester(op = inplace.exp2_inplace,
-                                         expected = numpy.exp2,
-                                         good = _good_broadcast_unary_normal,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
-
-
-_good_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
-                                      integers = (randint_ranged(1, 5, (2, 3)),),
-                                      complex = (randc128_ranged(1, 5, (2,3)),),
-                                      empty = (numpy.asarray([]),),
+_good_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),
+                                      integers=(randint_ranged(1, 5, (2, 3)),),
+                                      complex=(randc128_ranged(1, 5, (2, 3)),),
+                                      empty=(numpy.asarray([]),),
                                       )
 
-_grad_broadcast_unary_positive = dict(normal = (rand_ranged(0.001, 5, (2, 3)),),
-                                      #complex = (randc128_ranged(1, 5, (2,3)),),
-                                      #empty = (numpy.asarray([]),),
-                                      )
+_grad_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),)
 
-LogTester = makeBroadcastTester(op = tensor.log,
-                                  expected = numpy.log,
-                                  good = _good_broadcast_unary_positive,
-                                  grad = _grad_broadcast_unary_positive)
-LogInplaceTester = makeBroadcastTester(op = inplace.log_inplace,
-                                         expected = numpy.log,
-                                         good = _good_broadcast_unary_positive,
-                                         grad = _grad_broadcast_unary_positive,
-                                         inplace = True)
+LogTester = makeBroadcastTester(op=tensor.log,
+                                expected=numpy.log,
+                                good=_good_broadcast_unary_positive,
+                                grad=_grad_broadcast_unary_positive)
+LogInplaceTester = makeBroadcastTester(op=inplace.log_inplace,
+                                       expected=numpy.log,
+                                       good=_good_broadcast_unary_positive,
+                                       grad=_grad_broadcast_unary_positive,
+                                       inplace=True)
 
-Log2Tester = makeBroadcastTester(op = tensor.log2,
-                                   expected = numpy.log2,
-                                   good = _good_broadcast_unary_positive,
-                                   grad = _grad_broadcast_unary_positive)
-Log2InplaceTester = makeBroadcastTester(op = inplace.log2_inplace,
-                                          expected = numpy.log2,
-                                          good = _good_broadcast_unary_positive,
-                                          grad = _grad_broadcast_unary_positive,
-                                          inplace = True)
+Log2Tester = makeBroadcastTester(op=tensor.log2,
+                                 expected=numpy.log2,
+                                 good=_good_broadcast_unary_positive,
+                                 grad=_grad_broadcast_unary_positive)
+Log2InplaceTester = makeBroadcastTester(op=inplace.log2_inplace,
+                                        expected=numpy.log2,
+                                        good=_good_broadcast_unary_positive,
+                                        grad=_grad_broadcast_unary_positive,
+                                        inplace=True)
 
-Log10Tester = makeBroadcastTester(op = tensor.log10,
-                                   expected = numpy.log10,
-                                   good = _good_broadcast_unary_positive,
-                                   grad = _grad_broadcast_unary_positive)
-Log10InplaceTester = makeBroadcastTester(op = inplace.log10_inplace,
-                                          expected = numpy.log10,
-                                          good = _good_broadcast_unary_positive,
-                                          grad = _grad_broadcast_unary_positive,
-                                          inplace = True)
+Log10Tester = makeBroadcastTester(op=tensor.log10,
+                                  expected=numpy.log10,
+                                  good=_good_broadcast_unary_positive,
+                                  grad=_grad_broadcast_unary_positive)
+Log10InplaceTester = makeBroadcastTester(op=inplace.log10_inplace,
+                                         expected=numpy.log10,
+                                         good=_good_broadcast_unary_positive,
+                                         grad=_grad_broadcast_unary_positive,
+                                         inplace=True)
 
-Log1pTester = makeBroadcastTester(op = tensor.log1p,
-                                  expected = numpy.log1p,
-                                  good = _good_broadcast_unary_positive,
-                                  grad = _grad_broadcast_unary_positive)
-Log1pInplaceTester = makeBroadcastTester(op = inplace.log1p_inplace,
-                                         expected = numpy.log1p,
-                                         good = _good_broadcast_unary_positive,
-                                         grad = _grad_broadcast_unary_positive,
-                                         inplace = True)
+Log1pTester = makeBroadcastTester(op=tensor.log1p,
+                                  expected=numpy.log1p,
+                                  good=_good_broadcast_unary_positive,
+                                  grad=_grad_broadcast_unary_positive)
+Log1pInplaceTester = makeBroadcastTester(op=inplace.log1p_inplace,
+                                         expected=numpy.log1p,
+                                         good=_good_broadcast_unary_positive,
+                                         grad=_grad_broadcast_unary_positive,
+                                         inplace=True)
 
+SqrtTester = makeBroadcastTester(op=tensor.sqrt,
+                                   expected=numpy.sqrt,
+                                   good=_good_broadcast_unary_positive,
+                                   grad=_grad_broadcast_unary_positive)
+SqrtInplaceTester = makeBroadcastTester(op=inplace.sqrt_inplace,
+                                        expected=numpy.sqrt,
+                                        good=_good_broadcast_unary_positive,
+                                        grad=_grad_broadcast_unary_positive,
+                                        inplace=True)
 
-SqrtTester = makeBroadcastTester(op = tensor.sqrt,
-                                   expected = numpy.sqrt,
-                                   good = _good_broadcast_unary_positive,
-                                   grad = _grad_broadcast_unary_positive)
-SqrtInplaceTester = makeBroadcastTester(op = inplace.sqrt_inplace,
-                                          expected = numpy.sqrt,
-                                          good = _good_broadcast_unary_positive,
-                                          grad = _grad_broadcast_unary_positive,
-                                          inplace = True)
+_good_broadcast_unary_wide = dict(
+    normal=(rand_ranged(-1000, 1000, (2, 3)),),
+    integers=(randint_ranged(-1000, 1000, (2, 3)),),
+    complex=(randc128_ranged(-1000, 1000, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
 
+SinTester = makeBroadcastTester(op=tensor.sin,
+                                expected=numpy.sin,
+                                good=_good_broadcast_unary_wide,
+                                grad=_grad_broadcast_unary_wide)
+SinInplaceTester = makeBroadcastTester(op=inplace.sin_inplace,
+                                       expected=numpy.sin,
+                                       good=_good_broadcast_unary_wide,
+                                       grad=_grad_broadcast_unary_wide,
+                                       inplace=True)
 
+_good_broadcast_unary_arcsin = dict(normal=(rand_ranged(-1, 1, (2, 3)),),
+                                    integers=(randint_ranged(-1, 1, (2, 3)),),
+                                    complex=(randc128_ranged(-1, 1, (2, 3)),),
+                                    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_arcsin = dict(normal=(rand_ranged(-1, 1, (2, 3)),),)
 
-_good_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
-                                  integers = (randint_ranged(-1000, 1000, (2, 3)),),
-                                  complex = (randc128_ranged(-1000, 1000, (2, 3)),),
-                                  empty = (numpy.asarray([]),),)
+ArcSinTester = makeBroadcastTester(op=tensor.arcsin,
+                                   expected=numpy.arcsin,
+                                   good=_good_broadcast_unary_arcsin,
+                                   grad=_grad_broadcast_unary_arcsin)
+ArcSinInplaceTester = makeBroadcastTester(op=inplace.arcsin_inplace,
+                                          expected=numpy.arcsin,
+                                          good=_good_broadcast_unary_arcsin,
+                                          grad=_grad_broadcast_unary_arcsin,
+                                          inplace=True)
 
-_grad_broadcast_unary_wide = dict(normal = (rand_ranged(-1000, 1000, (2, 3)),),
-                                  #complex = (randc128_ranged(-1000, 1000, (2, 3)),),
-                                  #empty = (numpy.asarray([]),),
-                                  )
+CosTester = makeBroadcastTester(op=tensor.cos,
+                                expected=numpy.cos,
+                                good=_good_broadcast_unary_wide,
+                                grad=_grad_broadcast_unary_wide)
+CosInplaceTester = makeBroadcastTester(op=inplace.cos_inplace,
+                                       expected=numpy.cos,
+                                       good=_good_broadcast_unary_wide,
+                                       grad=_grad_broadcast_unary_wide,
+                                       inplace=True)
 
-_good_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1.-1e-7, (2, 3)),),
-                                  integers = (randint_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
-                                  complex = (randc128_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
-                                  empty = (numpy.asarray([]),),)
-
-_grad_broadcast_unary_arccos = dict(normal = (rand_ranged(-1.+1e-7, 1-1e-7, (2, 3)),),
-                                  #complex = (randc128_ranged(-1000, 1000, (2, 3)),),
-                                  #empty = (numpy.asarray([]),),
-                                  )
-
-_good_broadcast_unary_arcsin = _good_broadcast_unary_arccos
-
-_grad_broadcast_unary_arcsin = _grad_broadcast_unary_arccos
-
-SinTester = makeBroadcastTester(op = tensor.sin,
-                                  expected = numpy.sin,
-                                  good = _good_broadcast_unary_wide,
-                                  grad = _grad_broadcast_unary_wide)
-SinInplaceTester = makeBroadcastTester(op = inplace.sin_inplace,
-                                         expected = numpy.sin,
-                                         good = _good_broadcast_unary_wide,
-                                         grad = _grad_broadcast_unary_wide,
-                                         inplace = True)
-
-ArcsinTester = makeBroadcastTester(op = tensor.arcsin,
-                                  expected = numpy.arcsin,
-                                  good = _good_broadcast_unary_arcsin,
-                                  grad = _grad_broadcast_unary_arcsin)
-
-ArcsinInplaceTester = makeBroadcastTester(op = inplace.arcsin_inplace,
-                                         expected = numpy.arcsin,
-                                         good = _good_broadcast_unary_arcsin,
-                                         grad = _grad_broadcast_unary_arcsin,
-                                         inplace = True)
-
-CosTester = makeBroadcastTester(op = tensor.cos,
-                                  expected = numpy.cos,
-                                  good = _good_broadcast_unary_wide,
-                                  grad = _grad_broadcast_unary_wide)
-CosInplaceTester = makeBroadcastTester(op = inplace.cos_inplace,
-                                         expected = numpy.cos,
-                                         good = _good_broadcast_unary_wide,
-                                         grad = _grad_broadcast_unary_wide,
-                                         inplace = True)
-
-
-ArccosTester = makeBroadcastTester(op = tensor.arccos,
-                                  expected = numpy.arccos,
-                                  good = _good_broadcast_unary_arccos,
-                                  grad = _grad_broadcast_unary_arccos)
-ArccosInplaceTester = makeBroadcastTester(op = inplace.arccos_inplace,
-                                         expected = numpy.arccos,
-                                         good = _good_broadcast_unary_arccos,
-                                         grad = _grad_broadcast_unary_arccos,
-                                         inplace = True)
+ArcCosTester = makeBroadcastTester(op=tensor.arccos,
+                                   expected=numpy.arccos,
+                                   good=_good_broadcast_unary_arcsin,
+                                   grad=_grad_broadcast_unary_arcsin)
+ArcCosInplaceTester = makeBroadcastTester(op=inplace.arccos_inplace,
+                                          expected=numpy.arccos,
+                                          good=_good_broadcast_unary_arcsin,
+                                          grad=_grad_broadcast_unary_arcsin,
+                                          inplace=True)
 
 tan_grad_rtol = None
-if config.floatX=='float32':
-#We raise the relative tolerence for the grad as their is error in float32
-#This is probably caused by our way of computing the gradient error.
+if config.floatX == 'float32':
+    #We raise the relative tolerence for the grad as their is error in float32
+    #This is probably caused by our way of computing the gradient error.
     tan_grad_rtol = 0.052
 
-TanTester = makeBroadcastTester(op = tensor.tan,
-                                  expected = numpy.tan,
-                                  good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
-                                              shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
-                                  grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
-                                              shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
-                                  grad_rtol=tan_grad_rtol)
-TanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
-                                         expected = numpy.tan,
-                                         good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
-                                                     shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
-                                         grad = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
-                                                     shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
-                                         grad_rtol=tan_grad_rtol,
-                                         inplace = True)
+_good_broadcast_unary_tan = dict(
+    normal=(rand_ranged(-3.14, 3.14, (2, 3)),),
+    shifted=(rand_ranged(3.15, 6.28, (2, 3)),),
+    integers=(randint_ranged(-3, 3, (2, 3)),),
+    complex=(randc128_ranged(-3.14, 3.14, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_tan = dict(normal=(rand_ranged(-3.14, 3.14, (2, 3)),),
+                                 shifted=(rand_ranged(3.15, 6.28, (2, 3)),))
 
+TanTester = makeBroadcastTester(op=tensor.tan,
+                                expected=numpy.tan,
+                                good=_good_broadcast_unary_tan,
+                                grad=_grad_broadcast_unary_tan,
+                                grad_rtol=tan_grad_rtol)
+TanInplaceTester = makeBroadcastTester(op=inplace.tan_inplace,
+                                       expected=numpy.tan,
+                                       good=_good_broadcast_unary_tan,
+                                       grad=_grad_broadcast_unary_tan,
+                                       grad_rtol=tan_grad_rtol,
+                                       inplace=True)
 
-ArctanTester = makeBroadcastTester(op = tensor.tan,
-                                   expected = numpy.tan,
-                                   good = _good_broadcast_unary_wide,
-                                   grad = _grad_broadcast_unary_wide,
+ArcTanTester = makeBroadcastTester(op=tensor.tan,
+                                   expected=numpy.tan,
+                                   good=_good_broadcast_unary_wide,
+                                   grad=_grad_broadcast_unary_wide,
                                    grad_rtol=tan_grad_rtol)
-ArctanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
-                                          expected = numpy.tan,
-                                          good = _good_broadcast_unary_wide,
-                                          grad = _grad_broadcast_unary_wide,
+ArcTanInplaceTester = makeBroadcastTester(op=inplace.tan_inplace,
+                                          expected=numpy.tan,
+                                          good=_good_broadcast_unary_wide,
+                                          grad=_grad_broadcast_unary_wide,
                                           grad_rtol=tan_grad_rtol,
-                                          inplace = True)
+                                          inplace=True)
 
+CoshTester = makeBroadcastTester(op=tensor.cosh,
+                                 expected=numpy.cosh,
+                                 good=_good_broadcast_unary_normal,
+                                 grad=_grad_broadcast_unary_normal)
+CoshInplaceTester = makeBroadcastTester(op=inplace.cosh_inplace,
+                                        expected=numpy.cosh,
+                                        good=_good_broadcast_unary_normal,
+                                        grad=_grad_broadcast_unary_normal,
+                                        inplace=True)
 
-CoshTester = makeBroadcastTester(op = tensor.cosh,
-                                   expected = numpy.cosh,
-                                   good = _good_broadcast_unary_normal,
-                                   grad = _grad_broadcast_unary_normal)
-CoshInplaceTester = makeBroadcastTester(op = inplace.cosh_inplace,
-                                          expected = numpy.cosh,
-                                          good = _good_broadcast_unary_normal,
-                                          grad = _grad_broadcast_unary_normal,
-                                          inplace = True)
+_good_broadcast_unary_arccosh = dict(
+    normal=(rand_ranged(1, 1000, (2, 3)),),
+    integers=(randint_ranged(1, 1000, (2, 3)),),
+    complex=(randc128_ranged(1, 1000, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_arccosh = dict(normal=(rand_ranged(1, 1000, (2, 3)),),)
 
+ArcCoshTester = makeBroadcastTester(op=tensor.arccosh,
+                                    expected=numpy.arccosh,
+                                    good=_good_broadcast_unary_arccosh,
+                                    grad=_grad_broadcast_unary_arccosh)
+ArcCoshInplaceTester = makeBroadcastTester(op=inplace.arccosh_inplace,
+                                           expected=numpy.arccosh,
+                                           good=_good_broadcast_unary_arccosh,
+                                           grad=_grad_broadcast_unary_arccosh,
+                                           inplace=True)
 
-_good_broadcast_unary_arccosh = dict(normal = (rand_ranged(1, 1000, (2, 3)),),
-                                     integers = (randint_ranged(1, 1000, (2, 3)),),
-                                     complex = (randc128_ranged(1, 1000, (2, 3)),),
-                                     empty = (numpy.asarray([]),),)
-_grad_broadcast_unary_arccosh = dict(normal = (rand_ranged(1, 1000, (2, 3)),),)
+SinhTester = makeBroadcastTester(op=tensor.sinh,
+                                 expected=numpy.sinh,
+                                 good=_good_broadcast_unary_normal,
+                                 grad=_grad_broadcast_unary_normal)
+SinhInplaceTester = makeBroadcastTester(op=inplace.sinh_inplace,
+                                        expected=numpy.sinh,
+                                        good=_good_broadcast_unary_normal,
+                                        grad=_grad_broadcast_unary_normal,
+                                        inplace=True)
 
+ArcSinhTester = makeBroadcastTester(op=tensor.arcsinh,
+                                    expected=numpy.arcsinh,
+                                    good=_good_broadcast_unary_normal,
+                                    grad=_grad_broadcast_unary_normal)
+ArcSinhInplaceTester = makeBroadcastTester(op=inplace.arcsinh_inplace,
+                                           expected=numpy.arcsinh,
+                                           good=_good_broadcast_unary_normal,
+                                           grad=_grad_broadcast_unary_normal,
+                                           inplace=True)
 
-ArccoshTester = makeBroadcastTester(op = tensor.arccosh,
-                                    expected = numpy.arccosh,
-                                    good = _good_broadcast_unary_arccosh,
-                                    grad = _grad_broadcast_unary_arccosh)
-ArccoshInplaceTester = makeBroadcastTester(op = inplace.arccosh_inplace,
-                                           expected = numpy.arccosh,
-                                           good = _good_broadcast_unary_arccosh,
-                                           grad = _grad_broadcast_unary_arccosh,
-                                           inplace = True)
+TanhTester = makeBroadcastTester(op=tensor.tanh,
+                                 expected=numpy.tanh,
+                                 good=_good_broadcast_unary_normal,
+                                 grad=_grad_broadcast_unary_normal)
+TanhInplaceTester = makeBroadcastTester(op=inplace.tanh_inplace,
+                                        expected=numpy.tanh,
+                                        good=_good_broadcast_unary_normal,
+                                        grad=_grad_broadcast_unary_normal,
+                                        inplace=True)
 
+_good_broadcast_unary_arctanh = dict(normal=(rand_ranged(-1, 1, (2, 3)),),
+                                     integers=(randint_ranged(-1, 1, (2, 3)),),
+                                     complex=(randc128_ranged(-1, 1, (2, 3)),),
+                                     empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_arctanh = dict(normal=(rand_ranged(-1, 1, (2, 3)),),)
 
-SinhTester = makeBroadcastTester(op = tensor.sinh,
-                                   expected = numpy.sinh,
-                                   good = _good_broadcast_unary_normal,
-                                   grad = _grad_broadcast_unary_normal)
-SinhInplaceTester = makeBroadcastTester(op = inplace.sinh_inplace,
-                                          expected = numpy.sinh,
-                                          good = _good_broadcast_unary_normal,
-                                          grad = _grad_broadcast_unary_normal,
-                                          inplace = True)
-
-
-ArcsinhTester = makeBroadcastTester(op = tensor.arcsinh,
-                                    expected = numpy.arcsinh,
-                                    good = _good_broadcast_unary_normal,
-                                    grad = _grad_broadcast_unary_normal)
-ArcsinhInplaceTester = makeBroadcastTester(op = inplace.arcsinh_inplace,
-                                           expected = numpy.arcsinh,
-                                           good = _good_broadcast_unary_normal,
-                                           grad = _grad_broadcast_unary_normal,
-                                           inplace = True)
-
-
-TanhTester = makeBroadcastTester(op = tensor.tanh,
-                                   expected = numpy.tanh,
-                                   good = _good_broadcast_unary_normal,
-                                   grad = _grad_broadcast_unary_normal)
-TanhInplaceTester = makeBroadcastTester(op = inplace.tanh_inplace,
-                                          expected = numpy.tanh,
-                                          good = _good_broadcast_unary_normal,
-                                          grad = _grad_broadcast_unary_normal,
-                                          inplace = True)
-
-
-_good_broadcast_unary_arctanh = dict(normal = (rand_ranged(-1, 1, (2, 3)),),
-                                     integers = (randint_ranged(-1, 1, (2, 3)),),
-                                     complex = (randc128_ranged(-1, 1, (2, 3)),),
-                                     empty = (numpy.asarray([]),),)
-_grad_broadcast_unary_arctanh = dict(normal = (rand_ranged(-1, 1, (2, 3)),),)
-
-
-ArctanhTester = makeBroadcastTester(op = tensor.arctanh,
-                                    expected = numpy.arctanh,
-                                    good = _good_broadcast_unary_arctanh,
-                                    grad = _grad_broadcast_unary_arctanh)
-ArctanhInplaceTester = makeBroadcastTester(op = inplace.arctanh_inplace,
-                                           expected = numpy.arctanh,
-                                           good = _good_broadcast_unary_arctanh,
-                                           grad = _grad_broadcast_unary_arctanh,
-                                           inplace = True)
+ArcTanhTester = makeBroadcastTester(op=tensor.arctanh,
+                                    expected=numpy.arctanh,
+                                    good=_good_broadcast_unary_arctanh,
+                                    grad=_grad_broadcast_unary_arctanh)
+ArcTanhInplaceTester = makeBroadcastTester(op=inplace.arctanh_inplace,
+                                           expected=numpy.arctanh,
+                                           good=_good_broadcast_unary_arctanh,
+                                           grad=_grad_broadcast_unary_arctanh,
+                                           inplace=True)
 
 
 #inplace ops when the input is integer and the output is float*
