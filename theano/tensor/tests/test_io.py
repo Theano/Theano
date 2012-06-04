@@ -2,11 +2,12 @@ import unittest
 import theano
 from theano import tensor, function, Variable, Generic
 import numpy
+import os
 
 class T_load_tensor(unittest.TestCase):
     def test0(self):
         data = numpy.arange(5, dtype=numpy.int32)
-        filename = theano.config.base_compiledir+"/_test.npy"
+        filename = os.path.join(theano.config.base_compiledir, "_test.npy")
         numpy.save(filename, data)
         path = Variable(Generic())
         x = tensor.load(path, 'int32', (False,))
@@ -15,7 +16,7 @@ class T_load_tensor(unittest.TestCase):
         assert (fn(filename) == data*2).all()
     def test_memmap(self):
         data = numpy.arange(5, dtype=numpy.int32)
-        filename = theano.config.base_compiledir+"/_test.npy"
+        filename = os.path.join(theano.config.base_compiledir, "_test.npy")
         numpy.save(filename, data)
         path = Variable(Generic())
         x = tensor.load(path, 'int32', (False,), mmap_mode='r+')
