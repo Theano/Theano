@@ -2585,6 +2585,10 @@ def arcsin(a):
 def tan(a):
     """tangent of a"""
 
+@_scal_elemwise_with_nfunc('arctan', 1, 1)
+def arctan(a):
+    """arctangent of a"""
+
 
 @_scal_elemwise_with_nfunc('cosh', 1, 1)
 def cosh(a):

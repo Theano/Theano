@@ -1084,6 +1084,7 @@ if config.floatX=='float32':
 #We raise the relative tolerence for the grad as their is error in float32
 #This is probably caused by our way of computing the gradient error.
     tan_grad_rtol = 0.052
+
 TanTester = makeBroadcastTester(op = tensor.tan,
                                   expected = numpy.tan,
                                   good = dict(normal = (rand_ranged(-3.14, 3.14, (2, 3)),),
@@ -1099,6 +1100,21 @@ TanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
                                                      shifted = (rand_ranged(3.15, 6.28, (2, 3)),)),
                                          grad_rtol=tan_grad_rtol,
                                          inplace = True)
+
+
+ArctanTester = makeBroadcastTester(op = tensor.tan,
+                                   expected = numpy.tan,
+                                   good = _good_broadcast_unary_wide,
+                                   grad = _grad_broadcast_unary_wide,
+                                   grad_rtol=tan_grad_rtol)
+
+
+ArctanInplaceTester = makeBroadcastTester(op = inplace.tan_inplace,
+                                          expected = numpy.tan,
+                                          good = _good_broadcast_unary_wide,
+                                          grad = _grad_broadcast_unary_wide,
+                                          grad_rtol=tan_grad_rtol,
+                                          inplace = True)
 
 
 CoshTester = makeBroadcastTester(op = tensor.cosh,

@@ -2075,6 +2075,25 @@ class Tan(UnaryScalarOp):
 tan = Tan(upgrade_to_float, name='tan')
 
 
+class Arctan(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arctan(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / (numpy.cast[x.type](1) + sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atan(%(x)s);" % locals()
+arctan = Arctan(upgrade_to_float, name='arctan')
+
+
 class Cosh(UnaryScalarOp):
     """
     cosh(x) = (exp(x) + exp(-x)) / 2

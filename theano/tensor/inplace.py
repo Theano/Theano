@@ -160,6 +160,10 @@ def tan_inplace(a):
     """tangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arctan_inplace(a):
+    """arctangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 
