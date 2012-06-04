@@ -17,7 +17,7 @@ class LoadFromDisk(Op):
     @note: Non-differentiable.
     """
     def __init__(self, dtype, broadcastable, mmap_mode=None):
-        self.dtype = dtype
+        self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
         self.broadcastable = broadcastable
         self.mmap_mode = mmap_mode
         self._info = (dtype, broadcastable, mmap_mode)
