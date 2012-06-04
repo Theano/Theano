@@ -16,17 +16,17 @@ class LoadFromDisk(Op):
 
     @note: Non-differentiable.
     """
-    def __init__(self, dtype, broadcastable):
+    def __init__(self, dtype, broadcastable, mmap_mode=None):
         self.dtype = dtype
         self.broadcastable = broadcastable
+        self.mmap_mode = mmap_mode
+        self._info = (dtype, broadcastable, mmap_mode)
 
     def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.broadcastable == other.broadcastable and
-                self.dtype == other.dtype)
+        return (type(self) == type(other) and self._info == other._info)
 
     def __hash__(self):
-        return hash((type(self), self.dtype, self.broadcastable))
+        return hash(self._info)
 
     def make_node(self, path):
         if isinstance(path, str):
@@ -36,24 +36,29 @@ class LoadFromDisk(Op):
 
     def perform(self, node, inp, out):
         path = inp[0]
-        d = numpy.load(path)
-        out[0][0] = d[d.keys()[0]].astype(self.dtype)
+        if (path.split('.')[-1] == 'npz'):
+            raise ValueError("Expected a .npy file, got %s instead"%path)
+        result = numpy.load(path, mmap_mode=self.mmap_mode)
+        if result.dtype != self.dtype:
+            raise TypeError("Expected an array of type %s, got %s instead"%
+                    (self.dtype, result.dtype))
+        out[0][0] = result
 
     def __str__(self):
-        return "Load: %s, %s"%(self.dtype, self.broadcastable)
+        return "Load: dtype:%s, broadcastable:%s, mmep:%s"%self._info
 
-def load(path, dtype, broadcastable):
+def load(path, dtype, broadcastable, mmap_mode=None):
     """
-    Load an array from a .npz file
+    Load an array from an .npy file
 
     >>> from theano import *
     >>> path = Variable(Generic())
     >>> x = tensor.load(path, 'int64', (False,))
     >>> y = x*2
     >>> fn = function([path], y)
-    >>> fn("stored-array.npz")
+    >>> fn("stored-array.npy")
     array([0, 2, 4, 6, 8], dtype=int64)
     """
 
-    return LoadFromDisk(dtype, broadcastable)(path)
+    return LoadFromDisk(dtype, broadcastable, mmap_mode)(path)
 
