@@ -4395,9 +4395,11 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
 
             # We should not check the number of inputs here
             # As fusing op don't always change the number of input.
+            # If a variable is used as multiple into to the same node,
+            # we still want to fusion. So we take the set.
             if (i.owner and
                 isinstance(i.owner.op, OP) and
-                len(i.clients) == 1):
+                len(set([n for n, idx in i.clients])) == 1):
 
                 do_fusion = True
                 try:
