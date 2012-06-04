@@ -5,7 +5,6 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano import tensor
 
-from theano.ifelse import ifelse
 from theano import sparse
 from theano.tensor import TensorType
 from theano.tests import unittest_tools as utt
@@ -91,77 +90,3 @@ class T_updates(unittest.TestCase):
         output_func = theano.function(inputs=[], outputs=[],
                 updates={output_var: output_var.sum().dimshuffle('x', 'x')})
         output_func()
-
-
-class T_ifelse(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
-        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
-
-    def test_cuda_tensor(self):
-        data = self.rng.rand(4).astype('float32')
-        x = f32sc(data)
-        y = x + 1
-        cond = theano.tensor.iscalar('cond')
-
-        assert isinstance(x.type, CudaNdarrayType)
-        assert isinstance(y.type, TensorType)
-
-        out1 = ifelse(cond, x, y)
-        out2 = ifelse(cond, y, x)
-
-        assert isinstance(out1.type, TensorType)
-        assert isinstance(out2.type, TensorType)
-
-        f = theano.function([cond], out1)
-        g = theano.function([cond], out2)
-
-        assert numpy.all(f(0) == data + 1)
-        assert numpy.all(f(1) == data)
-        assert numpy.all(g(0) == data)
-        assert numpy.all(g(1) == data + 1)
-
-    def test_dtype_mismatch(self):
-        data = self.rng.rand(5).astype('float32')
-        x = f32sc(data)
-        y = tensor.cast(x, 'float64')
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_ndim_mismatch(self):
-        data = self.rng.rand(5).astype('float32')
-        x = f32sc(data)
-        y = tensor.fcol('y')
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_broadcast_mismatch(self):
-        data = self.rng.rand(2, 3).astype('float32')
-        x = f32sc(data)
-        print x.broadcastable
-        y = tensor.frow('y')
-        print y.broadcastable
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_sparse_tensor_error(self):
-        data = self.rng.rand(2, 3).astype('float32')
-        x = f32sc(data)
-        y = sparse.matrix('csc', dtype='float32', name='y')
-        z = sparse.matrix('csr', dtype='float32', name='z')
-        cond = theano.tensor.iscalar('cond')
-
-        # Right now (2012-01-19), a ValueError gets raised, but I thing
-        # a TypeError (like in the other cases) would be fine.
-        self.assertRaises((TypeError, ValueError), ifelse, cond, x, y)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, y, x)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, x, z)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, z, x)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, y, z)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, z, y)

@@ -265,11 +265,7 @@ def test_elemwise0():
     assert f.maker.env.toposort()[1].op.destroy_map.items() == [(0, [0])]
 
     a0 = a.get_value() * 1.0
-    print 'BEFORE ADD', a.get_value()
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
     f(numpy.ones((4, 4), dtype='float32'))
-    print 'AFTER ADD', a.get_value()
 
     assert numpy.all(a0 + 1.0 == a.get_value())
 
@@ -279,7 +275,6 @@ def test_elemwise_bad_broadcast():
     y = cuda.fmatrix('y')
 
     f = theano.function([x, y], x * y, mode=mode_with_gpu)
-    print f.maker.env.toposort()
     assert len(f.maker.env.toposort()) == 2
     assert isinstance(f.maker.env.toposort()[0].op, cuda.GpuElemwise)
     assert f.maker.env.toposort()[1].op == cuda.host_from_gpu
@@ -302,20 +297,13 @@ def test_elemwise1():
     b = tensor.fmatrix()
 
     #let debugmode catch any mistakes
-    print >> sys.stdout, "STARTING FUNCTION 1"
     f = pfunc([b], [], updates=[(a, b ** a)], mode=mode_with_gpu)
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
     f(theano._asarray(numpy.random.rand(*shape), dtype='float32') + 0.3)
 
-    print >> sys.stdout, "STARTING FUNCTION 2"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, tensor.exp(b ** a))], mode=mode_with_gpu)
-    for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
     f(theano._asarray(numpy.random.rand(*shape), dtype='float32') + 0.3)
 
-    print >> sys.stdout, "STARTING FUNCTION 3"
     #let debugmode catch any mistakes
     f = pfunc([b], [], updates=[(a, a + b * tensor.exp(b ** a))],
               mode=mode_with_gpu)
@@ -325,7 +313,6 @@ def test_elemwise1():
 def test_elemwise2():
     """ Several kinds of elemwise expressions with dimension permutations """
     rng = numpy.random.RandomState(int(time.time()))
-    print 'random?', rng.rand(3)
     shape = (3, 5)
     for pattern in [(0, 1), (1, 0)]:
         a = tcn.shared_constructor(theano._asarray(rng.rand(*shape),
@@ -335,11 +322,9 @@ def test_elemwise2():
                   mode=mode_with_gpu)
         has_elemwise = False
         for i, node in enumerate(f.maker.env.toposort()):
-            print >> sys.stdout, i, node
             has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
         assert not has_elemwise
         #let debugmode catch errors
-        print >> sys.stdout, 'pattern', pattern
         f(theano._asarray(rng.rand(*shape), dtype='float32') * .3)
 
     shape = (3, 4, 5, 6)
@@ -350,7 +335,6 @@ def test_elemwise2():
         tensor.exp(b ** a).dimshuffle([2, 0, 3, 1]))], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
-        print i, node
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -365,17 +349,11 @@ def test_elemwise3():
     a = tcn.shared_constructor(theano._asarray(numpy.random.rand(*shape),
                                                dtype='float32'), 'a')
     b = tensor.fvector()
-    print b.type
-    print tensor.constant(1).type
-    print (1 + b).type
-    print (1 + b ** a).type
-    print tensor.exp((1 + b ** a)).type
     new_val = (a + b).dimshuffle([2, 0, 3, 1])
     new_val *= tensor.exp(1 + b ** a).dimshuffle([2, 0, 3, 1])
     f = pfunc([b], [], updates=[(a, new_val)], mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
-        print >> sys.stdout, i, node
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -396,7 +374,6 @@ def test_elemwise4():
               mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.env.toposort()):
-        print >> sys.stdout, i, node
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -420,7 +397,6 @@ def test_elemwise_comparaison_cast():
 
         f = pfunc([a, b], tensor.cast(g(a, b), 'float32'), mode=mode_with_gpu)
 
-        #theano.printing.debugprint(f)
         out = f(av, bv)
         assert numpy.all(out == ans)
         assert any([isinstance(node.op, cuda.GpuElemwise)
@@ -451,7 +427,6 @@ def test_elemwise_composite_float64():
                                                b),
                                      'float32'), mode=mode)
 
-        #theano.printing.debugprint(f, print_type=True)
         out = f(av, bv)
         assert numpy.all(out == ((av ** 2) < bv))
         for node in f.maker.env.toposort():
@@ -509,8 +484,6 @@ def speed_elemwise_collapse():
     v = theano._asarray(numpy.random.rand(*shape), dtype='float32')
     v = v[:, ::2, :, :]
     v = cuda_ndarray.CudaNdarray(v)
-    for id, n in enumerate(f.maker.env.toposort()):
-        print id, n
     t1 = time.time()
     for i in range(100):
         #let debugmode catch errors
@@ -535,8 +508,6 @@ def speed_elemwise_collapse2():
     v = theano._asarray(numpy.random.rand(*shape), dtype='float32')
     v = v[:, :, :, ::2]
     v = cuda_ndarray.CudaNdarray(v)
-    for id, n in enumerate(f.maker.env.toposort()):
-        print id, n
     t1 = time.time()
     for i in range(100):
         #let debugmode catch errors
@@ -560,13 +531,11 @@ def test_elemwise_collapse():
     v = theano._asarray(numpy.random.rand(shape[0], 1, *shape[1:]),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
+
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(shape[0], 1, *shape[1:]) + v)
-    print "Expected collapse of all dimensions"
+    #print "Expected collapse of all dimensions"
 
 
 def test_elemwise_collapse2():
@@ -585,13 +554,10 @@ def test_elemwise_collapse2():
     v = theano._asarray(numpy.random.rand(shape[0], 5, *shape[1:]),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(shape[0], 1, *shape[1:]) + v)
-    print "Expected collapse to 3 dimensions"
+    #print "Expected collapse to 3 dimensions"
 
 
 def test_elemwise_collapse3():
@@ -611,13 +577,11 @@ def test_elemwise_collapse3():
     v = theano._asarray(numpy.random.rand(5, shape[0], shape[1], 4),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n  in enumerate(f.maker.env.toposort()):
-            print id, n
+
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(1, shape[0], shape[1], 1) + v)
-    print "Expected collapse to 3 dimensions"
+    #print "Expected collapse to 3 dimensions"
 
 
 def test_elemwise_collapse4():
@@ -637,13 +601,10 @@ def test_elemwise_collapse4():
     v = theano._asarray(numpy.random.rand(5, shape[0], shape[1], 4),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(1, shape[0], shape[1], 1) + v + 2)
-    print "Expected collapse to 3 dimensions"
+    #print "Expected collapse to 3 dimensions"
 
 
 def test_elemwise_collapse5():
@@ -663,13 +624,11 @@ def test_elemwise_collapse5():
     v = theano._asarray(numpy.random.rand(5, 4, shape[0], shape[1]),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
+
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(1, 1, shape[0], shape[1]) + v + 2)
-    print "Expected collapse to 2 dimensions"
+    #print "Expected collapse to 2 dimensions"
 
 
 def test_elemwise_collapse6():
@@ -688,13 +647,10 @@ def test_elemwise_collapse6():
     v = theano._asarray(numpy.random.rand(1, 1, shape[0], shape[1]),
                         dtype='float32')
     v = cuda_ndarray.CudaNdarray(v)
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
     #let debugmode catch errors
     out = f(v)[0]
     assert numpy.allclose(out, a.reshape(1, 1, shape[0], shape[1]) + v)
-    print "Expected collapse to c contiguous"
+    #print "Expected collapse to c contiguous"
 
 
 def test_elemwise_collapse7(atol=1e-6):
@@ -709,14 +665,11 @@ def test_elemwise_collapse7(atol=1e-6):
     a3 = a2.dimshuffle(0, 'x', 1, 2)
     f = pfunc([], [a3 + 2], mode=mode_with_gpu)
 
-    if False:
-        for id, n in enumerate(f.maker.env.toposort()):
-            print id, n
     #let debugmode catch errors
     out = f()[0]
     ans = (a + 2).reshape(shape[0], 1, shape[1], shape[2])
     assert numpy.allclose(out, ans, atol=atol)
-    print "Expected collapse to c contiguous"
+    #print "Expected collapse to c contiguous"
 
 
 def test_hostfromgpu_shape_i():
@@ -838,10 +791,8 @@ def test_gpualloc_output_to_gpu():
     f_gpu = theano.function([b], B.gpu_from_host(T.ones_like(a)) + b,
                             mode=mode_with_gpu)
 
-    print f.maker.env.toposort()
-    print f_gpu.maker.env.toposort()
-    print f(2)
-    print f_gpu(2)
+    f(2)
+    f_gpu(2)
 
     assert sum([node.op == T.alloc for node in f.maker.env.toposort()]) == 1
     assert sum([node.op == B.gpu_alloc
@@ -924,7 +875,7 @@ def test_inc_subtensor():
                       dtype='float32')
     expr = T.inc_subtensor(x[:, 1:3], y[:, 1:3])
     f = theano.function([x, y], expr, mode=mode_with_gpu)
-    print f.maker.env.toposort()
+
     assert sum([isinstance(node.op, cuda.GpuSubtensor)
                 for node in f.maker.env.toposort()]) == 1
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
@@ -949,7 +900,7 @@ def test_set_subtensor():
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc == True
                 for node in f.maker.env.toposort()]) == 1
-    print f(xval, yval)
+    f(xval, yval)
 
 
 def test_many_arg_elemwise():
