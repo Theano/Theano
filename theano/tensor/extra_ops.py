@@ -21,6 +21,10 @@ class DiffOp(theano.Op):
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
+        # numpy return a view in that case.
+        # TODO, make an optimization that remove this op in this case.
+        if n == 0:
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return (type(self) == type(other) and
