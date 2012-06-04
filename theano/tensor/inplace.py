@@ -184,6 +184,10 @@ def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arctanh_inplace(a):
+    """hyperbolic arc tangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def erf_inplace(a):
     """error function"""
 

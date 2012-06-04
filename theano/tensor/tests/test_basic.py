@@ -1178,6 +1178,25 @@ TanhInplaceTester = makeBroadcastTester(op = inplace.tanh_inplace,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
+
+_good_broadcast_unary_arctanh = dict(normal = (rand_ranged(-1, 1, (2, 3)),),
+                                     integers = (randint_ranged(-1, 1, (2, 3)),),
+                                     complex = (randc128_ranged(-1, 1, (2, 3)),),
+                                     empty = (numpy.asarray([]),),)
+_grad_broadcast_unary_arctanh = dict(normal = (rand_ranged(-1, 1, (2, 3)),),)
+
+
+ArctanhTester = makeBroadcastTester(op = tensor.arctanh,
+                                    expected = numpy.arctanh,
+                                    good = _good_broadcast_unary_arctanh,
+                                    grad = _grad_broadcast_unary_arctanh)
+ArctanhInplaceTester = makeBroadcastTester(op = inplace.arctanh_inplace,
+                                           expected = numpy.arctanh,
+                                           good = _good_broadcast_unary_arctanh,
+                                           grad = _grad_broadcast_unary_arctanh,
+                                           inplace = True)
+
+
 #inplace ops when the input is integer and the output is float*
 # don't have a well defined behavior. We don't test that case.
 _good_broadcast_unary_normal_no_int_no_complex = _good_broadcast_unary_normal_no_complex.copy()

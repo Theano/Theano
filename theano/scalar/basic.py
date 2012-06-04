@@ -2199,6 +2199,25 @@ class Tanh(UnaryScalarOp):
 tanh = Tanh(upgrade_to_float, name='tanh')
 
 
+class ArcTanh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arctanh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / (numpy.cast[x.type](1) -sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atanh(%(x)s);" % locals()
+arctanh = ArcTanh(upgrade_to_float, name='arctanh')
+
+
 class Real(UnaryScalarOp):
     """Extract the real coordinate of a complex number.  """
     def impl(self, x):

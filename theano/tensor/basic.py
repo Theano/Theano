@@ -2616,6 +2616,11 @@ def tanh(a):
     """hyperbolic tangent of a"""
 
 
+@_scal_elemwise_with_nfunc('arctanh', 1, 1)
+def arctanh(a):
+    """hyperbolic arc tangent of a"""
+
+
 @_scal_elemwise
 def erf(a):
     """error function"""
