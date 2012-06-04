@@ -369,10 +369,12 @@ def local_gpu_lazy_ifelse(node):
     """
     if isinstance(node.op, theano.ifelse.IfElse) and not node.op.gpu:
         gpu_ifelse = theano.ifelse.IfElse(node.op.n_outs, gpu=True)
+        outs_clients = reduce(list.__add__,
+                              [out.clients for out in node.outputs])
         if numpy.any([(i.owner and i.owner.op == host_from_gpu)
                       for i in node.inputs]) or numpy.any(
                       [c != 'output' and c.op == gpu_from_host for c, idx
-                       in node.outputs[0].clients]):
+                       in outs_clients]):
 
             c = node.inputs[0]
             outs = node.inputs[1:]
