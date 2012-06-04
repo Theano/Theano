@@ -2157,6 +2157,25 @@ class Sinh(UnaryScalarOp):
 sinh = Sinh(upgrade_to_float, name='sinh')
 
 
+class ArcSinh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arcsinh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = asinh(%(x)s);" % locals()
+arcsinh = ArcSinh(upgrade_to_float, name='arcsinh')
+
+
 class Tanh(UnaryScalarOp):
     """
     tanh(x) = sinh(x) / cosh(x)

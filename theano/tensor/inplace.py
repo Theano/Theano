@@ -176,6 +176,10 @@ def sinh_inplace(a):
     """hyperbolic sine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arcsinh_inplace(a):
+    """hyperbolic arc sine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
 

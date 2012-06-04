@@ -2606,6 +2606,11 @@ def sinh(a):
     """hyperbolic sine of a"""
 
 
+@_scal_elemwise_with_nfunc('arcsinh', 1, 1)
+def arcsinh(a):
+    """hyperbolic arc sine of a"""
+
+
 @_scal_elemwise_with_nfunc('tanh', 1, 1)
 def tanh(a):
     """hyperbolic tangent of a"""

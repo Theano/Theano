@@ -1156,6 +1156,18 @@ SinhInplaceTester = makeBroadcastTester(op = inplace.sinh_inplace,
                                           grad = _grad_broadcast_unary_normal,
                                           inplace = True)
 
+
+ArcsinhTester = makeBroadcastTester(op = tensor.arcsinh,
+                                    expected = numpy.arcsinh,
+                                    good = _good_broadcast_unary_normal,
+                                    grad = _grad_broadcast_unary_normal)
+ArcsinhInplaceTester = makeBroadcastTester(op = inplace.arcsinh_inplace,
+                                           expected = numpy.arcsinh,
+                                           good = _good_broadcast_unary_normal,
+                                           grad = _grad_broadcast_unary_normal,
+                                           inplace = True)
+
+
 TanhTester = makeBroadcastTester(op = tensor.tanh,
                                    expected = numpy.tanh,
                                    good = _good_broadcast_unary_normal,
