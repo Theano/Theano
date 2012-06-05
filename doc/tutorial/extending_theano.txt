@@ -283,13 +283,26 @@ To verify the Rop method of the DoubleOp, you can use this:
        def test_double_rop(self):
            self.check_rop_lop(DoubleRop()(self.x), self.in_shape)
 
-You can use `nosetests` to run it as all other test in Theano or you can run it like that in a python shell:
+Running your tests
+==================
+
+You can run ``nosetests`` in the Theano folder to run it as all
+Theano's tests including yours if inside such directory. You can run
+``nosetests test_file.py`` to run only the tests in that file. You can
+run ``nosetests test_file.py:test_DoubleRop`` to run only the tests
+inside that test class. You can run ``nosetests
+test_file.py:test_DoubleRop.test_double_op`` to run only one
+particular test. More `nosetests
+<http://readthedocs.org/docs/nose/en/latest/>`_ documentation.
+
+You can also add this at the end of the test file:
 
 .. code-block:: python
 
-   t = test_DoubleRop("test_double_rop")
-   t.setUp()
-   t.test_double_rop()
+    if __name__ == '__main__':
+       t = test_DoubleRop("test_double_rop")
+       t.setUp()
+       t.test_double_rop()
 
 Exercises 8
 -----------
