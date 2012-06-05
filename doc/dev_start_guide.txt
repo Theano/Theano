@@ -482,3 +482,11 @@ a specific branch (REMOTE_BRANCH_NAME) from the remote repository
 .. code-block:: bash
 
    git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOTE_BRANCH_NAME
+
+
+Other tools that can help you
+=============================
+
+ * `Yep <http://pypi.python.org/pypi/yep>`_: A module for profiling compiled extensions.
+ * `autopep8 <http://pypi.python.org/pypi/autopep8/>`_: A tool that automatically formats Python code to conform to the PEP 8 style guide.
+ * `line_profiler <http://pypi.python.org/pypi/line_profiler/>`_: Line-by-line profiler.
