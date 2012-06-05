@@ -1,0 +1,12 @@
+===================================================================
+:mod:`tensor.extra_ops` --  Tensor Extra Ops
+===================================================================
+
+.. module:: tensor.extra_ops
+   :platform: Unix, Windows
+   :synopsis: Tensor Extra Ops
+.. moduleauthor:: LISA
+
+.. automodule:: theano.tensor.extra_ops
+    :members:
+
