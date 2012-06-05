@@ -1,4 +1,3 @@
-
 from basic import _scal_elemwise #, _transpose_inplace
 from theano import scalar as scal
 import elemwise
@@ -89,6 +88,10 @@ def exp_inplace(a):
     """e^`a` (inplace on `a`)"""
 
 @_scal_inplace
+def exp2_inplace(a):
+    """2^`a` (inplace on `a`)"""
+
+@_scal_inplace
 def neg_inplace(a):
     """-a (inplace on a)"""
 
@@ -153,20 +156,44 @@ def sin_inplace(a):
     """sine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arcsin_inplace(a):
+    """arcsine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def tan_inplace(a):
     """tangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctan_inplace(a):
+    """arctangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctan2_inplace(a, b):
+    """arctangent of `a` / `b` (inplace on `a`)"""
 
 @_scal_inplace
 def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arccosh_inplace(a):
+    """hyperbolic arc cosine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def sinh_inplace(a):
     """hyperbolic sine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arcsinh_inplace(a):
+    """hyperbolic arc sine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctanh_inplace(a):
+    """hyperbolic arc tangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
 def erf_inplace(a):

@@ -2476,6 +2476,11 @@ def exp(a):
     """e^`a`"""
 
 
+@_scal_elemwise_with_nfunc('exp2', 1, 1)
+def exp2(a):
+    """2^`a`"""
+
+
 @_scal_elemwise_with_nfunc('negative', 1, 1)
 def neg(a):
     """-a"""
@@ -2575,9 +2580,24 @@ def sin(a):
     """sine of a"""
 
 
+@_scal_elemwise_with_nfunc('arcsin', 1, 1)
+def arcsin(a):
+    """arcsine of a"""
+
+
 @_scal_elemwise_with_nfunc('tan', 1, 1)
 def tan(a):
     """tangent of a"""
+
+
+@_scal_elemwise_with_nfunc('arctan', 1, 1)
+def arctan(a):
+    """arctangent of a"""
+
+
+@_scal_elemwise_with_nfunc('arctan2', 1, 1)
+def arctan2(a, b):
+    """arctangent of a / b"""
 
 
 @_scal_elemwise_with_nfunc('cosh', 1, 1)
@@ -2585,14 +2605,29 @@ def cosh(a):
     """hyperbolic cosine of a"""
 
 
+@_scal_elemwise_with_nfunc('arccosh', 1, 1)
+def arccosh(a):
+    """hyperbolic arc cosine of a"""
+
+
 @_scal_elemwise_with_nfunc('sinh', 1, 1)
 def sinh(a):
     """hyperbolic sine of a"""
 
 
+@_scal_elemwise_with_nfunc('arcsinh', 1, 1)
+def arcsinh(a):
+    """hyperbolic arc sine of a"""
+
+
 @_scal_elemwise_with_nfunc('tanh', 1, 1)
 def tanh(a):
     """hyperbolic tangent of a"""
+
+
+@_scal_elemwise_with_nfunc('arctanh', 1, 1)
+def arctanh(a):
+    """hyperbolic arc tangent of a"""
 
 
 @_scal_elemwise
