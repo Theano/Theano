@@ -32,7 +32,7 @@ def hash_from_dict(d):
     This request that all object have a sorted order that depend only
     on the value of the object. This is true for integer/float/string
 
-    We do not verify that the objects in the dict what this properties
+    We do not verify that the objects in the dict have this property.
 
     Also, we transform values that are list into tuple as list are not
     hashable.
