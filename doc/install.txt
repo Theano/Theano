@@ -736,7 +736,7 @@ MinGW, but this has not been tested yet.
   in a Windows command prompt vs. a MSYS shell. One way to do this without
   setting a global Windows ``HOME`` environment variable (which may affect
   other programs) is to edit your ``msys.bat`` file (found e.g. under
-  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys) and add the following line at
+  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys``) and add the following line at
   the beginning (note that you may need to use e.g. Wordpad to edit this file,
   since Notepad gets confused by Unix-style line breaks):
 
