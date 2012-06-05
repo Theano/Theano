@@ -35,6 +35,11 @@ Inputs and Outputs are lists of Theano variables
     mode=DebugMode) that check if your Op behave correctly in this
     regard.
 
+.. note::
+
+   See :ref:`dev_start_guide` for information about git, github, the
+   development workflow and how to make a quality contribution.
+
 Op contract
 -----------
 
