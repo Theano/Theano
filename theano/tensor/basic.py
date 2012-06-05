@@ -2596,6 +2596,11 @@ def arctan(a):
     """arctangent of a"""
 
 
+@_scal_elemwise_with_nfunc('arctan2', 1, 1)
+def arctan2(a, b):
+    """arctangent of a / b"""
+
+
 @_scal_elemwise_with_nfunc('cosh', 1, 1)
 def cosh(a):
     """hyperbolic cosine of a"""

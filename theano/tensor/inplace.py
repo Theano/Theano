@@ -168,6 +168,10 @@ def arctan_inplace(a):
     """arctangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arctan2_inplace(a, b):
+    """arctangent of `a` / `b` (inplace on `a`)"""
+
+@_scal_inplace
 def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 

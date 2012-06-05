@@ -1103,17 +1103,48 @@ TanInplaceTester = makeBroadcastTester(op=inplace.tan_inplace,
                                        grad_rtol=tan_grad_rtol,
                                        inplace=True)
 
-ArcTanTester = makeBroadcastTester(op=tensor.tan,
-                                   expected=numpy.tan,
+ArcTanTester = makeBroadcastTester(op=tensor.arctan,
+                                   expected=numpy.arctan,
                                    good=_good_broadcast_unary_wide,
                                    grad=_grad_broadcast_unary_wide,
                                    grad_rtol=tan_grad_rtol)
-ArcTanInplaceTester = makeBroadcastTester(op=inplace.tan_inplace,
-                                          expected=numpy.tan,
+ArcTanInplaceTester = makeBroadcastTester(op=inplace.arctan_inplace,
+                                          expected=numpy.arctan,
                                           good=_good_broadcast_unary_wide,
                                           grad=_grad_broadcast_unary_wide,
                                           grad_rtol=tan_grad_rtol,
                                           inplace=True)
+
+_good_broadcast_binary_arctan2 = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    not_same_dimensions=(rand(2, 2), rand(2)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    integers=(randint(2, 3), randint(2, 3)),
+    dtype_mixup_1=(rand(2, 3), randint(2, 3)),
+    dtype_mixup_2=(randint(2, 3), rand(2, 3)),
+    empty=(numpy.asarray([]), numpy.asarray([1])),
+    )
+
+_grad_broadcast_binary_arctan2 = dict(
+    same_shapes=(rand(2, 3), rand(2, 3)),
+    scalar=(rand(2, 3), rand(1, 1)),
+    row=(rand(2, 3), rand(1, 3)),
+    column=(rand(2, 3), rand(2, 1)),
+    )
+
+ArcTan2Tester = makeBroadcastTester(op=tensor.arctan2,
+                                    expected=numpy.arctan2,
+                                    good=_good_broadcast_binary_arctan2,
+                                    grad=_grad_broadcast_binary_arctan2,
+                                    grad_rtol=tan_grad_rtol)
+ArcTan2InplaceTester = makeBroadcastTester(op=inplace.arctan2_inplace,
+                                           expected=numpy.arctan2,
+                                           good=_good_broadcast_binary_arctan2,
+                                           grad=_grad_broadcast_binary_arctan2,
+                                           grad_rtol=tan_grad_rtol,
+                                           inplace=True)
 
 CoshTester = makeBroadcastTester(op=tensor.cosh,
                                  expected=numpy.cosh,

@@ -2113,6 +2113,27 @@ class ArcTan(UnaryScalarOp):
 arctan = ArcTan(upgrade_to_float, name='arctan')
 
 
+class ArcTan2(BinaryScalarOp):
+    def impl(self, y, x):
+        return numpy.arctan2(y, x)
+
+    def grad(self, (y, x), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types and y.type in float_types:
+            return [gz * x / (sqr(x) + sqr(y)),
+                    gz * neg(y) / (sqr(x) + sqr(y))]
+        else:
+            return None,
+
+    def c_code(self, node, name, (y, x), (z,), sub):
+        if (node.inputs[0].type in complex_types or
+            node.inputs[1].type in complex_types):
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atan2(%(y)s, %(x)s);" % locals()
+arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
+
+
 class Cosh(UnaryScalarOp):
     """
     cosh(x) = (exp(x) + exp(-x)) / 2
