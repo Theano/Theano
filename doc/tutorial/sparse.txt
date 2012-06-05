@@ -1,0 +1,38 @@
+.. _tutsparse:
+
+======
+Sparse
+======
+
+This is a very short tutorial on sparse with Theano. There is still
+some not well documented behavior like how we take care of the
+gradient. There is 2 types of gradient for sparse operation. ``full
+gradient`` that compute a gradient for values even if they were 0 and
+the ``structured gradient`` that returns a gradient only for values
+that where not 0. You need to check the code to know witch gradient an
+op implement.
+
+More documentation in the :ref:`Sparse Library Reference <libdoc_sparse>`.
+
+A small example:
+
+.. code-block:: python
+
+    import theano
+    import theano.tensor as T
+    import scipy.sparse as sp
+    import theano.sparse as S
+    import numpy as np
+
+    x = S.csr_matrix ('x')
+    #x = T.matrix ('x')
+    y = T.matrix ('y')
+    z = S.dot (x, y)
+    f = theano.function ([x, y], z)
+
+    #a = np.array ([[0, 1], [1, 0], [1, 0], [0, 1]], dtype=np.float32)
+    a = sp.coo_matrix (([1] * 4, (range (4), [0, 1, 1, 0])), dtype=np.float32)
+
+    b = np.array ([[10, 11], [12, 13]], dtype=np.float32)
+
+    print f (a, b)
