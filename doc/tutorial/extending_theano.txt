@@ -18,6 +18,23 @@ Inputs and Outputs are lists of Theano variables
 .. image:: ../hpcs2011_tutorial/pics/apply_node.png
     :width: 500 px
 
+.. note::
+
+    This tutorial do not cover how to make an op that return a view or
+    modify the values in it's inputs. So all
+    Op done with the instruction here MUST return newly allocated
+    memory or reuse the memory provided in the parameter
+    output_storage of the :func:`perform` function. See :ref:`views_and_inplace`
+    for explanation of how to do this.
+
+    If your Op return a view or change the value in its inputs
+    without doing as said in that page, Theano will run, but will
+    return good results some graph, but bad results for others.
+
+    It is recommented that you run your tests in DebugMode (Theano flag
+    mode=DebugMode) that check if your Op behave correctly in this
+    regard.
+
 Op contract
 -----------
 
