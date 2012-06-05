@@ -1,6 +1,8 @@
 import numpy
 
-from theano.tensor.utils import hash_from_ndarray, hash_from_dict
+import theano
+from theano.tensor.utils import (hash_from_ndarray, hash_from_dict,
+        shape_of_variables)
 
 
 def test_hash_from_ndarray():
@@ -46,3 +48,23 @@ def test_hash_from_dict():
 
     # List are not hashable. So they are transformed into tuple.
     assert hash_from_dict({0: (0,)}) == hash_from_dict({0: [0]})
+
+def test_shape_of_variables_simple():
+    x = theano.tensor.matrix('x')
+    y = x+x
+    env = theano.Env([x], [y])
+    assert shape_of_variables(env, {x: (5, 5)}) == {x: (5, 5), y: (5, 5)}
+
+    x = theano.tensor.matrix('x')
+    y = theano.tensor.dot(x, x.T)
+    env = theano.Env([x], [y])
+    shapes = shape_of_variables(env, {x: (5, 1)})
+    assert shapes[x] == (5, 1)
+    assert shapes[y] == (5, 5)
+
+def test_shape_of_variables_subtensor():
+    x = theano.tensor.matrix('x')
+    subx = x[1:]
+    env = theano.Env([x], [subx])
+    shapes = shape_of_variables(env, {x: (10, 10)})
+    assert shapes[subx] == (9, 10)
