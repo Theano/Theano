@@ -121,7 +121,7 @@ def test_memory_lazy():
     We need to test it as the ifelse op with the [c]vm create op not
     executed in the graph. This mess with [c]vm gc implementation.
     """
-    shapes = (200, 100)
+    shapes = (50, 100)
     # more_alloc1 and more_alloc2 is not the same for both dtype.
     # when dtype is float32, the computation is done on the gpu.
     # This insert constant on the gpu during compilation
