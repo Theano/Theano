@@ -204,6 +204,7 @@ class SqueezeOp(theano.Op):
     """
 
     def __init__(self, out_nd):
+        self.view_map = {0: [0]}
         self.out_nd = out_nd
 
     def __eq__(self, other):
