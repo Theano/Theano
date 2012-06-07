@@ -1464,6 +1464,14 @@ class Test_getitem(unittest.TestCase):
             assert r11.shape == t11.shape
             assert numpy.all(r11.toarray() == t11.toarray())
 
+            # Test that is work with shared variable
+            sx = theano.shared(vx)
+            f12 = theano.function([a], sx[:, a:])
+            r12 = f12(p)
+            t12 = vx[:, p:]
+            assert r12.shape == t12.shape
+            assert numpy.all(r12.toarray() == t12.toarray())
+
             #------------------------------------------------------------
             # Invalid things
             # The syntax is a bit awkward because assertRaises forbids
@@ -1525,6 +1533,14 @@ class Test_getitem(unittest.TestCase):
             t4 = vx[m, n]
             assert r3.shape == t3.shape
             assert numpy.all(t4 == r4)
+
+            # Test that is work with shared variable
+            sx = theano.shared(vx)
+            f1 = theano.function([a, b], sx[a, b])
+            r1 = f1(10, 10)
+            t1 = vx[10, 10]
+            assert r1.shape == t1.shape
+            assert numpy.all(t1 == r1)
 
 
 import theano.tensor.tests.test_sharedvar
