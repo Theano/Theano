@@ -176,16 +176,16 @@ class TestFourier(utt.InferShapeTester):
 
     def test_gradient(self):
             def fft_test1(a):
-                return self.op(a, 8, 1)
-
-            def fft_test2(a):
-                return self.op(a, None, 1)
-
-            def fft_test3(a):
                 return self.op(a, None, None)
 
-            def fft_test4(a):
+            def fft_test3(a):
+                return self.op(a, None, 1)
+
+            def fft_test2(a):
                 return self.op(a, 3, None)
+
+            def fft_test4(a):
+                return self.op(a, 8, 1)
 
             pts = [numpy.random.rand(2, 5, 4, 3),
                    numpy.random.rand(2, 5, 4),
