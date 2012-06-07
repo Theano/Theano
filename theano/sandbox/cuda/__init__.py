@@ -10,6 +10,7 @@ import numpy
 import theano
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
+from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import config, AddConfigVar, StrParam
 import nvcc_compiler
 
@@ -106,8 +107,9 @@ if not compile_cuda_ndarray:
     except ImportError:
         compile_cuda_ndarray = True
 
-try:
-    if compile_cuda_ndarray:
+if compile_cuda_ndarray:
+    get_lock()
+    try:
         if not nvcc_compiler.is_nvcc_available():
             set_cuda_disabled()
 
@@ -131,9 +133,11 @@ try:
                     include_dirs=[cuda_path], libs=['cublas'],
                     preargs=compiler.compile_args())
             from cuda_ndarray.cuda_ndarray import *
-except Exception, e:
-    _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
-    set_cuda_disabled()
+    except Exception, e:
+        _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
+        set_cuda_disabled()
+    finally:
+        release_lock()
 
 if cuda_available:
     # If necessary,
