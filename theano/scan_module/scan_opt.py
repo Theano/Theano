@@ -670,9 +670,13 @@ class ScanSaveMem(gof.Optimizer):
                         #   a) the input is a set_subtensor, in that case we
                         #      can replace the initial tensor by a slice,
                         #   b) it is not, and we simply take a slice of it.
+
+                        #TODO: commit change below with Razvan
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
-                                       tensor.IncSubtensor)):
+                                       tensor.IncSubtensor) and
+                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             val = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
