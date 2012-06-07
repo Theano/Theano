@@ -55,25 +55,32 @@ class Fourier(gof.Op):
         if axis is None:
             axis = a.ndim - 1
             axis = tensor.as_tensor_variable(axis)
-        elif (not axis.dtype.startswith('int')) and \
-             (not axis.dtype.startswith('uint')):
-            raise TypeError('%s: index of the transformed axis must be'
-                            ' of type integer' % self.__class__.__name__)
-        elif axis.ndim != 0 or axis < 0 or axis > a.ndim - 1:
-            raise TypeError('%s: index of the transformed axis must be'
-                            ' a scalar not smaller than 0 and smaller than'
-                            ' dimension of array' % self.__class__.__name__)
+        else:
+            axis = tensor.as_tensor_variable(axis)
+            if (not axis.dtype.startswith('int')) and \
+               (not axis.dtype.startswith('uint')):
+                raise TypeError('%s: index of the transformed axis must be'
+                                ' of type integer' % self.__class__.__name__)
+            elif axis.ndim != 0 or (isinstance(axis, tensor.TensorConstant) and
+                                    (axis.data < 0 or axis.data > a.ndim - 1)):
+                raise TypeError('%s: index of the transformed axis must be'
+                                ' a scalar not smaller than 0 and smaller than'
+                                ' dimension of array' % self.__class__.__name__)
+
         if n is None:
             n = a.shape[axis]
             n = tensor.as_tensor_variable(n)
-        elif (not n.dtypestartswith('int')) and \
-             (not n.dtypestartswith('uint')):
-            raise TypeError('%s: length of the transformed axis must be'
-                            ' of type integer' % self.__class__.__name__)
-        elif n.ndim != 0 or n < 1:
-            raise TypeError('%s: length of the transformed axis must be a'
-                            ' strictly positive scalar'
-                            % self.__class__.__name__)
+        else:
+            n = tensor.as_tensor_variable(n)
+            if (not n.dtype.startswith('int')) and \
+               (not n.dtype.startswith('uint')):
+                raise TypeError('%s: length of the transformed axis must be'
+                                ' of type integer' % self.__class__.__name__)
+            elif n.ndim != 0 or (isinstance(n, tensor.TensorConstant) and
+                                 n.data < 1):
+                raise TypeError('%s: length of the transformed axis must be a'
+                                ' strictly positive scalar'
+                                % self.__class__.__name__)
 
         return gof.Apply(self, [a, n, axis], [tensor.TensorType('complex128',
                         a.type.broadcastable)()])
