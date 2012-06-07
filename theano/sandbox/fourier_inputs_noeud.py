@@ -90,7 +90,7 @@ class Fourier(gof.Op):
         n = node.inputs[1]
         axis = node.inputs[2]
         if len(shape_a) == 1:
-            return (shape_a,)
+            return [(n,)]
         elif isinstance(axis, tensor.TensorConstant):
             out_shape = list(shape_a[0: axis.data]) + [n] + list(shape_a[axis.data + 1:])
         else:
