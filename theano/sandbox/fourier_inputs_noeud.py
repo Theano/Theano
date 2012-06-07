@@ -155,7 +155,7 @@ class TestFourier(utt.InferShapeTester):
         a = tensor.dmatrix()
         f = function([a], self.op(a, n=10, axis=0))
         a = numpy.random.rand(8, 6)
-        assert numpy.allclose(f(a), numpy.fft.fft(a))
+        assert numpy.allclose(f(a), numpy.fft.fft(a, 10, 0))
 
     def test_infer_shape(self):
         a = tensor.dvector()
