@@ -204,9 +204,9 @@ class TestFourier(utt.InferShapeTester):
         def fft_test4(a):
             return self.op(a, 4, 0)
 
-        pts = [numpy.random.rand(7, 2, 4, 3),
-               numpy.random.rand(5, 5, 4),
-               numpy.random.rand(2, 9),
+        pts = [numpy.random.rand(5, 2, 4, 3),
+               numpy.random.rand(2, 3, 4),
+               numpy.random.rand(2, 5),
                numpy.random.rand(5)]
         for fft_test in [fft_test1, fft_test2, fft_test3, fft_test4]:
             for pt in pts:
