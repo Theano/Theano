@@ -15,7 +15,6 @@ from numpy.testing import assert_array_almost_equal
 #from numpy.testing import dec
 #from numpy.testing.noseclasses import KnownFailureTest
 
-#from theano.tensor.blas import *
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 _is_real_matrix, _gemm_canonicalize,
                                 _factor_canonicalized, Gemm, Gemv,
@@ -184,7 +183,9 @@ class t_gemm(TestCase):
         f = theano.function([a, b], updates={s: lr1 * T.dot(a, b) +
                                                 l2_reg * lr2 * s},
                             mode=mode_not_fast_compile).maker.env.toposort()
-        #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
+        #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
+        # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
+        # 2e-06)]
         assert len(f) == 1
         assert f[0].op == gemm_inplace
 
@@ -192,14 +193,19 @@ class t_gemm(TestCase):
         f = theano.function([a, b], updates={s: lr1 * (T.dot(a, b) -
                                                         l2_reg * s)},
                             mode=mode_not_fast_compile).maker.env.toposort()
-        #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, -2e-06)]
+        #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
+        # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
+        # -2e-06)]
         assert len(f) == 1
         assert f[0].op == gemm_inplace
 
         #test factored scalar with merge and neg
-        f = theano.function([a,b],updates={s:s-lr1*(s*.0002+T.dot(a,b))},
+        f = theano.function([a, b],
+                            updates={s: s - lr1 * (s * .0002 + T.dot(a, b))},
                             mode=mode_not_fast_compile).maker.env.toposort()
-        #[Gemm{inplace}(<TensorType(float64, matrix)>, -0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 0.999998)]
+        #[Gemm{inplace}(<TensorType(float64, matrix)>, -0.01,
+        # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
+        # 0.999998)]
         assert len(f) == 1
         assert f[0].op == gemm_inplace
 
@@ -291,7 +297,8 @@ class t_gemm(TestCase):
             tx.set_value(y_T, borrow=True)
 
             f()
-            # test that the transposed version of multiplication gives same answer
+            # test that the transposed version of multiplication gives
+            # same answer
             self.assertTrue(_approx_eq(z_after, tz.get_value(borrow=True).T))
 
         t(C, A, B)
@@ -330,12 +337,14 @@ class t_gemm(TestCase):
             z_orig = z.copy()
             z_after = numpy.zeros_like(z_orig)
             for i in xrange(3):
-                z_after[:,:,i] = self._gemm(z[:,:,i], a, x[:,:,i], y[:,:,i], b)
+                z_after[:, :, i] = self._gemm(z[:, :, i], a,
+                                              x[:, :, i], y[:, :, i], b)
 
             tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
             for i in xrange(3):
                 f_i = inplace_func([],
-                        gemm_inplace(tz[:,:,i], ta, tx[:,:,i], ty[:,:,i], tb),
+                        gemm_inplace(tz[:, :, i],
+                             ta, tx[:, :, i], ty[:, :, i], tb),
                         mode=compile.Mode(optimizer=None, linker=l))
                 for j in xrange(3):
                     # tz will not _always_ be overwritten,
@@ -347,30 +356,32 @@ class t_gemm(TestCase):
 
                     self.assertTrue(
                             _approx_eq(z_after[:, :, i],
-                                       tz.get_value(borrow=True)[:,:,i]),
-                            (z_orig[:,:,i], z_after[:,:,i],
-                                z[:,:,i], z_after[:,:,i] - z[:,:,i]))
+                                       tz.get_value(borrow=True)[:, :, i]),
+                            (z_orig[:, :, i], z_after[:, :, i],
+                                z[:, :, i], z_after[:, :, i] - z[:, :, i]))
 
-                tz_i = gemm_no_inplace(tz[:,:,i], ta, tx[:,:,i], ty[:,:,i], tb)
+                tz_i = gemm_no_inplace(tz[:, :, i], ta, tx[
+                    :, :, i], ty[:, :, i], tb)
                 g_i = theano.function([], tz_i,
-                        updates={tz:T.set_subtensor(tz[:,:,i], tz_i)},
+                        updates={tz: T.set_subtensor(tz[:, :, i], tz_i)},
                         mode=compile.Mode(optimizer=None, linker=l))
                 for j in xrange(3):
                     g_i()
                     self.assertTrue(
-                            _approx_eq(z_after[:,:,i],
-                                       tz.get_value(borrow=True)[:,:,i]),
-                            (z_orig[:,:,i], z_after[:,:,i],
-                                z[:,:,i], z_after[:,:,i] - z[:,:,i]))
+                            _approx_eq(z_after[:, :, i],
+                                       tz.get_value(borrow=True)[:, :, i]),
+                            (z_orig[:, :, i], z_after[:, :, i],
+                                z[:, :, i], z_after[:, :, i] - z[:, :, i]))
 
         t(C, A, B)
-        t(C.transpose((1,0,2)), A, B)
-        t(C, A.transpose((1,0,2)), B, dt='float32')
-        t(C, A, B.transpose((1,0,2)))
-        t(C.transpose((1,0,2)), A.transpose((1,0,2)), B)
-        t(C, A.transpose((1,0,2)), B.transpose((1,0,2)), dt='float32')
-        t(C.transpose((1,0,2)), A, B.transpose((1,0,2)))
-        t(C.transpose((1,0,2)), A.transpose((1,0,2)), B.transpose((1,0,2)), dt='float32')
+        t(C.transpose((1, 0, 2)), A, B)
+        t(C, A.transpose((1, 0, 2)), B, dt='float32')
+        t(C, A, B.transpose((1, 0, 2)))
+        t(C.transpose((1, 0, 2)), A.transpose((1, 0, 2)), B)
+        t(C, A.transpose((1, 0, 2)), B.transpose((1, 0, 2)), dt='float32')
+        t(C.transpose((1, 0, 2)), A, B.transpose((1, 0, 2)))
+        t(C.transpose((1, 0, 2)), A.transpose((1, 0, 2)), B.transpose((
+            1, 0, 2)), dt='float32')
 
 
 def test_res_is_a():
@@ -438,8 +449,13 @@ def fail(msg):
     assert False
 
 
-"""This test suite ensures that Gemm is inserted where it belongs, and that the resulting
-functions compute the same things as the originals."""
+"""This test suite ensures that Gemm is inserted where it belongs, and
+that the resulting functions compute the same things as the
+originals.
+
+"""
+
+
 def XYZab():
     return T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
 
@@ -496,65 +512,72 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()], max_graphlen=0):
 
 def test_gemm_opt0():
     """Many subgraphs whose dots can be eliminated"""
-    X,Y,Z,a,b = XYZab()
+    X, Y, Z, a, b = XYZab()
 
-    just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a + Z * b])
-    just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) + b * Z])
-    just_gemm([X,Y,Z,a,b], [b * Z + a * T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [T.dot(X,Y) * a - Z * b])
-    just_gemm([X,Y,Z,a,b], [a * T.dot(X,Y) - b * Z])
-    just_gemm([X,Y,Z,a,b], [b * Z - a * T.dot(X,Y)])
+    just_gemm([X, Y, Z, a, b], [T.dot(X, Y) * a + Z * b])
+    just_gemm([X, Y, Z, a, b], [a * T.dot(X, Y) + b * Z])
+    just_gemm([X, Y, Z, a, b], [b * Z + a * T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [T.dot(X, Y) * a - Z * b])
+    just_gemm([X, Y, Z, a, b], [a * T.dot(X, Y) - b * Z])
+    just_gemm([X, Y, Z, a, b], [b * Z - a * T.dot(X, Y)])
 
     #with transposes (transposes should be pushed through dot in canonicalize)
-    just_gemm([X,Y,Z,a,b], [b * Z.T - a * T.dot(Y.T,X.T)])
-    just_gemm([X,Y,Z,a,b], [b * Z.T + a * b * T.dot(X,Y).T])
-    just_gemm([X,Y,Z,a,b], [b * Z + a * T.dot(X,Y).T],
-            ishapes=[(5,3), (3,4), (4,5), (), ()])
+    just_gemm([X, Y, Z, a, b], [b * Z.T - a * T.dot(Y.T, X.T)])
+    just_gemm([X, Y, Z, a, b], [b * Z.T + a * b * T.dot(X, Y).T])
+    just_gemm([X, Y, Z, a, b], [b * Z + a * T.dot(X, Y).T],
+            ishapes=[(5, 3), (3, 4), (4, 5), (), ()])
 
     #with N multiplications instead of just one
-    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) * b])
-    just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [Z*b + T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [Z + a*b*a*T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a - (a * a) * T.dot(X,Y) * b])
-    just_gemm([X,Y,Z,a,b], [Z - T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [Z*b - T.dot(X,Y)])
-    just_gemm([X,Y,Z,a,b], [Z - a*b*a*T.dot(X,Y)])
+    just_gemm([X, Y, Z, a, b], [(b * b) * Z * a + (a * a) * T.dot(X, Y) * b])
+    just_gemm([X, Y, Z, a, b], [Z + T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [Z * b + T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [Z + a * b * a * T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [(b * b) * Z * a - (a * a) * T.dot(X, Y) * b])
+    just_gemm([X, Y, Z, a, b], [Z - T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [Z * b - T.dot(X, Y)])
+    just_gemm([X, Y, Z, a, b], [Z - a * b * a * T.dot(X, Y)])
 
 
 def test_gemm_opt_double_gemm():
     """This is the pattern that shows up in the autoencoder"""
-    X,Y,Z,a,b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
+    X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
     R, S, c = T.matrix(), T.matrix(), T.scalar()
 
-    just_gemm([X,Y,Z,a,b, R, S, c], [Z *c + a * T.dot(X,Y) + b * T.dot(R,S).T],
-            ishapes=[(4,3), (3,5), (4,5), (), (), (5,9), (9,4), ()])
+    just_gemm([X, Y, Z, a, b, R, S, c],
+              [Z * c + a * T.dot(X, Y) + b * T.dot(R, S).T],
+              ishapes=[(4, 3), (3, 5), (4, 5), (), (), (5, 9), (9, 4), ()])
 
-    ishapes=[(4,3), (3,5), (4,5), (), (), (5,9), (9,4), ()]
-    i = [X,Y,Z,a,b, R, S, c]
-    o = [(a * T.dot(X,Y)
+    ishapes = [(4, 3), (3, 5), (4, 5), (), (), (5, 9), (9, 4), ()]
+    i = [X, Y, Z, a, b, R, S, c]
+    o = [(a * T.dot(X, Y)
         + gemm_inplace(Z, b, S.T, R.T, T.constant(1.0).astype(config.floatX)))]
     try:
-        f = inplace_func([Param(ii, mutable=True) for ii in i],o,
+        f = inplace_func([Param(ii, mutable=True) for ii in i], o,
                 mode='FAST_RUN', on_unused_input='ignore')
         for node in f.maker.env.nodes:
-            if node.op == T.dot: raise Failure('dot in graph')
-            if node.op == _dot22: raise Failure('_dot22 in graph')
+            if node.op == T.dot:
+                raise Failure('dot in graph')
+            if node.op == _dot22:
+                raise Failure('_dot22 in graph')
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 on_unused_input='ignore')
         #for node in g.maker.env.nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 
         rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r0 = f(*[numpy.asarray(rng.randn(*sh), config.floatX) for sh in ishapes])
+        r0 = f(*[numpy.asarray(rng.randn(*sh), config.floatX)
+             for sh in ishapes])
         rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r1 = g(*[numpy.asarray(rng.randn(*sh), config.floatX) for sh in ishapes])
+        r1 = g(*[numpy.asarray(rng.randn(*sh), config.floatX)
+             for sh in ishapes])
         max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
         eps = 1.0e-8
         if config.floatX == 'float32':
             eps = 1.0e-6
         if  max_abs_err > eps:
-            raise Failure('GEMM is computing the wrong output. max_rel_err =', max_abs_err)
+            raise Failure(
+                'GEMM is computing the wrong output. max_rel_err =',
+                max_abs_err)
     except Failure:
         for node in f.maker.env.toposort():
             print 'GRAPH', node
@@ -562,8 +585,10 @@ def test_gemm_opt_double_gemm():
 
 
 def test_gemm_canonicalize():
-    X,Y,Z,a,b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar('a'), T.scalar('b')
-    R,S,U,c,d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar('c'), T.scalar('d')
+    X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
+        'a'), T.scalar('b')
+    R, S, U, c, d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar(
+        'c'), T.scalar('d')
     u = T.row('u')
     v = T.vector('v')
     w = T.col('w')
@@ -592,7 +617,7 @@ def test_gemm_canonicalize():
     assert can == [(1.0, X), (1.0, Y), (1.0, w)], can
 
     can = []
-    _gemm_canonicalize(a*X + Y - b*Z*c, 1.0, can, 0)
+    _gemm_canonicalize(a * X + Y - b * Z * c, 1.0, can, 0)
     assert can[0] == (a, X)
     assert can[1] == (1.0, Y)
     assert can[2][0].owner.op == T.mul
@@ -601,7 +626,7 @@ def test_gemm_canonicalize():
     assert can[2][0].owner.inputs[1] == b
 
     can = []
-    _gemm_canonicalize((-d) * X - (a*X + Y - b*Z*c), 1.0, can, 0)
+    _gemm_canonicalize((-d) * X - (a * X + Y - b * Z * c), 1.0, can, 0)
     #print can
     assert can[0][0].owner.op == T.neg
     assert can[0][0].owner.inputs[0] == d
@@ -610,14 +635,18 @@ def test_gemm_canonicalize():
     assert can[1][0].owner.inputs[0] == a
     assert can[2] == (-1.0, Y)
     assert can[3][0].owner.op == T.mul
-    assert can[3][0].owner.inputs == [c,b]
+    assert can[3][0].owner.inputs == [c, b]
+
 
 def test_gemm_factor():
-    X,Y,Z,a,b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar('a'), T.scalar('b')
-    R,S,U,c,d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar('c'), T.scalar('d')
+    X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
+        'a'), T.scalar('b')
+    R, S, U, c, d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar(
+        'c'), T.scalar('d')
 
     assert [(1.0, X), (1.0, Y)] == _factor_canonicalized([(1.0, X), (1.0, Y)])
-    assert [(2.0, X)] == _factor_canonicalized([(1.0, X),(1.0, X)])
+    assert [(2.0, X)] == _factor_canonicalized([(1.0, X), (1.0, X)])
+
 
 def test_upcasting_scalar_nogemm():
     # Test that the optimization does not crash when the scale has an incorrect
@@ -651,119 +680,137 @@ def test_upcasting_scalar_nogemm():
     assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
-def test_gemm_nested():
-    X,Y,Z,a,b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar('a'), T.scalar('b')
-    R,S,U,c,d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar('c'), T.scalar('d')
 
-    just_gemm([X,Y,Z,R,S,U,a,b,c,d],
-            [a * Z - b * (c*T.dot(X,Y) + d*Z)],
-            ishapes=[(2,3),(3,4),(2,4),(2,3),(3,4),(2,4),(),(),(),()],
+def test_gemm_nested():
+    X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
+        'a'), T.scalar('b')
+    R, S, U, c, d = T.matrix('R'), T.matrix('S'), T.matrix('U'), T.scalar(
+        'c'), T.scalar('d')
+
+    just_gemm([X, Y, Z, R, S, U, a, b, c, d],
+            [a * Z - b * (c * T.dot(X, Y) + d * Z)],
+            ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
+                2, 4), (), (), (), ()],
             max_graphlen=1)
     #print "---------------------"
-    just_gemm([X,Y,Z,R,S,U,a,b,c,d],
-            [a * Z - b * (c*T.dot(X,Y) + d*Z + c*Z)],
-            ishapes=[(2,3),(3,4),(2,4),(2,3),(3,4),(2,4),(),(),(),()],
+    just_gemm([X, Y, Z, R, S, U, a, b, c, d],
+            [a * Z - b * (c * T.dot(X, Y) + d * Z + c * Z)],
+            ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
+                2, 4), (), (), (), ()],
             max_graphlen=1)
     #print "---------------------"
-    just_gemm([X,Y,Z,R,S,U,a,b,c,d],
-            [a * Z - b * (c*T.dot(X,Y) + d*Z + c*U)],
-            ishapes=[(2,3),(3,4),(2,4),(2,3),(3,4),(2,4),(),(),(),()],
+    just_gemm([X, Y, Z, R, S, U, a, b, c, d],
+            [a * Z - b * (c * T.dot(X, Y) + d * Z + c * U)],
+            ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
+                2, 4), (), (), (), ()],
             max_graphlen=3)
 
+
 def test_gemm_opt_wishlist():
-    X,Y,Z,a,b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
+    X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
 
     #with >2 additions of the same T.dot(X,Y term
-    just_gemm([X,Y,Z,a,b], [(b * b) * Z * a + (a * a) * T.dot(X,Y) + b * T.dot(X,Y)])
+    just_gemm([X, Y, Z, a, b], [(b * b) * Z * a + (a * a) * T.dot(X, Y) +
+         b * T.dot(X, Y)])
 
-    just_gemm([X,Y,Z,a,b], [Z + T.dot(X,Y) + T.dot(X,Y)])
+    just_gemm([X, Y, Z, a, b], [Z + T.dot(X, Y) + T.dot(X, Y)])
+
 
 def test_gemm_with_vector():
-    """Many subgraphs whose dots can be eliminated.
-    This adds a vector two the previous test, which triggers the long-sought GEMM bug.
+    """Many subgraphs whose dots can be eliminated.  This adds a
+    vector two the previous test, which triggers the long-sought GEMM
+    bug.
+
     """
-    X,Y,Z,a,b = XYZab()
+    X, Y, Z, a, b = XYZab()
     v = T.vector()
+
     def my_just_gemm(o):
-        i = [X,Y,Z,a,b,v]
-        ishapes = [(4,3), (3,5), (4,5), (), (), (5,)]
+        i = [X, Y, Z, a, b, v]
+        ishapes = [(4, 3), (3, 5), (4, 5), (), (), (5, )]
         rval = just_gemm(i, o, ishapes=ishapes)
 
-    my_just_gemm([v + T.dot(X,Y) * a + Z * b])
-    my_just_gemm([v + a * T.dot(X,Y) + b * Z])
-    my_just_gemm([v + b * Z + a * T.dot(X,Y)])
-    my_just_gemm([v + T.dot(X,Y) * a - Z * b])
-    my_just_gemm([v + a * T.dot(X,Y) - b * Z])
-    my_just_gemm([v + b * Z - a * T.dot(X,Y)])
+    my_just_gemm([v + T.dot(X, Y) * a + Z * b])
+    my_just_gemm([v + a * T.dot(X, Y) + b * Z])
+    my_just_gemm([v + b * Z + a * T.dot(X, Y)])
+    my_just_gemm([v + T.dot(X, Y) * a - Z * b])
+    my_just_gemm([v + a * T.dot(X, Y) - b * Z])
+    my_just_gemm([v + b * Z - a * T.dot(X, Y)])
 
     #with N multiplications instead of just one
-    my_just_gemm([v + (b * b) * Z * a + (a * a) * T.dot(X,Y) * b])
-    my_just_gemm([v + Z + T.dot(X,Y)])
-    my_just_gemm([v + Z*b + T.dot(X,Y)])
-    my_just_gemm([v + Z + a*b*a*T.dot(X,Y)])
-    my_just_gemm([v + (b * b) * Z * a - (a * a) * T.dot(X,Y) * b])
-    my_just_gemm([Z - T.dot(X,Y) + v])
-    my_just_gemm([Z*b - T.dot(X,Y) + v])
-    my_just_gemm([Z - a*b*a*T.dot(X,Y) + v])
+    my_just_gemm([v + (b * b) * Z * a + (a * a) * T.dot(X, Y) * b])
+    my_just_gemm([v + Z + T.dot(X, Y)])
+    my_just_gemm([v + Z * b + T.dot(X, Y)])
+    my_just_gemm([v + Z + a * b * a * T.dot(X, Y)])
+    my_just_gemm([v + (b * b) * Z * a - (a * a) * T.dot(X, Y) * b])
+    my_just_gemm([Z - T.dot(X, Y) + v])
+    my_just_gemm([Z * b - T.dot(X, Y) + v])
+    my_just_gemm([Z - a * b * a * T.dot(X, Y) + v])
+
 
 def test_gemm_opt_vector_stuff():
-    X,Y,Z,a,b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
-    u,v = T.vector(), T.vector()
+    X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
+    u, v = T.vector(), T.vector()
 
-    f = inplace_func([a, u, v], a + T.dot(u,v), mode='FAST_RUN')
+    f = inplace_func([a, u, v], a + T.dot(u, v), mode='FAST_RUN')
     if gemm_inplace in [n.op for n in f.maker.env.nodes]:
         raise Failure('gemm_inplace in graph')
 
-    f = inplace_func([a, u, X,Y], a * u + T.dot(X,Y), mode='FAST_RUN')
+    f = inplace_func([a, u, X, Y], a * u + T.dot(X, Y), mode='FAST_RUN')
     if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
         raise Failure('gemm_inplace in graph')
 
+
 def test_inplace0():
-    #should fail to insert gemm_inplace because gemm_inplace would create cycles
-    X,Y,Z,a,b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar('a'), T.scalar('b')
+    #should fail to insert gemm_inplace because gemm_inplace would
+    #create cycles
+    X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
+        'a'), T.scalar('b')
     R, S, c = T.matrix('R'), T.matrix('S'), T.scalar('c')
 
     f = inplace_func([Z, b, R, S],
-            [Z * (Z + b * T.dot(R,S).T)], mode='FAST_RUN')
+            [Z * (Z + b * T.dot(R, S).T)], mode='FAST_RUN')
     if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
         print pp(f.maker.env.outputs[0])
         raise Failure('gemm_inplace in graph')
     assert gemm_no_inplace in [n.op for n in f.maker.env.nodes]
 
     # gemm_inplace should be inserted here, to work in-place on Z*c
-    f = inplace_func([X,Y,Z,a,b, R, S, c],
-            [Z * (c*Z + a * T.dot(X,Y) + b * T.dot(R,S).T)],
+    f = inplace_func([X, Y, Z, a, b, R, S, c],
+            [Z * (c * Z + a * T.dot(X, Y) + b * T.dot(R, S).T)],
             mode='FAST_RUN')
     if (not gemm_inplace in [n.op for n in f.maker.env.nodes]):
         theano.printing.debugprint(f)
         raise Failure('no gemm_inplace in graph')
 
+
 def test_inplace1():
-    X,Y,Z,a,b = XYZab()
+    X, Y, Z, a, b = XYZab()
     # with > 2 terms in the overall addition
     f = inplace_func([X, Y, Z],
-            [Z + Z + T.dot(X,Y)], mode='FAST_RUN')
+            [Z + Z + T.dot(X, Y)], mode='FAST_RUN')
     #theano.printing.debugprint(f)
     # it doesn't work inplace because we didn't mark Z as mutable input
     assert [n.op for n in f.maker.env.nodes] == [gemm_no_inplace]
+
 
 def test_dot22():
     for dtype1 in ['float32', 'float64', 'complex64', 'complex128']:
         a = T.matrix(dtype=dtype1)
         for dtype2 in ['float32', 'float64', 'complex64', 'complex128']:
             b = T.matrix(dtype=dtype2)
-            f = theano.function([a,b],T.dot(a,b),mode=mode_blas_opt)
+            f = theano.function([a, b], T.dot(a, b), mode=mode_blas_opt)
             topo = f.maker.env.toposort()
             if dtype1 == dtype2:
-                assert _dot22 in [x.op for x in topo], (dtype1,dtype2)
+                assert _dot22 in [x.op for x in topo], (dtype1, dtype2)
             else:
-                assert T.dot in [x.op for x in topo], (dtype1,dtype2)
+                assert T.dot in [x.op for x in topo], (dtype1, dtype2)
             rng = numpy.random.RandomState(unittest_tools.fetch_seed())
 
             def cmp(a_shp, b_shp):
-                av=rng.uniform(size=a_shp).astype(dtype1)
-                bv=rng.uniform(size=b_shp).astype(dtype2)
-                f(av,bv)
+                av = rng.uniform(size=a_shp).astype(dtype1)
+                bv = rng.uniform(size=b_shp).astype(dtype2)
+                f(av, bv)
 
             cmp((3, 4), (4, 5))
             cmp((0, 4), (4, 5))
@@ -772,11 +819,13 @@ def test_dot22():
             cmp((0, 4), (4, 0))
             cmp((0, 0), (0, 0))
 
+
 def test_dot22scalar():
     ## including does not seem to work for 'local_dot_to_dot22' and
     ## 'local_dot22_to_dot22scalar'
     ## TODO: exclude other optimizations in BlasOpt?
-    #m = theano.compile.get_default_mode().including('local_dot_to_dot22','local_dot22_to_dot22scalar','specialize')
+    #m = theano.compile.get_default_mode().including('local_dot_to_dot22',
+    #                           'local_dot22_to_dot22scalar','specialize')
     #m = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     for dtype1 in ['complex64', 'complex128']:
@@ -792,88 +841,111 @@ def test_dot22scalar():
                     def check_dot22scalar(func, len_topo_scalar=-1):
                         topo = func.maker.env.toposort()
                         ops = [x.op for x in topo]
-                        dtype4_upcast = theano.scalar.upcast(dtype4, dtype1, dtype2)
+                        dtype4_upcast = theano.scalar.upcast(dtype4, dtype1,
+                                                             dtype2)
                         if dtype1 == dtype2 == dtype3 == dtype4_upcast:
-                            if len_topo_scalar>0:
+                            if len_topo_scalar > 0:
                                 assert len(topo) == len_topo_scalar
-                            assert _dot22scalar in ops, (dtype1, dtype2, dtype3, dtype4)
+                            assert _dot22scalar in ops, (dtype1, dtype2,
+                                                         dtype3, dtype4)
                         elif dtype1 == dtype2 == dtype4_upcast:
                             if not (len_topo_scalar > 0):
                                 assert len(topo) == len_topo_scalar
-                                assert _dot22scalar in ops, (dtype1, dtype2, dtype3, dtype4)
+                                assert _dot22scalar in ops, (dtype1, dtype2,
+                                                             dtype3, dtype4)
                             else:
-                                # Currently there is a problem of optimization order
-                                # The constant get upcasted to float64 before we try to merge it
-                                # with the dot22 of float32. So this prevent the merge.
-                                assert _dot22scalar in ops or _dot22 in ops, (dtype1, dtype2, dtype3, dtype4)
+                                # Currently there is a problem of
+                                # optimization order The constant get
+                                # upcasted to float64 before we try to
+                                # merge it with the dot22 of
+                                # float32. So this prevent the merge.
+                                assert _dot22scalar in ops or _dot22 in ops, (
+                                    dtype1, dtype2, dtype3, dtype4)
 
                         elif dtype1 == dtype2:
-                            assert _dot22 in ops, (dtype1, dtype2, dtype3, dtype4)
+                            assert _dot22 in ops, (dtype1, dtype2,
+                                                   dtype3, dtype4)
                         else:
-                            assert T.dot in ops, (dtype1, dtype2, dtype3, dtype4)
+                            assert T.dot in ops, (dtype1, dtype2,
+                                                  dtype3, dtype4)
 
-
-                    def cmp(a_shp, b_shp, c_shp, sqr_shp=(5,5)):
-                        av=rng.uniform(size=a_shp).astype(dtype1)
-                        bv=rng.uniform(size=b_shp).astype(dtype2)
-                        cv=rng.uniform(size=c_shp).astype(dtype3)
-                        sv=rng.uniform(size=sqr_shp).astype(dtype1)
+                    def cmp(a_shp, b_shp, c_shp, sqr_shp=(5, 5)):
+                        av = rng.uniform(size=a_shp).astype(dtype1)
+                        bv = rng.uniform(size=b_shp).astype(dtype2)
+                        cv = rng.uniform(size=c_shp).astype(dtype3)
+                        sv = rng.uniform(size=sqr_shp).astype(dtype1)
 
                         if False:
-                            f = theano.function([a,b],cst*T.dot(a,b),mode=mode_blas_opt)
+                            f = theano.function([a, b], cst * T.dot(a, b),
+                                                mode=mode_blas_opt)
                             topo = f.maker.env.toposort()
                             check_dot22scalar(f, 1)
 
-                            f(av,bv)
+                            f(av, bv)
 
                         if True:
-                            f = theano.function([a,b,c],cst*c*T.dot(a,b),mode=mode_blas_opt)
+                            f = theano.function([a, b, c],
+                                                cst * c * T.dot(a, b),
+                                                mode=mode_blas_opt)
                             topo = f.maker.env.toposort()
                             check_dot22scalar(f, 2)
 
-                            f(av,bv,cv)
+                            f(av, bv, cv)
 
-                        f = theano.function([a,b,c],c * cst*T.dot(a,b),mode=mode_blas_opt)
+                        f = theano.function([a, b, c],
+                                            c * cst * T.dot(a, b),
+                                            mode=mode_blas_opt)
                         topo = f.maker.env.toposort()
                         check_dot22scalar(f, 2)
-                        f(av,bv,cv)
+                        f(av, bv, cv)
 
                         ## Here, canonicalize also seems needed
                         ## TODO: add only the optimizations needed?
                         m2 = mode_blas_opt.including('canonicalize')
-                        f = theano.function([a,b,c],cst2 *c * cst*T.dot(a,b),mode=m2)
+                        f = theano.function([a, b, c],
+                                            cst2 * c * cst * T.dot(a, b),
+                                            mode=m2)
                         topo = f.maker.env.toposort()
                         check_dot22scalar(f, 2)
-                        f(av,bv,cv)
+                        f(av, bv, cv)
 
                         if dtype1 == dtype2 == dtype3:
-                            f = theano.function([a,b,c],c * cst*a*T.dot(a,b),mode=m2)
+                            f = theano.function([a, b, c],
+                                                c * cst * a * T.dot(a, b),
+                                                mode=m2)
                             topo = f.maker.env.toposort()
                             check_dot22scalar(f, 2)
-                            f(sv,sv,sv)
+                            f(sv, sv, sv)
 
-                            f = theano.function([a,b,c],cst*c *a*T.dot(a,b),mode=mode_blas_opt)
+                            f = theano.function([a, b, c],
+                                                cst * c * a * T.dot(a, b),
+                                                mode=mode_blas_opt)
                             topo = f.maker.env.toposort()
-                            #currently the canonizer don't always merge all Mul together...
-                            # dot22scalar optimizer does not do a recursive search
-                            # therefore, it doesn't find potential matches of the scalar.
-                            # TODO: combine with the 'canonicalization' that is part of the Gemm optimizer.
+                            #currently the canonizer don't always
+                            # merge all Mul together...  dot22scalar
+                            # optimizer does not do a recursive search
+                            # therefore, it doesn't find potential
+                            # matches of the scalar.  TODO: combine
+                            # with the 'canonicalization' that is part
+                            # of the Gemm optimizer.
                             #
                             #    assert _dot22scalar in [x.op for x in topo]
                             #    assert len(topo)==2
-                            f(sv,sv,sv)
+                            f(sv, sv, sv)
 
-                            f = theano.function([a,b,c],c * a*cst*T.dot(a,b),mode=m2)
+                            f = theano.function([a, b, c],
+                                                c * a * cst * T.dot(a, b),
+                                                mode=m2)
                             topo = f.maker.env.toposort()
                             check_dot22scalar(f, 2)
-                            f(sv,sv,sv)
+                            f(sv, sv, sv)
 
-                    cmp((3,4),(4,5),(3,5))
-                    cmp((0,4),(4,5),(0,5))
-                    cmp((3,0),(0,5),(3,5))
-                    cmp((3,4),(4,0),(3,0),(0,0))
-                    cmp((0,4),(4,0),(0,0))
-                    cmp((0,0),(0,0),(0,0))
+                    cmp((3, 4), (4, 5), (3, 5))
+                    cmp((0, 4), (4, 5), (0, 5))
+                    cmp((3, 0), (0, 5), (3, 5))
+                    cmp((3, 4), (4, 0), (3, 0), (0, 0))
+                    cmp((0, 4), (4, 0), (0, 0))
+                    cmp((0, 0), (0, 0), (0, 0))
 
 
 def test_dot22scalar_cast():
@@ -897,19 +969,20 @@ def test_dot22scalar_cast():
 
 
 def test_dot_w_self():
-    # This can trigger problems in the optimization because what would normally be a gemm must
-    # not be because the output is aliased to one of the inputs.
+    # This can trigger problems in the optimization because what would
+    # normally be a gemm must not be because the output is aliased to
+    # one of the inputs.
 
-    A = shared(value=numpy.ones((2,2)))
+    A = shared(value=numpy.ones((2, 2)))
     B = T.matrix()
 
-    p = T.dot(A,A)*B
+    p = T.dot(A, A) * B
 
     grad = T.grad(T.mean(p), A)
-    f = theano.function([B], p, updates={A : A - grad})
+    f = theano.function([B], p, updates={A: A - grad})
 
     # tests correctness in debugmode
-    f(numpy.asarray([[0,1], [2,3]], dtype=config.floatX))
+    f(numpy.asarray([[0, 1], [2, 3]], dtype=config.floatX))
 
 
 ###############################################################################
@@ -935,8 +1008,9 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         ''' Test vector dot matrix '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
-        f = theano.function([], theano.dot(v,m), mode=mode_blas_opt)
+        m = theano.shared(numpy.array(rng.uniform(size=(2, 3)),
+             dtype='float32'))
+        f = theano.function([], theano.dot(v, m), mode=mode_blas_opt)
 
         # Assert that the dot was optimized somehow
         self.assertFunctionContains0(f, T.dot)
@@ -950,14 +1024,13 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
                 borrow=True)
         assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
 
-
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(3,2)),
+        m = theano.shared(numpy.array(rng.uniform(size=(3, 2)),
                                        dtype='float32'))
-        f = theano.function([], theano.dot(m,v), mode=mode_blas_opt)
+        f = theano.function([], theano.dot(m, v), mode=mode_blas_opt)
 
         # Assert that the dot was optimized somehow
         self.assertFunctionContains0(f, T.dot)
@@ -975,34 +1048,36 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
     def t_gemv1(m_shp):
         ''' test vector2+dot(matrix,vector1) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)), dtype='float32'))
+        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)
+            ), dtype='float32'))
         v2_orig = numpy.array(rng.uniform(size=(m_shp[0],)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m  = theano.shared(numpy.array(rng.uniform(size=m_shp), dtype='float32'))
+        m = theano.shared(numpy.array(rng.uniform(size=m_shp),
+             dtype='float32'))
 
-        f = theano.function([], v2+theano.dot(m,v1), mode = mode_blas_opt)
+        f = theano.function([], v2 + theano.dot(m, v1), mode=mode_blas_opt)
 
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
         topo = f.maker.env.toposort()
-        assert len(topo)==1
+        assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
-        assert topo[0].op.inplace==False
+        assert topo[0].op.inplace == False
 
         #test the inplace version
-        g = theano.function([], [], updates={v2:v2+theano.dot(m,v1)}
-                            , mode = mode_blas_opt)
+        g = theano.function([], [], updates={v2: v2 + theano.dot(m, v1)},
+                            mode=mode_blas_opt)
 
         # Assert they produce the same output
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
         topo = g.maker.env.toposort()
-        assert len(topo)==1
+        assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
         if config.mode != 'FAST_COMPILE':
-            assert topo[0].op.inplace==True
+            assert topo[0].op.inplace == True
 
         # Do the same tests with a matrix with strides in both dimensions
         m.set_value(
@@ -1016,40 +1091,42 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     def test_gemv1(self):
-        self.t_gemv1((3,2))
-        self.t_gemv1((0,2))
-        self.t_gemv1((3,0))
-        self.t_gemv1((0,0))
+        self.t_gemv1((3, 2))
+        self.t_gemv1((0, 2))
+        self.t_gemv1((3, 0))
+        self.t_gemv1((0, 0))
 
     def test_gemv2(self):
         ''' test vector2+dot(vector1,matrix) '''
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)),
+             dtype='float32'))
         v2_orig = numpy.array(rng.uniform(size=(3,)), dtype='float32')
-        v2 = theano.shared(v2_orig )
-        m  = theano.shared(numpy.array(rng.uniform(size=(2,3)), dtype='float32'))
+        v2 = theano.shared(v2_orig)
+        m = theano.shared(numpy.array(rng.uniform(size=(2, 3)),
+             dtype='float32'))
 
-        f = theano.function([], v2+theano.dot(v1,m), mode = mode_blas_opt)
+        f = theano.function([], v2 + theano.dot(v1, m), mode=mode_blas_opt)
 
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
         topo = f.maker.env.toposort()
-        assert sum(isinstance(node.op, Gemv) for node in topo)==1
-        assert topo[-1].op.inplace==False
+        assert sum(isinstance(node.op, Gemv) for node in topo) == 1
+        assert topo[-1].op.inplace == False
 
         #test the inplace version
-        g = theano.function([], [], updates={v2:v2+theano.dot(v1,m)}
-                            , mode = mode_blas_opt)
+        g = theano.function([], [], updates={v2: v2 + theano.dot(v1, m)},
+                            mode=mode_blas_opt)
 
         # Assert they produce the same output
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
         topo = g.maker.env.toposort()
-        assert sum(isinstance(node.op, Gemv) for node in topo)==1
+        assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         if config.mode != 'FAST_COMPILE':
-            assert topo[-1].op.inplace==True
+            assert topo[-1].op.inplace == True
 
         # Do the same tests with a matrix with strides in both dimensions
         m.set_value(
@@ -1074,7 +1151,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         f = theano.function([A, x, y], z)
 
         # Matrix value
-        A_val = numpy.ones((5,3), dtype=config.floatX)
+        A_val = numpy.ones((5, 3), dtype=config.floatX)
         # Different vector length
         ones_3 = numpy.ones(3, dtype=config.floatX)
         ones_4 = numpy.ones(4, dtype=config.floatX)
@@ -1098,7 +1175,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 def matrixmultiply(a, b):
     if len(b.shape) == 1:
         b_is_vector = True
-        b = b[:,newaxis]
+        b = b[:, newaxis]
     else:
         b_is_vector = False
     assert a.shape[1] == b.shape[0]
@@ -1107,8 +1184,8 @@ def matrixmultiply(a, b):
         for j in xrange(b.shape[1]):
             s = 0
             for k in xrange(a.shape[1]):
-                s += a[i,k] * b[k, j]
-            c[i,j] = s
+                s += a[i, k] * b[k, j]
+            c[i, j] = s
     if b_is_vector:
         c = c.reshape((a.shape[0],))
     return c
@@ -1118,23 +1195,25 @@ class BaseGemv(object):
     mode = mode_blas_opt  # can be overridden with self.mode
     shared = staticmethod(theano.shared)
 
-    def get_data(self,x_stride=1,y_stride=1):
+    def get_data(self, x_stride=1, y_stride=1):
         rng = numpy.random.RandomState(unittest_tools.fetch_seed())
         mult = array(1, dtype=self.dtype)
-        if self.dtype in [complex64,complex128]:
+        if self.dtype in [complex64, complex128]:
             mult = array(1 + 1j, dtype=self.dtype)
         alpha = array(1., dtype=self.dtype) * mult
         beta = array(1., dtype=self.dtype) * mult
-        a = rng.randn(3,3).astype(self.dtype) * mult
-        x = arange(shape(a)[0]*x_stride,dtype=self.dtype) * mult
-        y = arange(shape(a)[1]*y_stride,dtype=self.dtype) * mult
-        return alpha,beta,a,x,y
+        a = rng.randn(3, 3).astype(self.dtype) * mult
+        x = arange(shape(a)[0] * x_stride, dtype=self.dtype) * mult
+        y = arange(shape(a)[1] * y_stride, dtype=self.dtype) * mult
+        return alpha, beta, a, x, y
 
     def test_simple(self):
-        alpha, beta, a, x, y = [ self.shared(value) for value in self.get_data() ]
-        desired_oy = alpha.get_value() * matrixmultiply(a.get_value(),x.get_value()) + beta.get_value() * y.get_value()
+        alpha, beta, a, x, y = [self.shared(value)
+             for value in self.get_data()]
+        desired_oy = alpha.get_value() * matrixmultiply(a.
+            get_value(), x.get_value()) + beta.get_value() * y.get_value()
 
-        oy    = alpha * T.dot(a,x) + beta * y
+        oy = alpha * T.dot(a, x) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1154,7 +1233,7 @@ class BaseGemv(object):
 
         desired_oy = matrixmultiply(a_v, x_v)
 
-        oy = T.dot(a,x)
+        oy = T.dot(a, x)
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1163,15 +1242,15 @@ class BaseGemv(object):
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
 
-
     def test_simple_transpose(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
 
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),
+                                              x_v) + beta_v * y_v
 
-        oy = alpha * T.dot(a.T,x)+beta*y
+        oy = alpha * T.dot(a.T, x) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1181,13 +1260,13 @@ class BaseGemv(object):
         assert_array_almost_equal(desired_oy, oy_v)
 
     def test_x_stride(self):
-        vs = self.get_data(x_stride = 2)
+        vs = self.get_data(x_stride=2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
 
-        desired_oy = alpha_v * matrixmultiply(a_v,x_v[::2])+beta_v*y_v
+        desired_oy = alpha_v * matrixmultiply(a_v, x_v[::2]) + beta_v * y_v
 
-        oy = alpha * T.dot(a,x[::2])+beta*y
+        oy = alpha * T.dot(a, x[::2]) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1197,13 +1276,14 @@ class BaseGemv(object):
         assert_array_almost_equal(desired_oy, oy_v)
 
     def test_x_stride_transpose(self):
-        vs = self.get_data(x_stride = 2)
+        vs = self.get_data(x_stride=2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
 
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v[::2])+beta_v*y_v
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v), x_v[::
+            2]) + beta_v * y_v
 
-        oy = alpha * T.dot(a.T,x[::2])+beta*y
+        oy = alpha * T.dot(a.T, x[::2]) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1213,13 +1293,13 @@ class BaseGemv(object):
         assert_array_almost_equal(desired_oy, oy_v)
 
     def test_y_stride(self):
-        vs = self.get_data(y_stride = 2)
+        vs = self.get_data(y_stride=2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
 
-        desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v[::2]
+        desired_oy = alpha_v * matrixmultiply(a_v, x_v) + beta_v * y_v[::2]
 
-        oy = alpha * T.dot(a,x)+beta*y[::2]
+        oy = alpha * T.dot(a, x) + beta * y[::2]
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1229,13 +1309,14 @@ class BaseGemv(object):
         assert_array_almost_equal(desired_oy, oy_v)
 
     def test_y_stride_transpose(self):
-        vs = self.get_data(y_stride = 2)
+        vs = self.get_data(y_stride=2)
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
 
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v[::2]
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),
+                                              x_v) + beta_v * y_v[::2]
 
-        oy = alpha * T.dot(a.T,x)+beta*y[::2]
+        oy = alpha * T.dot(a.T, x) + beta * y[::2]
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1247,15 +1328,16 @@ class BaseGemv(object):
     def test_a_strides(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
         a_v = a_v[::-1, ::-1]
         a.set_value(
-                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                a.get_value(borrow=True,
+                     return_internal_type=True)[::-1, ::-1],
                 borrow=True)
 
-        desired_oy = alpha_v * matrixmultiply(a_v,x_v)+beta_v*y_v
+        desired_oy = alpha_v * matrixmultiply(a_v, x_v) + beta_v * y_v
 
-        oy = alpha * T.dot(a,x)+beta*y
+        oy = alpha * T.dot(a, x) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1267,15 +1349,17 @@ class BaseGemv(object):
     def test_a_strides_transpose(self):
         vs = self.get_data()
         alpha_v, beta_v, a_v, x_v, y_v = vs
-        alpha, beta, a, x, y = [ self.shared(v) for v in vs ]
+        alpha, beta, a, x, y = [self.shared(v) for v in vs]
         a_v = a_v[::-1, ::-1]
         a.set_value(
-                a.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
+                a.get_value(borrow=True,
+                     return_internal_type=True)[::-1, ::-1],
                 borrow=True)
 
-        desired_oy = alpha_v * matrixmultiply(transpose(a_v),x_v)+beta_v*y_v
+        desired_oy = alpha_v * matrixmultiply(transpose(a_v),
+                                              x_v) + beta_v * y_v
 
-        oy = alpha * T.dot(a.T,x)+beta*y
+        oy = alpha * T.dot(a.T, x) + beta * y
 
         oy_func = theano.function([], oy, mode=self.mode)
 
@@ -1339,6 +1423,7 @@ class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
 ###############################################################################
 ## Tests for Ger
 ###############################################################################
+
 
 class TestGer_make_node(TestCase):
     def setUp(self):
@@ -1447,19 +1532,21 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         """ test local_gemm_to_ger opt"""
         assert T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
-                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.A, self.a, self.x.dimshuffle(0, 'x'),
                     self.y.dimshuffle('x', 0), self.b(0)).owner)
+
     def test_b_1_triggers_ger(self):
         """ test local_gemm_to_ger opt"""
         assert T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
-                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.A, self.a, self.x.dimshuffle(0, 'x'),
                     self.y.dimshuffle('x', 0), self.b(1)).owner)
+
     def test_b_other_does_not_triggers_ger(self):
         """ test local_gemm_to_ger opt"""
         assert not T.blas.local_gemm_to_ger.transform(
                 gemm_no_inplace(
-                    self.A, self.a, self.x.dimshuffle(0,'x'),
+                    self.A, self.a, self.x.dimshuffle(0, 'x'),
                     self.y.dimshuffle('x', 0), self.b(1.5)).owner)
 
     def test_outer(self):
@@ -1562,6 +1649,7 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
             borrow=True)
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))
+
 
 class TestBlasStrides(TestCase):
     dtype = 'float64'
