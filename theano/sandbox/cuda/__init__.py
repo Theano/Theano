@@ -95,8 +95,10 @@ nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
 
 compile_cuda_ndarray = True
 
+outdated = False
 if os.path.exists(cuda_ndarray_so):
-    compile_cuda_ndarray = date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]
+    outdated = date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]
+    compile_cuda_ndarray = outdated
 if not compile_cuda_ndarray:
     try:
         # If we load a previously-compiled version, config.compiledir should
@@ -110,32 +112,45 @@ if not compile_cuda_ndarray:
 if compile_cuda_ndarray:
     get_lock()
     try:
-        if not nvcc_compiler.is_nvcc_available():
-            set_cuda_disabled()
+        if not outdated:
+            # Maybe someone else compiled it while we got the lock.
+            try:
+                # If we load a previously-compiled version,
+                # config.compiledir should be in sys.path.
+                if config.compiledir not in sys.path:
+                    sys.path.append(config.compiledir)
+                from cuda_ndarray.cuda_ndarray import *
+                compile_cuda_ndarray = False
+            except ImportError:
+                compile_cuda_ndarray = True
+        if compile_cuda_ndarray:
+            try:
+                if not nvcc_compiler.is_nvcc_available():
+                    set_cuda_disabled()
 
-        if cuda_available:
-            code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
+                if cuda_available:
+                    code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
 
-            if not os.path.exists(cuda_ndarray_loc):
-                os.makedirs(cuda_ndarray_loc)
+                    if not os.path.exists(cuda_ndarray_loc):
+                        os.makedirs(cuda_ndarray_loc)
 
-            # If $TMPDIR is defined, nvopencc wants it to exist
-            if 'TMPDIR' in os.environ:
-                tmpdir = os.environ['TMPDIR']
-                if not os.path.exists(tmpdir):
-                    os.makedirs(tmpdir)
+                    # If $TMPDIR is defined, nvopencc wants it to exist
+                    if 'TMPDIR' in os.environ:
+                        tmpdir = os.environ['TMPDIR']
+                        if not os.path.exists(tmpdir):
+                            os.makedirs(tmpdir)
 
-            compiler = nvcc_compiler.NVCC_compiler()
-            compiler.compile_str(
-                    'cuda_ndarray',
-                    code,
-                    location=cuda_ndarray_loc,
-                    include_dirs=[cuda_path], libs=['cublas'],
-                    preargs=compiler.compile_args())
-            from cuda_ndarray.cuda_ndarray import *
-    except Exception, e:
-        _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
-        set_cuda_disabled()
+                    compiler = nvcc_compiler.NVCC_compiler()
+                    compiler.compile_str(
+                            'cuda_ndarray',
+                            code,
+                            location=cuda_ndarray_loc,
+                            include_dirs=[cuda_path], libs=['cublas'],
+                            preargs=compiler.compile_args())
+                    from cuda_ndarray.cuda_ndarray import *
+            except Exception, e:
+                _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
+                set_cuda_disabled()
     finally:
         release_lock()
 
