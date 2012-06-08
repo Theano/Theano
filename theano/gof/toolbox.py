@@ -9,6 +9,15 @@ class AlreadyThere(Exception):
     pass
 
 
+class ReplacementDidntRemovedError(Exception):
+    """This exception should be thrown by replace_all_validate_remove
+    when an optimization wanted to remove a Variable or a Node from
+    the graph, but the replacement it gived didn't do that.
+
+    """
+    pass
+
+
 class Bookkeeper:
 
     def on_attach(self, env):
@@ -91,12 +100,15 @@ class ReplaceValidate(History, Validator):
                                    " or in conflict with another plugin.")
         env.replace_validate = partial(self.replace_validate, env)
         env.replace_all_validate = partial(self.replace_all_validate, env)
+        env.replace_all_validate_remove = partial(
+            self.replace_all_validate_remove, env)
 
     def on_detach(self, env):
         History.on_detach(self, env)
         Validator.on_detach(self, env)
         del env.replace_validate
         del env.replace_all_validate
+        del env.replace_all_validate_remove
 
     def replace_validate(self, env, r, new_r, reason=None):
         self.replace_all_validate(env, [(r, new_r)], reason=reason)
@@ -121,6 +133,28 @@ class ReplaceValidate(History, Validator):
         except Exception, e:
             env.revert(chk)
             raise
+        return chk
+
+    def replace_all_validate_remove(self, env, replacements,
+                                    remove, reason=None):
+        """As replace_all_validate, revert the replacement if the ops
+        in the list remove are still in the graph. It also print a warning.
+
+        """
+        chk = env.replace_all_validate(replacements, reason)
+        for rm in remove:
+            if rm in env.nodes or rm in env.variables:
+                env.revert(chk)
+                out = sys.stderr
+                print >> out, (
+                    "WARNING: An optimization wanted to replace a Variable"
+                    " in the graph, but the replacement for it doesn't"
+                    " remove it. We disabled the optimization."
+                    " Your function runs correctly, but it would be"
+                    " appreciated if you submit this problem to the mailing"
+                    " list theano-users so that we can fix it.")
+                print >> out, reason, replacements
+                raise ReplacementDidntRemovedError()
 
 
 class NodeFinder(dict, Bookkeeper):

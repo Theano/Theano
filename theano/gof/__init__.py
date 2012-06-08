@@ -33,7 +33,8 @@ from optdb import \
     EquilibriumDB, SequenceDB, ProxyDB
 
 from toolbox import \
-    Bookkeeper, History, Validator, ReplaceValidate, NodeFinder, PrintListener
+    Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
+    PrintListener, ReplacementDidntRemovedError
 
 from type import \
     Type, Generic, generic

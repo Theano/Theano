@@ -133,8 +133,10 @@ import numpy.distutils
 
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, DestroyHandler,
-        local_optimizer, Optimizer,
-        InconsistencyError, toolbox, SequenceDB, EquilibriumOptimizer, Apply)
+                        local_optimizer, Optimizer,
+                        InconsistencyError, toolbox, SequenceDB,
+                        EquilibriumOptimizer, Apply,
+                        ReplacementDidntRemovedError)
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
@@ -1022,7 +1024,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
         Ml, Mr = M.owner.inputs
         rval = [gemm_no_inplace(L, alpha, Ml, Mr, beta)]
         #print 'GEMM 0', rval, beta, L, alpha, M
-        return rval
+        return rval, M
 
     # it also might be the case that there is a dimshuffle between the +
     # and the dot22. local_dot_to_dot22 in particular will put in such things.
@@ -1035,7 +1037,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
                 g = gemm_no_inplace(L.dimshuffle(0, 'x'),
                         alpha, MMl, MMr, beta)
                 rval = [g.dimshuffle(0)]
-                return rval
+                return rval, MM
         if tuple(M.owner.op.new_order) == (1,):
             # it is making a row MM into a vector
             if MM.owner and MM.owner.op == _dot22:
@@ -1043,7 +1045,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
                 g = gemm_no_inplace(L.dimshuffle('x', 0),
                         alpha, MMl, MMr, beta)
                 rval = [g.dimshuffle(1)]
-                return rval
+                return rval, MM
         if tuple(M.owner.op.new_order) == ():
             # it is making a row MM into a vector
             if MM.owner and MM.owner.op == _dot22:
@@ -1051,7 +1053,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
                 g = gemm_no_inplace(L.dimshuffle('x', 'x'),
                         alpha, MMl, MMr, beta)
                 rval = [g.dimshuffle()]
-                return rval
+                return rval, MM
 
     # this is False'd out because of inadequate testing.
     # TODO see ticket #237
@@ -1085,7 +1087,7 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
     if recurse_flip:
         return _beta_L_plus_alpha_M(alpha, M, beta, L, recurse_flip=False)
     else:
-        return False
+        return False, False
 
 
 def _gemm_canonicalize(r, scale, rval, maxclients):
@@ -1250,7 +1252,8 @@ def _gemm_from_factored_list(lst):
 
             #print 'TRYING', (s_i, M_i, s_j, M_j)
 
-            gemm_of_sM_list = _beta_L_plus_alpha_M(s_i, M_i, s_j, M_j)
+            gemm_of_sM_list, old_dot22 = _beta_L_plus_alpha_M(s_i, M_i,
+                                                              s_j, M_j)
             #print 'GOT IT', gemm_of_sM_list
             if gemm_of_sM_list:
                 def item_to_var(t):
@@ -1273,7 +1276,7 @@ def _gemm_from_factored_list(lst):
                 else:
                     rval = add_inputs
                 #print "RETURNING GEMM THIGN", rval
-                return rval
+                return rval, old_dot22
 
 
 def _gemm_from_node2(node):
@@ -1301,7 +1304,7 @@ def _gemm_from_node2(node):
         # http://groups.google.com/group/theano-dev/browse_thread/thread/a3096c82856e3ad5,
         # but never made it into a trac ticket.
 
-        if rval and (rval[0].type == node.outputs[0].type):
+        if rval and (rval[0][0].type == node.outputs[0].type):
             return rval
 
 
@@ -1326,17 +1329,21 @@ class GemmOptimizer(Optimizer):
                 except InconsistencyError, e:
                     continue
                 if new_outputs:
+                    new_outputs, old_dot22 = new_outputs
                     assert len(new_outputs) == len(node.outputs)
                     try:
-                        env.replace_all_validate(
-                                zip(node.outputs, new_outputs),
-                                reason='GemmOptimizer'
+                        env.replace_all_validate_remove(
+                            zip(node.outputs, new_outputs),
+                            [old_dot22],
+                            reason='GemmOptimizer'
                         )
                         did_something = True
                         break
                     except InconsistencyError, e:
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
+                        pass
+                    except ReplacementDidntRemovedError, e:
                         pass
 
 
