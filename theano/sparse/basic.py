@@ -505,8 +505,6 @@ def csr_matrix(name=None, dtype=None):
 
 
 # for more dtypes, call SparseType(format, dtype)
-csc_matrix = SparseType(format='csc', dtype=config.floatX)
-csr_matrix = SparseType(format='csr', dtype=config.floatX)
 csc_dmatrix = SparseType(format='csc', dtype='float64')
 csr_dmatrix = SparseType(format='csr', dtype='float64')
 csc_fmatrix = SparseType(format='csc', dtype='float32')
