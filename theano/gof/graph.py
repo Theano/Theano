@@ -575,7 +575,7 @@ def clone(i, o, copy_inputs = True):
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
+def clone_get_equiv(i, o, copy_inputs_and_orphans=True, memo=None):
     """ WRITEME
 
     :type i: list
@@ -594,35 +594,37 @@ def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
         (akin to deepcopy's memo).
     """
 
-    d = {}
+    if memo is None:
+        memo = {}
+
     for input in i:
         if copy_inputs_and_orphans:
             cpy = input.clone()
             cpy.owner = None
             cpy.index = None
-            d[input] = cpy
+            memo.setdefault(input, cpy)
         else:
-            d[input] = input
+            memo.setdefault(input, input)
 
     for apply in io_toposort(i, o):
         for input in apply.inputs:
-            if input not in d:
+            if input not in memo:
                 if copy_inputs_and_orphans:
                     cpy = input.clone()
-                    d[input] = cpy
+                    memo[input] = cpy
                 else:
-                    d[input] = input
+                    memo[input] = input
 
-        new_apply = apply.clone_with_new_inputs([d[i] for i in apply.inputs])
-        d[apply] = new_apply
+        new_apply = apply.clone_with_new_inputs([memo[i] for i in apply.inputs])
+        memo.setdefault(apply, new_apply)
         for output, new_output in zip(apply.outputs, new_apply.outputs):
-            d[output] = new_output
+            memo.setdefault(output, new_output)
 
     for output in o:
-        if output not in d:
-            d[output] = output.clone()
+        if output not in memo:
+            memo[output] = output.clone()
 
-    return d
+    return memo
 
 def general_toposort(r_out, deps, debug_print = False):
     """WRITEME
