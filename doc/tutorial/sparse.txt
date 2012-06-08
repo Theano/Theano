@@ -4,13 +4,13 @@
 Sparse
 ======
 
-This is a very short tutorial on sparse with Theano. There is still
+This is a very short tutorial on sparse matrices with Theano. There is still
 some not well documented behavior like how we take care of the
-gradient. There is 2 types of gradient for sparse operation. ``full
+gradient. There are 2 types of gradient for sparse operations. ``full
 gradient`` that compute a gradient for values even if they were 0 and
 the ``structured gradient`` that returns a gradient only for values
-that where not 0. You need to check the code to know witch gradient an
-op implement.
+that were not 0. You need to check the code to know which gradient an
+Op implements.
 
 More documentation in the :ref:`Sparse Library Reference <libdoc_sparse>`.
 
