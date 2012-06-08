@@ -7,7 +7,7 @@ from theano.gof.cc import hash_from_code
 def hash_from_ndarray(data):
     """Return a hash from an ndarray
 
-    It take care of the data, shapes, strides and dtype.
+    It takes care of the data, shapes, strides and dtype.
 
     """
     # We need to hash the shapes and strides as hash_from_code only hashes

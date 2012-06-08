@@ -20,19 +20,19 @@ Inputs and Outputs are lists of Theano variables
 
 .. note::
 
-    This tutorial do not cover how to make an op that return a view or
-    modify the values in it's inputs. So all
-    Op done with the instruction here MUST return newly allocated
+    This tutorial does not cover how to make an op that returns a view or
+    modify the values in its inputs. So all
+    Ops created with the instructions here MUST return newly allocated
     memory or reuse the memory provided in the parameter
     output_storage of the :func:`perform` function. See :ref:`views_and_inplace`
     for explanation of how to do this.
 
-    If your Op return a view or change the value in its inputs
+    If your Op returns a view or change the value on its inputs
     without doing as said in that page, Theano will run, but will
-    return good results some graph, but bad results for others.
+    return good results for some graphs, but bad results for others.
 
     It is recommented that you run your tests in DebugMode (Theano flag
-    mode=DebugMode) that check if your Op behave correctly in this
+    mode=DebugMode) that checks if your Op behaves correctly in this
     regard.
 
 .. note::
@@ -291,11 +291,12 @@ To verify the Rop method of the DoubleOp, you can use this:
 Running your tests
 ==================
 
-You can run ``nosetests`` in the Theano folder to run it as all
-Theano's tests including yours if inside such directory. You can run
-``nosetests test_file.py`` to run only the tests in that file. You can
-run ``nosetests test_file.py:test_DoubleRop`` to run only the tests
-inside that test class. You can run ``nosetests
+You can run ``nosetests`` in the Theano folder to run all of Theano's
+tests, including yours if they are somewhere in the directory
+structure.  You can run ``nosetests test_file.py`` to run only the
+tests in that file. You can run ``nosetests
+test_file.py:test_DoubleRop`` to run only the tests inside that test
+class. You can run ``nosetests
 test_file.py:test_DoubleRop.test_double_op`` to run only one
 particular test. More `nosetests
 <http://readthedocs.org/docs/nose/en/latest/>`_ documentation.
