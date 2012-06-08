@@ -313,8 +313,10 @@ class T_Scan(unittest.TestCase):
                  if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         # This assertation fails if savemem optimization failed on scan
         assert nodes[0].op._scan_savemem_visited
-
-
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        my_f(rng.uniform(size=(3,)),
+             4,
+             numpy.int64([2, 2, 3]))
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars
