@@ -287,8 +287,9 @@ class T_Scan(unittest.TestCase):
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
-        # the bug happens when you index on the second dimension,
-        # case in which the scan save mem optimization fails
+        # the bug happens when you have multiple subtensors on the output of
+        # scan (the bug requires the reshape to be produced, and it has
+        # which has something to do with how the subtensors overlap
         def f_pow2(x_tm1):
             return 2 * x_tm1
 
@@ -302,8 +303,9 @@ class T_Scan(unittest.TestCase):
                                       truncate_gradient=-1,
                                       go_backwards=False)
         nw_shape = tensor.ivector('nw_shape')
-        my_f = theano.function([state, n_steps,nw_shape],
-                               [tensor.reshape(output,nw_shape,ndim=3)[:-2],
+        # Note that the output is reshaped to 3 dimensional tensor, and
+        my_f = theano.function([state, n_steps, nw_shape],
+                               [tensor.reshape(output, nw_shape, ndim=3)[:-2],
                                 output[:-4]],
                                updates=updates,
                                allow_input_downcast=True)
