@@ -37,11 +37,14 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
+int_dtypes = map(str, scal.int_types)
+uint_dtypes = map(str, scal.uint_types)
+float_dtypes = map(str, scal.float_types)
 complex_dtypes = map(str, scal.complex_types)
+
 continuous_dtypes = map(str, scal.continuous_types)
 discrete_dtypes = map(str, scal.discrete_types)
-int_dtypes = map(str, scal.int_types)
-
+all_dtypes = map(str, scal.all_types)
 
 class ShapeError(Exception):
     """Raised when the shape cannot be computed."""
