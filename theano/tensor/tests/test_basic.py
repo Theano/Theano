@@ -1234,6 +1234,9 @@ del _good_broadcast_unary_normal_no_int['integers']
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
+    
+    expected_gammaln = scipy.special.gammaln
+    expected_psi = scipy.special.psi
     skip_scipy = False
 else:
     expected_erf = []
@@ -1265,6 +1268,38 @@ ErfcTester = makeBroadcastTester(op = tensor.erfc,
                                  skip = skip_scipy)
 ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
                                         expected = expected_erfc,
+                                        good = _good_broadcast_unary_normal_no_int_no_complex,
+                                        grad = _grad_broadcast_unary_normal,
+                                        eps = 2e-10,
+                                        mode = mode_no_scipy,
+                                        inplace = True,
+                                        skip = skip_scipy)
+
+GammaLnTester = makeBroadcastTester(op = tensor.gammaln,
+                                 expected = expected_gammaln,
+                                 good = _good_broadcast_unary_normal_no_int_no_complex,
+                                 grad = _grad_broadcast_unary_normal,
+                                 eps = 2e-10,
+                                 mode = mode_no_scipy,
+                                 skip = skip_scipy)
+GammaLnInplaceTester = makeBroadcastTester(op = inplace.gammaln_inplace,
+                                        expected = expected_erfc,
+                                        good = _good_broadcast_unary_normal_no_int_no_complex,
+                                        grad = _grad_broadcast_unary_normal,
+                                        eps = 2e-10,
+                                        mode = mode_no_scipy,
+                                        inplace = True,
+                                        skip = skip_scipy)
+
+PsiTester = makeBroadcastTester(op = tensor.psi,
+                                 expected = expected_psi,
+                                 good = _good_broadcast_unary_normal_no_int_no_complex,
+                                 grad = _grad_broadcast_unary_normal,
+                                 eps = 2e-10,
+                                 mode = mode_no_scipy,
+                                 skip = skip_scipy)
+PsiInplaceTester = makeBroadcastTester(op = inplace.psi_inplace,
+                                        expected = expected_psi,
                                         good = _good_broadcast_unary_normal_no_int_no_complex,
                                         grad = _grad_broadcast_unary_normal,
                                         eps = 2e-10,
