@@ -83,6 +83,8 @@ def shape_of_variables(env, input_shapes):
 
     sym_to_num_dict = dict(zip(output_dims, numeric_output_dims))
 
-    return {var: tuple(sym_to_num_dict[sym]
-                             for sym in env.shape_feature.shape_of[var])
-                             for var in env.shape_feature.shape_of}
+    l = {}
+    for var in env.shape_feature.shape_of:
+        l[var] = tuple(sym_to_num_dict[sym]
+                       for sym in env.shape_feature.shape_of[var])
+    return l
