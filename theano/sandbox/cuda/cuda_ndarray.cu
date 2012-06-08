@@ -1023,8 +1023,8 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
     }
 
     //broadcast to the same number of dimensions.
-    int other_dims[self->nd];
-    int other_strides[self->nd];
+    int* other_dims = (int*) alloca(self->nd * sizeof(int));
+    int* other_strides = (int*) alloca(self->nd * sizeof(int));
     int added_dims = self->nd - other->nd;
     // Add the added broadcasted dimensions
     for (int i = 0; i< added_dims; ++i)
@@ -2808,7 +2808,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
     {
         new_other = (CudaNdarray *) CudaNdarray_View(other);
         int added_dims = self->nd - other->nd;
-        int pattern[self->nd];
+        int* pattern = (int*) alloca(self->nd * sizeof(int));
         for(int i = 0; i < added_dims; i++)
             pattern[i] = -1;
         for(int i = 0; i < other->nd; i++)

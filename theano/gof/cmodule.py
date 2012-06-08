@@ -25,6 +25,7 @@ from theano.gof.cc import hash_from_code
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 import compilelock
+from compiledir import gcc_version_str
 
 from theano.configparser import AddConfigVar, BoolParam
 
@@ -266,15 +267,21 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname):
+def module_name_from_dir(dirname, err=True):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
     files = os.listdir(dirname)
-    name, = [file for file in files
+    names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
-    return os.path.join(dirname, name)
+    if len(names) == 0 and not err:
+        return None
+    elif len(names) == 1:
+        return os.path.join(dirname, names[0])
+    else:
+        raise ValueError("More than 1 compiled module in this directory:" +
+                         dirname)
 
 
 def is_same_entry(entry_1, entry_2):
@@ -308,6 +315,7 @@ def get_module_hash(src_code, key):
         2. The version part of the key.
         3. The compiler options defined in `key` (command line parameters and
            libraries to link against).
+        4. The NumPy ABI version.
     """
     # `to_hash` will contain any element such that we know for sure that if
     # it changes, then the module hash should be different.
@@ -341,6 +349,9 @@ def get_module_hash(src_code, key):
                 # This is the md5 hash of the config options. We can stop
                 # here.
                 break
+            elif (key_element.startswith('NPY_ABI_VERSION=0x') or
+                  key_element.startswith('c_compiler_str=')):
+                to_hash.append(key_element)
             else:
                 raise AssertionError(error_msg)
         else:
@@ -1249,8 +1260,22 @@ class ModuleCache(object):
                     except IOError:
                         has_key = False
                     if not has_key:
-                        age = time_now - last_access_time(
-                                os.path.join(self.dirname, filename))
+                        # Use the compiled file by default
+                        path = module_name_from_dir(os.path.join(self.dirname,
+                                                                 filename),
+                                                    False)
+                        # If it don't exist, use any file in the directory.
+                        if path is None:
+                            path = os.path.join(self.dirname, filename)
+                            files = os.listdir(path)
+                            if files:
+                                path = os.path.join(path, files[0])
+                            else:
+                                # If the directory is empty skip it.
+                                # They are deleted elsewhere.
+                                continue
+                        age = time_now - last_access_time(path)
+
                         # In normal case, the processus that created this
                         # directory will delete it. However, if this processus
                         # crashes, it will not be cleaned up.
@@ -1383,30 +1408,15 @@ def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
 
-# Using the dummy file descriptors below is a workaround for a crash
-# experienced in an unusual Python 2.4.4 Windows environment with the default
-# None values.
-dummy_in = open(os.devnull)
-dummy_err = open(os.devnull, 'w')
-p = None
-try:
-    p = subprocess.Popen(['g++', '-dumpversion'], stdout=subprocess.PIPE,
-                         stdin=dummy_in.fileno(), stderr=dummy_err.fileno())
-    p.wait()
-    gcc_version_str = p.stdout.readline().strip()
-except OSError:
-    # Typically means gcc cannot be found.
-    gcc_version_str = 'GCC_NOT_FOUND'
-del p
-del dummy_in
-del dummy_err
-
-
 def gcc_version():
     return gcc_version_str
 
 
 class GCC_compiler(object):
+    @staticmethod
+    def version_str():
+        return "g++ " + gcc_version_str
+
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]

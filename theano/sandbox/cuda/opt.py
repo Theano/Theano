@@ -1,19 +1,22 @@
 import logging
 _logger = logging.getLogger('theano.sandbox.cuda.opt')
 
+import copy
 import sys
 import warnings
 
 import numpy
 
 import theano
+from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano import scalar as scal
 from theano import tensor, compile, gof
+import theano.ifelse
 
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
-                        EquilibriumOptimizer)
+                        InconsistencyError, EquilibriumOptimizer)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -364,36 +367,47 @@ def local_gpu_lazy_ifelse(node):
 
     ifelse(host_from_gpu) -> host_from_gpu(ifelse)
     """
-    if hasattr(theano, "lazycond"):
-        gpu_ifelse = theano.lazycond.IfElse(gpu=True)
+    if isinstance(node.op, theano.ifelse.IfElse) and not node.op.gpu:
+        gpu_ifelse = theano.ifelse.IfElse(node.op.n_outs, gpu=True)
+        outs_clients = reduce(list.__add__,
+                              [out.clients for out in node.outputs])
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu)
+                      for i in node.inputs]) or numpy.any(
+                      [c != 'output' and c.op == gpu_from_host for c, idx
+                       in outs_clients]):
 
-        if node.op == gpu_from_host:
-            host_input = node.inputs[0]
-            if (host_input.owner
-                    and host_input.owner.op == theano.lazycond.ifelse):
-                c, t, f = host_input.owner.inputs
-                if not isinstance(f.type, CudaNdarrayType):
-                    f = gpu_from_host(f)
-                if not isinstance(t.type, CudaNdarrayType):
-                    t = gpu_from_host(t)
-                if isinstance(c.type, CudaNdarrayType):
-                    c = host_from_gpu(c)
+            c = node.inputs[0]
+            outs = node.inputs[1:]
+            # Should not happen, but just in case
+            if isinstance(c.type, CudaNdarrayType):
+                c = host_from_gpu(c)
 
-                return [gpu_ifelse(c, t, f)]
+            for i in range(len(outs)):
+                if not isinstance(outs[i], CudaNdarrayType):
+                    outs[i] = gpu_from_host(outs[i])
+            return [host_from_gpu(out) for out in
+                    gpu_ifelse.make_node(c, *outs).outputs]
 
-        if node.op == theano.lazycond.ifelse:
-            if numpy.any([(i.owner and i.owner.op == host_from_gpu)
-                          for i in node.inputs]):
-                c, t, f = node.inputs
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, theano.ifelse.IfElse) and
+            not host_input.owner.op.gpu):
+            gpu_ifelse = theano.ifelse.IfElse(host_input.owner.op.n_outs,
+                                                  gpu=True)
 
-                if not isinstance(f.type, CudaNdarrayType):
-                    f = gpu_from_host(f)
-                if not isinstance(t.type, CudaNdarrayType):
-                    t = gpu_from_host(t)
-                if isinstance(c.type, CudaNdarrayType):
-                    c = host_from_gpu(c)
+            c = host_input.owner.inputs[0]
+            outs = host_input.owner.inputs[1:]
+            # Should not happen, but just in case
+            if isinstance(c.type, CudaNdarrayType):
+                c = host_from_gpu(c)
 
-                return [host_from_gpu(gpu_ifelse(c, t, f))]
+            for i in range(len(outs)):
+                if not isinstance(outs[i], CudaNdarrayType):
+                    outs[i] = gpu_from_host(outs[i])
+
+            outs = gpu_ifelse.make_node(c, *outs).outputs
+            return outs
 
     return False
 
@@ -1304,11 +1318,11 @@ def local_gpualloc(node):
         if node.inputs[0].owner and \
            node.inputs[0].owner.op == host_from_gpu:
             replace = True
-        if all([c != 'output' and c.op == gpu_from_host
+        elif all([c != 'output' and c.op == gpu_from_host
                 for c, idx in node.outputs[0].clients]):
             # if all clients are on gpu
             replace = True
-        if all([c != 'output' and
+        elif all([c != 'output' and
                 c.op == tensor.join and
                 all([i.owner and
                      i.owner.op in [host_from_gpu, tensor.alloc]
@@ -1431,7 +1445,7 @@ def gpuScanOptimization(node):
             # merged or implement this optimization as a global
             # optimization
             thescan = host_input.owner.op
-            info = thescan.info.copy()
+            info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = host_input.owner.inputs
             nw_ins = [inputs[0]]
@@ -1478,7 +1492,7 @@ def gpuScanOptimization(node):
                       for i in node.inputs]):
 
             thescan = node.op
-            info = thescan.info.copy()
+            info = copy.deepcopy(thescan.info)
             info['gpu'] = True
             inputs = node.inputs
             nw_ins = [inputs[0]]
@@ -1512,11 +1526,10 @@ def gpuScanOptimization(node):
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
                     broadcastable=broadcastable)
             _outputs = scan_op.Scan(
-                    scan_ins,
-                    scan_outs,
-                    info,
-                    typeConstructor=typeConstructor).make_node(
-                        *nw_ins).outputs
+                scan_ins,
+                scan_outs,
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins).outputs
             outputs = []
             for x, y in zip(_outputs, node.outputs):
                 if isinstance(y.type, CudaNdarrayType):
@@ -1527,41 +1540,9 @@ def gpuScanOptimization(node):
     return False
 
 
-@gof.local_optimizer([None])
-def gpu_scan_make_inplace(node):
-    op = node.op
-    if (isinstance(op, scan_op.Scan) and
-        (not op.info['inplace']) and
-        (op.info['gpu'])):
-        info = op.info.copy()
-        info['inplace'] = True
-        # inputs corresponding to sequences and n_steps
-        ls_begin = node.inputs[:1 + op.n_seqs]
-        ls = op.outer_mitmot(node)
-        ls += op.outer_mitsot(node)
-        ls += op.outer_sitsot(node)
-        ls_end = op.outer_shared(node)
-        ls_end += op.outer_nitsot(node)
-        ls_end += op.outer_non_seqs(node)
-        n_outs = len(ls)
-        for idx in xrange(n_outs):
-            if ls[idx] in ls[:idx]:
-                ls[idx] = compile.function_module.deep_copy_op(ls[idx])
-
-        inputs = ls_begin + ls + ls_end
-
-        typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                broadcastable=broadcastable)
-        new_op = scan_op.Scan(op.inputs,
-                              op.outputs,
-                              info,
-                              typeConstructor=typeConstructor)
-        return new_op.make_node(*inputs).outputs
-    return False
-
 optdb.register('gpu_scanOp_make_inplace',
-               theano.tensor.opt.in2out(
-                   gpu_scan_make_inplace, ignore_newtrees=True),
+               scan_opt.ScanInplaceOptimizer(typeConstructor=CudaNdarrayType,
+                                            gpu_flag=True),
                75,
                'gpu',
                'fast_run',

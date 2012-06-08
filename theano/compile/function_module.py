@@ -965,7 +965,7 @@ class FunctionMaker(object):
 
     def __init__(self, inputs, outputs,
             mode = None, accept_inplace = False, function_builder = Function,
-            profile=None, on_unused_input='raise'):
+            profile=None, on_unused_input=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -982,9 +982,10 @@ class FunctionMaker(object):
 
         :param on_unused_input: What to do if a variable in the 'inputs' list
             is not used in the graph. Possible values are:
-                - 'raise' (default): raise an error
+                - 'raise': raise an error
                 - 'warn': log a warning
                 - 'ignore': do not do anything
+                - None: Use the value in the Theano flags on_unused_input
         """
         mode = mode_module.get_mode(mode)
 
@@ -1090,6 +1091,9 @@ class FunctionMaker(object):
                     for i in self.inputs]
 
     def _check_unused_inputs(self, inputs, outputs, on_unused_input):
+        if on_unused_input is None:
+            on_unused_input = theano.config.on_unused_input
+
         if on_unused_input == 'ignore':
             return
 
@@ -1102,8 +1106,8 @@ class FunctionMaker(object):
                 blockers=[i.variable for i in inputs])
 
         msg = ("theano.function was asked to create a function computing "
-                "outputs given certain inputs, but one of the provided "
-                "input variables is not part of the computational graph "
+                "outputs given certain inputs, but the provided input "
+                "variable at index %i is not part of the computational graph "
                 "needed to compute the outputs: %s.\n%s")
         warn_msg = ("To make this warning into an error, you can pass the "
                 "parameter on_unused_input='raise' to theano.function. "
@@ -1115,9 +1119,9 @@ class FunctionMaker(object):
         for i in inputs:
             if ((i.variable not in used_inputs) and (i.update is None)):
                 if on_unused_input == 'warn':
-                    warnings.warn(msg % (i.variable, warn_msg), stacklevel=6)
+                    warnings.warn(msg % (inputs.index(i), i.variable, warn_msg), stacklevel=6)
                 elif on_unused_input == 'raise':
-                    raise UnusedInputError(msg % (i.variable, err_msg))
+                    raise UnusedInputError(msg % (inputs.index(i), i.variable, err_msg))
                 else:
                     raise ValueError(("Invalid value for keyword "
                         "on_unused_input of theano.function: '%s'. "
@@ -1256,7 +1260,7 @@ def register_checker(checker):
 
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
-                  name=None, profile=None, on_unused_input='raise'):
+                  name=None, profile=None, on_unused_input=None):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1290,7 +1294,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     :param profile: None or ProfileStats instance
 
     :param on_unused_input: What to do if a variable in the 'inputs' list is
-        not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
+        not used in the graph. Possible values are 'raise', 'warn', 'ignore'
+        and None
     """
 
     # Every element of the input list will be upgraded to an `In` instance if

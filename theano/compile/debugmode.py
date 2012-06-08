@@ -16,7 +16,7 @@ from theano import gof
 from theano.gof import Env, graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.gof.python25 import any, product as itertools_product
+from theano.gof.python25 import all, any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
         StrParam)
 from theano.compile.function_module import (FunctionMaker,
@@ -64,7 +64,7 @@ AddConfigVar('DebugMode.warn_input_not_reused',
 def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, basestring):
         return False
-    valid = ["previous", "c_contiguous", "f_contiguous",
+    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
              "strided", "wrong_size", "ALL", ""]
     for p in param.split(":"):
         if p not in valid:
@@ -74,12 +74,22 @@ def is_valid_check_preallocated_output_param(param):
 AddConfigVar('DebugMode.check_preallocated_output',
         ('Test thunks with pre-allocated memory as output storage. '
          'This is a list of strings separated by ":". Valid values are: '
+         '"initial" (initial storage in storage map, happens with Scan),'
          '"previous" (previously-returned memory), '
          '"c_contiguous", "f_contiguous", '
          '"strided" (positive and negative strides), '
          '"wrong_size" (larger and smaller dimensions), and '
          '"ALL" (all of the above).'),
         StrParam('', is_valid=is_valid_check_preallocated_output_param),
+        in_c_key=False)
+
+AddConfigVar('DebugMode.check_preallocated_output_ndim',
+        ('When testing with "strided" preallocated output memory, '
+         'test all combinations of strides over that number of '
+         '(inner-most) dimensions. You may want to reduce that number '
+         'to reduce memory or time usage, but it is advised to keep a '
+         'minimum of 2.'),
+        IntParam(4, lambda i: i > 0),
         in_c_key=False)
 
 import logging
@@ -114,24 +124,35 @@ class DebugModeError(Exception):
     pass
 
 
-class BadCLinkerOutput(DebugModeError):
-    """Exception: an Op's c_code and perform implementations don't agree."""
+class BadThunkOutput(DebugModeError):
+    """
+    Exception: Calling the same Op twice gives inconsistent outputs.
+
+    It can be raised, for instance, if an Op's c_code and perform method
+    do not agree, or if one of these methods do not give the same result
+    when called twice with the same inputs (but different memory layouts
+    for the output).
+    """
 
     r = None
     """The `Variable` instance for which conflicting values were computed"""
 
-    val_py = None
-    """The value computed by `r.owner.op.perform`"""
+    thunk1 = ''
+    val1 = None
+    """The value computed by `thunk1`"""
 
-    val_c = None
-    """The value computed by `r.owner.op.c_code`"""
+    thunk2 = ''
+    val2 = None
+    """The value computed by `thunk2`"""
 
-    def __init__(self, r, val_py, val_c):
+    def __init__(self, r, thunk1, val1, thunk2, val2):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
-        self.val_py = val_py
-        self.val_c = val_c
+        self.thunk1 = thunk1
+        self.val1 = val1
+        self.thunk2 = thunk2
+        self.val2 = val2
 
     def offending_op(self):
         """Return the Op class whose c_code and perform
@@ -145,45 +166,47 @@ class BadCLinkerOutput(DebugModeError):
         """Return a pretty multiline string representating the cause
         of the exception"""
         sio = StringIO()
-        print >> sio, "BadCLinkerOutput"
-        print >> sio, "  variable:", self.r
-        print >> sio, "  Outputs Type    :", self.r.type
-        print >> sio, "  Inputs Type:", [i.type for i in self.r.owner.inputs]
+        print >> sio, "BadThunkOutput"
+        print >> sio, "  variable    :", self.r
+        print >> sio, "  Outputs Type:", self.r.type
+        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs]
         print >> sio, "  Apply   :", self.r.owner
-        print >> sio, "  val_py  :", self.val_py
-        print >> sio, "  val_c   :", self.val_c
+        print >> sio, "  thunk1  :", self.thunk1
+        print >> sio, "  thunk2  :", self.thunk2
+        print >> sio, "  val1    :", self.val1
+        print >> sio, "  val2    :", self.val2
         print >> sio, "  op      :", self.offending_op()
         try:
             ssio = StringIO()
-            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_py.shape,
-            print >> ssio, self.val_py.dtype,
-            print >> ssio, self.val_py.strides,
-            print >> ssio, self.val_py.min(),
-            print >> ssio, self.val_py.max(),
-            print >> ssio, numpy.isinf(self.val_py).sum(),
-            print >> ssio, numpy.isnan(self.val_py).sum(),
+            print >> ssio, "  Value 1 : shape, dtype, strides, min, max, n_inf, n_nan:",
+            print >> ssio, self.val1.shape,
+            print >> ssio, self.val1.dtype,
+            print >> ssio, self.val1.strides,
+            print >> ssio, self.val1.min(),
+            print >> ssio, self.val1.max(),
+            print >> ssio, numpy.isinf(self.val1).sum(),
+            print >> ssio, numpy.isnan(self.val1).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except Exception:
             pass
         try:
             ssio = StringIO()
-            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_c.shape,
-            print >> ssio, self.val_c.dtype,
-            print >> ssio, self.val_c.strides,
-            print >> ssio, self.val_c.min(),
-            print >> ssio, self.val_c.max(),
-            print >> ssio, numpy.isinf(self.val_c).sum(),
-            print >> ssio, numpy.isnan(self.val_c).sum(),
+            print >> ssio, "  Value 2 : shape, dtype, strides, min, max, n_inf, n_nan:",
+            print >> ssio, self.val2.shape,
+            print >> ssio, self.val2.dtype,
+            print >> ssio, self.val2.strides,
+            print >> ssio, self.val2.min(),
+            print >> ssio, self.val2.max(),
+            print >> ssio, numpy.isinf(self.val2).sum(),
+            print >> ssio, numpy.isnan(self.val2).sum(),
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except Exception:
             pass
         try:
-            ov = numpy.asarray(self.val_c)
-            nv = numpy.asarray(self.val_py)
+            ov = numpy.asarray(self.val1)
+            nv = numpy.asarray(self.val2)
             ssio = StringIO()
             absdiff = numpy.absolute(nv - ov)
             print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
@@ -670,18 +693,27 @@ def _optcheck_env(input_specs, output_specs, accept_inplace=False):
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                   clobber_dr_vals=True,
                   perform=None, warn_input_not_reused=True):
-    """Raise BadDestroyMap if necessary, update dr_vals"""
+    """
+    Raise BadDestroyMap if necessary, update dr_vals
+
+    Returns a list of output variables that actually worked inplace
+    (their value is aliased to the value of at least one input).
+    """
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
     for o_pos, i_pos_list in destroy_map.iteritems():
         destroyed_idx_list.extend(i_pos_list)
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
-    if warn_input_not_reused and destroyed_res_list:
-        dmap = getattr(node.op, 'destroy_map', {})
-        for oo, ii in dmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
+    actually_inplace_outputs = []
+    dmap = getattr(node.op, 'destroy_map', {})
+    for oo, ii in dmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused and destroyed_res_list:
             if isinstance(node.op, theano.compile.mode.OutputGuard):
                 # The point of OutputGuard is to be declared as destructive
                 # while not destroying anything
@@ -691,11 +723,14 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                         "as destroyed was not changed for node '%s'",
                         ii[0], str(node))
 
-    if warn_input_not_reused:
-        vmap = getattr(node.op, 'view_map', {})
-        for oo, ii in vmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
+    vmap = getattr(node.op, 'view_map', {})
+    for oo, ii in vmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused:
             # We don't try to optimize simple scalar and empty ndarray,
             # as this is not worth our time. This happen at least in
             # Subtensor when the output is a scalar But this depend on
@@ -726,6 +761,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             else:
                 raise BadDestroyMap(node, r_idx, r_vals[r],
                                     storage_map[r][0], perform)
+
+    return actually_inplace_outputs
 
 
 def _check_viewmap(node, storage_map):
@@ -994,7 +1031,8 @@ _find_bad_optimizations = _find_bad_optimizations0
 
 
 def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs, init_outputs):
     '''Preallocate outputs in different memory layouts'''
 
     # To avoid circular imports
@@ -1004,21 +1042,49 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         from theano.sandbox.cuda import CudaNdarray
         from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
-    # TODO: Sparse, Scalar
+    # TODO: Sparse? Scalar does not really make sense.
+
+    # Do not preallocate memory for outputs that actually work inplace
+    considered_outputs = []
+    for r in node.outputs:
+        if r not in inplace_outs:
+            considered_outputs.append(r)
+
+    # Output storage that was initially present in the storage_map
+    if 'initial' in prealloc_modes or 'ALL' in prealloc_modes:
+        initial_outputs = {}
+        for r in considered_outputs:
+            if r in init_outputs:
+                initial_outputs[r] = init_outputs[r]
+
+        if initial_outputs:
+            yield ('initial', initial_outputs)
 
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
     # is not reused
     if 'previous' in prealloc_modes or 'ALL' in prealloc_modes:
         reuse_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             # We want to reuse the exact same memory buffer,
             # so we keep the copy in r_vals
             new_r = _lessbroken_deepcopy(r_vals[r])
             reuse_outputs[r] = r_vals[r]
             r_vals[r] = new_r
+            # Sometimes, outputs can be aliased together.
+            # I'm not sure why it is legitimate, but there are tests about it.
+            # So, we cannot fill r_vals[r] with def_val yet, we have to wait
+            # until all output values are deepcopied.
 
-        yield ('previous', reuse_outputs)
+        for r in considered_outputs:
+            # There is no risk to overwrite inputs, since r does not work
+            # inplace.
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                reuse_outputs[r][...] = numpy.asarray(
+                        def_val).astype(r.type.dtype)
+
+        if reuse_outputs:
+            yield ('previous', reuse_outputs)
         # clear memory that is not needed any more
         del reuse_outputs
 
@@ -1026,13 +1092,13 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType and CudaNdarray, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
                 # assert new_buf.flags["C_CONTIGUOUS"]
-                new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
 
@@ -1044,13 +1110,13 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType, only)
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 new_buf = numpy.zeros(
                         shape=r_vals[r].shape,
                         dtype=r_vals[r].dtype,
                         order='F')
-                new_buf += def_val
+                new_buf[...] = def_val
                 if isinstance(r.type, CudaNdarrayType):
                     # When the CudaNdarray is built, the underlying memory
                     # is c-contiguous, so we transpose it before and after.
@@ -1067,34 +1133,79 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # We assume that the different outputs of a same Op will behave
     # independently, and there is no need to test over all combinations
     # of outputs (the time taken is prohibitive).
+    # When all outputs on a certain dimension are broadcastable, the Op
+    # can assume that the shape is 1 on that dimension, and stride testing
+    # is less relevant.
+    # Dimensions should be align by the innermost index, so we iterate
+    # from the end of shapes.
     max_ndim = 0
-    for r in node.outputs:
+    rev_out_broadcastable = []
+    for r in considered_outputs:
         if isinstance(r.type, (TensorType, CudaNdarrayType)):
-            max_ndim = max(max_ndim, r.ndim)
+            if max_ndim < r.ndim:
+                rev_out_broadcastable += [True] * (r.ndim - max_ndim)
+                max_ndim = r.ndim
+            assert len(rev_out_broadcastable) == max_ndim
+
+            for i, b in enumerate(r.broadcastable[::-1]):
+                rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
+    out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
+        check_ndim = config.DebugMode.check_preallocated_output_ndim
         # Initial allocation
         init_strided = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                # Create a buffer twice as large in every dimension
-                new_buf = r.type.value_zeros(
-                        [(s * 2) for s in r_vals[r].shape])
+                # Create a buffer twice as large in every dimension,
+                # except if broadcastable, or for dimensions above
+                # config.DebugMode.check_preallocated_output_ndim
+                buf_shape = []
+                for s, b in zip(r_vals[r].shape, r.broadcastable):
+                    if b or ((r.ndim - len(buf_shape)) > check_ndim):
+                        buf_shape.append(s)
+                    else:
+                        buf_shape.append(s * 2)
+                new_buf = r.type.value_zeros(buf_shape)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
-        for step_signs in itertools_product((-1, 1), repeat=max_ndim):
+        # The number of combinations is exponential in the number of
+        # dimensions, and some ops can have tens of outputs. To prevent
+        # tests from lasting days, we use the same strides for all
+        # dimensions but the last check_ndim ones.
+        # Moreover, to avoid memory problems, we do not test with strides
+        # 2 and -2 on those dimensions.
+        step_signs_list = []
+        for b in out_broadcastable[-check_ndim:]:
+            if b:
+                step_signs_list.append((1,))
+            else:
+                step_signs_list.append((-1, 1))
+
+        # Use the same step on all dimensions before the last check_ndim.
+        if all(out_broadcastable[:-check_ndim]):
+            step_signs_list = [(1,)] + step_signs_list
+        else:
+            step_signs_list = [(-1, 1)] + step_signs_list
+
+        for step_signs in itertools_product(*step_signs_list):
             for step_size in (1, 2):
                 strided = {}
-                steps = [s * step_size for s in step_signs]
+
+                # First, the dimensions above check_ndim, then the other ones
+                # Do not test with 2 or -2 for dimensions above check_ndim
+                steps = [step_signs[0]] * len(out_broadcastable[:-check_ndim])
+                steps += [s * step_size for s in step_signs[1:]]
+
                 name = 'strided%s' % str(tuple(steps))
-                for r in node.outputs:
+                for r in considered_outputs:
                     if r in init_strided:
-                        # Build lists of slices, for strides and shapes
                         strides = []
                         shapes = []
                         for i, size in enumerate(r_vals[r].shape):
-                            strides.append(slice(None, None, steps[i]))
                             shapes.append(slice(None, size, None))
+                            strides.append(slice(None, None, steps[i]))
 
                         r_buf = init_strided[r]
 
@@ -1103,15 +1214,19 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         assert r_buf.shape == r_vals[r].shape
 
                         r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
-
                         strided[r] = r_buf
 
-                yield (name, strided)
+                if strided:
+                    yield (name, strided)
                 del strided
 
     if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
         # For each dimension, try size-1, size, size+1
-        for dim in xrange(max_ndim):
+        for dim, b in enumerate(out_broadcastable):
+            if b:
+                # The shape has to be 1
+                continue
+
             shape_diff = [0] * max_ndim
             for diff in (-1, 1):
                 shape_diff[dim] = diff
@@ -1119,22 +1234,25 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 wrong_size = {}
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
-                for r in node.outputs:
+                for r in considered_outputs:
                     if isinstance(r.type, (TensorType, CudaNdarrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
                                 for s, sd in zip(r_vals[r].shape,
                                                  r_shape_diff)]
-                        new_buf = r.type.value_zeros(r_vals[r].shape)
-                        new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                        new_buf = r.type.value_zeros(out_shape)
+                        new_buf[...] = numpy.asarray(
+                                def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
-                yield (name, wrong_size)
+                if wrong_size:
+                    yield (name, wrong_size)
                 del wrong_size
 
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs, init_outputs):
     '''Try to apply thunk() on different output storages'''
 
     # If node has an inner compiled Theano function with mode DebugMode,
@@ -1163,17 +1281,33 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                     changed_inner_mode = True
                     _logger.info('changing inner mode')
 
+        # Set of inputs that are marked as destroyed or viewed
+        aliased_inputs = set()
+        dmap = getattr(node.op, 'destroy_map', {})
+        vmap = getattr(node.op, 'view_map', {})
+        for i, r in enumerate(node.inputs):
+            if any(i in v for v in (dmap.values() + vmap.values())):
+                aliased_inputs.add(r)
+
         _logger.debug('starting preallocated output checking')
         for (name, out_map) in _get_preallocated_maps(
                 node, thunk, prealloc_modes, def_val, storage_map, r_vals,
-                dr_vals, perform, active_order_set):
+                dr_vals, perform, active_order_set, inplace_outs,
+                init_outputs):
             _logger.debug('  name = %s', name)
 
-            # Copy the inputs over, if they were marked as destroyed
-            dmap = getattr(node.op, 'destroy_map', {})
-            for i, r in enumerate(node.inputs):
-                if any(i in v for v in dmap.values()):
-                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+            thunk_name = '%s with %s output' % (perform, name)
+
+            if not out_map:
+                # Map is empty, there is no need to execute thunk() again
+                _logger.warn('%s: out_map is empty', name)
+                continue
+
+            # Copy the inputs over, if they were marked as destroyed or viewed
+            # (we will destroy the output at some point so it can destroy
+            # the input)
+            for r in aliased_inputs:
+                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
             # Get the appropriate output storages
             # (no copy)
@@ -1186,13 +1320,13 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.is_valid_value(storage_map[r][0]):
                     raise InvalidValueError(r, storage_map[r][0],
-                            hint='%s with %s output' % (perform, name),
+                            hint=thunk_name,
                             specific_hint=r.type.value_validity_msg(
                             storage_map[r][0]))
 
             _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                           clobber_dr_vals=False,
-                          perform='%s with output %s' % (perform, name),
+                          perform=thunk_name,
                           warn_input_not_reused=False)
 
             _check_viewmap(node, storage_map)
@@ -1200,8 +1334,9 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
-                    raise BadCLinkerOutput(r, val_py=r_vals[r],
-                                           val_c=storage_map[r][0])
+                    raise BadThunkOutput(r,
+                            thunk1='Reference value', val1=r_vals[r],
+                            thunk2=thunk_name, val2=storage_map[r][0])
 
             # Clear storage_map
             for r in node.outputs:
@@ -1617,11 +1752,14 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
 
-                # TODO: store them in another map, and test the thunks on
+                # store preallocated outputs in another map, and test the thunks on
                 # them as output storages.
+                init_outputs = {}
                 for r in storage_map:
                     if r in env.outputs:
-                        storage_map[r][0] = None
+                        if storage_map[r][0] is not None:
+                            init_outputs[r] = storage_map[r][0]
+                            storage_map[r][0] = None
 
                 #####
                 #  Precondition: the storage map is empty, transferred
@@ -1673,11 +1811,11 @@ class _Linker(gof.link.LocalLinker):
                                 raise InvalidValueError(r, storage_map[r][0],
                                                         hint='perform output',
                                                         specific_hint=hint2)
-
-                        _check_inputs(node, storage_map, r_vals, dr_vals,
-                                      active_order_set,
-                                      clobber_dr_vals=True, perform='py',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        py_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals, dr_vals,
+                                active_order_set,
+                                clobber_dr_vals=True, perform='py',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1705,7 +1843,9 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='py',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=py_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1717,6 +1857,7 @@ class _Linker(gof.link.LocalLinker):
                         clobber = True
                         if thunk_py:
                             dmap = getattr(node.op, 'destroy_map', {})
+                            vmap = getattr(node.op, 'view_map', {})
                             for i, r in enumerate(node.inputs):
                                 # if thunk_py ran, and we still got this far,
                                 # it means that the destroy_map of the Op (and view_map) are
@@ -1725,7 +1866,10 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-                                if any(i in v for v in dmap.values()):
+                                # Inputs marked as viewd are unsafe too,
+                                # because the corresponding output can
+                                # be destroyed.
+                                if any(i in v for v in (dmap.values() + vmap.values())):
                                     storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                             clobber = False
@@ -1750,10 +1894,11 @@ class _Linker(gof.link.LocalLinker):
                                     self.maker.mode.require_matching_strides,
                                     node.op)
 
-                        _check_inputs(node, storage_map, r_vals,
-                                      dr_vals, active_order_set,
-                                      clobber_dr_vals=clobber, perform='c',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        c_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals,
+                                dr_vals, active_order_set,
+                                clobber_dr_vals=clobber, perform='c',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1766,7 +1911,9 @@ class _Linker(gof.link.LocalLinker):
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     #import pdb; pdb.set_trace()
                                     #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
-                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                                    raise BadThunkOutput(r,
+                                            thunk1='perform', val1=r_vals[r],
+                                            thunk2='c_code', val2=storage_map[r][0])
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 #retrieve each output from the storage_map
@@ -1793,7 +1940,9 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='c code',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=c_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1916,7 +2065,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             accept_inplace = False,
             function_builder = Function,
             profile=None,
-            on_unused_input='raise'):
+            on_unused_input=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -2176,7 +2325,10 @@ class DebugMode(Mode):
 
     This mode catches several kinds of internal error:
 
-    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
+    - inconsistent outputs when calling the same Op twice with the same
+      inputs, for instance if c_code and perform implementations, are
+      inconsistent, or in case of incorrect handling of output memory
+      (see `BadThunkOutput`),
 
     - a variable replacing another when their runtime values don't
       match.  This is a symptom of an incorrect optimization step, or

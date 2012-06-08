@@ -1944,6 +1944,25 @@ class Exp(UnaryScalarOp):
 exp = Exp(upgrade_to_float, name='exp')
 
 
+class Exp2(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.exp2(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            return gz * exp2(x) * log(numpy.cast[x.type](2)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = exp2(%(x)s);" % locals()
+exp2 = Exp2(upgrade_to_float, name='exp2')
+
+
 class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x * x
@@ -1999,7 +2018,7 @@ class Cos(UnaryScalarOp):
 cos = Cos(upgrade_to_float, name='cos')
 
 
-class Arccos(UnaryScalarOp):
+class ArcCos(UnaryScalarOp):
     def impl(self, x):
         return numpy.arccos(x)
 
@@ -2015,7 +2034,7 @@ class Arccos(UnaryScalarOp):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = acos(%(x)s);" % locals()
-arccos = Arccos(upgrade_to_float, name='arccos')
+arccos = ArcCos(upgrade_to_float, name='arccos')
 
 
 class Sin(UnaryScalarOp):
@@ -2037,6 +2056,25 @@ class Sin(UnaryScalarOp):
 sin = Sin(upgrade_to_float, name='sin')
 
 
+class ArcSin(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arcsin(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = asin(%(x)s);" % locals()
+arcsin = ArcSin(upgrade_to_float, name='arcsin')
+
+
 class Tan(UnaryScalarOp):
     def impl(self, x):
         return numpy.tan(x)
@@ -2054,6 +2092,46 @@ class Tan(UnaryScalarOp):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = tan(%(x)s);" % locals()
 tan = Tan(upgrade_to_float, name='tan')
+
+
+class ArcTan(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arctan(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / (numpy.cast[x.type](1) + sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atan(%(x)s);" % locals()
+arctan = ArcTan(upgrade_to_float, name='arctan')
+
+
+class ArcTan2(BinaryScalarOp):
+    def impl(self, y, x):
+        return numpy.arctan2(y, x)
+
+    def grad(self, (y, x), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types and y.type in float_types:
+            return [gz * x / (sqr(x) + sqr(y)),
+                    gz * neg(y) / (sqr(x) + sqr(y))]
+        else:
+            return None,
+
+    def c_code(self, node, name, (y, x), (z,), sub):
+        if (node.inputs[0].type in complex_types or
+            node.inputs[1].type in complex_types):
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atan2(%(y)s, %(x)s);" % locals()
+arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
 
 
 class Cosh(UnaryScalarOp):
@@ -2078,6 +2156,25 @@ class Cosh(UnaryScalarOp):
 cosh = Cosh(upgrade_to_float, name='cosh')
 
 
+class ArcCosh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arccosh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = acosh(%(x)s);" % locals()
+arccosh = ArcCosh(upgrade_to_float, name='arccosh')
+
+
 class Sinh(UnaryScalarOp):
     """
     sinh(x) = (exp(x) - exp(-x)) / 2
@@ -2098,6 +2195,25 @@ class Sinh(UnaryScalarOp):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = sinh(%(x)s);" % locals()
 sinh = Sinh(upgrade_to_float, name='sinh')
+
+
+class ArcSinh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arcsinh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = asinh(%(x)s);" % locals()
+arcsinh = ArcSinh(upgrade_to_float, name='arcsinh')
 
 
 class Tanh(UnaryScalarOp):
@@ -2121,6 +2237,25 @@ class Tanh(UnaryScalarOp):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = tanh(%(x)s);" % locals()
 tanh = Tanh(upgrade_to_float, name='tanh')
+
+
+class ArcTanh(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.arctanh(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz / (numpy.cast[x.type](1) -sqr(x)),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = atanh(%(x)s);" % locals()
+arctanh = ArcTanh(upgrade_to_float, name='arctanh')
 
 
 class Real(UnaryScalarOp):

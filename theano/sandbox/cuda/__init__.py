@@ -10,6 +10,7 @@ import numpy
 import theano
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
+from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import config, AddConfigVar, StrParam
 import nvcc_compiler
 
@@ -106,8 +107,9 @@ if not compile_cuda_ndarray:
     except ImportError:
         compile_cuda_ndarray = True
 
-try:
-    if compile_cuda_ndarray:
+if compile_cuda_ndarray:
+    get_lock()
+    try:
         if not nvcc_compiler.is_nvcc_available():
             set_cuda_disabled()
 
@@ -131,9 +133,11 @@ try:
                     include_dirs=[cuda_path], libs=['cublas'],
                     preargs=compiler.compile_args())
             from cuda_ndarray.cuda_ndarray import *
-except Exception, e:
-    _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
-    set_cuda_disabled()
+    except Exception, e:
+        _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
+        set_cuda_disabled()
+    finally:
+        release_lock()
 
 if cuda_available:
     # If necessary,
@@ -162,7 +166,7 @@ if cuda_available:
                 # symlink simultaneously.
                 # If that happens, we verify that the existing symlink is
                 # indeed working.
-                if e.errno != errno.EEXIST or not ok():
+                if getattr(e, 'errno', None) != errno.EEXIST or not ok():
                     raise
     try:
         # This only test if the cuda driver is available and if there
@@ -309,8 +313,19 @@ def use(device,
             device = 0
         try:
             if device != 'gpu':
+                assert isinstance(device, int)
                 gpu_init(device)
-            use.device_number = device
+                use.device_number = device
+            else:
+                # This mean the driver should select the GPU.  As we
+                # need to get the device number now, we force the
+                # selection of the GPU by the driver now and then we
+                # query the active GPU. If we check the active GPU before
+                # the device is initialized we will always receive 0
+                # event if another device is selected later.
+                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                use.device_number = active_device_number()
+
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
                 theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
@@ -322,10 +337,10 @@ def use(device,
                 cuda_enabled = True
             print >> sys.stderr, "Using gpu device %d: %s" % (
                 active_device_number(), active_device_name())
-        except (EnvironmentError, ValueError), e:
+        except (EnvironmentError, ValueError, RuntimeError), e:
             _logger.error(("ERROR: Not using GPU."
-                " Initialisation of device %i failed:\n%s"),
-                device, e)
+                           " Initialisation of device %s failed:\n%s"),
+                          str(device), e)
             cuda_enabled = False
             if force:
                 e.args += (("You asked to force this device and it failed."

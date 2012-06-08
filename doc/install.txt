@@ -76,19 +76,38 @@ The following libraries and software are optional:
 Linux
 -----
 
-Alternative installation on Ubuntu with PPA
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CentOS 6
+~~~~~~~~
 
-Benjamin J. McCann provides `installation documentation
-<http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for
-Ubuntu 11.04 with CUDA 4.0 PPA.
+:ref:`install_centos6` provides instructions on how to install Theano on CentOS
+6, written by the Theano developers. It covers how to install Theano (for
+CPU-based computation only) with the distribution-packaged ATLAS, a free fast
+implementation of BLAS.
 
-Gentoo
+.. Cent OS 6
+
+Ubuntu
 ~~~~~~
+
+:ref:`install_ubuntu` provides instructions on how to install Theano
+on Ubuntu. It covers how to install Theano with the
+distribution-packaged OpenBlas or ATLAS. Both are free fast
+implementation of BLAS.
+
+
+Alternative installation on Gentoo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Brian Vandenberg emailed `installation instructions on Gentoo
 <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
 focusing on how to install the appropriate dependencies.
+
+Alternative installation on Mandriva 2010.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
+
+.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
 
 
 .. _linux_basic:
@@ -144,12 +163,38 @@ directory; see the `virtualenv documentation`_ for details.
 
 .. _install_bleeding_edge:
 
-With rpm package
-~~~~~~~~~~~~~~~~
+Updating Theano
+~~~~~~~~~~~~~~~
 
-A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
+The following command will update only Theano:
 
-.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
+.. code-block:: bash
+
+    sudo pip install --upgrade --no-deps theano
+
+The following command will update Theano and Numpy/Scipy (warning bellow):
+
+.. code-block:: bash
+
+    sudo pip install --upgrade theano
+
+
+If you installed NumPy/SciPy with yum/apt-get, updating NumPy/SciPy
+with pip/easy_install is not always a good idea. This can make Theano
+crash due to problems with BLAS (but see below). The versions of
+NumPy/SciPy in the distribution are sometimes linked against faster
+versions of BLAS. Installing NumPy/SciPy with
+yum/apt-get/pip/easy_install won't install the development package
+needed to recompile it with the fast version. This mean that if you
+don't install the development packages manually, when you recompile
+the updated NumPy/SciPy, it will compile with the slower version. This
+results in a slower Theano as well. To fix the crash, you can clear
+the Theano cache like this:
+
+.. code-block:: bash
+
+    theano-cache clear
+
 
 Bleeding-edge install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -682,7 +727,7 @@ MinGW, but this has not been tested yet.
 
    .. code-block:: bash
 
-        sh /postinstall/pi.sh
+       sh /postinstall/pi.sh
 
   and answer the few questions so that MSYS is properly linked to your MinGW install.
 
@@ -872,7 +917,8 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
    <https://github.com/xianyi/OpenBLAS>`_ is a new project that
    continues GotoBLAS: it has a better installation process and implements
    additional functions (not currently used by Theano).
-   We did not try OpenBLAS on Windows.
+   We did not try OpenBLAS on Windows. When installed, you probably need to
+   use this Theano flags: ``theano.config.blas.ldflags = "-lopenblas"``
 
 .. note::
 

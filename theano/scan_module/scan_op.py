@@ -94,12 +94,6 @@ class Scan(PureOp):
 
         if self.as_while:
             self.output_types = self.output_types[:-1]
-        self.destroy_map = {}
-
-        if hasattr(self, 'inplace') and self.inplace:
-            for idx in xrange(self.n_mit_mot + self.n_mit_sot +
-                              self.n_sit_sot):
-                self.destroy_map[idx] = [idx + 1 + self.n_seqs]
 
         mode_instance = compile.mode.get_mode(self.mode)
         # if the default mode is used, and that mode is ProfileMode
@@ -376,31 +370,41 @@ class Scan(PureOp):
         # Check if we are dealing with same type of objects
         if not type(self) == type(other):
             return False
+        if not 'destroy_map' in self.info:
+            self.info['destroy_map'] = {}
+        if not 'destroy_map' in other.info:
+            other.info['destroy_map'] = {}
+        keys_to_check = ['truncate_gradient', 'profile',
+                         'n_seqs', 'tap_array', 'name',
+                         'as_while', 'n_mit_sot', 'destroy_map',
+                         'n_nit_sot', 'n_shared_outs',
+                         'n_sit_sot', 'gpu', 'n_mit_mot_outs',
+                         'n_mit_mot', 'mit_mot_out_slices']
         # This are some safety checks ( namely that the inner graph has the
         # same number of inputs and same number of outputs )
-        elif not len(self.inputs) == len(other.inputs):
+        if not len(self.inputs) == len(other.inputs):
             return False
         elif not len(self.outputs) == len(other.outputs):
             return False
-        elif self.info != other.info:
-            return False
-        else:
-            # If everything went OK up to here, there is still one thing to
-            # check. Namely, do the internal graph represent same
-            # computations
-            for self_in, other_in in izip(self.inputs, other.inputs):
-                if self_in.type != other_in.type:
-                    return False
-
-            if not scan_utils.equal_computations(self.outputs,
-                                                 other.outputs,
-                                                 self.inputs,
-                                                 other.inputs):
+        for key in keys_to_check:
+            if self.info[key] != other.info[key]:
+                return False
+        # If everything went OK up to here, there is still one thing to
+        # check. Namely, do the internal graph represent same
+        # computations
+        for self_in, other_in in izip(self.inputs, other.inputs):
+            if self_in.type != other_in.type:
                 return False
 
-            # If they do, then they need to match in other small details
-            # like name, mode, etc.
-            return True
+        if not scan_utils.equal_computations(self.outputs,
+                                             other.outputs,
+                                             self.inputs,
+                                             other.inputs):
+            return False
+
+        # If they do, then they need to match in other small details
+        # like name, mode, etc.
+        return True
 
     def __str__(self):
         if self.gpu:
@@ -411,12 +415,24 @@ class Scan(PureOp):
             name = 'do_while'
         else:
             name = 'for'
-
-        if self.inplace:
-            aux_txt = '%s{inplace,%s,%s}' % (name, gpu_str, str(self.name))
+        aux_txt = '%s'
+        if getattr(self, 'destroy_map', None) is None:
+            self.destroy_map = {}
+        if len(self.destroy_map.keys()) > 0:
+            # Check if all outputs are inplace
+            if (sorted(self.destroy_map.keys()) == \
+               sorted(range(self.n_mit_mot +
+                            self.n_mit_sot +
+                            self.n_sit_sot))):
+                aux_txt += 'all_inplace,%s,%s}'
+            else:
+                aux_txt += '{inplace{'
+                for k in self.destroy_map.keys():
+                    aux_txt += str(k) + ','
+                aux_txt += '},%s,%s}'
         else:
-            aux_txt = '%s{%s,%s}' % (name, gpu_str, str(self.name))
-
+            aux_txt +='{%s,%s}'
+        aux_txt = aux_txt % (name, gpu_str, str(self.name))
         return aux_txt
 
     def __hash__(self):
@@ -522,6 +538,14 @@ class Scan(PureOp):
                                                     dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
+
+            if hasattr(self, 'destroy_map'):
+                cython_destroy_map = [x in self.destroy_map
+                                  for x in xrange(len(node.outputs))]
+            else:
+                cython_destroy_map = [0 for x in xrange(len(node.outputs))]
+            cython_destroy_map = numpy.asarray(cython_destroy_map,
+                                               dtype='int32')
             import scan_perform_ext
             p = lambda node, args, outs:\
                     scan_perform_ext.perform(
@@ -543,7 +567,7 @@ class Scan(PureOp):
                         cython_mit_mot_out_nslices,
                         self.fn.fn,
                         self.fn,
-                        self.inplace,
+                        cython_destroy_map,
                         args,
                         outs,
                         self)
@@ -776,7 +800,7 @@ class Scan(PureOp):
                          in xrange(self.n_outs + self.n_nit_sot)]
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
-            if self.inplace:
+            if idx in self.destroy_map:
                 # ^ Case 1. Outputs should be computed inplace of their
                 # initial state
                 outs[idx][0] = args[self.seqs_arg_offset + idx]
@@ -1445,7 +1469,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         n_mit_sot = 0
         n_sit_sot = 0
 
@@ -1509,15 +1532,19 @@ class Scan(PureOp):
         rval = scan_utils.reconstruct_graph(self.inputs,
                                             self.outputs, '_rop')
         self_inputs = rval[0]
+        rop_of_inputs = rval[0][:self.n_seqs + self.n_outs] + \
+                rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
         self_outputs = rval[1]
         # Step 1. Compute the R_op of the inner function
         inner_eval_points = [scan_utils.safe_new(x, '_evalpoint')
-                             for x in self_inputs]
+                             for x in rop_of_inputs]
         if self.as_while:
             rop_self_outputs = self_outputs[:-1]
         else:
             rop_self_outputs = self_outputs
-        rop_outs = tensor.Rop(rop_self_outputs, self_inputs, inner_eval_points)
+        if self.info['n_shared_outs'] > 0:
+            rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
+        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs, inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
         # Step 2. Figure out what corresponds to what in the scan
@@ -1536,7 +1563,7 @@ class Scan(PureOp):
         info['n_sit_sot'] = self.n_sit_sot * 2
         info['n_mit_mot'] = self.n_mit_mot * 2
         info['n_nit_sot'] = self.n_nit_sot * 2
-        info['n_shared_outs'] = self.n_shared_outs * 2
+        info['n_shared_outs'] = self.n_shared_outs
         info['gpu'] = False
         info['as_while'] = self.as_while
         info['profile'] = self.profile
@@ -1546,7 +1573,6 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
-        info['inplace'] = False
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
         new_tap_array = []
         b = 0
@@ -1565,7 +1591,14 @@ class Scan(PureOp):
         ib = 0
         e = 1 + self.n_seqs
         ie = self.n_seqs
-        scan_seqs = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_seqs = inputs[b:e] + clean_eval_points
         inner_seqs = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         # MIT_MOT sequences ...
@@ -1574,7 +1607,14 @@ class Scan(PureOp):
         ib = ie
         ie = ie + int(numpy.sum([len(x) for x in
                                  self.tap_array[:self.n_mit_mot]]))
-        scan_mit_mot = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_mit_mot = inputs[b:e] + clean_eval_points
         inner_mit_mot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         # MIT_SOT sequences ...
@@ -1584,6 +1624,13 @@ class Scan(PureOp):
         ie = ie + int(numpy.sum([len(x) for x in
                          self.tap_array[self.n_mit_mot:\
                                         self.n_mit_mot + self.n_mit_sot]]))
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
@@ -1592,7 +1639,14 @@ class Scan(PureOp):
         e = e + self.n_sit_sot
         ib = ie
         ie = ie + self.n_sit_sot
-        scan_sit_sot = inputs[b:e] + eval_points[b:e]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[b:e], eval_points[b:e]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+
+        scan_sit_sot = inputs[b:e] + clean_eval_points
         inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
         #Shared outs ...
@@ -1600,8 +1654,8 @@ class Scan(PureOp):
         e = e + self.n_shared_outs
         ib = ie
         ie = ie + self.n_shared_outs
-        scan_shared = inputs[b:e] + eval_points[b:e]
-        inner_shared = self_inputs[ib:ie] + inner_eval_points[ib:ie]
+        scan_shared = inputs[b:e]
+        inner_shared = self_inputs[ib:ie]
 
         # NIT_SOT sequences
         b = e
@@ -1609,8 +1663,15 @@ class Scan(PureOp):
         scan_nit_sot = inputs[b:e] * 2
 
         # All other arguments
-        scan_other = inputs[e:] + eval_points[e:]
-        inner_other = self_inputs[ie:] + inner_eval_points[ie:]
+        clean_eval_points = []
+        for inp, evp in zip(inputs[e:], eval_points[e:]):
+            if evp is not None:
+                clean_eval_points.append(evp)
+            else:
+                clean_eval_points.append(inp.zeros_like())
+        scan_other = inputs[e:] + clean_eval_points
+        # inner_eval_points do not have entries for shared variables
+        inner_other = self_inputs[ie:] + inner_eval_points[ib:]
 
         # Outputs
         n_mit_mot_outs = int(numpy.sum([len(x) for x in
@@ -1630,7 +1691,7 @@ class Scan(PureOp):
         inner_out_nit_sot = self_outputs[b:e] + rop_outs[b:e]
         b = e
         e = e + self.n_shared_outs
-        inner_out_shared = self_outputs[b:e] + rop_outs[b:e]
+        inner_out_shared = self_outputs[b:e]
 
         inner_ins = (inner_seqs +
                      inner_mit_mot +
@@ -1673,9 +1734,7 @@ class Scan(PureOp):
         b = e + self.n_nit_sot
         e = e + self.n_nit_sot * 2
         final_outs += outputs[b:e]
-        b = e + self.n_shared_outs
-        e = e + self.n_shared_outs * 2
-        final_outs += outputs[b:e]
+        final_outs += [None]*self.n_shared_outs
 
         return final_outs
 

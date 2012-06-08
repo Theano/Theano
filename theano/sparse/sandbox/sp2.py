@@ -8,10 +8,10 @@ from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
     mul_s_s, mul_s_d, dot,
     CSMProperties, CSM, register_specialize,
-    _is_sparse_variable, CSC, CSR,
+    _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse)
-
+from theano.sparse.sandbox.sp import sp_sum
 
 class Cast(gof.op.Op):
     def __init__(self, out_type):
@@ -113,6 +113,9 @@ class MulSDCSC(gof.Op):
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
 
+    def c_code_cache_version(self):
+        return (1,)
+
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
@@ -202,6 +205,9 @@ class MulSDCSR(gof.Op):
         assert b.type.ndim == 2
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
+    def c_code_cache_version(self):
+        return (1,)
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
@@ -345,25 +351,6 @@ class EliminateZeros(gof.op.Op):
 eliminate_zeros = EliminateZeros()
 
 
-class Sum(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x, a):
-        x = as_sparse_variable(x)
-        a = tensor.as_tensor_variable(a)
-        return gof.Apply(self, [x, a], [tensor.TensorType(dtype=x.type.dtype,
-                        broadcastable=(False,)).make_variable()])
-
-    def perform(self, node, (x, a), (out, )):
-        assert _is_sparse(x)
-        out[0] = numpy.asarray(x.sum(a), dtype=x.dtype).flatten()
-sum = Sum()
-
-
 class Binomial(gof.op.Op):
     def __init__(self, format, dtype):
         self.format = format
@@ -394,66 +381,237 @@ class Binomial(gof.op.Op):
 
         out[0] = getattr(res, 'to' + self.format)()
         out[0].data = numpy.ones_like(out[0].data)
+    
+    def grad(self, (n, p, shape, ), (gz,)):
+        return None, None, None
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
 csr_dbinomial = Binomial('csr', 'float64')
 csc_dbinomial = Binomial('csc', 'float64')
 
 
+def structured_monoid(tensor_op):
+    """
+    Generic operation to perform many kinds of monoid element-wise
+    operations on the non-zeros of a sparse matrix.
+    
+    The first parameter must always be a sparse matrix. The other parameters
+    must be scalars which will be passed as argument to the tensor_op.
+    """
+    def decorator(f):
+        def wrapper(*args):
+            x = as_sparse_variable(args[0])
+            
+            xs = [scalar.as_scalar(arg) for arg in args[1:]]
+
+            data, ind, ptr, shape = csm_properties(x)
+
+            data = tensor_op(data, *xs)
+
+            return CSM(x.format)(data, ind, ptr, shape)
+        return wrapper
+    return decorator
+
+
+@structured_monoid(tensor.nnet.sigmoid)
 def structured_sigmoid(x):
+    """structured elemwise sigmoid.
     """
-    Element-wise sigmoid function only to the non-zero elements.
-    """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.nnet.sigmoid(x_data)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.exp)
 def structured_exp(x):
+    """structured elemwise exponential.
     """
-    Element-wise exponential function to the non-zero elements.
+    # see decorator for function body
+
+@structured_monoid(tensor.log)
+def structured_log(x):
+    """structured elemwise logarithm.
     """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.exp(x_data)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.pow)
 def structured_pow(x, y):
+    """structured elemwise power of sparse matrix
+    x by scalar y.
     """
-    Element-wise power function only to non-zero elements.
-    """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    y = tensor.as_tensor_variable(y)
-
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
-
-    x_data = tensor.pow(x_data, y)
-
-    return CSR(x_data, x_ind, x_ptr, x_shape)
-
-
+@structured_monoid(tensor.minimum)
 def structured_minimum(x, y):
+    """structured elemwise minimum of sparse matrix
+    x by scalar y.
     """
-    Element-wise minimum function only to non-zero elements.
+    # see decorator for function body
+
+@structured_monoid(tensor.maximum)
+def structured_maximum(x, y):
+    """structured elemwise maximum of sparse matrix
+    x by scalar y.
     """
-    x = as_sparse_variable(x)
+    # see decorator for function body
 
-    y = tensor.as_tensor_variable(y)
+@structured_monoid(tensor.add)
+def structured_add(x):
+    """structured addition of sparse matrix
+    x and scalar y.
+    """
+    # see decorator for function body
 
-    x_data, x_ind, x_ptr, x_shape = csm_properties(x)
 
-    x_data = tensor.minimum(x_data, y)
+class MulSV(gof.op.Op):
+    '''Multiplication of sparse matrix by a broadcasted dense vector.'''
+    def __eq__(self, other):
+        return (type(self) == type(other))
 
-    return CSR(x_data, x_ind, x_ptr, x_shape)
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x = as_sparse_variable(x)
+        y = tensor.as_tensor_variable(y)
+
+        assert y.type.ndim == 1
+
+        if x.type.dtype != y.type.dtype:
+            raise NotImplementedError()
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype=x.type.dtype,
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x) and not _is_sparse(y)
+        assert x.shape[1] == y.shape[0]
+        out[0] = x.__class__(x.toarray() * y)
+
+    def grad(self, (x, y), (gz,)):
+        assert _is_sparse_variable(x) and _is_dense_variable(y)
+        assert _is_sparse_variable(gz)
+        return mul_s_v(gz, y), sp_sum(x * gz, axis=0, sparse_grad=True)
+mul_s_v = MulSV()
+
+
+class MulSVCSR(gof.Op):
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, a_data, a_indices, a_indptr, b):
+        assert b.type.ndim == 1
+        return gof.Apply(self, [a_data, a_indices, a_indptr, b],
+                               [tensor.tensor(b.dtype, (False,))])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        _data, _indices, _indptr, _b, = inputs
+        _zout, = outputs
+        if node.inputs[0].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for a')
+        if node.inputs[3].type.dtype in ('complex64', 'complex128'):
+            raise NotImplementedError('Complex types are not supported for b')
+
+        return """
+        if (%(_b)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1");
+            %(fail)s;
+        }
+        if (%(_data)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
+            %(fail)s;
+        }
+        if (%(_indices)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
+            %(fail)s;
+        }
+        if (%(_indptr)s->nd != 1) {
+            PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
+            %(fail)s;
+        }
+
+        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
+
+        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
+
+        if (!%(_zout)s
+            || %(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]
+            || !PyArray_ISCONTIGUOUS(%(_zout)s))
+        {
+            Py_XDECREF(%(_zout)s);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
+                    %(_indices)s->dimensions, %(_b)s->descr->type_num);
+        }
+
+        { //makes it compile even though labels jump over variable definitions.
+            const npy_intp nnz = %(_indices)s->dimensions[0];
+            //TODO: error checking with this
+            const npy_intp N =  %(_indptr)s->dimensions[0]-1;
+
+            const dtype_%(_data)s * const __restrict__ data = (dtype_%(_data)s*)%(_data)s->data;
+            const npy_int32 * const __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
+            const npy_int32 * const __restrict__ indices = (npy_int32 *)%(_indices)s->data;
+
+            const dtype_%(_b)s* __restrict__ Db = (dtype_%(_b)s*)%(_b)s->data;
+
+            dtype_%(_zout)s * const __restrict__ zout = (dtype_%(_zout)s*)%(_zout)s->data;
+
+            const npy_intp Sb = %(_b)s->strides[0] / %(_b)s->descr->elsize;
+
+            // loop over rows
+            for (npy_int32 j = 0; j < N; ++j)
+            {
+                // for each non-null value in the sparse column
+                for (npy_int32 i_idx = indptr[j]; i_idx < indptr[j+1]; ++i_idx)
+                {
+                    // extract row index of non-null value
+                    npy_int32 i = indices[i_idx];
+
+                    zout[i_idx] = data[i_idx] * Db[i * Sb];
+                }
+            }
+        }
+
+        """ % dict(locals(), **sub)
+mul_s_v_csr = MulSVCSR()
+
+
+@gof.local_optimizer([mul_s_v])
+def local_mul_s_v(node):
+    if node.op == mul_s_v:
+        x, y = node.inputs
+
+        x_is_sparse_variable = _is_sparse_variable(x)
+
+        if x_is_sparse_variable:
+            svar = x
+            dvar = y
+        else:
+            svar = y
+            dvar = x
+
+        if dvar.type.ndim != 1:
+            return False
+        elif svar.type.format == 'csr':
+            CSx = CSR
+            mul_s_v_csx = mul_s_v_csr
+        else:
+            return False
+
+        s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
+
+        c_data = mul_s_v_csx(s_val, s_ind, s_ptr, dvar)
+
+        return [CSx(c_data, s_ind, s_ptr, s_shape)]
+
+    return False
+register_specialize(local_mul_s_v)
 
 
 class StructuredAddSV(gof.op.Op):
@@ -486,9 +644,9 @@ class StructuredAddSV(gof.op.Op):
         out[0] = x.__class__(x + (x.toarray() != 0) * y)
 
     def grad(self, (x, y), (gz,)):
-        assert _is_sparse_variable(x) and _is_sparse_variable(y)
+        assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
-        return gz, gz
+        return gz, sp_sum(gz, axis=0, sparse_grad=True)
 structured_add_s_v = StructuredAddSV()
 
 
@@ -500,9 +658,19 @@ class StrucutedAddSVCSR(gof.Op):
         return hash(type(self))
 
     def make_node(self, a_data, a_indices, a_indptr, b):
+        b = tensor.as_tensor_variable(b)
+        a_data = tensor.as_tensor_variable(a_data)
+        a_indices = tensor.as_tensor_variable(a_indices)
+        a_indptr = tensor.as_tensor_variable(a_indptr)
+        assert a_data.type.ndim == 1
+        assert a_indices.type.ndim == 1
+        assert a_indptr.type.ndim == 1
         assert b.type.ndim == 1
         return gof.Apply(self, [a_data, a_indices, a_indptr, b],
                                [tensor.tensor(b.dtype, (False,))])
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         _data, _indices, _indptr, _b, = inputs
@@ -604,7 +772,7 @@ def local_structured_add_s_v(node):
             CSx = CSR
             structured_add_s_v_csx = structured_add_s_v_csr
         else:
-            raise NotImplemented()
+            return False
 
         s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
 
@@ -670,8 +838,8 @@ class SamplingDot(gof.op.Op):
 
     def grad(self, (x, y, p), (gz,)):
         rval = [
-            dot(gz, y),
-            dot(gz.T, x),
+            dot(p * gz, y),
+            dot(p.T * gz.T, x),
             None
         ]
 

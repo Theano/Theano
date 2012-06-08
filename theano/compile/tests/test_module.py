@@ -146,7 +146,7 @@ class T_module(unittest.TestCase):
 
             #assign 4 and 5 to the two variables' containers in m
             m.l = [4, 5]
-            print 'm.f', m.f()
+            m.f()
             assert numpy.all(5 == m.f())
             assert numpy.all(4 == m.g())
 
@@ -189,9 +189,9 @@ class T_module(unittest.TestCase):
             assert 5 == m.f()
             assert 4 == m.g()
 
-        print 'dscalar test'
+        #print 'dscalar test'
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
-        print 'value test'
+        #print 'value test'
         local_test(lambda:T.value(1),lambda:T.value(2))
 
 
@@ -494,9 +494,9 @@ class T_module(unittest.TestCase):
         M.a = [1,2,3]
         M.make()
         m = M.make()
-        print m.a
-        print m.a[0], type(m.a[0]), m.a[0] == 1
-        print list(m.a)
+        #print m.a
+        #print m.a[0], type(m.a[0]), m.a[0] == 1
+        #print list(m.a)
         assert list(m.a) == [1,2,3]
         assert m.a is not M.a
         try:
@@ -545,7 +545,8 @@ def test_multiple_references():
             self.sub_module = sub_module
 
         def _instance_initialize(self, obj):
-            print 'Initializing A'
+            pass
+            #print 'Initializing A'
 
 
     class B(theano.Module):
@@ -555,7 +556,8 @@ def test_multiple_references():
             self.sub_module = sub_module
 
         def _instance_initialize(self, obj):
-            print 'Initializing B'
+            pass
+            #print 'Initializing B'
 
 
     class C(theano.Module):
@@ -565,11 +567,11 @@ def test_multiple_references():
             self.value = theano.tensor.scalar()
 
         def _instance_initialize(self, obj):
-            print 'Initializing C'
+            #print 'Initializing C'
             obj.value = 0
 
         def _instance_set(self, obj, value):
-            print 'Setting C'
+            #print 'Setting C'
             obj.value = value
 
 
@@ -584,7 +586,7 @@ def test_multiple_references():
             self.bug = theano.tensor.scalar()
 
         def _instance_initialize(self, obj):
-            print 'Initializing D'
+            #print 'Initializing D'
             obj.c.set(1)
 
 

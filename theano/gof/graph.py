@@ -559,7 +559,8 @@ def orphans(i, o):
 
 
 def clone(i, o, copy_inputs = True):
-    """ WRITEME
+    """
+    Copies the subgraph contained between i and o.
 
     :type i: list
     :param i: input L{Variable}s
@@ -568,8 +569,7 @@ def clone(i, o, copy_inputs = True):
     :type copy_inputs: bool
     :param copy_inputs: if True, the inputs will be copied (defaults to False)
 
-    Copies the subgraph contained between i and o and returns the
-    outputs of that copy (corresponding to o).
+    Returns the inputs and outputs of that copy.
     """
     equiv = clone_get_equiv(i, o, copy_inputs)
     return [equiv[input] for input in i], [equiv[output] for output in o]

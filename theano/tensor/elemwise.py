@@ -13,6 +13,8 @@ from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import min_informative_str, pprint
 from theano.gof.python25 import all, any
+from theano.tensor.utils import hash_from_dict
+
 config = theano.config
 
 
@@ -563,17 +565,8 @@ class Elemwise(Op):
         return False
 
     def _rehash(self):
-        items = self.inplace_pattern.items()
-        items.sort()
-        first_part = [k for k, v in items]
-        second_part = []
-        for k, v in items:
-            if isinstance(v, (tuple, list)):
-                second_part += [tuple(v)]
-            else:
-                second_part += [v]
-        tuple_items = tuple(first_part + second_part)
-        h = hash('Elemwise') ^ hash(self.scalar_op) ^ hash(tuple_items)
+        inplace_pattern_hash = hash_from_dict(self.inplace_pattern)
+        h = hash('Elemwise') ^ hash(self.scalar_op) ^ inplace_pattern_hash
         assert h == getattr(self, '_hashval', h)
         self._hashval = h
 
@@ -1755,7 +1748,7 @@ class Prod(CAReduceDtype):
             return "Prod{%s}" % ", ".join(map(str, self.axis))
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
 
 class MulWithoutZeros(scalar.BinaryScalarOp):

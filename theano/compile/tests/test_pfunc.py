@@ -369,7 +369,6 @@ class Test_pfunc(unittest.TestCase):
             z: (((x * 5) + y) ** z)})
 
         up()
-        print x.get_value(borrow=True)
         assert numpy.all(x.get_value() == 20)
         assert numpy.all(y.get_value() == 24)
         assert numpy.all(z.get_value() == (24 ** 2))
@@ -380,7 +379,6 @@ class Test_pfunc(unittest.TestCase):
 
         f = pfunc([], [x])
         f()
-        print x.get_value()
         assert x.get_value() == 1
 
         del x.default_update
@@ -399,32 +397,26 @@ class Test_pfunc(unittest.TestCase):
         # Test that the default update is taken into account in the right cases
         f1 = pfunc([], [x], no_default_updates=True)
         f1()
-        print x.get_value()
         assert x.get_value() == 0
 
         f2 = pfunc([], [x], no_default_updates=[x])
         f2()
-        print x.get_value()
         assert x.get_value() == 0
 
         f3 = pfunc([], [x], no_default_updates=[x, y])
         f3()
-        print x.get_value()
         assert x.get_value() == 0
 
         f4 = pfunc([], [x], no_default_updates=[y])
         f4()
-        print x.get_value()
         assert x.get_value() == 2
 
         f5 = pfunc([], [x], no_default_updates=[])
         f5()
-        print x.get_value()
         assert x.get_value() == 4
 
         f5 = pfunc([], [x], no_default_updates=False)
         f5()
-        print x.get_value()
         assert x.get_value() == 6
 
         self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
@@ -435,32 +427,26 @@ class Test_pfunc(unittest.TestCase):
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=True)
         g1()
-        print x.get_value()
         assert x.get_value() == 5
 
         g2 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[x])
         g2()
-        print x.get_value()
         assert x.get_value() == 4
 
         g3 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[x, y])
         g3()
-        print x.get_value()
         assert x.get_value() == 3
 
         g4 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[y])
         g4()
-        print x.get_value()
         assert x.get_value() == 2
 
         g5 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[])
         g5()
-        print x.get_value()
         assert x.get_value() == 1
 
         g5 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=False)
         g5()
-        print x.get_value()
         assert x.get_value() == 0
 
     def test_default_updates_expressions(self):
@@ -473,17 +459,14 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([a], z)
         f1(12)
-        print x
         assert x.get_value() == 1
 
         f2 = pfunc([a], z, no_default_updates=True)
         assert f2(7) == 7
-        print x
         assert x.get_value() == 1
 
         f3 = pfunc([a], z, no_default_updates=[x])
         assert f3(9) == 9
-        print x
         assert x.get_value() == 1
 
     def test_default_updates_multiple(self):
@@ -524,7 +507,6 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([], [x])
         f1()
-        print x.get_value(), y.get_value(), z.get_value()
         assert x.get_value() == 1
         assert y.get_value() == -1
         assert z.get_value() == -2
@@ -598,10 +580,8 @@ class Test_pfunc(unittest.TestCase):
         b = 2 * a
         # Use only the tip of the graph, a is not used
         f = pfunc([b], b)
-        print 'a.get_value() =', a.get_value()
         assert a.get_value() == 0
         f(21)
-        print 'a.get_value() =', a.get_value()
         assert a.get_value() == 0
 
     def test_givens_replaces_shared_variable(self):
@@ -917,7 +897,7 @@ class Test_aliasing_rules(unittest.TestCase):
         data_of_b = data_of(B)
 
         f = pfunc([], [], updates=[(A, B[:, ::-1]), (B, A.T)])
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         f()
         # correctness (doesn't actually test the view...)
         assert numpy.all(data_of(A) == -.5)
@@ -938,7 +918,6 @@ class Test_aliasing_rules(unittest.TestCase):
 
             assert numpy.all(data_of(B) < 5)
             data_of_a += 10
-            print data_of(B)
             assert numpy.all(data_of(B) > 5)
             data_of_a -= 10
 

@@ -4,7 +4,7 @@ from theano.compile import shared_constructor, SharedVariable
 from theano import config
 from basic import SparseType, _sparse_py_operators
 
-class SparseTensorSharedVariable(SharedVariable, _sparse_py_operators):
+class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
     pass
 
 @shared_constructor

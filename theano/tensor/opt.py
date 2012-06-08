@@ -1078,6 +1078,25 @@ def local_fill_to_alloc(node):
         return rval
 
 
+@gof.local_optimizer([T.fill])
+def local_useless_fill(node):
+    """fill(s,v) -> v
+
+    This optimization is only needed in FAST_COMPILE to make the code
+    more readable. Normally, it is done by the local_fill_to_alloc
+    opt.
+
+    """
+    if node.op == T.fill:
+        r, v = node.inputs
+        if v.type == node.outputs[0].type:
+            # this is a useless fill, erase it.
+            return [v]
+compile.optdb['canonicalize'].register('local_useless_fill',
+                                       in2out(local_useless_fill),
+                                       1.1, 'fast_compile')
+
+
 @register_specialize
 @register_stabilize
 @register_canonicalize
@@ -4376,9 +4395,11 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
 
             # We should not check the number of inputs here
             # As fusing op don't always change the number of input.
+            # If a variable is used as multiple into to the same node,
+            # we still want to fusion. So we take the set.
             if (i.owner and
                 isinstance(i.owner.op, OP) and
-                len(i.clients) == 1):
+                len(set([n for n, idx in i.clients])) == 1):
 
                 do_fusion = True
                 try:

@@ -131,6 +131,7 @@ Community
    library/index
    optimizations
    extending/index
+   dev_start_guide
    glossary
    links
    internal/index

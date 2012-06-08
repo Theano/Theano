@@ -35,9 +35,14 @@ device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
     cuda_ndarray.shared_constructor(numpy.zeros(2, dtype='float32'))
 device_id = theano.sandbox.cuda.use.device_number
-device_id = device_id[3:]
-if device_id == '':
-    device_id = 0
+if device_id is None:
+    cuda.use("gpu",
+             force=False,
+             default_to_move_computation_to_gpu=False,
+             move_shared_float32_to_gpu=False,
+             enable_cuda=False,
+             test_driver=True)
+    device_id = theano.sandbox.cuda.use.device_number
 cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
 device_prop = cuda_ndarray.device_properties(device_id)
 
@@ -55,7 +60,7 @@ def py_conv_valid_numpy(img, kern):
                     #rr, cc is the upper-left corner of img patches
                     imgpatch = img[b, :, rr:rr + kern.shape[2],
                                    cc:cc + kern.shape[3]]
-                    #print img.shape, kern.shape, imgpatch.shape, rr+kern.shape[2]-1, rr-1, -1
+
                     innerprod = (imgpatch[:, ::-1, ::-1] *
                                  kern[k, :, :, :]).sum()
                     out[b, k, rr, cc] = innerprod
@@ -127,9 +132,10 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     # See `test_example` (above) for an example of how to use this directly.
     #
     # :param kshape: (4d)The shape of the kernel at run time.
-    # :param compile_kshp: (2d) hardcode the shape of the kernel in the generated code
-    #                      This is supposed to be faster, but we need to check
-    #                      That we raise an error if the input have the wrong shape.
+    # :param compile_kshp: (2d) hardcode the shape of the kernel in
+    #                      the generated code This is supposed to be
+    #                      faster, but we need to check That we raise
+    #                      an error if the input have the wrong shape.
     #
     if ones:
         assert not random
@@ -195,7 +201,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         if mode == 'valid':
             approx_fp = cpuval.size * ishape[1] * kshape[2] * kshape[3] * 2
         else:
-            approx_fp = ishape[0] * kshape[0] * kshape[1] * kshape[2] * kshape[3] * ishape[2] * ishape[3] * 2
+            approx_fp = (ishape[0] * kshape[0] * kshape[1] * kshape[2] *
+                         kshape[3] * ishape[2] * ishape[3] * 2)
         approx_fp /= 1e6
         cpu_mflops = approx_fp / (t1 - t0)
         gpu_mflops = approx_fp / (t2 - t1)
@@ -204,14 +211,21 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
             print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
                     cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1))
     if not rval:
-        print >> sys.stdout, 'test_'+mode+' id='+str(id)+' FAILED for ishape, kshape, mode, subsample, img_stride, kern_stride, version', ishape, kshape, mode, subsample, img_stride, kern_stride, version
+        print >> sys.stdout, ('test_' + mode + ' id=' + str(id) +
+                              ' FAILED for ishape, kshape, mode, subsample,' +
+                              ' img_stride, kern_stride, version', ishape,
+                              kshape, mode, subsample, img_stride, kern_stride,
+                              version)
         diff = cpuval - gpuval
         diffabs = numpy.absolute(diff)
         pr_diff = diffabs / numpy.absolute(cpuval)
         nb_close = (diffabs <= (atol + rtol * numpy.absolute(gpuval))).sum()
-        print "max absolute diff:",diffabs.max(),"avg abs diff:",numpy.average(diffabs)
-        print "median abs diff:", numpy.median(diffabs), "nb close:",nb_close, "/", diff.size
-        print "max relatif diff:",pr_diff.max(), "avg rel diff:", numpy.average(pr_diff)
+        print "max absolute diff:", (diffabs.max(), "avg abs diff:",
+                                     numpy.average(diffabs))
+        print "median abs diff:", (numpy.median(diffabs), "nb close:",
+                                   nb_close, "/", diff.size)
+        print "max relatif diff:", (pr_diff.max(), "avg rel diff:",
+                                    numpy.average(pr_diff))
     if not rval and print_ != False:
         if npy_img.shape[0] > 5:
             print "img", npy_img[0]
@@ -275,17 +289,16 @@ def exec_conv(version, shapes, verbose, random, mode,
 
 
 def get_basic_shapes():
-    return [
         #basic test of image and kernel shape
-              ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
-            , ((1, 1, 2, 2), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 3, 3), (1, 1, 2, 2), (1,1), (1,1), (1,1))
+    return [((1, 1, 1, 1), (1, 1, 1, 1), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 2, 2), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 3, 3), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1)),
         #basic test for unsquare kernel and image
-            , ((1, 1, 2, 4), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 3, 4), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 4, 3), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 4, 4), (1, 1, 3, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 4, 4), (1, 1, 2, 3), (1,1), (1,1), (1,1))]
+            ((1, 1, 2, 4), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 3, 4), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 4, 3), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 4, 4), (1, 1, 3, 2), (1, 1), (1, 1), (1, 1)),
+            ((1, 1, 4, 4), (1, 1, 2, 3), (1, 1), (1, 1), (1, 1))]
 
 
 def get_shapes(imshp=(1, 1), kshp=(1, 1), subsample=(1, 1),
@@ -293,40 +306,56 @@ def get_shapes(imshp=(1, 1), kshp=(1, 1), subsample=(1, 1),
     """ all possible case if we one or more of stack size, batch size,
     nkern. We use the gived image shape, kernel shape and subsmaple
     shape."""
-    return [  ((1, 2)+imshp, (1, 2)+kshp,subsample, img_stride, kern_stride)#stack only
-            , ((3, 1)+imshp, (1, 1)+kshp,subsample, img_stride, kern_stride)#batch only
-            , ((1, 1)+imshp, (2, 1)+kshp,subsample, img_stride, kern_stride)#nkern only
-            , ((3, 1)+imshp, (2, 1)+kshp,subsample, img_stride, kern_stride)#batch and nkern
-            , ((3, 2)+imshp, (1, 2)+kshp,subsample, img_stride, kern_stride)#batch and stack
-            , ((1, 2)+imshp, (2, 2)+kshp,subsample, img_stride, kern_stride)#stack and nkern
-            , ((2, 2)+imshp, (2, 2)+kshp,subsample, img_stride, kern_stride)#batch, nkern and stack
-            , ((3, 2)+imshp, (4, 2)+kshp,subsample, img_stride, kern_stride)#batch, nkern and stack
-            ]
+    return [
+        #stack only
+        ((1, 2) + imshp, (1, 2) + kshp, subsample, img_stride, kern_stride),
+        #batch only
+        ((3, 1) + imshp, (1, 1) + kshp, subsample, img_stride, kern_stride),
+        #nkern only
+        ((1, 1) + imshp, (2, 1) + kshp, subsample, img_stride, kern_stride),
+        #batch and nkern
+        ((3, 1) + imshp, (2, 1) + kshp, subsample, img_stride, kern_stride),
+        #batch and stack
+        ((3, 2) + imshp, (1, 2) + kshp, subsample, img_stride, kern_stride),
+        #stack and nkern
+        ((1, 2) + imshp, (2, 2) + kshp, subsample, img_stride, kern_stride),
+        #batch, nkern and stack
+        ((2, 2) + imshp, (2, 2) + kshp, subsample, img_stride, kern_stride),
+        #batch, nkern and stack
+        ((3, 2) + imshp, (4, 2) + kshp, subsample, img_stride, kern_stride)
+    ]
 
 
 def get_shapes2(scales_img=(1, 1), scales_kern=(1, 1), subsample=(1, 1),
                 img_stride=(1, 1), kern_stride=(1, 1)):
     #basic test of stack, batch and nkern paramter
-    shapes =get_shapes((1*scales_img[0],1*scales_img[1]),
-                       (1*scales_kern[0],1*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes = get_shapes((1 * scales_img[0], 1 * scales_img[1]),
+                        (1 * scales_kern[0], 1 * scales_kern[1]),
+                        subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with image and kernel shape
-    shapes +=get_shapes((2*scales_img[0],2*scales_img[1]),
-                        (2*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((2 * scales_img[0], 2 * scales_img[1]),
+                         (2 * scales_kern[0], 2 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with image and kernel shape
-    shapes +=get_shapes((3*scales_img[0],3*scales_img[1]),
-                        (2*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((3 * scales_img[0], 3 * scales_img[1]),
+                         (2 * scales_kern[0], 2 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with not square image.
-    shapes +=get_shapes((4*scales_img[0],3*scales_img[1]),
-                        (2*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((4 * scales_img[0], 3 * scales_img[1]),
+                         (2 * scales_kern[0], 2 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with not square image.
-    shapes +=get_shapes((3*scales_img[0],4*scales_img[1]),
-                        (2*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((3 * scales_img[0], 4 * scales_img[1]),
+                         (2 * scales_kern[0], 2 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with not square kernel.
-    shapes +=get_shapes((4*scales_img[0],4*scales_img[1]),
-                        (3*scales_kern[0],2*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((4 * scales_img[0], 4 * scales_img[1]),
+                         (3 * scales_kern[0], 2 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     #basic test of stack, batch and nkern paramter with not square kernel.
-    shapes +=get_shapes((4*scales_img[0],4*scales_img[1]),
-                        (2*scales_kern[0],3*scales_kern[1]),subsample, img_stride, kern_stride)
+    shapes += get_shapes((4 * scales_img[0], 4 * scales_img[1]),
+                         (2 * scales_kern[0], 3 * scales_kern[1]),
+                         subsample, img_stride, kern_stride)
     return shapes
 
 
@@ -348,34 +377,37 @@ def get_valid_shapes():
 
     shapes += [
          #other test
-              ((2, 1, 2, 2), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((3, 2, 4, 4), (4, 2, 4, 4), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 4, 4), (1, 1, 2, 3), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 3), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 10), (1,1), (1,1), (1,1))
-            , ((4, 1, 20, 10), (1, 1, 2, 10), (1,1), (1,1), (1,1))
-            , ((3, 2, 8, 8), (4, 2, 4, 4), (1,1), (1,1), (1,1)) #stack, nkern, bsize
-            , ((3, 2, 8, 6), (4, 2, 4, 4), (1,1), (1,1), (1,1)) #stack, nkern, bsize, non-square image
-            , ((3, 2, 8, 6), (4, 2, 4, 3), (1,1), (1,1), (1,1)) #stack, nkern, bsize, non-square image, non-square kern
-            , ((3, 2, 8, 6), (4, 2, 4, 6), (1,1), (1,1), (1,1)) #stack, nkern, bsize ,non-square image, non-square kern, kernsize==imgsize on one dim
-            , ((16, 5, 64, 64), (8, 5, 8, 8), (1,1), (1,1), (1,1)) # a big one
-            , ((16, 1, 28, 28), (20, 1, 5, 5), (1,1), (1,1), (1,1)) # MNIST LeNET layer 1
-            , ((20, 16, 32, 32), (1, 16, 28, 28), (1,1), (1,1), (1,1)) # layer 1 backprop to weights
-            , ((60,20,28,28), (10,20,5,5), (1,1), (2,2), (1,1))#added a test case that fail from test_nnet.py.test_conv_nnet2
-            , ((10,5,28,28), (10,5,5,5), (1,1), (2,2), (1,1))#test precedent but reduced that triger the error
+              ((2, 1, 2, 2), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 4, 4), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1))
+            , ((1, 1, 4, 4), (1, 1, 2, 3), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 3), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 10), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 20, 10), (1, 1, 2, 10), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 8, 8), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize
+            , ((3, 2, 8, 6), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize, non-square image
+            , ((3, 2, 8, 6), (4, 2, 4, 3), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize, non-square image, non-square kern
+            , ((3, 2, 8, 6), (4, 2, 4, 6), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize ,non-square image, non-square kern, kernsize==imgsize on one dim
+            , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1)) # a big one
+            , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1)) # MNIST LeNET layer 1
+            , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1)) # layer 1 backprop to weights
+            , ((60,20,28,28), (10,20,5,5), (1, 1), (2,2), (1, 1))#added a test case that fail from test_nnet.py.test_conv_nnet2
+            , ((10,5,28,28), (10,5,5,5), (1, 1), (2,2), (1, 1))#test precedent but reduced that triger the error
+            #Test more then maxThreadsDim0
+            , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
+            , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             ]
 
-    shapes += [ ((60,1,28,28),(20,1,5,5), (1,1), (1,1), (1,1))#test_lenet_28 1 layers
-            , ((60,20,12,12),(30,20,5,5), (1,1), (1,1), (1,1))#test_lenet_28 2 layers
-            , ((60,30,8,8),(20,30,5,5), (1,1), (1,1), (1,1))#test_lenet_28 bprop 1 full
-            , ((20,60,12,12),(30,60,8,8), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
-#            , ((1,60,28,28),(20,60,24,24), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
-            , ((10,1,64,64),(20,1,7,7), (1,1), (1,1), (1,1))#test_lenet_64 1 layers
-            , ((10,20,29,29),(30,20,7,7), (1,1), (1,1), (1,1))#test_lenet_64 2 layers
-            , ((10,30,23,23),(20,30,7,7), (1,1), (1,1), (1,1))#test_lenet_64 full
-#            , ((20,10,29,29),(30,10,23,23), (1,1), (1,1), (1,1))#test_lenet_64 bprop 1
-#            , ((1,10,64,64),(20,10,58,58), (1,1), (1,1), (1,1))#test_lenet_64 bprop 2
+    shapes += [ ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
+            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
+            , ((60,30,8,8),(20,30,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
+            , ((20,60,12,12),(30,60,8,8), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
+#            , ((1,60,28,28),(20,60,24,24), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
+            , ((10,1,64,64),(20,1,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 1 layers
+            , ((10,20,29,29),(30,20,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 2 layers
+            , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
+#            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
+#            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
             ]
     return shapes
 
@@ -483,7 +515,7 @@ def test_valid_5():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -496,7 +528,7 @@ def test_valid_5():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
@@ -517,7 +549,7 @@ def test_valid_7_8_13():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -530,7 +562,7 @@ def test_valid_7_8_13():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
@@ -548,7 +580,7 @@ def test_valid_9_10():
         random = False
     shapes2 = []
 
-    print len(shapes)
+#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -560,7 +592,7 @@ def test_valid_9_10():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-    print len(shapes2)
+#    print len(shapes2)
 
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5)
@@ -600,39 +632,42 @@ def test_full():
 
     shapes += [
         #other test
-              ((2, 1, 2, 2), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((3, 2, 4, 4), (4, 2, 4, 4), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 2), (1,1), (1,1), (1,1))
-            , ((1, 1, 4, 4), (1, 1, 2, 3), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 3), (1,1), (1,1), (1,1))
-            , ((4, 1, 10, 10), (1, 1, 2, 10), (1,1), (1,1), (1,1))
-            , ((4, 1, 20, 10), (1, 1, 2, 10), (1,1), (1,1), (1,1))
-            , ((3, 2, 8, 8), (4, 2, 4, 4), (1,1), (1,1), (1,1)) #stack, nkern, bsize
-            , ((3, 2, 8, 6), (4, 2, 4, 4), (1,1), (1,1), (1,1)) #stack, nkern, bsize, non-square image
-            , ((3, 2, 8, 6), (4, 2, 4, 3), (1,1), (1,1), (1,1)) #stack, nkern, bsize, non-square image, non-square kern
-            , ((3, 2, 8, 6), (4, 2, 4, 6), (1,1), (1,1), (1,1)) #stack, nkern, bsize ,non-square image, non-square kern, kernsize==imgsize on one dim
-            , ((16, 5, 64, 64), (8, 5, 8, 8), (1,1), (1,1), (1,1)) # a big one
-            , ((16, 1, 28, 28), (20, 1, 5, 5), (1,1), (1,1), (1,1)) # MNIST LeNET layer 1
-            , ((20, 16, 32, 32), (1, 16, 28, 28), (1,1), (1,1), (1,1)) # layer 1 backprop to weights
+              ((2, 1, 2, 2), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 4, 4), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 2), (1, 1), (1, 1), (1, 1))
+            , ((1, 1, 4, 4), (1, 1, 2, 3), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 3), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 10, 10), (1, 1, 2, 10), (1, 1), (1, 1), (1, 1))
+            , ((4, 1, 20, 10), (1, 1, 2, 10), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 8, 8), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize
+            , ((3, 2, 8, 6), (4, 2, 4, 4), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize, non-square image
+            , ((3, 2, 8, 6), (4, 2, 4, 3), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize, non-square image, non-square kern
+            , ((3, 2, 8, 6), (4, 2, 4, 6), (1, 1), (1, 1), (1, 1)) #stack, nkern, bsize ,non-square image, non-square kern, kernsize==imgsize on one dim
+            , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1)) # a big one
+            , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1)) # MNIST LeNET layer 1
+            , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1)) # layer 1 backprop to weights
 
         #other test
-            , ((3, 1, 1, 1), (2, 1, 5, 3), (1,1), (1,1), (1,1))#kernel bigger then image
-            , ((3, 2, 1, 1), (4, 2, 1, 1), (1,1), (1,1), (1,1))
-            , ((3, 2, 4, 4), (4, 2, 2, 6), (1,1), (1,1), (1,1))
-            , ((3, 2, 4, 4), (4, 2, 8, 6), (1,1), (1,1), (1,1))#kernel bigger then image
-            , ((4, 2, 10, 10), (3, 2, 2, 12), (1,1), (1,1), (1,1))
+            , ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))#kernel bigger then image
+            , ((3, 2, 1, 1), (4, 2, 1, 1), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 4, 4), (4, 2, 2, 6), (1, 1), (1, 1), (1, 1))
+            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))#kernel bigger then image
+            , ((4, 2, 10, 10), (3, 2, 2, 12), (1, 1), (1, 1), (1, 1))
             ]
     shapes += [
-#        ((60,1,28,28),(20,1,5,5), (1,1), (1,1), (1,1))#test_lenet_28 1 layers
-#            , ((60,20,12,12),(30,20,5,5), (1,1), (1,1), (1,1))#test_lenet_28 2 layers
-             ((60,30,8,8),(20,30,5,5), (1,1), (1,1), (1,1))#test_lenet_28 bprop 1 full
-#            , ((20,60,12,12),(30,60,8,8), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
-#            , ((1,60,28,28),(20,60,24,24), (1,1), (1,1), (1,1))#test_lenet_28 bprop 2 valid
-#            , ((10,1,64,64),(20,1,7,7), (1,1), (1,1), (1,1))#test_lenet_64 1 layers
-#            , ((10,20,29,29),(30,20,7,7), (1,1), (1,1), (1,1))#test_lenet_64 2 layers
-            , ((10,30,23,23),(20,30,7,7), (1,1), (1,1), (1,1))#test_lenet_64 full
-#            , ((20,10,29,29),(30,10,23,23), (1,1), (1,1), (1,1))#test_lenet_64 bprop 1
-#            , ((1,10,64,64),(20,10,58,58), (1,1), (1,1), (1,1))#test_lenet_64 bprop 2
+#        ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
+#            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
+             ((60,30,8,8),(20,30,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
+#            , ((20,60,12,12),(30,60,8,8), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
+#            , ((1,60,28,28),(20,60,24,24), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
+#            , ((10,1,64,64),(20,1,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 1 layers
+#            , ((10,20,29,29),(30,20,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 2 layers
+            , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
+#            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
+#            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
+            #Test more then maxThreadsDim0
+            , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
+            , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             ]
 
 #    shapes=shapes[:277]
@@ -646,13 +681,12 @@ def test_full():
 
 def test_subsample():
     # implement when
-    shapes = [
-            ((1, 1, 1, 1), (1, 1, 1, 1), (1,1), (1,1), (1,1))
-            , ((1, 1, 1, 1), (1, 1, 1, 1), (2,2), (1,1), (1,1))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3), (1,1), (1,1))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 3), (1,1), (1,1))
-            , ((4, 2, 10, 10), (3, 2, 2, 2), (3, 1), (1,1), (1,1))
-            ]
+    shapes = [((1, 1, 1, 1), (1, 1, 1, 1), (1, 1), (1, 1), (1, 1)),
+              ((1, 1, 1, 1), (1, 1, 1, 1), (2, 2), (1, 1), (1, 1)),
+              ((4, 2, 10, 10), (3, 2, 2, 2), (1, 3), (1, 1), (1, 1)),
+              ((4, 2, 10, 10), (3, 2, 2, 2), (3, 3), (1, 1), (1, 1)),
+              ((4, 2, 10, 10), (3, 2, 2, 2), (3, 1), (1, 1), (1, 1))
+          ]
     shapes += get_shapes2(scales_img=(2, 2), subsample=(1, 1))
     shapes += get_shapes2(scales_img=(2, 2), subsample=(1, 2))
     shapes += get_shapes2(scales_img=(2, 2), subsample=(2, 1))
@@ -676,7 +710,8 @@ def test_subsample():
 ## See #616
 #def test_logical_shapes():
 #    # implement when
-#    print >> sys.stderr, "WARNING TODO: test_logical_shapes not implemented (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)"
+#    print >> sys.stderr, ("WARNING TODO: test_logical_shapes not implemented"
+#    " (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)")
 
 
 class TestConv2DGPU(unittest.TestCase):
@@ -745,43 +780,43 @@ def benchmark():
 
     shapes_valid = [
         #test_lenet_28 shape
-        ((20, 60,12,12), (30,60,8,8), (1,1), (1,1), (1,1))#valid
-        ,((60, 20,12,12), (30,20,5,5), (1,1), (1,1), (1,1))#valid
-        ,((60, 1,28,28), (20,1,5,5), (1,1), (1,1), (1,1))#valid
-        ,((1, 60,28,28), (20,60,24,24), (1,1), (1,1), (1,1))#valid
+        ((20, 60,12,12), (30,60,8,8), (1, 1), (1, 1), (1, 1))#valid
+        ,((60, 20,12,12), (30,20,5,5), (1, 1), (1, 1), (1, 1))#valid
+        ,((60, 1,28,28), (20,1,5,5), (1, 1), (1, 1), (1, 1))#valid
+        ,((1, 60,28,28), (20,60,24,24), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_32 shape
-        ,((20, 60,14,14), (30,60,10,10), (1,1), (1,1), (1,1))#valid
-        ,((60, 20,14,14), (30,20,5,5), (1,1), (1,1), (1,1))#valid
-        ,((60, 1,32,32), (20,1,5,5), (1,1), (1,1), (1,1))#valid
-        ,((1, 60,32,32), (20,60,28,28), (1,1), (1,1), (1,1))#valid
+        ,((20, 60,14,14), (30,60,10,10), (1, 1), (1, 1), (1, 1))#valid
+        ,((60, 20,14,14), (30,20,5,5), (1, 1), (1, 1), (1, 1))#valid
+        ,((60, 1,32,32), (20,1,5,5), (1, 1), (1, 1), (1, 1))#valid
+        ,((1, 60,32,32), (20,60,28,28), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_64 shape
-        ,((10, 20,29,29), (30,20,7,7), (1,1), (1,1), (1,1))#valid
-        ,((20, 10,29,29), (30,10,23,23), (1,1), (1,1), (1,1))#valid
-        ,((10, 1,64,64), (20,1,7,7), (1,1), (1,1), (1,1))#valid
-        ,((1, 10,64,64), (20,10,58,58), (1,1), (1,1), (1,1))#valid
+        ,((10, 20,29,29), (30,20,7,7), (1, 1), (1, 1), (1, 1))#valid
+        ,((20, 10,29,29), (30,10,23,23), (1, 1), (1, 1), (1, 1))#valid
+        ,((10, 1,64,64), (20,1,7,7), (1, 1), (1, 1), (1, 1))#valid
+        ,((1, 10,64,64), (20,10,58,58), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_108 shape
-        ,((10, 20,51,51), (30,20,7,7), (1,1), (1,1), (1,1))#valid
-        ,((20, 10,51,51), (30,10,45,45), (1,1), (1,1), (1,1))#valid
-        ,((10, 1,108,108), (20,1,7,7), (1,1), (1,1), (1,1))#valid
-        ,((1, 10,108,108), (20,10,102,102), (1,1), (1,1), (1,1))#valid
+        ,((10, 20,51,51), (30,20,7,7), (1, 1), (1, 1), (1, 1))#valid
+        ,((20, 10,51,51), (30,10,45,45), (1, 1), (1, 1), (1, 1))#valid
+        ,((10, 1,108,108), (20,1,7,7), (1, 1), (1, 1), (1, 1))#valid
+        ,((1, 10,108,108), (20,10,102,102), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_256 shape
-        ,((2, 20,124,124), (30,20,9,9), (1,1), (1,1), (1,1))#valid
-        ,((20, 2,124,124), (30,2,116,116), (1,1), (1,1), (1,1))#valid
-        ,((2, 1,256,256), (20,1,9,9), (1,1), (1,1), (1,1))#valid
-        ,((1, 2,256,256), (20,2,248,248), (1,1), (1,1), (1,1))#valid
+        ,((2, 20,124,124), (30,20,9,9), (1, 1), (1, 1), (1, 1))#valid
+        ,((20, 2,124,124), (30,2,116,116), (1, 1), (1, 1), (1, 1))#valid
+        ,((2, 1,256,256), (20,1,9,9), (1, 1), (1, 1), (1, 1))#valid
+        ,((1, 2,256,256), (20,2,248,248), (1, 1), (1, 1), (1, 1))#valid
             ]
 
     shapes_full = [
         #test_lenet_28 shape
-         ((60, 30,8,8), (20, 30, 5, 5), (1,1), (1,1), (1,1))#full
+         ((60, 30,8,8), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full
         #test_lenet_32 shape
-         ,((60, 30,10,10), (20, 30, 5, 5), (1,1), (1,1), (1,1))#full conv_full_patch_stack_padded' N=1
+         ,((60, 30,10,10), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=1
         #test_lenet_64 shape
-         ,((10, 30,23,23), (20, 30, 7, 7), (1,1), (1,1), (1,1))#full conv_full_patch_stack_padded' N=3
+         ,((10, 30,23,23), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=3
         #test_lenet_108 shape
-         ,((10, 30,45,45), (20, 30, 7, 7), (1,1), (1,1), (1,1))#full 'conv_full_patch_stack_padded' N=9
+         ,((10, 30,45,45), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full 'conv_full_patch_stack_padded' N=9
         #test_lenet_256 shape
-         ,((2, 30,116,116), (20, 30, 9,9), (1,1), (1,1), (1,1))#full conv_reference_full
+         ,((2, 30,116,116), (20, 30, 9,9), (1, 1), (1, 1), (1, 1))#full conv_reference_full
             ]
 
 #    shapes_valid=shapes_valid[-1:]

@@ -307,7 +307,7 @@ class T_function(unittest.TestCase):
     def test_constant_output(self):
         # Test that if the output is a constant, we respect the theano memory interface
         f = theano.function([],theano.tensor.constant([4]))
-        print f.maker.env.toposort()
+        #print f.maker.env.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -318,7 +318,7 @@ class T_function(unittest.TestCase):
 
         # Test that if the output is a constant and borrow, we respect the theano memory interface
         f = theano.function([],Out(theano.tensor.constant([4]), borrow=True))
-        print f.maker.env.toposort()
+        #print f.maker.env.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -412,8 +412,8 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(x in g.container)
         self.assertFalse(x in g.value)
         self.assertTrue(len(f.defaults) == len(g.defaults))
-        print 'f.defaults = %s' % (f.defaults, )
-        print 'g.defaults = %s' % (g.defaults, )
+        #print 'f.defaults = %s' % (f.defaults, )
+        #print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
             f_val == g_val
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(

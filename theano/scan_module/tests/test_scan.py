@@ -775,8 +775,11 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              mode=mode,
                              allow_input_downcast=True)
-
-       # compute output in numpy
+        scan_node = [x for x in f9.maker.env.toposort()
+                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert 0 in scan_node[0].op.destroy_map.keys()
+        assert 1 in scan_node[0].op.destroy_map.keys()
+        # compute output in numpy
         numpy_x0 = numpy.zeros((3,))
         numpy_x1 = numpy.zeros((3,))
         numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu2[0]
@@ -852,6 +855,10 @@ class T_Scan(unittest.TestCase):
                              mode=mode,
                              allow_input_downcast=True)
 
+        scan_node = [x for x in f9.maker.env.toposort()
+                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert 0 in scan_node[0].op.destroy_map.keys()
+        assert 1 in scan_node[0].op.destroy_map.keys()
        # compute output in numpy
         numpy_x0 = numpy.zeros((3,))
         numpy_x1 = numpy.zeros((3,))
@@ -879,6 +886,34 @@ class T_Scan(unittest.TestCase):
         # make sense anymore.
         #assert not numpy.allclose( theano_x0 , vu2[1:4])
         #assert numpy.allclose( theano_x1 , vu1[0:3])
+
+    def test_inplace3(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        vx0 = asarrayX(rng.uniform())
+        vx1 = asarrayX(rng.uniform())
+        x0 = theano.shared(vx0)
+        x1 = theano.shared(vx1)
+        outputs, updates = theano.scan(lambda x,y: (x + asarrayX(1),
+                                                    y + asarrayX(1)),
+                                       [],
+                                       [x0,x1],
+                                       n_steps = 3)
+        x0 = asarrayX(numpy.zeros((3,)))
+        x0[0] = vx0
+        x0 = theano.tensor.constant(x0)
+        to_replace = outputs[0].owner.inputs[0].owner.inputs[1]
+        outputs = theano.clone(outputs,
+                               replace={to_replace: x0})
+        mode = theano.compile.mode.get_mode(None).including('inplace')
+        f9 = theano.function([],
+                             outputs,
+                             updates=updates,
+                             mode=mode)
+        scan_node = [x for x in f9.maker.env.toposort()
+                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
+        assert 0 not in scan_node[0].op.destroy_map.keys()
+        assert 1 in scan_node[0].op.destroy_map.keys()
 
     # Shared variable with updates
     def test_shared_arguments_with_updates(self):
@@ -2236,7 +2271,7 @@ class T_Scan(unittest.TestCase):
         topo = f.maker.env.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
-        self.assertTrue(len(scans) == 2)
+        self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
@@ -2354,6 +2389,83 @@ class T_Scan(unittest.TestCase):
         f2 = theano.function([], gx)
         assert numpy.allclose(f2(), numpy.ones((10,)))
 
+    def test_rop2(self):
+        seed = utt.fetch_seed()
+        rng = numpy.random.RandomState(seed)
+        floatX = theano.config.floatX
+        v_u = numpy.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
+        v_W = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
+        v_h0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
+
+        v_eu = numpy.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
+        v_eW = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
+        v_eh0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
+
+
+        def rnn_fn(_u, _y, _W):
+
+            srng = theano.tensor.shared_randomstreams.RandomStreams(seed)
+            sl_o = theano.tensor.tanh(theano.tensor.dot(_W, (_u + _y + \
+                     srng.uniform(size=v_h0.shape) *
+                                  numpy.asarray(1e-6, dtype=floatX))))
+            return sl_o
+
+        u = theano.tensor.matrix('U')
+        h0 = theano.tensor.vector('h0')
+        W = theano.tensor.matrix('W')
+
+        _u = theano.tensor.specify_shape(u, v_u.shape)
+        _u.name = '_U'
+        _h0 = theano.tensor.specify_shape(h0, v_h0.shape)
+        _h0.name = '_h0'
+        _W = theano.tensor.specify_shape(W, v_W.shape)
+        _W.name = '_W'
+
+        o, _ = theano.scan(rnn_fn,
+                           sequences=_u,
+                           outputs_info=_h0,
+                           non_sequences=_W,
+                           name='rnn_fn')
+        o = o[-1]
+        eu = theano.tensor.matrix('eu')
+        eh0 = theano.tensor.vector('eh0')
+        eW = theano.tensor.matrix('eW')
+
+        nwo_u = theano.tensor.Rop(o, _u, eu)
+        nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
+        nwo_W = theano.tensor.Rop(o, _W, eW)
+        fn_rop = theano.function([u, h0, W, eu, eh0, eW],
+                                 [nwo_u, nwo_h0, nwo_W, o],
+                                 on_unused_input='ignore')
+
+        n2o_u, _ = theano.scan(lambda i, o, u, h0, W, eu: \
+                                (theano.tensor.grad(o[i], u) * eu).sum(),
+                              sequences=tensor.arange(o.shape[0]),
+                              non_sequences=[o, u, h0, W, eu],
+                              name='jacobU')
+
+        n2o_h0, _ = theano.scan(lambda i, o, u, h0, W, eh0: \
+                                  (theano.tensor.grad(o[i], h0) * eh0).sum(),
+                              sequences=tensor.arange(o.shape[0]),
+                              non_sequences=[o, u, h0, W, eh0],
+                              name='jacobh')
+
+        n2o_W, _ = theano.scan(lambda i, o, u, h0, W, eW: \
+                                  (theano.tensor.grad(o[i], W) * eW).sum(),
+                              sequences=tensor.arange(o.shape[0]),
+                              non_sequences=[o, u, h0, W, eW],
+                             name='jacobW')
+
+        fn_test = theano.function([u, h0, W, eu, eh0, eW],
+                                  [n2o_u, n2o_h0, n2o_W, o],
+                                  on_unused_input='ignore')
+
+        vnu, vnh0, vnW, vno = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
+        tnu, tnh0, tnW, tno = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
+        assert numpy.allclose(vnu, tnu, atol=1e-6)
+        assert numpy.allclose(vnh0, tnh0, atol=1e-6)
+        assert numpy.allclose(vnW, tnW, atol=1e-6)
+
     def test_rop(self):
         seed = utt.fetch_seed()
         rng = numpy.random.RandomState(seed)
@@ -2395,7 +2507,8 @@ class T_Scan(unittest.TestCase):
         nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
         nwo_W = theano.tensor.Rop(o, _W, eW)
         fn_rop = theano.function([u, h0, W, eu, eh0, eW],
-                                 [nwo_u, nwo_h0, nwo_W])
+                                 [nwo_u, nwo_h0, nwo_W],
+                                 on_unused_input='ignore')
 
         n2o_u, _ = theano.scan(lambda i, o, u, h0, W, eu: \
                                 (theano.tensor.grad(o[i], u) * eu).sum(),
@@ -2416,7 +2529,8 @@ class T_Scan(unittest.TestCase):
                              name='jacobW')
 
         fn_test = theano.function([u, h0, W, eu, eh0, eW],
-                                  [n2o_u, n2o_h0, n2o_W])
+                                  [n2o_u, n2o_h0, n2o_W],
+                                  on_unused_input='ignore')
 
         vnu, vnh0, vnW = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu, tnh0, tnW = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)

@@ -22,6 +22,8 @@ Bug fixes
  * Fixed many subtle bugs involving mutable default arguments which may have
    led to unexpected behaviour, such as objects sharing instance variables
    they were not supposed to share. (David W-F)
+ * Correctly record the GPU device number used when we let the driver select it.
+   (Frederic B.)
 
 Documentation
  * Added in the tutorial documentation on how to extend Theano.
@@ -40,6 +42,8 @@ Interface changes
    instance, function([x, y], [y]). You can use the kwarg
    ``on_unused_input={'raise', 'warn', 'ignore'}`` to control this.
    (Pascal L.)
+ * New Theano flag "on_unused_input" that define the default value of the
+   previous point. (Frederic B.)
  * tensor.alloc() now raises an error during graph build time
    when we try to create less dimensions than the number of dimensions
    the provided value have. In the past, the error was at run time.
@@ -83,6 +87,9 @@ New Features
  * C code reuses preallocated outputs (only done by Scan) (Pascal L.)
  * Garbage collection of intermediate results during Theano function calls
    for Ops with C code (Pascal L.)
+ * Theano flags compiledir_format now support the parameter numpy_version.
+ * Theano GPU variables, shared variable and constant now support <, <=,
+   > and >= as as those not on the GPU.
 
 Sparse
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't

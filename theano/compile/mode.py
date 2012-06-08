@@ -286,10 +286,10 @@ class Mode(object):
     predefined_modes.
     """
 
-    def __init__(self, linker=None, optimizer=None):
+    def __init__(self, linker=None, optimizer='default'):
         if linker is None:
             linker = config.linker
-        if optimizer is None:
+        if optimizer is 'default':
             optimizer = config.optimizer
         self.__setstate__((linker, optimizer))
 

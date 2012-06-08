@@ -185,7 +185,7 @@ class QuadraticDenoisingAA(module.Module):
         #self.validate = theano.Method(self.input, [self.cost, self.output])
 
     def _instance_initialize(self, obj, input_size, hidden_size, seed, lr, qfilter_relscale):
-        print 'QDAA init'
+        #print 'QDAA init'
         """
         qfilter_relscale is the initial range for any quadratic filters (relative to the linear
         filter's initial range)
@@ -454,11 +454,11 @@ class ConvolutionalMLP(module.FancyModule):
             i.initialize(input_size=self.input_size,
                     hidden_size=self.input_representation_size, noise_level=noise_level,
                     seed=int(R.random_integers(2**30)), lr=lr, qfilter_relscale=qfilter_relscale)
-            print type(i.w1)
+            #print type(i.w1)
             assert isinstance(i.w1, N.ndarray)
 
         for i in self.input_representations[1:]:
-            print type(i.w1)
+            #print type(i.w1)
             assert isinstance(i.w1, N.ndarray)
             assert (i.w1 == self.input_representations[0].w1).all()
             assert (i.w2 == self.input_representations[0].w2).all()
@@ -528,7 +528,7 @@ def create_realistic(window_size=3,#7,
 
 def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
         optimizer=None, realistic=False):
-    print "BUILDING MODEL"
+    #print "BUILDING MODEL"
     import time
     t = time.time()
 
@@ -545,7 +545,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     else:
         m = create(compile_mode=mode)
 
-    print 'BUILD took %.3fs'%(time.time() - t)
+    #print 'BUILD took %.3fs'%(time.time() - t)
     prog_str = []
     idx_of_node = {}
     for i, node in enumerate(m.pretraining_update.maker.env.toposort()):
@@ -557,7 +557,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     #print input_pretraining_gradients[4].owner.inputs[1].owner.inputs
     #sys.exit()
 
-    print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
+    #print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
     rng = N.random.RandomState(unittest_tools.fetch_seed(23904))
 
@@ -565,35 +565,35 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     targets = N.asarray([0,3,4,2,3,4,4,2,1,0])
     #print inputs
 
-    print 'UNSUPERVISED PHASE'
+    #print 'UNSUPERVISED PHASE'
     t = time.time()
     for i in xrange(3):
         for j in xrange(iters_per_unsup):
             m.pretraining_update(*inputs)
         s0, s1 = [str(j) for j in m.pretraining_update(*inputs)]
-        print 'huh?', i, iters_per_unsup, iters_per_unsup * (i+1), s0, s1
+        #print 'huh?', i, iters_per_unsup, iters_per_unsup * (i+1), s0, s1
     if iters_per_unsup == 3:
         assert s0.startswith('0.927793')#'0.403044')
         assert s1.startswith('0.068035')#'0.074898')
-    print 'UNSUPERVISED took %.3fs'%(time.time() - t)
+    #print 'UNSUPERVISED took %.3fs'%(time.time() - t)
 
-    print 'FINETUNING GRAPH'
-    print 'SUPERVISED PHASE COSTS (%s)'%optimizer
+    #print 'FINETUNING GRAPH'
+    #print 'SUPERVISED PHASE COSTS (%s)'%optimizer
     t = time.time()
     for i in xrange(3):
         for j in xrange(iters_per_unsup):
             m.finetuning_update(*(inputs + [targets]))
         s0 = str(m.finetuning_update(*(inputs + [targets])))
-        print iters_per_sup * (i+1), s0
+        #print iters_per_sup * (i+1), s0
     if iters_per_sup == 10:
         s0f = float(s0)
         assert 19.7042 < s0f and s0f < 19.7043
-    print 'SUPERVISED took %.3fs'%( time.time() - t)
+    #print 'SUPERVISED took %.3fs'%( time.time() - t)
 
 def jtest_main():
     from theano import gof
     JTEST = theano.compile.mode.optdb.query(*sys.argv[2:])
-    print 'JTEST', JTEST
+    #print 'JTEST', JTEST
     theano.compile.register_optimizer('JTEST', JTEST)
     optimizer = eval(sys.argv[1])
     test_naacl_model(optimizer, 10, 10, realistic=False)

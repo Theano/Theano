@@ -20,8 +20,9 @@ if enable_sparse == False:
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse.basic import verify_grad_sparse
-from theano.sparse import as_sparse_variable, CSC, CSR, CSM, CSMProperties
-from theano.sparse import SparseType, CSMGrad
+from theano.sparse import (as_sparse_variable, CSC, CSR, CSM, CSMProperties,
+    csm_properties)
+from theano.sparse import SparseType, CSMGrad, CSMGradC
 from theano.sparse import StructuredDot, StructuredDotCSC
 from theano.sparse import StructuredDotGradCSC, StructuredDotGradCSR
 from theano.sparse import AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0
@@ -152,6 +153,22 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                                config.floatX, 3))],
                                 GetItemScalar)
 
+    def test_csm(self):
+        for sparsetype in ('csr', 'csc'):
+            x = tensor.vector()
+            y = tensor.ivector()
+            z = tensor.ivector()
+            s = tensor.ivector()
+            call = getattr(sp, sparsetype + '_matrix')
+            spm = call(random_lil((300, 400), config.floatX, 5))
+            out = CSM(sparsetype)(x, y, z, s)
+            self._compile_and_check([x, y, z, s],
+                                    [out],
+                                    [spm.data, spm.indices, spm.indptr,
+                                     spm.shape],
+                                    CSM
+            )
+
     def test_csm_grad(self):
         for sparsetype in ('csr', 'csc'):
             x = tensor.vector()
@@ -167,7 +184,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                     [out],
                                     [spm.data, spm.indices, spm.indptr,
                                      spm.shape],
-                                    CSMGrad
+                                    (CSMGrad, CSMGradC)
                                    )
 
     def test_transpose(self):
@@ -227,7 +244,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 [sp.csr_matrix(random_lil((10, 40),
                                config.floatX, 3)),
                  numpy.random.randn(10, 40).astype(config.floatX)],
-                MulSD)
+                MulSD, excluding=["local_mul_s_d"])
 
     def test_remove0(self):
         x = SparseType('csr', dtype=config.floatX)()
@@ -260,10 +277,6 @@ class SparseInferShapeTester(utt.InferShapeTester):
                  sp.csc_matrix(random_lil((5, 3),
                                config.floatX, 3))],
                 StructuredDot)
-
-    def test_csm(self):
-        # We also need the grad of CSM to be implemetned.
-        raise SkipTest('infer_shape not implemented for CSM')
 
     def test_structured_dot_grad(self):
         # We also need the grad of CSM to be implemetned.
@@ -558,6 +571,150 @@ class T_conversion(unittest.TestCase):
 
             self.assertRaises(TypeError, self.check_format_ndim, format, 3)
             self.assertRaises(TypeError, self.check_format_ndim, format, 4)
+
+
+class test_csm_properties(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_csm_properties_grad(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                verify_grad_sparse(lambda *x: CSMProperties()(*x)[0], [spmat],
+                    structured=True)
+                
+                verify_grad_sparse(lambda *x: CSMProperties()(*x)[1], [spmat],
+                    structured=True)
+                
+                verify_grad_sparse(lambda *x: CSMProperties()(*x)[2], [spmat],
+                    structured=True)
+                
+                verify_grad_sparse(lambda *x: CSMProperties()(*x)[2], [spmat],
+                    structured=True)
+    
+    def test_csm_properties(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                x = SparseType(format, dtype=dtype)()
+                f = theano.function([x], csm_properties(x))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                data, indices, indptr, shape = f(spmat)
+                
+                assert numpy.all(data == spmat.data)
+                assert numpy.all(indices == spmat.indices)
+                assert numpy.all(indptr == spmat.indptr)
+                assert numpy.all(shape == spmat.shape)
+
+
+class test_csm(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_csm_grad(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                verify_grad_sparse(lambda x: CSM(format)(x, spmat.indices,
+                    spmat.indptr, numpy.asarray(spmat.shape, 'int32')),
+                    [spmat.data], structured=True)
+    
+    def test_csm_sparser(self):
+        """
+        Test support for gradients sparser than the input.
+        """
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+                y = tensor.ivector()
+                z = tensor.ivector()
+                s = tensor.ivector()
+                
+                a = as_sparse_variable(sp_types[format](random_lil((4, 3),
+                    dtype, 1)))
+                
+                f = theano.function([x, y, z, s], tensor.grad(dense_from_sparse(
+                    a * CSM(format)(x, y, z, s)).sum(), x))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                res = f(spmat.data, spmat.indices, spmat.indptr,
+                    numpy.asarray(spmat.shape, 'int32'))
+                
+                assert len(spmat.data) == len(res)
+    
+    def test_csm_unsorted(self):
+        """
+        Test support for gradients of unsorted inputs.
+        """
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csr', 'csc', ]:
+            for dtype in ['float32', 'float64']:
+                x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+                y = tensor.ivector()
+                z = tensor.ivector()
+                s = tensor.ivector()
+                # Sparse advanced indexing produces unsorted sparse matrices
+                a = sp_types[format]([[1,2,1], [1,2,1], [1,2,1], [1,2,1]],
+                    dtype=dtype)[range(4)]
+                # Make sure it's unsorted
+                assert not a.has_sorted_indices
+                a = as_sparse_variable(a)
+                
+                f = theano.function([x, y, z, s], tensor.grad(tensor.sum(
+                    dense_from_sparse(a * CSM(format)(x, y, z, s))), x))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype,
+                    12))[range(4)]
+                assert not spmat.has_sorted_indices
+                
+                res = f(spmat.data, spmat.indices, spmat.indptr,
+                    numpy.asarray(spmat.shape, 'int32'))
+                
+                col1 = sp_types[format]((res, spmat.indices, spmat.indptr),
+                    shape=numpy.asarray(spmat.shape, 'int32'))[:, 1].data
+                
+                assert numpy.all(col1 == 2)
+    
+    def test_csm(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+        
+        for format in ['csc', 'csr']:
+            for dtype in ['float32', 'float64']:
+                x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+                y = tensor.ivector()
+                z = tensor.ivector()
+                s = tensor.ivector()
+                f = theano.function([x, y, z, s], CSM(format)(x, y, z, s))
+                
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                
+                res = f(spmat.data, spmat.indices, spmat.indptr,
+                    numpy.asarray(spmat.shape, 'int32'))
+                
+                assert numpy.all(res.data == spmat.data)
+                assert numpy.all(res.indices == spmat.indices)
+                assert numpy.all(res.indptr == spmat.indptr)
+                assert numpy.all(res.shape == spmat.shape)
 
 
 class test_structureddot(unittest.TestCase):
@@ -1307,6 +1464,14 @@ class Test_getitem(unittest.TestCase):
             assert r11.shape == t11.shape
             assert numpy.all(r11.toarray() == t11.toarray())
 
+            # Test that is work with shared variable
+            sx = theano.shared(vx)
+            f12 = theano.function([a], sx[:, a:])
+            r12 = f12(p)
+            t12 = vx[:, p:]
+            assert r12.shape == t12.shape
+            assert numpy.all(r12.toarray() == t12.toarray())
+
             #------------------------------------------------------------
             # Invalid things
             # The syntax is a bit awkward because assertRaises forbids
@@ -1368,6 +1533,14 @@ class Test_getitem(unittest.TestCase):
             t4 = vx[m, n]
             assert r3.shape == t3.shape
             assert numpy.all(t4 == r4)
+
+            # Test that is work with shared variable
+            sx = theano.shared(vx)
+            f1 = theano.function([a, b], sx[a, b])
+            r1 = f1(10, 10)
+            t1 = vx[10, 10]
+            assert r1.shape == t1.shape
+            assert numpy.all(t1 == r1)
 
 
 import theano.tensor.tests.test_sharedvar

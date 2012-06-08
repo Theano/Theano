@@ -13,6 +13,7 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
+import copy
 import numpy
 
 import theano
@@ -20,6 +21,8 @@ from theano import tensor
 from theano.tensor import opt, get_constant_value
 from theano import gof
 from theano.gof.python25 import maxsize
+from theano.gof.opt import Optimizer
+from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
 from theano.compile.function_module import deep_copy_op
 
@@ -117,7 +120,7 @@ def remove_constants_and_unused_inputs_scan(node):
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
-        nw_info = op.info.copy()
+        nw_info = copy.deepcopy(op.info)
         nw_info['n_seqs'] = nw_n_seqs
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
@@ -304,36 +307,67 @@ scan_seqopt.register('scanOp_pushout_nonseqs_ops',
                      'scan')
 
 
-@gof.local_optimizer([None])
-def scan_make_inplace(node):
-    op = node.op
-    if (isinstance(op, scan_op.Scan) and
-        (not op.info['inplace']) and
-        (not op.info['gpu'])):
-        info = op.info.copy()
-        info['inplace'] = True
-        # inputs corresponding to sequences and n_steps
-        ls_begin = node.inputs[:1 + op.n_seqs]
-        ls = op.outer_mitmot(node.inputs)
-        ls += op.outer_mitsot(node.inputs)
-        ls += op.outer_sitsot(node.inputs)
-        ls_end = op.outer_shared(node.inputs)
-        ls_end += op.outer_nitsot(node.inputs)
-        ls_end += op.outer_non_seqs(node.inputs)
-        n_outs = len(ls)
-        for idx in xrange(n_outs):
-            if ls[idx] in ls[:idx]:
-                ls[idx] = deep_copy_op(ls[idx])
+class ScanInplaceOptimizer(Optimizer):
+    """Graph optimizer for Scan(makes it run inplace)"""
+    def __init__(self, typeConstructor=None, gpu_flag=False):
+        Optimizer.__init__(self)
+        self.typeConstructor = typeConstructor
+        self.gpu_flag = gpu_flag
 
-        inputs = ls_begin + ls + ls_end
-        new_op = scan_op.Scan(op.inputs,
-                              op.outputs,
-                              info)
-        return new_op.make_node(*inputs).outputs
-    return False
+    def add_requirements(self, env):
+        env.extend(toolbox.ReplaceValidate())
+        env.extend(DestroyHandler())
+
+    def apply(self, env):
+
+        nodes = env.toposort()
+        scan_nodes = [x for x in nodes
+                      if (isinstance(x.op, scan_op.Scan) and
+                         x.op.info['gpu'] == self.gpu_flag)]
+        for scan_idx in xrange(len(scan_nodes)):
+            node = scan_nodes[scan_idx]
+            op = node.op
+            n_outs = (op.info['n_mit_mot'] +
+                      op.info['n_mit_sot'] +
+                      op.info['n_sit_sot'])
+            for pos in xrange(n_outs):
+                info = copy.deepcopy(op.info)
+                if not 'destroy_map' in info:
+                    info['destroy_map'] = {}
+                info['destroy_map'][pos] = [pos + 1 + op.info['n_seqs']]
+                # inputs corresponding to sequences and n_steps
+                ls_begin = node.inputs[:1 + op.n_seqs]
+                ls = op.outer_mitmot(node.inputs)
+                ls += op.outer_mitsot(node.inputs)
+                ls += op.outer_sitsot(node.inputs)
+                ls_end = op.outer_shared(node.inputs)
+                ls_end += op.outer_nitsot(node.inputs)
+                ls_end += op.outer_non_seqs(node.inputs)
+                n_outs = len(ls)
+                for idx in xrange(n_outs):
+                    if ls[idx] in ls[:idx]:
+                        ls[idx] = deep_copy_op(ls[idx])
+
+                inputs = ls_begin + ls + ls_end
+                new_op = scan_op.Scan(op.inputs,
+                                      op.outputs,
+                                      info,
+                                      typeConstructor=self.typeConstructor)
+
+                new_outs = new_op.make_node(*inputs).outputs
+                try:
+                    env.replace_all_validate(
+                        zip(node.outputs, new_outs),
+                        reason=self.__class__.__name__)
+                    op = new_op
+                    node = new_outs[0].owner
+                except InconsistencyError, e:
+                    # Failed moving output to be comptued inplace
+                    pass
 
 optdb.register('scanOp_make_inplace',
-               opt.in2out(scan_make_inplace, ignore_newtrees=True),
+               ScanInplaceOptimizer(typeConstructor=None,
+                                   gpu_flag=False),
                75,
                'fast_run',
                'inplace',
@@ -636,9 +670,13 @@ class ScanSaveMem(gof.Optimizer):
                         #   a) the input is a set_subtensor, in that case we
                         #      can replace the initial tensor by a slice,
                         #   b) it is not, and we simply take a slice of it.
+
+                        #TODO: commit change below with Razvan
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
-                                       tensor.IncSubtensor)):
+                                       tensor.IncSubtensor) and
+                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             val = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
@@ -833,7 +871,6 @@ class ScanMerge(gof.Optimizer):
         info['truncate_gradient'] = nodes[0].op.truncate_gradient
         info['name'] = '&'.join([nd.op.name for nd in nodes])
         info['mode'] = nodes[0].op.mode
-        info['inplace'] = False
         info['gpu'] = False
         info['as_while'] = as_while
         info['profile'] = nodes[0].op.profile

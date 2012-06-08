@@ -30,7 +30,7 @@ def advantage(cpu_dt, gpu_dt):
         return cpu_dt / gpu_dt
 
 def test_host_to_device():
-    print >>sys.stdout, 'starting test_host_to_dev'
+    #print >>sys.stdout, 'starting test_host_to_dev'
     for shape in ((), (3,), (2,3), (3,4,5,6)):
         a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
@@ -84,7 +84,7 @@ def test_add_iadd_idiv():
             asum = a0 + a1
             t1 = time.time()
             cpu_dt = t1 - t0
-            print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+            #print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
             assert numpy.allclose(asum,  numpy.asarray(bsum))
 
         #test not contiguous version.
@@ -122,7 +122,7 @@ def test_add_iadd_idiv():
         a0 += a1
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+        #print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(a0, numpy.asarray(b0))
         assert numpy.allclose(a0, a0_orig + a1)
 
@@ -144,7 +144,7 @@ def test_add_iadd_idiv():
         assert numpy.allclose(a0, ((a0_orig+a1)/a1+a1[..., ::-1])/a1[..., ::-1])
 
 def test_exp():
-    print >>sys.stdout, 'starting test_exp'
+    #print >>sys.stdout, 'starting test_exp'
     for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
@@ -158,26 +158,26 @@ def test_exp():
         asum = numpy.exp(a1)
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+        #print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         #c = numpy.asarray(b0+b1)
         if asum.shape:
             assert numpy.allclose(asum, numpy.asarray(bsum))
 
 
 def test_copy():
-    print >>sys.stdout, 'starting test_copy'
+    #print >>sys.stdout, 'starting test_copy'
     shape = (500,499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
-    print >>sys.stdout, '.. creating device object'
+    #print >>sys.stdout, '.. creating device object'
     b = cuda_ndarray.CudaNdarray(a)
 
-    print >>sys.stdout, '.. copy'
+    #print >>sys.stdout, '.. copy'
     c = copy.copy(b)
-    print >>sys.stdout, '.. deepcopy'
+    #print >>sys.stdout, '.. deepcopy'
     d = copy.deepcopy(b)
 
-    print >>sys.stdout, '.. comparisons'
+    #print >>sys.stdout, '.. comparisons'
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
@@ -268,7 +268,7 @@ class test_DimShuffle(unittest.TestCase):
 
 
 def test_dot():
-    print >>sys.stdout, 'starting test_dot'
+    #print >>sys.stdout, 'starting test_dot'
 
     utt.seed_rng()
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -320,8 +320,8 @@ def test_sum():
     a0sum = a0.sum(axis=0)
     b0sum = b0.reduce_sum([1,0])
 
-    print 'asum\n',a0sum
-    print 'bsum\n',numpy.asarray(b0sum)
+    #print 'asum\n',a0sum
+    #print 'bsum\n',numpy.asarray(b0sum)
 
     assert numpy.allclose(a0.sum(axis=0), numpy.asarray(b0.reduce_sum([1,0])))
     assert numpy.allclose(a0.sum(axis=1), numpy.asarray(b0.reduce_sum([0,1])))
@@ -932,7 +932,7 @@ def test_base():
 
     c = a[0]
     d = c[:,0]
-    print d.shape
+    #print d.shape
     assert c.base is a
     assert d.base is a
 
