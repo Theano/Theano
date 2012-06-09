@@ -157,5 +157,3 @@ double _psi(double x){
         return hash(type(self))
     
 psi = Psi(upgrade_to_float, name='psi')
-
-ar
