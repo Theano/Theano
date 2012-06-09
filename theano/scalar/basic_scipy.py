@@ -76,11 +76,11 @@ class GammaLn(UnaryScalarOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [gz * scalar_psi(x)]
+        return [gz * psi(x)]
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if node.inputs[0].type in [scalar.float32, scalar.float64]:
+        if node.inputs[0].type in float_types:
             return """%(z)s =
                 lgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
@@ -146,7 +146,7 @@ double _psi(double x){
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if node.inputs[0].type in [scalar.float32, scalar.float64]:
+        if node.inputs[0].type in float_types:
             return """%(z)s =
                 _psi(%(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
