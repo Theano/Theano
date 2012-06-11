@@ -1203,11 +1203,14 @@ TanhInplaceTester = makeBroadcastTester(op=inplace.tanh_inplace,
                                         grad=_grad_broadcast_unary_normal,
                                         inplace=True)
 
-_good_broadcast_unary_arctanh = dict(normal=(rand_ranged(-1, 1, (2, 3)),),
-                                     integers=(randint_ranged(-1, 1, (2, 3)),),
-                                     complex=(randc128_ranged(-1, 1, (2, 3)),),
-                                     empty=(numpy.asarray([]),),)
-_grad_broadcast_unary_arctanh = dict(normal=(rand_ranged(-1, 1, (2, 3)),),)
+_eps = 1e-10
+_good_broadcast_unary_arctanh = dict(
+    normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
+    integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
+    complex=(randc128_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_arctanh = dict(
+    normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),)
 
 ArcTanhTester = makeBroadcastTester(op=tensor.arctanh,
                                     expected=numpy.arctanh,
