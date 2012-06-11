@@ -2247,7 +2247,7 @@ class ArcTanh(UnaryScalarOp):
         if x.type in complex_types:
             raise NotImplementedError()
         if x.type in float_types:
-            return gz / (numpy.cast[x.type](1) -sqr(x)),
+            return gz / (numpy.cast[x.type](1) - sqr(x)),
         else:
             return None,
 
