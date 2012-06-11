@@ -425,6 +425,10 @@ class FillDiagonal(gof.Op):
     An array identical to 'a' except that its main diagonal is filled with
     scalar 'val'. (For an array 'a' with a.ndim >= 2, the main diagonal is the
     list of locations a[i, i, ..., i] (i.e. with indices all identical).)
+
+    Support rectangular matrix and tensor with more then 2 dimensions
+    if the later have all dimensions are equals.
+
     """
 
     def __eq__(self, other):
@@ -457,7 +461,17 @@ class FillDiagonal(gof.Op):
     def perform(self, node, inputs, output_storage):
         a = inputs[0].copy()
         val = inputs[1]
-        numpy.fill_diagonal(a, val)
+        if a.ndim == 2:
+            # numpy.fill_diagonal up to date(including 1.6.2) have a
+            # bug for tall matrix.
+            # For 2-d arrays, we accept rectangular ones.
+            step = a.shape[1] + 1
+            end = a.shape[1] * a.shape[1]
+            # Write the value out into the diagonal.
+            a.flat[:end:step] = val
+        else:
+            numpy.fill_diagonal(a, val)
+
         output_storage[0][0] = a
 
     def grad(self, inp, cost_grad):

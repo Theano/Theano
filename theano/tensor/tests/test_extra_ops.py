@@ -235,28 +235,46 @@ class TestFillDiagonal(utt.InferShapeTester):
         x = tensor.dmatrix()
         y = tensor.dscalar()
         f = function([x, y], fill_diagonal(x, y))
-        a = numpy.random.rand(8, 5)
-        val = numpy.random.rand()
+        for shp in [(8, 8), (5, 8), (8, 5)]:
+            a = numpy.random.rand(*shp)
+            val = numpy.random.rand()
+            out = f(a, val)
+            # We can't use numpy.fill_diagonal as it is bugged.
+            assert numpy.allclose(numpy.diag(out), val)
+            assert (out == val).sum() == min(a.shape)
+
+        # test for 3d tensor
+        a = numpy.random.rand(3, 3, 3)
+        x = tensor.dtensor3()
+        y = tensor.dscalar()
+        f = function([x, y], fill_diagonal(x, y))
+        val = numpy.random.rand() + 10
         out = f(a, val)
-        numpy.fill_diagonal(a, val)
-        # remember that numpy.fill_diagonal works in place
-        assert numpy.allclose(out, a)
+        # We can't use numpy.fill_diagonal as it is bugged.
+        assert out[0, 0, 0] == val
+        assert out[1, 1, 1] == val
+        assert out[2, 2, 2] == val
+        assert (out == val).sum() == min(a.shape)
 
     def test_gradient(self):
         utt.verify_grad(fill_diagonal, [numpy.random.rand(5, 8),
                                         numpy.random.rand()],
                         n_tests=1, rng=TestFillDiagonal.rng)
-        #  TODO: check why gradient wrto val does not match when a has
-        # more rows than cols: might be problem with testing procedure
         utt.verify_grad(fill_diagonal, [numpy.random.rand(8, 5),
                                         numpy.random.rand()],
                         n_tests=1, rng=TestFillDiagonal.rng)
 
     def test_infer_shape(self):
+        z = tensor.dtensor3()
         x = tensor.dmatrix()
         y = tensor.dscalar()
         self._compile_and_check([x, y], [self.op(x, y)],
-                                [numpy.random.rand(8, 5), numpy.random.rand()],
+                                [numpy.random.rand(8, 5),
+                                 numpy.random.rand()],
+                                self.op_class)
+        self._compile_and_check([z, y], [self.op(z, y)],
+                                [numpy.random.rand(8, 8, 8),
+                                 numpy.random.rand()],
                                 self.op_class)
 
 if __name__ == "__main__":
@@ -265,4 +283,3 @@ if __name__ == "__main__":
     t.test_perform()
     t.test_gradient()
     t.test_infer_shape()
-
