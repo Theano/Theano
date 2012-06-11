@@ -122,7 +122,6 @@ if compile_cuda_ndarray:
     try:
         # Retry to load again in case someone else compiled it
         # while we waited for the lock
-        compile_cuda_ndarray = not try_import()
         if not try_import():
             try:
                 if not nvcc_compiler.is_nvcc_available():
@@ -154,6 +153,7 @@ if compile_cuda_ndarray:
                 set_cuda_disabled()
     finally:
         release_lock()
+del compile_cuda_ndarray
 
 if cuda_available:
     # If necessary,
