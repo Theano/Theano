@@ -152,7 +152,7 @@ to other computational tools.
     * 'R' and 'L' differential operators
     * Speed/memory optimizations
     * Numerical stability optimizations
-* Have an OpenCL backend (for GPU, SIMD and multi-core)
+* Can use many compiled languages, instructions sets: C/C++, CUDA, OpenCL, PTX, CAL, AVX, ...
 * Lazy evaluation
 * Loop
 * Parallel execution (SIMD, multi-core, multi-node on cluster,
