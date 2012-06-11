@@ -556,12 +556,13 @@ class numeric_grad(object):
             numpy.dtype('float64'): 1e-7,
             numpy.dtype('float32'): 3e-4}
 
-    def __init__(self, f, pt, eps=None):
+    def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.
 
         :param f: a differentiable function such that f(*pt) is a scalar
         :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
-
+        :param out_type: dtype of output, if complex (i.e. 'complex32' or
+        'complex64')
         This function computes the gradient by a one-sided finite
         differences of a fixed step size (eps).
 
@@ -595,18 +596,21 @@ class numeric_grad(object):
         #      raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
-
+        
         working_dtype = __builtin__.min((self.type_eps[dt], dt)
                                         for dt in dtypes)[1]
 
-        #create un-initialized memory
+        # create un-initialized memory
         x = numpy.ndarray((total_size,), dtype=working_dtype)
-        gx = numpy.ndarray((total_size,), dtype=working_dtype)
-
+        if (not out_type is None) and (out_type.startswith('complex')):
+            gx = numpy.ndarray((total_size,), dtype=out_type)
+        else:
+            gx = numpy.ndarray((total_size,), dtype=working_dtype)
+        
         if eps is None:
             eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
 
-        #set up aliases so that apt[i] is backed by memory in x
+        # set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
         cur_pos = 0
         self.gf = []
@@ -629,8 +633,13 @@ class numeric_grad(object):
             x[i] += eps
             f_eps = f(*apt)
 
-            gx[i] = numpy.asarray((f_eps - f_x) / eps)
+            # TODO: remove this when it is clear that the next 
+            # replacemement does not pose problems of its own.  It was replaced
+            # for its inability to handle complex variables.
+            # gx[i] = numpy.asarray((f_eps - f_x) / eps)
 
+            gx[i] = ((f_eps - f_x) / eps)
+            
         if packed_pt:
             self.gf = self.gf[0]
 
@@ -712,7 +721,7 @@ class numeric_grad(object):
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
+def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=None,
                 rel_tol=None, mode=None, cast_to_output_type=False):
     """ Test a gradient by Finite Difference Method. Raise error on failure.
 
@@ -736,6 +745,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
         of sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default
         None is type-dependent)
+    :param out_type: dtype of output, if complex (i.e. 'complex32' or
+        'complex64')
     :param abs_tol: absolute tolerance used as threshold for gradient
         comparison
     :param rel_tol: relative tolerance used as threshold for gradient
@@ -761,7 +772,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
             raise TypeError(('verify_grad can work only with floating point '
                 'inputs, but input %i has dtype "%s".') % (i, p.dtype))
 
-    _type_tol = dict(  # relativ error tolerances for different types
+    _type_tol = dict(  # relative error tolerances for different types
             float32=1e-2,
             float64=1e-4)
 
@@ -839,7 +850,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, abs_tol=None,
     grad_fn = function(tensor_pt, symbolic_grad)
 
     for test_num in xrange(n_tests):
-        num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps)
+        num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps, out_type)
 
         analytic_grad = grad_fn(*[p.copy() for p in pt])
 

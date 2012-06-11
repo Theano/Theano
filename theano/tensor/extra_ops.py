@@ -1,6 +1,10 @@
-import theano
 import numpy as np
+import numpy
+
+import theano
 import basic
+from theano import gof, tensor, function, scalar
+from theano.sandbox.linalg.ops import diag
 
 
 class DiffOp(theano.Op):
@@ -348,3 +352,143 @@ def repeat(x, repeats, axis=None):
 
     """
     return RepeatOp(axis=axis)(x, repeats)
+
+
+class Bartlett(gof.Op):
+    """
+    An instance of this class returns the Bartlett spectral window in the
+    time-domain. The Bartlett window is very similar to a triangular window,
+    except that the end points are at zero. It is often used in signal
+    processing for tapering a signal, without generating too much ripple in
+    the frequency domain.
+
+    input : (integer scalar) Number of points in the output window. If zero or
+    less, an empty vector is returned.
+
+    output : (vector of doubles) The triangular window, with the maximum value
+    normalized to one (the value one appears only if the number of samples is
+    odd), with the first and last samples equal to zero.
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, M):
+        M = tensor.as_tensor_variable(M)
+        if M.ndim != 0:
+            raise TypeError('%s only works on scalar input'
+                            % self.__class__.__name__)
+        elif (not M.dtype.startswith('int')) and \
+              (not M.dtype.startswith('uint')):
+        # dtype is a theano attribute here
+            raise TypeError('%s only works on integer input'
+                            % self.__class__.__name__)
+        return gof.Apply(self, [M], [tensor.dvector()])
+
+    def perform(self, node, inputs, out_):
+        M = inputs[0]
+        out, = out_
+        out[0] = numpy.bartlett(M)
+
+    def infer_shape(self, node, in_shapes):
+        temp = node.inputs[0]
+        M = tensor.switch(tensor.lt(temp, 0),
+            tensor.cast(0, temp.dtype), temp)
+        return [[M]]
+
+    def grad(self, inputs, output_grads):
+        return [None for i in inputs]
+
+
+bartlett = Bartlett()
+
+
+class FillDiagonal(gof.Op):
+    """
+    An instance of this class returns a copy of an array with all elements of
+    the main diagonal set to a specified scalar value.
+
+    inputs:
+
+    a : Rectangular array of at least two dimensions.
+    val : Scalar value to fill the diagonal whose type must be compatible with
+    that of array 'a' (i.e. 'val' cannot be viewed as an upcast of 'a').
+
+    output:
+
+    An array identical to 'a' except that its main diagonal is filled with
+    scalar 'val'. (For an array 'a' with a.ndim >= 2, the main diagonal is the
+    list of locations a[i, i, ..., i] (i.e. with indices all identical).)
+
+    Support rectangular matrix and tensor with more then 2 dimensions
+    if the later have all dimensions are equals.
+
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash_(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def make_node(self, a, val):
+        a = tensor.as_tensor_variable(a)
+        val = tensor.as_tensor_variable(val)
+        if a.ndim < 2:
+            raise TypeError('%s: first parameter must have at least'
+                            ' two dimensions' % self.__class__.__name__)
+        elif val.ndim != 0:
+            raise TypeError('%s: second parameter must be a scalar'
+                            % self.__class__.__name__)
+        val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
+        if val.dtype != a.dtype:
+            raise TypeError('%s: type of second parameter must be compatible'
+                          ' with first\'s' % self.__class__.__name__)
+        return gof.Apply(self, [a, val], [a.type()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0].copy()
+        val = inputs[1]
+        if a.ndim == 2:
+            # numpy.fill_diagonal up to date(including 1.6.2) have a
+            # bug for tall matrix.
+            # For 2-d arrays, we accept rectangular ones.
+            step = a.shape[1] + 1
+            end = a.shape[1] * a.shape[1]
+            # Write the value out into the diagonal.
+            a.flat[:end:step] = val
+        else:
+            numpy.fill_diagonal(a, val)
+
+        output_storage[0][0] = a
+
+    def grad(self, inp, cost_grad):
+        """
+        Note: The gradient is currently implemented for matrices
+        only.
+        """
+        a, val = inp
+        grad = cost_grad[0]
+        if (a.dtype.startswith('complex')):
+            return [None, None]
+        elif a.ndim > 2:
+            raise NotImplementedError('%s: gradient is currently implemented'
+                            ' for matrices only' % self.__class__.__name__)
+        wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
+        wr_val = diag(grad).sum()  # diag is only valid for matrices
+        return [wr_a, wr_val]
+
+
+fill_diagonal = FillDiagonal()
