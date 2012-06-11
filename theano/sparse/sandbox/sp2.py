@@ -3,6 +3,7 @@ import scipy.sparse
 
 from theano import gof, tensor, scalar
 from theano.tensor import blas
+from theano import tensor as T
 
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
@@ -32,15 +33,61 @@ class Cast(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
-        return gof.Apply(self, [x],
+        return gof.Apply(
+            self,
+            [x],
             [SparseType(dtype=self.out_type, format=x.format).make_variable()])
 
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
-        out[0] = x
-        out[0].data = numpy.asarray(out[0].data, dtype=self.out_type)
-fcast = Cast('float32')
-dcast = Cast('float64')
+        out[0] = x.astype(self.out_type)
+
+    def grad(self, inputs, outputs_gradients):
+        if inputs[0].dtype in T.continuous_dtypes:
+            gz = outputs_gradients[0]
+            return [Cast(self.out_type)(gz)]
+        else:
+            return [None]
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def astype(x, t):
+    """Cast sparse variable `x` to the desired dtype `t`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    - `t`: dtype
+    """
+    return Cast(t)(x)
+
+
+def fcast(x):
+    """Cast sparse variable `x` to `float32`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    """
+    return Cast('float32')(x)
+
+
+def dcast(x):
+    """Cast sparse variable `x` to `float64`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    """
+    return Cast('float64')(x)
 
 
 class AddSSData(gof.op.Op):
