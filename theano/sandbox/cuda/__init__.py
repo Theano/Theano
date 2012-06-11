@@ -69,20 +69,39 @@ def set_cuda_disabled():
 
 #cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
-cuda_files = (
-        'cuda_ndarray.cu',
-        'cuda_ndarray.cuh',
-        'conv_full_kernel.cu',
-        'conv_kernel.cu')
-stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
-        for cuda_file in cuda_files]
-date = max(stat_times)
 
 cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'cuda_ndarray.' + get_lib_extension())
 libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'libcuda_ndarray.' + get_lib_extension())
+
+
+def try_import():
+    """
+    load the cuda_ndarray module if present and up to date
+    return True if loaded correctly, otherwise return False
+    """
+    cuda_files = (
+        'cuda_ndarray.cu',
+        'cuda_ndarray.cuh',
+        'conv_full_kernel.cu',
+        'conv_kernel.cu')
+    stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
+                  for cuda_file in cuda_files]
+    date = max(stat_times)
+    if os.path.exists(cuda_ndarray_so):
+        if date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]:
+            return False
+    try:
+        # If we load a previously-compiled version, config.compiledir should
+        # be in sys.path.
+        if config.compiledir not in sys.path:
+            sys.path.append(config.compiledir)
+        from cuda_ndarray.cuda_ndarray import *
+    except ImportError:
+        return False
+    return True
 
 
 # Add the theano cache directory's cuda_ndarray subdirectory to the
@@ -95,49 +114,46 @@ nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
 
 compile_cuda_ndarray = True
 
-if os.path.exists(cuda_ndarray_so):
-    compile_cuda_ndarray = date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]
 if not compile_cuda_ndarray:
-    try:
-        # If we load a previously-compiled version, config.compiledir should
-        # be in sys.path.
-        if config.compiledir not in sys.path:
-            sys.path.append(config.compiledir)
-        from cuda_ndarray.cuda_ndarray import *
-    except ImportError:
-        compile_cuda_ndarray = True
+    compile_cuda_ndarray = not try_import()
 
 if compile_cuda_ndarray:
     get_lock()
     try:
-        if not nvcc_compiler.is_nvcc_available():
-            set_cuda_disabled()
+        # Retry to load again in case someone else compiled it
+        # while we waited for the lock
+        if not try_import():
+            try:
+                if not nvcc_compiler.is_nvcc_available():
+                    set_cuda_disabled()
 
-        if cuda_available:
-            code = open(os.path.join(cuda_path, "cuda_ndarray.cu")).read()
+                if cuda_available:
+                    code = open(os.path.join(cuda_path,
+                                             "cuda_ndarray.cu")).read()
 
-            if not os.path.exists(cuda_ndarray_loc):
-                os.makedirs(cuda_ndarray_loc)
+                    if not os.path.exists(cuda_ndarray_loc):
+                        os.makedirs(cuda_ndarray_loc)
 
-            # If $TMPDIR is defined, nvopencc wants it to exist
-            if 'TMPDIR' in os.environ:
-                tmpdir = os.environ['TMPDIR']
-                if not os.path.exists(tmpdir):
-                    os.makedirs(tmpdir)
+                    # If $TMPDIR is defined, nvopencc wants it to exist
+                    if 'TMPDIR' in os.environ:
+                        tmpdir = os.environ['TMPDIR']
+                        if not os.path.exists(tmpdir):
+                            os.makedirs(tmpdir)
 
-            compiler = nvcc_compiler.NVCC_compiler()
-            compiler.compile_str(
-                    'cuda_ndarray',
-                    code,
-                    location=cuda_ndarray_loc,
-                    include_dirs=[cuda_path], libs=['cublas'],
-                    preargs=compiler.compile_args())
-            from cuda_ndarray.cuda_ndarray import *
-    except Exception, e:
-        _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
-        set_cuda_disabled()
+                    compiler = nvcc_compiler.NVCC_compiler()
+                    compiler.compile_str(
+                            'cuda_ndarray',
+                            code,
+                            location=cuda_ndarray_loc,
+                            include_dirs=[cuda_path], libs=['cublas'],
+                            preargs=compiler.compile_args())
+                    from cuda_ndarray.cuda_ndarray import *
+            except Exception, e:
+                _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
+                set_cuda_disabled()
     finally:
         release_lock()
+del compile_cuda_ndarray
 
 if cuda_available:
     # If necessary,
