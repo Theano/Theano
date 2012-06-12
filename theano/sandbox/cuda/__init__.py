@@ -98,7 +98,7 @@ def try_import():
         # be in sys.path.
         if config.compiledir not in sys.path:
             sys.path.append(config.compiledir)
-        from cuda_ndarray.cuda_ndarray import *
+        import cuda_ndarray.cuda_ndarray
     except ImportError:
         return False
     return True
@@ -156,6 +156,9 @@ if compile_cuda_ndarray:
 del compile_cuda_ndarray
 
 if cuda_available:
+    # The module should be compiled.
+    from cuda_ndarray.cuda_ndarray import *
+
     # If necessary,
     # create a symlink called libcuda_ndarray.so
     # which nvcc_compiler.NVCC_compiler uses when linking
