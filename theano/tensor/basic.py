@@ -2639,10 +2639,12 @@ def erf(a):
 def erfc(a):
     """complementary error function"""
 
+
 @_scal_elemwise
 def gammaln(a):
     """log gamma function"""
-    
+
+
 @_scal_elemwise
 def psi(a):
     """derivative of log gamma function"""
