@@ -490,4 +490,4 @@ Other tools that can help you
  * `Yep <http://pypi.python.org/pypi/yep>`_: A module for profiling compiled extensions.
  * `autopep8 <http://pypi.python.org/pypi/autopep8/>`_: A tool that automatically formats Python code to conform to the PEP 8 style guide.
  * `line_profiler <http://pypi.python.org/pypi/line_profiler/>`_: Line-by-line profiler.
- * `memory_profiler http://fseoane.net/blog/2012/line-by-line-report-of-memory-usage/`_: memory profiler
+ * `memory_profiler <http://fseoane.net/blog/2012/line-by-line-report-of-memory-usage/>`_: memory profiler
