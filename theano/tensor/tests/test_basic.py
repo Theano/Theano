@@ -1237,7 +1237,7 @@ del _good_broadcast_unary_normal_no_int['integers']
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
-    
+
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
     skip_scipy = False
@@ -1246,69 +1246,85 @@ else:
     expected_erfc = []
     skip_scipy = "scipy is not present"
 
-ErfTester = makeBroadcastTester(op = tensor.erf,
-                                expected = expected_erf,
-                                good = _good_broadcast_unary_normal,
-                                grad = _grad_broadcast_unary_normal,
-                                eps = 2e-10,
-                                mode = mode_no_scipy,
-                                skip = skip_scipy)
-ErfInplaceTester = makeBroadcastTester(op = inplace.erf_inplace,
-                                       expected = expected_erf,
-                                       good = _good_broadcast_unary_normal_no_int,
-                                       grad = _grad_broadcast_unary_normal,
-                                       mode = mode_no_scipy,
-                                       eps = 2e-10,
-                                       inplace = True,
-                                       skip = skip_scipy)
+ErfTester = makeBroadcastTester(
+    op=tensor.erf,
+    expected=expected_erf,
+    good=_good_broadcast_unary_normal,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+ErfInplaceTester = makeBroadcastTester(
+    op=inplace.erf_inplace,
+    expected=expected_erf,
+    good=_good_broadcast_unary_normal_no_int,
+    grad=_grad_broadcast_unary_normal,
+    mode=mode_no_scipy,
+    eps=2e-10,
+    inplace=True,
+    skip=skip_scipy)
 
-ErfcTester = makeBroadcastTester(op = tensor.erfc,
-                                 expected = expected_erfc,
-                                 good = _good_broadcast_unary_normal_no_int_no_complex,
-                                 grad = _grad_broadcast_unary_normal,
-                                 eps = 2e-10,
-                                 mode = mode_no_scipy,
-                                 skip = skip_scipy)
-ErfcInplaceTester = makeBroadcastTester(op = inplace.erfc_inplace,
-                                        expected = expected_erfc,
-                                        good = _good_broadcast_unary_normal_no_int_no_complex,
-                                        grad = _grad_broadcast_unary_normal,
-                                        eps = 2e-10,
-                                        mode = mode_no_scipy,
-                                        inplace = True,
-                                        skip = skip_scipy)
+ErfcTester = makeBroadcastTester(
+    op=tensor.erfc,
+    expected=expected_erfc,
+    good=_good_broadcast_unary_normal_no_int_no_complex,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+ErfcInplaceTester = makeBroadcastTester(
+    op=inplace.erfc_inplace,
+    expected=expected_erfc,
+    good=_good_broadcast_unary_normal_no_int_no_complex,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
 
-GammaLnTester = makeBroadcastTester(op = tensor.gammaln,
-                                 expected = expected_gammaln,
-                                 good = _good_broadcast_unary_normal_no_int_no_complex,
-                                 grad = _grad_broadcast_unary_normal,
-                                 eps = 2e-10,
-                                 mode = mode_no_scipy,
-                                 skip = skip_scipy)
-GammaLnInplaceTester = makeBroadcastTester(op = inplace.gammaln_inplace,
-                                        expected = expected_erfc,
-                                        good = _good_broadcast_unary_normal_no_int_no_complex,
-                                        grad = _grad_broadcast_unary_normal,
-                                        eps = 2e-10,
-                                        mode = mode_no_scipy,
-                                        inplace = True,
-                                        skip = skip_scipy)
+_good_broadcast_unary_gammaln = dict(
+    normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+_grad_broadcast_unary_gammaln = dict(
+    normal=(rand_ranged(1e-8, 10, (2, 3)),),)
 
-PsiTester = makeBroadcastTester(op = tensor.psi,
-                                 expected = expected_psi,
-                                 good = _good_broadcast_unary_normal_no_int_no_complex,
-                                 grad = _grad_broadcast_unary_normal,
-                                 eps = 2e-10,
-                                 mode = mode_no_scipy,
-                                 skip = skip_scipy)
-PsiInplaceTester = makeBroadcastTester(op = inplace.psi_inplace,
-                                        expected = expected_psi,
-                                        good = _good_broadcast_unary_normal_no_int_no_complex,
-                                        grad = _grad_broadcast_unary_normal,
-                                        eps = 2e-10,
-                                        mode = mode_no_scipy,
-                                        inplace = True,
-                                        skip = skip_scipy)
+GammaLnTester = makeBroadcastTester(
+    op=tensor.gammaln,
+    expected=expected_gammaln,
+    good=_good_broadcast_unary_gammaln,
+    grad=_grad_broadcast_unary_gammaln,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+GammaLnInplaceTester = makeBroadcastTester(
+    op=inplace.gammaln_inplace,
+    expected=expected_gammaln,
+    good=_good_broadcast_unary_gammaln,
+    grad=_grad_broadcast_unary_gammaln,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+_good_broadcast_unary_psi = dict(
+    normal=(rand_ranged(1, 10, (2, 3)),),
+    empty=(numpy.asarray([]),),)
+
+PsiTester = makeBroadcastTester(
+    op=tensor.psi,
+    expected=expected_psi,
+    good=_good_broadcast_unary_psi,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+PsiInplaceTester = makeBroadcastTester(
+    op=inplace.psi_inplace,
+    expected=expected_psi,
+    good=_good_broadcast_unary_psi,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
 
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,
