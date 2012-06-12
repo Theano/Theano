@@ -81,7 +81,7 @@ class GammaLn(UnaryScalarOp):
     """
     @staticmethod
     def st_impl(x):
-        return special.gammaln(x)
+        return scipy.special.gammaln(x)
 
     def impl(self, x):
         return GammaLn.st_impl(x)
@@ -97,7 +97,7 @@ class GammaLn(UnaryScalarOp):
         if node.inputs[0].type in float_types:
             return """%(z)s =
                 lgamma(%(x)s);""" % locals()
-        raise NotImplementedError('only floatingpoint is implemented')
+        raise NotImplementedError('only floating point is implemented')
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -113,12 +113,14 @@ class Psi(UnaryScalarOp):
     """
     @staticmethod
     def st_impl(x):
-        return special.psi(x)
+        return scipy.special.psi(x)
 
     def impl(self, x):
         return Psi.st_impl(x)
 
-    #def grad()  no gradient now 
+    def grad(self, inputs, outputs_gradients):
+        raise NotImplementedError()
+        return [None]
 
     def c_support_code(self):
         return (
@@ -167,7 +169,7 @@ double _psi(double x){
         if node.inputs[0].type in float_types:
             return """%(z)s =
                 _psi(%(x)s);""" % locals()
-        raise NotImplementedError('only floatingpoint is implemented')
+        raise NotImplementedError('only floating point is implemented')
 
     def __eq__(self, other):
         return type(self) == type(other)

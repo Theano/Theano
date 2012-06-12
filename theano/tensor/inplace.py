@@ -202,11 +202,11 @@ def erf_inplace(a):
 @_scal_inplace
 def erfc_inplace(a):
     """complementary error function"""
-    
+
 @_scal_inplace
 def gammaln_inplace(a):
     """log gamma function"""
-    
+
 @_scal_inplace
 def psi_inplace(a):
     """derivative of log gamma function"""
