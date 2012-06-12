@@ -169,6 +169,13 @@ control over the order in which multiple Print() Ops are evaluted.  For a more
 precise inspection of what's being computed where, when, and how, see the
 :ref:`faq_wraplinker`.
 
+.. warning::
+
+    Using this ``Print`` Theano Op can prevent some Theano
+    optimization from being applied. This can also happen with
+    stability optimization. So if you use this Print and have nan, try
+    to remove them to know if this is the cause or not.
+
 
 How do I print a graph (before or after compilation)?
 ----------------------------------------------------------
