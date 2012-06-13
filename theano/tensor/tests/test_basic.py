@@ -2531,6 +2531,49 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == ())
         self.assertTrue(numpy.all(tval == 0))
 
+    def test_newaxis(self):
+        """
+        newaxis support comes from logic in the __getitem__ of TensorType
+        Variables, which currently inserts dimshuffle to get the right number
+        of dimensions, and adjusts the slice tuple accordingly.
+
+        So testing is done via square-bracket notation rather than direct
+        interaction with the Subtensor Op (which has no support of its own for
+        newaxis).
+        """
+        newaxis = numpy.newaxis
+
+        n = self.shared(numpy.asarray(range(24), dtype=self.dtype).reshape((2,3,4)))
+        assert n.ndim == 3
+
+        n4 = n[newaxis, :, :, :]
+        assert n4.broadcastable == (True, False, False, False), n4
+
+        n4 = n[:, newaxis, :, :]
+        assert n4.broadcastable == (False, True, False, False), n4
+
+        n4 = n[:, :, newaxis, :]
+        assert n4.broadcastable == (False, False, True, False), n4
+
+        n4 = n[:, :, :, newaxis]
+        assert n4.broadcastable == (False, False, False, True), n4
+
+        n3 = n.flatten()[newaxis, :, newaxis]
+        assert n3.broadcastable == (True, False, True), n3
+
+        s = cscalar()
+        s1 = s[newaxis]
+        assert s1.broadcastable == (True,), s1
+
+        vs1, vn3, vn4 = theano.function([s], [s1, n3, n4])(-2.0)
+
+        assert numpy.all(vs1 == [-2.0])
+        assert numpy.all(vn3
+                == numpy.arange(24)[newaxis, :, newaxis])
+        assert numpy.all(vn4
+                == numpy.arange(24).reshape((2, 3, 4))[:, :, :, newaxis])
+
+
     def test_grad_1d(self):
         subi = 0
         data = numpy.asarray(rand(2,3), dtype=self.dtype)
