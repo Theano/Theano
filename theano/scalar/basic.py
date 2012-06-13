@@ -1170,18 +1170,33 @@ class Mul(ScalarOp):
 
     def grad(self, inputs, (gz, )):
         retval = []
-        input_type = theano.tensor.as_tensor_variable(inputs).type
-        if input_type in discrete_types:
-            retval = None
-        elif input_type in complex_types or gz.type in complex_types:
-            for input in inputs:
-                retval += [mul(*([gz] +
-                                 utils.difference(inputs, [input])))]
-        else:
-            for input in inputs:
-                retval += [cast(mul(*([gz] +
-                                      utils.difference(inputs, [input]))),
-                                input_type.dtype)]
+
+        # The following 3 lines verify that gz is complex when the
+        # output is complex. The rest of this function make this supposition.
+        output_type = self.output_types([i.type for i in inputs])[0]
+        if output_type in complex_types:
+            assert gz.type in complex_types
+
+        for input in inputs:
+            if input.type in continuous_types:
+                if gz.type in complex_types:
+                    # zr+zi = (xr + xi)(yr + yi)
+                    # zr+zi = (xr*yr - xi*yi) + (xr yi + xi yr )
+                    otherprod = mul(*(utils.difference(inputs, [input])))
+                    yr = real(otherprod)
+                    yi = imag(otherprod)
+                    if input.type in complex_types:
+                        retval += [complex(yr * real(gz) + yi * imag(gz),
+                                           yr * imag(gz) - yi * real(gz))]
+                    else:
+                        retval += [cast(yr * real(gz) + yi * imag(gz),
+                                        input.type.dtype)]
+                else:
+                    retval += [cast(mul(*([gz] + utils.difference(inputs,
+                                                                  [input]))),
+                                    input.type.dtype)]
+            else:
+                retval += [None]
         return retval
 
 
