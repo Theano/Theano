@@ -21,6 +21,7 @@ from theano.sparse.sandbox import sp2 as S2
 from theano.tests import unittest_tools as utt
 from theano.sparse.basic import verify_grad_sparse
 
+
 def as_sparse_format(data, format):
     if format == 'csc':
         return scipy.sparse.csc_matrix(data)
@@ -110,6 +111,54 @@ class TestCast(utt.InferShapeTester):
         for dtype in T.float_dtypes:
             a = sp.csr_matrix(self.properties, dtype=dtype)
             verify_grad_sparse(S2.Cast('float64'), [a])
+
+
+class EliminateZerosTester(utt.InferShapeTester):
+    indptr = np.array([0, 2, 3, 6])
+    indices = np.array([0, 2, 2, 0, 1, 2])
+    data = np.array([1, 0, 3, 0, 5, 6], dtype='float32')
+    properties = (data, indices, indptr)
+
+    x_csc = S.csc_matrix('csc', dtype='float32')
+    x_csr = S.csr_matrix('csr', dtype='float32')
+
+    def setUp(self):
+        super(EliminateZerosTester, self).setUp()
+        self.op_class = S2.EliminateZeros
+
+    def test_eliminate_zeros(self):
+        f_csc = theano.function([self.x_csc], S2.eliminate_zeros(self.x_csc))
+        f_csr = theano.function([self.x_csr], S2.eliminate_zeros(self.x_csr))
+
+        a = sp.csc_matrix(self.properties, dtype='float32')
+        b = a.copy()
+        b.eliminate_zeros()
+        assert np.all(f_csc(a).todense() == b.todense())
+
+        a = sp.csr_matrix(self.properties)
+        b = a.copy()
+        b.eliminate_zeros()
+        assert np.all(f_csr(a).todense() == b.todense())
+
+    def test_infer_shape(self):
+        a = sp.csc_matrix(self.properties, dtype='float32')
+        self._compile_and_check([self.x_csc],
+                                [S2.eliminate_zeros(self.x_csc)],
+                                [a],
+                                self.op_class)
+
+        a = sp.csr_matrix(self.properties, dtype='float32')
+        self._compile_and_check([self.x_csr],
+                                [S2.eliminate_zeros(self.x_csr)],
+                                [a],
+                                self.op_class)
+
+    def test_grad(self):
+        a = sp.csc_matrix(self.properties, dtype='float32')
+        verify_grad_sparse(S2.eliminate_zeros, [a])
+
+        a = sp.csr_matrix(self.properties, dtype='float32')
+        verify_grad_sparse(S2.eliminate_zeros, [a])
 
 
 class test_structured_add_s_v(unittest.TestCase):
