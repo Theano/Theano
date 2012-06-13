@@ -1543,7 +1543,7 @@ class _tensor_py_operators:
         advanced = False
         for arg in args:
             try:
-                Subtensor.convert(arg)
+                arg == numpy.newaxis or Subtensor.convert(arg)
             except AdvancedIndexingError:
                 advanced = True
                 break
@@ -1559,8 +1559,30 @@ class _tensor_py_operators:
             else:
                 return AdvancedSubtensor()(self, *args)
         else:
-            return Subtensor(args)(self, *Subtensor.collapse(args,
-                lambda entry: isinstance(entry, Variable)))
+            if numpy.newaxis in args:
+                # None (aka np.newaxis) in numpy indexing means to add a
+                # broadcastable dimension, which theano traditionally did with
+                # the dimshuffle op.  The following code converts numpy-style
+                # indexing on self to traditional [read: implemented] theano
+                # indexing on a dimshuffled view of self.
+
+                counter = 0
+                pattern = []
+                new_args = []
+                for arg in args:
+                    if arg == numpy.newaxis:
+                        pattern.append('x')
+                        new_args.append(slice(None, None, None))
+                    else:
+                        pattern.append(counter)
+                        counter += 1
+                        new_args.append(arg)
+                view = self.dimshuffle(pattern)
+                rval = view.__getitem__(tuple(new_args))
+                return rval
+            else:
+                return Subtensor(args)(self, *Subtensor.collapse(args,
+                    lambda entry: isinstance(entry, Variable)))
 
     #COPYING
     def copy(self):
