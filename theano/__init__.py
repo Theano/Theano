@@ -24,6 +24,10 @@ To learn more, check out:
 
 - Op List (:doc:`oplist`)
 
+The markup language used in the docstrings is ReStructured Text,
+which may be rendered with Sphinx. A rendered version is
+maintained at http://www.deeplearning.net/software/theano/library/
+
 """
 
 __docformat__ = "restructuredtext en"
