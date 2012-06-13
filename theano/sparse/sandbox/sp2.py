@@ -387,6 +387,10 @@ multinomial = Multinomial()
 
 
 class EliminateZeros(gof.op.Op):
+    """Eliminate zeros from the data of the matrix.
+
+    This wrap the method eliminate_zeros from scipy.
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -401,6 +405,15 @@ class EliminateZeros(gof.op.Op):
         assert _is_sparse(x)
         out[0] = x.copy()
         out[0].eliminate_zeros()
+
+    def grad(self, inputs, outputs_gradients):
+        return outputs_gradients
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 eliminate_zeros = EliminateZeros()
 
 
