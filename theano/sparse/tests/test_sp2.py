@@ -66,12 +66,12 @@ class TestCast(utt.InferShapeTester):
 
     def test_cast(self):
         cast_csc = dict([
-            (x, [theano.function([x], S2.astype(x, t))
+            (x, [theano.function([x], S2.Cast(t)(x))
                  for t in self.compatible_types])
             for x in self.x_csc])
 
         cast_csr = dict([
-            (x, [theano.function([x], S2.astype(x, t))
+            (x, [theano.function([x], S2.Cast(t)(x))
                  for t in self.compatible_types])
             for x in self.x_csr])
 
@@ -90,7 +90,7 @@ class TestCast(utt.InferShapeTester):
             for t in self.compatible_types:
                 a = sp.csc_matrix(self.properties, dtype=x.dtype)
                 self._compile_and_check([x],
-                                        [S2.astype(x, t)],
+                                        [S2.Cast(t)(x)],
                                         [a],
                                         self.op_class)
 
@@ -98,25 +98,18 @@ class TestCast(utt.InferShapeTester):
             for t in self.compatible_types:
                 a = sp.csr_matrix(self.properties, dtype=x.dtype)
                 self._compile_and_check([x],
-                                        [S2.astype(x, t)],
+                                        [S2.Cast(t)(x)],
                                         [a],
                                         self.op_class)
 
     def test_grad(self):
-        x_csc = [S.csc_matrix(dtype=t) for t in T.float_dtypes]
-        x_csr = [S.csr_matrix(dtype=t) for t in T.float_dtypes]
+        for dtype in T.float_dtypes:
+            a = sp.csc_matrix(self.properties, dtype=dtype)
+            verify_grad_sparse(S2.Cast('float64'), [a])
 
-        # There is a problem with the grad
-        # TODO Find the problem
-        # for x in x_csc:
-        #     for t in T.float_dtypes:
-        #         a = sp.csc_matrix(self.properties, dtype=x.dtype)
-        #         verify_grad_sparse(S2.Cast(t), [a])
-
-        # for x in x_csr:
-        #     for t in T.float_dtypes:
-        #         a = sp.csr_matrix(self.properties, dtype=x.dtype)
-        #         verify_grad_sparse(S2.Cast(t), [a])
+        for dtype in T.float_dtypes:
+            a = sp.csr_matrix(self.properties, dtype=dtype)
+            verify_grad_sparse(S2.Cast('float64'), [a])
 
 
 class test_structured_add_s_v(unittest.TestCase):
