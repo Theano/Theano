@@ -34,8 +34,7 @@ class Cast(gof.op.Op):
     def make_node(self, x):
         x = as_sparse_variable(x)
         return gof.Apply(
-            self,
-            [x],
+            self, [x],
             [SparseType(dtype=self.out_type, format=x.format).make_variable()])
 
     def perform(self, node, (x, ), (out, )):
@@ -45,7 +44,7 @@ class Cast(gof.op.Op):
     def grad(self, inputs, outputs_gradients):
         if inputs[0].dtype in T.continuous_dtypes:
             gz = outputs_gradients[0]
-            return [Cast(self.out_type)(gz)]
+            return [Cast(inputs[0].dtype)(gz)]
         else:
             return [None]
 
@@ -56,7 +55,7 @@ class Cast(gof.op.Op):
         return self.__class__.__name__
 
 
-def astype(x, t):
+def cast(x, t):
     """Cast sparse variable `x` to the desired dtype `t`.
 
     This wrap the method astype from scipy.
