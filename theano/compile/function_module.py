@@ -1049,13 +1049,15 @@ class FunctionMaker(object):
             theano.config.compute_test_value = "off"
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
-            optimizer(env)
+            optimizer_profile = optimizer(env)
             end_optimizer = time.time()
-
             opt_time = end_optimizer - start_optimizer
             mode.optimizer_time += opt_time
+
             if profile:
                 profile.optimizer_time += opt_time
+                if theano.config.profile_optimizer:
+                    profile.optimizer_profile = (optimizer, optimizer_profile)
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface

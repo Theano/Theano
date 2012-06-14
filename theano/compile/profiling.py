@@ -64,6 +64,15 @@ def _atexit_print_fn():
                 for key, val in getattr(ps, attr).iteritems():
                     assert key not in cum_attr
                     cum_attr[key] = val
+
+            if cum.optimizer_profile and ps.optimizer_profile:
+                merge = cum.optimizer_profile[0].merge_profile(
+                    cum.optimizer_profile[1],
+                    ps.optimizer_profile[1])
+                cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+            else:
+                cum.optimizer_profile = None
+
         cum.summary(file=_atexit_print_file)
 
 
@@ -132,6 +141,9 @@ class ProfileStats(object):
     # time spent linking graph (FunctionMaker.create)
 
     line_width = 140
+
+    optimizer_profile = None
+    # None or tuple (the optimizer, the profile it returned)
 
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
@@ -419,6 +431,10 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
+        if self.optimizer_profile:
+            print "Optimizer Profile"
+            print "-----------------"
+            self.optimizer_profile[0].print_profile(file, self.optimizer_profile[1])
 
 
 if 0: # old code still to be ported from ProfileMode
