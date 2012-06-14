@@ -1465,10 +1465,10 @@ class _tensor_py_operators:
 
     # We can't implement __len__ to provide a better error message.
     def any(self, axis=None, keepdims=False):
-        return elemwise.Any(axis, keepdims)(self)
+        return any(self, axis=axis, keepdims=keepdims)
 
     def all(self, axis=None, keepdims=False):
-        return elemwise.All(axis, keepdims)(self)
+        return all(self, axis=axis, keepdims=keepdims)
 
     # Otherwise TensorVariable[:-1] does not work as Python 2.5.1 calls
     # __len__ before calling __getitem__. It also does not catch the raised
@@ -1614,7 +1614,7 @@ class _tensor_py_operators:
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
 
-    def prod(self, axis=None, dtype=None, keepdims=False)
+    def prod(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.prod`"""
         return prod(self, axis=axis, dtype=dtype, keepdims=keepdims)
 
@@ -2305,6 +2305,8 @@ class MaxAndArgmax(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+        
 _max_and_argmax = MaxAndArgmax()
 
 
@@ -2314,8 +2316,13 @@ def makeKeepDims(x, y, axis):
     in a prior reduction of x. With this option, the resulting tensor will
     broadcast correctly against the original tensor x.
     """
+    x = as_tensor_variable(x)
+    y = as_tensor_variable(y)
 
+    if axis is None:
+        axis = range(x.type.ndim)
     i = 0
+    new_dims = []
     for j, _ in enumerate(x.type.broadcastable):
         if j in axis:
             new_dims.append('x')
@@ -2325,7 +2332,7 @@ def makeKeepDims(x, y, axis):
     return DimShuffle(y.type.broadcastable, new_dims)(y)
 
 
-@_constructor
+@constructor
 def max_and_argmax(a, axis=None, keepdims=False):
     """
     Returns maximum elements and their indices obtained by iterating over
@@ -2413,7 +2420,7 @@ def min(x, axis=None, keepdims=False):
 
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
-        out = -max(-x, axis=axis, keepdims=keepdims)
+        return -max(-x, axis=axis, keepdims=keepdims)
     else:
         #Be careful about unsigned integers, complex
         raise NotImplementedError()
