@@ -609,7 +609,7 @@ def scan(fn,
     info['gpu'] = False
     info['as_while'] = as_while
     info['profile'] = profile
-    info['_scan_merge_visited'] = True
+    info['_scan_savemem_visited'] = True
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
