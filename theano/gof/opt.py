@@ -75,7 +75,7 @@ class Optimizer(object):
           opt.apply(env)
         """
         self.add_requirements(env)
-        self.apply(env, *args, **kwargs)
+        return self.apply(env, *args, **kwargs)
 
     def __call__(self, env):
         """WRITEME
@@ -97,6 +97,12 @@ class Optimizer(object):
         name = getattr(self, 'name', None)
         print >> stream, "%s%s %s id=%i" % (
                 (' ' * level), self.__class__.__name__, name, id(self))
+
+    def print_profile(self, prof):
+        if prof is not None:
+            raise NotImplementedError(
+                "The function print_profile must be overrided if the"
+                " optimizer return profiling information.")
 
 
 class FromFunctionOptimizer(Optimizer):
@@ -154,12 +160,16 @@ class SeqOptimizer(Optimizer, list):
         Applies each L{Optimizer} in self in turn.
         """
         l = []
+        if env.profile:
+            validate_before = env.profile.validate_time
         nb_node_before = len(env.nodes)
+        sub_profs = []
         for optimizer in self:
             try:
                 t0 = time.time()
-                optimizer.optimize(env)
+                sub_prof = optimizer.optimize(env)
                 l.append(float(time.time() - t0))
+                sub_profs.append(sub_prof)
             except AssertionError:
                 # do not catch Assertion failures
                 raise
@@ -169,12 +179,14 @@ class SeqOptimizer(Optimizer, list):
                     continue
                 else:
                     raise
+
         if config.time_seq_optimizer:
             print "SeqOptimizer",
             if hasattr(self,"name"): print self.name,
             elif hasattr(self,"__name__"): print self.__name__,
             print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(env.nodes))
-
+            print " time %.3fs for validate " % (
+                env.profile.validate_time - validate_before)
             ll=[]
             for opt in self:
                 if hasattr(opt,"__name__"):
@@ -191,6 +203,12 @@ class SeqOptimizer(Optimizer, list):
             for (t, opt) in lll[::-1]:
                 print '  %.6fs - %s' % (t, opt)
             print
+        if env.profile:
+            validate_time = env.profile.validate_time - validate_before
+        else:
+            validate_time = None
+        return (self, l, validate_time, nb_node_before,
+                len(env.nodes), sub_profs)
 
     def __eq__(self, other):
         #added to override the list's __eq__ implementation
@@ -215,6 +233,115 @@ class SeqOptimizer(Optimizer, list):
             depth -= 1
             for opt in self:
                 opt.print_summary(stream, level=(level + 2), depth=depth)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (opts, prof, validate_time, nb_node_before,
+         nb_node_after, sub_profs) = prof
+        blanc = ('    ' * level)
+
+
+        print >> stream, blanc, "SeqOptimizer",
+        if hasattr(opts, "name"):
+            print >> stream, blanc, opts.name,
+        elif hasattr(opts, "__name__"):
+            print >> stream, blanc, opts.__name__,
+        print >> stream, (" time %.3fs for %d/%d nodes"
+                          " before/after optimization" % (
+                              sum(prof), nb_node_before, nb_node_after))
+        print >> stream, blanc, "  %.3fs for env.validate()" % (validate_time)
+        if level == 0:
+            print >> stream, blanc, "  time      - (name, class, index)"
+        ll = []
+        for opt in opts:
+            if hasattr(opt, "__name__"):
+                ll.append((opt.__name__, opt.__class__.__name__,
+                           opts.index(opt)))
+            else:
+                ll.append((opt.name, opt.__class__.__name__,
+                           opts.index(opt)))
+        lll = zip(prof, ll)
+
+        def cmp(a, b):
+            if a[0] == b[0]:
+                return 0
+            elif a[0] < b[0]:
+                return -1
+            return 1
+        lll.sort(cmp)
+
+        for (t, opt) in lll[::-1]:
+            #if t < 1:
+            #    continue
+            print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+            if sub_profs[opt[-1]]:
+                opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
+                                            level=level + 1)
+        print >> stream
+
+    @staticmethod
+    def merge_profile(prof1, prof2):
+        """
+        Merge 2 profiles returned by this cass apply() fct.
+        """
+        new_t = []
+        new_l = []
+        new_sub_profile = []
+        #merge common(same object) opt
+        for l in set(prof1[0]).intersection(set(prof2[0])):
+            idx1 = prof1[0].index(l)
+            idx2 = prof2[0].index(l)
+            new_t.append(prof1[1][idx1] +
+                         prof2[1][idx2])
+            new_l.append(l)
+            if hasattr(l, 'merge_profile'):
+                assert len(prof1[5][idx1]) == len(prof2[5][idx1])
+                new_sub_profile.append(l.merge_profile(prof1[5][idx1],
+                                                       prof2[5][idx2]))
+            else:
+                new_sub_profile.append(None)
+
+        # merge not common opt
+        import StringIO
+        for l in set(prof1[0]).symmetric_difference(set(prof2[0])):
+            #The set trick above only work for the same object optimization
+            #It don't work for equivalent optimization.
+            #So we try to merge equivalent optimization here.
+            new_l_names = [o.name for o in new_l]
+            if l.name in new_l_names:
+                idx = new_l_names.index(l.name)
+                io1 = StringIO.StringIO()
+                io2 = StringIO.StringIO()
+                l.print_summary(io1)
+                new_l[idx].print_summary(io2)
+                if io1.read() == io2.read():
+                    if l in prof1[0]:
+                        p = prof1
+                    else:
+                        p = prof2
+                    new_t[idx] += p[1][p[0].index(l)]
+                    if hasattr(l, 'merge_profile'):
+                        assert len(p[5][p[0].index(l)]) == len(new_sub_profile[idx])
+                        new_sub_profile[idx] = l.merge_profile(
+                            new_sub_profile[idx], p[5][p[0].index(l)])
+                    else:
+                        new_sub_profile[idx] = None
+                continue
+            if l in prof1[0]:
+                p = prof1
+            else:
+                p = prof2
+            new_t.append(p[1][p[0].index(l)])
+            idx = p[0].index(l)
+            new_l.append(l)
+            new_sub_profile.append(p[5][idx])
+
+        new_opt = SeqOptimizer(*new_l)
+        assert set(prof1[0]).issubset(set(new_l))
+#        assert set(prof2[0]).issubset(set(new_l))
+        assert len(new_t) == len(new_opt) == len(new_sub_profile)
+        return (new_opt, new_t, prof1[2] + prof2[2],
+                -1, -1, new_sub_profile)
 
 
 class _metadict:
@@ -500,7 +627,9 @@ def MergeOptMerge(opt):
     opt introduced additional similarities.
     """
     merger = merge_optimizer
-    return SeqOptimizer([merger, opt, merger])
+    opt = SeqOptimizer([merger, opt, merger])
+    opt.name = "MergeOptMerge"
+    return opt
 
 
 def pre_constant_merge(vars):
@@ -1314,7 +1443,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         loop_timing = []
         global_opt_timing = []
+        time_lopts = {}
+        io_toposort_timing = []
         nb_nodes = []
+        for lopt in self.local_optimizers:
+            process_count.setdefault(lopt, 0)
+            time_lopts.setdefault(lopt, 0)
 
         while changed and not max_use_abort:
             t0 = time.time()
@@ -1333,7 +1467,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             for node in start_from:
                 assert node in env.outputs
 
+            topo_t0 = time.time()
             q = deque(graph.io_toposort(env.inputs, start_from))
+            io_toposort_timing.append(time.time() - topo_t0)
 
             nb_nodes.append(len(q))
             max_nb_nodes = max(max_nb_nodes, len(q))
@@ -1355,9 +1491,11 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 while q:
                     node = q.pop()
                     current_node = node
+
                     for lopt in self.local_optimizers:
-                        process_count.setdefault(lopt, 0)
+                        t_lopt = time.time()
                         lopt_change = self.process_node(env, node, lopt)
+                        time_lopts[lopt] += time.time() - t_lopt
                         if lopt_change:
                             process_count[lopt] += 1
                             changed = True
@@ -1402,6 +1540,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     print '  %d - %s' % (count, opt)
                 print
 
+        return (self, loop_timing, process_count, max_nb_nodes,
+                global_opt_timing, nb_nodes, time_lopts, io_toposort_timing)
+
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
         print >> stream, "%s%s %s id=%i" % (
@@ -1411,6 +1552,95 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 lopt.print_summary(stream, level=(level + 2),
                         depth=(depth - 1))
 
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (opt, loop_timing, process_count, max_nb_nodes,
+         global_opt_timing, nb_nodes, time_lopts, io_toposort_timing) = prof
+        blanc = ('    ' * level)
+        print >> stream, blanc, "EquilibriumOptimizer",
+        print >> stream, blanc, getattr(opt, "name",
+                                        getattr(opt, "__name__", ""))
+        print >> stream, blanc, " time %.3fs for %d passes, %d nodes max" % (
+                sum(loop_timing), len(loop_timing), max_nb_nodes)
+        print >> stream, blanc, " time io_toposort %.3fs" % sum(
+            io_toposort_timing)
+        for i in range(len(loop_timing)):
+            print >> stream, blanc, ('%d - %.3fs (%.3fs in global opts, '
+                                     '%.3fs io_toposort) - %d nodes' % (
+                                         i, loop_timing[i],
+                                         global_opt_timing[i],
+                                         io_toposort_timing[i], nb_nodes[i]))
+
+        count_opt = []
+        for opt, count in process_count.iteritems():
+            if count > 0:
+                count_opt.append((time_lopts[opt], count, opt))
+
+        if count_opt:
+            print >> stream, blanc, 'times applied - optimizer (only those applied):'
+            count_opt.sort()
+            for (t, count, opt) in count_opt[::-1]:
+                print >> stream, blanc, '  %.3fs - %d - %s' % (
+                    t, count, opt)
+            print >> stream
+
+    @staticmethod
+    def merge_profile(prof1, prof2):
+        #(opt, loop_timing, process_count, max_nb_nodes,
+        # global_opt_timing, nb_nodes, time_lopts, io_toposort_timing) = prof1
+
+        local_optimizers = set(prof1[0].local_optimizers).union(
+            prof2[0].local_optimizers)
+        global_optimizers = set(prof1[0].global_optimizers).union(
+            prof2[0].global_optimizers)
+        new_opt = EquilibriumOptimizer(
+            local_optimizers.union(global_optimizers),
+            max_use_ratio=1)
+
+        def merge_list(l1, l2):
+            l = copy.copy(l1)
+            for idx, nb in enumerate(l2):
+                if idx < len(l):
+                    l[idx] += nb
+                else:
+                    l.append(nb)
+            return l
+
+        loop_timing = merge_list(prof1[1], prof2[1])
+
+        process_count = prof1[2].copy()
+        for process, count in prof2[2].iteritems():
+            if process in process_count:
+                process_count[process] += count
+            else:
+                process_count[process] = count
+
+        max_nb_nodes = max(prof1[3], prof2[3])
+
+        global_opt_timing = merge_list(prof1[4], prof2[4])
+
+        nb_nodes = merge_list(prof1[5], prof2[5])
+
+        time_lopts = prof1[6].copy()
+        for opt, t in prof2[6].iteritems():
+            if opt in time_lopts:
+                time_lopts[opt] += t
+            else:
+                time_lopts[opt] = t
+
+        io_toposort_timing = merge_list(prof1[7], prof2[7])
+
+        assert (len(loop_timing) == len(global_opt_timing) ==
+                len(io_toposort_timing) == len(nb_nodes))
+        assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
+        return (new_opt,
+                loop_timing,
+                process_count,
+                max_nb_nodes,
+                global_opt_timing,
+                nb_nodes,
+                time_lopts,
+                io_toposort_timing)
 
 #################
 ### Utilities ###

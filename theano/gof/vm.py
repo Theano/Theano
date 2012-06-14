@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 AddConfigVar('profile',
         "If VM should collect profile information",
         BoolParam(False))
+AddConfigVar('profile_optimizer',
+        "If VM should collect optimizer profile information",
+        BoolParam(False))
 
 raise_with_op = link.raise_with_op
 

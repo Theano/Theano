@@ -129,6 +129,7 @@ class Env(utils.object2):
 
         self.node_locks = {}
         self.variable_locks = {}
+        self.profile = None
 
 
     ### Setup a Variable ###

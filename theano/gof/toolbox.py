@@ -1,4 +1,5 @@
 import sys
+import time
 
 from theano.gof.python25 import partial
 
@@ -71,10 +72,20 @@ class History:
 class Validator:
 
     def on_attach(self, env):
-        if hasattr(env, 'validate'):
-            raise AlreadyThere("Validator feature is already present or in"
-                               " conflict with another plugin.")
-        env.validate = lambda: env.execute_callbacks('validate')
+        for attr in ('validate', 'validate_time'):
+            if hasattr(env, attr):
+                raise AlreadyThere("Validator feature is already present or in"
+                                   " conflict with another plugin.")
+
+        def validate():
+            t0 = time.time()
+            ret = env.execute_callbacks('validate')
+            t1 = time.time()
+            if env.profile:
+                env.profile.validate_time += t1 - t0
+            return ret
+
+        env.validate = validate
 
         def consistent():
             try:

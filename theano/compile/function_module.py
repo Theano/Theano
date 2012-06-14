@@ -994,11 +994,16 @@ class FunctionMaker(object):
         # we allow ProfileMode to provide a ProfileStats object
         # using this somewhat awkward mechanism.
         mode_profile = getattr(mode, 'profile', None)
-        if (profile is not None) and (mode_profile is not None):
+        if (profile is not None and
+            profile is not False and
+            mode_profile is not None):
             raise TypeError(
                     'profile passed via both "mode" and "profile" arguments')
         self.profile = profile = profile or mode_profile
-
+        if profile:
+            # We preload the cache here to don't have its timming
+            # included in optimization that compile function.
+            theano.gof.cc.get_module_cache()
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         self.orig_outputs = outputs
         unpack_single = False
@@ -1030,6 +1035,8 @@ class FunctionMaker(object):
 
         # make the env (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
         env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
+        env.profile = profile
+
         self.env = env
 
         # Fetch the optimizer and linker
@@ -1042,13 +1049,15 @@ class FunctionMaker(object):
             theano.config.compute_test_value = "off"
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
-            optimizer(env)
+            optimizer_profile = optimizer(env)
             end_optimizer = time.time()
-
             opt_time = end_optimizer - start_optimizer
             mode.optimizer_time += opt_time
+
             if profile:
                 profile.optimizer_time += opt_time
+                if theano.config.profile_optimizer:
+                    profile.optimizer_profile = (optimizer, optimizer_profile)
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface
