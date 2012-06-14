@@ -100,7 +100,9 @@ class Optimizer(object):
 
     def print_profile(self, prof):
         if prof is not None:
-            raise NotImplementedError("The function print_profile must be overrided if the optimizer return profiling information.")
+            raise NotImplementedError(
+                "The function print_profile must be overrided if the"
+                " optimizer return profiling information.")
 
 
 class FromFunctionOptimizer(Optimizer):
