@@ -2371,11 +2371,12 @@ def max(x, axis=None, keepdims=False):
 
     if isinstance(axis, (list, tuple)) and len(axis) > 1:
         out = CAReduce(scal.maximum, axis)(x)
-    try:
-        const = get_constant_value(axis)
-        out = CAReduce(scal.maximum, list(const))(x)
-    except Exception:
-        out = max_and_argmax(x, axis)[0]
+    else:
+        try:
+            const = get_constant_value(axis)
+            out = CAReduce(scal.maximum, list(const))(x)
+        except Exception:
+            out = max_and_argmax(x, axis)[0]
 
     if keepdims:
         out = makeKeepDims(x, out, axis)
