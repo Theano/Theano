@@ -35,7 +35,6 @@ class TestKeepDims:
             keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=axis, keepdims=False)[0], axis))
 
-            # FRED: choisir l'une ou l'autre de ces verifications:
             assert numpy.allclose(keep_param(a), keep_synth(a))
             assert keep_param(a).shape == keep_synth(a).shape
 
@@ -43,7 +42,6 @@ class TestKeepDims:
             keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=axis, keepdims=False)[1], axis))
 
-            # FRED: choisir l'une ou l'autre de ces verifications:
             assert numpy.allclose(keep_param(a), keep_synth(a))
             assert keep_param(a).shape == keep_synth(a).shape
 
@@ -57,7 +55,6 @@ class TestKeepDims:
                 keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=axis, keepdims=False), axis))
 
-                # FRED: choisir l'une ou l'autre de ces verifications:
                 assert numpy.allclose(keep_param(a), keep_synth(a))
                 assert keep_param(a).shape == keep_synth(a).shape
 
@@ -65,7 +62,6 @@ class TestKeepDims:
             keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=None, keepdims=False), None))
 
-            # FRED: choisir l'une ou l'autre de ces verifications:
             assert numpy.allclose(keep_param(a), keep_synth(a))
             assert keep_param(a).shape == keep_synth(a).shape
 
@@ -73,18 +69,12 @@ class TestKeepDims:
         # parameter
         for op in ([tensor.sum, tensor.prod, tensor.mean, tensor.var,
                     tensor.std, tensor.all, tensor.any]):
-        # FRED: il faudra  ajouter les ops suivantes a la boucle ci-dessus:
-        # tensor.all, tensor.any
-        # Celles-ci semblent presentement defectueuses puisqu'elles plantent
-        # a la compilation dans un interpreteur distinct.
-
             for axis in [[0], [1], [2], [0, 1], [1, 2], [0, 1, 2]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
                 keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=axis, keepdims=False), axis))
 
-                # FRED: choisir l'une ou l'autre de ces verifications:
                 assert numpy.allclose(keep_param(a), keep_synth(a))
                 assert keep_param(a).shape == keep_synth(a).shape
 
@@ -92,11 +82,9 @@ class TestKeepDims:
             keep_synth = function([x], self.makeKeepDims_local(x,
                                 op(x, axis=None, keepdims=False), None))
 
-            # FRED: choisir l'une ou l'autre de ces verifications:
             assert numpy.allclose(keep_param(a), keep_synth(a))
             assert keep_param(a).shape == keep_synth(a).shape
 
 
 if __name__ == '__main__':
-
     TestKeepDims().test_keepdims()
