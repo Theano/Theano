@@ -3508,7 +3508,10 @@ def transpose(x, axes=None):
     """
     if axes is None:
         axes = range((x.ndim - 1), -1, -1)
-    return DimShuffle(x.broadcastable, axes, inplace=False)(x)
+    ret = DimShuffle(x.broadcastable, axes, inplace=False)(x)
+    if x.name and axes == range((x.ndim - 1), -1, -1):
+        ret.name = x.name + '.T'
+    return ret
 
 
 class AdvancedIndexingError(TypeError):
