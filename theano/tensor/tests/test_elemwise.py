@@ -1,16 +1,18 @@
 import cPickle, time, unittest
 from itertools import imap
+from copy import copy
 
+import numpy
 from numpy.testing import dec
 
+import theano
 from theano.gof import Variable, Op
-from theano import gof
-
-from theano.scalar import *
+from theano import gof, scalar, config
 
 from theano import tensor
+from theano.tensor import TensorType
 from theano.compile.mode import get_default_mode
-from theano.tensor.elemwise import *
+from theano.tensor.elemwise import CAReduce, Elemwise, DimShuffle, Prod, ProdWithoutZeros
 from theano.tests import unittest_tools
 
 
@@ -83,7 +85,7 @@ class test_Broadcast(unittest.TestCase):
                          ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-            e = Elemwise(add)(x, y)
+            e = Elemwise(scalar.add)(x, y)
             f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
@@ -96,7 +98,7 @@ class test_Broadcast(unittest.TestCase):
             if isinstance(linker,gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-                e = Elemwise(add)(x, y)
+                e = Elemwise(scalar.add)(x, y)
                 f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
                 assert tuple(f(xv, yv))==tuple(zv.shape)
 
@@ -111,7 +113,7 @@ class test_Broadcast(unittest.TestCase):
                          ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-            e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
+            e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0:0})(x, y)
             f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
@@ -125,7 +127,7 @@ class test_Broadcast(unittest.TestCase):
             if isinstance(linker,gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-                e = Elemwise(Add(transfer_type(0)), {0:0})(x, y)
+                e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0:0})(x, y)
                 f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
@@ -150,7 +152,7 @@ class test_Broadcast(unittest.TestCase):
     def test_fill(self):
         x = TensorType('float64', [0, 0])('x')
         y = TensorType('float64', [1, 1])('y')
-        e = Elemwise(Second(transfer_type(0)), {0:0})(x, y)
+        e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0:0})(x, y)
         f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
         yv = numpy.random.rand(1, 1)
@@ -160,7 +162,7 @@ class test_Broadcast(unittest.TestCase):
     def test_weird_strides(self):
         x = TensorType('float64', [0, 0, 0, 0, 0])('x')
         y = TensorType('float64', [0, 0, 0, 0, 0])('y')
-        e = Elemwise(add)(x, y)
+        e = Elemwise(scalar.add)(x, y)
         f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.random.rand(2, 2, 2, 2, 2)
         yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
@@ -169,7 +171,7 @@ class test_Broadcast(unittest.TestCase):
 
     def test_same_inputs(self):
         x = TensorType('float64', [0, 0])('x')
-        e = Elemwise(add)(x, x)
+        e = Elemwise(scalar.add)(x, x)
         f = gof.CLinker().accept(Env([x], [e])).make_function()
         xv = numpy.random.rand(2, 2)
         zv = xv + xv
@@ -180,7 +182,7 @@ class test_CAReduce(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def with_linker(self, linker, scalar_op = add, dtype="floatX",
+    def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
@@ -241,31 +243,31 @@ class test_CAReduce(unittest.TestCase):
                     zv = numpy.any(zv, axis)
                 if len(tosum) == 0:
                     zv = zv != 0
-            elif scalar_op == add:
+            elif scalar_op == scalar.add:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.add.reduce(zv, axis)
-            elif scalar_op == mul:
+            elif scalar_op == scalar.mul:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.multiply.reduce(zv, axis)
-            elif scalar_op == maximum:
+            elif scalar_op == scalar.maximum:
                 try:
                     for axis in reversed(sorted(tosum)):
                         zv = numpy.maximum.reduce(zv, axis)
                 except ValueError:
                     numpy_raised=True
-            elif scalar_op == minimum:
+            elif scalar_op == scalar.minimum:
                 try:
                     for axis in reversed(sorted(tosum)):
                         zv = numpy.minimum.reduce(zv, axis)
                 except ValueError:
                     numpy_raised=True
-            elif scalar_op == or_:
+            elif scalar_op == scalar.or_:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.bitwise_or.reduce(zv, axis)
-            elif scalar_op == and_:
+            elif scalar_op == scalar.and_:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.bitwise_and.reduce(zv, axis)
-            elif scalar_op == xor:
+            elif scalar_op == scalar.xor:
                 # There is no identity value for the xor function
                 # So we can't support shape of dimensions 0.
                 if numpy.prod(zv.shape)==0:
@@ -274,7 +276,7 @@ class test_CAReduce(unittest.TestCase):
                     zv = numpy.bitwise_xor.reduce(zv, axis)
             else:
                 raise Exception("Test for CAReduce with scalar_op %s not implemented"%str(scalar_op))
-            if scalar_op in [maximum,minimum] and numpy_raised:
+            if scalar_op in [scalar.maximum,scalar.minimum] and numpy_raised:
                 try:
                     out = f(xv)
                     assert out.dtype == dtype
@@ -284,7 +286,7 @@ class test_CAReduce(unittest.TestCase):
                     self.fail()
             else:
                 #numpy.{all,any} return bool type.
-                if scalar_op in [and_, or_]:
+                if scalar_op in [scalar.and_, scalar.or_]:
                     zv = numpy.asarray(zv, dtype=dtype)
                 if test_nan:
                     self.assertTrue(theano.tensor.TensorType.values_eq(f(xv), zv), (f(xv), zv))
@@ -302,40 +304,40 @@ class test_CAReduce(unittest.TestCase):
                     e = tensor_op(x, axis=tosum)
                 if tosum is None: tosum = range(len(xsh))
                 f = copy(linker).accept(Env([x], [e.shape])).make_function()
-                if not(scalar_op in [maximum,minimum] and ((xsh==() or numpy.prod(xsh)==0))):
-                    assert all(f(xv)== zv.shape)
+                if not(scalar_op in [scalar.maximum,scalar.minimum] and ((xsh==() or numpy.prod(xsh)==0))):
+                    assert all(f(xv) == zv.shape)
 
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
-            self.with_linker(gof.PerformLinker(), add, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), mul, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), maximum, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), minimum, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), and_, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.mul, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.maximum, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.minimum, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
                              tensor_op=tensor.all)
-            self.with_linker(gof.PerformLinker(), or_, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype,
                              tensor_op=tensor.any)
         for dtype in ["int8", "uint8"]:
-            self.with_linker(gof.PerformLinker(), or_, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), and_, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), xor, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype)
+            self.with_linker(gof.PerformLinker(), scalar.xor, dtype=dtype)
 
     @dec.knownfailureif(
         True,
         ("When there is nan in the input of CAReduce, we don't have a good output. "))
     def test_perform_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
-            self.with_linker(gof.PerformLinker(), add, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.PerformLinker(), mul, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.mul, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.PerformLinker(), maximum, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.PerformLinker(), minimum, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.minimum, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.PerformLinker(), or_, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.PerformLinker(), and_, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
                              test_nan=True)
             self.with_linker(gof.PerformLinker(), or_, dtype=dtype,
                              test_nan=True, tensor_op=tensor.any)
@@ -344,34 +346,33 @@ class test_CAReduce(unittest.TestCase):
 
     def test_c(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
-            self.with_linker(gof.CLinker(), add, dtype=dtype)
-            self.with_linker(gof.CLinker(), mul, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.add, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype)
         for dtype in ["floatX", "int8", "uint8"]:
-            self.with_linker(gof.CLinker(), minimum, dtype=dtype)
-            self.with_linker(gof.CLinker(), maximum, dtype=dtype)
-            # all and any use neq that don't have c code for complex
-            self.with_linker(gof.CLinker(), and_, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.minimum, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype,
                              tensor_op=tensor.all)
-            self.with_linker(gof.CLinker(), or_, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype,
                              tensor_op=tensor.any)
         for dtype in ["int8", "uint8"]:
-            self.with_linker(gof.CLinker(), or_, dtype=dtype)
-            self.with_linker(gof.CLinker(), and_, dtype=dtype)
-            self.with_linker(gof.CLinker(), xor, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
+            self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
 
     @dec.knownfailureif(
         True,
         ("When there is nan in the input of CAReduce, we don't have a good output. "))
     def test_c_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
-            self.with_linker(gof.CLinker(), add, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.add, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.CLinker(), mul, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype,
                              test_nan=True)
         for dtype in ["floatX"]:
-            self.with_linker(gof.CLinker(), minimum, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.minimum, dtype=dtype,
                              test_nan=True)
-            self.with_linker(gof.CLinker(), maximum, dtype=dtype,
+            self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
 
