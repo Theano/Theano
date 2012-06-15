@@ -1,6 +1,8 @@
-import cPickle, time, unittest
-from itertools import imap
+import cPickle
 from copy import copy
+from itertools import imap
+import time
+import unittest
 
 import numpy
 from numpy.testing import dec
@@ -12,13 +14,15 @@ from theano import gof, scalar, config
 from theano import tensor
 from theano.tensor import TensorType
 from theano.compile.mode import get_default_mode
-from theano.tensor.elemwise import CAReduce, Elemwise, DimShuffle, Prod, ProdWithoutZeros
+from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
+                                    Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
 
 
 def Env(i, o):
     e = gof.Env(i, o)
     return e
+
 
 class test_DimShuffle(unittest.TestCase):
 
@@ -27,11 +31,12 @@ class test_DimShuffle(unittest.TestCase):
                                   ((1, 2, 3), (1, 2), (2, 3)),
                                   ((1, 2, 1, 3), (1, 3), (2, 3)),
                                   ((2, 3, 4), (2, 1, 0), (4, 3, 2)),
-                                  ((2, 3, 4), ('x', 2, 1, 0, 'x'), (1, 4, 3, 2, 1)),
+                                  ((2, 3, 4), ('x', 2, 1, 0, 'x'),
+                                   (1, 4, 3, 2, 1)),
                                   ((1, 4, 3, 2, 1), (3, 2, 1), (2, 3, 4)),
                                   ((1, 1, 4), (1, 2), (1, 4)),
                                   ((1, 1, 1), (), ()),
-                                  ((1,), ('x', 'x'), (1, 1)),]:
+                                  ((1,), ('x', 'x'), (1, 1))]:
             ib = [(entry == 1) for entry in xsh]
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
@@ -69,6 +74,7 @@ class test_DimShuffle(unittest.TestCase):
         # But This will test DimShuffle c code
         self.with_linker(gof.OpWiseCLinker())
 
+
 class test_Broadcast(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
@@ -95,12 +101,12 @@ class test_Broadcast(unittest.TestCase):
 
             #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
-            if isinstance(linker,gof.PerformLinker):
+            if isinstance(linker, gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.add)(x, y)
                 f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
-                assert tuple(f(xv, yv))==tuple(zv.shape)
+                assert tuple(f(xv, yv)) == tuple(zv.shape)
 
     def with_linker_inplace(self, linker):
         for xsh, ysh in [((5, 5), (5, 5)),
@@ -113,7 +119,7 @@ class test_Broadcast(unittest.TestCase):
                          ((), ())]:
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-            e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0:0})(x, y)
+            e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
             f = copy(linker).accept(Env([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
@@ -124,10 +130,10 @@ class test_Broadcast(unittest.TestCase):
             self.assertTrue((xv == zv).all())
             #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
-            if isinstance(linker,gof.PerformLinker):
+            if isinstance(linker, gof.PerformLinker):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-                e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0:0})(x, y)
+                e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
                 f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
@@ -135,7 +141,7 @@ class test_Broadcast(unittest.TestCase):
 
                 f(xv, yv)
 
-                assert xv.shape==zv.shape
+                assert xv.shape == zv.shape
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
@@ -152,7 +158,7 @@ class test_Broadcast(unittest.TestCase):
     def test_fill(self):
         x = TensorType('float64', [0, 0])('x')
         y = TensorType('float64', [1, 1])('y')
-        e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0:0})(x, y)
+        e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
         f = gof.CLinker().accept(Env([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
         yv = numpy.random.rand(1, 1)
@@ -203,21 +209,23 @@ class test_CAReduce(unittest.TestCase):
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
-                e = CAReduce(scalar_op, axis = tosum)(x)
+                e = CAReduce(scalar_op, axis=tosum)(x)
             else:
                 e = tensor_op(x, axis=tosum)
 
-            if tosum is None: tosum = range(len(xsh))
+            if tosum is None:
+                tosum = range(len(xsh))
+
             f = copy(linker).accept(Env([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
 
             if not "int" in dtype:
-                xv = numpy.asarray(xv,dtype=dtype)
+                xv = numpy.asarray(xv, dtype=dtype)
             else:
-                xv = numpy.asarray(xv<0.5,dtype=dtype)
+                xv = numpy.asarray(xv < 0.5, dtype=dtype)
 
             if test_nan and xv.size > 0:
-                if len(xsh)>0:
+                if len(xsh) > 0:
                     xv = xv.flatten()
                     xv[0] = numpy.nan
                     xv = xv.reshape(*xsh)
@@ -225,13 +233,16 @@ class test_CAReduce(unittest.TestCase):
                     xv = numpy.asarray(numpy.nan, dtype=dtype)
             zv = xv
             numpy_raised = False
-            if len(tosum)>1 and any([a<0 for a in tosum]):
-                #In that case, we need to use the good order of axis in the reduction.
+            if len(tosum) > 1 and any([a < 0 for a in tosum]):
+                #In that case, we need to use the good order of axis
+                #in the reduction.
                 axis2 = []
                 for a in tosum:
-                    if a<0: axis2.append(a+len(xsh))
-                    else: axis2.append(a)
-                assert len(axis2)==len(tosum)
+                    if a < 0:
+                        axis2.append(a + len(xsh))
+                    else:
+                        axis2.append(a)
+                assert len(axis2) == len(tosum)
                 tosum = tuple(axis2)
             if tensor_op == tensor.all:
                 for axis in reversed(sorted(tosum)):
@@ -254,13 +265,13 @@ class test_CAReduce(unittest.TestCase):
                     for axis in reversed(sorted(tosum)):
                         zv = numpy.maximum.reduce(zv, axis)
                 except ValueError:
-                    numpy_raised=True
+                    numpy_raised = True
             elif scalar_op == scalar.minimum:
                 try:
                     for axis in reversed(sorted(tosum)):
                         zv = numpy.minimum.reduce(zv, axis)
                 except ValueError:
-                    numpy_raised=True
+                    numpy_raised = True
             elif scalar_op == scalar.or_:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.bitwise_or.reduce(zv, axis)
@@ -270,13 +281,15 @@ class test_CAReduce(unittest.TestCase):
             elif scalar_op == scalar.xor:
                 # There is no identity value for the xor function
                 # So we can't support shape of dimensions 0.
-                if numpy.prod(zv.shape)==0:
+                if numpy.prod(zv.shape) == 0:
                     continue
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.bitwise_xor.reduce(zv, axis)
             else:
-                raise Exception("Test for CAReduce with scalar_op %s not implemented"%str(scalar_op))
-            if scalar_op in [scalar.maximum,scalar.minimum] and numpy_raised:
+                raise Exception(
+                    "Test for CAReduce with scalar_op %s not implemented" %
+                    str(scalar_op))
+            if scalar_op in [scalar.maximum, scalar.minimum] and numpy_raised:
                 try:
                     out = f(xv)
                     assert out.dtype == dtype
@@ -289,22 +302,25 @@ class test_CAReduce(unittest.TestCase):
                 if scalar_op in [scalar.and_, scalar.or_]:
                     zv = numpy.asarray(zv, dtype=dtype)
                 if test_nan:
-                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv), zv), (f(xv), zv))
+                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv),
+                                                                       zv),
+                                    (f(xv), zv))
                 else:
                     self.assertTrue(numpy.allclose(f(xv), zv), (f(xv), zv))
 
-
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
-            if isinstance(linker,gof.PerformLinker):
+            if isinstance(linker, gof.PerformLinker):
                 x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
                 if tensor_op is None:
-                    e = CAReduce(scalar_op, axis = tosum)(x)
+                    e = CAReduce(scalar_op, axis=tosum)(x)
                 else:
                     e = tensor_op(x, axis=tosum)
-                if tosum is None: tosum = range(len(xsh))
+                if tosum is None:
+                    tosum = range(len(xsh))
                 f = copy(linker).accept(Env([x], [e.shape])).make_function()
-                if not(scalar_op in [scalar.maximum,scalar.minimum] and ((xsh==() or numpy.prod(xsh)==0))):
+                if not(scalar_op in [scalar.maximum, scalar.minimum] and
+                       ((xsh == () or numpy.prod(xsh) == 0))):
                     assert all(f(xv) == zv.shape)
 
     def test_perform(self):
@@ -324,7 +340,8 @@ class test_CAReduce(unittest.TestCase):
 
     @dec.knownfailureif(
         True,
-        ("When there is nan in the input of CAReduce, we don't have a good output. "))
+        ("When there is nan in the input of CAReduce,"
+         " we don't have a good output. "))
     def test_perform_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype,
@@ -362,7 +379,8 @@ class test_CAReduce(unittest.TestCase):
 
     @dec.knownfailureif(
         True,
-        ("When there is nan in the input of CAReduce, we don't have a good output. "))
+        ("When there is nan in the input of CAReduce,"
+         " we don't have a good output. "))
     def test_c_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.CLinker(), scalar.add, dtype=dtype,
@@ -380,7 +398,8 @@ class test_Prod(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
 
-        # we want to allow nans in the matrices, so we disable this DEBUG_MODE check
+        # we want to allow nans in the matrices, so we disable this
+        # DEBUG_MODE check
         mode = theano.compile.mode.get_default_mode()
         mode = copy(mode)
         mode.check_isfinite = False
