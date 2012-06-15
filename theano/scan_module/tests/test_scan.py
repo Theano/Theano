@@ -312,7 +312,8 @@ class T_Scan(unittest.TestCase):
         nodes = [x for x in my_f.maker.env.toposort()
                  if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         # This assertation fails if savemem optimization failed on scan
-        assert nodes[0].op._scan_savemem_visited
+        if theano.config.mode != "FAST_COMPILE":
+            assert nodes[0].op._scan_savemem_visited
         rng = numpy.random.RandomState(utt.fetch_seed())
         my_f(rng.uniform(size=(3,)),
              4,

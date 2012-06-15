@@ -5841,9 +5841,9 @@ class test_numpy_assumptions(unittest.TestCase):
 
 
 def test_transpose():
-    x1 = tensor.dvector()
-    x2 = tensor.dmatrix()
-    x3 = tensor.dtensor3()
+    x1 = tensor.dvector('x1')
+    x2 = tensor.dmatrix('x2')
+    x3 = tensor.dtensor3('x3')
 
     x1v = numpy.arange(24)
     x2v = numpy.arange(24).reshape(2, 12)
@@ -5880,6 +5880,12 @@ def test_transpose():
     assert t3d.shape == (2, 4, 3)
     assert numpy.all(t2d == numpy.transpose(x2v, [0, 1]))
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
+
+    # Check that we create a name.
+    assert tensor.transpose(x1).name == 'x1.T'
+    assert tensor.transpose(x2).name == 'x2.T'
+    assert tensor.transpose(x3).name == 'x3.T'
+    assert tensor.transpose(tensor.dmatrix()).name == None
 
 
 if __name__ == '__main__':
