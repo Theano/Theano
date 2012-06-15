@@ -682,6 +682,19 @@ class T_Scan(unittest.TestCase):
         ny1[4] = (ny1[3] + ny1[1]) * numpy.dot(ny0[3], vWout)
         ny2[4] = numpy.dot(v_u1[4], vW_in1)
 
+
+    def test_using_taps_sequence(self):
+        # this test refers to a bug reported by Nicolas
+        # Boulanger-Lewandowski June 6th
+        x = theano.tensor.dvector()
+        y, updates = theano.scan(lambda x: [x],
+                                 sequences=dict(input=x, taps=[-1]),
+                                 outputs_info = [None])
+        inp = numpy.arange(5).astype('float64')
+        rval = theano.function([x], y, updates=updates)(inp)
+        import ipdb; ipdb.set_trace()
+        assert numpy.all(rval == inp[:-1])
+
     # simple rnn, one input, one state, weights for each; input/state are
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs)
