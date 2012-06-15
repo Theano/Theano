@@ -1,9 +1,9 @@
+import theano
 import numpy
 import scipy.sparse
 
 from theano import gof, tensor, scalar
 from theano.tensor import blas
-from theano import tensor as T
 
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
@@ -11,8 +11,12 @@ from theano.sparse.basic import (
     CSMProperties, CSM, register_specialize,
     _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
-    _is_sparse)
+    _is_sparse, Remove0, remove0)
 from theano.sparse.sandbox.sp import sp_sum
+
+
+EliminateZeros = Remove0
+eliminate_zeros = remove0
 
 
 class Cast(gof.op.Op):
@@ -42,7 +46,7 @@ class Cast(gof.op.Op):
         out[0] = x.astype(self.out_type)
 
     def grad(self, inputs, outputs_gradients):
-        if inputs[0].dtype in T.continuous_dtypes:
+        if inputs[0].dtype in tensor.continuous_dtypes:
             gz = outputs_gradients[0]
             return [Cast(inputs[0].dtype)(gz)]
         else:
@@ -52,7 +56,7 @@ class Cast(gof.op.Op):
         return ins_shapes
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s(%s)" % (self.__class__.__name__, self.out_type)
 
 
 def cast(x, t):
@@ -341,6 +345,10 @@ mul_s_d_csr = MulSDCSR()
 
 
 class Poisson(gof.op.Op):
+    """Return a sparse having random values from a poisson density
+    with mean from the input.
+
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -357,10 +365,28 @@ class Poisson(gof.op.Op):
         out[0].data = numpy.asarray(numpy.random.poisson(out[0].data),
                                     dtype=x.dtype)
         out[0].eliminate_zeros()
+
+    def grad(self, inputs, outputs_gradients):
+        return [None]
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 poisson = Poisson()
 
 
 class Multinomial(gof.op.Op):
+    """Return a sparse matrix having random values from a multinomial
+    density having number of experiment `n` and probability of succes
+    `p`.
+
+    :Parameters:
+    - `n`: Number of experiment.
+    - `p`: Sparse probability of each of the different outcomes.
+
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -383,38 +409,16 @@ class Multinomial(gof.op.Op):
         for i in xrange(p.shape[0]):
             k, l = p.indptr[i], p.indptr[i + 1]
             out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
-multinomial = Multinomial()
-
-
-class EliminateZeros(gof.op.Op):
-    """Eliminate zeros from the data of the matrix.
-
-    This wrap the method eliminate_zeros from scipy.
-    """
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x):
-        x = as_sparse_variable(x)
-        return gof.Apply(self, [x], [x.type()])
-
-    def perform(self, node, (x, ), (out, )):
-        assert _is_sparse(x)
-        out[0] = x.copy()
-        out[0].eliminate_zeros()
 
     def grad(self, inputs, outputs_gradients):
-        return outputs_gradients
+        return [None, None]
 
     def infer_shape(self, node, ins_shapes):
         return ins_shapes
 
     def __str__(self):
         return self.__class__.__name__
-eliminate_zeros = EliminateZeros()
+multinomial = Multinomial()
 
 
 class Binomial(gof.op.Op):
@@ -447,9 +451,15 @@ class Binomial(gof.op.Op):
 
         out[0] = getattr(res, 'to' + self.format)()
         out[0].data = numpy.ones_like(out[0].data)
-    
+
     def grad(self, (n, p, shape, ), (gz,)):
         return None, None, None
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
 csr_dbinomial = Binomial('csr', 'float64')
