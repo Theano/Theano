@@ -1154,7 +1154,10 @@ class CAReduce(Op):
                     axis2.append(a)
             assert len(axis) == len(axis2)
             axis = tuple(axis2)
-            op = self.__class__(self.scalar_op, axis)
+            # We can't call self.__class__() as there is class that
+            # inherit from CAReduce that don't have the same signature
+            op = copy(self)
+            op.axis = axis
         else:
             op = self
         broadcastable = [x for i, x in enumerate(input.type.broadcastable)
@@ -1409,6 +1412,12 @@ class All(CAReduce):
         else:
             return "All{%s}" % ", ".join(map(str, self.axis))
 
+    def make_node(self, input):
+        if input.dtype not in ["int8", "uint8"]:
+            input = theano.tensor.neq(input, 0)
+        ret = super(All, self).make_node(input)
+        return ret
+
 
 class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
@@ -1427,6 +1436,12 @@ class Any(CAReduce):
             return "Any"
         else:
             return "Any{%s}" % ", ".join(map(str, self.axis))
+
+    def make_node(self, input):
+        if input.dtype not in ["int8", "uint8"]:
+            input = theano.tensor.neq(input, 0)
+        ret = super(Any, self).make_node(input)
+        return ret
 
 
 class CAReduceDtype(CAReduce):

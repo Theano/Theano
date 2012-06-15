@@ -72,7 +72,7 @@ class TestKeepDims:
         # the following ops can be specified with a freely specified axis
         # parameter
         for op in ([tensor.sum, tensor.prod, tensor.mean, tensor.var,
-                          tensor.std]):
+                    tensor.std, tensor.all, tensor.any]):
         # FRED: il faudra  ajouter les ops suivantes a la boucle ci-dessus:
         # tensor.all, tensor.any
         # Celles-ci semblent presentement defectueuses puisqu'elles plantent
