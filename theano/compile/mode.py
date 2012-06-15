@@ -88,6 +88,10 @@ OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
 OPT_FAST_COMPILE = gof.Query(include=['fast_compile'])
 OPT_STABILIZE = gof.Query(include=['fast_run'])
 OPT_STABILIZE.position_cutoff = 1.5000001
+OPT_FAST_RUN.name = 'OPT_FAST_RUN'
+OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
+OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
+OPT_STABILIZE.name = 'OPT_STABILIZE'
 
 predefined_optimizers = {
     None: (lambda env: None),

@@ -229,7 +229,10 @@ class SequenceDB(DB):
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         opts.sort(key=lambda obj: self.__position__[obj.name])
-        return opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
+        ret = opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
+        if hasattr(tags[0], 'name'):
+            ret.name = tags[0].name
+        return ret
 
     def print_summary(self, stream=sys.stdout):
         print >> stream, "SequenceDB (id %i)" % id(self)

@@ -38,12 +38,14 @@ AddConfigVar('profiling.time_thunks',
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
+    printed = 0
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
             ps.summary(file=_atexit_print_file)
+            printed += 1
         else:
             print 'Skipping empty Profile'
-    if len(_atexit_print_list) > 1:
+    if printed > 1:
     # Make a global profile
         cum = copy.copy(_atexit_print_list[0])
         cum.message = "Sum of all printed profiles at exit"
@@ -51,14 +53,26 @@ def _atexit_print_fn():
 #        for ps in [ps for ps in _atexit_print_list[1:]
 #                   if not isinstance(ps, ScanProfileStats)]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
-                         "vm_call_time", "optimizer_time", "linker_time"]:
+                         "vm_call_time", "optimizer_time", "linker_time",
+                         "validate_time"]:
                 setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+
+            #merge dictonary
             for attr in ["apply_time", "apply_callcount",
                          "apply_cimpl", "outputs_size"]:
                 cum_attr = getattr(cum, attr)
                 for key, val in getattr(ps, attr).iteritems():
                     assert key not in cum_attr
                     cum_attr[key] = val
+
+            if cum.optimizer_profile and ps.optimizer_profile:
+                merge = cum.optimizer_profile[0].merge_profile(
+                    cum.optimizer_profile[1],
+                    ps.optimizer_profile[1])
+                cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+            else:
+                cum.optimizer_profile = None
+
         cum.summary(file=_atexit_print_file)
 
 
@@ -118,10 +132,18 @@ class ProfileStats(object):
     optimizer_time = 0.0
     # time spent optimizing graph (FunctionMaker.__init__)
 
+    validate_time = 0.0
+    # time spent in env.validate
+    # This is a subset of optimizer_time that is dominated by toposort()
+    # when the destorymap feature is included.
+
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
 
     line_width = 140
+
+    optimizer_profile = None
+    # None or tuple (the optimizer, the profile it returned)
 
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
@@ -390,10 +412,14 @@ class ProfileStats(object):
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
+        print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'
                         ' CUDA code generation/compiling): %es' %
                         self.linker_time)
         print >> file, ''
+
+        # The validation time is a subset of optimizer_time
+        assert self.validate_time < self.optimizer_time
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_applies_to_print=20):
@@ -402,9 +428,13 @@ class ProfileStats(object):
         if local_time > 0:
             self.summary_ops(file, n_ops_to_print)
             self.summary_nodes(file, n_applies_to_print)
-        else:
+        elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
+        if self.optimizer_profile:
+            print "Optimizer Profile"
+            print "-----------------"
+            self.optimizer_profile[0].print_profile(file, self.optimizer_profile[1])
 
 
 if 0: # old code still to be ported from ProfileMode
