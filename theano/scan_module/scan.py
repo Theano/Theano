@@ -492,7 +492,10 @@ def scan(fn,
                 else:
                     offset = 0
                 if maxtap == mintap and maxtap != 0:
-                    nw_seq = seq['input'][:abs(maxtap)]
+                    if maxtap < 0:
+                        nw_seq = seq['input'][:maxtap]
+                    else:
+                        nw_seq = seq['input'][maxtap:]
                 elif maxtap - k != 0:
                     nw_seq = seq['input'][offset + k - mintap: -(maxtap - k)]
                 else:
