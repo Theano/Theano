@@ -145,6 +145,18 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+.. attribute:: config.pycuda.init
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``False``
+
+    If True, always initialize PyCUDA when Theano want to initilize
+    the GPU.  Currently, we must always initialize PyCUDA before
+    Theano do it.  Setting this flag to True, ensure that, but always
+    import PyCUDA.  It can be done manually by importing
+    theano.misc.pycuda_init before theano initialize the GPU device.
+
 .. attribute:: floatX
 
     String value: either 'float64' or 'float32'
