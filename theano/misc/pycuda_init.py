@@ -38,10 +38,7 @@ if (not hasattr(theano.sandbox, 'cuda') or
         else:
             if "CUDA_DEVICE" in os.environ:
                 del os.environ["CUDA_DEVICE"]
-            try:
-                import pycuda.autoinit
-            except pycuda._driver.LogicError:
-                pass
+            import pycuda.autoinit
             pycuda_available = True
 else:
     import pycuda.driver
@@ -55,5 +52,6 @@ else:
                       " imported before Theano initialized the GPU and"
                       " your PyCUDA version is 2011.2.2 or earlier."
                       " To fix the problem, import theano.misc.pycuda_init"
-                      " manually before using/initializing the GPU or use a"
+                      " manually before using/initializing the GPU, use the"
+                      " Theano flag pycuda.init=True or use a"
                       " more recent version of PyCUDA.")

@@ -339,7 +339,7 @@ def use(device,
         if device != 'gpu' and device < 0:
             return
 
-        # Do PyCUDA already initialized the GPU contect
+        # Has PyCUDA already initialized the GPU context
         pycuda_init_dev = False
         if config.pycuda.init:
             import theano.misc.pycuda_init
