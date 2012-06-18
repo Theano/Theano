@@ -127,6 +127,7 @@ import copy
 import logging
 import os
 import sys
+import time
 
 import numpy
 import numpy.distutils
@@ -1289,11 +1290,16 @@ def _gemm_from_node2(node):
 
     """
     lst = []
+    t0 = time.time()
     _gemm_canonicalize(node.outputs[0], 1.0, lst, 0)
+    t1 = time.time()
+
     #print "GEMM CANON", lst
     if len(lst) > 1:
         lst = _factor_canonicalized(lst)
+        t2 = time.time()
         rval = _gemm_from_factored_list(lst)
+        t3 = time.time()
 
         # It can happen that _factor_canonicalized and
         # _gemm_from_factored_list return a node with an incorrect
@@ -1305,7 +1311,9 @@ def _gemm_from_node2(node):
         # but never made it into a trac ticket.
 
         if rval and (rval[0][0].type == node.outputs[0].type):
-            return rval
+            return rval, t1 - t0, t2 - t1, t3 - t2
+
+    return None, t1 - t0, 0, 0
 
 
 class GemmOptimizer(Optimizer):
@@ -1319,14 +1327,38 @@ class GemmOptimizer(Optimizer):
 
     def apply(self, env):
         did_something = True
+        nb_iter = 0
+        nb_replacement = 0
+        nb_replacement_didn_t_remove = 0
+        nb_inconsistency_make = 0
+        nb_inconsistency_replace = 0
+        time_canonicalize = 0
+        time_factor_can = 0
+        time_factor_list = 0
+        time_toposort = 0
         while did_something:
+            t0 = time.time()
             nodelist = list(env.toposort())
+            time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
             for node in nodelist:
+                if not (isinstance(node.op, T.Elemwise) and
+                        isinstance(node.op.scalar_op,
+                                   (theano.scalar.Add, theano.scalar.Sub,
+                                    theano.scalar.Neg, theano.scalar.Mul))):
+                    continue
+                if not node in env.nodes:
+                    # This mean that we already removed this node from
+                    # the graph
+                    continue
                 try:
-                    new_outputs = _gemm_from_node2(node)
+                    new_outputs, time1, time2, time3 = _gemm_from_node2(node)
+                    time_canonicalize += time1
+                    time_factor_can += time2
+                    time_factor_list += time3
                 except InconsistencyError, e:
+                    nb_inconsistency_make += 1
                     continue
                 if new_outputs:
                     new_outputs, old_dot22 = new_outputs
@@ -1340,12 +1372,35 @@ class GemmOptimizer(Optimizer):
                         )
                         did_something = True
                         break
+                        nb_replacement += 1
                     except InconsistencyError, e:
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
+                        nb_inconsistency_replace += 1
                         pass
                     except ReplacementDidntRemovedError, e:
+                        nb_replacement_didn_t_remove += 1
                         pass
+            nb_iter += 1
+        return (self, nb_iter, nb_replacement, nb_replacement_didn_t_remove,
+                nb_inconsistency_make, nb_inconsistency_replace,
+                time_canonicalize, time_factor_can,
+                time_factor_list, time_toposort)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        #1946.912556s - ('gemm_optimizer', 'GemmOptimizer', 1)
+        print >> stream, blanc, "GemmOptimizer"
+        print >> stream, blanc, " nb_iter", prof[1]
+        print >> stream, blanc, " nb_replacement", prof[2]
+        print >> stream, blanc, " nb_replacement_didn_t_remove", prof[3]
+        print >> stream, blanc, " nb_inconsistency_make", prof[4]
+        print >> stream, blanc, " nb_inconsistency_replace", prof[5]
+        print >> stream, blanc, " time_canonicalize", prof[6]
+        print >> stream, blanc, " time_factor_can", prof[7]
+        print >> stream, blanc, " time_factor_list", prof[8]
+        print >> stream, blanc, " time_toposort", prof[9]
 
 
 class Dot22(GemmRelated):
