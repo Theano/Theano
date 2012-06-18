@@ -2,29 +2,28 @@ import os
 import warnings
 
 import theano
-import theano.sandbox.cuda as cuda
-cuda_ndarray = cuda.cuda_ndarray.cuda_ndarray
+import theano.sandbox.cuda
+from theano import config
+
 
 def set_gpu_from_theano():
     """
     This set the GPU used by PyCUDA to the same as the one used by Theano.
     """
-    #import pdb;pdb.set_trace()
-    if cuda.use.device_number is None:
-        cuda.use("gpu",
-                 force=False,
-                 default_to_move_computation_to_gpu=False,
-                 move_shared_float32_to_gpu=False,
-                 enable_cuda=True,
-                 test_driver=True)
+    # Transfer the theano gpu binding to pycuda, for consistency
+    if config.device.startswith("gpu") and len(config.device) > 3:
+        os.environ["CUDA_DEVICE"] = theano.config.device[3:]
+    elif (config.init_gpu_device.startswith("gpu") and
+          len(config.init_gpu_device) > 3):
+        os.environ["CUDA_DEVICE"] = theano.config.init_gpu_device[3:]
 
-    assert cuda.use.device_number == cuda_ndarray.active_device_number()
-
-#    os.environ["CUDA_DEVICE"] = str(cuda.use.device_number)
 
 set_gpu_from_theano()
 pycuda_available = False
-if False:
+# If theano.sandbox.cuda don't exist, it is because we are importing
+# it and it try to import this file! This mean we must init the device.
+if (not hasattr(theano.sandbox, 'cuda') or
+    theano.sandbox.cuda.use.device_number is None):
     try:
         import pycuda
         import pycuda.autoinit
@@ -33,3 +32,26 @@ if False:
         # presumably, the user wanted to use pycuda, else they wouldn't have
         # imported this module, so issue a warning that the import failed.
         warnings.warn("PyCUDA import failed in theano.misc.pycuda_init")
+    except pycuda._driver.LogicError:
+        if theano.config.force_device:
+            raise
+        else:
+            if "CUDA_DEVICE" in os.environ:
+                del os.environ["CUDA_DEVICE"]
+            import pycuda.autoinit
+            pycuda_available = True
+else:
+    import pycuda.driver
+    if hasattr(pycuda.driver.Context, "attach"):
+        pycuda.driver.Context.attach()
+    else:
+        # Now we always import this file when we call theano.sandbox.cuda.use
+        # So this should not happen normally.
+        # TODO: make this an error.
+        warnings.warn("For some unknow reason, theano.misc.pycuda_init was not"
+                      " imported before Theano initialized the GPU and"
+                      " your PyCUDA version is 2011.2.2 or earlier."
+                      " To fix the problem, import theano.misc.pycuda_init"
+                      " manually before using/initializing the GPU, use the"
+                      " Theano flag pycuda.init=True or use a"
+                      " more recent version of PyCUDA.")
