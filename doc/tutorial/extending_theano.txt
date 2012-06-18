@@ -327,3 +327,10 @@ Op that execute on the GPU should inherit from the
 to make the distinction between both. Currently, we use this to test
 if the NVIDIA driver works correctly with our sum reduction code on the
 gpu.
+
+
+Documentation
+-------------
+
+See :ref:`metadocumentation`, for some information on how to generate
+and do documentation.
