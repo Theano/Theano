@@ -755,6 +755,9 @@ class ModuleCache(object):
                                     "directory to fix this.",
                                     self.entry_from_key[key],
                                     entry)
+                        # Clean up the name space to prevent bug.
+                        if key_data.keys:
+                            del key
                         self.loaded_key_pkl.add(key_pkl)
                     else:
                         too_old_to_use.append(entry)
@@ -762,6 +765,10 @@ class ModuleCache(object):
                 # If the compilation failed, no key.pkl is in that
                 # directory, but a mod.* should be there.
                 # We do nothing here.
+
+            # Clean up the name space to prevent bug.
+            if root_dirs_files:
+                del root, dirs, files
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
@@ -773,6 +780,7 @@ class ModuleCache(object):
                     gone = False
                 except IOError:
                     gone = True
+
                 if gone:
                     # Assert that we did not have one of the deleted files
                     # loaded up and in use.
@@ -789,13 +797,13 @@ class ModuleCache(object):
                     _logger.info("deleting ModuleCache entry %s", entry)
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
-                    if key[0]:
+                    if os.path.exists(key_data.key_pkl):
                         # this is a versioned entry, so should have been on
                         # disk. Something weird happened to cause this, so we
                         # are responding by printing a warning, removing
                         # evidence that we ever saw this mystery key.
                         pkl_file_to_remove = key_data.key_pkl
-                        if not root.startswith("/tmp"):
+                        if not key_data.key_pkl.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
                             # os. So it is normal that this happen from time to
                             # time.
