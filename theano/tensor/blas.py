@@ -1371,7 +1371,6 @@ class GemmOptimizer(Optimizer):
                             warn=nb_replacement_didn_t_remove == 0
                         )
                         did_something = True
-                        break
                         nb_replacement += 1
                     except InconsistencyError, e:
                         # TODO: retry other applications of gemm (see comment
