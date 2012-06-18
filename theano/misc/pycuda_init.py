@@ -44,9 +44,16 @@ if (not hasattr(theano.sandbox, 'cuda') or
                 pass
             pycuda_available = True
 else:
-    # Now we always import this file when we call theano.sandbox.cuda.use
-    # So this should not happen normally.
-    warnings.warn("For some unknow reason, theano.misc.pycuda_init was not"
-                  " imported before Theano initialized the GPU. To fix the"
-                  " problem, import theano.misc.pycuda_init manually before"
-                  " using the GPU.")
+    import pycuda.driver
+    if hasattr(pycuda.driver.Context, "attach"):
+        pycuda.driver.Context.attach()
+    else:
+        # Now we always import this file when we call theano.sandbox.cuda.use
+        # So this should not happen normally.
+        # TODO: make this an error.
+        warnings.warn("For some unknow reason, theano.misc.pycuda_init was not"
+                      " imported before Theano initialized the GPU and"
+                      " your PyCUDA version is 2011.2.2 or earlier."
+                      " To fix the problem, import theano.misc.pycuda_init"
+                      " manually before using/initializing the GPU or use a"
+                      " more recent version of PyCUDA.")

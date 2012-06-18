@@ -151,11 +151,13 @@ import theano and print the config variable, as in:
 
     Default: ``False``
 
-    If True, always initialize PyCUDA when Theano want to initilize
-    the GPU.  Currently, we must always initialize PyCUDA before
-    Theano do it.  Setting this flag to True, ensure that, but always
-    import PyCUDA.  It can be done manually by importing
-    theano.misc.pycuda_init before theano initialize the GPU device.
+    If True, always initialize PyCUDA when Theano want to initialize
+    the GPU.  With PyCUDA version 2011.2.2 or earlier, PyCUDA must
+    initialize the GPU before Theano does it.  Setting
+    this flag to True, ensure that, but always import PyCUDA.  It can
+    be done manually by importing theano.misc.pycuda_init before
+    Theano initialize the GPU device.  Newer version of PyCUDA
+    (currently only in the trunk) don't have this restriction.
 
 .. attribute:: floatX
 
