@@ -147,7 +147,7 @@ class ReplaceValidate(History, Validator):
         return chk
 
     def replace_all_validate_remove(self, env, replacements,
-                                    remove, reason=None):
+                                    remove, reason=None, warn=True):
         """As replace_all_validate, revert the replacement if the ops
         in the list remove are still in the graph. It also print a warning.
 
@@ -156,15 +156,16 @@ class ReplaceValidate(History, Validator):
         for rm in remove:
             if rm in env.nodes or rm in env.variables:
                 env.revert(chk)
-                out = sys.stderr
-                print >> out, (
-                    "WARNING: An optimization wanted to replace a Variable"
-                    " in the graph, but the replacement for it doesn't"
-                    " remove it. We disabled the optimization."
-                    " Your function runs correctly, but it would be"
-                    " appreciated if you submit this problem to the mailing"
-                    " list theano-users so that we can fix it.")
-                print >> out, reason, replacements
+                if warn:
+                    out = sys.stderr
+                    print >> out, (
+                        "WARNING: An optimization wanted to replace a Variable"
+                        " in the graph, but the replacement for it doesn't"
+                        " remove it. We disabled the optimization."
+                        " Your function runs correctly, but it would be"
+                        " appreciated if you submit this problem to the"
+                        " mailing list theano-users so that we can fix it.")
+                    print >> out, reason, replacements
                 raise ReplacementDidntRemovedError()
 
 
