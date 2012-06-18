@@ -1335,7 +1335,8 @@ class GemmOptimizer(Optimizer):
                         env.replace_all_validate_remove(
                             zip(node.outputs, new_outputs),
                             [old_dot22],
-                            reason='GemmOptimizer'
+                            reason='GemmOptimizer',
+                            warn=nb_replacement_didn_t_remove == 0
                         )
                         did_something = True
                         break
