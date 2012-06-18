@@ -129,7 +129,7 @@ to your machine, you can install to an alternate prefix using
 
 .. code-block:: bash
 
-    pip install Theano --install-option='--prefix=YOURPREFIX'
+    pip install Theano --install-option='--prefix=~/.local
 
 e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
 install Theano into ``.local/lib/python2.4/site-packages`` inside your home
@@ -138,6 +138,7 @@ listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
 ``~/.local`` is
 automatically searched and does *not* need to be explicitly included in
 ``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
+You can change ``~/.local``, but you need to change your ``PYTHONPATH`` as said above.
 
 Alternatively you can use virtualenv_ to create an isolated ``site-packages``
 directory; see the `virtualenv documentation`_ for details.
@@ -202,19 +203,19 @@ Bleeding-edge install instructions
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 If you want the bleeding-edge without developing the code you can use pip for
-this with the command line below. Note that it will also try to download and
-upgrade Theano's dependencies (like numpy and scipy). If you do not wish to do
-so, add the ``--no-deps`` switch to it.
+this with the command line below. Note that it will also try to install Theano's dependencies 
+(like numpy and scipy), but not upgrade them. If you wish to upgrade them,
+remove the ``--no-deps`` switch to it, but go see a previous warning before doing this.
 
 .. code-block:: bash
 
-    pip install --upgrade git+git://github.com/Theano/Theano.git
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
-or (if you want to install to a custom directory):
+or (if you want to install it for the current user only):
 
 .. code-block:: bash
 
-    pip install --upgrade git+git://github.com/Theano/Theano.git --install-option='--prefix=YOURPREFIX'
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --install-option='--prefix=~/.local'
 
 The following are general instructions that will set you up with the
 bleeding-edge version of Theano and allow you to hack it. First,
@@ -243,7 +244,7 @@ can specify an alternative installation prefix using
 
 .. code-block:: bash
 
-    python setup.py develop --prefix=YOURPREFIX
+    python setup.py develop --prefix=~/.local
 
 A common choice is ``~/.local`` which is automatically searched for Python >=
 2.6; for earlier Python versions and other installation prefixes, the prefix
@@ -736,7 +737,7 @@ MinGW, but this has not been tested yet.
   in a Windows command prompt vs. a MSYS shell. One way to do this without
   setting a global Windows ``HOME`` environment variable (which may affect
   other programs) is to edit your ``msys.bat`` file (found e.g. under
-  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys) and add the following line at
+  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys``) and add the following line at
   the beginning (note that you may need to use e.g. Wordpad to edit this file,
   since Notepad gets confused by Unix-style line breaks):
 
