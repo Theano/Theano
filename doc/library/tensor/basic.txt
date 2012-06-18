@@ -746,7 +746,7 @@ Reductions
     :Returns: bitwise and of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -757,7 +757,7 @@ Reductions
     :Returns: bitwise or of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
