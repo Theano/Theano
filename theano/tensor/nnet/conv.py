@@ -708,7 +708,7 @@ class ConvOp(Op):
             raise NotImplementedError('todo')
 
         if self.dx not in (1, 2) or self.dy not in (1, 2):
-            raise Exception("ERROR: We disable ConvOp.grad now when dx or "\
+            raise NotImplementedError("ERROR: We disable ConvOp.grad now when dx or "\
                     "dy are different from 1 and 2, as there is a bug in it.")
 
         all_shape = self.imshp is not None and self.kshp is not None and \
