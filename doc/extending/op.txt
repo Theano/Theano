@@ -19,12 +19,14 @@ following methods:
 .. function:: make_node(*inputs)
 
   This method is responsible for creating output Variables of a
-  suitable Type to serve as the outputs of this Op's application.
-  This method should put these outputs into an Apply instance, and
-  return the Apply instance.
+  suitable symbolic Type to serve as the outputs of this Op's application.
+  The Variables found in ``*inputs`` must be operated on using Theano's
+  symbolic language to compute the symbolic output Variables. This method
+  should put these outputs into an Apply instance, and return the
+  Apply instance.
 
   This method creates an Apply node representing the application of
-  the Op on the inputs provided. If the Op cannot be applied on
+  the Op on the inputs provided. If the Op cannot be applied to
   these inputs, it must raise an appropriate exception.
 
   The inputs of the Apply instance returned by this call must be
@@ -33,25 +35,27 @@ following methods:
 
 .. function:: perform(node, inputs, output_storage)
 
-  This method computes the function associated to this Op. The
-  ``node`` is an Apply node created by the Op's ``make_node``
-  method, ``inputs`` is a list of references to data to operate on,
-  and ``output_storage`` is a list of storage cells where the
-  variables of the computation must be put. More specifically:
+  This method computes the function associated to this Op. ``node`` is an Apply node created by the Op's ``make_node``
+  method. ``inputs`` is a list of references to data to operate on using non-symbolic statements, 
+  (i.e., statements in Python, Numpy and C languages). ``output_storage`` is a list of storage cells where the
+  variables of the computation must be put.
+
+  More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
       obtained via the ``Op``'s ``make_node`` method. It is typically not
       used in simple Ops, but it contains symbolic information that
       could be required for complex Ops.
 
-    - ``inputs``: This is a list of data.
+    - ``inputs``: This is a list of data from which the values stored in ``output_storage``
+      are to be computed using non-symbolic language.
 
-    - ``output_storage``: This is a list of storage cells.
+    - ``output_storage``: This is a list of storage cells where the output is to be stored.
       A storage cell is a one-element list. It is forbidden to change
       the length of the list(s) contained in ``output_storage``.  There is
       one storage cell for each output of the Op.
 
-      The data you put in ``output_storage`` must match the type of the
+      The data put in ``output_storage`` must match the type of the
       symbolic output. This is a situation where the ``node`` argument
       can come in handy.
 
@@ -96,45 +100,65 @@ following methods:
 
 .. function:: grad(inputs, output_gradients)
 
-  Optional (but needed if you want to have it work with {tensor,sparse}.grad())
+  Optional (but needed to have it work with {tensor,sparse}.grad()).
 
-  If the Op you are defining is differentiable, you can define its
-  gradient symbolically in this method.
-
-  Both the ``inputs`` and ``output_gradients`` will be list of Theano
-  Variables. This method must return a list containing one Variable
-  (or ``None``) for each input. Each returned Variable represents the
-  gradient with respect to that input given the symbolic gradients
-  with respect to each output.
+  If the Op being defined is differentiable, its gradient may be specified 
+  symbolically in this method. Both ``inputs`` and ``output_gradients``
+  are lists of symbolic Theano Variables and those must be operated on using 
+  Theano's symbolic language. The grad method must return a list containing 
+  one Variable (or ``None``) for each input. Each returned Variable represents 
+  the gradient with respect to that input computed based on the symbolic gradients with
+  respect to each output.
 
   If the output is not differentiable with respect to any inputs,
   then this method should be defined to return ``[None for i in
-  inputs]``.
-
-  If this method is not defined, then Theano assumes it has been
+  inputs]``. If this method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
   includes this Op.
 
-  It is important to understand that this is not meant to return
-  the gradient of the Op's output but rather the gradient of some
-  other criterion C with respect to the Op's input.
+  It must be understood that the grad method is not meant to return the
+  gradient of the Op's output but rather the gradient of some other scalar 
+  criterion C with respect to the Op's input.
 
-  If the outputs of your op are :math:`[ f_1, ... f_n]`, then
-  ``output_gradients`` is
-  :math:`[ grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C) ]`.
-  If the inputs of your op are :math:`[x_1, ..., x_m]`, then your Op.grad
-  should return :math:`[ grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C) ]`,
-  where :math:`(grad_{y} z)_i = \frac{\partial z}{\partial y_i}`
-  (and :math:`i` can have any number of dimensions).
-  (Note: in the case where i is 2 dimensional, this definition of grad
-  is different from the standard mathematical definition of the gradient
-  of a scalar with respect to a matrix, where you transpose the indices.)
+  In essence, the grad method must simply implement through symbolic Variables
+  and operations the chain rule of differential calculus. The chain rule
+  is the mathematical procedure that allows to calculate the total derivative
+  :math:`\frac{d C}{d x}` of the final scalar symbolic Variable C with respect to a
+  primitive symbolic Variable x found in the list ``inputs``,
+  based on the knowledge of the total derivative :math:`\frac{d C}{d f}` of
+  C with respect to a symbolic Variable that is returned by the Op (this is provided
+  in ``output_gradients``), as well as the knowledge of the total derivative :math:`\frac{d f}{d x}` of the
+  latter with respect to the primitive Variable (this has to be computed).
 
+  In Mathematics, the total derivative of a scalar variable (C) with respect to a vector of
+  scalar variables (x), i.e. the gradient, is customarily represented as the
+  row vector of the partial derivatives, whereas the total derivative of a vector of
+  scalar variables (f) with respect to another (x), is customarily represented by the matrix of
+  the partial derivatives, i.e.the jacobian matrix. In this convenient setting,
+  the chain rule instructs that the gradient of the final scalar variable C with respect
+  to the primitive scalar variables in x through those in f is simply given by the matrix product: 
+  :math:`\frac{d C}{d x} = \frac{d C}{d f} * \frac{d f}{d x}`.
+
+  Here, the chain rule must be implemented in a similar but slightly more complex
+  setting: Theano provides in the list ``output_gradients`` one gradient for each
+  of the Variables returned by the Op. Where f is one such particular Variable,
+  the corresponding gradient found in ``output_gradients`` and representing
+  :math:`\frac{d C}{d f}` is provided with a shape similar to f and thus not
+  necessarily as a row vector of scalars.  Furthermore, for each Variable x of 
+  the Op's list of input variables ``inputs``, the returned gradient representing
+  :math:`\frac{d C}{d x}` must have a shape similar to that of Variable x.
+
+  If the output list of the op is :math:`[f_1, ... f_n]`, then the list 
+  ``output_gradients`` is :math:`[grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C)]`.
+  If ``inputs`` consists of the list :math:`[x_1, ..., x_m]`, then Op.grad
+  should return the list :math:`[grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C)]`,
+  where :math:`(grad_{y}(Z))_i = \frac{\partial Z}{\partial y_i}` (and :math:`i` can stand for multiple dimensions).
+ 
   In other words, :func:`grad` does not return
-  :math:`\frac{\partial f_i}{\partial x_j}`, but
-  :math:`\frac{\partial C}{\partial x_j} =
-  \frac{\partial C}{\partial f_i} \cdot \frac{\partial f_i}{\partial x_j}`.
-  Both the partial derivation and that multiplication have to be done by
+  :math:`\frac{d f_i}{d x_j}`, but instead the appropriate dot product specified by the chain rule:  
+  :math:`\frac{d C}{d x_j} =
+  \frac{d C}{d f_i} \cdot \frac{d f_i}{d x_j}`.
+  Both the partial differentiation and the multiplication have to be performed by
   :func:`grad`.
 
 .. function:: infer_shape(node, shapes)

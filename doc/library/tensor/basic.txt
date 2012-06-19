@@ -650,16 +650,17 @@ Reductions
 
 .. function:: max(x, axis=None, keepdims=False)
 
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
-    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
-		left in the result as a dimension with size one. With this option, the result
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
-    :Returns: the maximum value along a given axis
-    :note: see maximum for elemwise max
+    :Returns: maximum of *x* along *axis*
 
-    if axis=None, Theano 0.5rc1 or later: max over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
+    axis can be:
+     * *None* - in which case the maximum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
 
 .. function:: argmax(x, axis=None, keepdims=False)
 
@@ -687,16 +688,17 @@ Reductions
 
 .. function:: min(x, axis=None, keepdims=False)
 
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the minimum
-    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
-		left in the result as a dimension with size one. With this option, the result
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
-    :Returns: the minimum value along a given axis
-    :note: see miminum for elemwise min
+    :Returns: minimum of *x* along *axis*
 
-    if axis=None, Theano 0.5rc1 or later: min over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
+    axis can be:
+     * *None* - in which case the minimum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
 
 .. function:: argmin(x, axis=None, keepdims=False)
 
