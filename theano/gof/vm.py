@@ -403,6 +403,15 @@ class Stack(VM):
                                 if empty_storage_map:
                                     storage_map[i][0] = None
 
+        # Hacky coarse gc final pass
+        # This is required until we have a proper gc algorithm for graphs with
+        # lazy evaluation. See discussion on theano-dev June 19 2012.
+        if self.allow_gc:
+            for v in storage_map:
+                if v.owner and 'output' not in zip(*v.clients)[0]:
+                    storage_map[v][0] = None
+                    compute_map[v][0] = 0
+
 
 try:
     import lazylinker_c
