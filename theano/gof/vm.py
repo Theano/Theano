@@ -236,6 +236,7 @@ class Stack(VM):
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
         # Profile output looks buggy if a node has run but takes 0 time.
+        # (and profile code might hide real bugs if it rounds up 0)
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
@@ -452,10 +453,35 @@ class VM_Linker(link.LocalLinker):
         # admittedly confusing, and it could use some cleaning up. The base
         # Linker object should probably go away completely.
 
-    def compute_gc_dependencies(self, smap):
+    def compute_gc_dependencies(self, variables):
+        """
+        Returns dict: variable K -> list of variables [v1, v2, v3, ...]
+        for each K in variables.
+
+
+        The variables v1, v2, ... are the full set of variables that depend
+        directly on K. When we know that none of them will need to be
+        computed, we know that:
+        * K will not need to be computed
+        * if K is already computed, it can be released for garbage collection
+
+
+        Parameters
+        ----------
+        variables - iterable over the variables used in a graph computation.
+
+
+        N.B. gc means garbage collection
+
+        """
         dependencies = {}
-        for k in smap:
+        for k in variables:
             dependencies[k] = []
+            # If k has no owner, it is an input / constant and its value
+            # should not be removed from the storage_map because we have no
+            # way of getting it back.
+            #
+            # XXX if k has no clients... what is it doing in the computation?
             if k.owner and k.clients:
                 ls = []
                 is_output = 0
