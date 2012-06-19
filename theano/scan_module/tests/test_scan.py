@@ -693,7 +693,6 @@ class T_Scan(unittest.TestCase):
                                  outputs_info = [None])
         inp = numpy.arange(5).astype('float64')
         rval = theano.function([x], y, updates=updates)(inp)
-        import ipdb; ipdb.set_trace()
         assert numpy.all(rval == inp[:-1])
 
     # simple rnn, one input, one state, weights for each; input/state are
