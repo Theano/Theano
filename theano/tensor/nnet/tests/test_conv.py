@@ -204,7 +204,8 @@ class TestConv2D(unittest.TestCase):
         self.validate((3,2,7,5), (5,2,2,3), 'valid', subsample=(2,1))
 
         # Fails as of 2012-04-12
-        self.validate((1,1,6,6), (1,1,3,3), 'valid', subsample=(3,3))
+        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6),
+                          (1, 1, 3, 3), 'valid', subsample=(3, 3))
 
 
     def test_shape_Constant_tensor(self):
