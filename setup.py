@@ -144,7 +144,7 @@ def do_setup():
                    'ChangeLog'],
               'theano.misc': ['*.sh']
           },
-          scripts=['bin/theano-cache', 'bin/theano-nose'],
+          scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
           keywords=' '.join([
             'theano', 'math', 'numerical', 'symbolic', 'blas',
             'numpy', 'gpu', 'autodiff', 'differentiation'
