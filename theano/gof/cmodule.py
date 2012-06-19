@@ -797,7 +797,7 @@ class ModuleCache(object):
                     _logger.info("deleting ModuleCache entry %s", entry)
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
-                    if os.path.exists(key_data.key_pkl):
+                    if key_data.keys and list(key_data.keys)[0][0]:
                         # this is a versioned entry, so should have been on
                         # disk. Something weird happened to cause this, so we
                         # are responding by printing a warning, removing
