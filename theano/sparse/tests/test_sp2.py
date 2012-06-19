@@ -118,6 +118,71 @@ class TestCast(utt.InferShapeTester):
             verify_grad_sparse(S2.Cast('float64'), [a])
 
 
+class HVStackTester(utt.InferShapeTester):
+    nb = 3  # Number of sparse matrix to stack
+    x = {}
+    mat = {}
+
+    for format in sparse.sparse_formats:
+        variable = getattr(theano.sparse, format + '_matrix')
+        spa = getattr(sp, format + '_matrix')
+
+        x[format] = [variable() for t in range(nb)]
+        mat[format] = [spa(np.random.random_integers(5, size=(3, 4)) - 1,
+                           dtype=theano.config.floatX)
+                       for t in range(nb)]
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            for out_f in sparse.sparse_formats:
+                for dtype in sparse.all_dtypes:
+                    blocks = self.mat[format]
+
+                    f = theano.function(
+                        self.x[format],
+                        self.op_class(
+                            format=out_f, dtype=dtype)(*self.x[format]),
+                        allow_input_downcast=True)
+
+                    tested = f(*blocks)
+                    expected = self.expected_f(blocks, format=out_f, dtype=dtype)
+
+                    assert np.allclose(tested.toarray(), expected.toarray())
+                    assert tested.format == expected.format
+                    assert tested.dtype == expected.dtype
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            self._compile_and_check(self.x[format],
+                                    [self.op_class()(*self.x[format])],
+                                    self.mat[format],
+                                    self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for out_f in sparse.sparse_formats:
+                for dtype in ['float64']:  # sparse.float_dtypes:
+                    verify_grad_sparse(
+                        self.op_class(format=out_f, dtype=dtype),
+                        self.mat[format],
+                        structured=False)
+
+
+def _hv_switch(op, expected_function):
+    class XStackTester(HVStackTester):
+        op_class = op
+
+        def expected_f(self, a, format=None, dtype=None):
+            return expected_function(a, format, dtype)
+
+        def setUp(self):
+            super(XStackTester, self).setUp()
+
+    return XStackTester
+
+HStackTester = _hv_switch(S2.HStack, sp.hstack)
+VStackTester = _hv_switch(S2.VStack, sp.vstack)
+
 class test_structured_add_s_v(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

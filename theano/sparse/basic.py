@@ -21,7 +21,6 @@ import theano.tests.unittest_tools as utt
 
 sparse_formats = ['csc', 'csr']
 
-
 #TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
@@ -493,6 +492,14 @@ csr_dmatrix = SparseType(format='csr', dtype='float64')
 csc_fmatrix = SparseType(format='csc', dtype='float32')
 csr_fmatrix = SparseType(format='csr', dtype='float32')
 
+all_dtypes = SparseType.dtype_set
+complex_dtypes = [t for t in all_dtypes if t[:7] == 'complex']
+float_dtypes = [t for t in all_dtypes if t[:5] == 'float']
+int_dtypes = [t for t in all_dtypes if t[:3] == 'int']
+uint_dtypes = [t for t in all_dtypes if t[:4] == 'uint']
+
+continuous_dtypes = complex_dtypes + float_dtypes
+discrete_dtypes = int_dtypes + uint_dtypes
 
 # CONSTRUCTION
 class CSMProperties(gof.Op):
