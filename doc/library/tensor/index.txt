@@ -22,3 +22,5 @@ They are grouped into the following sections:
     raw_random
     shared_randomstreams
     signal/index
+    utils
+    extra_ops

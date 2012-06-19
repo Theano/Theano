@@ -93,7 +93,7 @@ if __name__ == '__main__':
     # Make sure the appropriate 'theano' directory is in the PYTHONPATH
     pythonpath = os.environ.get('PYTHONPATH', '')
     pythonpath = os.pathsep.join([throot, pythonpath])
-    os.environ['PYTHONPATH'] = pythonpath
+    sys.path[0:0] = [throot]  # We must not use os.environ.
 
     if options['--all'] or options['--epydoc']:
         mkdir("api")
