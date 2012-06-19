@@ -19,6 +19,15 @@ class Updates(dict):
 
     This mapping supports the use of the "+" operator for the union of updates.
     """
+    def __init__(self, *key, **kwargs):
+        ret = super(Updates, self).__init__(*key, **kwargs)
+        for key in self:
+            if not isinstance(key, SharedVariable):
+                raise TypeError(
+                    'Updates keys must inherit from SharedVariable',
+                    key)
+        return ret
+
     def __setitem__(self, key, value):
         if isinstance(key, SharedVariable):
 
