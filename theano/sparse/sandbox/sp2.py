@@ -2,7 +2,7 @@ import theano
 import numpy
 import scipy.sparse
 
-from theano import gof, tensor, scalar
+from theano import gof, tensor, scalar, sparse
 from theano.tensor import blas
 
 from theano.sparse.basic import (
@@ -91,6 +91,160 @@ def dcast(x):
     - `x`: Sparse array
     """
     return Cast('float64')(x)
+
+
+class HStack(gof.op.Op):
+    """Stack sparse matrices horizontally (column wise).
+
+    This wrap the method hstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse arrays column wise.
+
+    The number of line of the sparse matrix must agree.
+    """
+
+    def __init__(self, format=None, dtype=None):
+        if format is None:
+            self.format = 'csc'
+        else:
+            self.format = format
+        if dtype is None:
+            self.dtype = theano.config.floatX
+        else:
+            self.dtype = dtype
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.format == other.format and
+                self.dtype == other.dtype)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.format) ^ hash(self.dtype)
+
+    def make_node(self, *mat):
+        if not mat:
+            raise ValueError('Cannot join an empty list of sparses.')
+        var = [as_sparse_variable(x) for x in mat]
+        return gof.Apply(
+            self, var,
+            [SparseType(dtype=self.dtype, format=self.format).make_variable()])
+
+    def perform(self, node, block, (out, )):
+        for b in block:
+            assert _is_sparse(b)
+        out[0] = scipy.sparse.hstack(block, format=self.format,
+                                     dtype=self.dtype)
+
+    def grad(self, inputs, (gz, )):
+        is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
+                        for i in range(len(inputs))]
+
+        if all(is_continuous):
+            if _is_sparse_variable(gz):
+                gz = sparse.DenseFromSparse()(gz)
+
+            split = tensor.Split(len(inputs))(gz, 1,
+                                              tensor.stack(
+                                                  *[x.shape[1]
+                                                    for x in inputs]))
+            if not isinstance(split, list):
+                split = [split]
+            return [sparse.SparseFromDense(self.format)(s) for s in split]
+        else:
+            return [None] * len(inputs)
+
+    def infer_shape(self, node, ins_shapes):
+        def _get(l):
+            return l[1]
+        d = sum(map(_get, ins_shapes))
+        return [(ins_shapes[0][0], d)]
+
+    def __str__(self):
+        return "%s(%s,%s)" % (self.__class__.__name__, self.format, self.dtype)
+
+
+def hstack(blocks, format=None, dtype=None):
+    """Stack sparse matrices horizontally (column wise).
+
+    This wrap the method hstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse array column wise.
+
+    The number of line of the sparse matrix must agree.
+    """
+    return HStack(format=format, dtype=dtype)(*blocks)
+
+
+class VStack(HStack):
+    """Stack sparse matrices vertically (row wise).
+
+    This wrap the method vstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse arrays row wise.
+
+    The number of column of the sparse matrix must agree.
+    """
+    def perform(self, node, block, (out, )):
+        for b in block:
+            assert _is_sparse(b)
+        out[0] = scipy.sparse.vstack(block, format=self.format,
+                                     dtype=self.dtype)
+
+    def grad(self, inputs, (gz, )):
+        is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
+                        for i in range(len(inputs))]
+
+        if all(is_continuous):
+            if _is_sparse_variable(gz):
+                gz = sparse.DenseFromSparse()(gz)
+
+            split = tensor.Split(len(inputs))(gz, 0,
+                                              tensor.stack(
+                                                  *[x.shape[0]
+                                                    for x in inputs]))
+            if not isinstance(split, list):
+                split = [split]
+            return [sparse.SparseFromDense(self.format)(s) for s in split]
+        else:
+            return [None] * len(inputs)
+
+    def infer_shape(self, node, ins_shapes):
+        def _get(l):
+            return l[0]
+        d = sum(map(_get, ins_shapes))
+        return [(d, ins_shapes[0][1])]
+
+
+def hstack(blocks, format=None, dtype=None):
+    """Stack sparse matrices vertically (row wise).
+
+    This wrap the method vstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse array row wise.
+
+    The number of column of the sparse matrix must agree.
+    """
+    return VStack(format=format, dtype=dtype)(*blocks)
 
 
 class AddSSData(gof.op.Op):
