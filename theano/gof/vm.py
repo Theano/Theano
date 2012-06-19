@@ -208,6 +208,20 @@ class Stack(VM):
             node_idx[node] = i
             self.apply_time[node] = 0
             self.outputs_size[node] = []
+            # XXX: inconsistent style - why modify node here rather
+            #      than track destroy_dependencies with dictionary like
+            #      storage_map?
+            #
+            # destroy_dependencies
+            # --------------------
+            # The destroy_dependencies is a list of variables that are implicit
+            # dependencies induced by a destroy_map (compare node.inputs which
+            # are *explicit* dependencies). The variables in
+            # destroy_dependencies would be impossible to compute after the
+            # current `node` runs, because node.thunk() is going to destroy a
+            # common input variable needed by whatever node owns each variable
+            # in destroy_depenencies.
+
             node.destroy_dependencies = []
             if node in ords:
                 for prereq in ords[node]:
@@ -235,6 +249,7 @@ class Stack(VM):
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
         # Profile output looks buggy if a node has run but takes 0 time.
+        # (and profile code might hide real bugs if it rounds up 0)
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
@@ -270,32 +285,25 @@ class Stack(VM):
             last_apply_stack_len = apply_stack_len
 
             current_apply = apply_stack.pop()
+            current_inputs = current_apply.inputs
+            current_outputs = current_apply.outputs
+            current_deps = current_inputs + current_apply.destroy_dependencies
 
-            # Use these for loops + breaks to short circuit evaluation
-            # This is a significant performance point
-            computed_ins = True
-            for i in current_apply.inputs:
-                if not compute_map[i][0]:
-                    computed_ins = False
-                    break
-            computed_outs = True
-            for o in current_apply.outputs:
-                if not compute_map[o][0]:
-                    computed_outs = False
-                    break
-            if computed_ins:
-                for d in current_apply.destroy_dependencies:
-                    if not compute_map[d][0]:
-                        computed_ins = False
-                        break
+            computed_ins = all(compute_map[v][0] for v in current_deps)
+            computed_outs = all(compute_map[v][0] for v in current_outputs)
 
             if not thunks[self.node_idx[current_apply]].lazy:
+                #
+                # stack loop: Normal Non-Lazy Case
+                # ================================
+                #
                 # Check if all inputs are in place
                 # If so compute thunk and remove it from the apply_stack
                 # If not leave it in, and add to the apply_stack those
                 # that will produce you those inputs
 
                 if computed_ins and not computed_outs:
+                    # -- Non-lazy case: have inputs, time to compute outputs
                     try:
                         _, dt = self.run_thunk_of_node(current_apply)
                         del _
@@ -323,30 +331,34 @@ class Stack(VM):
                         raise_with_op(current_apply)
                     for o in current_apply.outputs:
                         compute_map[o][0] = 1
-                    # Garbage Collection -> check if anybody else uses
-                    # this input
                     if self.allow_gc:
                         for i in current_apply.inputs:
-                            if (dependencies[i] and i.owner
-                                and i not in self.outputs):
-                                empty_storage_map = True
-                                for x in dependencies[i]:
-                                    if not compute_map[x][0]:
-                                        empty_storage_map = False
-                                        break
-                                if empty_storage_map:
+                            # Garbage Collection -> check if anybody else uses
+                            # this input
+                            if (dependencies[i]
+                                    and i.owner
+                                    and i not in self.outputs):
+                                if all(compute_map[v][0]
+                                        for v in dependencies[i]):
                                     storage_map[i][0] = None
+                                    compute_map[i][0] = 0
                 elif not computed_ins:
-
+                    # -- Non-lazy case, need inputs
                     apply_stack.append(current_apply)
-                    apply_stack.extend(inp.owner for inp
-                                       in current_apply.inputs if inp.owner)
-                    apply_stack.extend(inp.owner for inp
-                                       in current_apply.destroy_dependencies
-                                       if inp.owner)
+                    apply_stack.extend(inp.owner
+                            for inp in current_deps
+                            if inp.owner)
 
             elif not computed_outs:
-                # Try and run it to see if it works
+                #
+                # stack loop: Lazy Evaluation Case
+                # ================================
+                #
+                # Lazy evaluation protocol is to run the thunk with the
+                # current storage_map and compute_map accessed via closure,
+                # and the thunk will return a list of variables from its input
+                # list that it requires.
+
                 try:
                     requires, dt = self.run_thunk_of_node(current_apply)
                     self.apply_time[current_apply] += dt
@@ -389,6 +401,16 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
+                                    compute_map[i][0] = None
+
+        # Hacky coarse gc final pass
+        # This is required until we have a proper gc algorithm for graphs with
+        # lazy evaluation. See discussion on theano-dev June 19 2012.
+        if self.allow_gc:
+            for v in storage_map:
+                if v.owner and 'output' not in zip(*v.clients)[0]:
+                    storage_map[v][0] = None
+                    compute_map[v][0] = 0
 
 
 try:
@@ -451,10 +473,35 @@ class VM_Linker(link.LocalLinker):
         # admittedly confusing, and it could use some cleaning up. The base
         # Linker object should probably go away completely.
 
-    def compute_gc_dependencies(self, smap):
+    def compute_gc_dependencies(self, variables):
+        """
+        Returns dict: variable K -> list of variables [v1, v2, v3, ...]
+        for each K in variables.
+
+
+        The variables v1, v2, ... are the full set of variables that depend
+        directly on K. When we know that none of them will need to be
+        computed, we know that:
+        * K will not need to be computed
+        * if K is already computed, it can be released for garbage collection
+
+
+        Parameters
+        ----------
+        variables - iterable over the variables used in a graph computation.
+
+
+        N.B. gc means garbage collection
+
+        """
         dependencies = {}
-        for k in smap:
+        for k in variables:
             dependencies[k] = []
+            # If k has no owner, it is an input / constant and its value
+            # should not be removed from the storage_map because we have no
+            # way of getting it back.
+            #
+            # XXX if k has no clients... what is it doing in the computation?
             if k.owner and k.clients:
                 ls = []
                 is_output = 0
