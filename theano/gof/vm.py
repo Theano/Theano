@@ -1,6 +1,7 @@
 """
 VMs that run Theano graph computations.
 """
+import collections
 import logging
 import sys
 import time
@@ -254,7 +255,7 @@ class Stack(VM):
             compute_map[k][0] = (k.owner is None)
 
         # apply_stack contains nodes
-        apply_stack = list(self.base_apply_stack)
+        apply_stack = collections.deque(self.base_apply_stack)
         last_apply_stack_len = -1
         ls = []
         while apply_stack:
