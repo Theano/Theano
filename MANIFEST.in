@@ -6,3 +6,4 @@ recursive-include docs *.png *.gp
 include distribute_setup.py
 include bin/theano-cache
 include bin/theano-nose
+include bin/theano-test
