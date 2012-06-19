@@ -401,6 +401,7 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
+                                    compute_map[i][0] = None
 
         # Hacky coarse gc final pass
         # This is required until we have a proper gc algorithm for graphs with
