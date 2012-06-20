@@ -912,17 +912,11 @@ class CSMGradC(gof.Op):
         return (3,)
 csm_grad_c = CSMGradC()
 
-@gof.local_optimizer([csm_grad(None)])
-def local_csm_grad_c(node):
-    """ csm_grad(None) -> csm_grad_c """
-    if node.op == csm_grad(None):
-        return [csm_grad_c(*node.inputs)]
-    return False
-register_specialize(local_csm_grad_c)
-
 #
 # Conversion
 #
+
+
 class DenseFromSparse(gof.op.Op):
     """
     Convert a sparse matrix to an `ndarray`.
@@ -1960,28 +1954,6 @@ class StructuredDotCSR(gof.Op):
 sd_csr = StructuredDotCSR()
 
 
-# register a specialization to replace StructuredDot -> StructuredDotCSx
-@gof.local_optimizer([_structured_dot])
-def local_structured_dot(node):
-    if node.op == _structured_dot:
-        a, b = node.inputs
-        if a.type.format == 'csc':
-            a_val, a_ind, a_ptr, a_shape = csm_properties(a)
-            a_nsparse = a_shape[0]
-            return [sd_csc(a_val, a_ind, a_ptr, a_nsparse, b)]
-        if a.type.format == 'csr':
-            a_val, a_ind, a_ptr, a_shape = csm_properties(a)
-            return [sd_csr(a_val, a_ind, a_ptr, b)]
-    return False
-
-# Commented out because
-# a) it is only slightly faster than scipy these days, and sometimes a little
-# slower, and
-# b) the resulting graphs make it very difficult for an op to do size checking
-# on the matrices involved.  dimension mismatches are hard to detect sensibly.
-#register_specialize(local_structured_dot)
-
-
 def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc', 'csr'):
 
@@ -2648,49 +2620,3 @@ class UsmmCscDense(gof.Op):
 
 usmm_csc_dense = UsmmCscDense(inplace=False)
 usmm_csc_dense_inplace = UsmmCscDense(inplace=True)
-
-
-local_usmm = gof.opt.PatternSub(
-    (tensor.sub, 'z',
-     (tensor.mul,
-      {'pattern': 'alpha',
-       'constraint': lambda expr: numpy.all(expr.type.broadcastable)},
-    (_dot, 'x', 'y'))),
-    (usmm, (tensor.neg, 'alpha'), 'x', 'y', 'z'))
-
-
-register_specialize(local_usmm, name="local_usmm")
-
-
-@gof.local_optimizer([usmm])
-def local_usmm_csx(node):
-    """ usmm -> usmm_csc_dense """
-    if node.op == usmm:
-        alpha, x, y, z = node.inputs
-
-        x_is_sparse_variable = _is_sparse_variable(x)
-        y_is_sparse_variable = _is_sparse_variable(y)
-
-        if x_is_sparse_variable and not y_is_sparse_variable:
-            if x.type.format == 'csc':
-                x_val, x_ind, x_ptr, x_shape = csm_properties(x)
-                x_nsparse = x_shape[0]
-                dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
-                                          y.type.dtype, z.type.dtype)
-                if dtype_out not in ('float32', 'float64'):
-                    return False
-                # Sparse cast is not implemented.
-                if y.type.dtype != dtype_out:
-                    return False
-
-                return [usmm_csc_dense(alpha, x_val, x_ind, x_ptr,
-                                       x_nsparse, y, z)]
-    return False
-register_specialize(local_usmm_csx)
-
-
-@gof.local_optimizer([usmm_csc_dense])
-def local_usmm_csc_dense_inplace(node):
-    if node.op == usmm_csc_dense:
-        return [usmm_csc_dense_inplace(*node.inputs)]
-register_specialize(local_usmm_csc_dense_inplace, 'inplace')
