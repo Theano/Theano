@@ -6393,7 +6393,10 @@ class SortOp(theano.Op):
         return [inputs_shapes[0]]
 
     def grad(self, inputs, output_grads):
-        inputDer = SortGradOp(self.kind, self.order)(inputs[0], output_grads, inputs[1])
+        if isinstance(inputs[1], Constant):
+            inputDer = SortGradOp(self.kind, self.order)(inputs[0], output_grads, None)
+        else:
+            inputDer = SortGradOp(self.kind, self.order)(inputs[0], output_grads, inputs[1])
         return [inputDer, None]
     """
     def R_op(self, inputs, eval_points):
@@ -6410,7 +6413,7 @@ class SortOp(theano.Op):
 class SortGradOp(theano.Op):
     """
     This class is used to calculate the grad of the sort op because Theano does not support advanced indexing.
-    So it is created only to use numpy.argsort advacbedindexing feature.
+    So it is created only to use numpy.argsort advanced indexing feature.
     """
     def __init__(self, kind, order=None):
         self.kind = kind
