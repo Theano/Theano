@@ -122,7 +122,10 @@ class TestCast(utt.InferShapeTester):
                 verify_grad_sparse(S2.Cast(t), [a], eps=eps)
 
 
-class HVStackTester(utt.InferShapeTester):
+class _HVStackTester(utt.InferShapeTester):
+    """Test for both HStack and VStack.
+
+    """
     nb = 3  # Number of sparse matrix to stack
     x = {}
     mat = {}
@@ -178,7 +181,14 @@ class HVStackTester(utt.InferShapeTester):
 
 
 def _hv_switch(op, expected_function):
-    class XStackTester(HVStackTester):
+    """Return the right test class for HStack or VStack.
+
+    :Parameters:
+    - `op`: HStack or VStack class.
+    - `expected_function`: function from scipy for comparaison.
+
+    """
+    class XStackTester(_HVStackTester):
         op_class = op
 
         def expected_f(self, a, format=None, dtype=None):
