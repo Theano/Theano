@@ -202,6 +202,52 @@ def _hv_switch(op, expected_function):
 HStackTester = _hv_switch(S2.HStack, sp.hstack)
 VStackTester = _hv_switch(S2.VStack, sp.vstack)
 
+
+class AddSSDataTester(utt.InferShapeTester):
+    x = {}
+    a = {}
+
+    def setUp(self):
+        super(AddSSDataTester, self).setUp()
+        self.op_class = S2.AddSSData
+
+        for format in sparse.sparse_formats:
+            variable = getattr(theano.sparse, format + '_matrix')
+
+            rand = np.array(np.random.random_integers(3, size=(3, 4)) - 1,
+                          dtype=theano.config.floatX)
+            constant = as_sparse_format(rand, format)
+
+            self.x[format] = [variable() for t in range(2)]
+            self.a[format] = [constant for t in range(2)]
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            f = theano.function(
+                self.x[format],
+                S2.add_s_s_data(*self.x[format]))
+
+            tested = f(*self.a[format])
+            expected = 2 * self.a[format][0]
+
+            assert np.allclose(tested.toarray(), expected.toarray())
+            assert tested.format == expected.format
+            assert tested.dtype == expected.dtype
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            self._compile_and_check(self.x[format],
+                                    [S2.add_s_s_data(*self.x[format])],
+                                    self.a[format],
+                                    self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            verify_grad_sparse(self.op_class(),
+                               self.a[format],
+                               structured=True)
+
+
 class test_structured_add_s_v(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
