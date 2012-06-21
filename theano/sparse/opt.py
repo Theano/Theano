@@ -1,15 +1,18 @@
 from itertools import izip
 
 import theano
-from theano import gof
+import numpy
+from theano import gof, scalar
 from theano.sparse import (CSC, CSR, csm_properties, Remove0,
                            register_specialize,
                            csm_grad, csm_grad_c,
                            usmm_csc_dense, usmm)
 
-from basic import (_structured_dot, _dot)
+from basic import (_structured_dot, _dot,
+                   _is_sparse_variable, usmm_csc_dense_inplace)
 
 
+# This is tested in tests/test_basic.py:UsmmTests
 local_usmm = gof.opt.PatternSub(
     (theano.tensor.sub, 'z',
      (theano.tensor.mul,
@@ -29,6 +32,7 @@ def local_csm_grad_c(node):
 register_specialize(local_csm_grad_c)
 
 
+# This is tested in tests/test_opt.py:test_local_csm_properties_csm
 @gof.local_optimizer([csm_properties])
 def local_csm_properties_csm(node):
     """if we find csm_properties(CSM(*args)), then we can replace that with the
@@ -46,6 +50,7 @@ def local_csm_properties_csm(node):
 register_specialize(local_csm_properties_csm)
 
 
+# This is tested in tests/test_basic.py:test_remove0
 @gof.local_optimizer([None])
 def local_inplace_remove0(node):
     """
@@ -63,6 +68,7 @@ theano.compile.optdb.register('local_inplace_remove0',
 
 
 # register a specialization to replace StructuredDot -> StructuredDotCSx
+# This is tested in tests/test_basic.py:792
 @gof.local_optimizer([_structured_dot])
 def local_structured_dot(node):
     if node.op == _structured_dot:
@@ -84,6 +90,7 @@ def local_structured_dot(node):
 #register_specialize(local_structured_dot)
 
 
+# This is tested in tests/test_basic.py:UsmmTests
 @gof.local_optimizer([usmm_csc_dense])
 def local_usmm_csc_dense_inplace(node):
     if node.op == usmm_csc_dense:
@@ -91,6 +98,7 @@ def local_usmm_csc_dense_inplace(node):
 register_specialize(local_usmm_csc_dense_inplace, 'inplace')
 
 
+# This is tested in tests/test_basic.py:UsmmTests
 @gof.local_optimizer([usmm])
 def local_usmm_csx(node):
     """ usmm -> usmm_csc_dense """
