@@ -50,7 +50,7 @@ class Env(utils.object2):
     - feature.on_attach(env)
         Called by extend. The feature has great freedom in what
         it can do with the env: it may, for example, add methods
-        to it dynicamically.
+        to it dynamically.
 
     - feature.on_detach(env)
         Called by remove_feature(feature).  Should remove any dynamically-added
