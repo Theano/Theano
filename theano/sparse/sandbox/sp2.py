@@ -1,7 +1,8 @@
+import theano
 import numpy
 import scipy.sparse
 
-from theano import gof, tensor, scalar
+from theano import gof, tensor, scalar, sparse
 from theano.tensor import blas
 
 from theano.sparse.basic import (
@@ -10,10 +11,21 @@ from theano.sparse.basic import (
     CSMProperties, CSM, register_specialize,
     _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
-    _is_sparse)
+    _is_sparse, Remove0, remove0)
 from theano.sparse.sandbox.sp import sp_sum
 
+
+EliminateZeros = Remove0
+eliminate_zeros = remove0
+
+
 class Cast(gof.op.Op):
+    """Cast sparse variable to the desired dtype.
+
+    This wrap the method astype from scipy.
+    """
+    # It returns a new matrix, not a view.
+
     def __init__(self, out_type):
         self.out_type = out_type
 
@@ -25,15 +37,214 @@ class Cast(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
-        return gof.Apply(self, [x],
+        return gof.Apply(
+            self, [x],
             [SparseType(dtype=self.out_type, format=x.format).make_variable()])
 
     def perform(self, node, (x, ), (out, )):
         assert _is_sparse(x)
-        out[0] = x
-        out[0].data = numpy.asarray(out[0].data, dtype=self.out_type)
-fcast = Cast('float32')
-dcast = Cast('float64')
+        out[0] = x.astype(self.out_type)
+
+    def grad(self, inputs, outputs_gradients):
+        if inputs[0].dtype in tensor.continuous_dtypes:
+            gz = outputs_gradients[0]
+            return [Cast(inputs[0].dtype)(gz)]
+        else:
+            return [None]
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.out_type)
+
+
+def cast(x, t):
+    """Cast sparse variable `x` to the desired dtype `t`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    - `t`: dtype
+    """
+    return Cast(t)(x)
+
+
+def fcast(x):
+    """Cast sparse variable `x` to `float32`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    """
+    return Cast('float32')(x)
+
+
+def dcast(x):
+    """Cast sparse variable `x` to `float64`.
+
+    This wrap the method astype from scipy.
+
+    :Parameters:
+    - `x`: Sparse array
+    """
+    return Cast('float64')(x)
+
+
+class HStack(gof.op.Op):
+    """Stack sparse matrices horizontally (column wise).
+
+    This wrap the method hstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse arrays column wise.
+
+    The number of line of the sparse matrix must agree.
+    """
+
+    def __init__(self, format=None, dtype=None):
+        if format is None:
+            self.format = 'csc'
+        else:
+            self.format = format
+        if dtype is None:
+            self.dtype = theano.config.floatX
+        else:
+            self.dtype = dtype
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.format == other.format and
+                self.dtype == other.dtype)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.format) ^ hash(self.dtype)
+
+    def make_node(self, *mat):
+        if not mat:
+            raise ValueError('Cannot join an empty list of sparses.')
+        var = [as_sparse_variable(x) for x in mat]
+        return gof.Apply(
+            self, var,
+            [SparseType(dtype=self.dtype, format=self.format).make_variable()])
+
+    def perform(self, node, block, (out, )):
+        for b in block:
+            assert _is_sparse(b)
+        out[0] = scipy.sparse.hstack(block, format=self.format,
+                                     dtype=self.dtype)
+
+    def grad(self, inputs, (gz, )):
+        is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
+                        for i in range(len(inputs))]
+
+        if all(is_continuous):
+            if _is_sparse_variable(gz):
+                gz = sparse.DenseFromSparse()(gz)
+
+            split = tensor.Split(len(inputs))(gz, 1,
+                                              tensor.stack(
+                                                  *[x.shape[1]
+                                                    for x in inputs]))
+            if not isinstance(split, list):
+                split = [split]
+            return [sparse.SparseFromDense(self.format)(s) for s in split]
+        else:
+            return [None] * len(inputs)
+
+    def infer_shape(self, node, ins_shapes):
+        def _get(l):
+            return l[1]
+        d = sum(map(_get, ins_shapes))
+        return [(ins_shapes[0][0], d)]
+
+    def __str__(self):
+        return "%s(%s,%s)" % (self.__class__.__name__, self.format, self.dtype)
+
+
+def hstack(blocks, format=None, dtype=None):
+    """Stack sparse matrices horizontally (column wise).
+
+    This wrap the method hstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse array column wise.
+
+    The number of line of the sparse matrix must agree.
+    """
+    return HStack(format=format, dtype=dtype)(*blocks)
+
+
+class VStack(HStack):
+    """Stack sparse matrices vertically (row wise).
+
+    This wrap the method vstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse arrays row wise.
+
+    The number of column of the sparse matrix must agree.
+    """
+    def perform(self, node, block, (out, )):
+        for b in block:
+            assert _is_sparse(b)
+        out[0] = scipy.sparse.vstack(block, format=self.format,
+                                     dtype=self.dtype)
+
+    def grad(self, inputs, (gz, )):
+        is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
+                        for i in range(len(inputs))]
+
+        if all(is_continuous):
+            if _is_sparse_variable(gz):
+                gz = sparse.DenseFromSparse()(gz)
+
+            split = tensor.Split(len(inputs))(gz, 0,
+                                              tensor.stack(
+                                                  *[x.shape[0]
+                                                    for x in inputs]))
+            if not isinstance(split, list):
+                split = [split]
+            return [sparse.SparseFromDense(self.format)(s) for s in split]
+        else:
+            return [None] * len(inputs)
+
+    def infer_shape(self, node, ins_shapes):
+        def _get(l):
+            return l[0]
+        d = sum(map(_get, ins_shapes))
+        return [(d, ins_shapes[0][1])]
+
+
+def hstack(blocks, format=None, dtype=None):
+    """Stack sparse matrices vertically (row wise).
+
+    This wrap the method vstack from scipy.
+
+    :Parameters:
+    - `blocks`: Sequence of sparse array of compatible shape
+    - `format`: String representing the output format
+    - `dtype`: Output dtype
+
+    :return: the concatenation of the sparse array row wise.
+
+    The number of column of the sparse matrix must agree.
+    """
+    return VStack(format=format, dtype=dtype)(*blocks)
 
 
 class AddSSData(gof.op.Op):
@@ -288,6 +499,10 @@ mul_s_d_csr = MulSDCSR()
 
 
 class Poisson(gof.op.Op):
+    """Return a sparse having random values from a poisson density
+    with mean from the input.
+
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -304,10 +519,28 @@ class Poisson(gof.op.Op):
         out[0].data = numpy.asarray(numpy.random.poisson(out[0].data),
                                     dtype=x.dtype)
         out[0].eliminate_zeros()
+
+    def grad(self, inputs, outputs_gradients):
+        return [None]
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 poisson = Poisson()
 
 
 class Multinomial(gof.op.Op):
+    """Return a sparse matrix having random values from a multinomial
+    density having number of experiment `n` and probability of succes
+    `p`.
+
+    :Parameters:
+    - `n`: Number of experiment.
+    - `p`: Sparse probability of each of the different outcomes.
+
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -330,25 +563,16 @@ class Multinomial(gof.op.Op):
         for i in xrange(p.shape[0]):
             k, l = p.indptr[i], p.indptr[i + 1]
             out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
+
+    def grad(self, inputs, outputs_gradients):
+        return [None, None]
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 multinomial = Multinomial()
-
-
-class EliminateZeros(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x):
-        x = as_sparse_variable(x)
-        return gof.Apply(self, [x], [x.type()])
-
-    def perform(self, node, (x, ), (out, )):
-        assert _is_sparse(x)
-        out[0] = x.copy()
-        out[0].eliminate_zeros()
-eliminate_zeros = EliminateZeros()
 
 
 class Binomial(gof.op.Op):
@@ -381,9 +605,15 @@ class Binomial(gof.op.Op):
 
         out[0] = getattr(res, 'to' + self.format)()
         out[0].data = numpy.ones_like(out[0].data)
-    
+
     def grad(self, (n, p, shape, ), (gz,)):
         return None, None, None
+
+    def infer_shape(self, node, ins_shapes):
+        return ins_shapes
+
+    def __str__(self):
+        return self.__class__.__name__
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
 csr_dbinomial = Binomial('csr', 'float64')
