@@ -13,7 +13,14 @@ from theano.sparse.basic import (
     _is_sparse)
 from theano.sparse.sandbox.sp import sp_sum
 
+
 class Cast(gof.op.Op):
+    """Cast sparse variable to the desired dtype.
+
+    This wrap the method astype from scipy.
+    """
+    # It returns a new matrix, not a view.
+
     def __init__(self, out_type):
         self.out_type = out_type
 
