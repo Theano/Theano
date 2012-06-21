@@ -410,7 +410,6 @@ class Stack(VM):
             for v in storage_map:
                 if v.owner and not v in self.outputs:
                     storage_map[v][0] = None
-                    compute_map[v][0] = 0
 
 
 try:
