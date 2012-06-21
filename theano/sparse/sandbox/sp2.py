@@ -58,39 +58,14 @@ class Cast(gof.op.Op):
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.out_type)
 
-
-def cast(x, t):
-    """Cast sparse variable `x` to the desired dtype `t`.
-
-    This wrap the method astype from scipy.
-
-    :Parameters:
-    - `x`: Sparse array
-    - `t`: dtype
-    """
-    return Cast(t)(x)
-
-
-def fcast(x):
-    """Cast sparse variable `x` to `float32`.
-
-    This wrap the method astype from scipy.
-
-    :Parameters:
-    - `x`: Sparse array
-    """
-    return Cast('float32')(x)
-
-
-def dcast(x):
-    """Cast sparse variable `x` to `float64`.
-
-    This wrap the method astype from scipy.
-
-    :Parameters:
-    - `x`: Sparse array
-    """
-    return Cast('float64')(x)
+bcast = Cast('int8')
+wcast = Cast('int16')
+icast = Cast('int32')
+lcast = Cast('int64')
+fcast = Cast('float32')
+dcast = Cast('float64')
+ccast = Cast('complex64')
+zcast = Cast('complex128')
 
 
 class HStack(gof.op.Op):
@@ -658,7 +633,7 @@ def structured_monoid(tensor_op):
     def decorator(f):
         def wrapper(*args):
             x = as_sparse_variable(args[0])
-            
+
             xs = [scalar.as_scalar(arg) for arg in args[1:]]
 
             data, ind, ptr, shape = csm_properties(x)
@@ -676,17 +651,20 @@ def structured_sigmoid(x):
     """
     # see decorator for function body
 
+
 @structured_monoid(tensor.exp)
 def structured_exp(x):
     """structured elemwise exponential.
     """
     # see decorator for function body
 
+
 @structured_monoid(tensor.log)
 def structured_log(x):
     """structured elemwise logarithm.
     """
     # see decorator for function body
+
 
 @structured_monoid(tensor.pow)
 def structured_pow(x, y):
@@ -695,6 +673,7 @@ def structured_pow(x, y):
     """
     # see decorator for function body
 
+
 @structured_monoid(tensor.minimum)
 def structured_minimum(x, y):
     """structured elemwise minimum of sparse matrix
@@ -702,12 +681,14 @@ def structured_minimum(x, y):
     """
     # see decorator for function body
 
+
 @structured_monoid(tensor.maximum)
 def structured_maximum(x, y):
     """structured elemwise maximum of sparse matrix
     x by scalar y.
     """
     # see decorator for function body
+
 
 @structured_monoid(tensor.add)
 def structured_add(x):
