@@ -865,12 +865,17 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
         }
     }
 
+  /*
+    Clear everything that is left and not an output.  This is needed
+    for lazy evaluation since the current GC algo is too conservative
+    with lazy graphs.
+  */
   if (self->allow_gc && !err)
     {
       for (Py_ssize_t i = 0; i < self->n_vars; ++i)
         {
           int do_cleanup = 1;
-          if (!self->var_has_owner[i])
+          if (!self->var_has_owner[i] || !self->var_computed[i])
             continue;
           for (int j = 0; j < self->n_output_vars; ++j)
             {
@@ -882,22 +887,8 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
             }
           if (!do_cleanup)
             continue;
-          for (int j = 0; j < self->n_updates; ++j)
-            {
-              break;
-              if (i == self->update_storage[2*j])
-                {
-                  do_cleanup = 0;
-                  break;
-                }
-            }
-          if (!do_cleanup)
-            continue;
           Py_INCREF(Py_None);
           PyList_SetItem(self->var_value_cells[i], 0, Py_None);
-          self->var_computed[i] = 0;
-          Py_INCREF(zero);
-          PyList_SetItem(self->var_computed_cells[i], 0, zero);
         }
     }
   Py_DECREF(one);
@@ -981,7 +972,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.16);
+  PyObject *result = PyFloat_FromDouble(0.17);
   return result;
 }
 
