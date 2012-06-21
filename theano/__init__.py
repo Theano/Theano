@@ -51,7 +51,7 @@ from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
      InconsistencyError, Env, \
-     Apply, Variable, Constant, Value, \
+     Apply, Variable, Constant, \
      Op, \
      opt, \
      toolbox, \
