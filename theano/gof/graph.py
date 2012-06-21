@@ -195,7 +195,7 @@ class Variable(utils.object2):
     """
     A :term:`Variable` is a node in an expression graph that represents a variable.
 
-    The inputs and outputs of every `Apply` are `Variable` instances.
+    The inputs and outputs of every `Apply` (theano.gof.Apply) are `Variable` instances.
     The input and output arguments to create a `function` are also `Variable` instances.
     A `Variable` is like a strongly-typed variable in some other languages; each `Variable` contains a
     reference to a `Type` instance that defines the kind of value the `Variable` can take in a
@@ -222,7 +222,22 @@ class Variable(utils.object2):
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
+    - `TensorVariable`
+
+    - `SharedTensorVariable`
+
+    - `SparseVariable`
+
+    - `CudaVariable`
+
+    - `RandomVariable`
+
     A Variable which is the output of a symbolic computation will have an owner != None.
+
+    Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
+    from an output all the way to the inputs. The opposite direction is not possible until an
+    Env has annotated the Variables with the clients field, ie, before the compilation process
+    has begun a Variable does not know which Apply nodes take it as input.
 
     **Code Example**
 
