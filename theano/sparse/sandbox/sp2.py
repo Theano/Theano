@@ -248,8 +248,19 @@ def hstack(blocks, format=None, dtype=None):
 
 
 class AddSSData(gof.op.Op):
-    '''Add two sparse matrices assuming they have the same sparsity
-    pattern. '''
+    """Add two sparse matrices assuming they have the same sparsity
+    pattern.
+
+    :Parameters:
+    - `x`: Sparse matrix.
+    - `y`: Sparse matrix.
+
+    :return: The sum of the two sparse matrix element wise.
+
+    :note: `x` and `y` are assumed to have the same sparsity pattern.
+           The grad implemented is structured.
+
+    """
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -270,8 +281,24 @@ class AddSSData(gof.op.Op):
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
+        assert x.data.shape == y.data.shape
         out[0] = x.copy()
         out[0].data += y.data
+
+    def grad(self, inputs, (gz, )):
+        is_continuous = [(i.dtype in sparse.continuous_dtypes)
+                         for i in inputs]
+
+        if all(is_continuous):
+            return [gz, gz]
+        else:
+            return [None] * len(inputs)
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
 add_s_s_data = AddSSData()
 
 
@@ -624,7 +651,7 @@ def structured_monoid(tensor_op):
     """
     Generic operation to perform many kinds of monoid element-wise
     operations on the non-zeros of a sparse matrix.
-    
+
     The first parameter must always be a sparse matrix. The other parameters
     must be scalars which will be passed as argument to the tensor_op.
     """
