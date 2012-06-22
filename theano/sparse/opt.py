@@ -22,6 +22,7 @@ local_usmm = gof.opt.PatternSub(
     (usmm, (theano.tensor.neg, 'alpha'), 'x', 'y', 'z'))
 register_specialize(local_usmm, name="local_usmm")
 
+
 # This is tested in tests/test_opt.py:test_local_csm_grad_c
 @gof.local_optimizer([csm_grad(None)])
 def local_csm_grad_c(node):

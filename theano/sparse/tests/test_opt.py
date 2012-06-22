@@ -45,7 +45,7 @@ def test_local_csm_grad_c():
         cost = tensor.sum(DenseFromSparse()(CS(data, indices, indptr, shape)))
         f = theano.function(
             [data, indices, indptr, shape],
-            cost,
+            tensor.grad(cost, data),
             mode=mode)
         assert not any(isinstance(node.op, CSMGrad) for node
                        in f.maker.env.toposort())
