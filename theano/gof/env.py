@@ -28,7 +28,7 @@ class Env(utils.object2):
     """ WRITEME
     An Env represents a subgraph bound by a set of input variables and a
     set of output variables. The inputs list should contain all the inputs
-    on which the outputs depend. Variables of type Value or Constant are
+    on which the outputs depend. Variables of type Constant are
     not counted as inputs.
 
     The Env supports the replace operation which allows to replace a

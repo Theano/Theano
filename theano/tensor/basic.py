@@ -2278,7 +2278,7 @@ class MaxAndArgmax(Op):
         # not calculated here for it is not defined at every point where some
         # coordinates are identical. However, since the latter set has null
         # Lebesgue measure, the result may be interpreted as weak gradient.
-       
+
         # @note: This function should work correctly for L{vector}s.
 #        (x, y), (gz, gw)
 #        gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
@@ -2314,7 +2314,7 @@ class MaxAndArgmax(Op):
     def __str__(self):
         return self.__class__.__name__
 
-        
+
 _max_and_argmax = MaxAndArgmax()
 
 

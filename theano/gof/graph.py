@@ -217,8 +217,6 @@ class Variable(utils.object2):
 
     - `Variable` (this base type) is typically the output of a symbolic computation,
 
-    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner is None
-
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
@@ -396,6 +394,7 @@ class Constant(Value):
             if len(name) > 20:
                 name = name[:10] + '...' + name[-10]
             return 'Constant{%s}' % name
+
     def clone(self):
         """
         We clone this object, but we don't clone the data to lower memory requirement
