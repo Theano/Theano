@@ -477,10 +477,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
     if isinstance(param, Constant):
         raise TypeError('Constants not allowed in param list', param)
-    #if isinstance(param, Value):
-        #return In(variable=param)
-        #raise NotImplementedError()
-    if isinstance(param, Variable):  # N.B. includes Value and SharedVariable
+    if isinstance(param, Variable):  # N.B. includes SharedVariable
         return In(variable=param, strict=strict, allow_downcast=allow_downcast)
     elif isinstance(param, Param):
         return In(
