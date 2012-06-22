@@ -362,7 +362,17 @@ Then in your ``~/.emacs`` file, add this:
    (epy-setup-checker "pyflakes %f") ;; For python syntax check
    (epy-setup-checker "pep8 -r %f") ;; For pep8 check
 
+.. note::
 
+   The script highlight problematic lines. This can make part of the
+   line not readable depending of the background. To replace the line
+   highlight by an underline, add this to your emacs configuration
+   file.
+
+   ;; Make thing readable when there is an warning [optional]
+   (custom-set-faces
+    '(flymake-errline ((((class color)) (:underline "red"))))
+    '(flymake-warnline ((((class color)) (:underline "yellow")))))
 
 Unit tests
 ----------
