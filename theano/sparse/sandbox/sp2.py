@@ -583,7 +583,7 @@ class Multinomial(gof.op.Op):
     `p`.
 
     :param n: Number of experiment.
-    :param p: Sparse matrix ofprobability for each of the different outcomes.
+    :param p: Sparse matrix of probability for each of the different outcomes.
 
     :return: A sparse matrix of random integers of a multinomial density.
     """

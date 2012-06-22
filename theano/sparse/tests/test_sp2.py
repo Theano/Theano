@@ -250,6 +250,44 @@ class AddSSDataTester(utt.InferShapeTester):
                                structured=True)
 
 
+class PoissonTester(utt.InferShapeTester):
+    x = {}
+    a = {}
+
+    for format in sparse.sparse_formats:
+        variable = getattr(theano.sparse, format + '_matrix')
+
+        rand = np.array(np.random.random_integers(3, size=(3, 4)) - 1,
+                        dtype=theano.config.floatX)
+
+        x[format] = variable()
+        a[format] = as_sparse_format(rand, format)
+
+    def setUp(self):
+        super(PoissonTester, self).setUp()
+        self.op_class = S2.Poisson
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            f = theano.function(
+                [self.x[format]],
+                S2.poisson(self.x[format]))
+
+            tested = f(self.a[format])
+
+            assert tested.format == format
+            assert tested.dtype == self.a[format].dtype
+            assert np.allclose(np.floor(tested.data), tested.data)
+            assert tested.data.shape == self.a[format].data.shape
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            self._compile_and_check([self.x[format]],
+                                    [S2.poisson(self.x[format])],
+                                    [self.a[format]],
+                                    self.op_class)
+
+
 class StructuredAddSVTester(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
