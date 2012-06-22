@@ -1013,9 +1013,10 @@ class StrucutedAddSVCSR(gof.Op):
     :return: A sparse matrix containing the addition of the vector to
              the data of the sparse matrix.
 
-    :note: The a_* are the properties of a sparse matrix in csr
-           format. This op is used as an optimization for
-           StructuredAddSV.
+    :note:
+    - The a_* are the properties of a sparse matrix in csr
+      format.
+    - This op is used as an optimization for StructuredAddSV.
     """
 
     def __eq__(self, other):
@@ -1165,10 +1166,12 @@ class SamplingDot(gof.op.Op):
     than DOT because SamplingDot requires X to be a MxK matrix while Y
     is a NxK matrix instead of the usual KxN matrix.
 
-    It will work if the pattern is not binary value, but if the
-    pattern doesn't have a high sparsity proportion it will be slower
-    then a more optimized dot followed by a normal elemwise
-    multiplication.
+    .. note::
+
+        It will work if the pattern is not binary value, but if the
+        pattern doesn't have a high sparsity proportion it will be slower
+        then a more optimized dot followed by a normal elemwise
+        multiplication.
 
     :param x: Sparse matrix.
     :param y: Sparse matrix.
@@ -1251,9 +1254,11 @@ class SamplingDotCsr(gof.Op):
 
     :return: A sparse matrix containing the dot product of `x` by `y`.
 
-    :note: If we have the input of mixed dtype, we insert cast elemwise
-           in the graph to be able to call blas function as they don't
-           allow mixed dtype.
+    :note:
+    - If we have the input of mixed dtype, we insert cast elemwise
+      in the graph to be able to call blas function as they don't
+      allow mixed dtype.
+    - This op is used as an optimization for SamplingDot.
     """
 
     def __eq__(self, other):
