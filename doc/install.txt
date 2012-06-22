@@ -495,6 +495,8 @@ Theano dependencies is easy, but be aware that it will take a long time
 
 - MacPorts requires installing XCode first (which can be found in the
   Mac App Store), if you do not have it already.
+  If you can't install it from the App Store, look in your MacOS X installation
+  DVD for an old version. Then update your Mac to update XCode.
 
 - Download and install `MacPorts <http://www.macports.org/>`__, then
   ensure its package list is up-to-date with ``sudo port selfupdate``.
