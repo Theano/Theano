@@ -22,9 +22,10 @@ eliminate_zeros = remove0
 class Cast(gof.op.Op):
     """Cast sparse variable to the desired dtype.
 
-    This wrap the method astype from scipy.
+    :param x: Sparse matrix.
+
+    :return: Same as `x` but having `out_type` as dtype.
     """
-    # It returns a new matrix, not a view.
 
     def __init__(self, out_type):
         self.out_type = out_type
@@ -71,16 +72,13 @@ zcast = Cast('complex128')
 class HStack(gof.op.Op):
     """Stack sparse matrices horizontally (column wise).
 
-    This wrap the method hstack from scipy.
+    :param blocks: Sequence of sparse array of compatible shape.
+    :param format: String representing the output format.
+    :param dtype: Output dtype.
 
-    :Parameters:
-    - `blocks`: Sequence of sparse array of compatible shape
-    - `format`: String representing the output format
-    - `dtype`: Output dtype
+    :return: The concatenation of the sparse arrays column wise.
 
-    :return: the concatenation of the sparse arrays column wise.
-
-    The number of line of the sparse matrix must agree.
+    :note: The number of line of the sparse matrix must agree.
     """
 
     def __init__(self, format=None, dtype=None):
@@ -148,32 +146,30 @@ def hstack(blocks, format=None, dtype=None):
 
     This wrap the method hstack from scipy.
 
-    :Parameters:
-    - `blocks`: Sequence of sparse array of compatible shape
-    - `format`: String representing the output format
-    - `dtype`: Output dtype
+    :param blocks: List of sparse array of compatible shape.
+    :param format: String representing the output format.
+    :param dtype: Output dtype.
 
-    :return: the concatenation of the sparse array column wise.
+    :return: The concatenation of the sparse array column wise.
 
-    The number of line of the sparse matrix must agree.
+    :note: The number of line of the sparse matrix must agree.
     """
+
     return HStack(format=format, dtype=dtype)(*blocks)
 
 
 class VStack(HStack):
     """Stack sparse matrices vertically (row wise).
 
-    This wrap the method vstack from scipy.
+    :param blocks: Sequence of sparse array of compatible shape.
+    :param format: String representing the output format.
+    :param dtype: Output dtype.
 
-    :Parameters:
-    - `blocks`: Sequence of sparse array of compatible shape
-    - `format`: String representing the output format
-    - `dtype`: Output dtype
+    :return: The concatenation of the sparse arrays row wise.
 
-    :return: the concatenation of the sparse arrays row wise.
-
-    The number of column of the sparse matrix must agree.
+    :note: The number of column of the sparse matrix must agree.
     """
+
     def perform(self, node, block, (out, )):
         for b in block:
             assert _is_sparse(b)
@@ -210,14 +206,13 @@ def hstack(blocks, format=None, dtype=None):
 
     This wrap the method vstack from scipy.
 
-    :Parameters:
-    - `blocks`: Sequence of sparse array of compatible shape
-    - `format`: String representing the output format
-    - `dtype`: Output dtype
+    :param blocks: List of sparse array of compatible shape.
+    :param format: String representing the output format.
+    :param dtype: Output dtype.
 
-    :return: the concatenation of the sparse array row wise.
+    :return: The concatenation of the sparse array row wise.
 
-    The number of column of the sparse matrix must agree.
+    :note: The number of column of the sparse matrix must agree.
     """
     return VStack(format=format, dtype=dtype)(*blocks)
 
@@ -226,16 +221,16 @@ class AddSSData(gof.op.Op):
     """Add two sparse matrices assuming they have the same sparsity
     pattern.
 
-    :Parameters:
-    - `x`: Sparse matrix.
-    - `y`: Sparse matrix.
+    :param x: Sparse matrix.
+    :param y: Sparse matrix.
 
     :return: The sum of the two sparse matrix element wise.
 
-    :note: `x` and `y` are assumed to have the same sparsity pattern.
-           The grad implemented is structured.
-
+    :note:
+    - `x` and `y` are assumed to have the same sparsity pattern.
+    - The grad implemented is structured.
     """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -315,6 +310,24 @@ register_specialize(local_mul_s_d)
 
 
 class MulSDCSC(gof.Op):
+    """Multiplication of sparse matrix by a broadcasted dense vector
+    element wise.
+
+    :param a_data: Sparse matrix data.
+    :param a_indices: Sparse matrix indices.
+    :param a_indptr: Sparse matrix indptr.
+    :param b: Tensor type matrix.
+
+    :return: The multiplication of the two matrix element wise.
+
+    :note:
+    - `a_data`, `a_indices` and `a_indptr` must be the properties
+      of a sparse matrix in csc format.
+    - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+      cannot be a complex type.
+    - This op is used as an optimization of mul_s_d.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -331,6 +344,7 @@ class MulSDCSC(gof.Op):
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
+
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
                (_zout, ), sub):
 
@@ -404,10 +418,31 @@ class MulSDCSC(gof.Op):
         }
 
         """ % dict(locals(), **sub)
+
+    def __str__(self):
+        return self.__class__.__name__
 mul_s_d_csc = MulSDCSC()
 
 
 class MulSDCSR(gof.Op):
+    """Multiplication of sparse matrix by a broadcasted dense vector
+    element wise.
+
+    :param a_data: Sparse matrix data.
+    :param a_indices: Sparse matrix indices.
+    :param a_indptr: Sparse matrix indptr.
+    :param b: Tensor type matrix.
+
+    :return: The multiplication of the two matrix element wise.
+
+    :note:
+    - `a_data`, `a_indices` and `a_indptr` must be the properties
+      of a sparse matrix in csr format.
+    - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+      cannot be a complex type.
+    - This op is used as an optimization of mul_s_d.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -424,6 +459,7 @@ class MulSDCSR(gof.Op):
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
+
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
                (_zout, ), sub):
 
@@ -497,14 +533,22 @@ class MulSDCSR(gof.Op):
         }
 
         """ % dict(locals(), **sub)
+
+    def __str__(self):
+        return self.__class__.__name__
 mul_s_d_csr = MulSDCSR()
 
 
 class Poisson(gof.op.Op):
-    """Return a sparse having random values from a poisson density
+    """Return a sparse having random values from a Poisson density
     with mean from the input.
 
+    :param x: Sparse matrix.
+
+    :return: A sparse matrix of random integers of a Poisson density
+             with mean of `x` element wise.
     """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -538,11 +582,12 @@ class Multinomial(gof.op.Op):
     density having number of experiment `n` and probability of succes
     `p`.
 
-    :Parameters:
-    - `n`: Number of experiment.
-    - `p`: Sparse probability of each of the different outcomes.
+    :param n: Number of experiment.
+    :param p: Sparse matrix ofprobability for each of the different outcomes.
 
+    :return: A sparse matrix of random integers of a multinomial density.
     """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -578,6 +623,22 @@ multinomial = Multinomial()
 
 
 class Binomial(gof.op.Op):
+    # TODO This op is not an equivalent of numpy.random.binomial. In
+    # facts, this does not follow a binomial distribution at all.
+    # To see it, just try with p = 1.
+
+    # """Return a sparse matrix having random values from a binomial
+    # density having number of experiment `n` and probability of succes
+    # `p`.
+
+    # :param n: Tensor scalar representing the number of experiment.
+    # :param p: Tensor scalar representing the probability of success.
+    # :param shape: Tensor vector for the output shape.
+
+    # :return: A sparse matrix of integers representing the number
+    #          of success.
+    # """
+
     def __init__(self, format, dtype):
         self.format = format
         self.dtype = dtype
@@ -612,7 +673,7 @@ class Binomial(gof.op.Op):
         return None, None, None
 
     def infer_shape(self, node, ins_shapes):
-        return ins_shapes
+        return [ins_shapes[2]]
 
     def __str__(self):
         return self.__class__.__name__
@@ -623,8 +684,7 @@ csc_dbinomial = Binomial('csc', 'float64')
 
 
 def structured_monoid(tensor_op):
-    """
-    Generic operation to perform many kinds of monoid element-wise
+    """Generic operation to perform many kinds of monoid element-wise
     operations on the non-zeros of a sparse matrix.
 
     The first parameter must always be a sparse matrix. The other parameters
@@ -699,7 +759,15 @@ def structured_add(x):
 
 
 class MulSV(gof.op.Op):
-    '''Multiplication of sparse matrix by a broadcasted dense vector.'''
+    """Multiplication of sparse matrix by a broadcasted dense vector
+    element wise.
+
+    :param x: Sparse matrix to multiply.
+    :param y: Tensor broadcastable vector.
+
+    :Return: The product x * y element wise.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -728,10 +796,34 @@ class MulSV(gof.op.Op):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
         return mul_s_v(gz, y), sp_sum(x * gz, axis=0, sparse_grad=True)
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
 mul_s_v = MulSV()
 
 
 class MulSVCSR(gof.Op):
+    """Multiplication of sparse matrix by a broadcasted dense vector
+    element wise.
+
+    :param a_data: Sparse matrix data.
+    :param a_indices: Sparse matrix indices.
+    :param a_indptr: Sparse matrix indptr.
+    :param b: Tensor type matrix.
+
+    :return: The multiplication of the two matrix element wise.
+
+    :note:
+    - `a_data`, `a_indices` and `a_indptr` must be the properties
+      of a sparse matrix in csr format.
+    - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+      cannot be a complex type.
+    - This op is used as an optimization of MulSV.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -817,6 +909,9 @@ class MulSVCSR(gof.Op):
         }
 
         """ % dict(locals(), **sub)
+
+    def __str__(self):
+        return self.__class__.__name__
 mul_s_v_csr = MulSVCSR()
 
 
@@ -853,10 +948,20 @@ register_specialize(local_mul_s_v)
 
 
 class StructuredAddSV(gof.op.Op):
-    '''Structured addition of a sparse matrix and a dense vector.
+    """Structured addition of a sparse matrix and a dense vector.
     The elements of the vector are are only added to the corresponding
     non-zero elements. Therefore, this operation outputs another sparse
-    matrix.'''
+    matrix.
+
+    :param x: Sparse matrix.
+    :param y: Tensor type vector.
+
+    :return: A sparse matrix containing the addition of the vector to
+             the data of the sparse matrix.
+
+    :note: The grad implemented is structured since the op is structured.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -885,10 +990,34 @@ class StructuredAddSV(gof.op.Op):
         assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
         return gz, sp_sum(gz, axis=0, sparse_grad=True)
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
 structured_add_s_v = StructuredAddSV()
 
 
 class StrucutedAddSVCSR(gof.Op):
+    """Structured addition of a sparse matrix and a dense vector.
+    The elements of the vector are are only added to the corresponding
+    non-zero elements. Therefore, this operation outputs another sparse
+    matrix.
+
+    :param a_data: Sparse matrix data.
+    :param a_indices: Sparse matrix indices.
+    :param a_indptr: Sparse matrix indptr.
+    :param b: Tensor type vector.
+
+    :return: A sparse matrix containing the addition of the vector to
+             the data of the sparse matrix.
+
+    :note: The a_* are the properties of a sparse matrix in csr
+           format. This op is used as an optimization for
+           StructuredAddSV.
+    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -986,6 +1115,9 @@ class StrucutedAddSVCSR(gof.Op):
         }
 
         """ % dict(locals(), **sub)
+
+    def __str__(self):
+        return self.__class__.__name__
 structured_add_s_v_csr = StrucutedAddSVCSR()
 
 
@@ -1023,30 +1155,33 @@ register_specialize(local_structured_add_s_v)
 
 
 class SamplingDot(gof.op.Op):
-    """
-    Operand for calculating the dot product DOT(X, Y) = Z when you
-    only want to calculate a subset of Z. It is equivalent to P o (X
-    . Y) where o is the element-wise product, X and Y operands of the
-    dot product and P is a matrix that contains 1 when the
-    corresponding element of Z should be calculated and 0 when it
-    shouldn't. Note that SamplingDot has a different interface than
-    DOT because SamplingDot requires X to be a MxK matrix while Y is a
-    NxK matrix instead of the usual KxN matrix.
+    """Operand for calculating the dot product DOT(X, Y) = Z when you
+    only want to calculate a subset of Z.
+
+    It is equivalent to P o (X . Y) where o is the element-wise product,
+    X and Y operands of the dot product and P is a matrix that contains
+    1 when the corresponding element of Z should be calculated and 0
+    when it shouldn't. Note that SamplingDot has a different interface
+    than DOT because SamplingDot requires X to be a MxK matrix while Y
+    is a NxK matrix instead of the usual KxN matrix.
 
     It will work if the pattern is not binary value, but if the
     pattern doesn't have a high sparsity proportion it will be slower
     then a more optimized dot followed by a normal elemwise
     multiplication.
 
+    :param x: Sparse matrix.
+    :param y: Sparse matrix.
+    :param p: Sparse matrix.
+
+    :return: A sparse matrix containing the dot product of `x` by `y`.
     """
+
     def __eq__(self, other):
         return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
-
-    def __str__(self):
-        return 'SamplingDot'
 
     def make_node(self, x, y, p):
         x = tensor.as_tensor_variable(x)
@@ -1082,17 +1217,45 @@ class SamplingDot(gof.op.Op):
         ]
 
         return rval
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
 sampling_dot = SamplingDot()
 
 
 class SamplingDotCsr(gof.Op):
-    """
-    Optimized SamplingDot when the pattern P is a CSR matrix.
+    """Operand optimized for calculating the dot product DOT(X, Y) = Z
+    when you only want to calculate a subset of Z and the patternP
+    is as csr matrix.
 
-    If we have the input of mixed dtype, we insert cast elemwise in the graph
-    to be able to call blas function as they don't allow mixed dtype.
+    It is equivalent to P o (X . Y) where o is the element-wise product,
+    X and Y operands of the dot product and P is a matrix that contains
+    1 when the corresponding element of Z should be calculated and 0
+    when it shouldn't. Note that SamplingDot has a different interface
+    than DOT because SamplingDot requires X to be a MxK matrix while Y
+    is a NxK matrix instead of the usual KxN matrix.
 
+    .. note::
+
+        It will work if the pattern is not binary value, but if the
+        pattern doesn't have a high sparsity proportion it will be slower
+        then a more optimized dot followed by a normal elemwise
+        multiplication.
+
+    :param x: Sparse matrix.
+    :param y: Sparse matrix.
+    :param p: Sparse matrix.
+
+    :return: A sparse matrix containing the dot product of `x` by `y`.
+
+    :note: If we have the input of mixed dtype, we insert cast elemwise
+           in the graph to be able to call blas function as they don't
+           allow mixed dtype.
     """
+
     def __eq__(self, other):
         return type(self) == type(other)
 
