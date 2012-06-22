@@ -142,15 +142,11 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                The linker uses a python loop to execute the code associated
                with all the Apply nodes in the graph in the correct order.
                the cvm is a linker that replaces this python loop with a c
-                loop to avoid continuously changing between python and c.
-                (It's
-                currently
-                a matter of disagreement as to whether there is a cost of
-                changing
-                between
-                python and C, or whether the cvm is faster only because C code is
-                faster
-                than python code)
+               loop to avoid continuously changing between python and c.
+               (It's currently a matter of disagreement as to whether there
+               is a cost of changing between
+               python and C, or whether the cvm is faster only because C code
+               is faster than python code)
                the vm is a linker that was developed to prototype the cvm. it
         was easier to develop the vm in python then translate it to c instead
         of just writing it in c from scratch
