@@ -33,17 +33,11 @@ class VM(object):
     The Stack should be considered the reference VM/Linker implementation.
     It can correctly evaluate all graphs and is the easiest to read. The CVM
     is a port of Stack, and should have the same behavior, but run faster.
-    Its code is harder to read though.
+    The CVM's code is harder to read though.
 
     The other python VMs are maybe not necessary anymore, and don't take
     advantage of lazy computation, though they still produce the correct
-    output for lazy nodes   It can correctly evaluate all graphs and is the easiest to read. The CVM
-    is a port of Stack, and should have the same behavior, but run faster.
-        Its code is harder to read though.
-
-        The other python VMs are maybe not necessary anymore, and don't take
-        advantage of lazy computation, though they still produce the correct
-        output for lazy nodes.
+    output for lazy nodes.
 
     Attributes:
 
