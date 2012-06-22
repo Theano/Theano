@@ -354,12 +354,6 @@ class SparseConstant(gof.Constant, _sparse_py_operators):
     def __repr__(self):
         return str(self)
 
-
-class SparseValue(gof.Value, _sparse_py_operators):
-    dtype = property(lambda self: self.type.dtype)
-    format = property(lambda self: self.type.format)
-
-
 class SparseType(gof.Type):
     """
     @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)

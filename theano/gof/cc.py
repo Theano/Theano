@@ -431,7 +431,7 @@ class CLinker(link.Linker):
         # The orphans field is listified to ensure a consistent order.
         #list(env.orphans.difference(self.outputs))
         self.orphans = list(r for r in self.variables
-                            if isinstance(r, graph.Value) and
+                            if isinstance(r, graph.Constant) and
                             r not in self.inputs)
         self.temps = list(set(self.variables).difference(
                 self.inputs).difference(self.outputs).difference(self.orphans))
@@ -497,8 +497,8 @@ class CLinker(link.Linker):
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
-                if not isinstance(variable, graph.Value):
-                    raise TypeError("All orphans to CLinker must be Value"
+                if not isinstance(variable, graph.Constant):
+                    raise TypeError("All orphans to CLinker must be Constant"
                                     " instances.", variable)
                 if isinstance(variable, graph.Constant):
                     try:
