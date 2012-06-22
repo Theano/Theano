@@ -1175,7 +1175,10 @@ class Mul(ScalarOp):
         # output is complex. The rest of this function make this supposition.
         output_type = self.output_types([i.type for i in inputs])[0]
         if output_type in complex_types:
-            assert gz.type in complex_types
+            if not gz.type in complex_types:
+                raise TypeError('Mul with output_type '+str(output_type)+\
+                        ' expected gz type to be complex, got gz with type '+\
+                        str(gz.type))
 
         for input in inputs:
             if input.type in continuous_types:
