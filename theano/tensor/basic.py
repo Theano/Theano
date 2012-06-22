@@ -12,7 +12,7 @@ import numpy
 import theano
 from theano.configparser import config
 from theano import gof
-from theano.gof import Apply, Constant, Op, Type, Value, Variable
+from theano.gof import Apply, Constant, Op, Type, Variable
 
 import elemwise
 from theano import scalar as scal
@@ -389,12 +389,6 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
 def constant(x, name=None, ndim=None, dtype=None):
     return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
-
-
-def value(x, name=None, ndim=None, dtype=None):
-    return constant_or_value(x, rtype=TensorValue, name=name,
-                             ndim=ndim, dtype=dtype)
-
 
 def _obj_is_wrappable_as_tensor(x):
     try:
@@ -1784,14 +1778,6 @@ class TensorConstant(_tensor_py_operators, Constant):
 TensorType.Constant = TensorConstant
 
 
-class TensorValue(_tensor_py_operators, Value):
-    """Subclass to add the tensor operators to the basic `Value` class.
-
-    To create a TensorValue, use the `value` function in this module.
-
-    :note: Value is deprecated by SharedVariable
-    """
-
 
 Tensor = TensorType
 
@@ -1801,7 +1787,7 @@ elemwise.as_tensor_variable = as_tensor_variable
 elemwise.TensorType = TensorType
 elemwise.TensorVariable = TensorVariable
 elemwise.TensorConstant = TensorConstant
-elemwise.TensorValue = TensorValue
+#elemwise.TensorValue = TensorValue
 
 
 #########################

@@ -240,7 +240,7 @@ class Env(utils.object2):
                 r_owner_done.add(node)
                 self.__import__(node)
         for r in variables:
-            if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
+            if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
                 raise MissingInputError("Undeclared input", r)
             if not getattr(r, 'env', None) is self:
                 self.__setup_r__(r)
@@ -260,7 +260,7 @@ class Env(utils.object2):
                 for r in node.inputs:
                     if hasattr(r, 'env') and r.env is not self:
                         raise Exception("%s is already owned by another env" % r)
-                    if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
+                    if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
 
                         #Verbose error message
                         #Show a complete chain of variables from the missing input to an output
@@ -610,7 +610,7 @@ class Env(utils.object2):
             excess = self.variables.difference(variables)
             raise Exception("The variables are inappropriately cached. missing, in excess: ", missing, excess)
         for variable in variables:
-            if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Value):
+            if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Constant):
                 raise Exception("Undeclared input.", variable)
             if variable.env is not self:
                 raise Exception("Variable should belong to the env.", variable)

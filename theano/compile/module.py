@@ -448,8 +448,8 @@ class Method(Component):
             if input not in _inputs:
                 # Add this input to the inputs; we require that storage already exists for them,
                 # but otherwise they are immutable.
-                if isinstance(input, gof.Value): # and not isinstance(input, gof.Constant):
-                    #input might be Value or Constant
+                if isinstance(input, gof.Constant):
+                    #input might be Constant
                     storage = get_storage(input)
 
                     assert type(storage) is io.In

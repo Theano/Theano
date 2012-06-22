@@ -1,7 +1,7 @@
 import numpy
 import theano
 from theano import gof
-from theano.gof import Apply, Constant, Generic, Op, Type, Value, Variable
+from theano.gof import Apply, Constant, Generic, Op, Type, Variable
 from basic import tensor
 ##########################
 # Disk Access
