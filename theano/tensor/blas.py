@@ -336,6 +336,11 @@ def default_blas_ldflags():
                 # The env variable is needed to link with mkl
                 new_path = os.path.join(sys.prefix, "lib")
                 v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # Explicit version could be replaced by a symbolic
+                    # link called 'Current' created by EPD installer
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
 
                 # The python __import__ don't seam to take into account
                 # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
@@ -344,11 +349,12 @@ def default_blas_ldflags():
                 if v is None or new_path not in v.split(":"):
                     _logger.warning(
                         "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' do not contain "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
                         "the '%s' path in its value. This will make "
                         "Theano use a slow version of BLAS. Update "
                         "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value, this will disable this warning.")
+                        "said value, this will disable this warning."
+                        % new_path)
 
 
                     use_unix_epd = False
