@@ -712,6 +712,10 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
         if (idx<0)
             idx += dB0; // To allow negative indexing.
         if ((idx < 0) || (idx >= dB0))
+            // Any value other the 0 probably work. But to be more safe, I want
+            // to change all bits to prevent problem with concurrent write that
+            // could cross cache line. But this should not happen with the
+            // current code and driver.
             *err = 0xFFFF;
         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x){
             for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y){
@@ -725,12 +729,13 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
 
 // Pointor to 1 int on the device
 // Used in CudaNdarray_TakeFrom to tell that there is an out of bound error
-// When it exist, it should always be 0
+// When it is allocated, it should always be 0
 // So if there is an error, we must reset it to 0 BEFORE we raise the error
 // This prevent us from setting it to 0 before each use
 static int* err_var = NULL;
 
-//PyObject* PyArray_TakeFrom(PyArrayObject* self, PyObject* indices, int axis, PyArrayObject* ret, NPY_CLIPMODE clipmode)
+// We try to be similat to the PyArray_TakeFrom function
+//http://docs.scipy.org/doc/numpy/reference/c-api.array.html
 //TODO: support other clip mode then raise(clip, wrap)
 //TODO: what if the indices take more then 32 bits?
 //self is the input that we copy data from.
@@ -820,7 +825,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     //TODO: implement the default and other axis
     PyObject * axis_iobj = PyNumber_Long(axis_obj);
     if (!axis_iobj) {
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertisable to a long");
+        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertable to a long");
         Py_DECREF(indices_obj);
         return NULL;
     }
@@ -849,12 +854,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         }
     }
     if (!out) {
-        int total_elements = nb_indices;
-        for(int i=1;i<self->nd;i++)
-            total_elements*=CudaNdarray_HOST_DIMS(self)[i];
-        // total_elements now contains the size of the array, in reals
-        int total_size = total_elements * sizeof(real);
-
         out = (CudaNdarray*)CudaNdarray_New();
         if (!out){
             Py_DECREF(indices_obj);
@@ -939,7 +938,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 2:
             {
-                dim3 n_threads(CudaNdarray_HOST_DIMS(out)[1], 1, 1);
+                dim3 n_threads(std::min(CudaNdarray_HOST_DIMS(out)[1], 512), 1, 1);
                 if (verbose)
                     printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
@@ -963,8 +962,9 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 3:
             {
-                dim3 n_threads(CudaNdarray_HOST_DIMS(out)[1],
-                               CudaNdarray_HOST_DIMS(out)[2], 1);
+                int ty = std::min(CudaNdarray_HOST_DIMS(out)[2], 512);
+                int tx = std::min(CudaNdarray_HOST_DIMS(out)[1], 512 / ty);
+                dim3 n_threads(tx, ty, 1);
                 if (verbose)
                     printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
@@ -1003,6 +1003,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(out);
         return NULL;
     }
+    //-10 could be any value different then 0.
     int cpu_err_var=-10;
                         
     err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),

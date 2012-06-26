@@ -1891,7 +1891,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
     """
-    assert_fast = None
+    perform_using_take = None
 
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
@@ -1910,30 +1910,29 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
         x, idx = inp
         out, = out_
-        new_method = True
         #TODO: if more then 3 dims, reshape the inputs if it is contiguous.
         x_orig = x
         if x.ndim > 3 and x.is_c_contiguous():
             x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
+        out_shape = (len(idx),) + x_orig.shape[1:]
         if x.ndim <= 3:
-            if self.assert_fast is not None:
-                assert self.assert_fast == True, (
+            # CudaNdarray.take only supports ndim <= 3
+            if self.perform_using_take is not None:
+                assert self.perform_using_take == True, (
                     "GpuAdvancedSubtensor1 used the fast version")
 
-            # Support x with dimensions 1,2,3 only.
-            o = x.take(cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32")),
-                       0, out_[0][0])  # idx, axis, return[, clipmode]
+            o = x.take(cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32")),  # idx
+                       0,  # axis
+                       out_[0][0])  # return
             if x is not x_orig:
-                o = o.reshape((len(idx),) + x_orig.shape[1:])
+                o = o.reshape(out_shape)
             out[0] = o
         else:
-            if self.assert_fast is not None:
-                assert self.assert_fast == False, (
-                    "GpuAdvancedSubtensor1 didn't used the fast version")
-            if (out_[0][0] is None or out_[0][0].shape != (len(idx),) +
-                x.shape[1:]):
-                o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((len(idx),) +
-                                                                x.shape[1:])
+            if self.perform_using_take is not None:
+                assert self.perform_using_take == False, (
+                    "GpuAdvancedSubtensor1 didn't use the fast version")
+            if out_[0][0] is None or out_[0][0].shape != out_shape:
+                o = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(out_shape)
             else:
                 o = out_[0][0]
             for (j, i) in enumerate(idx):
