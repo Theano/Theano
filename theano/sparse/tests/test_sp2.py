@@ -288,6 +288,43 @@ class PoissonTester(utt.InferShapeTester):
                                     self.op_class)
 
 
+class MultinomialTester(utt.InferShapeTester):
+    p = sparse.csr_matrix()
+    _p = sp.csr_matrix(np.asarray([[0.0, 0.5, 0.0, 0.5],
+                                   [0.1, 0.2, 0.3, 0.4],
+                                   [0.0, 1.0, 0.0, 0.0],
+                                   [0.3, 0.3, 0.0, 0.4]]))
+
+    def setUp(self):
+        super(MultinomialTester, self).setUp()
+        self.op_class = S2.Multinomial
+
+    def test_op(self):
+        n = tensor.lscalar()
+        f = theano.function([self.p, n], S2.multinomial(n, self.p))
+
+        _n = 5
+        tested = f(self._p, _n)
+        assert tested.shape == self._p.shape
+        assert np.allclose(np.floor(tested.todense()), tested.todense())
+        assert tested[2, 1] == _n
+
+        n = tensor.lvector()
+        f = theano.function([self.p, n], S2.multinomial(n, self.p))
+
+        _n = np.asarray([1, 2, 3, 4], dtype='int64')
+        tested = f(self._p, _n)
+        assert tested.shape == self._p.shape
+        assert np.allclose(np.floor(tested.todense()), tested.todense())
+        assert tested[2, 1] == _n[2]
+
+    def test_infer_shape(self):
+        self._compile_and_check([self.p],
+                                [S2.multinomial(5, self.p)],
+                                [self._p],
+                                self.op_class)
+
+
 class StructuredAddSVTester(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
