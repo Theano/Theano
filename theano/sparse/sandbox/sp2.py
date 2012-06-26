@@ -582,10 +582,17 @@ class Multinomial(gof.op.Op):
     density having number of experiment `n` and probability of succes
     `p`.
 
-    :param n: Number of experiment.
-    :param p: Sparse matrix of probability for each of the different outcomes.
+    :param n: Tensor type vector or scalar representing the number of
+              experiment for each row. If `n` is a scalar, it will be
+              used for each row.
+    :param p: Sparse matrix of probability where each row is a probability
+              vector representing the probability of succes. N.B. Each row
+              must sum to one.
 
-    :return: A sparse matrix of random integers of a multinomial density.
+    :return: A sparse matrix of random integers from a multinomial density
+             for each row.
+
+    :note: It will works only if `p` have csr format.
     """
 
     def __eq__(self, other):
@@ -607,15 +614,24 @@ class Multinomial(gof.op.Op):
             raise NotImplemented()
 
         out[0] = p.copy()
-        for i in xrange(p.shape[0]):
-            k, l = p.indptr[i], p.indptr[i + 1]
-            out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
+
+        if n.ndim == 0:
+            for i in xrange(p.shape[0]):
+                k, l = p.indptr[i], p.indptr[i + 1]
+                out[0].data[k:l] = numpy.random.multinomial(n, p.data[k:l])
+        elif n.ndim == 1:
+            if n.shape[0] != p.shape[0]:
+                raise ValueError('The number of element of n must be '
+                                 'the same as the number of row of p.')
+            for i in xrange(p.shape[0]):
+                k, l = p.indptr[i], p.indptr[i + 1]
+                out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
 
     def grad(self, inputs, outputs_gradients):
         return [None, None]
 
     def infer_shape(self, node, ins_shapes):
-        return ins_shapes
+        return [ins_shapes[1]]
 
     def __str__(self):
         return self.__class__.__name__
