@@ -1,0 +1,21 @@
+.. _acknowledgement:
+
+
+Acknowledgement
+===============
+
+.. note:
+
+   This page is in construction. We are missing sources.
+
+
+* The developer of `NumPy <http://numpy.scipy.org/>`_. Theano is based on its ndarray object and use many of its implementation.
+* The developer of `Scipy <http://scipy.org/>`_. Our sparse matrix use there sparse matrix. We also reused other part.
+* All Theano authors in the commits log.
+* Al Theano user that gived us feed back.
+* The GPU implementation of tensordot is based on code from Tijmen
+  Tieleman's `gnumpy <http://www.cs.toronto.edu/~tijmen/gnumpy.html>`_
+* The original version of the function ``cpuCount()`` in the file
+  theano/misc/cpucount.py come from the project `pyprocessing
+  <http://pyprocessing.berlios.de/>`_. It is under the same license as
+  Theano.

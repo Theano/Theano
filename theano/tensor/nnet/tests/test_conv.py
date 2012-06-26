@@ -368,3 +368,41 @@ class TestConv2D(unittest.TestCase):
         """
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid',
              verify_grad=False)
+        self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid', verify_grad=False)
+
+    def speed(self):
+        n_calls = 20000
+        print "n_calls", n_calls
+        for border_mode in ['valid', 'full']:
+            print
+            print border_mode
+            for openmp in [False, True]:
+                print "OpenMP", openmp
+                image_shapes = [(1, 5, 6, 6),
+                                (10, 5, 6, 6),
+                                #(10, 10, 16, 16),
+                                #(10, 10, 32, 32)
+                ]
+                print "image_shape", image_shapes
+                for image_shape in image_shapes:
+                    filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
+                    print "filter_shapes", filter_shapes
+                    for filter_shape in filter_shapes:
+
+                        input = theano.shared(numpy.random.random(image_shape))
+                        filters = theano.shared(numpy.random.random(filter_shape))
+
+                        output = conv.conv2d(input, filters,
+                                             image_shape, filter_shape,
+                                             border_mode,
+                                             unroll_patch=True,
+                                             openmp=openmp)
+                        mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
+                            allow_gc=False,
+                            use_cloop=True))
+                        theano_conv = theano.function([], output, mode=mode)
+                        t1 = time.time()
+                        theano_conv.fn(n_calls=n_calls)
+                        t2 = time.time()
+                        print t2 - t1,
+                    print
