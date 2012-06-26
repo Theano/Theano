@@ -278,7 +278,7 @@ class PoissonTester(utt.InferShapeTester):
             assert tested.format == format
             assert tested.dtype == self.a[format].dtype
             assert np.allclose(np.floor(tested.data), tested.data)
-            assert tested.data.shape == self.a[format].data.shape
+            assert tested.shape == self.a[format].shape
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
@@ -323,6 +323,75 @@ class MultinomialTester(utt.InferShapeTester):
                                 [S2.multinomial(5, self.p)],
                                 [self._p],
                                 self.op_class)
+
+
+class _StructuredMonoidUnaryTester(unittest.TestCase):
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            x = getattr(theano.sparse, format + '_matrix')()
+            spa = getattr(sp, format + '_matrix')
+
+            a = spa(np.random.random_integers(5, size=(3, 4)) - 1,
+                    dtype=theano.config.floatX)
+
+            f = theano.function([x], self.op(x))
+
+            tested = f(a)
+            expected = self.expected_op(a.todense())
+            expected[a.todense() == 0] = 0
+
+            assert tested.shape == expected.shape
+            assert tested.dtype == expected.dtype
+            assert np.allclose(tested.todense(), expected)
+
+
+class StructuredSigmoidTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredSigmoidTester, self).setUp()
+        self.op = S2.structured_sigmoid
+        self.expected_op = lambda x: 1.0 / (1.0 + np.exp(-x))
+
+
+class StructuredExpTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredExpTester, self).setUp()
+        self.op = S2.structured_exp
+        self.expected_op = np.exp
+
+
+class StructuredLogTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredLogTester, self).setUp()
+        self.op = S2.structured_log
+        self.expected_op = np.log
+
+
+class StructuredPowTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredPowTester, self).setUp()
+        self.op = lambda x: S2.structured_pow(x, 2)
+        self.expected_op = lambda x: np.power(x, 2)
+
+
+class StructuredMinimumTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredMinimumTester, self).setUp()
+        self.op = lambda x: S2.structured_minimum(x, 2)
+        self.expected_op = lambda x: np.minimum(x, 2)
+
+
+class StructuredMaximumTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredMaximumTester, self).setUp()
+        self.op = lambda x: S2.structured_maximum(x, 2)
+        self.expected_op = lambda x: np.maximum(x, 2)
+
+
+class StructuredAddTester(_StructuredMonoidUnaryTester):
+    def setUp(self):
+        super(StructuredAddTester, self).setUp()
+        self.op = lambda x: S2.structured_add(x, 2)
+        self.expected_op = lambda x: np.add(x, 2)
 
 
 class StructuredAddSVTester(unittest.TestCase):
