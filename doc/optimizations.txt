@@ -51,8 +51,8 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`gemm`                                              x
 :term:`inplace_elemwise`                                  x
 :term:`inplace_random`                                    x
-:term:`elemwise fusion`     
-:term:`GPU transfer`
+:term:`elemwise fusion`                                   x
+:term:`GPU transfer`                                      x
 ========================================================= ========= ============
 
 
