@@ -850,11 +850,19 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                      self).__init__(name)
 
     def test_adv_sub1_fast(self):
-        """ We check that we correctly used the fast version"""
+        """We check that the special cases of advanced indexing that
+        use CudaNdarrayTakeFrom are handled correctly
+
+        """
         rand = numpy.random.rand
+        # The variable fast is used to set the member perform_using_take of
+        # the Op.  It is only useful for testing that we use the fast
+        # version when we should. Users should not use it.
         for data, idx, fast in [(rand(70000), range(70000), True),
                                 (rand(70000, 5), range(70000), True),
                                 (rand(70000, 2, 3), range(70000), True),
+                                (rand(1025, 1025), [5, 10], True),
+                                (rand(3, 1025, 1026), [1, 2], True),
                                 (rand(4, 5), [2, 3], True),
                                 (rand(4, 2, 3), [0, 3], True),
                                 (rand(4, 2, 3), [3, 3, 1, 1, 2,
@@ -872,7 +880,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with c_contiguous input
             t = self.adv_sub1()(n, idx)
-            t.owner.op.assert_fast = True  # input c_contiguous, so we reshape
+            t.owner.op.perform_using_take = True  # input c_contiguous, so we reshape
             val = self.eval_output_and_check(t, list=True)
 
             val = numpy.asarray(val)
@@ -882,7 +890,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
-            t.owner.op.assert_fast = fast
+            t.owner.op.perform_using_take = fast
             val = theano.function([], t, mode=self.mode)()
 
             val = numpy.asarray(val)
