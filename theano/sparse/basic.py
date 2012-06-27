@@ -469,7 +469,12 @@ class SparseType(gof.Type):
         diff = abs(a - b)
         if diff.nnz == 0:
             return True
-        return max(diff) < eps
+        # Built-in max from python is not implemented for sparse matrix as a
+        # reduction. It returns a sparse matrix wich cannot be compared to a
+        # scalar. When comparing sparse to scalar, no exceptions is raised and
+        # the returning value is not consistent. That is why it is apply to a
+        # numpy.ndarray.
+        return max(diff.data) < eps
 
     def values_eq(self, a, b):
         #WARNING: equality comparison of sparse matrices is not fast or easy
