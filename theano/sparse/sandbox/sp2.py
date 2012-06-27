@@ -689,7 +689,7 @@ class Binomial(gof.op.Op):
         return None, None, None
 
     def infer_shape(self, node, ins_shapes):
-        return [ins_shapes[2]]
+        return [(node.inputs[2][0], node.inputs[2][1])]
 
     def __str__(self):
         return self.__class__.__name__
