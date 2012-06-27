@@ -394,6 +394,40 @@ class StructuredAddTester(_StructuredMonoidUnaryTester):
         self.expected_op = lambda x: np.add(x, 2)
 
 
+class MulSVTester(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_mul_s_v_grad(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+
+        for format in ['csr', 'csc']:
+            for dtype in ['float32', 'float64']:
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                mat = np.asarray(np.random.rand(3), dtype=dtype)
+
+                theano.sparse.verify_grad_sparse(S2.mul_s_v,
+                    [spmat, mat], structured=True)
+
+    def test_mul_s_v(self):
+        sp_types = {'csc': sp.csc_matrix,
+            'csr': sp.csr_matrix}
+
+        for format in ['csr', 'csc']:
+            for dtype in ['float32', 'float64']:
+                x = theano.sparse.SparseType(format, dtype=dtype)()
+                y = tensor.vector(dtype=dtype)
+                f = theano.function([x, y], S2.mul_s_v(x, y))
+
+                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
+                mat = np.asarray(np.random.rand(3), dtype=dtype)
+
+                out = f(spmat, mat)
+
+                assert np.allclose(out.toarray(), spmat.toarray() * mat)
+
+
 class StructuredAddSVTester(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -430,38 +464,43 @@ class StructuredAddSVTester(unittest.TestCase):
                 assert np.allclose(out.toarray(), spones.multiply(spmat + mat))
 
 
-class MulSVTester(unittest.TestCase):
+class SamplingDotTester(utt.InferShapeTester):
+    x = [tensor.matrix() for t in range(2)]
+    x.append(sparse.csr_matrix())
+    a = [np.array(np.random.random_integers(maximum, size=(3, 3)) - 1,
+                      dtype=theano.config.floatX)
+         for maximum in [5, 5, 2]]
+    a[2] = sp.csr_matrix(a[2])
+
+
     def setUp(self):
-        utt.seed_rng()
+        super(SamplingDotTester, self).setUp()
+        self.op_class = S2.SamplingDot
 
-    def test_structured_add_s_v_grad(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
+    def test_op(self):
+        f = theano.function(
+            self.x,
+            S2.sampling_dot(*self.x))
 
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = np.asarray(np.random.rand(3), dtype=dtype)
+        tested = f(*self.a)
+        x, y, p = self.a
+        expected = p.multiply(np.dot(x, y.T))
 
-                theano.sparse.verify_grad_sparse(S2.mul_s_v,
-                    [spmat, mat], structured=True)
+        assert np.allclose(tested.toarray(), expected)
+        assert tested.format == 'csr'
+        assert tested.dtype == expected.dtype
 
-    def test_mul_s_v(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
+    def test_infer_shape(self):
+        self._compile_and_check(self.x,
+                                [S2.sampling_dot(*self.x)],
+                                self.a,
+                                self.op_class,
+                                excluding=['local_sampling_dot_csr'])
 
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                x = theano.sparse.SparseType(format, dtype=dtype)()
-                y = tensor.vector(dtype=dtype)
-                f = theano.function([x, y], S2.mul_s_v(x, y))
-
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = np.asarray(np.random.rand(3), dtype=dtype)
-
-                out = f(spmat, mat)
-
-                assert np.allclose(out.toarray(), spmat.toarray() * mat)
+    def test_grad(self):
+        def _helper(x, y):
+            return S2.sampling_dot(x, y, self.a[2])
+        verify_grad_sparse(_helper, self.a[:2])
 
 if __name__ == '__main__':
     unittest.main()

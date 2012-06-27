@@ -1172,15 +1172,15 @@ register_specialize(local_structured_add_s_v)
 
 
 class SamplingDot(gof.op.Op):
-    """Operand for calculating the dot product DOT(X, Y) = Z when you
-    only want to calculate a subset of Z.
+    """Operand for calculating the dot product dot(`x`, `y`.T) = `z` when you
+    only want to calculate a subset of `z`.
 
-    It is equivalent to P o (X . Y) where o is the element-wise product,
-    X and Y operands of the dot product and P is a matrix that contains
-    1 when the corresponding element of Z should be calculated and 0
-    when it shouldn't. Note that SamplingDot has a different interface
-    than DOT because SamplingDot requires X to be a MxK matrix while Y
-    is a NxK matrix instead of the usual KxN matrix.
+    It is equivalent to `p` o (`x` . `y`.T) where o is the element-wise
+    product, `x` and `y` operands of the dot product and `p` is a matrix that
+    contains 1 when the corresponding element of `z` should be calculated
+    and 0 when it shouldn't. Note that SamplingDot has a different interface
+    than `dot` because SamplingDot requires `x` to be a `m`x`k` matrix while
+    `y` is a `n`x`k` matrix instead of the usual `k`x`n` matrix.
 
     .. note::
 
@@ -1189,11 +1189,12 @@ class SamplingDot(gof.op.Op):
         then a more optimized dot followed by a normal elemwise
         multiplication.
 
-    :param x: Sparse matrix.
-    :param y: Sparse matrix.
-    :param p: Sparse matrix.
+    :param x: Tensor matrix.
+    :param y: Tensor matrix.
+    :param p: Sparse matrix in csr format.
 
-    :return: A sparse matrix containing the dot product of `x` by `y`.
+    :return: A dense matrix containing the dot product of `x` by `y`.T only
+             where `p` is 1.
     """
 
     def __eq__(self, other):
@@ -1205,6 +1206,7 @@ class SamplingDot(gof.op.Op):
     def make_node(self, x, y, p):
         x = tensor.as_tensor_variable(x)
         y = tensor.as_tensor_variable(y)
+        p = sparse.as_sparse_variable(p)
 
         if not _is_sparse_variable(p):
             raise TypeError(p)
@@ -1215,30 +1217,28 @@ class SamplingDot(gof.op.Op):
         return gof.Apply(self, [x, y, p], [p.type()])
 
     def perform(self, node, (x, y, p), (out,)):
-        if _is_sparse_variable(x):
+        if _is_sparse(x):
             raise TypeError(x)
 
-        if _is_sparse_variable(y):
+        if _is_sparse(y):
             raise TypeError(y)
 
         if not _is_sparse(p):
             raise TypeError(p)
 
-        rval = p.__class__(p.multiply(numpy.dot(x, y.T)))
-
-        out[0] = rval
+        out[0] = p.__class__(p.multiply(numpy.dot(x, y.T)))
 
     def grad(self, (x, y, p), (gz,)):
         rval = [
             dot(p * gz, y),
-            dot(p.T * gz.T, x),
+            dot((p * gz).T, x),
             None
         ]
 
         return rval
 
     def infer_shape(self, node, ins_shapes):
-        return [ins_shapes[0]]
+        return [ins_shapes[2]]
 
     def __str__(self):
         return self.__class__.__name__
@@ -1246,16 +1246,15 @@ sampling_dot = SamplingDot()
 
 
 class SamplingDotCsr(gof.Op):
-    """Operand optimized for calculating the dot product DOT(X, Y) = Z
-    when you only want to calculate a subset of Z and the patternP
-    is as csr matrix.
+    """Operand optimized for calculating the dot product dot(`x`, `y`.T) = `z`
+    when you only want to calculate a subset of `z`.
 
-    It is equivalent to P o (X . Y) where o is the element-wise product,
-    X and Y operands of the dot product and P is a matrix that contains
-    1 when the corresponding element of Z should be calculated and 0
-    when it shouldn't. Note that SamplingDot has a different interface
-    than DOT because SamplingDot requires X to be a MxK matrix while Y
-    is a NxK matrix instead of the usual KxN matrix.
+    It is equivalent to `p` o (`x` . `y`.T) where o is the element-wise
+    product, `x` and `y` operands of the dot product and `p` is a matrix
+    that contains 1 when the corresponding element of `z` should be calculated
+    and 0 when it shouldn't. Note that SamplingDot has a different interface
+    than `dot` because SamplingDot requires `x` to be a `m`x`k` matrix while
+    `y` is a `n`x`k` matrix instead of the usual `k`x`n` matrix.
 
     .. note::
 
@@ -1264,11 +1263,15 @@ class SamplingDotCsr(gof.Op):
         then a more optimized dot followed by a normal elemwise
         multiplication.
 
-    :param x: Sparse matrix.
-    :param y: Sparse matrix.
-    :param p: Sparse matrix.
+    :param x: Tensor matrix.
+    :param y: Tensor matrix.
+    :param p_data: Sparse matrix data.
+    :param p_ind: Sparse matrix indices.
+    :param p_ptr: Sparse matric indptr.
+    :param p_ncols: Sparse matrix number of columns.
 
-    :return: A sparse matrix containing the dot product of `x` by `y`.
+    :return: A dense matrix containing the dot product of `x` by `y`.T only
+             where `p` is 1.
 
     :note:
     - If we have the input of mixed dtype, we insert cast elemwise
