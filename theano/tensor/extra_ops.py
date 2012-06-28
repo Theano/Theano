@@ -273,7 +273,6 @@ class RepeatOp(theano.Op):
 
     Keywords arguments:
     axis -- int, optional.
-
     """
 
     def __init__(self, axis=None):
@@ -302,14 +301,24 @@ class RepeatOp(theano.Op):
         z = output_storage[0]
         z[0] = np.repeat(x, repeats=repeats, axis=self.axis)
 
-    def grad(self, inputs, outputs_gradients):
-        repeats = inputs[1]
-        out = outputs_gradients[0]
-        if inputs[0].ndim != 1:
+    def grad(self, (x, repeats), (gz, )):
+        if repeats.ndim == 0:
+            if self.axis is None:
+                axis = x.ndim
+            else:
+                if self.axis >= 0:
+                    axis = self.axis + 1
+                else:
+                    axis = self.axis + x.ndim
+
+            shape = [x.shape[k] for k in range(x.ndim)]
+            shape.insert(axis, repeats)
+
+            return [gz.reshape(shape, x.ndim + 1).sum(axis=axis), None]
+        elif repeats.ndim == 1:
             raise NotImplementedError()
-        if repeats.ndim != 0:
-            raise NotImplementedError()
-        return [out.reshape([inputs[0].shape[0], repeats]).sum(axis=1), None]
+        else:
+            raise ValueError()
 
     def infer_shape(self, node, ins_shapes):
         i0_shapes = ins_shapes[0]

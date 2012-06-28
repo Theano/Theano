@@ -179,14 +179,12 @@ class TestRepeatOp(utt.InferShapeTester):
                                 self.op_class)
 
     def test_grad(self):
-        x = T.dvector('x')
-        a = np.random.random(50)
+        for ndim in range(3)[1:]:
+            x = T.TensorType('float64', [False] * ndim)
+            a = np.random.random((10, ) * ndim)
 
-        gf = theano.function([x], T.grad(T.sum(repeat(x, 3)), x))
-
-        def repeat_(a):
-            return RepeatOp()(a, 3)
-        utt.verify_grad(repeat_, [a])
+            for axis in [None] + range(ndim):
+                utt.verify_grad(lambda x: RepeatOp(axis=axis)(x, 3), [a])
 
 
 class TestBartlett(utt.InferShapeTester):
