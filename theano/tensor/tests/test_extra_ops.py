@@ -180,11 +180,11 @@ class TestRepeatOp(utt.InferShapeTester):
 
     def test_grad(self):
         for ndim in range(3)[1:]:
-            x = T.TensorType('float64', [False] * ndim)
             a = np.random.random((10, ) * ndim)
 
             for axis in [None] + range(ndim):
                 utt.verify_grad(lambda x: RepeatOp(axis=axis)(x, 3), [a])
+            utt.verify_grad(lambda x: RepeatOp(axis=-1)(x, 3), [a])
 
 
 class TestBartlett(utt.InferShapeTester):
