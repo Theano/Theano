@@ -309,7 +309,7 @@ class RepeatOp(theano.Op):
                 if self.axis >= 0:
                     axis = self.axis + 1
                 else:
-                    axis = self.axis + x.ndim
+                    axis = self.axis + x.ndim + 1
 
             shape = [x.shape[k] for k in range(x.ndim)]
             shape.insert(axis, repeats)
