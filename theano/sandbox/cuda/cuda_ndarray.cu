@@ -701,14 +701,14 @@ enum operator_t
  */
 template <int operator_num>
 __global__ void k_take_3(const int d0, const int d1, const int d2,
-                         const float* indices,
+                         const npy_int64* indices,
                          float* a,
                          const int sA0, const int sA1, const int sA2,
                          const float* b, const int dB0,
                          const int sB0, const int sB1, const int sB2,
                          int* err){
     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-        int idx = (int)indices[i0];
+        npy_int64 idx = indices[i0];
         if (idx<0)
             idx += dB0; // To allow negative indexing.
         if ((idx < 0) || (idx >= dB0))
@@ -737,8 +737,9 @@ static int* err_var = NULL;
 // We try to be similat to the PyArray_TakeFrom function
 //http://docs.scipy.org/doc/numpy/reference/c-api.array.html
 //TODO: support other clip mode then raise(clip, wrap)
-//TODO: what if the indices take more then 32 bits?
 //self is the input that we copy data from.
+//The indices that we receive MUST be an CudaNdarray(float32)
+//    that is in fact a view to int64 indices
 PyObject*
 CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     int verbose = 0;
@@ -761,7 +762,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (verbose) printf("cudandarray indices\n");
         indices = (CudaNdarray*) indices_obj;
         Py_INCREF(indices);
-    } else if (PyArray_Check(indices_obj)) {
+    } else if (0 && PyArray_Check(indices_obj)) {
         PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_TakeFrom: The indices must cudandarray with float32 value.");
         return NULL;
 
@@ -800,9 +801,10 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             return NULL;
         }
         Py_DECREF(indices_float32);
-
     } else {
-        PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a CudaNdarray for indices");
+        PyErr_SetString(PyExc_TypeError,
+                        "CudaNdarray_TakeFrom: need a CudaNdarray(float32) that"
+                        " is a view from int64 data for indices");
         return NULL;
     }
 
@@ -815,11 +817,12 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     }
     if (verbose) printf("after print of object\n");
     if(!CudaNdarray_is_c_contiguous(indices) != 0) {
-        PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_TakeFrom: The indices must be contiguous in memory.");
+        PyErr_SetString(PyExc_NotImplementedError,
+                        "CudaNdarray_TakeFrom: The indices must be contiguous in memory.");
         Py_DECREF(indices_obj);
         return NULL;
     }
-    int nb_indices = CudaNdarray_SIZE((CudaNdarray *)indices);
+    int nb_indices = CudaNdarray_SIZE((CudaNdarray *)indices) / 2;// int64 are 8 bytes, float32 are 4 bytes
 
     //Check argument axis
     //TODO: implement the default and other axis
@@ -885,7 +888,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(clipmode_obj);
     }
     void (*k3)(const int, const int, const int,
-               const float*,
+               const npy_int64*,
                float*, const int, const int, const int,
                const float*, const int,
                const int, const int, const int,
@@ -923,7 +926,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                         dims[0],
                         1,
                         1,
-                        CudaNdarray_DEV_DATA(indices),
+                        (npy_int64*) CudaNdarray_DEV_DATA(indices),
                         CudaNdarray_DEV_DATA(out),
                         CudaNdarray_HOST_STRIDES(out)[0], //strides
                         1,
@@ -947,7 +950,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                         dims[0], //dimensions
                         dims[1],
                         1,
-                        CudaNdarray_DEV_DATA(indices),
+                        (npy_int64*) CudaNdarray_DEV_DATA(indices),
                         CudaNdarray_DEV_DATA(out),
                         CudaNdarray_HOST_STRIDES(out)[0], //strides
                         CudaNdarray_HOST_STRIDES(out)[1],
@@ -973,7 +976,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                         dims[0], //dimensions
                         dims[1],
                         dims[2],
-                        CudaNdarray_DEV_DATA(indices),
+                        (npy_int64*) CudaNdarray_DEV_DATA(indices),
                         CudaNdarray_DEV_DATA(out),
                         CudaNdarray_HOST_STRIDES(out)[0], //strides
                         CudaNdarray_HOST_STRIDES(out)[1],
