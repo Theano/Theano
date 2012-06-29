@@ -18,6 +18,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_softmax_1hot_with_bias_dx,
                                 crossentropy_softmax_argmax_1hot_with_bias,
                                 CrossentropySoftmax1HotWithBiasDx,
+                                CrossentropySoftmaxArgmax1HotWithBias,
                                 sigmoid, softplus,
                                 Softmax, softmax, SoftmaxWithBias, softmax_grad,
                                 softmax_with_bias, SoftmaxGrad,
@@ -201,9 +202,9 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
                     CrossentropySoftmax1HotWithBiasDx)
 
 
-class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
+class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
     def setUp(self):
-        utt.seed_rng()
+        super(T_CrossentropySoftmaxArgmax1HotWithBias, self).setUp()
         self.op = theano.tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
     def test0(self):
         n_classes = 5
@@ -223,11 +224,18 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(unittest.TestCase):
                     numpy.random.rand(n_classes)])
 
     def test_infer_shape(self):
-        var = self.op(numpy.random.rand(3,5),numpy.random.rand(5), y_idx=numpy.random.randint(
-                low=0, high=5, size=3))
-        assert theano.function([],var[0].shape)() == [3]
-        assert all(theano.function([],var[1].shape)() == [3,5])
-        assert theano.function([],var[2].shape)() == [3]
+        admat = dmatrix()
+        advec = dvector()
+        alvec = lvector()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(3, 5)
+        advec_val = rng.rand(5)
+        alvec_val = rng.randint(low=0, high=5, size=3)
+        self._compile_and_check([admat, advec, alvec],
+                    CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec),
+                    [admat_val, advec_val, alvec_val],
+                    CrossentropySoftmaxArgmax1HotWithBias)
+
 
 class T_prepend(unittest.TestCase):
     def setUp(self):
@@ -1123,7 +1131,7 @@ class Test_softmax_opt:
 
 if __name__ == '__main__':
 
-    t =  T_CrossentropySoftmax1HotWithBiasDx('setUp')
+    t =  T_CrossentropySoftmaxArgmax1HotWithBias('setUp')
     t.setUp()
     t.test_infer_shape()
 
@@ -1131,7 +1139,3 @@ if __name__ == '__main__':
 
 
 
-
-
-
-    
