@@ -613,3 +613,11 @@ import theano and print the config variable, as in:
 
     If set to True, breaks certain MacOS installations with the infamous
     Bus Error.
+
+.. attribute:: config.cmodule.remove_gxx_opt
+
+    Bool value, default: False
+
+    If True, will remove -O* parameter passed to g++.
+    This is useful to debug in gdb module compiled by Theano.
+    The parameter -g is passed by default to g++.

@@ -42,6 +42,12 @@ AddConfigVar('cmodule.warn_no_version',
              BoolParam(False),
              in_c_key=False)
 
+AddConfigVar('cmodule.remove_gxx_opt',
+             "If True, will remove -O* parameter passed to g++."
+             "This is useful to debug in gdb module compiled by Theano."
+             "The parameter -g is passed by default to g++",
+             BoolParam(False))
+
 
 def local_bitwidth():
     """
@@ -1482,8 +1488,6 @@ class GCC_compiler(object):
             # We also add "-m64", in case the installed gcc is 32-bit
             preargs.append('-m64')
 
-        no_opt = False
-
         include_dirs = include_dirs + std_include_dirs()
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
@@ -1530,7 +1534,8 @@ class GCC_compiler(object):
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = ['g++', get_gcc_shared_library_arg(), '-g']
-        if no_opt:
+
+        if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
