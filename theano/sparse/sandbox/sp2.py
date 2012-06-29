@@ -25,6 +25,9 @@ class Cast(gof.op.Op):
     :param x: Sparse matrix.
 
     :return: Same as `x` but having `out_type` as dtype.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, out_type):
@@ -78,7 +81,9 @@ class HStack(gof.op.Op):
 
     :return: The concatenation of the sparse arrays column wise.
 
-    :note: The number of line of the sparse matrix must agree.
+    :note:
+    - The number of line of the sparse matrix must agree.
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, format=None, dtype=None):
@@ -152,7 +157,10 @@ def hstack(blocks, format=None, dtype=None):
 
     :return: The concatenation of the sparse array column wise.
 
-    :note: The number of line of the sparse matrix must agree.
+    :note:
+    - The number of line of the sparse matrix must agree.
+    - The grad implemented is regular, i.e. not structured.
+
     """
 
     return HStack(format=format, dtype=dtype)(*blocks)
@@ -167,7 +175,9 @@ class VStack(HStack):
 
     :return: The concatenation of the sparse arrays row wise.
 
-    :note: The number of column of the sparse matrix must agree.
+    :note:
+    - The number of column of the sparse matrix must agree.
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def perform(self, node, block, (out, )):
@@ -212,7 +222,9 @@ def hstack(blocks, format=None, dtype=None):
 
     :return: The concatenation of the sparse array row wise.
 
-    :note: The number of column of the sparse matrix must agree.
+    :note:
+    - The number of column of the sparse matrix must agree.
+    - The grad implemented is regular, i.e. not structured.
     """
     return VStack(format=format, dtype=dtype)(*blocks)
 
@@ -782,6 +794,9 @@ class MulSV(gof.op.Op):
     :param y: Tensor broadcastable vector.
 
     :Return: The product x * y element wise.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -1195,6 +1210,9 @@ class SamplingDot(gof.op.Op):
 
     :return: A dense matrix containing the dot product of `x` by `y`.T only
              where `p` is 1.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
