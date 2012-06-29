@@ -22,6 +22,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 softmax_with_bias,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
+from theano.tensor import dmatrix
 
 class T_sigmoid(unittest.TestCase):
     def setUp(self):
@@ -35,9 +36,8 @@ class T_softplus(unittest.TestCase):
     def test_elemwise(self):
         utt.verify_grad(softplus, [numpy.random.rand(3,4)])
 
-class T_Softmax(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
+class T_Softmax(utt.InferShapeTester):
+   
     def test0(self):
         def f(a):
             return softmax(a)[:,0]
@@ -56,8 +56,10 @@ class T_Softmax(unittest.TestCase):
         utt.verify_grad(f, [numpy.random.rand(3,4)])
 
     def test_infer_shape(self):
-        f=theano.function([],softmax(numpy.random.rand(3,4)).shape)
-        assert all(f()==[3,4])
+        admat = dmatrix()
+        admat_val = numpy.random.rand(3, 4)
+        self._compile_and_check([admat], [Softmax()(admat)],
+                            [admat_val], Softmax)
 
     def test_vector(self):
         x = T.vector()
@@ -1091,5 +1093,21 @@ class Test_softmax_opt:
 
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing etc.
 
+#if __name__ == '__main__':
+#    unittest.main()
+
+
 if __name__ == '__main__':
-    unittest.main()
+
+    t = T_Softmax('setUp')
+    t.setUp()
+    t.test_infer_shape()
+
+
+
+
+
+
+
+
+    
