@@ -137,6 +137,9 @@ class TestSqueezeOp(utt.InferShapeTester):
 
 
 class TestRepeatOp(utt.InferShapeTester):
+    def _possible_axis(self, ndim):
+        return [None] + range(ndim) + [-i for i in range(ndim)]
+
     def setUp(self):
         super(TestRepeatOp, self).setUp()
         self.op_class = RepeatOp
@@ -147,37 +150,40 @@ class TestRepeatOp(utt.InferShapeTester):
             x = T.TensorType(theano.config.floatX, [False] * ndim)()
             a = np.random.random((10, ) * ndim)
 
-            r_var = T.lscalar()
-            r = 3
-            for axis in [None] + range(ndim):
+            for axis in self._possible_axis(ndim):
+                r_var = T.lscalar()
+                r = 3
                 f = theano.function([x, r_var], repeat(x, r_var, axis=axis))
                 assert np.allclose(np.repeat(a, r, axis=axis), f(a, r))
 
-            r_var = T.lvector()
-            r = np.random.random_integers(5, size=(10,))
+                r_var = T.lvector()
+                if axis is None:
+                    r = np.random.random_integers(5, size=a.size)
+                else:
+                    r = np.random.random_integers(5, size=(10,))
 
-            for axis in range(ndim):
                 f = theano.function([x, r_var], repeat(x, r_var, axis=axis))
                 assert np.allclose(np.repeat(a, r, axis=axis), f(a, r))
-
 
     def test_infer_shape(self):
         for ndim in range(4):
             x = T.TensorType(theano.config.floatX, [False] * ndim)()
             a = np.random.random((10, ) * ndim)
 
-            r_var = T.lscalar()
-            r = 3
-            for axis in [None] + range(ndim):
+            for axis in self._possible_axis(ndim):
+                r_var = T.lscalar()
+                r = 3
                 self._compile_and_check([x, r_var],
                                         [RepeatOp(axis=axis)(x, r_var)],
                                         [a, r],
                                         self.op_class)
 
-            r_var = T.lvector()
-            r = np.random.random_integers(5, size=(10,))
+                r_var = T.lvector()
+                if axis is None:
+                    r = np.random.random_integers(5, size=a.size)
+                else:
+                    r = np.random.random_integers(5, size=(10,))
 
-            for axis in range(ndim):
                 self._compile_and_check([x, r_var],
                                         [RepeatOp(axis=axis)(x, r_var)],
                                         [a, r],
@@ -187,10 +193,8 @@ class TestRepeatOp(utt.InferShapeTester):
         for ndim in range(3):
             a = np.random.random((10, ) * ndim)
 
-            for axis in [None] + range(ndim):
+            for axis in self._possible_axis(ndim):
                 utt.verify_grad(lambda x: RepeatOp(axis=axis)(x, 3), [a])
-            if ndim > 0:
-                utt.verify_grad(lambda x: RepeatOp(axis=-1)(x, 3), [a])
 
 
 class TestBartlett(utt.InferShapeTester):
