@@ -1891,6 +1891,8 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
     """
+    #If True or False, we assert that we use the take version or not
+    #If None, we choose the best one applicable
     perform_using_take = None
 
     def make_node(self, x, ilist):
@@ -1910,8 +1912,9 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         #super(GpuAdvancedSubtensor1, self).perform(node, inp, out_)
         x, idx = inp
         out, = out_
-        #TODO: if more then 3 dims, reshape the inputs if it is contiguous.
         x_orig = x
+        #TODO: if more then 3 dims, reshape the inputs even if not all
+        #dimensions are c contiguous
         if x.ndim > 3 and x.is_c_contiguous():
             x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
         out_shape = (len(idx),) + x_orig.shape[1:]
@@ -1920,8 +1923,17 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
             if self.perform_using_take is not None:
                 assert self.perform_using_take == True, (
                     "GpuAdvancedSubtensor1 used the fast version")
+            if idx.dtype != numpy.int64:
+                if idx.dtype in [numpy.int8, numpyt.int16, numpy.int32,
+                                 numpy.int64, numpy.uint8, numpy.uint16,
+                                 numpy.uint32]:
+                    idx = idx.astype(numpy.int64)
+            if not idx.flags.c_contiguous:
+                idx = numpy.ascontiguousarray(idx)
 
-            o = x.take(cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32")),  # idx
+            idx = idx.view("float32")
+            idx = cuda_ndarray.cuda_ndarray.CudaNdarray(idx)
+            o = x.take(idx,
                        0,  # axis
                        out_[0][0])  # return
             if x is not x_orig:
