@@ -1,4 +1,7 @@
-import sys, time, unittest
+import copy
+import sys
+import time
+import unittest
 
 from theano.compile.pfunc import pfunc
 from theano import tensor
@@ -845,6 +848,58 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
     def __init__(self, name):
         return super(theano.tensor.tests.test_basic.T_subtensor,
                      self).__init__(name)
+
+    def test_adv_sub1_fast(self):
+        """We check that the special cases of advanced indexing that
+        use CudaNdarrayTakeFrom are handled correctly
+
+        """
+        rand = numpy.random.rand
+        # The variable fast is used to set the member perform_using_take of
+        # the Op.  It is only useful for testing that we use the fast
+        # version when we should. Users should not use it.
+        for data, idx, fast in [(rand(70000), range(70000), True),
+                                (rand(70000, 5), range(70000), True),
+                                (rand(70000, 2, 3), range(70000), True),
+                                (rand(1025, 1025), [5, 10], True),
+                                (rand(3, 1025, 1026), [1, 2], True),
+                                (rand(1025, 67000), [5, 10], True),
+                                (rand(3, 10, 68000), [1, 2], True),
+                                (rand(3, 69000, 11), [1, 2], True),
+                                (rand(4, 5), [2, 3], True),
+                                (rand(4, 2, 3), [0, 3], True),
+                                (rand(4, 2, 3), [3, 3, 1, 1, 2,
+                                                 2, 0, 0], True),
+                                (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0,
+                                                 0, -1, -2, -3, -4], True),
+                                # Test 4 dims as gpu. code use another algo
+                                # in that case. This new algo is not as much
+                                # optimized for that case.
+                                (rand(4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
+                                                    -1, -2, -3, -4], False),
+                            ]:
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
+
+            # Test with c_contiguous input
+            t = self.adv_sub1()(n, idx)
+            t.owner.op.perform_using_take = True  # input c_contiguous, so we reshape
+            val = self.eval_output_and_check(t, list=True)
+
+            val = numpy.asarray(val)
+            good = data[idx]
+            self.assertTrue(val.ndim == data.ndim)
+            self.assertTrue(numpy.allclose(val, good), (val, good))
+
+            # Test with input strided
+            t = self.adv_sub1()(n[::-1], idx)
+            t.owner.op.perform_using_take = fast
+            val = theano.function([], t, mode=self.mode)()
+
+            val = numpy.asarray(val)
+            good = data[::-1][idx]
+            self.assertTrue(val.ndim == data.ndim)
+            self.assertTrue(numpy.allclose(val, good), (val, good))
 
 
 def test_advinc_subtensor1():
