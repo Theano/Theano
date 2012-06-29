@@ -721,9 +721,10 @@ class numeric_grad(object):
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=None,
+def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
+                out_type=None, abs_tol=None,
                 rel_tol=None, mode=None, cast_to_output_type=False):
-    """ Test a gradient by Finite Difference Method. Raise error on failure.
+    """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
         >>> verify_grad(theano.tensor.tanh,
@@ -745,6 +746,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=N
         of sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default
         None is type-dependent)
+        Raising the value of eps can raise or lower the absolute and
+        relative error of the verification depending of the
+        Op. Raising the eps do not lower the verification quality. It
+        is better to raise eps then raising abs_tol or rel_tol.
     :param out_type: dtype of output, if complex (i.e. 'complex32' or
         'complex64')
     :param abs_tol: absolute tolerance used as threshold for gradient
@@ -757,9 +762,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=N
         in debug mode, which can be very slow if it has to verify a lot of
         intermediate computations.
 
-    :note: This op does not support multiple outputs. In tests/test_scan.py
-        there is an experimental verify_grad that covers that case as well
-        by using random projections.
+    :note: This function does not support multiple outputs. In
+        tests/test_scan.py there is an experimental verify_grad that
+        covers that case as well by using random projections.
+
     """
     from theano import compile, shared
     import theano.tensor

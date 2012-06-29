@@ -187,8 +187,18 @@ if __name__ == "__main__":
         (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
         gpu/cuda version
-        GTX580/3.2        0.20s
-        GTX480/3.2        0.24s
+        GTX680/4.2        0.154s
+        GTX580/4.2        0.164s
+        GTX480/4.2        0.192s
+        GTX470/4.2        0.238s
+        GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
+
+        GTX580/3.2        0.203s
+        GTX680/3.2        0.218s
+        GTX480/3.2        0.237s
+        GTX470/3.2        0.297s
+        GTX285/3.2        0.452s #cuda 3.0 seam faster? driver version?
+
         GTX480/3.0        0.27s
         M2070/4.1         0.27s
         GTX470/3.2        0.29s
@@ -197,6 +207,7 @@ if __name__ == "__main__":
         GTX285/3.0        0.40s
         C1060/3.2         0.46s
         GTX550Ti/4.0      0.57s
+        520/3.2           3.06s
         520M/3.2          3.19s with bumblebee on Ubuntu 12.04
         GT220/3.2RC       3.80s
         GT210/4.0         6.35s
