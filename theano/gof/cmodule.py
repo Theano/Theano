@@ -39,7 +39,8 @@ AddConfigVar('cmodule.warn_no_version',
              "with C code that can't be cached because there is no "
              "c_code_cache_version() function associated to at least one of "
              "those Ops.",
-             BoolParam(False))
+             BoolParam(False),
+             in_c_key=False)
 
 
 def local_bitwidth():
