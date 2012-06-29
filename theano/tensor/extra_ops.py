@@ -259,20 +259,18 @@ def squeeze(x, out_nd):
 class RepeatOp(theano.Op):
     """Repeat elements of an array.
 
-    It returns an array which has the same shape as x, except
+    It returns an array which has the same shape as `x`, except
     along the given axis. The axis is used to speficy along which
     axis to repeat values. By default, use the flattened input
     array, and return a flat output array.
 
-    The number of repetitions for each element is repeat.
-    repeats is broadcasted to fit the shape of the given axis.
+    The number of repetitions for each element is `repeat`.
+    `repeats` is broadcasted to fit the length of the given `axis`.
 
-    Parameter:
-    x -- Input data, tensor variable.
-    repeats -- int, tensor variable.
+    :param x: Input data, tensor variable.
+    :param repeats: int, scalar or tensor variable.
 
-    Keywords arguments:
-    axis -- int, optional.
+    :param axis: int, optional.
     """
 
     def __init__(self, axis=None):
@@ -316,6 +314,9 @@ class RepeatOp(theano.Op):
 
             return [gz.reshape(shape, x.ndim + 1).sum(axis=axis), None]
         elif repeats.ndim == 1:
+            # For this implementation, we would need to specify the length
+            # of repeats in order to split gz in the right way to sum
+            # the good part.
             raise NotImplementedError()
         else:
             raise ValueError()
@@ -344,21 +345,18 @@ class RepeatOp(theano.Op):
 def repeat(x, repeats, axis=None):
     """Repeat elements of an array.
 
-    It returns an array which has the same shape as x, except
+    It returns an array which has the same shape as `x`, except
     along the given axis. The axis is used to speficy along which
     axis to repeat values. By default, use the flattened input
     array, and return a flat output array.
 
-    The number of repetitions for each element is repeat.
-    repeats is broadcasted to fit the shape of the given axis.
+    The number of repetitions for each element is `repeat`.
+    `repeats` is broadcasted to fit the length of the given `axis`.
 
-    Parameter:
-    x -- Input data, tensor variable.
-    repeats -- int, tensor variable.
+    :param x: Input data, tensor variable.
+    :param repeats: int, scalar or tensor variable.
 
-    Keywords arguments:
-    axis -- int, optional.
-
+    :param axis: int, optional.
     """
     return RepeatOp(axis=axis)(x, repeats)
 
