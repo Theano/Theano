@@ -127,7 +127,14 @@ compile_cuda_ndarray = True
 if not compile_cuda_ndarray:
     compile_cuda_ndarray = not try_import()
 
-if compile_cuda_ndarray:
+if not nvcc_compiler.is_nvcc_available():
+    # It can happen that there the file cuda_ndarray.so is already compiled
+    # but nvcc is not available. In that case we need to disable the CUDA
+    # back-end as we won't be able to compile any new op and we can't only
+    # use already compiled GPU op and not the others.
+    set_cuda_disabled()
+
+if compile_cuda_ndarray and cuda_available:
     get_lock()
     try:
         # Retry to load again in case someone else compiled it
@@ -163,12 +170,6 @@ if compile_cuda_ndarray:
                 set_cuda_disabled()
     finally:
         release_lock()
-elif not nvcc_compiler.is_nvcc_available():
-    # This can happen if there is cuda_ndarray.so was already compiled
-    # and then nvcc is removed. In that case we need to disable the CUDA
-    # back-end as we won't be able to compile any new op and we can't only
-    # use already compiled GPU op and not the others.
-    set_cuda_disabled()
 
 del compile_cuda_ndarray
 

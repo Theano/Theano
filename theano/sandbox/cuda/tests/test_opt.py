@@ -11,11 +11,11 @@ import theano
 from theano.tests import unittest_tools as utt
 
 import theano.sandbox.cuda as cuda
-from theano.sandbox.cuda import basic_ops
 
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
+from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 if theano.config.mode=='FAST_COMPILE':
