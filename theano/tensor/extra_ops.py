@@ -327,13 +327,16 @@ class RepeatOp(theano.Op):
         out_shape = list(i0_shapes)
 
         if self.axis == None:
-            if len(i0_shapes) == 0:
-                out_shape = [repeats]
+            if repeats.ndim == 0:
+                if len(i0_shapes) == 0:
+                    out_shape = [repeats]
+                else:
+                    res = 1
+                    for d in i0_shapes:
+                        res = res * d
+                    out_shape = (res * repeats, )
             else:
-                res = 1
-                for d in i0_shapes:
-                    res = res * d
-                out_shape = (res * repeats, )
+                out_shape = [theano.tensor.sum(repeats)]
         else:
             if repeats.ndim == 0:
                 out_shape[self.axis] = out_shape[self.axis] * repeats
