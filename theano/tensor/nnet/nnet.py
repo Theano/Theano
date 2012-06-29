@@ -857,6 +857,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             dx[i, y_idx[i]] -= dy[i]  # scalar decrement
         output_storage[0][0] = dx
 
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
+
     def grad(self, inp, grads):
         dy, sm, y_idx = inp
         g_dx, = grads
