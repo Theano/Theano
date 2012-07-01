@@ -2740,6 +2740,10 @@ class Eye(gof.Op):
         out, = out_
         out[0] = numpy.eye(n, m, k, dtype=self.dtype)
 
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
     def grad(self, inp, grads):
         return [None, None, None]
 
