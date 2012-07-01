@@ -34,7 +34,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements)
+        tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
+        ScalarFromTensor, TensorFromScalar)
 from theano.tests import unittest_tools as utt
 
 
@@ -5946,6 +5947,13 @@ class TestInferShape(utt.InferShapeTester):
                                 [PermuteRowElements()(adtens, aivec, abool)],
                         [adtens_val, aivec_val], PermuteRowElements)
 
+        # ScalarFromTensor
+        aiscal = iscalar()
+        aconst = constant(45)
+        self._compile_and_check([aiscal],
+                            [TensorFromScalar()(ScalarFromTensor()(aiscal))],
+                                [45], ScalarFromTensor,
+                                excluding=["local_tensor_scalar_tensor"])
 
 if __name__ == '__main__':
 
