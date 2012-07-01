@@ -36,7 +36,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye, Shape)
+        tile, patternbroadcast, Eye, Shape, Default)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6126,6 +6126,12 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens],
                                 [Shape()(adtens)],
                                 [adtens_val], (opt.MakeVector, Shape))
+
+        # Default
+        self._compile_and_check([admat, bdmat],
+                                [Default()(admat, bdmat)],
+                                [admat_val, bdmat_val], (Default))
+
 
 if __name__ == '__main__':
 
