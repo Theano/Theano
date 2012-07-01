@@ -6016,6 +6016,26 @@ class TestInferShape(utt.InferShapeTester):
                 MaxAndArgmax()(adtens3, [0, 1, 2]),
                 [adtens3_val], MaxAndArgmax)
 
+        # ARange
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [0, 5, 1], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [2, 11, 4], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [-5, 1, 1], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [10, 2, -2], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [10, 2, 2], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [0, 0, 1], ARange)
+
 
 if __name__ == '__main__':
 
