@@ -6464,6 +6464,23 @@ class TensorDot(Op):
             e.args = e.args + (x.shape, y.shape, self.axes)
             raise
 
+    def infer_shape(self, node, in_shapes):
+        shape_x, shape_y = in_shapes
+        out_shape = []
+        if isinstance(self.axes, (list, tuple)):
+            iter = (i for i in range(len(shape_x))
+                    for j in self.axes[0] if i != j)
+            for i in iter:
+                out_shape.append(shape_x[i])
+            iter = (i for i in range(len(shape_y))
+                    for j in self.axes[1] if i != j)
+            for i in iter:
+                out_shape.append(shape_y[i])
+        else:
+            out_shape = list(shape_x)[shape_x.ndim - self.axes] + \
+                        list(shape_y)[shape_y.ndim - self.axes, shape_y.ndim]
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, y = inp
         gz, = grads
