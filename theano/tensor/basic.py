@@ -4653,6 +4653,18 @@ class Split(Op):
             outputs[i][0] = x.__getitem__(general_key).copy()
             lower_idx = upper_idx
 
+    def infer_shape(self, node, in_shapes):
+        axis = node.inputs[1]
+        splits = node.inputs[2]
+        shp_x, shp_axis, shp_splits = in_shapes
+        out_shapes = []
+        for i in range(self.len_splits):
+            temp = as_tensor_variable(shp_x)
+            temp = set_subtensor(temp[axis], splits[i])
+            temp = [temp[i] for i in range(len(shp_x))]
+            out_shapes.append(temp)
+        return out_shapes
+
     def grad(self, inputs, g_outputs):
         """Join the gradients along the axis that was used to split x."""
         _, axis, _ = inputs
