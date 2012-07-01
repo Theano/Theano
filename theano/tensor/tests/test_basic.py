@@ -5917,6 +5917,16 @@ class TestInferShape(utt.InferShapeTester):
                                 [Split(3)(adtens, aiscal, aivec)[0]],
                                 [adtens_val, 1, aivec_val], (Split))
 
+        # Join
+        cdmat = dmatrix()
+        admat_val = rand(1, 3)
+        bdmat_val = rand(3, 3)
+        cdmat_val = rand(4, 3)
+        aiscal_val = 0
+        self._compile_and_check([aiscal, admat, bdmat, cdmat],
+                                [Join()(aiscal, admat, bdmat, cdmat)],
+                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
