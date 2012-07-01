@@ -2055,6 +2055,9 @@ class Shape(Op):
         out, = out_
         out[0] = theano._asarray(x.shape, dtype='int64')
 
+    def infer_shape(self, node, in_shapes):
+        return [[len(in_shapes[0])]]
+
     def grad(self, inp, grads):
         return [None]
 
