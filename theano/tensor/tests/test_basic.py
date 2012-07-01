@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye, Shape, Default, Dot)
+        tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements)
 from theano.tests import unittest_tools as utt
 
 
@@ -5926,6 +5926,26 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([aiscal, admat, bdmat, cdmat],
                                 [Join()(aiscal, admat, bdmat, cdmat)],
                         [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+
+        # PermuteRowElements
+        abool = True
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        advec_val = rand(5)
+        aivec_val = rng.permutation(5).astype('int32')
+        self._compile_and_check([advec, aivec],
+                                [PermuteRowElements()(advec, aivec, abool)],
+                        [advec_val, aivec_val], PermuteRowElements)
+
+        admat_val = rand(3, 5)
+        self._compile_and_check([admat, aivec],
+                                [PermuteRowElements()(admat, aivec, abool)],
+                        [admat_val, aivec_val], PermuteRowElements)
+
+        adtens_val = rand(3, 2, 5)
+        self._compile_and_check([adtens, aivec],
+                                [PermuteRowElements()(adtens, aivec, abool)],
+                        [adtens_val, aivec_val], PermuteRowElements)
+
 
 if __name__ == '__main__':
 
