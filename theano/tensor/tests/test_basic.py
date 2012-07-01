@@ -6091,6 +6091,19 @@ class TestInferShape(utt.InferShapeTester):
                                 [TensorDot(axes)(admat, bdmat)],
                                 [admat_val, bdmat_val], TensorDot)
 
+        # Flatten
+        adtens = tensor3()
+        adtens_val = rand(4, 5, 3)
+        outdim = 2
+        self._compile_and_check([adtens],
+                                [Flatten(outdim)(adtens)],
+                                [adtens_val], Flatten)
+
+        outdim = 1
+        self._compile_and_check([adtens],
+                                [Flatten(outdim)(adtens)],
+                                [adtens_val], Flatten)
+
 
 if __name__ == '__main__':
 
