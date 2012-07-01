@@ -5843,9 +5843,20 @@ class TestInferShape(utt.InferShapeTester):
                                 tensordot_grad(axes)(admat, bdmat, gzdmat),
                             [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
 
+        # tensordot
+        axes = 1
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                                [admat_val, bdmat_val], TensorDot)
+
+        axes = ((1, ), (0, ))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                                [admat_val, bdmat_val], TensorDot)
+
 
 if __name__ == '__main__':
-    
+
     t = TestInferShape('setUp')
     t.setUp()
     t.test_infer_shape()
