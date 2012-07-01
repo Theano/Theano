@@ -5909,6 +5909,14 @@ class TestInferShape(utt.InferShapeTester):
                                 [Dot()(admat, bdmat)],
                                 [admat_val, bdmat_val], (Dot, tensor.blas.Gemm,
                                                          tensor.blas.Dot22))
+        # Split
+        aivec = ivector()
+        adtens_val = rand(4, 10, 3)
+        aivec_val = [2, 5, 3]
+        self._compile_and_check([adtens, aiscal, aivec],
+                                [Split(3)(adtens, aiscal, aivec)[0]],
+                                [adtens_val, 1, aivec_val], (Split))
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
