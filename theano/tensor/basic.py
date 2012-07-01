@@ -1872,6 +1872,9 @@ class TensorFromScalar(Op):
         out, = out_
         out[0] = numpy.asarray(s)
 
+    def infer_shape(self, node, in_shapes):
+        return [()]
+
     def grad(self, inp, grads):
         s, = inp
         dt, = grads

@@ -5955,6 +5955,13 @@ class TestInferShape(utt.InferShapeTester):
                                 [45], ScalarFromTensor,
                                 excluding=["local_tensor_scalar_tensor"])
 
+        # TensorFromScalar:
+        aiscal = scal.float64()
+
+        self._compile_and_check([aiscal],
+                                [TensorFromScalar()(aiscal)],
+                        [4.], TensorFromScalar)
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
