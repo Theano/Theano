@@ -35,7 +35,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
-        ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast)
+        ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6148,21 +6148,38 @@ class TestInferShape(utt.InferShapeTester):
                                 [45], ScalarFromTensor,
                                 excluding=["local_tensor_scalar_tensor"])
 
-        # TensorFromScalar:
+        # TensorFromScalar
         aiscal = scal.float64()
 
         self._compile_and_check([aiscal],
                                 [TensorFromScalar()(aiscal)],
                         [4.], TensorFromScalar)
 
-        # Rebroadcast:
+        # Rebroadcast
         adtens4 = dtensor4()
         adict = [(0, False), (1, True), (2, False), (3, True)]
         adtens4_val = rand(2, 1, 3, 1)
         self._compile_and_check([adtens4],
                                 [Rebroadcast(*adict)(adtens4)],
                                 [adtens4_val], Rebroadcast)
-        
+
+        # Alloc
+        randint = numpy.random.random_integers
+        adscal = dscalar()
+        aiscal = lscalar()
+        biscal = lscalar()
+        ciscal = lscalar()
+        discal = lscalar()
+        adscal_val = rand()
+        aiscal_val = randint(3, 5, size=())
+        biscal_val = randint(3, 5, size=())
+        ciscal_val = randint(3, 5, size=())
+        discal_val = randint(3, 5, size=())
+        self._compile_and_check([adscal, aiscal, biscal, ciscal, discal],
+                [Alloc()(adscal, aiscal, biscal, ciscal, discal)],
+                [adscal_val, aiscal_val, biscal_val,
+                 ciscal_val, discal_val], Alloc)
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
