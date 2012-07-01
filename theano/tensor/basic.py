@@ -5814,6 +5814,9 @@ class PermuteRowElements(Op):
 
         self._rec_perform(node, x, y, inverse, outs[0], curdim=0)
 
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
     def grad(self, inp, grads):
         x, y, inverse = inp
         gz, = grads
