@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye, Shape, Default)
+        tile, patternbroadcast, Eye, Shape, Default, Dot)
 from theano.tests import unittest_tools as utt
 
 
@@ -5895,7 +5895,20 @@ class TestInferShape(utt.InferShapeTester):
                                 [Default()(admat, bdmat)],
                                 [admat_val, bdmat_val], (Default))
 
+        # Dot
+        advec = dvector()
+        bdvec = dvector()
+        advec_val = rand(4)
+        bdvec_val = rand(4)
+        self._compile_and_check([advec, bdvec],
+                                [Dot()(advec, bdvec)],
+                                [advec_val, bdvec_val], (Dot, tensor.blas.Gemv,
+                                                         tensor.blas_c.CGemv))
 
+        self._compile_and_check([admat, bdmat],
+                                [Dot()(admat, bdmat)],
+                                [admat_val, bdmat_val], (Dot, tensor.blas.Gemm,
+                                                         tensor.blas.Dot22))
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
