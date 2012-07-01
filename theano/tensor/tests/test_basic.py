@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast)
+        tile, patternbroadcast, Eye)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6060,6 +6060,21 @@ class TestInferShape(utt.InferShapeTester):
                                 [Flatten(outdim)(adtens)],
                                 [adtens_val], Flatten)
 
+        # Eye
+        aiscal = iscalar()
+        biscal = iscalar()
+        ciscal = iscalar()
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [4, 4, 0], Eye)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [4, 5, 0], Eye)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [3, 5, 0], Eye)
 
 if __name__ == '__main__':
 
