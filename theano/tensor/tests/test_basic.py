@@ -36,7 +36,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye)
+        tile, patternbroadcast, Eye, Shape)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6119,6 +6119,13 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([aiscal, biscal, ciscal],
                                 [Eye()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Eye)
+
+        # Shape
+        # 'opt.Makevector' precludes optimizer from disentangling
+        # elements of shape
+        self._compile_and_check([adtens],
+                                [Shape()(adtens)],
+                                [adtens_val], (opt.MakeVector, Shape))
 
 if __name__ == '__main__':
 
