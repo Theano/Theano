@@ -35,7 +35,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
-        ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc)
+        ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
+        dtensor3)
 from theano.tests import unittest_tools as utt
 
 
@@ -5986,6 +5987,35 @@ class TestInferShape(utt.InferShapeTester):
                 [Alloc()(adscal, aiscal, biscal, ciscal, discal)],
                 [adscal_val, aiscal_val, biscal_val,
                  ciscal_val, discal_val], Alloc)
+
+        # MaxAndArgmax,
+        # Note: axis as a tensor.iscalar or constant conflicts with
+        # make_node in basic
+        adtens3 = dtensor3()
+        aiscal = iscalar()
+        aconst = 1
+        aiscal_val = randint(0, 2, size=())
+        adtens3_val = rand(4, 5, 3)
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, None),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 0),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 1),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 2),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, [0, 1, 2]),
+                [adtens3_val], MaxAndArgmax)
+
 
 if __name__ == '__main__':
 
