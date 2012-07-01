@@ -5426,6 +5426,12 @@ class Flatten(Op):
                         (numpy.prod(x.shape[outdim - 1:]),))
             out[0] = x.reshape(newshape)
 
+    def infer_shape(self, node, in_shapes):
+        in_shp, = in_shapes
+        out_shape = (in_shp[:self.outdim - 1] +
+                        (numpy.prod(in_shp[self.outdim - 1:]),))
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, = inp
         g_out, = grads
