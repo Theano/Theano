@@ -6169,6 +6169,14 @@ class TensorDotGrad(Op):
         newshapey[[newpos for newpos in idy]] = range(y.ndim)
         gy[0] = numpy.transpose(_gy, newshapey)
 
+    def infer_shape(self, node, in_shapes):
+        inp0_shp = [node.inputs[0].shape[i]
+                    for i in range(node.inputs[0].ndim)]
+        inp1_shp = [node.inputs[1].shape[i]
+                    for i in range(node.inputs[1].ndim)]
+        return [inp0_shp, inp1_shp]
+
+
 tensordot_grad = TensorDotGrad
 
 

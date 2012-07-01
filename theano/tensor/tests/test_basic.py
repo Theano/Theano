@@ -5823,6 +5823,40 @@ def test_transpose():
     assert numpy.all(t3d == numpy.transpose(x3v, [0, 2, 1]))
 
 
+class TestInferShape(utt.InferShapeTester):
+
+    def test_infer_shape(self):
+
+        # tensordot_grad
+        admat = dmatrix()
+        bdmat = dmatrix()
+        gzdmat = dmatrix()
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        gzdmat_val = rand(4, 3)
+        axes = 1
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+        axes = ((1, ), (0, ))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+
+if __name__ == '__main__':
+    
+    t = TestInferShape('setUp')
+    t.setUp()
+    t.test_infer_shape()
+
+
+
+
+
+
+"""
+
 if __name__ == '__main__':
     if 0:
         unittest.main()
@@ -5832,3 +5866,4 @@ if __name__ == '__main__':
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
         unittest.TextTestRunner(verbosity=2).run(suite)
+"""
