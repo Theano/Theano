@@ -1034,8 +1034,10 @@ class CrossentropyCategorical1HotGrad(gof.Op):
         for i in xrange(len(g_y)):
             g_coding[i, true_one_of_n[i]] = -g_y[i] / coding_dist[i,
                                                         true_one_of_n[i]]
-
         g_coding_strg[0] = g_coding
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[1]]
 
 crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
