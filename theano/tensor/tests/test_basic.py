@@ -38,7 +38,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
-        dtensor3, SpecifyShape, Mean)
+        dtensor3, SpecifyShape, Mean, IncSubtensor)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6298,7 +6298,35 @@ class TestInferShape(utt.InferShapeTester):
                                 [adtens3_val], Mean)
         """
 
+        # IncSubtensor
+        admat = dmatrix()
+        bdmat = dmatrix()
+        advec = dvector()
+        adscal = dscalar()
+        admat_val = rand(4, 4)
+        self._compile_and_check([admat, bdmat],
+                            [inc_subtensor(admat[2:4], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
 
+        self._compile_and_check([admat, advec],
+                            [inc_subtensor(admat[2], advec)],
+                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [inc_subtensor(admat[2, 3], adscal)],
+                            [admat_val, 1], IncSubtensor)
+
+        self._compile_and_check([admat, bdmat],
+                            [set_subtensor(admat[2:3], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
+
+        self._compile_and_check([admat, advec],
+                            [set_subtensor(admat[2], advec)],
+                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [set_subtensor(admat[2, ], adscal)],
+                            [admat_val, 1], IncSubtensor)
 
 
 if __name__ == '__main__':
