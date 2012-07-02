@@ -1648,6 +1648,11 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         out[:, 0].fill(self.val.data)
         out[:, 1:] = mat
 
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[0][0], in_shapes[0][1] + 1)
+        return [shp]
+        
+
     def grad(self, inp, grads):
         mat, = inp
         goutput, = grads
@@ -1696,6 +1701,10 @@ class Prepend_scalar_to_each_row(gof.Op):
             out = output[0]
         out[:, 0].fill(val)
         out[:, 1:] = mat
+
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[1][0], in_shapes[1][1] + 1)
+        return [shp]
 
     def grad(self, inp, grads):
         val, mat = inp

@@ -24,7 +24,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 softmax_with_bias, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
-from theano.tensor import dmatrix, dvector, lvector
+from theano.tensor import dmatrix, dvector, lvector, dscalar
 
 class T_sigmoid(unittest.TestCase):
     def setUp(self):
@@ -237,11 +237,9 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
                     CrossentropySoftmaxArgmax1HotWithBias)
 
 
-class T_prepend(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
+class T_prepend(utt.InferShapeTester):
     def test0(self):
-        """basic functionality"""
+      
         x=tensor.matrix('x')
         y=Prepend_scalar_constant_to_each_row(4.)(x)
         f=theano.function([x],[y])
@@ -250,8 +248,18 @@ class T_prepend(unittest.TestCase):
         self.assertTrue(my.shape == (3, 6), my.shape)
         self.assertTrue(numpy.all( my[:,0] == 4.0))
 
+    def test_infer_shape(self):
+        admat = dmatrix()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(3, 5)
+        adscal_val = rng.rand()
+        self._compile_and_check([admat],
+                   [Prepend_scalar_constant_to_each_row(adscal_val)(admat)],
+                    [admat_val],
+                    Prepend_scalar_constant_to_each_row)
 
-class T_prepend(unittest.TestCase):
+
+class T_prepend(utt.InferShapeTester):
     def test0(self):
         """basic functionality"""
         x=tensor.matrix('x')
@@ -261,6 +269,17 @@ class T_prepend(unittest.TestCase):
         my = f(m)
         self.assertTrue(my.shape == (3, 6))
         self.assertTrue(numpy.all(my[:,0] == 5.0))
+
+    def test_infer_shape(self):
+        admat = dmatrix()
+        adscal = dscalar()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(3, 5)
+        adscal_val = rng.rand()
+        self._compile_and_check([adscal, admat],
+                   [Prepend_scalar_to_each_row()(adscal, admat)],
+                    [adscal_val, admat_val],
+                    Prepend_scalar_to_each_row)
 
 class T_CrossentropyCategorical1Hot(unittest.TestCase):
     def setUp(self):
@@ -1131,7 +1150,7 @@ class Test_softmax_opt:
 
 if __name__ == '__main__':
 
-    t =  T_CrossentropySoftmaxArgmax1HotWithBias('setUp')
+    t =  T_prepend('setUp')
     t.setUp()
     t.test_infer_shape()
 
