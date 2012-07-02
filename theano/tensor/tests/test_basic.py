@@ -36,7 +36,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
-        dtensor3, SpecifyShape)
+        dtensor3, SpecifyShape, Mean)
 from theano.tests import unittest_tools as utt
 
 
@@ -6042,6 +6042,26 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens4, aivec],
                                 [SpecifyShape()(adtens4, aivec)],
                                 [adtens4_val, aivec_val], SpecifyShape)
+
+        # Mean: basic 3047
+        # TODO: conflict between following lines of _init_ and perform
+        # in basic.py
+        #
+        # elemwise.CAReduce.__init__(self, scal.add, axis)
+        # output[0] = numpy.mean(input, axis=self.axis)
+        #
+        # to be resolved as desired/appropriate
+
+        """
+        adtens3_val = rand(3, 4, 5)
+        aiscal_val = 2
+
+        self._compile_and_check([adtens3],
+                                [Mean(aiscal_val)(adtens3)],
+                                [adtens3_val], Mean)
+        """
+
+
 
 
 if __name__ == '__main__':
