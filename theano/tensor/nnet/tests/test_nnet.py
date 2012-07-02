@@ -19,6 +19,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_softmax_argmax_1hot_with_bias,
                                 CrossentropySoftmax1HotWithBiasDx,
                                 CrossentropySoftmaxArgmax1HotWithBias,
+                                CrossentropyCategorical1Hot,
                                 sigmoid, softplus,
                                 Softmax, softmax, SoftmaxWithBias, softmax_grad,
                                 softmax_with_bias, SoftmaxGrad,
@@ -281,10 +282,8 @@ class T_prepend(utt.InferShapeTester):
                     [adscal_val, admat_val],
                     Prepend_scalar_to_each_row)
 
-class T_CrossentropyCategorical1Hot(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
-
+        
+class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
     def test_grad(self):
         x = tensor.matrix('x')
         one_of_n = tensor.lvector('one_of_n')
@@ -306,6 +305,16 @@ class T_CrossentropyCategorical1Hot(unittest.TestCase):
 
         tensor.verify_grad(oplike, [x_val], rng=numpy.random)
 
+    def test_infer_shape(self):
+        admat = dmatrix()
+        alvec = lvector()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(3, 2)
+        alvec_val = [0, 1, 0]
+        self._compile_and_check([admat, alvec],
+                    [CrossentropyCategorical1Hot()(admat, alvec)],
+                    [admat_val, alvec_val],
+                    CrossentropyCategorical1Hot)
 
     def test_softmax_optimizations(self):
         x = tensor.matrix('x')
@@ -1150,11 +1159,9 @@ class Test_softmax_opt:
 
 if __name__ == '__main__':
 
-    t =  T_prepend('setUp')
+    t = T_CrossentropyCategorical1Hot('setUp')
     t.setUp()
     t.test_infer_shape()
-
-
 
 
 

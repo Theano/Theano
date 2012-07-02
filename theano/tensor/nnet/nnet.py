@@ -1036,6 +1036,7 @@ class CrossentropyCategorical1HotGrad(gof.Op):
                                                         true_one_of_n[i]]
 
         g_coding_strg[0] = g_coding
+
 crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 
@@ -1093,6 +1094,9 @@ class CrossentropyCategorical1Hot(gof.Op):
         for i in xrange(len(y)):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
+
+    def infer_shape(self, node, in_shapes):
+        return [(in_shapes[0][0],)]
 
     def grad(self, inp, grads):
         coding, one_of_n = inp
