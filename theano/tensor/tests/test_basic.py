@@ -36,7 +36,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
-        dtensor3, SpecifyShape, Mean, IncSubtensor)
+        dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6255,6 +6255,7 @@ class TestInferShape(utt.InferShapeTester):
         """
 
         # IncSubtensor
+        # TODO: populate with tensors of varying dimensions
         admat = dmatrix()
         bdmat = dmatrix()
         advec = dvector()
@@ -6284,7 +6285,49 @@ class TestInferShape(utt.InferShapeTester):
                             [set_subtensor(admat[2, ], adscal)],
                             [admat_val, 1], IncSubtensor)
 
+        # AdvancedIncSubtensor1
+        # TODO: populate with tensors and lists of varying dimensions and lengths
+        admat = dmatrix()
+        bdmat = dmatrix()
+        advec = dvector()
+        adscal = dscalar()
+        admat_val = rand(4, 4)
+        bdvec_val = [2, 3]
+        self._compile_and_check([admat, bdmat],
+                            [set_subtensor(admat[bdvec_val], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
 
+        bdvec_val = [1, 3, 2]
+        self._compile_and_check([admat, advec],
+                            [set_subtensor(admat[bdvec_val], advec)],
+                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+
+        bdvec_val = [0, 3, 0]
+        self._compile_and_check([admat, adscal],
+                            [set_subtensor(admat[bdvec_val], adscal)],
+                            [admat_val, 1], AdvancedIncSubtensor1)
+        
+        """
+        ## Note: (!!) inc_subtensor fails on line 5784 in perform in basic.py
+        bdvec_val = [2, 3]
+        self._compile_and_check([admat, bdmat],
+                            [inc_subtensor(admat[bdvec_val], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
+
+        bdvec_val = [1, 3, 2]
+        self._compile_and_check([admat, advec],
+                            [inc_subtensor(admat[bdvec_val], advec)],
+                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+
+        bdvec_val = [0, 3, 0]
+        self._compile_and_check([admat, adscal],
+                            [inc_subtensor(admat[bdvec_val], adscal)],
+                            [admat_val, 1], AdvancedIncSubtensor1)
+        """
+
+
+
+        
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
