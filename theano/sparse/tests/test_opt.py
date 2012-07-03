@@ -40,6 +40,10 @@ def test_local_csm_grad_c():
     indices, indptr, shape = (tensor.ivector(), tensor.ivector(),
                               tensor.ivector())
     mode = theano.compile.mode.get_default_mode()
+
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.Mode(linker='c|py', optimizer='fast_compile')
+
     mode = mode.including("specialize", "local_csm_grad_c")
     for CS, cast in [(CSC, sp.csc_matrix), (CSR, sp.csr_matrix)]:
         cost = tensor.sum(DenseFromSparse()(CS(data, indices, indptr, shape)))
