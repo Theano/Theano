@@ -3136,6 +3136,21 @@ def local_cut_useless_reduce(node):
             return [summed]
 
 
+@register_canonicalize
+@gof.local_optimizer([])
+def local_sum_broadcastable(node):
+    """Remove reduction over broadcastable dimensions"""
+    if isinstance(node.op, T.CAReduce) and node.op.axis is not None:
+        reduced, = node.inputs
+        axis = list(node.op.axis)
+        cuttable = [a for a in axis if reduced.broadcastable[a]]
+        if cuttable == axis:
+            # -- in this case we can remove the reduction completely
+            pattern = [p for p in range(reduced.ndim) if p not in cuttable]
+            rval = reduced.dimshuffle(*pattern)
+            return [rval]
+
+
 @register_specialize
 @gof.local_optimizer([])
 def local_sum_alloc(node):
