@@ -6,9 +6,7 @@ from theano.tensor.signal.downsample import DownsampleFactorMax, max_pool_2d
 from theano import function, Mode
 
 
-class TestDownsampleFactorMax(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
+class TestDownsampleFactorMax(utt.InferShapeTester):
 
     @staticmethod
     def numpy_max_pool_2d(input, ds, ignore_border=False):
@@ -158,7 +156,35 @@ class TestDownsampleFactorMax(unittest.TestCase):
 #                    return max_pool_2d(input, maxpoolshp, ignore_border)
 #                utt.verify_grad(mp, [imval], rng=rng)
 
+    def test_infer_shape(self):
 
+        ## TODO: maxpoolshp != (1, 1) fails with ignore_border == False
+        # see function out_shape in class DownsampleFactorMax
+
+        images = tensor.dtensor4()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3))
+        # maxpoolshps = ((1, 1), (2, 3), (3, 2))
+        imval = rng.rand(4, 10, 64, 64)
+        # imval = rng.rand(2, 3, 3, 4)
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True]:
+            # for ignore_border in [True, False]:
+                self._compile_and_check([images],
+                        [DownsampleFactorMax(maxpoolshp,
+                        ignore_border=ignore_border)(images)],
+                        [imval], DownsampleFactorMax)
+
+
+"""
 
 if __name__ == '__main__':
     unittest.main()
+
+"""
+
+if __name__ == '__main__':
+
+    t = TestDownsampleFactorMax('setUp')
+    t.setUp()
+    t.test_infer_shape()
