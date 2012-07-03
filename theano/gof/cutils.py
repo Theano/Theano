@@ -1,11 +1,12 @@
-import os, sys
+import os
+import sys
 from compilelock import get_lock, release_lock
 from theano import config
 
 # TODO These two lines may be removed in the future, when we are 100% sure
 # noone has an old cutils_ext.so lying around anymore.
-if os.path.exists(os.path.join(config.compiledir,'cutils_ext.so')):
-    os.remove(os.path.join(config.compiledir,'cutils_ext.so'))
+if os.path.exists(os.path.join(config.compiledir, 'cutils_ext.so')):
+    os.remove(os.path.join(config.compiledir, 'cutils_ext.so'))
 
 
 def compile_cutils():
