@@ -163,7 +163,8 @@ class _HVStackTester(utt.InferShapeTester):
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             self._compile_and_check(self.x[format],
-                                    [self.op_class()(*self.x[format])],
+                                    [self.op_class(theano.config.floatX)
+                                     (*self.x[format])],
                                     self.mat[format],
                                     self.op_class)
 
@@ -171,15 +172,11 @@ class _HVStackTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for out_f in sparse.sparse_formats:
                 for dtype in sparse.float_dtypes:
-                    eps = None
-                    if dtype == 'float32':
-                        eps = 7e-4
-
                     verify_grad_sparse(
                         self.op_class(format=out_f, dtype=dtype),
                         self.mat[format],
                         structured=False,
-                        eps=eps)
+                        eps=7e-4)
 
 
 def _hv_switch(op, expected_function):
@@ -195,10 +192,6 @@ def _hv_switch(op, expected_function):
 
         def expected_f(self, a, format=None, dtype=None):
             return expected_function(a, format, dtype)
-
-        def setUp(self):
-            super(XStackTester, self).setUp()
-
     return XStackTester
 
 HStackTester = _hv_switch(S2.HStack, sp.hstack)
