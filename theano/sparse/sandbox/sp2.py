@@ -76,7 +76,7 @@ class HStack(gof.op.Op):
     """Stack sparse matrices horizontally (column wise).
 
     :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format. Defaul
+    :param format: String representing the output format. Default
                    is csc.
     :param dtype: Output dtype. Must be specified.
 
@@ -87,7 +87,7 @@ class HStack(gof.op.Op):
     - The grad implemented is regular, i.e. not structured.
     """
 
-    def __init__(self, dtype, format=None):
+    def __init__(self, format=None, dtype=None):
         if format is None:
             self.format = 'csc'
         else:
@@ -123,19 +123,24 @@ class HStack(gof.op.Op):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
                         for i in range(len(inputs))]
 
-        if all(is_continuous):
-            if _is_sparse_variable(gz):
-                gz = sparse.DenseFromSparse()(gz)
+        if _is_sparse_variable(gz):
+            gz = sparse.DenseFromSparse()(gz)
 
-            split = tensor.Split(len(inputs))(gz, 1,
-                                              tensor.stack(
-                                                  *[x.shape[1]
-                                                    for x in inputs]))
-            if not isinstance(split, list):
-                split = [split]
-            return [sparse.SparseFromDense(self.format)(s) for s in split]
-        else:
-            return [None] * len(inputs)
+        split = tensor.Split(len(inputs))(gz, 1,
+                                          tensor.stack(
+                                              *[x.shape[1]
+                                                for x in inputs]))
+        if not isinstance(split, list):
+            split = [split]
+
+        derivative =  [sparse.SparseFromDense(self.format)(s) for s in split]
+
+        def choose(continuous, derivative):
+            if continuous:
+                return derivative
+            else:
+                return None
+        return [choose(c, d) for c, d in zip(is_continuous, derivative)]
 
     def infer_shape(self, node, ins_shapes):
         def _get(l):
@@ -153,9 +158,9 @@ def hstack(blocks, format=None, dtype=None):
     This wrap the method hstack from scipy.
 
     :param blocks: List of sparse array of compatible shape.
-    :param format: String representing the output format. Defaul
+    :param format: String representing the output format. Default
                    is csc.
-    :param dtype: Output dtype. Must be specified.
+    :param dtype: Output dtype.
 
     :return: The concatenation of the sparse array column wise.
 
@@ -164,16 +169,17 @@ def hstack(blocks, format=None, dtype=None):
     - The grad implemented is regular, i.e. not structured.
     """
 
+    blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        raise ValueError('The output dtype must be specified.')
-    return HStack(dtype, format=format)(*blocks)
+        dtype = theano.scalar.upcast([i.dtype for i in blocks])
+    return HStack(format=format, dtype=dtype)(*blocks)
 
 
 class VStack(HStack):
     """Stack sparse matrices vertically (row wise).
 
     :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format. Defaul
+    :param format: String representing the output format. Default
                    is csc.
     :param dtype: Output dtype. Must be specified.
 
@@ -194,19 +200,24 @@ class VStack(HStack):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
                         for i in range(len(inputs))]
 
-        if all(is_continuous):
-            if _is_sparse_variable(gz):
-                gz = sparse.DenseFromSparse()(gz)
+        if _is_sparse_variable(gz):
+            gz = sparse.DenseFromSparse()(gz)
 
-            split = tensor.Split(len(inputs))(gz, 0,
-                                              tensor.stack(
-                                                  *[x.shape[0]
-                                                    for x in inputs]))
-            if not isinstance(split, list):
-                split = [split]
-            return [sparse.SparseFromDense(self.format)(s) for s in split]
-        else:
-            return [None] * len(inputs)
+        split = tensor.Split(len(inputs))(gz, 0,
+                                          tensor.stack(
+                                              *[x.shape[0]
+                                                for x in inputs]))
+        if not isinstance(split, list):
+            split = [split]
+
+        derivative = [sparse.SparseFromDense(self.format)(s) for s in split]
+
+        def choose(continuous, derivative):
+            if continuous:
+                return derivative
+            else:
+                return None
+        return [choose(c, d) for c, d in zip(is_continuous, derivative)]
 
     def infer_shape(self, node, ins_shapes):
         def _get(l):
@@ -221,7 +232,7 @@ def vstack(blocks, format=None, dtype=None):
     This wrap the method vstack from scipy.
 
     :param blocks: List of sparse array of compatible shape.
-    :param format: String representing the output format. Defaul
+    :param format: String representing the output format. Default
                    is csc.
     :param dtype: Output dtype.
 
@@ -232,8 +243,9 @@ def vstack(blocks, format=None, dtype=None):
     - The grad implemented is regular, i.e. not structured.
     """
 
+    blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        raise ValueError('The output dtype must be specified.')
+        dtype = theano.scalar.upcast([i.dtype for i in blocks])
     return VStack(format=format, dtype=dtype)(*blocks)
 
 
