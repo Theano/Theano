@@ -163,8 +163,7 @@ class _HVStackTester(utt.InferShapeTester):
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             self._compile_and_check(self.x[format],
-                                    [self.op_class(theano.config.floatX)
-                                     (*self.x[format])],
+                                    [self.op_class(dtype='float64')(*self.x[format])],
                                     self.mat[format],
                                     self.op_class)
 
