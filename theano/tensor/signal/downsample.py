@@ -149,6 +149,10 @@ class DownsampleFactorMax(Op):
                         zj = j / ds1
                         zz[n,k,zi,zj] = __builtin__.max(zz[n,k,zi,zj], x[n,k,i,j])
 
+    def infer_shape(self, node, in_shapes):
+        shp = self.out_shape(in_shapes[0], self.ds, self.ignore_border)
+        return [shp]
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
@@ -274,6 +278,9 @@ class DownsampleFactorMaxGrad(Op):
                             gx[n,k,i,j] = gz[n,k,zi,zj]
                         else: gx[n,k,i,j] = 0
         gx_stg[0] = gx
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
 
     def c_code(self, node, name, inp, out, sub):
         x, z, gz = inp
