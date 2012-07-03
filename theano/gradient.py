@@ -179,8 +179,17 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     _logger.warning('%s.grad returned a different type (%s) '
                             'for input %i of type (%s)',
                             node.op, g_r_type, ii, r_type)
-            if g_r and len(sources) == 1 and sources[0][0].name and r.name:
-                g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
+            #The following name assignment code is broken
+            #for example, when you call
+            #f = T.dot(x,T.dot(A,x))
+            #f.name = 'f'
+            #T.grad( f, x)
+            #the result has no name, and is composed of
+            # A x + A^T x
+            # with both terms named "(df/dx)"
+            #if g_r is not None and len(sources) == 1 and sources[0][0].name \
+            #        and r.name:
+            #    g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None:
                 assert r is not None
                 if r in gmap:
@@ -519,6 +528,10 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
                         "'ignore', 'warn' and 'raise'.")
             ret.append(p.zeros_like())
 
+        if cost.name is not None and p.name is not None \
+                and ret[-1].name is None:
+            ret[-1].name = '(d%s/d%s)' % (cost.name, p.name)
+
     return format_as(using_list, using_tuple, ret)
 
 
@@ -596,7 +609,7 @@ class numeric_grad(object):
         #      raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
-        
+
         working_dtype = __builtin__.min((self.type_eps[dt], dt)
                                         for dt in dtypes)[1]
 
@@ -606,7 +619,7 @@ class numeric_grad(object):
             gx = numpy.ndarray((total_size,), dtype=out_type)
         else:
             gx = numpy.ndarray((total_size,), dtype=working_dtype)
-        
+
         if eps is None:
             eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
 
@@ -633,13 +646,13 @@ class numeric_grad(object):
             x[i] += eps
             f_eps = f(*apt)
 
-            # TODO: remove this when it is clear that the next 
+            # TODO: remove this when it is clear that the next
             # replacemement does not pose problems of its own.  It was replaced
             # for its inability to handle complex variables.
             # gx[i] = numpy.asarray((f_eps - f_x) / eps)
 
             gx[i] = ((f_eps - f_x) / eps)
-            
+
         if packed_pt:
             self.gf = self.gf[0]
 
