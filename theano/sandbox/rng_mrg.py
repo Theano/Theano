@@ -618,7 +618,7 @@ def guess_n_streams(size, warn=True):
             r *= s
         if r > 6:
             r = r/6 # chosen as fastest for rbm_benchmark
-        return r
+        return min(r, 30 * 256)
     else:
         if warn:
             warnings.warn((
