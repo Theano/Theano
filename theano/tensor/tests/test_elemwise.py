@@ -202,9 +202,7 @@ class test_Broadcast(unittest.TestCase):
         assert (f(xv) == zv).all()
 
 
-class test_CAReduce(unittest.TestCase):
-    def setUp(self):
-        unittest_tools.seed_rng()
+class test_CAReduce(unittest_tools.InferShapeTester):
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
@@ -410,6 +408,29 @@ class test_CAReduce(unittest.TestCase):
                              test_nan=True)
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
+
+    def test_infer_shape(self):
+        # Note: will fail upon submission of following (xsh, tosum) tuples:
+        # ((5, 6), ()), ((5, 0), ()), ((), None), ((), ())]:
+        for xsh, tosum in [((5, 6), None),
+                           ((5, 6), (0, 1)),
+                           ((5, 6), (0, )),
+                           ((5, 6), (1, )),
+                           ((5, 6), (-1, )),
+                           ((5, 6), (-2, )),
+                           ((2, 3, 4, 5), (0, 1, 3)),
+                           ((2, 3, 4, 5), (-2, -3)),
+                           ((5, 0), None),
+                           ((5, 0), (0, )),
+                           ((5, 0), (1, ))]:
+            dtype = theano.config.floatX
+            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            if tosum is None:
+                tosum = range(len(xsh))
+            xv = numpy.asarray(numpy.random.rand(*xsh))
+            self._compile_and_check([x],
+                            [CAReduce(add, axis=tosum)(x)],
+                            [xv], CAReduce)
 
 
 class test_Prod(unittest.TestCase):
@@ -783,7 +804,7 @@ if __name__ == '__main__':
     
 if __name__ == '__main__':
 
-    t = test_DimShuffle('setUp')
+    t = test_CAReduce('setUp')
     t.setUp()
     t.test_infer_shape()
 
