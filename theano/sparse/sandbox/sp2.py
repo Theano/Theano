@@ -76,8 +76,9 @@ class HStack(gof.op.Op):
     """Stack sparse matrices horizontally (column wise).
 
     :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format.
-    :param dtype: Output dtype.
+    :param format: String representing the output format. Defaul
+                   is csc.
+    :param dtype: Output dtype. Must be specified.
 
     :return: The concatenation of the sparse arrays column wise.
 
@@ -86,15 +87,15 @@ class HStack(gof.op.Op):
     - The grad implemented is regular, i.e. not structured.
     """
 
-    def __init__(self, format=None, dtype=None):
+    def __init__(self, dtype, format=None):
         if format is None:
             self.format = 'csc'
         else:
             self.format = format
+
         if dtype is None:
-            self.dtype = theano.config.floatX
-        else:
-            self.dtype = dtype
+            raise ValueError('The output dtype must be specified.')
+        self.dtype = dtype
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -152,26 +153,29 @@ def hstack(blocks, format=None, dtype=None):
     This wrap the method hstack from scipy.
 
     :param blocks: List of sparse array of compatible shape.
-    :param format: String representing the output format.
-    :param dtype: Output dtype.
+    :param format: String representing the output format. Defaul
+                   is csc.
+    :param dtype: Output dtype. Must be specified.
 
     :return: The concatenation of the sparse array column wise.
 
     :note:
     - The number of line of the sparse matrix must agree.
     - The grad implemented is regular, i.e. not structured.
-
     """
 
-    return HStack(format=format, dtype=dtype)(*blocks)
+    if dtype is None:
+        raise ValueError('The output dtype must be specified.')
+    return HStack(dtype, format=format)(*blocks)
 
 
 class VStack(HStack):
     """Stack sparse matrices vertically (row wise).
 
     :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format.
-    :param dtype: Output dtype.
+    :param format: String representing the output format. Defaul
+                   is csc.
+    :param dtype: Output dtype. Must be specified.
 
     :return: The concatenation of the sparse arrays row wise.
 
@@ -211,13 +215,14 @@ class VStack(HStack):
         return [(d, ins_shapes[0][1])]
 
 
-def hstack(blocks, format=None, dtype=None):
+def vstack(blocks, format=None, dtype=None):
     """Stack sparse matrices vertically (row wise).
 
     This wrap the method vstack from scipy.
 
     :param blocks: List of sparse array of compatible shape.
-    :param format: String representing the output format.
+    :param format: String representing the output format. Defaul
+                   is csc.
     :param dtype: Output dtype.
 
     :return: The concatenation of the sparse array row wise.
@@ -226,6 +231,9 @@ def hstack(blocks, format=None, dtype=None):
     - The number of column of the sparse matrix must agree.
     - The grad implemented is regular, i.e. not structured.
     """
+
+    if dtype is None:
+        raise ValueError('The output dtype must be specified.')
     return VStack(format=format, dtype=dtype)(*blocks)
 
 
@@ -270,11 +278,8 @@ class AddSSData(gof.op.Op):
     def grad(self, inputs, (gz, )):
         is_continuous = [(i.dtype in sparse.continuous_dtypes)
                          for i in inputs]
-
-        if all(is_continuous):
-            return [gz, gz]
-        else:
-            return [None] * len(inputs)
+        derivative = {True: gz, False: None}
+        return [derivative[b] for b in is_continuous]
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
