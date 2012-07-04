@@ -7255,7 +7255,7 @@ def adv_broadcastable(a, idx):
         if isinstance(v.type, SliceType): 
             return slice(None,None)
  
-        return numpy.zeros( (1,)* v.ndim, int)
+        return numpy.zeros( (2,)* v.ndim, int)
     
     newidx = tuple(map(replace_slice, idx))
     
