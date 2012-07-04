@@ -22,7 +22,7 @@ class T_module(unittest.TestCase):
         class Blah(Module):
             def __init__(self, stepsize):
                 super(Blah, self).__init__()
-                self.stepsize = T.value(stepsize)
+                self.stepsize = T.constant(stepsize)
                 x = T.dscalar()
 
                 self.step = Method([x], x - self.stepsize)
@@ -128,7 +128,7 @@ class T_module(unittest.TestCase):
                     assert i[0]==j
 
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
-        local_test(lambda:T.value(1),lambda:T.value(2))
+        local_test(lambda:T.constant(1),lambda:T.constant(2))
         local_test(lambda:T.constant(1),lambda:T.constant(2))
 
     def test_list_assign(self):
@@ -151,7 +151,6 @@ class T_module(unittest.TestCase):
             assert numpy.all(4 == m.g())
 
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
-        local_test(lambda:T.value(1),lambda:T.value(2))
 
     def test_tuple_assign(self):
         """Test that list members can be assigned tuple-wise"""
@@ -170,7 +169,6 @@ class T_module(unittest.TestCase):
             assert 4 == m.g()
 
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
-        local_test(lambda:T.value(1),lambda:T.value(2))
 
     def test_dict_assign(self):
         """Test that list members can be assigned dict-wise"""
@@ -191,8 +189,6 @@ class T_module(unittest.TestCase):
 
         #print 'dscalar test'
         local_test(lambda:T.dscalar(),lambda:T.dscalar())
-        #print 'value test'
-        local_test(lambda:T.value(1),lambda:T.value(2))
 
 
     def test_method_in_list_or_dict(self):
@@ -451,16 +447,6 @@ class T_module(unittest.TestCase):
 
         assert numpy.all(m.f(xval) == [1, 2.5])
         assert numpy.all(xval == [-1, -1.5])
-
-    def test_member_value(self):
-        """Test that module Members of Value work correctly. As Variable?"""
-        M = Module()
-        x = T.dscalar()
-        M.y = T.value(40)
-        M.f = Method([x], x + 2 * M.y)
-        m = M.make()
-        m.y = 80
-        assert m.f(20) == 180
 
     def test_member_constant(self):
         """Test that module Members of Constant work correctly.

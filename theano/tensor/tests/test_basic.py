@@ -30,12 +30,13 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, tensordot_grad,  TensorType, unbroadcast,
-        var, value, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
+        var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast)
 from theano.tests import unittest_tools as utt
+from theano.printing import debugprint
 
 
 imported_scipy_special = False
@@ -210,9 +211,10 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 raise SkipTest(skip)
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
-                inputrs = [value(input) for input in inputs]
+                inputrs = [ TensorType( dtype = input.dtype, broadcastable =
+                             [ shape_elem == 1 for shape_elem in input.shape]
+                             )() for input in inputs]
                 try:
-                    #node = self.op.make_node(*inputrs)
                     node = safe_make_node(self.op, *inputrs)
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
@@ -287,7 +289,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 raise SkipTest(skip)
             for testname, inputs in self.bad_build.items():
                 inputs = [copy(input) for input in inputs]
-                inputrs = [value(input) for input in inputs]
+                inputrs = [shared(input) for input in inputs]
                 self.assertRaises(Exception,
                     safe_make_node, self.op, *inputrs)
                 # The old error string was ("Test %s::%s: %s was successfully
@@ -299,7 +301,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 raise SkipTest(skip)
             for testname, inputs in self.bad_runtime.items():
                 inputs = [copy(input) for input in inputs]
-                inputrs = [value(input) for input in inputs]
+                inputrs = [shared(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
                 except Exception, exc:
@@ -310,7 +312,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     raise
 
                 try:
-                    f = inplace_func(inputrs, node.outputs, mode=mode)
+                    f = inplace_func([], node.outputs, mode=mode)
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a Function") % (self.op, testname)
@@ -321,7 +323,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # one?
                 # TODO: test that only this one is raised and catch only this
                 # one or the subset that get raised.
-                self.assertRaises(Exception, f, *inputs)
+                self.assertRaises(Exception, f, [])
 
         def test_grad(self):
             if skip:
@@ -332,7 +334,6 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             try:
                 for testname, inputs in self.grad.items():
                     inputs = [copy(input) for input in inputs]
-                    inputrs = [value(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs,
                                 mode=self.mode,
@@ -3796,17 +3797,17 @@ class T_add(unittest.TestCase):
 
     def test_complex_all_ops(self):
         for nbits in (64, 128):
-            a = value(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
-            b = value(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
+            a = shared(numpy.ones(3, dtype='complex%i' % nbits)+0.5j)
+            b = shared(numpy.ones(3, dtype='complex%i' % nbits)+1.5j)
             tests = (("+", lambda x,y: x+y),
                      ("-", lambda x,y: x-y),
                      ("*", lambda x,y: x*y),
                      ("/", lambda x,y: x/y))
             for s, fn in tests:
-                f = inplace_func([a,b], fn(a, b))
+                f = inplace_func([], fn(a, b))
                 #print 'valid output:', fn(a.data, b.data)
                 #print 'theano output:', f(a.data, b.data)
-                self.assertTrue(a.type.values_eq_approx(fn(a.data, b.data), f(a.data, b.data)))
+                self.assertTrue(a.type.values_eq_approx(fn(a.get_value(), b.get_value()), f()))
 
     def test_grad_scalar_l(self):
         utt.verify_grad(add, [numpy.asarray([3.0]), rand(3)])

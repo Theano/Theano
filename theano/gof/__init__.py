@@ -9,10 +9,10 @@ from env import \
     InconsistencyError, MissingInputError, Env
 
 from destroyhandler import \
-    DestroyHandler 
+    DestroyHandler
 
 from graph import \
-    Apply, Variable, Constant, Value, view_roots
+    Apply, Variable, Constant, view_roots
 
 from link import \
     Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany
@@ -21,11 +21,11 @@ from op import \
     Op, PureOp, ops_with_inner_function
 
 from opt import (Optimizer, optimizer, SeqOptimizer,
-    MergeOptimizer, MergeOptMerge, 
-    LocalOptimizer, local_optimizer, LocalOptGroup, 
-    OpSub, OpRemove, PatternSub, 
-    NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer, 
-    InplaceOptimizer, PureThenInplaceOptimizer, 
+    MergeOptimizer, MergeOptMerge,
+    LocalOptimizer, local_optimizer, LocalOptGroup,
+    OpSub, OpRemove, PatternSub,
+    NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer,
+    InplaceOptimizer, PureThenInplaceOptimizer,
     OpKeyOptimizer)
 
 from optdb import \
