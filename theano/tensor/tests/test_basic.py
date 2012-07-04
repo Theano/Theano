@@ -215,10 +215,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                              [ shape_elem == 1 for shape_elem in input.shape]
                              )() for input in inputs]
                 try:
-                    #node = self.op.make_node(*inputrs)
                     node = safe_make_node(self.op, *inputrs)
-                    print 'node: '
-                    print node
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                             " making a node with inputs %s") % (
@@ -228,13 +225,6 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode)
-                    try:
-                        for i, output in f.maker.env.outputs:
-                            print 'output',i
-                            debugprint(output)
-                    except:
-                        print 'only one output?'
-                        debugprint(f.maker.env.outputs)
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
@@ -344,7 +334,6 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             try:
                 for testname, inputs in self.grad.items():
                     inputs = [copy(input) for input in inputs]
-                    #inputrs = [shared(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs,
                                 mode=self.mode,

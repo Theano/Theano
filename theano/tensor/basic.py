@@ -1787,8 +1787,6 @@ elemwise.as_tensor_variable = as_tensor_variable
 elemwise.TensorType = TensorType
 elemwise.TensorVariable = TensorVariable
 elemwise.TensorConstant = TensorConstant
-#elemwise.TensorValue = TensorValue
-
 
 #########################
 # Utilities

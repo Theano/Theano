@@ -4,8 +4,6 @@ from theano import function
 from theano.tensor.basic import (_convert_to_int32, _convert_to_int8, _convert_to_int16,
         _convert_to_int64, _convert_to_float32, _convert_to_float64)
 from theano.tensor import *
-from theano import shared
-value = shared
 
 
 class test_casting(unittest.TestCase):
