@@ -21,3 +21,15 @@ can't do this as we are working with symbolic variables. You can use
 
 Also we can't change the above error message into a more explicit one
 because of some other Python internal behavior that can't be modified.
+
+
+Faster gcc optimization
+-----------------------
+
+You can enable faster gcc optimization with the cxxflags. This list of flags was suggested on the mailing list::
+
+
+    cxxflags=-march=native -O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer
+
+Use it at your own risk. Some people warned that the -ftree-loop-distribution optimization caused them wrong results in the past.
+Also the -march=native must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.
