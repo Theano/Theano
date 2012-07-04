@@ -1924,7 +1924,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
                 assert self.perform_using_take == True, (
                     "GpuAdvancedSubtensor1 used the fast version")
             if idx.dtype != numpy.int64:
-                if idx.dtype in [numpy.int8, numpyt.int16, numpy.int32,
+                if idx.dtype in [numpy.int8, numpy.int16, numpy.int32,
                                  numpy.int64, numpy.uint8, numpy.uint16,
                                  numpy.uint32]:
                     idx = idx.astype(numpy.int64)
