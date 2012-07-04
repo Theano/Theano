@@ -48,6 +48,10 @@ AddConfigVar('cmodule.remove_gxx_opt',
              "The parameter -g is passed by default to g++",
              BoolParam(False))
 
+AddConfigVar('cmodule.compilation_warning',
+             "If True, will print compilation warning.",
+             BoolParam(False))
+
 
 def local_bitwidth():
     """
@@ -1578,6 +1582,9 @@ class GCC_compiler(object):
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
                             (status, compile_stderr.replace('\n', '. ')))
+        elif config.cmodule.compilation_warning and compile_stderr:
+            # Print errors just below the command line.
+            print compile_stderr
 
         #touch the __init__ file
         file(os.path.join(location, "__init__.py"), 'w').close()
