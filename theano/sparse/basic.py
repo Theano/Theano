@@ -523,6 +523,7 @@ uint_dtypes = [t for t in all_dtypes if t[:4] == 'uint']
 continuous_dtypes = complex_dtypes + float_dtypes
 discrete_dtypes = int_dtypes + uint_dtypes
 
+
 # CONSTRUCTION
 class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr
@@ -770,19 +771,19 @@ class CSMGrad(gof.op.Op):
             sp_dim = x_shape[1]
         else:
             sp_dim = x_shape[0]
-        
+
         g_row = numpy.zeros(sp_dim, dtype=g_data.dtype)
         gout_data = numpy.zeros_like(x_data)
         for i in range(len(x_indptr) - 1):
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
                 g_row[g_indices[j_ptr]] += g_data[j_ptr]
-            
+
             for j_ptr in range(x_indptr[i], x_indptr[i + 1]):
                 gout_data[j_ptr] = g_row[x_indices[j_ptr]]
-            
+
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
                 g_row[g_indices[j_ptr]] = 0
-        
+
         if self.kmap is None:
             g_out[0] = gout_data
         else:
@@ -809,7 +810,8 @@ class CSMGradC(gof.Op):
     def __str__(self):
         return self.__class__.__name__
 
-    def make_node(self, a_val, a_ind, a_ptr, a_dim, b_val, b_ind, b_ptr, b_dim):
+    def make_node(self, a_val, a_ind, a_ptr, a_dim,
+                  b_val, b_ind, b_ptr, b_dim):
         return gof.Apply(self, [a_val, a_ind, a_ptr, a_dim,
              b_val, b_ind, b_ptr, b_dim], [b_val.type()])
 
@@ -821,7 +823,7 @@ class CSMGradC(gof.Op):
             raise NotImplementedError('Complex types are not supported for a_val')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b_val')
-        
+
         return """
         if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
         if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
@@ -835,22 +837,22 @@ class CSMGradC(gof.Op):
 
         if (%(a_ptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
-        
+
         if (%(b_ind)s->descr->type_num != PyArray_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "b_ind dtype not INT32"); %(fail)s;}
 
         if (%(b_ptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "b_ptr dtype not INT32"); %(fail)s;}
-        
+
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_val and a_ind have different lengths"); %(fail)s;}
-        
+
         if (%(b_val)s->dimensions[0] != %(b_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "b_val and b_ind have different lengths"); %(fail)s;}
-        
+
         if (%(a_ptr)s->dimensions[0] != %(b_ptr)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr and b_ptr have different lengths"); %(fail)s;}
-        
+
         if ((!%(z)s) || (%(z)s->dimensions[0] != %(a_val)s->dimensions[0]))
         {
             {Py_XDECREF(%(z)s);}
@@ -864,9 +866,9 @@ class CSMGradC(gof.Op):
             npy_intp M = %(a_ptr)s->dimensions[0] - 1;
             npy_intp a_dim_0 = ((npy_int32 *)%(a_dim)s->data)[0];
             npy_intp a_dim_1 = ((npy_int32 *)%(a_dim)s->data)[1];
-            
+
             npy_intp sp_dim = (M == a_dim_0)?a_dim_1:a_dim_0;
-            
+
             // strides tell you how many bytes to skip to go to next column/row entry
             npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
             npy_intp Sa_val = %(a_val)s->strides[0] / %(a_val)s->descr->elsize;
@@ -886,9 +888,9 @@ class CSMGradC(gof.Op):
             const npy_int32 * __restrict__ Db_ptr = (npy_int32*)%(b_ptr)s->data;
 
             npy_intp nnz = %(a_ind)s->dimensions[0];
-            
+
             dtype_%(b_val)s b_row[sp_dim];
-            
+
             //clear the output array
             for (npy_int64 i = 0; i < nnz; ++i)
             {
@@ -903,12 +905,12 @@ class CSMGradC(gof.Op):
                     j_ptr < Db_ptr[(m + 1) * Sb_ptr]; j_ptr++) {
                     b_row[Db_ind[j_ptr * Sb_ind]] += Db_val[j_ptr*Sb_val];
                 }
-                
+
                 for (npy_int32 j_ptr = Da_ptr[m * Sa_ptr];
                     j_ptr < Da_ptr[(m + 1) * Sa_ptr]; j_ptr++) {
                     Dz[j_ptr*Sz] = b_row[Da_ind[j_ptr * Sa_ind]];
                 }
-                
+
                 for (npy_int32 j_ptr = Db_ptr[m * Sb_ptr];
                     j_ptr < Db_ptr[(m + 1) * Sb_ptr]; j_ptr++) {
                     b_row[Db_ind[j_ptr * Sb_ind]] = 0;
@@ -921,6 +923,7 @@ class CSMGradC(gof.Op):
     def c_code_cache_version(self):
         return (3,)
 csm_grad_c = CSMGradC()
+
 
 @gof.local_optimizer([csm_grad(None)])
 def local_csm_grad_c(node):
