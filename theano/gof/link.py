@@ -286,7 +286,7 @@ def map_storage(env, order, input_storage, output_storage):
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
-                assert isinstance(r, graph.Value)
+                assert isinstance(r, graph.Constant)
                 storage_map[r] = [r.data]
         for r in node.outputs:
             storage_map.setdefault(r, [None])

@@ -217,8 +217,6 @@ class Variable(utils.object2):
 
     - `Variable` (this base type) is typically the output of a symbolic computation,
 
-    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner is None
-
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
@@ -325,23 +323,18 @@ class Variable(utils.object2):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
 
-class Value(Variable):
+class Constant(Variable):
     """
-    A :term:`Value` is a `Variable` with a default value.
+    A :term:`Constant` is a `Variable` with a `value` field that cannot be changed at runtime.
 
-    Its owner field is always None. And since it has a default value, a `Value` instance need
-    not be named as an input to `compile.function`.
-
-    This kind of node is useful because when a value is known at compile time, more
-    optimizations are possible.
-
+    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
     """
     #__slots__ = ['data']
     def __init__(self, type, data, name = None):
         """Initialize self.
 
         :note:
-            The data field is filtered by what is provided in the constructor for the Value's
+            The data field is filtered by what is provided in the constructor for the Constant's
             type field.
 
         WRITEME
@@ -349,45 +342,14 @@ class Value(Variable):
         """
         Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
-    def __str__(self):
-        """WRITEME"""
-        if self.name is not None:
-            return self.name
-        return "<" + str(self.data) + ">" #+ "::" + str(self.type)
-    def clone(self):
-        """WRITEME"""
-        #return copy(self)
-        cp = self.__class__(self.type, copy(self.data), self.name)
-        cp.tag = copy(self.tag)
-        return cp
-    def __set_owner(self, value):
-        """WRITEME
 
-        :Exceptions:
-         - `ValueError`: if `value` is not `None`
-        """
-        if value is not None:
-            raise ValueError("Value instances cannot have an owner.")
-    owner = property(lambda self: None, __set_owner)
-    value = property(lambda self: self.data,
-            doc='read-only data access method')
-
-    # index is not defined, because the `owner` attribute must necessarily be None
-
-class Constant(Value):
-    """
-    A :term:`Constant` is a `Value` that cannot be changed at runtime.
-
-    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
-    """
-    #__slots__ = ['data']
-    def __init__(self, type, data, name = None):
-        Value.__init__(self, type, data, name)
     def equals(self, other):
         # this does what __eq__ should do, but Variable and Apply should always be hashable by id
         return isinstance(other, Constant) and self.signature() == other.signature()
+
     def signature(self):
         return (self.type, self.data)
+
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -396,6 +358,7 @@ class Constant(Value):
             if len(name) > 20:
                 name = name[:10] + '...' + name[-10]
             return 'Constant{%s}' % name
+
     def clone(self):
         """
         We clone this object, but we don't clone the data to lower memory requirement
@@ -404,6 +367,21 @@ class Constant(Value):
         cp = self.__class__(self.type, self.data, self.name)
         cp.tag = copy(self.tag)
         return cp
+
+    def __set_owner(self, value):
+        """WRITEME
+
+        :Exceptions:
+         - `ValueError`: if `value` is not `None`
+        """
+        if value is not None:
+            raise ValueError("Constant instances cannot have an owner.")
+
+    owner = property(lambda self: None, __set_owner)
+    value = property(lambda self: self.data,
+            doc='read-only data access method')
+
+    # index is not defined, because the `owner` attribute must necessarily be None
 
 
 def stack_search(start, expand, mode='bfs', build_inv = False):

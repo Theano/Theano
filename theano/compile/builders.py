@@ -44,7 +44,7 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs:
             raise TypeError('updates are not allowed in kwargs')
 
-        # TODO: the graph may have implicit inputs like Value and
+        # TODO: the graph may have implicit inputs like
         #       SharedVariable instances.
         #       what impact to they have on the validity of this Op?
         self.fn = orig_function(inputs, outputs, **kwargs)

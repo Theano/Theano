@@ -34,8 +34,8 @@ class MyType(Type):
 def MyVariable(name):
     return Variable(MyType(), None, None, name = name)
 
-def MyValue(data):
-    return graph.Value(MyType(), data = data)
+def MyConstant(data):
+    return graph.Constant(MyType(), data = data)
 
 
 class MyOp(Op):
@@ -385,7 +385,7 @@ def test_value_repl():
     e = add_in_place(x, sy)
     g = Env([x,y], [e], False)
     consistent(g)
-    g.replace(sy, MyValue("abc"))
+    g.replace(sy, MyConstant("abc"))
     consistent(g)
 
 def test_value_repl_2():
@@ -394,7 +394,7 @@ def test_value_repl_2():
     e = add_in_place(x, sy)
     g = Env([x,y], [e], False)
     consistent(g)
-    g.replace(sy, transpose_view(MyValue("abc")))
+    g.replace(sy, transpose_view(MyConstant("abc")))
     consistent(g)
 
 
