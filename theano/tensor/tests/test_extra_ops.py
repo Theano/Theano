@@ -5,7 +5,7 @@ import theano
 from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import *
 from theano import tensor as T
-from theano import tensor, function, scalar
+from theano import config, tensor, function, scalar
 
 
 class TestBinCountOp(utt.InferShapeTester):
@@ -16,9 +16,9 @@ class TestBinCountOp(utt.InferShapeTester):
 
     def test_bincountOp(self):
         x = T.lvector('x')
-        w = T.dvector('w')
+        w = T.vector('w')
         a = np.random.random_integers(50, size=(25))
-        weights = np.random.random((25,))
+        weights = np.random.random((25,)).astype(config.floatX)
 
         f1 = theano.function([x], bincount(x))
         f2 = theano.function([x, w], bincount(x, weights=w))
@@ -38,7 +38,7 @@ class TestBinCountOp(utt.InferShapeTester):
                                 [np.random.random_integers(50, size=(25,))],
                                 self.op_class)
 
-        weights = np.random.random((25,))
+        weights = np.random.random((25,)).astype(config.floatX)
         self._compile_and_check([x],
                                 [bincount(x, weights=weights)],
                                 [np.random.random_integers(50, size=(25,))],
@@ -64,8 +64,8 @@ class TestDiffOp(utt.InferShapeTester):
         self.op = DiffOp()
 
     def test_diffOp(self):
-        x = T.dmatrix('x')
-        a = np.random.random((30, 50))
+        x = T.matrix('x')
+        a = np.random.random((30, 50)).astype(config.floatX)
 
         f = theano.function([x], diff(x))
         assert np.allclose(np.diff(a), f(a))
@@ -76,8 +76,8 @@ class TestDiffOp(utt.InferShapeTester):
                 assert np.allclose(np.diff(a, n=k, axis=axis), g(a))
 
     def test_infer_shape(self):
-        x = T.dmatrix('x')
-        a = np.random.random((30, 50))
+        x = T.matrix('x')
+        a = np.random.random((30, 50)).astype(config.floatX)
 
         self._compile_and_check([x],
                                 [self.op(x)],
@@ -93,14 +93,14 @@ class TestDiffOp(utt.InferShapeTester):
 
     def test_grad(self):
         x = T.vector('x')
-        a = np.random.random(50)
+        a = np.random.random(50).astype(config.floatX)
 
         gf = theano.function([x], T.grad(T.sum(diff(x)), x))
         utt.verify_grad(self.op, [a])
 
         for k in range(TestDiffOp.nb):
             dg = theano.function([x], T.grad(T.sum(diff(x, n=k)), x))
-            utt.verify_grad(DiffOp(n=k), [a])
+            utt.verify_grad(DiffOp(n=k), [a], eps=7e-3)
 
 
 class TestSqueezeOp(utt.InferShapeTester):
@@ -110,27 +110,27 @@ class TestSqueezeOp(utt.InferShapeTester):
         self.op = SqueezeOp(out_nd=1)
 
     def test_squeezeOp(self):
-        x = T.dmatrix('x')
-        a = np.random.random((1, 50))
+        x = T.matrix('x')
+        a = np.random.random((1, 50)).astype(config.floatX)
 
         f = theano.function([x], squeeze(x, out_nd=1))
         assert np.allclose(np.squeeze(a), f(a))
 
-        x = T.dtensor4('x')
+        x = T.tensor4('x')
         f = theano.function([x], squeeze(x, out_nd=2))
 
-        a = np.random.random((1, 1, 2, 3))
+        a = np.random.random((1, 1, 2, 3)).astype(config.floatX)
         assert np.allclose(np.squeeze(a), f(a))
 
-        a = np.random.random((1, 2, 2, 1))
+        a = np.random.random((1, 2, 2, 1)).astype(config.floatX)
         assert np.allclose(np.squeeze(a), f(a))
 
-        a = np.random.random((4, 1, 2, 1))
+        a = np.random.random((4, 1, 2, 1)).astype(config.floatX)
         assert np.allclose(np.squeeze(a), f(a))
 
     def test_grad(self):
-        x = T.dtensor4('x')
-        a = np.random.random((1, 1, 3, 4))
+        x = T.tensor4('x')
+        a = np.random.random((1, 1, 3, 4)).astype(config.floatX)
 
         gf = theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
         utt.verify_grad(SqueezeOp(out_nd=2), [a])
@@ -147,8 +147,8 @@ class TestRepeatOp(utt.InferShapeTester):
 
     def test_repeatOp(self):
         for ndim in range(3):
-            x = T.TensorType(theano.config.floatX, [False] * ndim)()
-            a = np.random.random((10, ) * ndim)
+            x = T.TensorType(config.floatX, [False] * ndim)()
+            a = np.random.random((10, ) * ndim).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
                 r_var = T.lscalar()
@@ -167,8 +167,8 @@ class TestRepeatOp(utt.InferShapeTester):
 
     def test_infer_shape(self):
         for ndim in range(4):
-            x = T.TensorType(theano.config.floatX, [False] * ndim)()
-            a = np.random.random((10, ) * ndim)
+            x = T.TensorType(config.floatX, [False] * ndim)()
+            a = np.random.random((10, ) * ndim).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
                 r_var = T.lscalar()
@@ -191,7 +191,7 @@ class TestRepeatOp(utt.InferShapeTester):
 
     def test_grad(self):
         for ndim in range(3):
-            a = np.random.random((10, ) * ndim)
+            a = np.random.random((10, ) * ndim).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
                 utt.verify_grad(lambda x: RepeatOp(axis=axis)(x, 3), [a])
@@ -240,23 +240,23 @@ class TestFillDiagonal(utt.InferShapeTester):
         self.op = fill_diagonal
 
     def test_perform(self):
-        x = tensor.dmatrix()
-        y = tensor.dscalar()
+        x = tensor.matrix()
+        y = tensor.scalar()
         f = function([x, y], fill_diagonal(x, y))
         for shp in [(8, 8), (5, 8), (8, 5)]:
-            a = numpy.random.rand(*shp)
-            val = numpy.random.rand()
+            a = numpy.random.rand(*shp).astype(config.floatX)
+            val = numpy.cast[config.floatX](numpy.random.rand())
             out = f(a, val)
             # We can't use numpy.fill_diagonal as it is bugged.
             assert numpy.allclose(numpy.diag(out), val)
             assert (out == val).sum() == min(a.shape)
 
         # test for 3d tensor
-        a = numpy.random.rand(3, 3, 3)
-        x = tensor.dtensor3()
-        y = tensor.dscalar()
+        a = numpy.random.rand(3, 3, 3).astype(config.floatX)
+        x = tensor.tensor3()
+        y = tensor.scalar()
         f = function([x, y], fill_diagonal(x, y))
-        val = numpy.random.rand() + 10
+        val = numpy.cast[config.floatX](numpy.random.rand() + 10)
         out = f(a, val)
         # We can't use numpy.fill_diagonal as it is bugged.
         assert out[0, 0, 0] == val

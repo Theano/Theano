@@ -866,6 +866,8 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                                 (rand(1025, 67000), [5, 10], True),
                                 (rand(3, 10, 68000), [1, 2], True),
                                 (rand(3, 69000, 11), [1, 2], True),
+                                # use too much memory to enable by default.
+                                #(rand(2*10e7), [-1, 199999999], True),
                                 (rand(4, 5), [2, 3], True),
                                 (rand(4, 2, 3), [0, 3], True),
                                 (rand(4, 2, 3), [3, 3, 1, 1, 2,
@@ -879,7 +881,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                                                     -1, -2, -3, -4], False),
                             ]:
             data = numpy.asarray(data, dtype=self.dtype)
-            n = self.shared(data)
+            n = self.shared(data, borrow=True)
 
             # Test with c_contiguous input
             t = self.adv_sub1()(n, idx)
