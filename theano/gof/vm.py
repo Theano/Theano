@@ -408,9 +408,8 @@ class Stack(VM):
         # lazy evaluation. See discussion on theano-dev June 19 2012.
         if self.allow_gc:
             for v in storage_map:
-                if v.owner and 'output' not in zip(*v.clients)[0]:
+                if v.owner and not v in self.outputs:
                     storage_map[v][0] = None
-                    compute_map[v][0] = 0
 
 
 try:
