@@ -506,6 +506,7 @@ uint_dtypes = [t for t in all_dtypes if t[:4] == 'uint']
 continuous_dtypes = complex_dtypes + float_dtypes
 discrete_dtypes = int_dtypes + uint_dtypes
 
+
 # CONSTRUCTION
 class CSMProperties(gof.Op):
     """Extract all of .data .indices and .indptr
@@ -792,7 +793,8 @@ class CSMGradC(gof.Op):
     def __str__(self):
         return self.__class__.__name__
 
-    def make_node(self, a_val, a_ind, a_ptr, a_dim, b_val, b_ind, b_ptr, b_dim):
+    def make_node(self, a_val, a_ind, a_ptr, a_dim,
+                  b_val, b_ind, b_ptr, b_dim):
         return gof.Apply(self, [a_val, a_ind, a_ptr, a_dim,
              b_val, b_ind, b_ptr, b_dim], [b_val.type()])
 
@@ -904,6 +906,15 @@ class CSMGradC(gof.Op):
     def c_code_cache_version(self):
         return (3,)
 csm_grad_c = CSMGradC()
+
+
+@gof.local_optimizer([csm_grad(None)])
+def local_csm_grad_c(node):
+    """ csm_grad(None) -> csm_grad_c """
+    if node.op == csm_grad(None):
+        return [csm_grad_c(*node.inputs)]
+    return False
+register_specialize(local_csm_grad_c)
 
 #
 # Conversion
