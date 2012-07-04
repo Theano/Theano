@@ -35,6 +35,13 @@ class Env(utils.object2):
     variable in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
 
+    This class is also reponsible for verifying that a graph is valid
+    (ie, all the dtypes and broadcast patterns are compatible with the
+    way the the Variables are used) and for annotating the Variables with
+    a .clients field that specifies which Apply nodes use the variable.
+    The .clients field combined with the .owner field and the Apply nodes'
+    .inputs field allows the graph to be traversed in both directions.
+
     It can also be "extended" using env.extend(some_object). See the
     toolbox and ext modules for common extensions.
 
@@ -43,7 +50,7 @@ class Env(utils.object2):
     - feature.on_attach(env)
         Called by extend. The feature has great freedom in what
         it can do with the env: it may, for example, add methods
-        to it dynicamically.
+        to it dynamically.
 
     - feature.on_detach(env)
         Called by remove_feature(feature).  Should remove any dynamically-added
