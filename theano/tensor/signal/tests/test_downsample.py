@@ -163,13 +163,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         images = tensor.dtensor4()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3))
-        # maxpoolshps = ((1, 1), (2, 3), (3, 2))
+        maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3), (3, 2))
         imval = rng.rand(4, 10, 64, 64)
         # imval = rng.rand(2, 3, 3, 4)
         for maxpoolshp in maxpoolshps:
-            for ignore_border in [True]:
-            # for ignore_border in [True, False]:
+            for ignore_border in [True, False]:
+                print maxpoolshp, ignore_border
                 self._compile_and_check([images],
                         [DownsampleFactorMax(maxpoolshp,
                         ignore_border=ignore_border)(images)],
