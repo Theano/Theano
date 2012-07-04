@@ -179,17 +179,6 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     _logger.warning('%s.grad returned a different type (%s) '
                             'for input %i of type (%s)',
                             node.op, g_r_type, ii, r_type)
-            #The following name assignment code is broken
-            #for example, when you call
-            #f = T.dot(x,T.dot(A,x))
-            #f.name = 'f'
-            #T.grad( f, x)
-            #the result has no name, and is composed of
-            # A x + A^T x
-            # with both terms named "(df/dx)"
-            #if g_r is not None and len(sources) == 1 and sources[0][0].name \
-            #        and r.name:
-            #    g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None:
                 assert r is not None
                 if r in gmap:
