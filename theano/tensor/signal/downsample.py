@@ -65,7 +65,8 @@ class DownsampleFactorMax(Op):
 
         :param imgshape: the shape of a tensor of images. The last two elements are interpreted
         as the number of rows, and the number of cols.
-        :type imgshape: tuple, list, or similar.
+        :type imgshape: tuple, list, or similar of integer or
+        scalar Theano variable.
 
         :param ds: downsample factor over rows and columns
         :type ds: list or tuple of two ints
@@ -83,10 +84,15 @@ class DownsampleFactorMax(Op):
             raise TypeError('imgshape must have at least two elements (rows, cols)')
         r, c = imgshape[-2:]
         rval = list(imgshape[:-2])+[ r/ds[0], c/ds[1]]
+
         if not ignore_border:
-            if r % ds[0]:
+            if isinstance(r, theano.Variable):
+                rval[-2] = tensor.switch(r % ds[0], rval[-2] + 1, rval[-2])
+            elif r % ds[0]:
                 rval[-2] += 1
-            if c % ds[1]:
+            if isinstance(c, theano.Variable):
+                rval[-1] = tensor.switch(c % ds[1], rval[-1] + 1, rval[-1])
+            elif c % ds[1]:
                 rval[-1] += 1
         return rval
 
