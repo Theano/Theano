@@ -261,5 +261,13 @@ def test_unimplemented_grad():
     except NotImplementedError:
         pass
 
+def test_grad_name():
+    A = theano.tensor.matrix('A')
+    x = theano.tensor.vector('x')
+    f = theano.tensor.dot(x,theano.tensor.dot(A,x))
+    f.name = 'f'
+    g = theano.tensor.grad(f,x)
+    assert g.name == '(df/dx)'
+
 if __name__ == '__main__':
     unittest.main()
