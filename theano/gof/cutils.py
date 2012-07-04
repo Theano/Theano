@@ -57,10 +57,10 @@ def compile_cutils():
                                      preargs=args)
 
 try:
+    # Must be at the beginning to ensure no conflict with other project
+    # that would use the same module name.
+    sys.path.insert(0, config.compiledir)
     try:
-        # Must be at the beginning to ensure no conflict with other project
-        # that would use the same module name.
-        sys.path.insert(0, config.compiledir)
         from cutils_ext.cutils_ext import *
     except ImportError:
         import cmodule
@@ -85,4 +85,5 @@ try:
             # Release lock on compilation directory.
             release_lock()
 finally:
-    del sys.path[0]
+    if sys.path[0] == config.compiledir:
+        del sys.path[0]
