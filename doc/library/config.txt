@@ -621,3 +621,9 @@ import theano and print the config variable, as in:
     If True, will remove -O* parameter passed to g++.
     This is useful to debug in gdb module compiled by Theano.
     The parameter -g is passed by default to g++.
+
+.. attribute:: cmodule.compilation_warning
+
+    Bool value, default: False
+
+    If True, will print compilation warning.
