@@ -130,8 +130,8 @@ try:
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode"),
-                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
+                     'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 except OSError:
     # g++ is not present, linker should default to python only
