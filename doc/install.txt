@@ -164,7 +164,7 @@ directory; see the `virtualenv documentation`_ for details.
 .. _virtualenv documentation: http://virtualenv.openplans.org/
 .. _pip: http://pypi.python.org/pypi/pip
 
-.. _install_bleeding_edge:
+.. _updating:
 
 Updating Theano
 ~~~~~~~~~~~~~~~
@@ -198,6 +198,7 @@ the Theano cache like this:
 
     theano-cache clear
 
+.. _install_bleeding_edge:
 
 Bleeding-edge install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -479,14 +480,66 @@ everything is working properly.
     (`libdoc_config`).
 
 
+.. _Graphviz: http://www.graphviz.org/Download_windows.php
+
 MacOS
 -----
 
 There are various ways to install Theano dependencies on a Mac.
-Here we describe the process in details using MacPorts, but if you did
+Here we describe the process in details using EPD and MacPorts, but if you did
 it differently and it worked, please let us know the details on the
 `theano-users`_ mailing-list, so that we can add alternate instructions
 here.
+
+In academia: Enthought Python Distribution (EPD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in academia, the easiest way to install most of the
+dependencies is to install
+`Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
+If you are affiliated to a university (as student or employee), you can
+download the installation for free.
+
+EPD installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+necessary for it to work) and the MKL implementation of blas. The Mac OS and
+Linux version, do not include g++.
+
+pip is not included in EPD. After the installation of EPD,
+you can simply install it with::
+
+    .. code-block:: bash
+
+        $ sudo easy_install pip
+
+Then in a terminal excute this command to install the lastest Theano release:
+
+    .. code-block:: bash
+
+        $ sudo pip install Theano
+
+If you want the bleeding edge version, `download
+and install git <http://git-scm.com/downloads>`_. Then in a
+terminal excute this command:
+
+.. code-block:: bash
+
+    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+See the section `install_bleeding_edge`_ for more
+information on the bleading edge version.
+
+Then you must instll g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+
+.. note::
+
+   If you use the trunk or version 0.6 or later of Theano, we try to
+   automaticaly link with the EPD blas version.  Due to Mac OS
+   particularities, we need a user intervention to do it.  We detect
+   if the user did the modification and if not, we tell him how todo
+   it.
+
+.. _macports:
 
 MacPorts
 ~~~~~~~~
@@ -654,7 +707,7 @@ In academia: EPD
 ################
 
 If you are working in academia, the easiest way to install most of the
-dependencies is to install `Enthought Python Distribution (EPD) <epd>`_.
+dependencies is to install `Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
 If you are affiliated to a university (as student or employee), you can
 download the installation for free.
 
@@ -687,8 +740,6 @@ pip is not included in EPD, but you can simply install it with::
 
     easy_install pip
 
-.. _epd: http://enthought.com/products/epd.php
-.. _Graphviz: http://www.graphviz.org/Download_windows.php
 
 Alternative: Python(x,y)
 ########################
