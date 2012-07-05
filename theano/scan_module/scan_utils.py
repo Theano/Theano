@@ -154,7 +154,9 @@ def clone(output,
 
     :type copy_inputs: bool
     :param copy_inputs: If True, use the same inputs (and shared variables)
-        as the original graph. If False, clone them.
+        as the original graph. If False, clone them. Note that cloned
+        shared variables still use the same underlying storage, so they
+        will always have the same value.
     """
 
     inps, outs, other_stuff = rebuild_collect_shared(output,
