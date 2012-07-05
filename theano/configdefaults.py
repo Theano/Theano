@@ -138,8 +138,7 @@ except OSError:
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode"),
-                 EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('py', 'vm', 'vm_nogc'),
                  in_c_key=False)
     _logger.warning('g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
