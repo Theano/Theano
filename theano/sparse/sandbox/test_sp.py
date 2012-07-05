@@ -363,7 +363,7 @@ class TestSP(unittest.TestCase):
                     utt.verify_grad(d, [kvals])
 
     def test_sp_sum(self):
-        from theano.sparse.sandbox.sp import SpSum
+        from theano.sparse import SpSum
 
         # TODO: test both grad.
         rng = numpy.random.RandomState(42)
