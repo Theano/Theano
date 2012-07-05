@@ -12,8 +12,8 @@ from theano.sparse.basic import (
     _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse,
-    Remove0, remove0,
     # To maintain compatibility
+    Remove0, remove0,
     Cast, bcast, wcast, icast, lcast, fcast, dcast, ccast, zcast,
     HStack, hstack, VStack, vstack,
     AddSSData, add_s_s_data,
@@ -27,46 +27,14 @@ from theano.sparse.basic import (
     StructuredAddSVCSR, structured_add_s_v_csr,
     SamplingDot, sampling_dot, SamplingDotCSR, sampling_dot_csr)
 
+# Also for compatibility
+from theano.sparse.opt import (
+    local_mul_s_d, local_mul_s_v,
+    local_structured_add_s_v, local_sampling_dot_csr)
+
 # Alias to maintain compatibility
 EliminateZeros = Remove0
 eliminate_zeros = remove0
-
-
-# register a specialization to replace MulSD -> MulSDCSX
-@gof.local_optimizer([mul_s_d])
-def local_mul_s_d(node):
-    if node.op == mul_s_d:
-        x, y = node.inputs
-
-        x_is_sparse_variable = _is_sparse_variable(x)
-        # y_is_sparse_variable = _is_sparse_variable(y)
-
-        if x_is_sparse_variable:
-            svar = x
-            dvar = y
-        else:
-            svar = y
-            dvar = x
-
-        if dvar.type.ndim != 2:
-            return False
-        if svar.type.format == 'csc':
-            CSx = CSC
-            mul_s_d_csx = mul_s_d_csc
-        elif svar.type.format == 'csr':
-            CSx = CSR
-            mul_s_d_csx = mul_s_d_csr
-        else:
-            raise NotImplemented()
-
-        c_data = mul_s_d_csx(csm_data(svar), csm_indices(svar),
-                             csm_indptr(svar), dvar)
-
-        return [CSx(c_data, csm_indices(svar), csm_indptr(svar),
-                    csm_shape(svar))]
-
-    return False
-register_specialize(local_mul_s_d)
 
 
 class Binomial(gof.op.Op):
@@ -124,88 +92,8 @@ class Binomial(gof.op.Op):
 
     def __str__(self):
         return self.__class__.__name__
+
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
 csr_dbinomial = Binomial('csr', 'float64')
 csc_dbinomial = Binomial('csc', 'float64')
-
-
-@gof.local_optimizer([mul_s_v])
-def local_mul_s_v(node):
-    if node.op == mul_s_v:
-        x, y = node.inputs
-
-        x_is_sparse_variable = _is_sparse_variable(x)
-
-        if x_is_sparse_variable:
-            svar = x
-            dvar = y
-        else:
-            svar = y
-            dvar = x
-
-        if dvar.type.ndim != 1:
-            return False
-        elif svar.type.format == 'csr':
-            CSx = CSR
-            mul_s_v_csx = mul_s_v_csr
-        else:
-            return False
-
-        s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
-
-        c_data = mul_s_v_csx(s_val, s_ind, s_ptr, dvar)
-
-        return [CSx(c_data, s_ind, s_ptr, s_shape)]
-
-    return False
-register_specialize(local_mul_s_v)
-
-
-@gof.local_optimizer([structured_add_s_v])
-def local_structured_add_s_v(node):
-    if node.op == structured_add_s_v:
-        x, y = node.inputs
-
-        x_is_sparse_variable = _is_sparse_variable(x)
-        #y_is_sparse_variable = _is_sparse_variable(y)
-
-        if x_is_sparse_variable:
-            svar = x
-            dvar = y
-        else:
-            svar = y
-            dvar = x
-
-        if dvar.type.ndim != 1:
-            return False
-        elif svar.type.format == 'csr':
-            CSx = CSR
-            structured_add_s_v_csx = structured_add_s_v_csr
-        else:
-            return False
-
-        s_val, s_ind, s_ptr, s_shape = csm_properties(svar)
-
-        c_data = structured_add_s_v_csx(s_val, s_ind, s_ptr, dvar)
-
-        return [CSx(c_data, s_ind, s_ptr, s_shape)]
-
-    return False
-register_specialize(local_structured_add_s_v)
-
-
-# register a specialization to replace SamplingDot -> SamplingDotCsr
-@gof.local_optimizer([sampling_dot])
-def local_sampling_dot_csr(node):
-    if node.op == sampling_dot:
-        x, y, p = node.inputs
-        if p.type.format == 'csr':
-            p_data, p_ind, p_ptr, p_shape = csm_properties(p)
-
-            z_data, z_ind, z_ptr = sampling_dot_csr(x, y, p_data,
-                p_ind, p_ptr, p_shape[1])
-
-            return [CSR(z_data, z_ind, z_ptr, p_shape)]
-    return False
-register_specialize(local_sampling_dot_csr, name='local_sampling_dot_csr')
