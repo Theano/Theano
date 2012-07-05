@@ -1,5 +1,7 @@
 """
 VMs that run Theano graph computations.
+A VM is not actually different from a Linker, we just decided
+VM was a better name at some point
 """
 import logging
 import sys
@@ -26,7 +28,16 @@ raise_with_op = link.raise_with_op
 
 class VM(object):
     """
-    A VM object evaluates a Theano program with its __call__ method.
+    A VM object's __call__ method evaluates a Theano program.
+
+    The Stack should be considered the reference VM/Linker implementation.
+    It can correctly evaluate all graphs and is the easiest to read. The CVM
+    is a port of Stack, and should have the same behavior, but run faster.
+    The CVM's code is harder to read though.
+
+    The other python VMs are maybe not necessary anymore, and don't take
+    advantage of lazy computation, though they still produce the correct
+    output for lazy nodes.
 
     Attributes:
 
@@ -183,6 +194,23 @@ class Stack(VM):
 
     This supports lazy evaluation of subtrees and partial
     computations of graphs when only some inputs have changed.
+
+    At a pseudo-code level, the basic idea is the following:
+
+    def recursively_evaluate(var):
+        if var is up to date:
+            return
+        if var.owner.inputs are up to date:
+            update var
+            return
+        for input in var.owner.unputs:
+            recursively_evaluate(var)
+
+    for output in outputs:
+        recursively_evaluate(output)
+
+    The actual logic is more complex to support intermediate
+    garbage collection, lazily-evaluated nodes, and better speed.
 
     """
 
