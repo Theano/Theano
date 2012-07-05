@@ -323,6 +323,7 @@ def default_blas_ldflags():
         # If we are in a EPD installation, mkl is available
         blas_info = numpy.distutils.__config__.blas_opt_info
         if "EPD" in sys.version:
+            use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
                     ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
@@ -331,9 +332,37 @@ def default_blas_ldflags():
                     # blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
-            return ' '.join(
-                ['-L%s' % os.path.join(sys.prefix, "lib")] +
-                ['-l%s' % l for l in blas_info['libraries']])
+            elif sys.platform == 'darwin':
+                # The env variable is needed to link with mkl
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # Explicit version could be replaced by a symbolic
+                    # link called 'Current' created by EPD installer
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we warn the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    _logger.warning(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano use a slow version of BLAS. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will disable this warning."
+                        % new_path)
+
+
+                    use_unix_epd = False
+            if use_unix_epd:
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
         if all(not os.path.exists(dir) for dir in blas_info['library_dirs']):
@@ -345,7 +374,8 @@ def default_blas_ldflags():
                         # we just pass the whole ldflags as the -l
                         # options part.
                         ['-L%s' % l for l in blas_info['library_dirs']] +
-                        ['-l%s' % l for l in blas_info['libraries']])
+                        ['-l%s' % l for l in blas_info['libraries']] +
+                        extra)
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
         return "-lblas"
