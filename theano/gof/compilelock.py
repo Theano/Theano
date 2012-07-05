@@ -36,24 +36,24 @@ def force_unlock():
         timeout_before_override = timeout_backup
 
 
-def get_lock(**kw):
+def get_lock(lock_dir=None, **kw):
     """
     Obtain lock on compilation directory.
 
     :param kw: Additional arguments to be forwarded to the `lock` function when
     acquiring the lock.
     """
+    if lock_dir is None:
+        lock_dir = os.path.join(config.compiledir, 'lock_dir')
     if not hasattr(get_lock, 'n_lock'):
         # Initialization.
         get_lock.n_lock = 0
         if not hasattr(get_lock, 'lock_is_enabled'):
             # Enable lock by default.
             get_lock.lock_is_enabled = True
-        get_lock.lock_dir = os.path.join(config.compiledir,
-                                         'lock_dir')
+        get_lock.lock_dir = lock_dir
         get_lock.unlocker = Unlocker(get_lock.lock_dir)
     else:
-        lock_dir = os.path.join(config.compiledir, 'lock_dir')
         if lock_dir != get_lock.lock_dir:
             # Compilation directory has changed.
             # First ensure all old locks were released.
