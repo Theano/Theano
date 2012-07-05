@@ -486,7 +486,7 @@ MacOS
 -----
 
 There are various ways to install Theano dependencies on a Mac.
-Here we describe the process in details using EPD and MacPorts, but if you did
+Here we describe the process in detail with EPD or with MacPorts, but if you did
 it differently and it worked, please let us know the details on the
 `theano-users`_ mailing-list, so that we can add alternate instructions
 here.
@@ -497,13 +497,13 @@ In academia: Enthought Python Distribution (EPD)
 If you are working in academia, the easiest way to install most of the
 dependencies is to install
 `Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
-If you are affiliated to a university (as student or employee), you can
-download the installation for free.
+If you are affiliated with a university (as student or employee), you can
+download the installer for free.
 
 EPD installation includes in particular Python (and the development headers),
 numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
 necessary for it to work) and the MKL implementation of blas. The Mac OS and
-Linux version, do not include g++.
+Linux version do not include g++.
 
 pip is not included in EPD. After the installation of EPD,
 you can simply install it with::
@@ -529,13 +529,13 @@ terminal excute this command:
 See the section `install_bleeding_edge`_ for more
 information on the bleading edge version.
 
-Then you must instll g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
 
 .. note::
 
    If you use the trunk or version 0.6 or later of Theano, we try to
    automaticaly link with the EPD blas version.  Due to Mac OS
-   particularities, we need a user intervention to do it.  We detect
+   peculiarities, we need a user intervention to do it.  We detect
    if the user did the modification and if not, we tell him how todo
    it.
 
@@ -708,7 +708,7 @@ In academia: EPD
 
 If you are working in academia, the easiest way to install most of the
 dependencies is to install `Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
-If you are affiliated to a university (as student or employee), you can
+If you are affiliated with a university (as student or employee), you can
 download the installation for free.
 
 EPD installation includes in particular Python (and the development headers),
