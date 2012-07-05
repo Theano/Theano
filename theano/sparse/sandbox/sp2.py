@@ -42,17 +42,23 @@ class Binomial(gof.op.Op):
     # facts, this does not follow a binomial distribution at all.
     # To see it, just try with p = 1.
 
-    # """Return a sparse matrix having random values from a binomial
-    # density having number of experiment `n` and probability of succes
-    # `p`.
+    """Return a sparse matrix having random values from a binomial
+    density having number of experiment `n` and probability of succes
+    `p`.
 
-    # :param n: Tensor scalar representing the number of experiment.
-    # :param p: Tensor scalar representing the probability of success.
-    # :param shape: Tensor vector for the output shape.
+    .. warning::
 
-    # :return: A sparse matrix of integers representing the number
-    #          of success.
-    # """
+        For now, this op does not return a true binomial
+        distribution. It is a random disposition of ones
+        in a sparse matrix.
+
+    :param n: Tensor scalar representing the number of experiment.
+    :param p: Tensor scalar representing the probability of success.
+    :param shape: Tensor vector for the output shape.
+
+    :return: A sparse matrix of integers representing the number
+             of success.
+    """
 
     def __init__(self, format, dtype):
         self.format = format
