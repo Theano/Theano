@@ -151,6 +151,10 @@ def clone(output,
     :type replace: dict
     :param replace: dictionary describing which subgraphs should be
                     replaced by what
+
+    :type copy_inputs: bool
+    :param copy_inputs: If True, use the same inputs (and shared variables)
+        as the original graph. If False, clone them.
     """
 
     inps, outs, other_stuff = rebuild_collect_shared(output,
