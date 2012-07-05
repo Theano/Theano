@@ -371,8 +371,8 @@ Then in your ``~/.emacs`` file, add this:
 
    ;; Make thing readable when there is an warning [optional]
    (custom-set-faces
-    '(flymake-errline ((((class color)) (:underline "red"))))
-    '(flymake-warnline ((((class color)) (:underline "yellow")))))
+   '(flymake-errline ((((class color)) (:underline "red"))))
+   '(flymake-warnline ((((class color)) (:underline "yellow")))))
 
 Unit tests
 ----------

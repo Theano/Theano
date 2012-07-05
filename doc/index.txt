@@ -138,6 +138,7 @@ Community
    internal/index
    examples/index
    proposals/index
+   acknowledgement
    LICENSE
 
 

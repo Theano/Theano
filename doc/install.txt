@@ -30,7 +30,7 @@ instructions below for detailed installation steps):
         generated C code. Theano `can` fall back on a NumPy-based Python execution
         model, but a C compiler allows for vastly faster execution.
 	g++ >= 4.2 (for openmp that is currently always used)
-               more recent version recommended!
+        more recent version recommended!
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.3.0
         Earlier versions have memory leaks.
