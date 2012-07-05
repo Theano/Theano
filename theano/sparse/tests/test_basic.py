@@ -941,8 +941,8 @@ class test_structureddot(unittest.TestCase):
 
             theano_time = t1 - t0
             scipy_time = t2 - t1
-            #print 'theano took', theano_time,
-            #print 'scipy took', scipy_time
+            # print 'theano took', theano_time,
+            # print 'scipy took', scipy_time
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
             self.assertTrue(numpy.allclose(theano_result, scipy_result))
