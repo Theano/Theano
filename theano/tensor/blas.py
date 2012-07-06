@@ -375,7 +375,7 @@ def default_blas_ldflags():
                         # options part.
                         ['-L%s' % l for l in blas_info['library_dirs']] +
                         ['-l%s' % l for l in blas_info['libraries']] +
-                        extra)
+                        [])
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
         return "-lblas"
