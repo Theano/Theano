@@ -5893,11 +5893,6 @@ class TestInferShape(utt.InferShapeTester):
                                 [Shape()(adtens)],
                                 [adtens_val], (opt.MakeVector, Shape))
 
-        # Default
-        self._compile_and_check([admat, bdmat],
-                                [Default()(admat, bdmat)],
-                                [admat_val, bdmat_val], (Default))
-
         # Dot
         advec = dvector()
         bdvec = dvector()

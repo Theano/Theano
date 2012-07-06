@@ -3247,14 +3247,6 @@ class Default(gof.Op):
         else:
             out[0] = x
 
-    def infer_shape(self, node, in_shapes):
-        if node.inputs[0] is None:
-            out_shape = in_shapes[1]
-        else:
-            out_shape = in_shapes[0]
-        return [out_shape]
-
-
 default = Default()
 setdefault = default  # legacy
 
