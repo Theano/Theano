@@ -6098,13 +6098,28 @@ class TestInferShape(utt.InferShapeTester):
         bdvec_val = rand(4)
         self._compile_and_check([advec, bdvec],
                                 [Dot()(advec, bdvec)],
-                                [advec_val, bdvec_val], (Dot, tensor.blas.Gemv,
-                                                         tensor.blas_c.CGemv))
+                                [advec_val, bdvec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
 
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
         self._compile_and_check([admat, bdmat],
                                 [Dot()(admat, bdmat)],
-                                [admat_val, bdmat_val], (Dot, tensor.blas.Gemm,
-                                                         tensor.blas.Dot22))
+                                [admat_val, bdmat_val],
+                                (Dot, tensor.blas.Dot22))
+
+        admat_val = rand(5, 4)
+        self._compile_and_check([admat, advec],
+                                [Dot()(admat, advec)],
+                                [admat_val, advec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        bdmat_val = rand(4, 5)
+        self._compile_and_check([advec, bdmat],
+                                [Dot()(advec, bdmat)],
+                                [advec_val, bdmat_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
         # Split
         aivec = ivector()
         adtens_val = rand(4, 10, 3)
@@ -6187,6 +6202,13 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens4],
                                 [Rebroadcast(*adict)(adtens4)],
                                 [adtens4_val], Rebroadcast)
+
+        adtens4_bro = TensorType('float64', (True, True, True, False))()
+        bdict = [(0, True), (1, False), (2, False), (3, False)]
+        adtens4_bro_val = rand(1, 1, 1, 3)
+        self._compile_and_check([adtens4_bro],
+                                [Rebroadcast(*bdict)(adtens4_bro)],
+                                [adtens4_bro_val], Rebroadcast)
 
         # Alloc
         randint = numpy.random.random_integers
