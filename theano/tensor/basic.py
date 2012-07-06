@@ -5821,7 +5821,17 @@ class PermuteRowElements(Op):
         self._rec_perform(node, x, y, inverse, outs[0], curdim=0)
 
     def infer_shape(self, node, in_shapes):
-        return [in_shapes[0]]
+        shp_x = in_shapes[0]
+        shp_y = in_shapes[1]
+        if len(shp_x) > len(shp_y):
+            out_shape = shp_x
+        elif len(shp_x) < len(shp_y):
+            out_shape = shp_y
+        else:
+            out_shape = []
+            for i in range(len(shp_x)):
+                out_shape.append(maximum(shp_x[i], shp_y[i]))
+        return [out_shape]
 
     def grad(self, inp, grads):
         x, y, inverse = inp

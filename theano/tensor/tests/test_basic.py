@@ -38,7 +38,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
-        dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1)
+        dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
+        itensor3)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6180,10 +6181,33 @@ class TestInferShape(utt.InferShapeTester):
                                 [PermuteRowElements()(admat, aivec, abool)],
                         [admat_val, aivec_val], PermuteRowElements)
 
-        adtens_val = rand(3, 2, 5)
-        self._compile_and_check([adtens, aivec],
-                                [PermuteRowElements()(adtens, aivec, abool)],
-                        [adtens_val, aivec_val], PermuteRowElements)
+        adtens3 = dtensor3()
+        adtens3_val = rand(3, 2, 5)
+        self._compile_and_check([adtens3, aivec],
+                                [PermuteRowElements()(adtens3, aivec, abool)],
+                        [adtens3_val, aivec_val], PermuteRowElements)
+
+        aimat = imatrix()
+        perma = rng.permutation(5).astype('int32')
+        permb = rng.permutation(5).astype('int32')
+        permc = rng.permutation(5).astype('int32')
+        aimat_val = numpy.vstack((perma, permb, permc))
+        admat_val = rand(3, 5)
+        self._compile_and_check([admat, aimat],
+                                [PermuteRowElements()(admat, aimat, abool)],
+                        [admat_val, aimat_val], PermuteRowElements)
+
+        aitens3 = itensor3()
+        perma = rng.permutation(5).astype('int32')
+        permb = rng.permutation(5).astype('int32')
+        permc = rng.permutation(5).astype('int32')
+        bimat_val = numpy.vstack((perma, permb, permc))
+        aitens3_val = numpy.empty((2, 3, 5), 'int32')
+        aitens3_val[0, ::, ::] = aimat_val
+        aitens3_val[1, ::, ::] = bimat_val
+        self._compile_and_check([admat, aitens3],
+                                [PermuteRowElements()(admat, aitens3, abool)],
+                        [admat_val, aitens3_val], PermuteRowElements)
 
         # ScalarFromTensor
         aiscal = iscalar()
