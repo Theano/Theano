@@ -1329,6 +1329,73 @@ def test_size():
         check()
 
 
+def test_sp_sum():
+    from theano.sparse import SpSum
+
+    # TODO: test both grad.
+    rng = numpy.random.RandomState(42)
+    from theano.sparse.basic import SparseFromDense,DenseFromSparse
+    cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
+
+    for format, cast in cases:
+
+        #print 'format: %(format)s' % locals()
+        x = theano.sparse.SparseType(format=format,
+                                     dtype=theano.config.floatX)()
+        x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
+
+        # Sum on all axis
+        #print 'sum on all axis...'
+        z = theano.sparse.sp_sum(x)
+        assert z.type.broadcastable == ()
+        f = theano.function([x], z)
+        x_val = cast(x_data)
+        out = f(x_val)
+        expected = x_val.sum()
+        assert out == expected
+
+        # Sum on axis 0
+        #print 'sum on axis 0...'
+        z = theano.sparse.sp_sum(x, axis=0)
+        assert z.type.broadcastable == (False,)
+        f = theano.function([x], z)
+        x_val = cast(x_data)
+        out = f(x_val)
+        expected = x_val.sum(axis=0)
+        assert (out == expected).all()
+
+        # Sum on axis 1
+        #print 'sum on axis 1...'
+        z = theano.sparse.sp_sum(x, axis=1)
+        assert z.type.broadcastable == (False,)
+        f = theano.function([x], z)
+        x_val = cast(x_data)
+        out = f(x_val)
+        expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
+        assert (out == expected).all()
+
+        # Sparse gradient on Sum on all axis
+        # unfinished, and suspended until verify_grad get fixed
+        if False:
+            #                print 'grad on sum on all axis...'
+            def fun(x):
+                ## verify_grad does not handle sparse data, so here's some casting as a workaround.
+                # x is a dense matrix: make it sparse
+                sparse_var = SparseFromDense(format)(x)
+                # apply op
+                dense_sum = theano.sparse.SpSum(axis=None, sparse_grad=False)(sparse_var)
+                return dense_sum
+                # cast back to dense so that verify_grad can work
+                dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)
+                return dense_sum
+            x_val = x_data.copy()
+            #                print type(x_val)
+            import pdb;pdb.set_trace()
+            tensor.verify_grad(fun, [x_val], rng=rng)
+            #utt.verify_grad(SpSum(axis=None), [x_val])
+            #                print 'ok'
+
+
 class Remove0Tester(utt.InferShapeTester):
     def setUp(self):
         super(Remove0Tester, self).setUp()
