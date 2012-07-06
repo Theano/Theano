@@ -3217,9 +3217,6 @@ def test_speed_rnn():
     # multiplication - the heart of an ESN or RNN.
     #
     import theano.scalar.sharedvar
-    print """Warning: the updates version runs slower than python because by
-    default the blas optimizations don't replace dot with dot22.
-    Why is that?"""
 
     L = 10000
     N = 50
@@ -3296,9 +3293,6 @@ def test_speed_batchrnn():
     # multiplication - the heart of an ESN or RNN.
     #
     import theano.scalar.sharedvar
-    print """Warning: the updates version runs slower than python because by
-    default the blas optimizations don't replace dot with dot22.
-    Why is that?"""
 
     L = 100
     B = 50
