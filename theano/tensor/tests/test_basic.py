@@ -6393,12 +6393,11 @@ class TestInferShape(utt.InferShapeTester):
                             [adtens4_val, 1], IncSubtensor)
 
         # AdvancedIncSubtensor1
-        # TODO: populate with tensors and lists of varying dimensions and lengths
         admat = dmatrix()
         bdmat = dmatrix()
         advec = dvector()
         adscal = dscalar()
-        admat_val = rand(4, 4)
+        admat_val = rand(5, 4)
         bdvec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
                             [set_subtensor(admat[bdvec_val], bdmat)],
@@ -6413,9 +6412,29 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([admat, adscal],
                             [set_subtensor(admat[bdvec_val], adscal)],
                             [admat_val, 1], AdvancedIncSubtensor1)
-        
+
+        bdtens4 = dtensor4()
+        adtens4_val = rand(4, 3, 2, 5)
+        bdvec_val = [2, 3]
+        self._compile_and_check([adtens4, bdtens4],
+                            [set_subtensor(adtens4[bdvec_val], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
+                            AdvancedIncSubtensor1)
+
+        bdvec_val = [1, 3, 2]
+        self._compile_and_check([adtens4, advec],
+                            [set_subtensor(adtens4[bdvec_val], advec)],
+                            [adtens4_val, [1, 2, 3, 4, 5]],
+                            AdvancedIncSubtensor1)
+
+        bdvec_val = [0, 3, 0]
+        self._compile_and_check([adtens4, adscal],
+                            [set_subtensor(adtens4[bdvec_val], adscal)],
+                            [adtens4_val, 1],
+                            AdvancedIncSubtensor1)
+
+        ## TODO: (!!) function inc_subtensor fails on line 5784 in perform in basic.py
         """
-        ## Note: (!!) inc_subtensor fails on line 5784 in perform in basic.py
         bdvec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
                             [inc_subtensor(admat[bdvec_val], bdmat)],
@@ -6430,11 +6449,43 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([admat, adscal],
                             [inc_subtensor(admat[bdvec_val], adscal)],
                             [admat_val, 1], AdvancedIncSubtensor1)
+
+        bdtens4 = dtensor4()
+        adtens4_val = rand(4, 3, 2, 5)
+        bdvec_val = [2, 3]
+        self._compile_and_check([adtens4, bdtens4],
+                            [inc_subtensor(adtens4[bdvec_val], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
+                            AdvancedIncSubtensor1)
+
+        bdvec_val = [1, 3, 2]
+        self._compile_and_check([adtens4, advec],
+                            [inc_subtensor(adtens4[bdvec_val], advec)],
+                            [adtens4_val, [[1, 2, 3, 4, 5]]],
+                            AdvancedIncSubtensor1)
+
+        bdvec_val = [0, 3, 0]
+        self._compile_and_check([adtens4, adscal],
+                            [inc_subtensor(adtens4[bdvec_val], adscal)],
+                            [adtens4_val, [[1, 2, 3, 4, 5]]],
+                            AdvancedIncSubtensor1)
+
         """
 
+        # AdvancedIncSubtensor
+        # TODO: AdvancedIncSubtensor cannot be reached through the wrappers
+        # set_subtensor and advanced_subtensor (see comment in Git, issue 476)
+        """
+        # as an example only:
+        bdvec_val = [1, 3, 2]
+        cdvec_val = [2]
+        self._compile_and_check([admat, advec],
+                            [set_subtensor(admat[bdvec_val, cdvec_val], adscal)],
+                            [admat_val, 1], AdvancedIncSubtensor)
 
 
-        
+        """
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
