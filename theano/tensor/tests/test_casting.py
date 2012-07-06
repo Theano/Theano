@@ -39,43 +39,45 @@ class test_casting(unittest.TestCase):
                 self.assertTrue(numpy.all(b == numpy.arange(10, dtype = type2)))
 
     def test_convert_to_complex(self):
-        a = value(numpy.ones(3, dtype='complex64')+0.5j)
-        b = value(numpy.ones(3, dtype='complex128')+0.5j)
+        val64 = numpy.ones(3, dtype='complex64') + 0.5j
+        val128 = numpy.ones(3, dtype='complex128') + 0.5j
 
-        f = function([a],basic._convert_to_complex128(a))
+        vec64 = TensorType('complex64',(False,))()
+        vec128 = TensorType('complex128',(False,))()
+
+        f = function([vec64],basic._convert_to_complex128(vec64))
         #we need to compare with the same type.
-        assert a.type.values_eq_approx(b.data, f(a.data))
+        assert vec64.type.values_eq_approx(val128, f(val64))
 
-        f = function([b],basic._convert_to_complex128(b))
-        assert b.type.values_eq_approx(b.data, f(b.data))
+        f = function([vec128],basic._convert_to_complex128(vec128))
+        assert vec64.type.values_eq_approx(val128, f(val128))
 
-        f = function([a],basic._convert_to_complex64(a))
-        assert a.type.values_eq_approx(a.data, f(a.data))
+        f = function([vec64],basic._convert_to_complex64(vec64))
+        assert vec64.type.values_eq_approx(val64, f(val64))
 
-        f = function([b],basic._convert_to_complex64(b))
-        assert b.type.values_eq_approx(a.data, f(b.data))
+        f = function([vec128],basic._convert_to_complex64(vec128))
+        assert vec128.type.values_eq_approx(val64, f(val128))
 
-        for nbits in (64, 128):
-            # upcasting to complex128
-            for t in ['int8','int16','int32','int64','float32','float64']:
-                a = value(numpy.ones(3, dtype=t))
-                b = value(numpy.ones(3, dtype='complex128'))
-                f = function([a],basic._convert_to_complex128(a))
-                assert a.type.values_eq_approx(b.data, f(a.data))
+        # upcasting to complex128
+        for t in ['int8','int16','int32','int64','float32','float64']:
+            a = shared(numpy.ones(3, dtype=t))
+            b = shared(numpy.ones(3, dtype='complex128'))
+            f = function([],basic._convert_to_complex128(a))
+            assert a.type.values_eq_approx(b.get_value(), f())
 
-            # upcasting to complex64
-            for t in ['int8','int16','int32','int64','float32']:
-                a = value(numpy.ones(3, dtype=t))
-                b = value(numpy.ones(3, dtype='complex64'))
-                f = function([a],basic._convert_to_complex64(a))
-                assert a.type.values_eq_approx(b.data, f(a.data))
+        # upcasting to complex64
+        for t in ['int8','int16','int32','int64','float32']:
+            a = shared(numpy.ones(3, dtype=t))
+            b = shared(numpy.ones(3, dtype='complex64'))
+            f = function([],basic._convert_to_complex64(a))
+            assert a.type.values_eq_approx(b.get_value(), f())
 
-            # downcast to complex64
-            for t in ['float64']:
-                a = value(numpy.ones(3, dtype=t))
-                b = value(numpy.ones(3, dtype='complex64'))
-                f = function([a],basic._convert_to_complex64(a))
-                assert a.type.values_eq_approx(b.data, f(a.data))
+        # downcast to complex64
+        for t in ['float64']:
+            a = shared(numpy.ones(3, dtype=t))
+            b = shared(numpy.ones(3, dtype='complex64'))
+            f = function([],basic._convert_to_complex64(a))
+            assert a.type.values_eq_approx(b.get_value(), f())
 
 
     def test_bug_complext_10_august_09(self):

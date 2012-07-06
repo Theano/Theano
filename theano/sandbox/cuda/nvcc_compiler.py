@@ -325,6 +325,8 @@ class NVCC_compiler(object):
                 print >> sys.stderr,  i + 1, l
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
+        elif config.cmodule.compilation_warning and nvcc_stdout:
+            print nvcc_stdout
 
         #touch the __init__ file
         file(os.path.join(location, "__init__.py"), 'w').close()

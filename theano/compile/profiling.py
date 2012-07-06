@@ -169,6 +169,51 @@ class ProfileStats(object):
             global _atexit_print_list
             _atexit_print_list.append(self)
 
+    def class_time(self):
+        """dict op -> total time on thunks"""
+        # timing is stored by node, we compute timing by class on demand
+        rval = {}
+        for node, t in self.apply_time.items():
+            typ = type(node.op)
+            rval.setdefault(typ, 0)
+            rval[typ] += t
+        return rval
+
+    def class_callcount(self):
+        """dict op -> total number of thunk calls"""
+        # timing is stored by node, we compute timing by class on demand
+        rval = {}
+        for node, count in self.apply_callcount.items():
+            typ = type(node.op)
+            rval.setdefault(typ, 0)
+            rval[typ] += count
+        return rval
+
+    def class_nodes(self):
+        """dict op -> total number of nodes"""
+        # timing is stored by node, we compute timing by class on demand
+        rval = {}
+        for node, count in self.apply_callcount.items():
+            typ = type(node.op)
+            rval.setdefault(typ, 0)
+            rval[typ] += 1
+        return rval
+
+    def class_impl(self):
+        """dict op -> total number of nodes"""
+        # timing is stored by node, we compute timing by class on demand
+        rval = {}
+        for node in self.apply_callcount:
+            typ = type(node.op)
+            if self.apply_cimpl[node]:
+                impl = 'C '
+            else:
+                impl = 'Py'
+            rval.setdefault(typ, impl)
+            if rval[typ] != impl and len(rval[typ]) == 2:
+                rval[typ] += impl
+        return rval
+
     def op_time(self):
         """dict op -> total time on thunks"""
         # timing is stored by node, we compute timing by Op on demand
@@ -232,6 +277,95 @@ class ProfileStats(object):
                ' <cumulative %%> <self seconds> <cumulative seconds>'
                ' <time per call> %s <nb_call> <nb apply> <Op name>' % (
                 flops_msg))
+
+    def summary_class(self, file=sys.stderr, N=None):
+        if self.apply_time:
+            local_time = sum(self.apply_time.values())
+        else:
+            local_time = 0
+        if local_time == 0:
+            print >> file, ('ProfileMode.summary_class: total time 0'
+                    ' (did you forget to enable counters?)')
+            return
+        class_time = self.class_time()
+        class_call = self.class_callcount()
+        class_apply = self.class_nodes()
+#        class_flops = self.class_flops()
+        class_impl = self.class_impl()
+        if N is None:
+            N = len(self.class_time)
+        otimes = [(t * 100 / local_time,
+                    t,
+                    clas,
+                    class_impl.get(clas, '  '),
+                    class_call.get(clas, 0),
+                    class_apply.get(clas, 0))
+                for clas, t in class_time.items()]
+        otimes.sort()
+        otimes.reverse()
+        tot = 0
+        print >> file, 'Class'
+        print >> file, '---'
+        #print >> file, '<% time> <cumulative %%> <apply time>,'
+        #print >>file, '<cumulative seconds> <time per call> <nb_call>'
+        #print >>file, '<Class name>'
+        hs = []
+        # formatting string
+        es = []
+
+        hs += ['<% time>']
+        es += ['  %4.1f%% ']
+
+        hs += ['<sum %>']
+        es += [' %5.1f%% ']
+
+        hs += ['<apply time>']
+        es += ['   %7.3fs ']
+
+        hs += ['<time per call>']
+        es += ['     %8.2es ']
+
+        hs += ['<type>']
+        es += ['   %2s ']
+
+        hs += ['<#call>']
+        es += ['  %4d  ']
+
+        hs += ['<#apply>']
+        es += ['  %4d  ']
+
+        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        maxlen = self.line_width - upto_length
+        hs += ['<Class name>']
+        es += ['%s']
+        header_str = ' '.join(hs)
+        format_str = ' '.join(es)
+
+        print >> file, header_str
+
+        for f, t, a, impl, nb_call, nb_apply in otimes[:N]:
+            if nb_call == 0:
+                assert t == 0
+                continue
+            tot += t
+            ftot = tot * 100 / local_time
+            print >> file, format_str % (f, ftot, t, t / nb_call,
+                                         impl, nb_call,
+                                         nb_apply, str(a)[:maxlen])
+            # While this carries over less information, it is arranged such
+            # that it way more readeable that the previous output of the
+            # profiler
+            #if op_flops:
+            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (
+            #            f, ftot, t, tot, t/nb_call, impl, op_flops.get(a,-1), nb_call, nb_apply, a)
+            #else:
+            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
+            #            f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
+        print >>file, '   ... (remaining %i Classes account for %6.2f%%(%.2fs) of the runtime)'\
+                % (max(0, len(otimes) - N),
+                  sum(f for f, t, a, ci, nb_call, nb_op in otimes[N:]),
+                  sum(t for f, t, a, ci, nb_call, nb_op in otimes[N:]))
+        print >> file, ''
 
     def summary_ops(self, file=sys.stderr, N=None):
         if self.apply_time:
@@ -426,6 +560,7 @@ class ProfileStats(object):
         self.summary_function(file)
         local_time = sum(self.apply_time.values())
         if local_time > 0:
+            self.summary_class(file, n_ops_to_print)
             self.summary_ops(file, n_ops_to_print)
             self.summary_nodes(file, n_applies_to_print)
         elif self.fct_callcount > 0:

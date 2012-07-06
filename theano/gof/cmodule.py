@@ -39,6 +39,17 @@ AddConfigVar('cmodule.warn_no_version',
              "with C code that can't be cached because there is no "
              "c_code_cache_version() function associated to at least one of "
              "those Ops.",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('cmodule.remove_gxx_opt',
+             "If True, will remove -O* parameter passed to g++."
+             "This is useful to debug in gdb module compiled by Theano."
+             "The parameter -g is passed by default to g++",
+             BoolParam(False))
+
+AddConfigVar('cmodule.compilation_warning',
+             "If True, will print compilation warning.",
              BoolParam(False))
 
 
@@ -755,6 +766,9 @@ class ModuleCache(object):
                                     "directory to fix this.",
                                     self.entry_from_key[key],
                                     entry)
+                        # Clean up the name space to prevent bug.
+                        if key_data.keys:
+                            del key
                         self.loaded_key_pkl.add(key_pkl)
                     else:
                         too_old_to_use.append(entry)
@@ -762,6 +776,10 @@ class ModuleCache(object):
                 # If the compilation failed, no key.pkl is in that
                 # directory, but a mod.* should be there.
                 # We do nothing here.
+
+            # Clean up the name space to prevent bug.
+            if root_dirs_files:
+                del root, dirs, files
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
@@ -773,6 +791,7 @@ class ModuleCache(object):
                     gone = False
                 except IOError:
                     gone = True
+
                 if gone:
                     # Assert that we did not have one of the deleted files
                     # loaded up and in use.
@@ -789,13 +808,13 @@ class ModuleCache(object):
                     _logger.info("deleting ModuleCache entry %s", entry)
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
-                    if key[0]:
+                    if key_data.keys and list(key_data.keys)[0][0]:
                         # this is a versioned entry, so should have been on
                         # disk. Something weird happened to cause this, so we
                         # are responding by printing a warning, removing
                         # evidence that we ever saw this mystery key.
                         pkl_file_to_remove = key_data.key_pkl
-                        if not root.startswith("/tmp"):
+                        if not key_data.key_pkl.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
                             # os. So it is normal that this happen from time to
                             # time.
@@ -1473,8 +1492,6 @@ class GCC_compiler(object):
             # We also add "-m64", in case the installed gcc is 32-bit
             preargs.append('-m64')
 
-        no_opt = False
-
         include_dirs = include_dirs + std_include_dirs()
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
@@ -1521,7 +1538,8 @@ class GCC_compiler(object):
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = ['g++', get_gcc_shared_library_arg(), '-g']
-        if no_opt:
+
+        if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
@@ -1564,6 +1582,9 @@ class GCC_compiler(object):
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
                             (status, compile_stderr.replace('\n', '. ')))
+        elif config.cmodule.compilation_warning and compile_stderr:
+            # Print errors just below the command line.
+            print compile_stderr
 
         #touch the __init__ file
         file(os.path.join(location, "__init__.py"), 'w').close()

@@ -5,7 +5,7 @@ import subprocess
 from theano.configparser import (
         AddConfigVar, BoolParam, ConfigParam, EnumStr, IntParam,
         TheanoConfigParser)
-
+from theano.misc.cpucount import cpuCount
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -15,6 +15,38 @@ AddConfigVar('floatX',
         "Default floating-point precision for python casts",
         EnumStr('float64', 'float32'),
         )
+
+#http://pyprocessing.berlios.de/
+#True if the environment variable OMP_NUM_THREADS!=1 or
+#if we detect more then 1 CPU core. Otherwise False.
+default_openmp = True
+var = os.getenv('OMP_NUM_THREADS', None)
+if var:
+    try:
+        int(var)
+    except ValueError:
+        raise TypeError("The environment variable OMP_NUM_THREADS"
+                        " should be a number, got '%s'." % var)
+    else:
+        default_openmp = not int(var) == 1
+else:
+    count = cpuCount()
+    if count == -1:
+        _logger.warning("We are not able to detect the number of CPU cores."
+                        " We disable openmp by default. To remove this"
+                        " warning, set the environment variable"
+                        " OMP_NUM_THREADS to the number of threads you"
+                        " want theano to use.")
+    default_openmp = count > 1
+
+AddConfigVar('openmp',
+             "Enable or not parallel computation on the CPU with OpenMP. "
+             "It is the default value used when creating an Op that support it"
+             ". The best is to define it via Theano configuration "
+             "file or with the environment variable THEANO_FLAGS.",
+             BoolParam(default_openmp),
+             in_c_key=False,
+         )
 
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
@@ -98,16 +130,15 @@ try:
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode"),
-                 EnumStr('c|py', 'py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
+                     'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 except OSError:
     # g++ is not present, linker should default to python only
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode"),
-                 EnumStr('py', 'c|py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'cvm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('py', 'vm', 'vm_nogc'),
                  in_c_key=False)
     _logger.warning('g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '

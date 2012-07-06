@@ -128,7 +128,15 @@ class Print(Op):
                   their return value printed.
 
     :note: WARNING. This can disable some optimizations!
-                    (speed and/pr stabilization)
+                    (speed and/or stabilization)
+
+            Detailed explanation:
+            As of 2012-06-21 the Print op is not known by any optimization.
+            Setting a Print op in the middle of a pattern that is usually
+            optimized out will block the optimization. for example, log(1+x)
+            optimizes to log1p(x) but log(1+Print(x)) is unaffected by
+            optimizations.
+
     """
     view_map = {0: [0]}
 

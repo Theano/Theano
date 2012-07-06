@@ -179,8 +179,6 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     _logger.warning('%s.grad returned a different type (%s) '
                             'for input %i of type (%s)',
                             node.op, g_r_type, ii, r_type)
-            if g_r and len(sources) == 1 and sources[0][0].name and r.name:
-                g_r.name = "(d%s/d%s)" % (sources[0][0].name, r.name)
             if g_r is not None:
                 assert r is not None
                 if r in gmap:
@@ -519,6 +517,10 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
                         "'ignore', 'warn' and 'raise'.")
             ret.append(p.zeros_like())
 
+        if cost.name is not None and p.name is not None \
+                and ret[-1].name is None:
+            ret[-1].name = '(d%s/d%s)' % (cost.name, p.name)
+
     return format_as(using_list, using_tuple, ret)
 
 
@@ -596,7 +598,7 @@ class numeric_grad(object):
         #      raise TypeError('All function arguments must have same dtype')
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
-        
+
         working_dtype = __builtin__.min((self.type_eps[dt], dt)
                                         for dt in dtypes)[1]
 
@@ -606,7 +608,7 @@ class numeric_grad(object):
             gx = numpy.ndarray((total_size,), dtype=out_type)
         else:
             gx = numpy.ndarray((total_size,), dtype=working_dtype)
-        
+
         if eps is None:
             eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
 
@@ -633,13 +635,13 @@ class numeric_grad(object):
             x[i] += eps
             f_eps = f(*apt)
 
-            # TODO: remove this when it is clear that the next 
+            # TODO: remove this when it is clear that the next
             # replacemement does not pose problems of its own.  It was replaced
             # for its inability to handle complex variables.
             # gx[i] = numpy.asarray((f_eps - f_x) / eps)
 
             gx[i] = ((f_eps - f_x) / eps)
-            
+
         if packed_pt:
             self.gf = self.gf[0]
 
@@ -721,9 +723,10 @@ class numeric_grad(object):
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
 
 
-def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=None,
+def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
+                out_type=None, abs_tol=None,
                 rel_tol=None, mode=None, cast_to_output_type=False):
-    """ Test a gradient by Finite Difference Method. Raise error on failure.
+    """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
         >>> verify_grad(theano.tensor.tanh,
@@ -745,6 +748,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=N
         of sum(u * fun) at pt
     :param eps: stepsize used in the Finite Difference Method (Default
         None is type-dependent)
+        Raising the value of eps can raise or lower the absolute and
+        relative error of the verification depending of the
+        Op. Raising the eps do not lower the verification quality. It
+        is better to raise eps then raising abs_tol or rel_tol.
     :param out_type: dtype of output, if complex (i.e. 'complex32' or
         'complex64')
     :param abs_tol: absolute tolerance used as threshold for gradient
@@ -757,9 +764,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None, out_type=None, abs_tol=N
         in debug mode, which can be very slow if it has to verify a lot of
         intermediate computations.
 
-    :note: This op does not support multiple outputs. In tests/test_scan.py
-        there is an experimental verify_grad that covers that case as well
-        by using random projections.
+    :note: This function does not support multiple outputs. In
+        tests/test_scan.py there is an experimental verify_grad that
+        covers that case as well by using random projections.
+
     """
     from theano import compile, shared
     import theano.tensor

@@ -14,14 +14,6 @@ implementations.
 
 To learn more, check out:
 
-- Joseph Turian's n00b walk through ( :wiki:`UserBasic` )
-
-- an introduction to extending theano ( :wiki:`UserAdvanced` )
-
-- Terminology Glossary (:wiki:`glossary`)
-
-- Index of Howto documents (:wiki:`IndexHowto`)
-
 - Op List (:doc:`oplist`)
 
 The markup language used in the docstrings is ReStructured Text,
@@ -59,7 +51,7 @@ from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
      InconsistencyError, Env, \
-     Apply, Variable, Constant, Value, \
+     Apply, Variable, Constant, \
      Op, \
      opt, \
      toolbox, \

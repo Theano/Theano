@@ -648,57 +648,77 @@ Reductions
 ==========
 
 
-.. function:: max(x, axis=None)
+.. function:: max(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: maximum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the maximum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the maximum
-    :Returns: the maximum value along a given axis
-    :note: see maximum for elemwise max
-
-    if axis=None, Theano 0.5rc1 or later: max over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
-
-.. function:: argmax(x, axis=None)
-
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
+		left in the result as a dimension with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the index of the maximum value along a given axis
 
     if axis=None, Theano 0.5rc1 or later: argmax over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: max_and_argmax(x, axis=None)
+.. function:: max_and_argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
+		left in the result as a dimension with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the maxium value along a given axis and its index.
 
     if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: min(x, axis=None)
+.. function:: min(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: minimum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the minimum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: argmin(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Parameter: *axis* - axis along which to compute the minimum
-    :Returns: the minimum value along a given axis
-    :note: see miminum for elemwise min
-
-    if axis=None, Theano 0.5rc1 or later: min over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
-
-.. function:: argmin(x, axis=None)
-
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the minimum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the index of the minimum value along a given axis
 
     if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: sum(x, axis=None)
+.. function:: sum(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: sum of *x* along *axis*
 
     axis can be:
@@ -706,10 +726,13 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: prod(x, axis=None)
+.. function:: prod(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the product
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: product of every term in *x* along *axis*
 
     axis can be:
@@ -717,10 +740,13 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: mean(x, axis=None)
+.. function:: mean(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the mean
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: mean value of *x* along *axis*
 
     axis can be:
@@ -728,36 +754,59 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: var(x, axis=None)
+.. function:: var(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the variance
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: variance of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the variance is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: all(x, axis=None)
+.. function:: std(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis or axes along which to apply bitwise and
+    :Parameter: *axis* - axis or axes along which to compute the standard deviation
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: variance of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the standard deviation is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: all(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to apply 'bitwise and'
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: bitwise and of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise and' is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: any(x, axis=None)
+.. function:: any(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to apply bitwise or
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: bitwise or of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise or' is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 

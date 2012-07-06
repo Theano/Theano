@@ -12,7 +12,7 @@ import numpy
 import theano
 from theano.configparser import config
 from theano import gof
-from theano.gof import Apply, Constant, Op, Type, Value, Variable
+from theano.gof import Apply, Constant, Op, Type, Variable
 
 import elemwise
 from theano import scalar as scal
@@ -389,12 +389,6 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
 def constant(x, name=None, ndim=None, dtype=None):
     return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
-
-
-def value(x, name=None, ndim=None, dtype=None):
-    return constant_or_value(x, rtype=TensorValue, name=name,
-                             ndim=ndim, dtype=dtype)
-
 
 def _obj_is_wrappable_as_tensor(x):
     try:
@@ -1464,11 +1458,11 @@ class _tensor_py_operators:
     size = property(lambda self: prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
-    def any(self, axis=None):
-        return elemwise.Any(axis)(self)
+    def any(self, axis=None, keepdims=False):
+        return any(self, axis=axis, keepdims=keepdims)
 
-    def all(self, axis=None):
-        return elemwise.All(axis)(self)
+    def all(self, axis=None, keepdims=False):
+        return all(self, axis=axis, keepdims=keepdims)
 
     # Otherwise TensorVariable[:-1] does not work as Python 2.5.1 calls
     # __len__ before calling __getitem__. It also does not catch the raised
@@ -1610,13 +1604,13 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
-    def sum(self, axis=None, dtype=None):
+    def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
-        return sum(self, axis=axis, dtype=dtype)
+        return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
 
-    def prod(self, axis=None, dtype=None):
+    def prod(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.prod`"""
-        return prod(self, axis=axis, dtype=dtype)
+        return prod(self, axis=axis, dtype=dtype, keepdims=keepdims)
 
     def norm(self, L, axis=None):
         if L == 0:
@@ -1626,21 +1620,21 @@ class _tensor_py_operators:
         #optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0 / L)
 
-    def mean(self, axis=None, dtype=None):
+    def mean(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.mean`"""
-        return mean(self, axis=axis, dtype=dtype)
+        return mean(self, axis=axis, dtype=dtype, keepdims=keepdims)
 
-    def var(self, axis=None):
+    def var(self, axis=None, keepdims=False):
         """See `theano.tensor.var`"""
-        return var(self, axis)
+        return var(self, axis, keepdims=keepdims)
 
-    def min(self, axis=None):
+    def min(self, axis=None, keepdims=False):
         """See `theano.tensor.min`"""
-        return min(self, axis)
+        return min(self, axis, keepdims=keepdims)
 
-    def max(self, axis=None):
+    def max(self, axis=None, keepdims=False):
         """See `theano.tensor.max`"""
-        return max(self, axis)
+        return max(self, axis, keepdims=keepdims)
 
     #TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -1776,14 +1770,6 @@ class TensorConstant(_tensor_py_operators, Constant):
 TensorType.Constant = TensorConstant
 
 
-class TensorValue(_tensor_py_operators, Value):
-    """Subclass to add the tensor operators to the basic `Value` class.
-
-    To create a TensorValue, use the `value` function in this module.
-
-    :note: Value is deprecated by SharedVariable
-    """
-
 
 Tensor = TensorType
 
@@ -1793,8 +1779,6 @@ elemwise.as_tensor_variable = as_tensor_variable
 elemwise.TensorType = TensorType
 elemwise.TensorVariable = TensorVariable
 elemwise.TensorConstant = TensorConstant
-elemwise.TensorValue = TensorValue
-
 
 #########################
 # Utilities
@@ -2174,7 +2158,7 @@ specify_shape = SpecifyShape()
 
 
 class MaxAndArgmax(Op):
-    """Calculate the max and argmax over a given axis.
+    """Calculate the max and argmax over a given axis or over all axes.
     """
     nin = 2  # tensor, axis
     nout = 2  # max val, max idx
@@ -2195,8 +2179,8 @@ class MaxAndArgmax(Op):
                 list(axis)
                 axis.sort()
                 assert axis == range(x.type.ndim), (
-                    "MaxAndArgmax don't support multiple"
-                    " axis. the max fct support it.")
+                    "MaxAndArgmax does not support multiple"
+                    " axes. the max fct supports it.")
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
@@ -2266,6 +2250,11 @@ class MaxAndArgmax(Op):
                                    max_pos], None]
 
     def grad(self, inp, grads):
+        # The strict sense mathematical gradient of the maximum function is
+        # not calculated here for it is not defined at every point where some
+        # coordinates are identical. However, since the latter set has null
+        # Lebesgue measure, the result may be interpreted as weak gradient.
+
         # @note: This function should work correctly for L{vector}s.
 #        (x, y), (gz, gw)
 #        gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
@@ -2300,61 +2289,144 @@ class MaxAndArgmax(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+
 _max_and_argmax = MaxAndArgmax()
 
 
-@_redefine_asRoutine(_max_and_argmax)
-def max_and_argmax(a):
-    pass
+def makeKeepDims(x, y, axis):
+    """
+    Reintroduces in y with length one the axes of x which have been left out
+    in a prior reduction of x. With this option, the resulting tensor will
+    broadcast correctly against the original tensor x.
+    """
+    x = as_tensor_variable(x)
+    y = as_tensor_variable(y)
+
+    if axis is None:
+        axis = range(x.type.ndim)
+    i = 0
+    new_dims = []
+    for j, _ in enumerate(x.type.broadcastable):
+        if j in axis:
+            new_dims.append('x')
+        else:
+            new_dims.append(i)
+            i += 1
+    return DimShuffle(y.type.broadcastable, new_dims)(y)
 
 
 @constructor
-def max(x, axis=None):
+def max_and_argmax(a, axis=None, keepdims=False):
     """
-    Return maximum elements obtained by iterating over given axis
+    Returns maximum elements and their indices obtained by iterating over
+    given axis
 
-    Default axis is None: max over all dimensions.
+    When axis is None (the default value), the max is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
+    """
+
+    out, argout = _max_and_argmax(a, axis)
+
+    if keepdims:
+        out = makeKeepDims(a, out, axis)
+        argout = makeKeepDims(a, argout, axis)
+    return [out, argout]
+
+
+@constructor
+def max(x, axis=None, keepdims=False):
+    """
+    Returns maximum elements obtained by iterating over given axis
+
+    When axis is None (the default value), the max is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
 
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     """
+
     if isinstance(axis, (list, tuple)) and len(axis) > 1:
-        return CAReduce(scal.maximum, axis)(x)
-    try:
-        const = get_constant_value(axis)
-        return CAReduce(scal.maximum, list(const))(x)
-    except Exception:
-        return max_and_argmax(x, axis)[0]
+        out = CAReduce(scal.maximum, axis)(x)
+    else:
+        try:
+            const = get_constant_value(axis)
+            out = CAReduce(scal.maximum, list(const))(x)
+        except Exception:
+            out = max_and_argmax(x, axis)[0]
+
+    if keepdims:
+        out = makeKeepDims(x, out, axis)
+    return out
 
 
 @constructor
-def argmax(x, axis=None):
+def argmax(x, axis=None, keepdims=False):
     """
-    Return indexes of maximum elements obtained by iterating over given axis
+    Returns indices of maximum elements obtained by iterating over given axis
 
     When axis is None (the default value), the argmax is performed
     over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
     """
-    # In python (using MaxAndArgmax.perform()) this leads to an wasteful
+    # In python (using MaxAndArgmax.perform()) this leads to a wasteful
     # implementation that goes through the data twice instead of once
     # but when Argmax.c_impl() is in place, it should be fine.
-    return max_and_argmax(x, axis)[1]
+
+    argout = max_and_argmax(x, axis)[1]
+
+    if keepdims:
+        argout = makeKeepDims(x, argout, axis)
+    return argout
 
 
 @constructor
-def min(x, axis=None):
+def min(x, axis=None, keepdims=False):
+    """
+    Returns minimum elements obtained by iterating over given axis
+
+    When axis is None (the default value), the min is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
+    """
+
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
-        return -max(-x, axis=axis)
+        return -max(-x, axis=axis, keepdims=keepdims)
     else:
         #Be careful about unsigned integers, complex
         raise NotImplementedError()
 
 
 @constructor
-def argmin(x, axis=None):
+def argmin(x, axis=None, keepdims=False):
+    """
+    Returns indices of minimum elements obtained by iterating over given axis
+
+    When axis is None (the default value), the argmin is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
+    """
+
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
-        return argmax(-x, axis=axis)
+        return argmax(-x, axis=axis, keepdims=keepdims)
     else:
         #Be careful about unsigned integers, complex
         raise NotImplementedError()
@@ -3021,27 +3093,51 @@ pprint.assign(tensor_copy, printing.IgnorePrinter())
 
 
 @constructor
-def sum(input, axis=None, dtype=None):
+def sum(input, axis=None, dtype=None, keepdims=False):
     """
-    Sum a tensor along the given axis(es).
+    Computes the sum along the given axis(es) of a tensor `input`
+
+    When axis is None (the default value), the sum is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
 
     For full documentation see ``tensor.elemwise.Sum``.
     In particular please pay attention to the important warning when using
     a custom dtype.
     """
-    return elemwise.Sum(axis=axis, dtype=dtype)(input)
+
+    out = elemwise.Sum(axis=axis, dtype=dtype)(input)
+
+    if keepdims:
+        out = makeKeepDims(input, out, axis)
+    return out
 
 pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 
 @constructor
-def prod(input, axis=None, dtype=None):
+def prod(input, axis=None, dtype=None, keepdims=False):
     """
-    Returns the Product of a tensor's elements along the given axis(es).
+    Computes the product along the given axis(es) of a tensor `input`
+
+    When axis is None (the default value), the product is performed
+    over the flattened tensor.
+
+    keepdims: If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
 
     For full documentation see ``tensor.elemwise.Prod``.
     """
-    return elemwise.Prod(axis, dtype=dtype)(input)
+
+    out = elemwise.Prod(axis, dtype=dtype)(input)
+
+    if keepdims:
+        out = makeKeepDims(input, out, axis)
+    return out
 
 
 class Mean(elemwise.CAReduce):
@@ -3080,8 +3176,9 @@ class Mean(elemwise.CAReduce):
 
 
 @constructor
-def mean(input, axis=None, dtype=None, op=False):
-    """Compute the mean value along the given axis of a tensor `input`
+def mean(input, axis=None, dtype=None, op=False, keepdims=False):
+    """
+    Computes the mean value along the given axis(es) of a tensor `input`
 
     :param axis: compute the mean along this axis of the tensor.
                  None means all axes (like numpy).
@@ -3094,9 +3191,14 @@ def mean(input, axis=None, dtype=None, op=False):
                   If None, then we use the same rules as `sum()`.
     :type dtype: None or string
 
+    :param keepdims: If this is set to True, the axes which are reduced are
+        left in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original tensor.
+
     :note: for gpu, if you specify dtype=float32, everything will be done
            on the gpu.
     """
+
     if op:
         if dtype not in (None, 'float64'):
             raise NotImplementedError(
@@ -3104,7 +3206,10 @@ def mean(input, axis=None, dtype=None, op=False):
                     'and will always use float64. If you want to specify '
                     'the dtype, call tensor.mean(..., op=False).',
                     dtype)
-        return Mean(axis)(input)
+        out = Mean(axis)(input)
+        if keepdims:
+            out = makeKeepDims(input, out, axis)
+        return out
 
     if dtype is not None:
         # The summation will be done with the specified dtype.
@@ -3114,7 +3219,7 @@ def mean(input, axis=None, dtype=None, op=False):
         # Let sum() infer the appropriate dtype.
         sum_dtype = None
 
-    s = sum(input, axis=axis, dtype=sum_dtype)
+    s = sum(input, axis=axis, dtype=sum_dtype, keepdims=keepdims)
     shp = shape(input)
 
     # Cast shp into a float type
@@ -3130,6 +3235,7 @@ def mean(input, axis=None, dtype=None, op=False):
     elif isinstance(axis, int):
         axis = [axis]
 
+    # This sequential division will possibly be optimized by Theano:
     for i in axis:
         s = true_div(s, shp[i])
 
@@ -3137,54 +3243,50 @@ def mean(input, axis=None, dtype=None, op=False):
 
 
 @constructor
-def var(input, axis=None):
-    """Compute the variance along the given axis of a tensor `input`.
+def var(input, axis=None, keepdims=False):
+    """
+    Computes the variance along the given axis(es) of a tensor `input`.
 
     :param axis: Compute the variance along this axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
+    :param keepdims: If this is set to True, the axes which are reduced are
+        left in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original tensor.
     """
+
     input_ndim = input.type.ndim
     if axis is None:
         axis = range(input_ndim)
     if isinstance(axis, int):
         axis = [axis]
 
-    #make a pattern that will undo the reduction of dimensions caused by mean
-    pattern = []
-    next_dim = 0
-    for i in xrange(input_ndim):
-        if i in axis:
-            pattern.append('x')
-        else:
-            pattern.append(next_dim)
-            next_dim += 1
-
     #compute the axis-wise mean
-    mean_input_reduced = mean(input, axis)
-
-    #broadcast that back out to match input
-    mean_input = DimShuffle(
-            list(mean_input_reduced.type.broadcastable),
-            pattern)(mean_input_reduced)
+    mean_input = mean(input, axis, keepdims=True)
 
     #center the input
     centered_input = input - mean_input
 
     #return the mean sqr
-    return mean((centered_input ** 2), axis)
+    return mean((centered_input ** 2), axis, keepdims=keepdims)
 
 
 @constructor
-def std(input, axis=None):
-    """Compute the standard deviation along the given axis of a tensor `input`.
+def std(input, axis=None, keepdims=False):
+    """
+    Computes the standard deviation along the given axis(es) of a tensor `input`.
 
     :param axis: Compute the standard deviation along this axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
+
+    :param keepdims: If this is set to True, the axes which are reduced are
+        left in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original tensor.
     """
-    return sqrt(var(input=input, axis=axis))
+
+    return sqrt(var(input=input, axis=axis, keepdims=keepdims))
 
 if 0:
     ## COMMENTED OUT FEB 17 2010
@@ -6364,9 +6466,17 @@ def outer(x, y):
             y.dimshuffle('x', 0))
 
 
-def any(x, axis=None):
-    return elemwise.Any(axis)(x)
+def any(x, axis=None, keepdims=False):
+    out = elemwise.Any(axis)(x)
+
+    if keepdims:
+        out = makeKeepDims(x, out, axis)
+    return out
 
 
-def all(x, axis=None):
-    return elemwise.All(axis)(x)
+def all(x, axis=None, keepdims=False):
+    out = elemwise.All(axis)(x)
+
+    if keepdims:
+        out = makeKeepDims(x, out, axis)
+    return out

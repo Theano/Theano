@@ -28,12 +28,19 @@ class Env(utils.object2):
     """ WRITEME
     An Env represents a subgraph bound by a set of input variables and a
     set of output variables. The inputs list should contain all the inputs
-    on which the outputs depend. Variables of type Value or Constant are
+    on which the outputs depend. Variables of type Constant are
     not counted as inputs.
 
     The Env supports the replace operation which allows to replace a
     variable in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
+
+    This class is also reponsible for verifying that a graph is valid
+    (ie, all the dtypes and broadcast patterns are compatible with the
+    way the the Variables are used) and for annotating the Variables with
+    a .clients field that specifies which Apply nodes use the variable.
+    The .clients field combined with the .owner field and the Apply nodes'
+    .inputs field allows the graph to be traversed in both directions.
 
     It can also be "extended" using env.extend(some_object). See the
     toolbox and ext modules for common extensions.
@@ -43,7 +50,7 @@ class Env(utils.object2):
     - feature.on_attach(env)
         Called by extend. The feature has great freedom in what
         it can do with the env: it may, for example, add methods
-        to it dynicamically.
+        to it dynamically.
 
     - feature.on_detach(env)
         Called by remove_feature(feature).  Should remove any dynamically-added
@@ -240,7 +247,7 @@ class Env(utils.object2):
                 r_owner_done.add(node)
                 self.__import__(node)
         for r in variables:
-            if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
+            if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
                 raise MissingInputError("Undeclared input", r)
             if not getattr(r, 'env', None) is self:
                 self.__setup_r__(r)
@@ -260,7 +267,7 @@ class Env(utils.object2):
                 for r in node.inputs:
                     if hasattr(r, 'env') and r.env is not self:
                         raise Exception("%s is already owned by another env" % r)
-                    if r.owner is None and not isinstance(r, graph.Value) and r not in self.inputs:
+                    if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
 
                         #Verbose error message
                         #Show a complete chain of variables from the missing input to an output
@@ -610,7 +617,7 @@ class Env(utils.object2):
             excess = self.variables.difference(variables)
             raise Exception("The variables are inappropriately cached. missing, in excess: ", missing, excess)
         for variable in variables:
-            if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Value):
+            if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Constant):
                 raise Exception("Undeclared input.", variable)
             if variable.env is not self:
                 raise Exception("Variable should belong to the env.", variable)

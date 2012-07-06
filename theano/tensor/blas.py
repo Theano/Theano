@@ -127,6 +127,7 @@ import copy
 import logging
 import os
 import sys
+import time
 
 import numpy
 import numpy.distutils
@@ -322,6 +323,7 @@ def default_blas_ldflags():
         # If we are in a EPD installation, mkl is available
         blas_info = numpy.distutils.__config__.blas_opt_info
         if "EPD" in sys.version:
+            use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
                     ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
@@ -330,9 +332,37 @@ def default_blas_ldflags():
                     # blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
-            return ' '.join(
-                ['-L%s' % os.path.join(sys.prefix, "lib")] +
-                ['-l%s' % l for l in blas_info['libraries']])
+            elif sys.platform == 'darwin':
+                # The env variable is needed to link with mkl
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # Explicit version could be replaced by a symbolic
+                    # link called 'Current' created by EPD installer
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we warn the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    _logger.warning(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano use a slow version of BLAS. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will disable this warning."
+                        % new_path)
+
+
+                    use_unix_epd = False
+            if use_unix_epd:
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
         if all(not os.path.exists(dir) for dir in blas_info['library_dirs']):
@@ -344,7 +374,8 @@ def default_blas_ldflags():
                         # we just pass the whole ldflags as the -l
                         # options part.
                         ['-L%s' % l for l in blas_info['library_dirs']] +
-                        ['-l%s' % l for l in blas_info['libraries']])
+                        ['-l%s' % l for l in blas_info['libraries']] +
+                        extra)
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
         return "-lblas"
@@ -1289,11 +1320,16 @@ def _gemm_from_node2(node):
 
     """
     lst = []
+    t0 = time.time()
     _gemm_canonicalize(node.outputs[0], 1.0, lst, 0)
+    t1 = time.time()
+
     #print "GEMM CANON", lst
     if len(lst) > 1:
         lst = _factor_canonicalized(lst)
+        t2 = time.time()
         rval = _gemm_from_factored_list(lst)
+        t3 = time.time()
 
         # It can happen that _factor_canonicalized and
         # _gemm_from_factored_list return a node with an incorrect
@@ -1305,7 +1341,9 @@ def _gemm_from_node2(node):
         # but never made it into a trac ticket.
 
         if rval and (rval[0][0].type == node.outputs[0].type):
-            return rval
+            return rval, t1 - t0, t2 - t1, t3 - t2
+
+    return None, t1 - t0, 0, 0
 
 
 class GemmOptimizer(Optimizer):
@@ -1319,14 +1357,38 @@ class GemmOptimizer(Optimizer):
 
     def apply(self, env):
         did_something = True
+        nb_iter = 0
+        nb_replacement = 0
+        nb_replacement_didn_t_remove = 0
+        nb_inconsistency_make = 0
+        nb_inconsistency_replace = 0
+        time_canonicalize = 0
+        time_factor_can = 0
+        time_factor_list = 0
+        time_toposort = 0
         while did_something:
+            t0 = time.time()
             nodelist = list(env.toposort())
+            time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
             for node in nodelist:
+                if not (isinstance(node.op, T.Elemwise) and
+                        isinstance(node.op.scalar_op,
+                                   (theano.scalar.Add, theano.scalar.Sub,
+                                    theano.scalar.Neg, theano.scalar.Mul))):
+                    continue
+                if not node in env.nodes:
+                    # This mean that we already removed this node from
+                    # the graph
+                    continue
                 try:
-                    new_outputs = _gemm_from_node2(node)
+                    new_outputs, time1, time2, time3 = _gemm_from_node2(node)
+                    time_canonicalize += time1
+                    time_factor_can += time2
+                    time_factor_list += time3
                 except InconsistencyError, e:
+                    nb_inconsistency_make += 1
                     continue
                 if new_outputs:
                     new_outputs, old_dot22 = new_outputs
@@ -1335,16 +1397,39 @@ class GemmOptimizer(Optimizer):
                         env.replace_all_validate_remove(
                             zip(node.outputs, new_outputs),
                             [old_dot22],
-                            reason='GemmOptimizer'
+                            reason='GemmOptimizer',
+                            warn=nb_replacement_didn_t_remove == 0
                         )
                         did_something = True
-                        break
+                        nb_replacement += 1
                     except InconsistencyError, e:
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
+                        nb_inconsistency_replace += 1
                         pass
                     except ReplacementDidntRemovedError, e:
+                        nb_replacement_didn_t_remove += 1
                         pass
+            nb_iter += 1
+        return (self, nb_iter, nb_replacement, nb_replacement_didn_t_remove,
+                nb_inconsistency_make, nb_inconsistency_replace,
+                time_canonicalize, time_factor_can,
+                time_factor_list, time_toposort)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        #1946.912556s - ('gemm_optimizer', 'GemmOptimizer', 1)
+        print >> stream, blanc, "GemmOptimizer"
+        print >> stream, blanc, " nb_iter", prof[1]
+        print >> stream, blanc, " nb_replacement", prof[2]
+        print >> stream, blanc, " nb_replacement_didn_t_remove", prof[3]
+        print >> stream, blanc, " nb_inconsistency_make", prof[4]
+        print >> stream, blanc, " nb_inconsistency_replace", prof[5]
+        print >> stream, blanc, " time_canonicalize", prof[6]
+        print >> stream, blanc, " time_factor_can", prof[7]
+        print >> stream, blanc, " time_factor_list", prof[8]
+        print >> stream, blanc, " time_toposort", prof[9]
 
 
 class Dot22(GemmRelated):

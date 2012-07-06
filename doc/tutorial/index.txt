@@ -34,6 +34,7 @@ you out.
     aliasing
     conditions
     loop
+    sparse
     using_gpu
     gpu_data_convert
     shape_info

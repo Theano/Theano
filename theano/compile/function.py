@@ -77,6 +77,84 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     another expression is undefined.  Replacements specified with givens are different from
     optimizations in that Var2 is not expected to be equivalent to Var1.
 
+
+    Internal documentation:
+
+        What happens when you call theano.function?
+           1. RemoveShared: shared variables are just an abstraction to make
+        things more convenient for the user. The shared variables are
+        transformed into implicit inputs and implicit outputs. The
+        optimizations don't see which variables are shared or not.
+           2. Env: determines whether a graph is valid. for example, suppose
+        you merge the two apply nodes in our example above, ie, do the
+        addition and the tanh at the same time. If you propose a merge that
+        changes the resulting dtype or broadcastable pattern of V4, the env
+        will detect this.
+                    inplace optimizations: say we have an apply node that
+        does + on V1 and V2, with output V3. We can change the output to be
+        V1, to use less memory. theano must be told that this optimization is
+        happening though, so that other parts of the graph are given the
+        correct (pre + or post + ) version of V1.
+                  env will raise an error if any of these types of
+        modifications causes an error
+                  env also adds a field called "clients" to all variables.
+        clients is a list of apply nodes that use the variable. this makes it
+        possible to traverse the graph in both directions. this is useful for
+        determining whether to do some optimizations. for example, a fusion
+        operation that removes V3 is not very helpful if V3 is also needed for
+        some other apply node. fusion operations result in a composite op that
+        takes a minigraph of theano scalars and uses this to do elemwise
+        operations on theano tensors
+         3. Optimization
+               How well do optimizations apply to new ops?
+                 Usually there are no optimizations for new ops. In fact, new
+        ops can disrupt patterns and break currently working optimizations.
+        Since the Print op, for example, is not known by any optimization,
+        setting a Print op in the middle of a pattern that is usually
+        optimized out will block the optimization. for example, log(1+x)
+        optimizes to log1p(x) but log(1+Print(x)) is unaffected by
+        optimizations.
+                 One exception is elemwise ops. If you implement your new op
+        as a scalar op then it will automatically work with all the elemwise
+        fusion machinery.
+
+                 Local optimizations try to replace some node in the graph
+        with a different node. In the case of log(1+x), we want to replace the
+        log node.
+
+                 def opt_log1p(node):
+                    if not isinstance(node.op,Elemwise):
+                       return
+                    if not isinstance(node.op.scalar_op, log,):
+                       return
+                    inp = node.inputs[0]
+                    if not inp.owner:
+                       return
+                    if not isinstance(inp.owner.op, add):
+                       return
+                    inp2 = inp.owner.inputs
+                    check that this has length 2, and that one of the inputs
+        is 1. assign the other input to x
+                    return log1p(x)
+
+
+         4. Linker
+               The linker uses a python loop to execute the code associated
+               with all the Apply nodes in the graph in the correct order.
+               the cvm is a linker that replaces this python loop with a c
+               loop to avoid continuously changing between python and c.
+               The CVM is faster for 2 reasons:
+                 1) It's internal logic in C, so no Python interpreter overhead.
+                 2) It makes native calls from the VM logic into thunks that
+                 have been compiled using the CLinker.
+               the vm is a linker that was developed to prototype the cvm. it
+        was easier to develop the vm in python then translate it to c instead
+        of just writing it in c from scratch
+               cvm stands for c virtual machine.
+
+
+
+
     """
     #tuple are used in some tests, as we accepted them in the past
     #I prefer to allow it as they act the same as list for what they are used.

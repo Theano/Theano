@@ -11,7 +11,7 @@ import theano
 from theano.compile import optdb
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config, AddConfigVar, StrParam, BoolParam
 import nvcc_compiler
 
 _logger_name = 'theano.sandbox.cuda'
@@ -28,6 +28,16 @@ AddConfigVar('cuda.root',
         or else "AUTO".
         """,
         StrParam(os.getenv('CUDA_ROOT', "AUTO")))
+
+AddConfigVar('pycuda.init',
+        """If True, always initialize PyCUDA when Theano want to
+           initilize the GPU.  Currently, we must always initialize
+           PyCUDA before Theano do it.  Setting this flag to True,
+           ensure that, but always import PyCUDA.  It can be done
+           manually by importing theano.misc.pycuda_init before theano
+           initialize the GPU device.
+             """,
+        BoolParam(False))
 
 if config.cuda.root == "AUTO":
     # set nvcc_path correctly and get the version
@@ -117,7 +127,14 @@ compile_cuda_ndarray = True
 if not compile_cuda_ndarray:
     compile_cuda_ndarray = not try_import()
 
-if compile_cuda_ndarray:
+if not nvcc_compiler.is_nvcc_available():
+    # It can happen that there the file cuda_ndarray.so is already compiled
+    # but nvcc is not available. In that case we need to disable the CUDA
+    # back-end as we won't be able to compile any new op and we can't only
+    # use already compiled GPU op and not the others.
+    set_cuda_disabled()
+
+if compile_cuda_ndarray and cuda_available:
     get_lock()
     try:
         # Retry to load again in case someone else compiled it
@@ -153,6 +170,7 @@ if compile_cuda_ndarray:
                 set_cuda_disabled()
     finally:
         release_lock()
+
 del compile_cuda_ndarray
 
 if cuda_available:
@@ -328,10 +346,15 @@ def use(device,
         # No successful call to use() has been made yet
         if device != 'gpu' and device < 0:
             return
-        if device in [None, ""]:
-            device = 0
+
+        # Has PyCUDA already initialized the GPU context
+        pycuda_init_dev = False
+        if config.pycuda.init:
+            import theano.misc.pycuda_init
+            pycuda_init_dev = theano.misc.pycuda_init.pycuda_available
+
         try:
-            if device != 'gpu':
+            if (device != 'gpu') and not pycuda_init_dev:
                 assert isinstance(device, int)
                 gpu_init(device)
                 use.device_number = device

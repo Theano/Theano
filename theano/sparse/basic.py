@@ -212,17 +212,6 @@ def constant(x, name=None):
     except TypeError:
         raise TypeError("Could not convert %s to SparseType" % x, type(x))
 
-if 0:
-    def value(x):
-        if not isinstance(x, scipy.sparse.spmatrix):
-            raise TypeError("sparse.value must be called on a "
-                            "scipy.sparse.spmatrix")
-        try:
-            return SparseValue(SparseType(format=x.format,
-                                          dtype=x.dtype), x)
-        except TypeError:
-            raise TypeError("Could not convert %s to SparseType" % x, type(x))
-
 
 def sp_ones_like(x):
     # TODO: don't restrict to CSM formats
@@ -364,12 +353,6 @@ class SparseConstant(gof.Constant, _sparse_py_operators):
 
     def __repr__(self):
         return str(self)
-
-
-class SparseValue(gof.Value, _sparse_py_operators):
-    dtype = property(lambda self: self.type.dtype)
-    format = property(lambda self: self.type.format)
-
 
 class SparseType(gof.Type):
     """
@@ -760,19 +743,19 @@ class CSMGrad(gof.op.Op):
             sp_dim = x_shape[1]
         else:
             sp_dim = x_shape[0]
-        
+
         g_row = numpy.zeros(sp_dim, dtype=g_data.dtype)
         gout_data = numpy.zeros_like(x_data)
         for i in range(len(x_indptr) - 1):
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
                 g_row[g_indices[j_ptr]] += g_data[j_ptr]
-            
+
             for j_ptr in range(x_indptr[i], x_indptr[i + 1]):
                 gout_data[j_ptr] = g_row[x_indices[j_ptr]]
-            
+
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
                 g_row[g_indices[j_ptr]] = 0
-        
+
         if self.kmap is None:
             g_out[0] = gout_data
         else:
@@ -811,7 +794,7 @@ class CSMGradC(gof.Op):
             raise NotImplementedError('Complex types are not supported for a_val')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b_val')
-        
+
         return """
         if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
         if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
@@ -825,22 +808,22 @@ class CSMGradC(gof.Op):
 
         if (%(a_ptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
-        
+
         if (%(b_ind)s->descr->type_num != PyArray_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "b_ind dtype not INT32"); %(fail)s;}
 
         if (%(b_ptr)s->descr->type_num != PyArray_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "b_ptr dtype not INT32"); %(fail)s;}
-        
+
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_val and a_ind have different lengths"); %(fail)s;}
-        
+
         if (%(b_val)s->dimensions[0] != %(b_ind)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "b_val and b_ind have different lengths"); %(fail)s;}
-        
+
         if (%(a_ptr)s->dimensions[0] != %(b_ptr)s->dimensions[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr and b_ptr have different lengths"); %(fail)s;}
-        
+
         if ((!%(z)s) || (%(z)s->dimensions[0] != %(a_val)s->dimensions[0]))
         {
             {Py_XDECREF(%(z)s);}
@@ -854,9 +837,9 @@ class CSMGradC(gof.Op):
             npy_intp M = %(a_ptr)s->dimensions[0] - 1;
             npy_intp a_dim_0 = ((npy_int32 *)%(a_dim)s->data)[0];
             npy_intp a_dim_1 = ((npy_int32 *)%(a_dim)s->data)[1];
-            
+
             npy_intp sp_dim = (M == a_dim_0)?a_dim_1:a_dim_0;
-            
+
             // strides tell you how many bytes to skip to go to next column/row entry
             npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
             npy_intp Sa_val = %(a_val)s->strides[0] / %(a_val)s->descr->elsize;
@@ -876,9 +859,9 @@ class CSMGradC(gof.Op):
             const npy_int32 * __restrict__ Db_ptr = (npy_int32*)%(b_ptr)s->data;
 
             npy_intp nnz = %(a_ind)s->dimensions[0];
-            
+
             dtype_%(b_val)s b_row[sp_dim];
-            
+
             //clear the output array
             for (npy_int64 i = 0; i < nnz; ++i)
             {
@@ -893,12 +876,12 @@ class CSMGradC(gof.Op):
                     j_ptr < Db_ptr[(m + 1) * Sb_ptr]; j_ptr++) {
                     b_row[Db_ind[j_ptr * Sb_ind]] += Db_val[j_ptr*Sb_val];
                 }
-                
+
                 for (npy_int32 j_ptr = Da_ptr[m * Sa_ptr];
                     j_ptr < Da_ptr[(m + 1) * Sa_ptr]; j_ptr++) {
                     Dz[j_ptr*Sz] = b_row[Da_ind[j_ptr * Sa_ind]];
                 }
-                
+
                 for (npy_int32 j_ptr = Db_ptr[m * Sb_ptr];
                     j_ptr < Db_ptr[(m + 1) * Sb_ptr]; j_ptr++) {
                     b_row[Db_ind[j_ptr * Sb_ind]] = 0;
@@ -912,17 +895,11 @@ class CSMGradC(gof.Op):
         return (3,)
 csm_grad_c = CSMGradC()
 
-@gof.local_optimizer([csm_grad(None)])
-def local_csm_grad_c(node):
-    """ csm_grad(None) -> csm_grad_c """
-    if node.op == csm_grad(None):
-        return [csm_grad_c(*node.inputs)]
-    return False
-register_specialize(local_csm_grad_c)
-
 #
 # Conversion
 #
+
+
 class DenseFromSparse(gof.op.Op):
     """
     Convert a sparse matrix to an `ndarray`.
@@ -1960,28 +1937,6 @@ class StructuredDotCSR(gof.Op):
 sd_csr = StructuredDotCSR()
 
 
-# register a specialization to replace StructuredDot -> StructuredDotCSx
-@gof.local_optimizer([_structured_dot])
-def local_structured_dot(node):
-    if node.op == _structured_dot:
-        a, b = node.inputs
-        if a.type.format == 'csc':
-            a_val, a_ind, a_ptr, a_shape = csm_properties(a)
-            a_nsparse = a_shape[0]
-            return [sd_csc(a_val, a_ind, a_ptr, a_nsparse, b)]
-        if a.type.format == 'csr':
-            a_val, a_ind, a_ptr, a_shape = csm_properties(a)
-            return [sd_csr(a_val, a_ind, a_ptr, b)]
-    return False
-
-# Commented out because
-# a) it is only slightly faster than scipy these days, and sometimes a little
-# slower, and
-# b) the resulting graphs make it very difficult for an op to do size checking
-# on the matrices involved.  dimension mismatches are hard to detect sensibly.
-#register_specialize(local_structured_dot)
-
-
 def structured_dot_grad(sparse_A, dense_B, ga):
     if sparse_A.type.format in ('csc', 'csr'):
 
@@ -2648,49 +2603,3 @@ class UsmmCscDense(gof.Op):
 
 usmm_csc_dense = UsmmCscDense(inplace=False)
 usmm_csc_dense_inplace = UsmmCscDense(inplace=True)
-
-
-local_usmm = gof.opt.PatternSub(
-    (tensor.sub, 'z',
-     (tensor.mul,
-      {'pattern': 'alpha',
-       'constraint': lambda expr: numpy.all(expr.type.broadcastable)},
-    (_dot, 'x', 'y'))),
-    (usmm, (tensor.neg, 'alpha'), 'x', 'y', 'z'))
-
-
-register_specialize(local_usmm, name="local_usmm")
-
-
-@gof.local_optimizer([usmm])
-def local_usmm_csx(node):
-    """ usmm -> usmm_csc_dense """
-    if node.op == usmm:
-        alpha, x, y, z = node.inputs
-
-        x_is_sparse_variable = _is_sparse_variable(x)
-        y_is_sparse_variable = _is_sparse_variable(y)
-
-        if x_is_sparse_variable and not y_is_sparse_variable:
-            if x.type.format == 'csc':
-                x_val, x_ind, x_ptr, x_shape = csm_properties(x)
-                x_nsparse = x_shape[0]
-                dtype_out = scalar.upcast(alpha.type.dtype, x.type.dtype,
-                                          y.type.dtype, z.type.dtype)
-                if dtype_out not in ('float32', 'float64'):
-                    return False
-                # Sparse cast is not implemented.
-                if y.type.dtype != dtype_out:
-                    return False
-
-                return [usmm_csc_dense(alpha, x_val, x_ind, x_ptr,
-                                       x_nsparse, y, z)]
-    return False
-register_specialize(local_usmm_csx)
-
-
-@gof.local_optimizer([usmm_csc_dense])
-def local_usmm_csc_dense_inplace(node):
-    if node.op == usmm_csc_dense:
-        return [usmm_csc_dense_inplace(*node.inputs)]
-register_specialize(local_usmm_csc_dense_inplace, 'inplace')

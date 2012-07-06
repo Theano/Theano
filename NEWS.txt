@@ -54,6 +54,9 @@ Speed up
    it faster in some cases (especially medium/big ouput image) (Frédéric B.)
    (We hardcoded 512 as the maximum number of thread per block. Newer card
     support up to 1024 threads per block.
+ * CPU convolution are now parallelized (Frédric B.)
+   By default use all cores/hyper-threads
+   To control it, use the OMP_NUM_THREADS=N environment variable.
 
 New Features
  * debugprint new param ids=["CHAR", "id", "int", ""]
