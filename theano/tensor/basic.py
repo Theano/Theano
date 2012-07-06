@@ -3207,6 +3207,7 @@ def prod(input, axis=None, dtype=None, keepdims=False):
 class Mean(elemwise.CAReduce):
     def __init__(self, axis=None):
         elemwise.CAReduce.__init__(self, scal.add, axis)
+        assert self.axis is None or len(self.axis) == 1
 
     def __str__(self):
         if self.axis is not None:
@@ -3221,7 +3222,7 @@ class Mean(elemwise.CAReduce):
     def perform(self, node, inp, out):
         input, = inp
         output, = out
-        output[0] = numpy.mean(input, axis=self.axis)
+        output[0] = numpy.mean(input, axis=self.axis[0])
 
     def c_code(self, node, name, inames, onames, sub):
         if self.axis is not None:

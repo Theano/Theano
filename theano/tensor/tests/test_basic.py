@@ -6422,14 +6422,14 @@ class TestInferShape(utt.InferShapeTester):
         #
         # to be resolved as desired/appropriate
 
-        """
         adtens3_val = rand(3, 4, 5)
         aiscal_val = 2
-
+        self._compile_and_check([adtens3],
+                                [Mean(None)(adtens3)],
+                                [adtens3_val], Mean)
         self._compile_and_check([adtens3],
                                 [Mean(aiscal_val)(adtens3)],
                                 [adtens3_val], Mean)
-        """
 
         # IncSubtensor
         # Note: Is testing only for the 4-tensor below sufficient?
