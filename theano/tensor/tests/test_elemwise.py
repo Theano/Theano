@@ -410,8 +410,6 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                              test_nan=True)
 
     def test_infer_shape(self):
-        # Note: will fail upon submission of following (xsh, tosum) tuples:
-        # ((5, 6), ()), ((5, 0), ()), ((), None), ((), ())]:
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
@@ -422,7 +420,11 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                            ((2, 3, 4, 5), (-2, -3)),
                            ((5, 0), None),
                            ((5, 0), (0, )),
-                           ((5, 0), (1, ))]:
+                           ((5, 0), (1, )),
+                           ((5, 6), ()),
+                           ((5, 0), ()),
+                           ((), None),
+                           ((), ())]:
             dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
@@ -430,7 +432,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             xv = numpy.asarray(numpy.random.rand(*xsh))
             self._compile_and_check([x],
                             [CAReduce(add, axis=tosum)(x)],
-                            [xv], CAReduce)
+                            [xv], CAReduce, ["local_cut_useless_reduce"])
 
 
 class test_Prod(unittest.TestCase):
