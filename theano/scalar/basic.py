@@ -1085,9 +1085,9 @@ class Maximum(BinaryScalarOp):
         # max is not defined for complex_types
         gx, gy = None, None
         if x.type in float_types:
-            gx = eq(maximum(x, y), x) * gz
+            gx = cast(eq(maximum(x, y), x) * gz, x.type.dtype)
         if y.type in float_types:
-            gy = eq(maximum(x, y), y) * gz
+            gy = cast(eq(maximum(x, y), y) * gz, y.type.dtype)
         return (gx, gy)
 maximum = Maximum(upcast_out, name='maximum')
 
@@ -1110,9 +1110,9 @@ class Minimum(BinaryScalarOp):
         # max is not defined for complex_types
         gx, gy = None, None
         if x.type in float_types:
-            gx = eq(minimum(x, y), x) * gz
+            gx = cast(eq(minimum(x, y), x) * gz, x.type.dtype)
         if y.type in float_types:
-            gy = eq(minimum(x, y), y) * gz
+            gy = cast(eq(minimum(x, y), y) * gz, y.type.dtype)
         return (gx, gy)
 
 minimum = Minimum(upcast_out, name='minimum')
