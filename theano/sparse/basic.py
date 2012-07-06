@@ -1287,11 +1287,11 @@ neg = Neg()
 
 
 class SpSum(gof.op.Op):
-    """
-    TODO: rewrite
+    """TODO: rewrite
     Scale each columns of a sparse matrix by the
     corresponding element of a dense vector
     """
+
     axis = None
     sparse_grad = False
 
@@ -1351,7 +1351,7 @@ class SpSum(gof.op.Op):
             if self.axis == 0:
                 if x.format == 'csc':
                     z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape(
-                        (x.shape[1],))
+                        (x.shape[1], ))
                 else:
                     z[0] = numpy.asarray(x.asformat(x.format).sum(
                             axis=self.axis)).reshape((x.shape[1],))
