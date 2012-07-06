@@ -6077,22 +6077,162 @@ class TestInferShape(utt.InferShapeTester):
         axes = 1
         self._compile_and_check([admat, bdmat, gzdmat],
                                 tensordot_grad(axes)(admat, bdmat, gzdmat),
-                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+                        [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal = dscalar()
+        gzdscal_val = rand()
+        axes = 2
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        gzdmat_val = rand(4, 3)
         axes = ((1, ), (0, ))
         self._compile_and_check([admat, bdmat, gzdmat],
                                 tensordot_grad(axes)(admat, bdmat, gzdmat),
                             [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
 
+        axes = ((1, 0))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(3, 4)
+        gzdmat_val = rand(5, 3)
+        axes = ((0, ), (1, ))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal_val = rand()
+        axes = ((0, 1), (0, 1))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        # Note: The two following tests currently fail and should unlikely be
+        # for the shape of a grad is very simple and similar to that of the inputs.
+        # Additional tests involving 3-tensors and 4-tensors will be included once
+        # this is resolved. Suggestion: first solve issues with 'tensordot' next.
+
+        """
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        gzdscal_val = rand()
+        axes = ((0, 1), (1, 0))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal_val = rand()
+        axes = ((1, 0 ), (1, 0))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+        """
+
         # tensordot
+        admat = dmatrix()
+        bdmat = dmatrix()
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
         axes = 1
         self._compile_and_check([admat, bdmat],
                                 [TensorDot(axes)(admat, bdmat)],
-                                [admat_val, bdmat_val], TensorDot)
+                            [admat_val, bdmat_val], TensorDot)
 
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        axes = 2
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
         axes = ((1, ), (0, ))
         self._compile_and_check([admat, bdmat],
                                 [TensorDot(axes)(admat, bdmat)],
-                                [admat_val, bdmat_val], TensorDot)
+                            [admat_val, bdmat_val], TensorDot)
+
+        axes = ((1, 0))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(3, 4)
+        axes = ((0, ), (1, ))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        axes = ((1,), (0,))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        axes = ((0, 1), (0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        axes = ((1, 0), (0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        adtens3 = dtensor3()
+        admat_val = rand(5, 4)
+        adtens3_val = rand(5, 4, 3)
+        axes = 2
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens3_val = rand(4, 5, 3)
+        axes = ((1, 0), (0, 1))
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens3_val = rand(4, 3, 5)
+        axes = ((1, 0), (0, 2))
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens4 = dtensor4()
+        admat_val = rand(5, 4)
+        adtens4_val = rand(5, 4, 3, 2)
+        axes = 2
+        self._compile_and_check([admat, adtens4],
+                                [TensorDot(axes)(admat, adtens4)],
+                        [admat_val, adtens4_val], TensorDot)
+
+        adtens4_val = rand(4, 3, 2, 5)
+        axes = ((1, 0), (0, 3))
+        self._compile_and_check([admat, adtens4],
+                                [TensorDot(axes)(admat, adtens4)],
+                        [admat_val, adtens4_val], TensorDot)
 
         # Flatten
         adtens = tensor3()
