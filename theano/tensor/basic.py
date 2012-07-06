@@ -6216,7 +6216,6 @@ class TensorDotGrad(Op):
                     for i in range(node.inputs[1].ndim)]
         return [inp0_shp, inp1_shp]
 
-
 tensordot_grad = TensorDotGrad
 
 
@@ -6296,12 +6295,10 @@ class TensorDot(Op):
         shape_x, shape_y = in_shapes
         out_shape = []
         if isinstance(self.axes, (list, tuple)):
-            iter = (i for i in range(len(shape_x))
-                    for j in self.axes[0] if i != j)
+            iter = (i for i in range(len(shape_x)) if i not in self.axes[0])
             for i in iter:
                 out_shape.append(shape_x[i])
-            iter = (i for i in range(len(shape_y))
-                    for j in self.axes[1] if i != j)
+            iter = (i for i in range(len(shape_y)) if i not in self.axes[1])
             for i in iter:
                 out_shape.append(shape_y[i])
         else:
