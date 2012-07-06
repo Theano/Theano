@@ -60,22 +60,22 @@ class test_casting(unittest.TestCase):
 
         # upcasting to complex128
         for t in ['int8','int16','int32','int64','float32','float64']:
-            a = shared(numpy.ones(3, dtype=t))
-            b = shared(numpy.ones(3, dtype='complex128'))
+            a = theano.shared(numpy.ones(3, dtype=t))
+            b = theano.shared(numpy.ones(3, dtype='complex128'))
             f = function([],basic._convert_to_complex128(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
         # upcasting to complex64
         for t in ['int8','int16','int32','int64','float32']:
-            a = shared(numpy.ones(3, dtype=t))
-            b = shared(numpy.ones(3, dtype='complex64'))
+            a = theano.shared(numpy.ones(3, dtype=t))
+            b = theano.shared(numpy.ones(3, dtype='complex64'))
             f = function([],basic._convert_to_complex64(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
         # downcast to complex64
         for t in ['float64']:
-            a = shared(numpy.ones(3, dtype=t))
-            b = shared(numpy.ones(3, dtype='complex64'))
+            a = theano.shared(numpy.ones(3, dtype=t))
+            b = theano.shared(numpy.ones(3, dtype='complex64'))
             f = function([],basic._convert_to_complex64(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
