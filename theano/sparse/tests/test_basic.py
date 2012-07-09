@@ -72,6 +72,49 @@ def random_lil(shape, dtype, nnz):
     return rval
 
 
+def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
+    """Return a tuple containing everything needed to
+    perform a test.
+
+    If `out_dtype` is `None`, theano.config.floatX is
+    used.
+
+    :param format: Sparse format.
+    :param shape: Shape of data.
+    :param n: Number of variable.
+    :param out_dtype: dtype of output.
+    :param p: Sparsity proportion.
+
+    :return: (variable, data) where both `variable`
+             and `data` are list.
+    """
+
+    if out_dtype is None:
+        out_dtype = theano.config.floatX
+
+    assert 0 <= p and p <= 1
+    assert len(shape) == 2
+    assert out_dtype in sparse.all_dtypes
+
+    variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
+                for k in range(n)]
+
+    def _rand():
+        where = numpy.random.binomial(1, p, size=shape).astype('int8')
+
+        if out_dtype in sparse.discrete_dtypes:
+            value = numpy.random.randint(20, size=shape).astype(out_dtype)
+        else:
+            value = numpy.random.random(shape)
+
+        return where * value
+
+    data = [getattr(scipy.sparse, format + '_matrix')(_rand())
+            for k in range(n)]
+
+    return (variable, data)
+
+
 class T_verify_grad_sparse(unittest.TestCase):
     class FailOp(gof.op.Op):
         def __init__(self, structured):
@@ -1329,71 +1372,51 @@ def test_size():
         check()
 
 
-def test_sp_sum():
-    from theano.sparse import SpSum
+class SpSumTester(utt.InferShapeTester):
+    possible_axis = [None, 0, 1]
 
-    # TODO: test both grad.
-    rng = numpy.random.RandomState(42)
-    from theano.sparse.basic import SparseFromDense,DenseFromSparse
-    cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
+    def setUp(self):
+        super(SpSumTester, self).setUp()
+        self.op_class = sparse.SpSum
+        self.op = sparse.sp_sum
 
-    for format, cast in cases:
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            for axis in self.possible_axis:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10))
 
-        #print 'format: %(format)s' % locals()
-        x = theano.sparse.SparseType(format=format,
-                                     dtype=theano.config.floatX)()
-        x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
+                z = theano.sparse.sp_sum(*variable, axis=axis)
+                if axis == None:
+                    assert z.type.broadcastable == ()
+                else:
+                    assert z.type.broadcastable == (False, )
 
-        # Sum on all axis
-        #print 'sum on all axis...'
-        z = theano.sparse.sp_sum(x)
-        assert z.type.broadcastable == ()
-        f = theano.function([x], z)
-        x_val = cast(x_data)
-        out = f(x_val)
-        expected = x_val.sum()
-        assert out == expected
+                f = theano.function(variable, self.op(*variable, axis=axis))
+                tested = f(*data)
+                expected = data[0].todense().sum(axis).ravel()
+                assert numpy.allclose(tested, expected)
 
-        # Sum on axis 0
-        #print 'sum on axis 0...'
-        z = theano.sparse.sp_sum(x, axis=0)
-        assert z.type.broadcastable == (False,)
-        f = theano.function([x], z)
-        x_val = cast(x_data)
-        out = f(x_val)
-        expected = x_val.sum(axis=0)
-        assert (out == expected).all()
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            for axis in self.possible_axis:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10))
+                self._compile_and_check(variable,
+                                        [self.op(*variable, axis=axis)],
+                                        data,
+                                        self.op_class)
 
-        # Sum on axis 1
-        #print 'sum on axis 1...'
-        z = theano.sparse.sp_sum(x, axis=1)
-        assert z.type.broadcastable == (False,)
-        f = theano.function([x], z)
-        x_val = cast(x_data)
-        out = f(x_val)
-        expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
-        assert (out == expected).all()
-
-        # Sparse gradient on Sum on all axis
-        # unfinished, and suspended until verify_grad get fixed
-        if False:
-            #                print 'grad on sum on all axis...'
-            def fun(x):
-                ## verify_grad does not handle sparse data, so here's some casting as a workaround.
-                # x is a dense matrix: make it sparse
-                sparse_var = SparseFromDense(format)(x)
-                # apply op
-                dense_sum = theano.sparse.SpSum(axis=None, sparse_grad=False)(sparse_var)
-                return dense_sum
-                # cast back to dense so that verify_grad can work
-                dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)
-                return dense_sum
-            x_val = x_data.copy()
-            #                print type(x_val)
-            import pdb;pdb.set_trace()
-            tensor.verify_grad(fun, [x_val], rng=rng)
-            #utt.verify_grad(SpSum(axis=None), [x_val])
-            #                print 'ok'
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for axis in self.possible_axis:
+                for struct in [True]:
+                    variable, data = sparse_random_inputs(format,
+                                                          shape=(10, 10))
+                    verify_grad_sparse(
+                        self.op_class(axis=axis, sparse_grad=struct),
+                        data,
+                        structured=struct)
 
 
 class Remove0Tester(utt.InferShapeTester):
