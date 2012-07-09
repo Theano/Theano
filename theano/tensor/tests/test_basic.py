@@ -6643,6 +6643,33 @@ class TestInferShape(utt.InferShapeTester):
 
         """
 
+        # Reshape: basic 5094
+        # TODO: The shape is apparently generated correctly but the final result is abnormal:
+        """
+topo_shape:
+[Reshape{2}(<TensorType(float64, matrix)>, <TensorType(int32, vector)>),
+        Shape_i{1}(Reshape{2}.0), Shape_i{0}(Reshape{2}.0), MakeVector(Shape_i{0}.0, Shape_i{1}.0)]
+shapes_function:
+MakeVector [@A] ''   3
+ |Shape_i{0} [@B] ''   2
+ | |Reshape{2} [@C] ''   0
+ |   |<TensorType(float64, matrix)> [@D]
+ |   |<TensorType(int32, vector)> [@E]
+ |Shape_i{1} [@F] ''   1
+   |Reshape{2} [@C] ''   0
+remaining op as a class: Reshape{2}
+shapes generated:
+(4, 3) [4 3]
+        """
+
+        admat = dmatrix()
+        ndim = 2
+        admat_val = rand(3, 4)
+        self._compile_and_check([admat, aivec],
+                                [Reshape(ndim, '_name')(admat, aivec)],
+                                [admat_val, [4, 3]], Reshape)
+
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
