@@ -18,7 +18,9 @@ from theano.gof.python25 import all, any
 from theano.sparse.basic import Remove0, remove0
 
 # To maintain compatibility
-from theano.sparse import SpSum, sp_sum
+from theano.sparse import (
+    SpSum, sp_sum,
+    ColScaleCSC, RowScaleCSC, col_scale, row_scale)
 
 
 def register_specialize(lopt, *tags, **kwargs):
@@ -115,75 +117,6 @@ class SquareDiagonal(Op):
         return [(diag_length, diag_length)]
 
 square_diagonal = SquareDiagonal()
-
-
-class ColScaleCSC(Op):
-    """
-    Scale each columns of a sparse matrix by the corresponding element
-    of a dense vector
-    """
-
-    def make_node(self, x, s):
-        if x.format != 'csc':
-            raise ValueError('x was not a csc matrix')
-        return gof.Apply(self, [x, s], [x.type()])
-
-    def perform(self, node, (x, s), (z,)):
-        M, N = x.shape
-        assert x.format == 'csc'
-        assert s.shape == (N,)
-
-        y = x.copy()
-
-        for j in xrange(0, N):
-            y.data[y.indptr[j]: y.indptr[j + 1]] *= s[j]
-
-        z[0] = y
-
-    def grad(self, (x, s), (gz,)):
-        return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
-
-
-class RowScaleCSC(Op):
-    """
-    Scale each row of a sparse matrix by the corresponding element of
-    a dense vector
-    """
-
-    def make_node(self, x, s):
-        return gof.Apply(self, [x, s], [x.type()])
-
-    def perform(self, node, (x, s), (z,)):
-        M, N = x.shape
-        assert x.format == 'csc'
-        assert s.shape == (M,)
-
-        indices = x.indices
-        indptr = x.indptr
-
-        y_data = x.data.copy()
-
-        for j in xrange(0, N):
-            for i_idx in xrange(indptr[j], indptr[j + 1]):
-                y_data[i_idx] *= s[indices[i_idx]]
-
-        z[0] = scipy_sparse.csc_matrix((y_data, indices, indptr), (M, N))
-
-    def grad(self, (x, s), (gz,)):
-        return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
-
-
-def col_scale(x, s):
-    if x.format == 'csc':
-        return ColScaleCSC()(x, s)
-    elif x.format == 'csr':
-        return RowScaleCSC()(x.T, s).T
-    else:
-        raise NotImplementedError()
-
-
-def row_scale(x, s):
-    return col_scale(x.T, s).T
 
 
 class EnsureSortedIndices(Op):

@@ -28,7 +28,6 @@ def register_specialize(lopt, *tags, **kwargs):
                                          lopt.__name__, lopt, 'fast_run',
                                          *tags)
 
-
 """ Types of sparse matrices to use for testing """
 _mtypes = [scipy.sparse.csc_matrix, scipy.sparse.csr_matrix]
 #_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix,
@@ -353,6 +352,7 @@ class SparseConstant(gof.Constant, _sparse_py_operators):
 
     def __repr__(self):
         return str(self)
+
 
 class SparseType(gof.Type):
     """
@@ -1286,53 +1286,147 @@ class Neg(gof.op.Op):
 neg = Neg()
 
 
-class SpSum(gof.op.Op):
-    """TODO: rewrite
-    Scale each columns of a sparse matrix by the
-    corresponding element of a dense vector
+class ColScaleCSC(gof.op.Op):
+    """
+    Scale each columns of a sparse matrix by the corresponding element
+    of a dense vector
     """
 
-    axis = None
-    sparse_grad = False
+    def make_node(self, x, s):
+        if x.format != 'csc':
+            raise ValueError('x was not a csc matrix')
+        return gof.Apply(self, [x, s], [x.type()])
 
-    def __init__(self, axis, sparse_grad=True):
-        """
-        :param sparse_grad: if True, this instance ignores the
-            gradient on matrix elements which are implicitly 0.
-        """
+    def perform(self, node, (x, s), (z,)):
+        M, N = x.shape
+        assert x.format == 'csc'
+        assert s.shape == (N,)
+
+        y = x.copy()
+
+        for j in xrange(0, N):
+            y.data[y.indptr[j]: y.indptr[j + 1]] *= s[j]
+
+        z[0] = y
+
+    def grad(self, (x, s), (gz,)):
+        return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
+
+
+class RowScaleCSC(gof.op.Op):
+    """
+    Scale each row of a sparse matrix by the corresponding element of
+    a dense vector
+    """
+
+    def make_node(self, x, s):
+        return gof.Apply(self, [x, s], [x.type()])
+
+    def perform(self, node, (x, s), (z,)):
+        M, N = x.shape
+        assert x.format == 'csc'
+        assert s.shape == (M,)
+
+        indices = x.indices
+        indptr = x.indptr
+
+        y_data = x.data.copy()
+
+        for j in xrange(0, N):
+            for i_idx in xrange(indptr[j], indptr[j + 1]):
+                y_data[i_idx] *= s[indices[i_idx]]
+
+        z[0] = scipy.sparse.csc_matrix((y_data, indices, indptr), (M, N))
+
+    def grad(self, (x, s), (gz,)):
+        return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
+
+
+def col_scale(x, s):
+    if x.format == 'csc':
+        return ColScaleCSC()(x, s)
+    elif x.format == 'csr':
+        return RowScaleCSC()(x.T, s).T
+    else:
+        raise NotImplementedError()
+
+
+def row_scale(x, s):
+    return col_scale(x.T, s).T
+
+
+class SpSum(gof.op.Op):
+    """Calculate the sum of a sparse matrix along a specify
+    axis.
+
+    It operates a reduction along the axis specified. When
+    `axis` is `None`, it is apply along all axis.
+
+    :param x: Sparse matrix.
+    :param axis: Axis along the sum is apply. Integers or `None`.
+    :param sparse_grad: `True` to have a structured grad. Boolean.
+
+    :return: The sum of `x` in a dense format.
+
+    :note:
+    - The grad implementation is controlled with the `sparse_grad`
+      parameter. `True` will provide a structured grad and `False`
+      will provide a regular grad.
+    - This op does not return a sparse matrix.
+    """
+
+    def __init__(self, axis=None, sparse_grad=False):
         super(SpSum, self).__init__()
         self.axis = axis
-        self.sparse_grad = sparse_grad
+        self.structured = sparse_grad
         if self.axis not in (None, 0, 1):
-            raise ValueError('illegal value for self.axis')
+            raise ValueError('Illegal value for self.axis.')
 
     def __eq__(self, other):
-        #WARNING: judgement call...
-        #not using the sparse_grad in the comparison or hashing
-        #because it doesn't change the perform method therefore, we
-        #*do* want Sums with different sparse_grad values to be merged
-        #by the merge optimization.
-        # This requires them to compare equal.
+        # WARNING: judgement call...
+        # We are not using the structured in the comparison or hashing
+        # because it doesn't change the perform method therefore, we
+        # *do* want Sums with different structured values to be merged
+        # by the merge optimization and this requires them to compare equal.
         return type(self) == type(other) and self.axis == other.axis
 
     def __hash__(self):
+        # WARNING: judgement call...
+        # We are not using the structured in the comparison or hashing
+        # because it doesn't change the perform method therefore, we
+        # *do* want Sums with different structured values to be merged
+        # by the merge optimization and this requires them to compare equal.
         return 76324 ^ hash(type(self)) ^ hash(self.axis)
 
-    def __str__(self):
-        return self.__class__.__name__ + "{axis=%s}" % str(self.axis)
-
     def make_node(self, x):
-        ###
-        # At least for small matrices (5x5), the .sum() method of a
-        # csc matrix returns a dense matrix as the result whether axis
-        # is 0 or 1... weird!
-        ###
-        assert isinstance(x.type, theano.sparse.SparseType)
+        x = as_sparse_variable(x)
         b = ()
         if self.axis is not None:
             b = (False,)
-        z = tensor.tensor(broadcastable=b, dtype=x.dtype)
+
+        z = tensor.TensorType(broadcastable=b, dtype=x.dtype)()
         return gof.Apply(self, [x], [z])
+
+    def perform(self, node, (x,), (z,)):
+        if self.axis == None:
+            z[0] = numpy.asarray(x.sum())
+        else:
+            z[0] = numpy.asarray(x.sum(self.axis)).ravel()
+
+    def grad(self, (x,), (gz,)):
+        if self.structured:
+            if self.axis is None:
+                r = gz * theano.sparse.sp_ones_like(x)
+            elif self.axis == 0:
+                r = col_scale(theano.sparse.sp_ones_like(x), gz)
+            elif self.axis == 1:
+                r = row_scale(theano.sparse.sp_ones_like(x), gz)
+            else:
+                raise ValueError('Illegal value for self.axis.')
+        else:
+            # TODO
+            raise NotImplementedError()
+        return [r]
 
     def infer_shape(self, node, shapes):
         r = None
@@ -1344,39 +1438,8 @@ class SpSum(gof.op.Op):
             r = [(shapes[0][0],)]
         return r
 
-    def perform(self, node, (x,), (z,)):
-        if self.axis is None:
-            z[0] = numpy.asarray(x.sum())
-        else:
-            if self.axis == 0:
-                if x.format == 'csc':
-                    z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape(
-                        (x.shape[1], ))
-                else:
-                    z[0] = numpy.asarray(x.asformat(x.format).sum(
-                            axis=self.axis)).reshape((x.shape[1],))
-            elif self.axis == 1:
-                if x.format == 'csr':
-                    z[0] = numpy.asarray(x.sum(axis=self.axis)).reshape(
-                        (x.shape[0],))
-                else:
-                    z[0] = numpy.asarray(x.asformat(x.format).sum(
-                            axis=self.axis)).reshape((x.shape[0],))
-
-    def grad(self, (x,), (gz,)):
-        if self.axis is None:
-            r = gz * theano.sparse.sp_ones_like(x)
-        elif self.axis == 0:
-            r = col_scale(theano.sparse.sp_ones_like(x), gz)
-        elif self.axis == 1:
-            r = row_scale(theano.sparse.sp_ones_like(x), gz)
-        else:
-            assert False
-
-        if not self.sparse_grad:
-            r = theano.sparse.dense_from_sparse(r)
-
-        return [r]
+    def __str__(self):
+        return self.__class__.__name__ + "{axis=%s}" % str(self.axis)
 
 
 def sp_sum(x, axis=None, sparse_grad=False):
@@ -2293,7 +2356,7 @@ class HStack(gof.op.Op):
 
     def grad(self, inputs, (gz, )):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
-                        for i in range(len(inputs))]
+                         for i in range(len(inputs))]
 
         if _is_sparse_variable(gz):
             gz = DenseFromSparse()(gz)
