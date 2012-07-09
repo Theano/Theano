@@ -5315,6 +5315,17 @@ class Tile(Op):
         if len(out[0].shape) != self.ndim:
             raise ValueError('Tile.perform produced incorrect shape')
 
+    def infer_shape(self, node, in_shapes):
+        # Note: in contrast with numpy, it is assumed that x.shape and reps
+        # have equal length;  see alsor tile function below
+        x, reps = node.inputs
+        shp = x.shape
+        tiled_shp = shp * reps
+        out_shape = []
+        for i in range(self.ndim):
+            out_shape.append(tiled_shp[i])
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, reps = inp
         g_out, = grads
@@ -5327,21 +5338,24 @@ def tile(x, reps, ndim=None):
     Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
     for details.
 
-    Currently, `reps` must be a constant.
+    Currently, `reps` must be a constant, x.ndim and len(reps) must be equal
+    and, if specified, 'ndim' must be equal to both.
 
     TODO: expand this.
     """
-    if len(reps) != x.ndim:
+
+    if isinstance(reps, theano.tensor.TensorVariable):
+        raise ValueError("'reps' argument to 'tile' must be a constant (e.g. "
+                         "tuple, list of integers)")
+    elif len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
+    elif (ndim is not None) and ndim != x.ndim:
+        raise ValueError("if specified, ndim must be equal to both x.ndim and "
+                         "len(reps)")
 
     if not hasattr(tile, 'op'):
         tile.op = {}
 
-    try:
-        assert python_all([int(i) == i for i in iter(reps)])
-    except (TypeError, AssertionError):
-        raise ValueError("reps argument to tile must be a constant (e.g. "
-                         "tuple, list of integers)")
     if ndim is None:
         ndim = len(reps)
 
