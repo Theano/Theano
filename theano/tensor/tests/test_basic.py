@@ -37,7 +37,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3)
+        itensor3, Tile)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6624,6 +6624,31 @@ shapes generated:
         self._compile_and_check([admat, aivec],
                                 [Reshape(ndim, '_name')(admat, aivec)],
                                 [admat_val, [4, 3]], Reshape)
+
+        # Tile: basic 5292
+        advec = dvector()
+        advec_val = rand(5)
+        aivec_val = [3]
+        ndim = 1
+        self._compile_and_check([advec],
+                                [tile(advec, aivec_val, ndim)],
+                                [advec_val], Tile)
+
+        admat = dmatrix()
+        admat_val = rand(2, 4)
+        aivec_val = [2, 3]
+        ndim = None
+        self._compile_and_check([admat],
+                                [tile(admat, aivec_val)],
+                                [admat_val], Tile)
+
+        adtens4 = dtensor4()
+        adtens4_val = rand(2, 4, 3, 5)
+        aivec_val = [2, 3, 1, 4]
+        ndim = 4
+        self._compile_and_check([adtens4],
+                                [tile(adtens4, aivec_val, ndim)],
+                                [adtens4_val], Tile)
 
 
 if __name__ == '__main__':
