@@ -13,7 +13,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Env, graph, utils, link, ops_with_inner_function
+from theano.gof import FunctionGraph as Env, graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
 from theano.gof.python25 import all, any, product as itertools_product
@@ -667,7 +667,7 @@ def _optcheck_env(input_specs, output_specs, accept_inplace=False):
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     equivalence_tracker = _VariableEquivalenceTracker()
-    env = gof.env.Env(inputs, outputs,
+    env = gof.fg.FunctionGraph(inputs, outputs,
             #DestroyHandler is not needed because it is actually installed by an optimization
             # after canonicalization.  This variables in a big speed gain.
             #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])

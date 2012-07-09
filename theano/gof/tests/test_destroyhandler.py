@@ -8,7 +8,7 @@ from theano.gof.op import Op
 from theano.gof.opt import *
 
 from theano.gof import destroyhandler
-from theano.gof.env import Env, InconsistencyError
+from theano.gof.fg import FunctionGraph as Env, InconsistencyError
 from theano.gof.toolbox import ReplaceValidate
 
 from copy import copy

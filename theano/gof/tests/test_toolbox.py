@@ -3,7 +3,7 @@ from theano.gof.graph import Variable, Apply
 from theano.gof.type import Type
 from theano.gof.op import Op
 
-from theano.gof.env import Env, InconsistencyError
+from theano.gof.fg import FunctionGraph as Env, InconsistencyError
 from theano.gof.toolbox import *
 
 
@@ -85,4 +85,4 @@ class TestNodeFinder:
                 raise Exception("Expected: %i times %s" % (num, type))
 
 
-    
+
