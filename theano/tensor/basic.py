@@ -4305,7 +4305,14 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=False)
         return the_op(real_x, y, ilist)
     elif isinstance(x.owner.op, AdvancedSubtensor):
-        raise NotImplementedError()
+        real_x = x.owner.inputs[0]
+        coordvec_0 = x.owner.inputs[1]
+        coordvec_1 =  x.owner.inputs[2]
+        if set_instead_of_inc:
+            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=True)
+        else:
+            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=False)
+        return the_op(real_x, y, coordvec_0, coordvec_1)
     else:
         raise TypeError('x must be result of a subtensor operation')
 
@@ -6191,14 +6198,28 @@ class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
     """
 
-    def __eq__(self, other):
-        return self.__class__ == other.__class__
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        self.inplace = inplace
+        self.set_instead_of_inc = set_instead_of_inc
 
     def __hash__(self):
-        return hash(self.__class__)
+        return hash((type(self), self.inplace, self.set_instead_of_inc))
+
+    def __eq__(self, other):
+        return (type(self) == type(other)
+                and self.inplace == other.inplace
+                and self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s{%s, %s}" % (self.__class__.__name__,
+                "inplace=".join(str(self.inplace)),
+                " set_instead_of_inc".join(str(self. set_instead_of_inc)))
+
+    def props(self):
+        return (self.inplace, self.set_instead_of_inc)
+
+    def __repr__(self):
+        return 'AdvancedIncSubtensor{%s}' % str(self.props())
 
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
