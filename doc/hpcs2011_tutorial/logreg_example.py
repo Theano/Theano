@@ -35,13 +35,13 @@ train = theano.function(
 predict = theano.function(inputs=[x], outputs=prediction,
             name = "predict")
 
-if any( [x.op.__class__.__name__=='Gemv' for x in train.maker.env.toposort()]):
+if any( [x.op.__class__.__name__=='Gemv' for x in train.maker.fgraph.toposort()]):
     print 'Used the cpu'
-elif any( [x.op.__class__.__name__=='GpuGemm' for x in train.maker.env.toposort()]):
+elif any( [x.op.__class__.__name__=='GpuGemm' for x in train.maker.fgraph.toposort()]):
     print 'Used the gpu'
 else:
     print 'ERROR, not able to tell if theano used the cpu or the gpu'
-    print train.maker.env.toposort()
+    print train.maker.fgraph.toposort()
 
 
 

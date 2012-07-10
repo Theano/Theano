@@ -151,10 +151,10 @@ def test_neibs_step_manual():
         neibs = f()
         if mode_idx == 0:
             assert Images2Neibs in [type(node.op)
-                                    for node in f.maker.env.toposort()]
+                                    for node in f.maker.fgraph.toposort()]
         elif mode_idx == 1:
             assert GpuImages2Neibs in [type(node.op)
-                                       for node in f.maker.env.toposort()]
+                                       for node in f.maker.fgraph.toposort()]
 
         assert numpy.allclose(neibs,
       [[  0,   1,   2,   5,   6,   7,  10,  11,  12],
@@ -259,10 +259,10 @@ def test_neibs_wrap_centered_step_manual():
 
             if mode_idx == 0:
                 assert Images2Neibs in [type(node.op)
-                                        for node in f.maker.env.toposort()]
+                                        for node in f.maker.fgraph.toposort()]
             elif mode_idx == 1:
                 assert GpuImages2Neibs in [type(node.op)
-                                           for node in f.maker.env.toposort()]
+                                           for node in f.maker.fgraph.toposort()]
 
             #g = function([], neibs2images(neibs, neib_shape, images.shape), mode=mode_without_gpu)
 
@@ -287,7 +287,7 @@ def test_neibs_gpu():
         f_gpu = function([], images2neibs(images, neib_shape),
                      mode=mode_with_gpu)
         assert any([isinstance(node.op, GpuImages2Neibs)
-                    for node in f_gpu.maker.env.toposort()])
+                    for node in f_gpu.maker.fgraph.toposort()])
         #print images.get_value(borrow=True)
         neibs = numpy.asarray(f_gpu())
         assert numpy.allclose(neibs, f())
@@ -295,7 +295,7 @@ def test_neibs_gpu():
         g = function([], neibs2images(neibs, neib_shape, images.shape),
                      mode=mode_with_gpu)
         assert any([isinstance(node.op, GpuImages2Neibs)
-                    for node in f.maker.env.toposort()])
+                    for node in f.maker.fgraph.toposort()])
         #print numpy.asarray(g())
         assert numpy.allclose(images.get_value(borrow=True), g())
 

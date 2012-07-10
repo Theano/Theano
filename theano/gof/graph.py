@@ -12,6 +12,7 @@ __docformat__ = "restructuredtext en"
 from copy import copy
 
 import theano
+import warnings
 from theano.gof import utils
 from theano.gof.python25 import deque
 
@@ -118,6 +119,23 @@ class Apply(utils.object2):
         elif do < 0 or do >= len(self.outputs):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
+
+
+    @property
+    def env(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        return self.fgraph
+
+    @env.setter
+    def env(self,value):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        self.fgraph = value
+
+    @env.deleter
+    def env(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        del self.fgraph
+
 
     out = property(default_output,
                    doc = "alias for self.default_output()")
@@ -234,7 +252,7 @@ class Variable(utils.object2):
 
     Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
     from an output all the way to the inputs. The opposite direction is not possible until an
-    Env has annotated the Variables with the clients field, ie, before the compilation process
+    FunctionGraph has annotated the Variables with the clients field, ie, before the compilation process
     has begun a Variable does not know which Apply nodes take it as input.
 
     **Code Example**
@@ -337,6 +355,24 @@ class Variable(utils.object2):
     def __ge__(self,other):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
+
+
+    @property
+    def env(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        return self.fgraph
+
+    @env.setter
+    def env(self,value):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        self.fgraph = value
+
+    @env.deleter
+    def env(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        del self.fgraph
+
+
 
 class Constant(Variable):
     """

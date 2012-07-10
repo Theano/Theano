@@ -148,23 +148,23 @@ class PushOutNonSeqScan(gof.Optimizer):
     def __init__(self):
         gof.Optimizer.__init__(self)
 
-    def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate())
+    def add_requirements(self, fgraph):
+        fgraph.extend(gof.toolbox.ReplaceValidate())
 
-    def apply(self, env):
-        nodelist = [x for x in env.toposort() if isinstance(x.op,
+    def apply(self, fgraph):
+        nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
                                                            scan_op.Scan)]
         for node in nodelist:
-            self.process_node(env, node)
+            self.process_node(fgraph, node)
 
-    def process_node(self, env, node):
+    def process_node(self, fgraph, node):
         # this flag tells if there was any change during the last iterations
         changed = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
                         node.op.inputs, node.op.outputs)
 
-        local_env = gof.Env(clean_inputs, clean_outputs)
-        max_iterations = 2 * len(local_env.toposort()) + 3
+        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
+        max_iterations = 2 * len(local_fgraph.toposort()) + 3
         counts = 0
         to_remove = []
         to_replace = []
@@ -190,7 +190,7 @@ class PushOutNonSeqScan(gof.Optimizer):
             counts += 1
             changed = False
 
-            for nd in local_env.toposort():
+            for nd in local_fgraph.toposort():
                 if (numpy.all([(x in non_seqs) or
                                (x.owner in to_remove) or
                                isinstance(x, tensor.Constant)
@@ -246,7 +246,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_to_replace = []
         clean_replace_with_in = []
         clean_replace_with_out = []
-        existent_nodes = [nd for nd in local_env.toposort()
+        existent_nodes = [nd for nd in local_fgraph.toposort()
                             if nd not in to_remove]
         to_keep = []
         for nd in existent_nodes:
@@ -279,15 +279,15 @@ class PushOutNonSeqScan(gof.Optimizer):
             # Reconstruct node
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
             nw_node = nwScan.make_node(* (node.inputs + nw_outer))
-            env.replace_all_validate(zip(node.outputs, nw_node.outputs),
+            fgraph.replace_all_validate(zip(node.outputs, nw_node.outputs),
                                      reason='scan_push_computation_out')
             return True
         elif to_keep == []:
             # Nothing in the inner graph should be kept
             replace_with = {}
             for idx, out in enumerate(to_replace):
-                if out in local_env.outputs:
-                    x = node.outputs[local_env.outputs.index(out)]
+                if out in local_fgraph.outputs:
+                    x = node.outputs[local_fgraph.outputs.index(out)]
                     y = replace_with_out[idx]
                     shape = [y.shape[idx] for idx in xrange(y.ndim)]
                     replace_with[x] = tensor.alloc(y,
@@ -295,7 +295,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                                    *shape)
 
             # We need to add one extra dimension to the outputs
-            env.replace_all_validate(replace_with.items(),
+            fgraph.replace_all_validate(replace_with.items(),
                                      reason='scan_push_computation_out')
 
         else:
@@ -316,13 +316,13 @@ class ScanInplaceOptimizer(Optimizer):
         self.typeConstructor = typeConstructor
         self.gpu_flag = gpu_flag
 
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-        env.extend(DestroyHandler())
+    def add_requirements(self, fgraph):
+        fgraph.extend(toolbox.ReplaceValidate())
+        fgraph.extend(DestroyHandler())
 
-    def apply(self, env):
+    def apply(self, fgraph):
 
-        nodes = env.toposort()
+        nodes = fgraph.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
                          x.op.info['gpu'] == self.gpu_flag)]
@@ -358,7 +358,7 @@ class ScanInplaceOptimizer(Optimizer):
 
                 new_outs = new_op.make_node(*inputs).outputs
                 try:
-                    env.replace_all_validate(
+                    fgraph.replace_all_validate(
                         zip(node.outputs, new_outs),
                         reason=self.__class__.__name__)
                     op = new_op
@@ -381,10 +381,10 @@ class ScanSaveMem(gof.Optimizer):
     def __init__(self):
         gof.Optimizer.__init__(self)
 
-    def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate())
+    def add_requirements(self, fgraph):
+        fgraph.extend(gof.toolbox.ReplaceValidate())
 
-    def process_node(self, env, node):
+    def process_node(self, fgraph, node):
 
         # helpful functions
         def select_min(x, y):
@@ -407,8 +407,8 @@ class ScanSaveMem(gof.Optimizer):
             else:
                 return tensor.as_tensor_variable(x)
 
-        if hasattr(env, 'shape_feature'):
-            shape_of = node.env.shape_feature.shape_of
+        if hasattr(fgraph, 'shape_feature'):
+            shape_of = node.fgraph.shape_feature.shape_of
         else:
             # Each access to shape_of is in a try..except block in order to
             # use a default version when the variable is not in the shape_of
@@ -826,15 +826,15 @@ class ScanSaveMem(gof.Optimizer):
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
 
-                env.replace_all_validate(old_new, reason='scan_save_mem')
+                fgraph.replace_all_validate(old_new, reason='scan_save_mem')
 
-    def apply(self, env):
+    def apply(self, fgraph):
 
-        nodelist = [x for x in env.toposort() if isinstance(x.op,
+        nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
                                                            scan_op.Scan)]
         for node in nodelist:
             if not hasattr(node.op, '_scan_savemem_visited'):
-                self.process_node(env, node)
+                self.process_node(fgraph, node)
 
 # Just before specialize to have the other optimization
 # like constant folding being applied
@@ -848,8 +848,8 @@ scan_seqopt.register('scanOp_save_mem',
 
 class ScanMerge(gof.Optimizer):
     """ Graph Optimizer that merges different scan ops """
-    def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate())
+    def add_requirements(self, fgraph):
+        fgraph.extend(gof.toolbox.ReplaceValidate())
 
     def merge(self, nodes):
 
@@ -998,9 +998,9 @@ class ScanMerge(gof.Optimizer):
                                                   rep.op.inputs)
         return same_cond and (nsteps == rep_nsteps) and can_add
 
-    def apply(self, env):
+    def apply(self, fgraph):
         # Collect all scan nodes ordered according to toposort
-        scan_nodes = [nd for nd in env.toposort()
+        scan_nodes = [nd for nd in fgraph.toposort()
                       if isinstance(nd.op, scan_op.Scan)]
 
         # All sets of possibly mergeable nodes
@@ -1021,7 +1021,7 @@ class ScanMerge(gof.Optimizer):
         for subset in all_sets:
             if len(subset) > 1:
                 proposal = self.merge(subset)
-                env.replace_all_validate(proposal, reason='scan_merge')
+                fgraph.replace_all_validate(proposal, reason='scan_merge')
 
 
 # after const merge but before stabilize so that we can have identity

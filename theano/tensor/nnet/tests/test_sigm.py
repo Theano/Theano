@@ -64,47 +64,47 @@ class T_sigmoid_opts(unittest.TestCase):
         try:
             # tests exp_over_1_plus_exp
             f = theano.function([x], T.exp(x) / (1 + T.exp(x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid]
             f(data)
             f = theano.function([x], T.exp(x) / (2 + T.exp(x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.exp(x) / (1 - T.exp(x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.exp(x + 1) / (1 + T.exp(x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
 
             # tests inv_1_plus_exp
             f = theano.function([x], T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] == [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.0) / (2 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.0) / (1 - T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.1) / (1 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid]
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
 
             # tests inv_1_plus_exp with neg
             f = theano.function([x], T.fill(x, -1.0) / (1 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (1 - T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (2 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.1) / (1 + T.exp(-x)), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
 
@@ -114,32 +114,32 @@ class T_sigmoid_opts(unittest.TestCase):
             # = - (sigm(x) * sigm(x))
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] == [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((2 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-            assert [node.op for node in f.maker.env.toposort()] != [sigmoid,
+            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
 
@@ -156,12 +156,12 @@ class T_sigmoid_opts(unittest.TestCase):
 
         # tests exp_over_1_plus_exp
         f = theano.function([x], 1 - T.exp(x) / (1 + T.exp(x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [
+        assert [node.op for node in f.maker.fgraph.toposort()] == [
             tensor.neg, sigmoid_inplace]
 
         # tests inv_1_plus_exp
         f = theano.function([x], 1 - T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
-        assert [node.op for node in f.maker.env.toposort()] == [tensor.neg,
+        assert [node.op for node in f.maker.fgraph.toposort()] == [tensor.neg,
                 sigmoid_inplace]
 
     def test_local_sigm_times_exp(self):
@@ -171,8 +171,8 @@ class T_sigmoid_opts(unittest.TestCase):
         exp(-x) * sigm(x) -> sigm(-x)
         """
         def match(func, ops):
-            #print [node.op.scalar_op for node in func.maker.env.toposort()]
-            assert [node.op for node in func.maker.env.toposort()] == ops
+            #print [node.op.scalar_op for node in func.maker.fgraph.toposort()]
+            assert [node.op for node in func.maker.fgraph.toposort()] == ops
         m = self.get_mode(excluding=['local_elemwise_fusion', 'inplace'])
         x, y = tensor.vectors('x', 'y')
 
@@ -270,7 +270,7 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(sigmoid(x))
         f = theano.function([x], out, mode=self.m)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
         assert isinstance(topo[1].op.scalar_op,
@@ -283,7 +283,7 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(1 - sigmoid(x))
         f = theano.function([x], out, mode=self.m)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 2
         assert isinstance(topo[0].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
@@ -299,7 +299,7 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(1 + T.exp(x))
         f = theano.function([x], out, mode=self.m)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)

@@ -91,7 +91,7 @@ verify_grad.E_grad = T.verify_grad.E_grad
 
 class TestOptimizationMixin(object):
     def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
-        toposort = f.maker.env.toposort()
+        toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if node.op == op]
         assert (min <= len(matches) <= max), (toposort, matches,
                                               str(op), len(matches), min, max)
@@ -106,7 +106,7 @@ class TestOptimizationMixin(object):
         return self.assertFunctionContains(f, op, min=N, max=N)
 
     def assertFunctionContainsClass(self, f, op, min=1, max=sys.maxint):
-        toposort = f.maker.env.toposort()
+        toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if isinstance(node.op, op)]
         assert (min <= len(matches) <= max), (toposort, matches,
                                               str(op), len(matches), min, max)
@@ -182,9 +182,9 @@ class InferShapeTester(unittest.TestCase):
                                           mode=mode)
         #theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
-        topo_shape = shapes_function.maker.env.toposort()
+        topo_shape = shapes_function.maker.fgraph.toposort()
         assert not any(isinstance(t.op, cls) for t in topo_shape)
-        topo_out = outputs_function.maker.env.toposort()
+        topo_out = outputs_function.maker.fgraph.toposort()
         assert any(isinstance(t.op, cls) for t in topo_out)
         # Check that the shape produced agrees with the actual shape.
         numeric_outputs = outputs_function(*numeric_inputs)

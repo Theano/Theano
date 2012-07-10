@@ -21,7 +21,7 @@ from theano import config
 import cc
 import graph
 import utils
-from fg import FunctionGraph as Env
+from fg import FunctionGraph
 
 
 class CLinkerObject(object):
@@ -563,7 +563,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         #logger.debug('Compiling node %i of graph' % node_idx)
         if self._op_use_c_code:
             try:
-                e = Env(*graph.clone(node.inputs, node.outputs))
+                e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
 
                 e_no_recycling = [new_o
                         for (new_o, old_o) in zip(e.outputs, node.outputs)

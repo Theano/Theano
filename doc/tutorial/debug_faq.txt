@@ -62,7 +62,7 @@ Running the above code generates the following error message:
 
     Definition in: 
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 1102, in apply
-        lopt_change = self.process_node(env, node, lopt)
+        lopt_change = self.process_node(fgraph, node, lopt)
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 882, in process_node
         replacements = lopt.transform(node)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/blas.py", line 1030, in local_dot_to_dot22

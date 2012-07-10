@@ -2442,6 +2442,6 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         print "    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)"
         print '    <Apply> <Apply position> <fct name> <inputs type> <outputs type>'
         for fct in fct_call.keys():
-            for idx, node in enumerate(fct.maker.env.toposort()):
+            for idx, node in enumerate(fct.maker.fgraph.toposort()):
                 if any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.outputs) and not any(hasattr(i,'dtype') and i.dtype=='float64' for i in node.inputs):
                     print '        ', str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])

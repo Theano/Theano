@@ -32,7 +32,7 @@ A good, simple way to do it would be to have those commands as methods of a stru
 >>> a, b, c = Tensor(), Tensor(), Tensor()
 >>> d = b * c
 >>> e = a + d
->>> debug = DebugLinker(Env([a, b, c], [e])).make_function()
+>>> debug = DebugLinker(FunctionGraph([a, b, c], [e])).make_function()
 >>> debug.set_breakpoint(d)
 >>> debug.debug(10, 20, 30) # a, b, c = 10, 20, 30
 Now at: Mul(b, c)
