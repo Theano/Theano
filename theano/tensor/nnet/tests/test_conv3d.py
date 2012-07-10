@@ -3,9 +3,9 @@ import theano
 import theano.tensor as T
 from theano import function, shared
 from theano.tests import unittest_tools as utt
-from theano.tensor.nnet.ConvTransp3D import convTransp3D
-from theano.tensor.nnet.ConvGrad3D import convGrad3D
-from theano.tensor.nnet.Conv3D import conv3D
+from theano.tensor.nnet.ConvTransp3D import convTransp3D, ConvTransp3D
+from theano.tensor.nnet.ConvGrad3D import convGrad3D, ConvGrad3D
+from theano.tensor.nnet.Conv3D import conv3D, Conv3D
 import numpy as N
 import copy
 import theano.sparse
@@ -93,12 +93,11 @@ class DummyConvTransp3D:
 
         return output
 
-class TestConv3D(unittest.TestCase):
+class TestConv3D(utt.InferShapeTester):
 
     def setUp(self):
-
+        super(TestConv3D, self).setUp()
         utt.seed_rng()
-
         self.rng = N.random.RandomState(utt.fetch_seed())
 
         mode = copy.copy(theano.compile.mode.get_default_mode())
@@ -428,24 +427,22 @@ class TestConv3D(unittest.TestCase):
                         print 'wrong at %d,%d: %f mul versus %f conv' % (i,j,V_mat[i,j],Vv_mat[i,j])
             assert False
 
-
     def test_infer_shape(self):
         self.randomize()
-        Hv = self.H_func()
-        H_shape = self.H_shape_func()
-        assert N.all(Hv.shape == H_shape)
 
-        gradients = self.gradientsFunc(self.V.get_value(borrow=True).shape[1:4])
-        dCdWv = gradients[0]
-        dCdW_shape = self.dCdW_shape_func(self.V.get_value(borrow=True).shape[1:4])
+        # Conv3D
+        self._compile_and_check([], [self.H], [], Conv3D)
 
-        assert N.all(dCdWv.shape == dCdW_shape)
+        # ConvTransp3D
+        self._compile_and_check([self.RShape], [self.R],
+                    [self.V.get_value(borrow=True).shape[1:4]], ConvTransp3D)
 
-        Rv = self.R_func(self.V.get_value(borrow=True).shape[1:4])
-        R_shape = self.R_shape_func(self.V.get_value(borrow=True).shape[1:4])
-
-        assert N.all(Rv.shape == R_shape)
-
+        # ConvGrad3D
+        self._compile_and_check([self.RShape], [T.grad(self.reconsObj, self.W),
+                                            T.grad(self.reconsObj, self.H),
+                                            T.grad(self.reconsObj, self.V),
+                                            T.grad(self.reconsObj, self.b)],
+                    [self.V.get_value(borrow=True).shape[1:4]], ConvGrad3D)
 
     def test_gradient(self):
         self.randomize()
@@ -455,3 +452,20 @@ class TestConv3D(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(DummyConv3D(rng, (V,W,b), d), [0.0], n_tests=testsPerDir)
         theano.tests.unittest_tools.verify_grad(DummyConvTransp3D(rng, (W,rb,dCdH), d,V.get_value(borrow=True).shape[1:4]), [0.0], n_tests=testsPerDir)
         theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V,dCdH), d, W.get_value(borrow=True).shape), [0.0], n_tests=testsPerDir)
+
+
+
+
+
+
+
+
+
+
+        
+        
+if __name__ == '__main__':
+
+    t = TestConv3D('setUp')
+    t.setUp()
+    t.test_infer_shape()
