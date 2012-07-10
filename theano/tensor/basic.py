@@ -3066,7 +3066,7 @@ class Alloc(gof.Op):
             # It makes optimization difficult when useless allocs are thrown
             # into the graph at every stage of optimization.  This little logic
             # tries to help at least in some cases.
-            if hasattr(val, 'env') and (val.type == ret.type):
+            if hasattr(val, 'fgraph') and (val.type == ret.type):
                 return val
         except AttributeError:
             pass
@@ -5966,7 +5966,7 @@ class AdvancedSubtensor(Op):
                 else:
                     return [ind1shp]
         # Default case, we don't know
-        return node.env.shape_feature.default_infer_shape(node, ishapes)
+        return node.fgraph.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self, node, inputs, out_):
         out, = out_

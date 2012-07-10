@@ -215,14 +215,14 @@ class Stack(VM):
     """
 
     def __init__(self, nodes, thunks, pre_call_clear,
-                 storage_map, compute_map, env, allow_gc,
+                 storage_map, compute_map, fgraph, allow_gc,
                  dependencies=None, callback=None):
         super(Stack, self).__init__(nodes, thunks, pre_call_clear)
 
         self.allow_gc = allow_gc
         self.message = ""
-        self.base_apply_stack = [o.owner for o in env.outputs if o.owner]
-        self.outputs = env.outputs
+        self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
+        self.outputs = fgraph.outputs
         self.storage_map = storage_map
         self.apply_time = {}
         self.outputs_size = {}
@@ -230,7 +230,7 @@ class Stack(VM):
         self.node_idx = node_idx = {}
         self.callback = callback
 
-        ords = env.orderings()
+        ords = fgraph.orderings()
 
         for i, node in enumerate(self.nodes):
             node_idx[node] = i
@@ -477,15 +477,15 @@ class VM_Linker(link.LocalLinker):
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
         """
-        self.env = None
+        self.fgraph = None
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
         self.callback = callback
         self.updated_vars = {}
 
-    def accept(self, env, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None):
         """
-        :param env: a PerformLinker can have accepted one FunctionGraph instance
+        :param fgraph: a PerformLinker can have accepted one FunctionGraph instance
             at a time.
 
         :param no_recycling: WRITEME
@@ -494,9 +494,9 @@ class VM_Linker(link.LocalLinker):
         """
         if no_recycling is None:
             no_recycling = []
-        if self.env is not None and self.env is not env:
-            return type(self)().accept(env, no_recycling)
-        self.env = env
+        if self.fgraph is not None and self.fgraph is not fgraph:
+            return type(self)().accept(fgraph, no_recycling)
+        self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
 
@@ -565,7 +565,7 @@ class VM_Linker(link.LocalLinker):
             vm = Stack(
                     nodes, thunks, pre_call_clear,
                     storage_map, compute_map,
-                    self.env, self.allow_gc,
+                    self.fgraph, self.allow_gc,
                     dependencies=deps,
                     callback=self.callback)
         elif self.use_cloop:
@@ -576,7 +576,7 @@ class VM_Linker(link.LocalLinker):
                 nodes_idx[node] = i
                 for v in node.inputs + node.outputs:
                     vars_idx.setdefault(v, len(vars_idx))
-            for v in self.env.inputs + self.env.outputs:
+            for v in self.fgraph.inputs + self.fgraph.outputs:
                 vars_idx.setdefault(v, len(vars_idx))
 
             nodes_idx_inv = {}
@@ -627,10 +627,10 @@ class VM_Linker(link.LocalLinker):
                     var_owner[i] = nodes_idx[var.owner]
 
             is_lazy_list = [int(th.lazy) for th in thunks]
-            output_vars = [vars_idx[v] for v in self.env.outputs]
+            output_vars = [vars_idx[v] for v in self.fgraph.outputs]
 
             # builds the list of prereqs induced by e.g. destroy_handler
-            ords = self.env.orderings()
+            ords = self.fgraph.orderings()
             node_prereqs = []
             node_output_size = []
             for i, node in enumerate(nodes):
@@ -694,7 +694,7 @@ class VM_Linker(link.LocalLinker):
                 vm = Stack(
                         nodes, thunks, pre_call_clear,
                         storage_map, compute_map,
-                        self.env, self.allow_gc,
+                        self.fgraph, self.allow_gc,
                         dependencies=deps
                         )
         return vm
@@ -702,12 +702,12 @@ class VM_Linker(link.LocalLinker):
     def make_all(self, profiler=None, input_storage=None,
             output_storage = None,
             ):
-        env = self.env
-        order = list(env.toposort())
+        fgraph = self.fgraph
+        order = list(fgraph.toposort())
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
-                env, order, input_storage, output_storage)
+                fgraph, order, input_storage, output_storage)
         compute_map = {}
         for k in storage_map:
             compute_map[k] = [k.owner is None]
@@ -725,7 +725,7 @@ class VM_Linker(link.LocalLinker):
                 clear_after_this_thunk = []
                 for input in node.inputs:
                     if ((input in computed)
-                            and (input not in env.outputs)
+                            and (input not in fgraph.outputs)
                             and (node == last_user[input])):
                         clear_after_this_thunk.append(storage_map[input])
                 post_thunk_clear.append(clear_after_this_thunk)
@@ -742,8 +742,8 @@ class VM_Linker(link.LocalLinker):
 
         return (vm,
                 [link.Container(input, storage)
-                    for input, storage in zip(env.inputs, input_storage)],
+                    for input, storage in zip(fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True)
-                    for output, storage in zip(env.outputs, output_storage)],
+                    for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)
