@@ -4298,7 +4298,14 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=False)
         return the_op(real_x, y, ilist)
     elif isinstance(x.owner.op, AdvancedSubtensor):
-        raise NotImplementedError()
+        real_x = x.owner.inputs[0]
+        coordvec_0 = x.owner.inputs[1]
+        coordvec_1 =  x.owner.inputs[2]
+        if set_instead_of_inc:
+            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=True)
+        else:
+            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=False)
+        return the_op(real_x, y, coordvec_0, coordvec_1)
     else:
         raise TypeError('x must be result of a subtensor operation')
 
@@ -6056,6 +6063,8 @@ class AdvancedSubtensor(Op):
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
         #FIXME
+        # Note (9 Jul 2012): what does this 'FIXME' mean? Possibly that the
+        # current implementation must be generalized? Please specify.
         if x.ndim == 2 and len(inputs) == 2:
             ind1 = as_tensor_variable(inputs[0])
             ind2 = as_tensor_variable(inputs[1])
@@ -6131,14 +6140,28 @@ class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
     """
 
-    def __eq__(self, other):
-        return self.__class__ == other.__class__
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        self.inplace = inplace
+        self.set_instead_of_inc = set_instead_of_inc
 
     def __hash__(self):
-        return hash(self.__class__)
+        return hash((type(self), self.inplace, self.set_instead_of_inc))
+
+    def __eq__(self, other):
+        return (type(self) == type(other)
+                and self.inplace == other.inplace
+                and self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s{%s, %s}" % (self.__class__.__name__,
+                "inplace=".join(str(self.inplace)),
+                " set_instead_of_inc".join(str(self. set_instead_of_inc)))
+
+    def props(self):
+        return (self.inplace, self.set_instead_of_inc)
+
+    def __repr__(self):
+        return 'AdvancedIncSubtensor{%s}' % str(self.props())
 
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
@@ -6153,21 +6176,31 @@ class AdvancedIncSubtensor(Op):
                         [tensor(dtype=x.type.dtype,
                             broadcastable=x.type.broadcastable)])
             raise NotImplementedError(
-                'Advanced indexing increment of x (of dimension %i) by y'
+                'Advanced indexing increment/set of x (of dimension %i) by y'
                 ' (of dimension %i) with these argument dimensions (%s) not'
                 ' supported yet'
                 % (x.ndim, y.ndim,
                    ','.join(str(input.ndim) for input in inputs)))
         raise NotImplementedError(
-            'Advanced indexing increment of x (of dim %i) by y (of dim %i)'
+            'Advanced indexing increment/set of x (of dim %i) by y (of dim %i)'
             ' with arguments (%s) not supported yet'
             % (x.ndim, y.ndim, ','.join(str(input) for input in inputs)))
 
     def perform(self, node, inputs, out_):
+        # TODO: 1. opt to make this in place 2. generalize as described in
+        # AdvancedSubtensor's perform TODO
+
         out, = out_
-        # TODO: same thing as in AdvancedSubtensor's perform TODO
-        out[0] = inputs[0].copy()
-        out[0][inputs[2:]] += inputs[1]
+        if not self.inplace:
+            out[0] = inputs[0].copy()
+        else:
+            raise NotImplementedError('In place computation is not'
+                                      ' implemented')
+        if self.set_instead_of_inc:
+            out[0][inputs[2:]] = inputs[1]
+        else:
+            out[0][inputs[2:]] += inputs[1]
+
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
