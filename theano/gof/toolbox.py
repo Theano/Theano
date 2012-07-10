@@ -21,13 +21,13 @@ class ReplacementDidntRemovedError(Exception):
 
 class Bookkeeper:
 
-    def on_attach(self, env):
-        for node in graph.io_toposort(env.inputs, env.outputs):
-            self.on_import(env, node)
+    def on_attach(self, fgraph):
+        for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
+            self.on_import(fgraph, node)
 
-    def on_detach(self, env):
-        for node in graph.io_toposort(env.inputs, env.outputs):
-            self.on_prune(env, node)
+    def on_detach(self, fgraph):
+        for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
+            self.on_prune(fgraph, node)
 
 
 class History:
@@ -35,127 +35,127 @@ class History:
     def __init__(self):
         self.history = {}
 
-    def on_attach(self, env):
-        if hasattr(env, 'checkpoint') or hasattr(env, 'revert'):
+    def on_attach(self, fgraph):
+        if hasattr(fgraph, 'checkpoint') or hasattr(fgraph, 'revert'):
             raise AlreadyThere("History feature is already present or in"
                                " conflict with another plugin.")
-        self.history[env] = []
-        env.checkpoint = lambda: len(self.history[env])
-        env.revert = partial(self.revert, env)
+        self.history[fgraph] = []
+        fgraph.checkpoint = lambda: len(self.history[fgraph])
+        fgraph.revert = partial(self.revert, fgraph)
 
-    def on_detach(self, env):
-        del env.checkpoint
-        del env.revert
-        del self.history[env]
+    def on_detach(self, fgraph):
+        del fgraph.checkpoint
+        del fgraph.revert
+        del self.history[fgraph]
 
-    def on_change_input(self, env, node, i, r, new_r, reason=None):
-        if self.history[env] is None:
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        if self.history[fgraph] is None:
             return
-        h = self.history[env]
-        h.append(lambda: env.change_input(node, i, r,
+        h = self.history[fgraph]
+        h.append(lambda: fgraph.change_input(node, i, r,
                                           reason=("Revert", reason)))
 
-    def revert(self, env, checkpoint):
+    def revert(self, fgraph, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
         checkpoint (undoes all replacements).  A checkpoint at any
         given time can be obtained using self.checkpoint().
         """
-        h = self.history[env]
-        self.history[env] = None
+        h = self.history[fgraph]
+        self.history[fgraph] = None
         while len(h) > checkpoint:
             f = h.pop()
             f()
-        self.history[env] = h
+        self.history[fgraph] = h
 
 
 class Validator:
 
-    def on_attach(self, env):
+    def on_attach(self, fgraph):
         for attr in ('validate', 'validate_time'):
-            if hasattr(env, attr):
+            if hasattr(fgraph, attr):
                 raise AlreadyThere("Validator feature is already present or in"
                                    " conflict with another plugin.")
 
         def validate():
             t0 = time.time()
-            ret = env.execute_callbacks('validate')
+            ret = fgraph.execute_callbacks('validate')
             t1 = time.time()
-            if env.profile:
-                env.profile.validate_time += t1 - t0
+            if fgraph.profile:
+                fgraph.profile.validate_time += t1 - t0
             return ret
 
-        env.validate = validate
+        fgraph.validate = validate
 
         def consistent():
             try:
-                env.validate()
+                fgraph.validate()
                 return True
             except Exception:
                 return False
-        env.consistent = consistent
+        fgraph.consistent = consistent
 
-    def on_detach(self, env):
-        del env.validate
-        del env.consistent
+    def on_detach(self, fgraph):
+        del fgraph.validate
+        del fgraph.consistent
 
 
 class ReplaceValidate(History, Validator):
 
-    def on_attach(self, env):
-        History.on_attach(self, env)
-        Validator.on_attach(self, env)
+    def on_attach(self, fgraph):
+        History.on_attach(self, fgraph)
+        Validator.on_attach(self, fgraph)
         for attr in ('replace_validate', 'replace_all_validate'):
-            if hasattr(env, attr):
+            if hasattr(fgraph, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
-        env.replace_validate = partial(self.replace_validate, env)
-        env.replace_all_validate = partial(self.replace_all_validate, env)
-        env.replace_all_validate_remove = partial(
-            self.replace_all_validate_remove, env)
+        fgraph.replace_validate = partial(self.replace_validate, fgraph)
+        fgraph.replace_all_validate = partial(self.replace_all_validate, fgraph)
+        fgraph.replace_all_validate_remove = partial(
+            self.replace_all_validate_remove, fgraph)
 
-    def on_detach(self, env):
-        History.on_detach(self, env)
-        Validator.on_detach(self, env)
-        del env.replace_validate
-        del env.replace_all_validate
-        del env.replace_all_validate_remove
+    def on_detach(self, fgraph):
+        History.on_detach(self, fgraph)
+        Validator.on_detach(self, fgraph)
+        del fgraph.replace_validate
+        del fgraph.replace_all_validate
+        del fgraph.replace_all_validate_remove
 
-    def replace_validate(self, env, r, new_r, reason=None):
-        self.replace_all_validate(env, [(r, new_r)], reason=reason)
+    def replace_validate(self, fgraph, r, new_r, reason=None):
+        self.replace_all_validate(fgraph, [(r, new_r)], reason=reason)
 
-    def replace_all_validate(self, env, replacements, reason=None):
-        chk = env.checkpoint()
+    def replace_all_validate(self, fgraph, replacements, reason=None):
+        chk = fgraph.checkpoint()
         for r, new_r in replacements:
             try:
-                env.replace(r, new_r, reason=reason)
+                fgraph.replace(r, new_r, reason=reason)
             except Exception, e:
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this FunctionGraph' not in str(e)):
                     out = sys.stderr
-                    print >> out, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>",
+                    print >> out, "<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
                     print >> out, type(e), e, reason
                 # this might fail if the error is in a listener:
-                # (env.replace kinda needs better internal error handling)
-                env.revert(chk)
+                # (fgraph.replace kinda needs better internal error handling)
+                fgraph.revert(chk)
                 raise
         try:
-            env.validate()
+            fgraph.validate()
         except Exception, e:
-            env.revert(chk)
+            fgraph.revert(chk)
             raise
         return chk
 
-    def replace_all_validate_remove(self, env, replacements,
+    def replace_all_validate_remove(self, fgraph, replacements,
                                     remove, reason=None, warn=True):
         """As replace_all_validate, revert the replacement if the ops
         in the list remove are still in the graph. It also print a warning.
 
         """
-        chk = env.replace_all_validate(replacements, reason)
+        chk = fgraph.replace_all_validate(replacements, reason)
         for rm in remove:
-            if rm in env.nodes or rm in env.variables:
-                env.revert(chk)
+            if rm in fgraph.nodes or rm in fgraph.variables:
+                fgraph.revert(chk)
                 if warn:
                     out = sys.stderr
                     print >> out, (
@@ -172,27 +172,27 @@ class ReplaceValidate(History, Validator):
 class NodeFinder(dict, Bookkeeper):
 
     def __init__(self):
-        self.env = None
+        self.fgraph = None
 
-    def on_attach(self, env):
-        if self.env is not None:
+    def on_attach(self, fgraph):
+        if self.fgraph is not None:
             raise Exception("A NodeFinder instance can only serve one FunctionGraph.")
-        if hasattr(env, 'get_nodes'):
+        if hasattr(fgraph, 'get_nodes'):
             raise AlreadyThere("NodeFinder is already present or in conflict"
                                " with another plugin.")
-        self.env = env
-        env.get_nodes = partial(self.query, env)
-        Bookkeeper.on_attach(self, env)
+        self.fgraph = fgraph
+        fgraph.get_nodes = partial(self.query, fgraph)
+        Bookkeeper.on_attach(self, fgraph)
 
-    def on_detach(self, env):
-        if self.env is not env:
+    def on_detach(self, fgraph):
+        if self.fgraph is not fgraph:
             raise Exception("This NodeFinder instance was not attached to the"
-                            " provided env.")
-        self.env = None
-        del env.get_nodes
-        Bookkeeper.on_detach(self, env)
+                            " provided fgraph.")
+        self.fgraph = None
+        del fgraph.get_nodes
+        Bookkeeper.on_detach(self, fgraph)
 
-    def on_import(self, env, node):
+    def on_import(self, fgraph, node):
         try:
             self.setdefault(node.op, []).append(node)
         except TypeError:  # node.op is unhashable
@@ -205,7 +205,7 @@ class NodeFinder(dict, Bookkeeper):
                 print >> sys.stderr, 'OFFENDING node not hashable'
             raise e
 
-    def on_prune(self, env, node):
+    def on_prune(self, fgraph, node):
         try:
             nodes = self[node.op]
         except TypeError:  # node.op is unhashable
@@ -214,7 +214,7 @@ class NodeFinder(dict, Bookkeeper):
         if not nodes:
             del self[node.op]
 
-    def query(self, env, op):
+    def query(self, fgraph, op):
         try:
             all = self.get(op, [])
         except TypeError:
@@ -229,29 +229,29 @@ class PrintListener(object):
     def __init__(self, active=True):
         self.active = active
 
-    def on_attach(self, env):
+    def on_attach(self, fgraph):
         if self.active:
-            print "-- attaching to: ", env
+            print "-- attaching to: ", fgraph
 
-    def on_detach(self, env):
+    def on_detach(self, fgraph):
         if self.active:
-            print "-- detaching from: ", env
+            print "-- detaching from: ", fgraph
 
-    def on_import(self, env, node):
+    def on_import(self, fgraph, node):
         if self.active:
             print "-- importing: %s" % node
 
-    def on_prune(self, env, node):
+    def on_prune(self, fgraph, node):
         if self.active:
             print "-- pruning: %s" % node
 
-    def on_change_input(self, env, node, i, r, new_r, reason=None):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if self.active:
             print "-- changing (%s.inputs[%s]) from %s to %s" % (
                 node, i, r, new_r)
 
 
 class PreserveNames:
-    def on_change_input(self, env, mode, i, r, new_r, reason=None):
+    def on_change_input(self, fgraph, mode, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name

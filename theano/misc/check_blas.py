@@ -66,7 +66,7 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
 
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
-            f.maker.env.toposort()]):
+            f.maker.fgraph.toposort()]):
         c_impl = f.profile.apply_cimpl.values()
         assert len(c_impl) == 1
         if c_impl[0]:
@@ -74,11 +74,11 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         else:
             impl = 'CPU (without direct Theano binding to blas but with numpy/scipy binding to blas)'
     elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
-              f.maker.env.toposort()]):
+              f.maker.fgraph.toposort()]):
         impl = 'GPU'
     else:
         impl = 'ERROR, unable to tell if Theano used the cpu or the gpu:\n'
-        impl += str(f.maker.env.toposort())
+        impl += str(f.maker.fgraph.toposort())
 
     t0 = 0
     t1 = -1
