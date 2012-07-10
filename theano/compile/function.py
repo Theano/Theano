@@ -85,19 +85,20 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         things more convenient for the user. The shared variables are
         transformed into implicit inputs and implicit outputs. The
         optimizations don't see which variables are shared or not.
-           2. Env: determines whether a graph is valid. for example, suppose
+           2. FunctionGraph: determines whether a graph is valid. For example,
+        suppose
         you merge the two apply nodes in our example above, ie, do the
         addition and the tanh at the same time. If you propose a merge that
-        changes the resulting dtype or broadcastable pattern of V4, the env
+        changes the resulting dtype or broadcastable pattern of V4, the fgraph
         will detect this.
                     inplace optimizations: say we have an apply node that
         does + on V1 and V2, with output V3. We can change the output to be
         V1, to use less memory. theano must be told that this optimization is
         happening though, so that other parts of the graph are given the
         correct (pre + or post + ) version of V1.
-                  env will raise an error if any of these types of
+                  fgraph will raise an error if any of these types of
         modifications causes an error
-                  env also adds a field called "clients" to all variables.
+                  fgraph also adds a field called "clients" to all variables.
         clients is a list of apply nodes that use the variable. this makes it
         possible to traverse the graph in both directions. this is useful for
         determining whether to do some optimizations. for example, a fusion

@@ -591,8 +591,8 @@ class Test_pfunc(unittest.TestCase):
         c = a + 10
         f = pfunc([b], c, givens={a: b})
 
-        assert len(f.maker.env.inputs) == 1
-        assert len(f.maker.env.outputs) == 1
+        assert len(f.maker.fgraph.inputs) == 1
+        assert len(f.maker.fgraph.outputs) == 1
 
     def test_givens_replaces_shared_variable2(self):
         a = shared(1., 'a')

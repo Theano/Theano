@@ -168,9 +168,9 @@ def asarrayX(value):
 
 
 def clone_optimized_graph(f):
-    maker_ins = [x for x in f.maker.env.inputs
+    maker_ins = [x for x in f.maker.fgraph.inputs
                  if not isinstance(x, theano.tensor.sharedvar.SharedVariable)]
-    inps, outs, _ = rebuild_collect_shared(f.maker.env.outputs,
+    inps, outs, _ = rebuild_collect_shared(f.maker.fgraph.outputs,
                                            maker_ins,
                                            copy_inputs_over=False)
     ins = [x for x in inps
@@ -309,7 +309,7 @@ class T_Scan(unittest.TestCase):
                                 output[:-4]],
                                updates=updates,
                                allow_input_downcast=True)
-        nodes = [x for x in my_f.maker.env.toposort()
+        nodes = [x for x in my_f.maker.fgraph.toposort()
                  if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         # This assertation fails if savemem optimization failed on scan
         if theano.config.mode != "FAST_COMPILE":
@@ -413,13 +413,13 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_values, v_out)
 
         # TO DEL
-        topo = f2.maker.env.toposort()
+        topo = f2.maker.fgraph.toposort()
         scan_node = [node for node in topo
                      if isinstance(node.op, theano.scan_module.scan_op.Scan)]
         assert len(scan_node) == 1
         scan_node = scan_node[0]
 
-        topo = f2.maker.env.toposort()
+        topo = f2.maker.fgraph.toposort()
         assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
                     for node in topo]) == 0
         assert sum([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
@@ -429,7 +429,7 @@ class T_Scan(unittest.TestCase):
                      if isinstance(node.op, theano.scan_module.scan_op.Scan)]
         assert len(scan_node) == 1
         scan_node = scan_node[0]
-        scan_node_topo = scan_node.op.fn.maker.env.toposort()
+        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
 
         # check that there is no gpu transfer in the inner loop.
         assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
@@ -483,7 +483,7 @@ class T_Scan(unittest.TestCase):
         theano_values = f2(v_u, v_x0, W_in, W)
         assert numpy.allclose(theano_values, v_out)
 
-        topo = f2.maker.env.toposort()
+        topo = f2.maker.fgraph.toposort()
         assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
                     for node in topo]) == 1
         assert sum([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
@@ -493,7 +493,7 @@ class T_Scan(unittest.TestCase):
                      if isinstance(node.op, theano.scan_module.scan_op.Scan)]
         assert len(scan_node) == 1
         scan_node = scan_node[0]
-        scan_node_topo = scan_node.op.fn.maker.env.toposort()
+        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
 
         # check that there is no gpu transfer in the inner loop.
         assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
@@ -821,7 +821,7 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              mode=mode,
                              allow_input_downcast=True)
-        scan_node = [x for x in f9.maker.env.toposort()
+        scan_node = [x for x in f9.maker.fgraph.toposort()
                      if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert 0 in scan_node[0].op.destroy_map.keys()
         assert 1 in scan_node[0].op.destroy_map.keys()
@@ -901,7 +901,7 @@ class T_Scan(unittest.TestCase):
                              mode=mode,
                              allow_input_downcast=True)
 
-        scan_node = [x for x in f9.maker.env.toposort()
+        scan_node = [x for x in f9.maker.fgraph.toposort()
                      if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert 0 in scan_node[0].op.destroy_map.keys()
         assert 1 in scan_node[0].op.destroy_map.keys()
@@ -956,7 +956,7 @@ class T_Scan(unittest.TestCase):
                              outputs,
                              updates=updates,
                              mode=mode)
-        scan_node = [x for x in f9.maker.env.toposort()
+        scan_node = [x for x in f9.maker.fgraph.toposort()
                      if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert 0 not in scan_node[0].op.destroy_map.keys()
         assert 1 in scan_node[0].op.destroy_map.keys()
@@ -2177,7 +2177,7 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(tx5, v_u[-10] + 5.)
         assert numpy.allclose(tx6, v_u[-15] + 6.)
         assert numpy.allclose(tx7, v_u[:-15] + 7.)
-        scan_node = f2.maker.env.outputs[0].owner.inputs[0]
+        scan_node = f2.maker.fgraph.outputs[0].owner.inputs[0]
 
         # Maybe ugly, way to check if the optimization had
         # been applied
@@ -2256,7 +2256,7 @@ class T_Scan(unittest.TestCase):
         self.assertTrue(numpy.allclose(f([1, 2, 3]), 2. / 3))
 
         #theano.printing.debugprint(f, print_type=True)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
@@ -2277,7 +2277,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[y])
 
         f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2286,7 +2286,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[y], n_steps=3)
 
         f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2295,7 +2295,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[y], n_steps=4)
 
         f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 1)
@@ -2304,7 +2304,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[x])
 
         f = theano.function([x], [sx, sy], mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 1)
@@ -2314,7 +2314,7 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 1)
@@ -2323,7 +2323,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
 
         f = theano.function([x], [sx, sy], mode=mode_with_opt)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
         self.assertTrue(len(scans) == 2)
@@ -2599,7 +2599,7 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([h0, W1, W2], o, mode=mode_with_opt)
 
-        scan_nodes = [x for x in f.maker.env.toposort()
+        scan_nodes = [x for x in f.maker.fgraph.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)]
         assert len(scan_nodes) == 0
@@ -2634,10 +2634,10 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([h0, W1, W2], o, mode=mode_with_opt)
 
-        scan_node = [x for x in f.maker.env.toposort()
+        scan_node = [x for x in f.maker.fgraph.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
-        assert len([x for x in scan_node.op.fn.maker.env.toposort()
+        assert len([x for x in scan_node.op.fn.maker.fgraph.toposort()
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs1(self):
@@ -2653,10 +2653,10 @@ class T_Scan(unittest.TestCase):
                            n_steps=5)
 
         f = theano.function([h0, W1, W2], o, mode=mode_with_opt)
-        scan_node = [x for x in f.maker.env.toposort()
+        scan_node = [x for x in f.maker.fgraph.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
-        assert len([x for x in scan_node.op.fn.maker.env.toposort()
+        assert len([x for x in scan_node.op.fn.maker.fgraph.toposort()
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
@@ -2677,11 +2677,11 @@ class T_Scan(unittest.TestCase):
                            n_steps=5)
 
         f = theano.function([h0, W1, W2], o, mode=mode_with_opt)
-        scan_node = [x for x in f.maker.env.toposort()
+        scan_node = [x for x in f.maker.fgraph.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
 
-        assert len([x for x in scan_node.op.fn.maker.env.toposort()
+        assert len([x for x in scan_node.op.fn.maker.fgraph.toposort()
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs3(self):
@@ -2703,7 +2703,7 @@ class T_Scan(unittest.TestCase):
                            n_steps=5)
 
         f = theano.function([_h0, _W1, _W2], o, mode=mode_with_opt)
-        scan_node = [x for x in f.maker.env.toposort()
+        scan_node = [x for x in f.maker.fgraph.toposort()
                      if isinstance(x.op,
                                    theano.scan_module.scan_op.Scan)][0]
 
@@ -2736,7 +2736,7 @@ class T_Scan(unittest.TestCase):
         print 'len_out', len(out)
         assert len(out) == 24
         assert numpy.all(out2 == vx + 2)
-        lssc = [x for x in f.maker.env.toposort()
+        lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 2
 
@@ -2839,7 +2839,7 @@ class T_Scan(unittest.TestCase):
         out, out2 = f(vx)
         assert len(out) == 24
         assert len(out2) == 24
-        lssc = [x for x in f.maker.env.toposort()
+        lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
 
@@ -2873,7 +2873,7 @@ class T_Scan(unittest.TestCase):
         out1, out2 = f(vx)
         assert out1 == 10
         assert out2 == 10
-        lssc = [x for x in f.maker.env.toposort()
+        lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
 
@@ -2892,7 +2892,7 @@ class T_Scan(unittest.TestCase):
         o1, o2 = f(vx)
         assert o1 == 20
         assert o2 == 20
-        lssc = [x for x in f.maker.env.toposort()
+        lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
 
@@ -3012,7 +3012,7 @@ class T_Scan(unittest.TestCase):
             non_sequences=[x, A],
             n_steps=2)
         f = theano.function([x, A], z)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         if theano.config.mode != "FAST_COMPILE":
             assert any([isinstance(node.op, tensor.blas.Dot22)
                         for node in topo])

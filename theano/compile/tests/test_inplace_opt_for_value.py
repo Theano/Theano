@@ -215,7 +215,7 @@ def test_example_rnn():
     y[LAG:] = x[:-LAG, 0:n_out]
 
     if 0:
-        for i, node in enumerate(rnn.minimizer.step_cost.maker.env.toposort()):
+        for i, node in enumerate(rnn.minimizer.step_cost.maker.fgraph.toposort()):
             print i, node
 
     niter=1500
@@ -258,14 +258,14 @@ def test_WEIRD_STUFF():
 #    for n in m.optimizer: print n.name
 
     if 0:
-        topo1=rnn1.minimizer.step_cost.maker.env.toposort()
-        topo2=rnn2.minimizer.step_cost.maker.env.toposort()
+        topo1=rnn1.minimizer.step_cost.maker.fgraph.toposort()
+        topo2=rnn2.minimizer.step_cost.maker.fgraph.toposort()
         for i in range(len(topo1)):
             print '1',i, topo1[i]
             print '2',i, topo2[i]
     if 0:
-        topo1=rnn1.minimizer.step.maker.env.toposort()
-        topo2=rnn2.minimizer.step.maker.env.toposort()
+        topo1=rnn1.minimizer.step.maker.fgraph.toposort()
+        topo2=rnn2.minimizer.step.maker.fgraph.toposort()
         for i in range(len(topo1)):
             print '1',i, topo1[i]
             print '2',i, topo2[i]

@@ -74,17 +74,17 @@ register_opt()(theano.tensor.opt.local_track_shape_i)
 class InputToGpuOptimizer(Optimizer):
     """Transfert the input of a graph to the gpu if needed
     It should make this part of the optimizer faster we will will need only 1
-    pass on the env.
+    pass on the fgraph.
     """
     def __init__(self):
         Optimizer.__init__(self)
 
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-        env.extend(DestroyHandler())
+    def add_requirements(self, fgraph):
+        fgraph.extend(toolbox.ReplaceValidate())
+        fgraph.extend(DestroyHandler())
 
-    def apply(self, env):
-        for input in env.inputs:
+    def apply(self, fgraph):
+        for input in fgraph.inputs:
             if isinstance(input.type, CudaNdarrayType):
                 return
 
@@ -98,7 +98,7 @@ class InputToGpuOptimizer(Optimizer):
                 new_input = host_from_gpu(gpu_from_host(input))
 
                 if new_input.type == input.type:
-                    env.replace_validate(input, new_input,
+                    fgraph.replace_validate(input, new_input,
                                          "InputToGpuOptimizer")
             except TypeError, e:
                 #as we currently only support float32, this can fail.
@@ -146,7 +146,7 @@ def dtype_in_elemwise_supported(op):
     """
     def get_all_basic_scalar(composite_op):
         l = []
-        for i in composite_op.env.toposort():
+        for i in composite_op.fgraph.toposort():
             if isinstance(i, theano.scalar.Composite):
                 l += get_all_basic_scalar(i)
             else:
@@ -629,7 +629,7 @@ def local_gpu_sum(node):
                     # to make them a single dimension, do the sum, and then
                     # reshape to get them back.
 
-                    shape_of = node.env.shape_feature.shape_of
+                    shape_of = node.fgraph.shape_feature.shape_of
 
                     x_shape = shape_of[x]
 
@@ -1471,8 +1471,8 @@ def gpuScanOptimization(node):
             # handle graphs with inputs being Cuda Ndarrays
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
-            local_env = gof.Env(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_env, [])
+            local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
+            _cmodule_key = gof.CLinker.cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
@@ -1520,8 +1520,8 @@ def gpuScanOptimization(node):
             # handle graphs with inputs being Cuda Ndarrays
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
-            local_env = gof.Env(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_env, [])
+            local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
+            _cmodule_key = gof.CLinker.cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
                     broadcastable=broadcastable)

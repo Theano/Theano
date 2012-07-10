@@ -94,8 +94,8 @@ OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
 OPT_STABILIZE.name = 'OPT_STABILIZE'
 
 predefined_optimizers = {
-    None: (lambda env: None),
-    'None': (lambda env: None),
+    None: (lambda fgraph: None),
+    'None': (lambda fgraph: None),
     'merge': gof.MergeOptimizer(),
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
@@ -182,20 +182,20 @@ _output_guard = OutputGuard()
 class AddDestroyHandler(gof.Optimizer):
     """This optimizer performs two important functions:
 
-    1) it has a 'requirement' of the destroyhandler.  This means that the env
+    1) it has a 'requirement' of the destroyhandler.  This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
     enabled for subsequent optimizations.  All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that
-    the DestroyHandler has been included in the env.
+    the DestroyHandler has been included in the fgraph.
 
     2) It tries to replace each output with an Op that purports to destroy it
     (but it won't I promise).  If this replacement succeeds it means that
     there is a bug in theano.  It should not be possible to destroy outputs.
     """
-    def apply(self, env):
-        for o in env.outputs:
+    def apply(self, fgraph):
+        for o in fgraph.outputs:
             try:
-                env.replace_validate(o, _output_guard(o),
+                fgraph.replace_validate(o, _output_guard(o),
                         reason='output_guard')
                 _logger.info("Output variable %s required output_guard, "
                         "how was this output left unprotected against "
@@ -206,12 +206,12 @@ class AddDestroyHandler(gof.Optimizer):
                 # No guard necessary
                 pass
 
-    def add_requirements(self, env):
-        super(AddDestroyHandler, self).add_requirements(env)
-        env.extend(gof.DestroyHandler())
+    def add_requirements(self, fgraph):
+        super(AddDestroyHandler, self).add_requirements(fgraph)
+        fgraph.extend(gof.DestroyHandler())
 
 
-class PrintCurrentEnv(gof.Optimizer):
+class PrintCurrentFunctionGraph(gof.Optimizer):
     """This optimizer is for debugging.
 
     Toss it into the optimization pipeline to see the state of things at any
@@ -220,10 +220,10 @@ class PrintCurrentEnv(gof.Optimizer):
     def __init__(self, header):
         self.header = header
 
-    def apply(self, env):
+    def apply(self, fgraph):
         import theano.printing
-        print "PrintCurrentEnv:", self.header
-        theano.printing.debugprint(env.outputs)
+        print "PrintCurrentFunctionGraph:", self.header
+        theano.printing.debugprint(fgraph.outputs)
 
 
 optdb = gof.SequenceDB()
@@ -237,21 +237,21 @@ optdb.register('canonicalize', gof.EquilibriumDB(),
 optdb.register('merge1.2', gof.MergeOptimizer(),
         1.2, 'fast_run', 'fast_compile')
 
-optdb.register('Print1.21', PrintCurrentEnv('Post-canonicalize'),
+optdb.register('Print1.21', PrintCurrentFunctionGraph('Post-canonicalize'),
         1.21,)  # 'fast_run', 'fast_compile')
 
 # replace unstable subgraphs
 optdb.register('stabilize', gof.EquilibriumDB(),
         1.5, 'fast_run')
 
-optdb.register('Print1.51', PrintCurrentEnv('Post-stabilize'),
+optdb.register('Print1.51', PrintCurrentFunctionGraph('Post-stabilize'),
         1.51,)  # 'fast_run', 'fast_compile')
 
 # misc special cases for speed
 optdb.register('specialize', gof.EquilibriumDB(),
         2, 'fast_run')
 
-optdb.register('Print2.01', PrintCurrentEnv('Post-specialize'),
+optdb.register('Print2.01', PrintCurrentFunctionGraph('Post-specialize'),
         2.01,)  # 'fast_run', 'fast_compile')
 
 # misc special cases for speed that break canonicalization

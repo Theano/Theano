@@ -22,7 +22,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
+from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
@@ -2410,27 +2410,27 @@ class Composite(ScalarOp):
     def init_c_code(self):
         """Return the C code for this Composite Op.  """
         subd = dict(
-                zip(self.env.inputs,
-                    ["%%(i%i)s" % i for i in xrange(len(self.env.inputs))])
-                + zip(self.env.outputs,
-                    ["%%(o%i)s" % i for i in xrange(len(self.env.outputs))]))
+                zip(self.fgraph.inputs,
+                    ["%%(i%i)s" % i for i in xrange(len(self.fgraph.inputs))])
+                + zip(self.fgraph.outputs,
+                    ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
 
-        for orphan in self.env.variables:  # env.orphans:
-            if orphan.owner is None and orphan not in self.env.inputs:
+        for orphan in self.fgraph.variables:  # fgraph.orphans:
+            if orphan.owner is None and orphan not in self.fgraph.inputs:
                 if isinstance(orphan, Constant):
                     subd[orphan] = orphan.type.c_literal(orphan.data)
                 else:
                     raise ValueError(
-                            "All orphans in the env to Composite must"
+                            "All orphans in the fgraph to Composite must"
                             " be Constant instances.")
 
         _c_code = "{\n"
         i = 0
         j = 0
         self.nodenames = ["%(nodename)s_" + ('subnode%i' % j)
-                for j, n in enumerate(self.env.toposort())]
+                for j, n in enumerate(self.fgraph.toposort())]
 
-        for j, node in enumerate(self.env.toposort()):
+        for j, node in enumerate(self.fgraph.toposort()):
             for output in node.outputs:
                 if output not in subd:
                     i += 1
@@ -2455,27 +2455,27 @@ class Composite(ScalarOp):
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
             # it will calculate *1 twice
-            # it also doesn't follow env.toposort but that's (presumably)
+            # it also doesn't follow fgraph.toposort but that's (presumably)
             # still correct since we only have scalar ops
-            if r in self.env.inputs:
-                idx = self.env.inputs.index(r)
+            if r in self.fgraph.inputs:
+                idx = self.fgraph.inputs.index(r)
                 return lambda inputs: inputs[idx]
-            elif r.owner is None:  # in env.orphans:
+            elif r.owner is None:  # in fgraph.orphans:
                 return lambda inputs: r.data
             node = r.owner
             producers = [compose_impl(input) for input in node.inputs]
             return lambda inputs: node.op.impl(*[p(inputs) for p in producers])
-        self._impls = [compose_impl(r) for r in self.env.outputs]
+        self._impls = [compose_impl(r) for r in self.fgraph.outputs]
 
     def init_name(self):
-        """Return a readable string representation of self.env
+        """Return a readable string representation of self.fgraph
         """
         try:
             rval = self.name
         except AttributeError:
             if 0:
                 l = []
-                for n in env.toposort():
+                for n in fgraph.toposort():
                     if hasattr(n.op, "name") and n.op.name is not None:
                         v = n.op.name
                         if v.startswith("Composite"):
@@ -2485,25 +2485,25 @@ class Composite(ScalarOp):
                     l.append(v)
                 rval = "Composite{" + ",".join(l) + "}"
             else:
-                for i, r in enumerate(self.env.inputs):
+                for i, r in enumerate(self.fgraph.inputs):
                     r.name = 'i%i' % i
-                for i, r in enumerate(self.env.outputs):
+                for i, r in enumerate(self.fgraph.outputs):
                     r.name = 'o%i' % i
-                io = set(self.env.inputs + self.env.outputs)
-                for i, r in enumerate(self.env.variables):
+                io = set(self.fgraph.inputs + self.fgraph.outputs)
+                for i, r in enumerate(self.fgraph.variables):
                     if r not in io and len(r.clients) > 1:
                         r.name = 't%i' % i
-                rval = "Composite{%s}" % str(self.env)
+                rval = "Composite{%s}" % str(self.fgraph)
         self.name = rval
 
-    def init_env(self):
-        env = Env(*gof.graph.clone(self.inputs, self.outputs))
-        gof.MergeOptimizer().optimize(env)
-        for node in env.nodes:
+    def init_fgraph(self):
+        fgraph = FunctionGraph(*gof.graph.clone(self.inputs, self.outputs))
+        gof.MergeOptimizer().optimize(fgraph)
+        for node in fgraph.nodes:
             if not isinstance(node.op, ScalarOp):
-                raise ValueError("The env to Composite must be exclusively"
+                raise ValueError("The fgraph to Composite must be exclusively"
                                  " composed of ScalarOp instances.")
-        self.env = env
+        self.fgraph = fgraph
 
     def __init__(self, inputs, outputs):
         self.inputs = copy(inputs)
@@ -2512,7 +2512,7 @@ class Composite(ScalarOp):
         self.outputs_type = tuple([output.type for output in outputs])
         self.nin = len(inputs)
         self.nout = len(outputs)
-        self.init_env()       # self.env
+        self.init_fgraph()       # self.fgraph
         self.init_name()      # self.name
         self.init_c_code()    # self._c_code and self.nodenames
         self.init_py_impls()  # self._impls
@@ -2565,7 +2565,7 @@ class Composite(ScalarOp):
 
     def c_code_cache_version(self):
         rval = [3]
-        for x in self.env.toposort():
+        for x in self.fgraph.toposort():
             xv = x.op.c_code_cache_version()
             if xv:
                 rval.append(xv)
@@ -2575,7 +2575,7 @@ class Composite(ScalarOp):
 
     def c_support_code(self):
         rval = []
-        for subnode in self.env.toposort():
+        for subnode in self.fgraph.toposort():
             try:
                 rval.append(subnode.op.c_support_code())
             except gof.utils.MethodNotDefined:
@@ -2585,7 +2585,7 @@ class Composite(ScalarOp):
 
     def c_support_code_apply(self, node, name):
         rval = []
-        for subnode, subnodename in zip(self.env.toposort(), self.nodenames):
+        for subnode, subnodename in zip(self.fgraph.toposort(), self.nodenames):
             try:
                 subnode_support_code = subnode.op.c_support_code_apply(
                             subnode,
@@ -2607,7 +2607,7 @@ class Composite(ScalarOp):
                 or self.nin != other.nin
                 or self.nout != other.nout):
             return False
-        # see __hash__ for comment on why there is no mention of env
+        # see __hash__ for comment on why there is no mention of fgraph
         # or module cache key here.
         return (self._c_code == other._c_code)
 
@@ -2619,7 +2619,7 @@ class Composite(ScalarOp):
         # Note that in general, the configparser settings at the time
         # of code generation (__init__) affect the semantics of this Op.
         # This function assumes that all relevant info about the configparser
-        # is embodied in _c_code.  So the _c_code, rather than self.env,
+        # is embodied in _c_code.  So the _c_code, rather than self.fgraph,
         # is the signature of the semantics of this Op.
         # _c_code is preserved through unpickling, so the Op will not change
         # semantics when it is reloaded with different configparser
@@ -2629,13 +2629,13 @@ class Composite(ScalarOp):
     def __getstate__(self):
         rval = dict(self.__dict__)
         del rval['_impls']
-        del rval['env']
+        del rval['fgraph']
         return rval
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        # We must call init to set env and _impls again, as otherwise
+        # We must call init to set fgraph and _impls again, as otherwise
         # self.perform will not work.
-        self.init_env()
+        self.init_fgraph()
         self.init_py_impls()
         assert self._c_code

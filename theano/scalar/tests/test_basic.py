@@ -6,13 +6,13 @@ are rarely used by themselves, instead they are the basis for Tensor Ops
 to use numpy's scalar routines.
 If you do want to rewrite these tests, bear in mind:
   * You don't need to use Composite.
-  * Env and DualLinker are old, use compile.function instead.
+  * FunctionGraph and DualLinker are old, use compile.function instead.
 """
 
 import unittest
 
 import theano
-from theano.gof import Variable, Op, Env
+from theano.gof import Variable, Op, FunctionGraph
 from theano import gof
 
 from theano.scalar.basic import *
@@ -27,7 +27,7 @@ class test_ScalarOps(unittest.TestCase):
     def test_straightforward(self):
         x, y, z = inputs()
         e = mul(add(x, y), div_proxy(x, y))
-        g = Env([x, y], [e])
+        g = FunctionGraph([x, y], [e])
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
@@ -45,7 +45,7 @@ class test_ScalarOps(unittest.TestCase):
         as Python. That is what we want.
         """
         x, y = ints('xy')
-        fn = gof.DualLinker().accept(Env([x,y], [x%y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x%y])).make_function()
         for a,b in ((0,1), (1,1), (0,-1), (1,-1), (-1,-1),
                     (1,2), (-1,2), (1,-2), (-1,-2),
                     (5,3), (-5,3), (5,-3), (-5,-3)
@@ -60,7 +60,7 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y], [e])
         c = C.make_node(x, y)
         # print c.c_code(['x', 'y'], ['z'], dict(id = 0))
-        g = Env([x, y], [c.out])
+        g = FunctionGraph([x, y], [c.out])
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
@@ -70,7 +70,7 @@ class test_composite(unittest.TestCase):
 #        C = Composite([x], [e])
 #        c = C.make_node(x)
 #        # print c.c_code(['x'], ['z'], dict(id = 0))
-#        g = Env([x], [c.out])
+#        g = FunctionGraph([x], [c.out])
 #        fn = gof.DualLinker().accept(g).make_function()
 #        assert fn(0) == 0
 #        assert fn(3.14159265358/2) == 1
@@ -85,7 +85,7 @@ class test_composite(unittest.TestCase):
         c = C.make_node(x, y)
         assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id = 0))
         # print c.c_code(['x', 'y'], ['z'], dict(id = 0))
-        g = Env([x, y], [c.out])
+        g = FunctionGraph([x, y], [c.out])
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 36.0
 
@@ -97,7 +97,7 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y, z], [e0, e1, e2])
         c = C.make_node(x, y, z)
         # print c.c_code(['x', 'y', 'z'], ['out0', 'out1', 'out2'], dict(id = 0))
-        g = Env([x, y, z], c.outputs)
+        g = FunctionGraph([x, y, z], c.outputs)
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0, 3.0) == [6.0, 7.0, 0.5]
 
@@ -105,72 +105,72 @@ class test_composite(unittest.TestCase):
 class test_logical(unittest.TestCase):
     def test_gt(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [x > y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x > y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a>b))
 
     def test_lt(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [x < y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x < y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a<b))
 
     def test_le(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [x <= y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x <= y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a<=b))
 
     def test_ge(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [x >= y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x >= y])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a>=b))
 
     def test_eq(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [eq(x,y)])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [eq(x,y)])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a==b))
 
     def test_neq(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(Env([x,y], [neq(x,y)])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [neq(x,y)])).make_function()
         for a,b in ((3.,9), (3,0.9), (3,3)):
             self.assertTrue(fn(a,b) == (a!=b))
 
 
     def test_or(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [x|y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x|y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == (a|b), (a,b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [x^y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x^y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == (a ^ b), (a,b))
 
     def test_and(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [and_(x, y)])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [and_(x, y)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == (a & b), (a,b))
 
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [x & y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x & y])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == (a & b), (a,b))
 
     def test_not(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [invert(x)])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [invert(x)])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == ~a, (a,))
 
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(Env([x,y], [~x])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x,y], [~x])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == ~a, (a,))
 

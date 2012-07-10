@@ -180,7 +180,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = [n.op for n in f.maker.env.toposort()]
+        topo = [n.op for n in f.maker.fgraph.toposort()]
         assert topo == [CGemv(inplace=False)], topo
 
         #test the inplace version
@@ -192,7 +192,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = [n.op for n in g.maker.env.toposort()]
+        topo = [n.op for n in g.maker.fgraph.toposort()]
         assert topo == [CGemv(inplace=True)]
 
         # Do the same tests with a matrix with strides in both dimensions

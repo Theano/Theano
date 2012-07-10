@@ -1000,7 +1000,7 @@ crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 @opt.register_stabilize
 @opt.register_specialize
 @gof.optimizer
-def crossentropy_to_crossentropy_with_softmax_with_bias(env):
+def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
     """
     This is a stabilization optimization
 
@@ -1008,7 +1008,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(env):
     """
 
     def search_make_one_sub():
-        for node in env.toposort():
+        for node in fgraph.toposort():
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
@@ -1016,7 +1016,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(env):
                     x, b = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                    fgraph.replace_all_validate([(nll, new_nll),(sm, new_sm)],
                             reason="crossentropy_to_crossentropy_with_softmax")
                     return True
 
@@ -1027,7 +1027,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(env):
     return
 
 @gof.optimizer
-def crossentropy_to_crossentropy_with_softmax(env):
+def crossentropy_to_crossentropy_with_softmax(fgraph):
     """
     This is a stabilization optimization that is more general then crossentropy_to_crossentropy_with_softmax_with_bias
 
@@ -1039,7 +1039,7 @@ def crossentropy_to_crossentropy_with_softmax(env):
     """
 
     def search_make_one_sub():
-        for node in env.toposort():
+        for node in fgraph.toposort():
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
@@ -1047,14 +1047,14 @@ def crossentropy_to_crossentropy_with_softmax(env):
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
                             tensor.zeros_like(x[0]), one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                    fgraph.replace_all_validate([(nll, new_nll),(sm, new_sm)],
                             reason="crossentropy_to_crossentropy_with_softmax")
                     return True
                 if sm.owner and sm.owner.op == softmax_with_bias:
                     x, b = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
-                    env.replace_all_validate([(nll, new_nll),(sm, new_sm)],
+                    fgraph.replace_all_validate([(nll, new_nll),(sm, new_sm)],
                             reason="crossentropy_to_crossentropy_with_softmax")
                     return True
 
@@ -1128,7 +1128,7 @@ def _check_rows_is_arange_len_labels(rows, labels):
                 if shape_var.owner and shape_var.owner.op == tensor._shape:
                     return shape_var.owner.inputs[0] is labels
         else:
-            shape_of = stop.owner.env.shape_feature.shape_of
+            shape_of = stop.owner.fgraph.shape_feature.shape_of
             return shape_of[labels][0] is stop
 
 def _is_const(z, val, approx=False):

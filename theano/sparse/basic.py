@@ -706,7 +706,7 @@ class CSM(gof.Op):
             # node.inputs[3] is of lenght as we only support sparse matrix.
             return [(node.inputs[3][0], node.inputs[3][1])]
         else:
-            return node.env.shape_feature.default_infer_shape(node, shapes)
+            return node.fgraph.shape_feature.default_infer_shape(node, shapes)
 
 
 CSC = CSM('csc')

@@ -868,11 +868,11 @@ class test_structureddot(unittest.TestCase):
         f = theano.function([kerns, images], structured_dot(cscmat, images.T))
 
         sdcscpresent = False
-        for node in f.maker.env.toposort():
+        for node in f.maker.fgraph.toposort():
             #print node.op
             assert not isinstance(node.op, CSM)
             assert not isinstance(node.op, CSMProperties)
-            if isinstance(f.maker.env.toposort()[1].op, StructuredDotCSC):
+            if isinstance(f.maker.fgraph.toposort()[1].op, StructuredDotCSC):
                 sdcscpresent = True
         assert sdcscpresent
 
@@ -898,7 +898,7 @@ class test_structureddot(unittest.TestCase):
                 b = SparseType(sparse_format_b, dtype=sparse_dtype)()
                 d = theano.dot(a, b)
                 f = theano.function([a, b], theano.Out(d, borrow=True))
-                topo = f.maker.env.toposort()
+                topo = f.maker.fgraph.toposort()
                 for M, N, K, nnz in [(4, 3, 2, 3),
                                   (40, 30, 20, 3),
                                   (40, 30, 20, 30),
@@ -1021,7 +1021,7 @@ class DotTests(unittest.TestCase):
         f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
         f_b = lambda x, y: (x * y).shape
         assert numpy.all(f_a(self.x_csr, self.y) == f_b(self.x_csr, self.y))
-        topo = f_a.maker.env.toposort()
+        topo = f_a.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             nb = 0
         else:
@@ -1042,7 +1042,7 @@ class DotTests(unittest.TestCase):
         f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
         f_b = lambda x, y: (x * y).shape
         assert numpy.all(f_a(self.x_csc, self.y) == f_b(self.x_csc, self.y))
-        topo = f_a.maker.env.toposort()
+        topo = f_a.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             nb = 0
         else:
@@ -1077,7 +1077,7 @@ class DotTests(unittest.TestCase):
                 f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
                 f_b = lambda x, y: (x * y).shape
                 assert numpy.all(f_a(vx, vy) == f_b(vx, vy))
-                topo = f_a.maker.env.toposort()
+                topo = f_a.maker.fgraph.toposort()
                 if theano.config.mode != 'FAST_COMPILE':
                     nb = 0
                 else:
@@ -1167,7 +1167,7 @@ class UsmmTests(unittest.TestCase):
                     theano.tensor.basic.float64_rtol = orig_rtol
 
             assert _allclose(f_a_out, f_b_out, rtol=1e-5)
-            topo = f_a.maker.env.toposort()
+            topo = f_a.maker.fgraph.toposort()
             up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
 
             fast_compile = theano.config.mode == "FAST_COMPILE"
@@ -1246,7 +1246,7 @@ class UsmmTests(unittest.TestCase):
                                       (z - a * theano.sparse.dot(x, y)).shape,
                                       mode=mode)
             assert all(f_shape(a_data, x_data, y_data) == f_b_out.shape)
-            topo = f_shape.maker.env.toposort()
+            topo = f_shape.maker.fgraph.toposort()
             if theano.config.mode != 'FAST_COMPILE':
                 nb = 0
             else:
@@ -1287,7 +1287,7 @@ def test_shape():
     assert numpy.all(f(sp.csr_matrix(random_lil((100, 10), sparse_dtype, 3)))
                      == (100, 10))
     if theano.config.mode != 'FAST_COMPILE':
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         assert isinstance(topo[0].op, tensor.opt.Shape_i)
         assert isinstance(topo[1].op, tensor.opt.Shape_i)
@@ -1449,7 +1449,7 @@ class Remove0Tester(utt.InferShapeTester):
             # modes with optimization
             if theano.config.mode not in ['FAST_COMPILE']:
                 # list of apply nodes in the optimized graph.
-                nodes = f.maker.env.toposort()
+                nodes = f.maker.fgraph.toposort()
                 v = [True for node in nodes]
                 if isinstance(node.op, Remove0) and node.op.inplace:
                     assert len(v), \

@@ -29,7 +29,7 @@ def test_local_csm_properties_csm():
                             mode=mode)
         assert not any(
             isinstance(node.op, (sparse.CSM, sparse.CSMProperties))
-            for node in f.maker.env.toposort())
+            for node in f.maker.fgraph.toposort())
         v = cast(random_lil((10, 40),
                             config.floatX, 3))
         f(v.data, v.indices, v.indptr, v.shape)
@@ -52,7 +52,7 @@ def test_local_csm_grad_c():
             tensor.grad(cost, data),
             mode=mode)
         assert not any(isinstance(node.op, sparse.CSMGrad) for node
-                       in f.maker.env.toposort())
+                       in f.maker.fgraph.toposort())
         v = cast(random_lil((10, 40),
                             config.floatX, 3))
         f(v.data, v.indices, v.indptr, v.shape)
@@ -71,7 +71,7 @@ def test_local_mul_s_d():
                             mode=mode)
 
         assert not any(isinstance(node.op, sparse.MulSD) for node
-                       in f.maker.env.toposort())
+                       in f.maker.fgraph.toposort())
 
 
 def test_local_mul_s_v():
@@ -87,7 +87,7 @@ def test_local_mul_s_v():
                             mode=mode)
 
         assert not any(isinstance(node.op, sparse.MulSV) for node
-                       in f.maker.env.toposort())
+                       in f.maker.fgraph.toposort())
 
 
 def test_local_structured_add_s_v():
@@ -103,7 +103,7 @@ def test_local_structured_add_s_v():
                             mode=mode)
 
         assert not any(isinstance(node.op, sparse.StructuredAddSV) for node
-                       in f.maker.env.toposort())
+                       in f.maker.fgraph.toposort())
 
 
 def test_local_sampling_dot_csr():
@@ -120,4 +120,4 @@ def test_local_sampling_dot_csr():
                             mode=mode)
 
         assert not any(isinstance(node.op, sparse.SamplingDot) for node
-                       in f.maker.env.toposort())
+                       in f.maker.fgraph.toposort())

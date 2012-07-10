@@ -50,7 +50,7 @@ import gof
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
-     InconsistencyError, Env, \
+     InconsistencyError, FunctionGraph, \
      Apply, Variable, Constant, \
      Op, \
      opt, \

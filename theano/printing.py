@@ -81,11 +81,11 @@ def debugprint(obj, depth=-1, print_type=False,
     elif isinstance(obj, gof.Apply):
         results_to_print.extend(obj.outputs)
     elif isinstance(obj, Function):
-        results_to_print.extend(obj.maker.env.outputs)
-        order = obj.maker.env.toposort()
+        results_to_print.extend(obj.maker.fgraph.outputs)
+        order = obj.maker.fgraph.toposort()
     elif isinstance(obj, (list, tuple)):
         results_to_print.extend(obj)
-    elif isinstance(obj, gof.Env):
+    elif isinstance(obj, gof.FunctionGraph):
         results_to_print.extend(obj.outputs)
         order = obj.toposort()
     else:
@@ -541,16 +541,16 @@ def pydotprint(fct, outfile=None,
 
     if isinstance(fct, Function):
         mode = fct.maker.mode
-        fct_env = fct.maker.env
+        fct_fgraph = fct.maker.fgraph
         if (not isinstance(mode, ProfileMode)
             or not fct in mode.profile_stats):
             mode = None
-    elif isinstance(fct, gof.Env):
+    elif isinstance(fct, gof.FunctionGraph):
         mode = None
-        fct_env = fct
+        fct_fgraph = fct
     else:
         raise ValueError(('pydotprint expects as input a theano.function or '
-                         'the env of a function!'), fct)
+                         'the FunctionGraph of a function!'), fct)
 
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
@@ -563,7 +563,7 @@ def pydotprint(fct, outfile=None,
         c2 = pd.Cluster('Right')
         c3 = pd.Cluster('Middle')
         cond = None
-        for node in fct_env.toposort():
+        for node in fct_fgraph.toposort():
             if (node.op.__class__.__name__ == 'IfElse'
                 and node.op.name == cond_highlight):
                 cond = node
@@ -638,7 +638,7 @@ def pydotprint(fct, outfile=None,
         all_strings.add(varstr)
 
         return varstr
-    topo = fct_env.toposort()
+    topo = fct_fgraph.toposort()
     apply_name_cache = {}
 
     def apply_name(node):
@@ -682,7 +682,7 @@ def pydotprint(fct, outfile=None,
 
     # Update the inputs that have an update function
     input_update = {}
-    outputs = list(fct_env.outputs)
+    outputs = list(fct_fgraph.outputs)
     if isinstance(fct, Function):
         for i in reversed(fct.maker.expanded_inputs):
             if i.update is not None:
@@ -779,7 +779,7 @@ def pydotprint(fct, outfile=None,
         assert len(all_strings) == assert_nb_all_strings
 
     if scan_graphs:
-        scan_ops = [(idx, x) for idx, x in enumerate(fct_env.toposort())
+        scan_ops = [(idx, x) for idx, x in enumerate(fct_fgraph.toposort())
                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         path, fn = os.path.split(outfile)
         basename = '.'.join(fn.split('.')[:-1])

@@ -44,8 +44,6 @@ import compiledir # adds config vars
 
 from fg import \
     InconsistencyError, MissingInputError, FunctionGraph
-#deprecated alias to support code written with old name
-Env = FunctionGraph
 
 from destroyhandler import \
     DestroyHandler

@@ -179,7 +179,7 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
     doesn't apply to only 1 op.
   * Example of use: Determine if we should move computation to the
     GPU or not depending on the input size.
-  * Possible implementation note: allow Theano Variable in the env to
+  * Possible implementation note: allow Theano Variable in the fgraph to
     have more than 1 owner.
 
 * We have a CUDA backend for tensors of type `float32` only.

@@ -1546,7 +1546,15 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            return AdvancedSubtensor()(self, *args)
+            if (len(args) == 1
+                    and isinstance(args[0], (
+                        list,
+                        TensorVariable,
+                        TensorConstant,
+                        theano.tensor.sharedvar.TensorSharedVariable))):
+                return advanced_subtensor1(self, *args)
+            else:
+                return AdvancedSubtensor()(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
@@ -3058,7 +3066,7 @@ class Alloc(gof.Op):
             # It makes optimization difficult when useless allocs are thrown
             # into the graph at every stage of optimization.  This little logic
             # tries to help at least in some cases.
-            if hasattr(val, 'env') and (val.type == ret.type):
+            if hasattr(val, 'fgraph') and (val.type == ret.type):
                 return val
         except AttributeError:
             pass
@@ -6011,7 +6019,7 @@ class AdvancedSubtensor(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def infer_shape(self, node, ishapes):
-        return node.env.shape_feature.default_infer_shape(node, ishapes)
+        return node.fgraph.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self, node, inputs, out_):
         out, = out_

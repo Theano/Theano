@@ -1352,11 +1352,11 @@ class GemmOptimizer(Optimizer):
         Optimizer.__init__(self)
         self.warned = False
 
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-        env.extend(DestroyHandler())
+    def add_requirements(self, fgraph):
+        fgraph.extend(toolbox.ReplaceValidate())
+        fgraph.extend(DestroyHandler())
 
-    def apply(self, env):
+    def apply(self, fgraph):
         did_something = True
         nb_iter = 0
         nb_replacement = 0
@@ -1369,7 +1369,7 @@ class GemmOptimizer(Optimizer):
         time_toposort = 0
         while did_something:
             t0 = time.time()
-            nodelist = list(env.toposort())
+            nodelist = list(fgraph.toposort())
             time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
@@ -1379,7 +1379,7 @@ class GemmOptimizer(Optimizer):
                                    (theano.scalar.Add, theano.scalar.Sub,
                                     theano.scalar.Neg, theano.scalar.Mul))):
                     continue
-                if not node in env.nodes:
+                if not node in fgraph.nodes:
                     # This mean that we already removed this node from
                     # the graph
                     continue
@@ -1395,7 +1395,7 @@ class GemmOptimizer(Optimizer):
                     new_outputs, old_dot22 = new_outputs
                     assert len(new_outputs) == len(node.outputs)
                     try:
-                        env.replace_all_validate_remove(
+                        fgraph.replace_all_validate_remove(
                             zip(node.outputs, new_outputs),
                             [old_dot22],
                             reason='GemmOptimizer',

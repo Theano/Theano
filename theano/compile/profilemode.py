@@ -48,7 +48,7 @@ class Profile_Maker(FunctionMaker):
         ret.profile = profile
 
         #initialize the timers
-        for i, node in enumerate(ret.maker.env.toposort()):
+        for i, node in enumerate(ret.maker.fgraph.toposort()):
             profile.apply_time[node] = 0.0
             profile.outputs_size[node] = [0.0] * len(node.outputs)
 
@@ -240,7 +240,7 @@ class ProfileMode(Mode):
 
         apply_time = {}
         for fn, ps in self.profile_stats.items():
-            for (i, node) in enumerate(fn.maker.env.toposort()):
+            for (i, node) in enumerate(fn.maker.fgraph.toposort()):
                 apply_time[(i, node)] = ps.apply_time[node]
         for (i, n), t in apply_time.items():
             if t == 0:
@@ -384,7 +384,7 @@ class ProfileMode(Mode):
             op_apply.setdefault(op,0)
             sop_apply.setdefault(type(a.op),0)
             op_time[op]+=t
-            nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
+            nb_call = [v for k,v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
             if t==0:
@@ -480,7 +480,7 @@ class ProfileMode(Mode):
             print
             print 'Apply-wise summary:'
             print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
             tot=0
@@ -509,23 +509,23 @@ class ProfileMode(Mode):
             print """\nProfile of Theano intermediate memory disabled.
  To enabled, put the Theano flag ProfileMode.profile_memory to True."""
         else:
-            fct_memory={}#env->dict(node->(outputs size))
+            fct_memory={}#fgraph->dict(node->(outputs size))
             var_mem = {}
             for node, val in outputs_size.items():
-                fct_memory.setdefault(node.env, {})
-                fct_memory[node.env][node]=val
+                fct_memory.setdefault(node.fgraph, {})
+                fct_memory[node.fgraph][node]=val
                 for out,v in zip(node.outputs,val):
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
             print "(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)"
             nb_skipped = 0
-            for env,nodes_mem in fct_memory.iteritems():
+            for fgraph,nodes_mem in fct_memory.iteritems():
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
                 if size_sum < min_memory_size:
                     nb_skipped += 1
                     continue
-                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
+                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.fgraph is fgraph][0].name
                 print "    Max without gc, inplace and view (KB)",size_sum/1024
 
                 node_memory_size = 0
@@ -538,12 +538,12 @@ class ProfileMode(Mode):
                 items.sort(key=lambda a: a[1])
                 items.reverse()
 
-                order = env.toposort()
+                order = fgraph.toposort()
                 computed, last_user = gof.link.gc_helper(order)
                 for node in order:
                     post_thunk_old_storage.append([ input_idx
                                                     for input_idx,input in enumerate(node.inputs)
-                                                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                                                    if (input in computed) and (input not in fgraph.outputs) and node == last_user[input]])
                 for node,val in items[:n_apply_to_print]:
                     dmap = getattr(node.op,'destroy_map',None)
                     vmap = getattr(node.op,'view_map',None)
@@ -624,7 +624,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         def get_scalar_ops(s):
             if isinstance(s, theano.scalar.Composite):
                 l = []
-                for node in s.env.toposort():
+                for node in s.fgraph.toposort():
                     l += get_scalar_ops(node.op)
                 return l
             else:

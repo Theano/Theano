@@ -9,7 +9,7 @@ The problem this file indent to fix in the future is that in the "Equilibrium" s
 
 To fix this, we need to split the specialization phase into a phase where optimization can't break the canonicalization form and one where this is allowed. This is also needed for the stabilized optimization phase, but as it happen before the specialization phase, this cause less problem.
 
-Also, we should make the env refuse optimization that break the canonization of the graph in the optimizations phases where the graph is supposed to be canonical.
+Also, we should make the fgraph refuse optimization that break the canonization of the graph in the optimizations phases where the graph is supposed to be canonical.
 """
 
 # TODO: intelligent merge for mul/add
@@ -44,13 +44,13 @@ class MaxAndArgmaxOptimizer(Optimizer):
        in two pass.
     """
 
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
+    def add_requirements(self, fgraph):
+        fgraph.extend(toolbox.ReplaceValidate())
 
-    def apply(self, env):
+    def apply(self, fgraph):
         did_something = True
         while did_something:
-            nodelist = env.toposort()
+            nodelist = fgraph.toposort()
             did_something = False
             for node in nodelist:
                 if node.op == T._max_and_argmax:
@@ -62,7 +62,7 @@ class MaxAndArgmaxOptimizer(Optimizer):
 
                         new = CAReduce(scal.maximum,axis)(node.inputs[0])
                         try:
-                            env.replace_all_validate(
+                            fgraph.replace_all_validate(
                                 ((node.outputs[0],new),),
                                 reason = self.__class__.__name__)
                             did_something = True

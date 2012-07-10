@@ -7,8 +7,6 @@ from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof import fg
-env = fg
-from theano.gof import toolbox
 
 
 def as_variable(x):

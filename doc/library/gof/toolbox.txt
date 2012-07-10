@@ -16,7 +16,7 @@ Guide
 
 .. class:: History(object)
 
-    .. method:: revert(env, checkpoint)
+    .. method:: revert(fgraph, checkpoint)
         Reverts the graph to whatever it was at the provided
         checkpoint (undoes all replacements).  A checkpoint at any
         given time can be obtained using self.checkpoint().
@@ -25,7 +25,7 @@ Guide
 
 .. class:: ReplaceValidate(History, Validator)
 
-    .. method:: replace_validate(env, var, new_var, reason=None)
+    .. method:: replace_validate(fgraph, var, new_var, reason=None)
 
 .. class:: NodeFinder(Bookkeeper)
 
