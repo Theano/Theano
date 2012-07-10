@@ -136,7 +136,7 @@ class Scan(PureOp):
         if not self.info['gpu']:
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                        self.outputs)
-            local_env = gof.Env(tmp_in, tmp_out)
+            local_env = gof.FunctionGraph(tmp_in, tmp_out)
             self._cmodule_key = gof.CLinker.cmodule_key_(local_env, [])
             self._hash_inner_graph = hash(self._cmodule_key)
         else:

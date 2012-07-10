@@ -163,7 +163,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
                         node.op.inputs, node.op.outputs)
 
-        local_env = gof.Env(clean_inputs, clean_outputs)
+        local_env = gof.FunctionGraph(clean_inputs, clean_outputs)
         max_iterations = 2 * len(local_env.toposort()) + 3
         counts = 0
         to_remove = []

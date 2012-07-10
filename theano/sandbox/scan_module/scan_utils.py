@@ -312,7 +312,7 @@ def infer_shape(outs, inputs, input_shapes):
             assert len(inp_shp) == inp.ndim
 
     shape_feature = tensor.opt.ShapeFeature()
-    shape_feature.on_attach(theano.gof.Env([], []))
+    shape_feature.on_attach(theano.gof.FunctionGraph([], []))
 
     # Initialize shape_of with the input shapes
     for inp, inp_shp in izip(inputs, input_shapes):

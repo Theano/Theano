@@ -76,7 +76,7 @@ def infer_reuse_pattern(env, outputs_to_disown):
 
 def env_updated_vars(env, expanded_inputs):
     """
-    Reconstruct the full "updates" dictionary, mapping from Env input
+    Reconstruct the full "updates" dictionary, mapping from FunctionGraph input
     variables to the env outputs that will replace their values.
 
     :rtype: dict variable -> variable
@@ -93,8 +93,8 @@ def env_updated_vars(env, expanded_inputs):
 
 class Supervisor:
     """
-    Listener for Env events which makes sure that no operation overwrites the
-    contents of protected Variables. The outputs of the Env are protected by default.
+    Listener for FunctionGraph events which makes sure that no operation overwrites the
+    contents of protected Variables. The outputs of the FunctionGraph are protected by default.
     """
 
     def __init__(self, protected):
@@ -110,18 +110,18 @@ class Supervisor:
 
 def std_env(input_specs, output_specs, accept_inplace = False):
     """
-    Makes an Env corresponding to the input specs and the output
+    Makes an FunctionGraph corresponding to the input specs and the output
     specs.  Any SymbolicInput in the input_specs, if its update field
-    is not None, will add an output to the Env corresponding to that
-    update. The return value is the Env as well as a list of
+    is not None, will add an output to the FunctionGraph corresponding to that
+    update. The return value is the FunctionGraph as well as a list of
     SymbolicOutput instances corresponding to the updates.
 
     If accept_inplace is False, the graph will be checked for inplace
     operations and an exception will be raised if it has any. If
-    accept_inplace is True, a DestroyHandler will be added to the Env
+    accept_inplace is True, a DestroyHandler will be added to the FunctionGraph
     if there are any inplace operations.
 
-    The returned Env is a clone of the graph between the provided
+    The returned FunctionGraph is a clone of the graph between the provided
     inputs and outputs.
     """
     orig_inputs = [spec.variable for spec in input_specs]

@@ -131,7 +131,7 @@ class ReplaceValidate(History, Validator):
                 env.replace(r, new_r, reason=reason)
             except Exception, e:
                 if ('The type of the replacement must be the same' not in
-                    str(e) and 'does not belong to this Env' not in str(e)):
+                    str(e) and 'does not belong to this FunctionGraph' not in str(e)):
                     out = sys.stderr
                     print >> out, "<<!! BUG IN ENV.REPLACE OR A LISTENER !!>>",
                     print >> out, type(e), e, reason
@@ -176,7 +176,7 @@ class NodeFinder(dict, Bookkeeper):
 
     def on_attach(self, env):
         if self.env is not None:
-            raise Exception("A NodeFinder instance can only serve one Env.")
+            raise Exception("A NodeFinder instance can only serve one FunctionGraph.")
         if hasattr(env, 'get_nodes'):
             raise AlreadyThere("NodeFinder is already present or in conflict"
                                " with another plugin.")

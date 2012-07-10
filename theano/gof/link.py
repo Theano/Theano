@@ -123,7 +123,7 @@ class Linker(object):
         Example::
          x, y = Variable(Double), Variable(Double)
          e = x + y
-         env = Env([x, y], [e])
+         env = FunctionGraph([x, y], [e])
          fn, (new_x, new_y), (new_e, ) = MyLinker(env).make_thunk(inplace)
          new_x.data = 1.0
          new_y.data = 2.0
@@ -144,7 +144,7 @@ class Linker(object):
 
         Example::
          e = x + y
-         env = Env([x, y], [e])
+         env = FunctionGraph([x, y], [e])
          fn = MyLinker(env).make_function(inplace)
          print fn(1.0, 2.0) # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
@@ -414,7 +414,7 @@ class PerformLinker(LocalLinker):
     """WRITEME
 
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
-    the L{Env} in the order given by L{Env.toposort}.
+    the L{FunctionGraph} in the order given by L{FunctionGraph.toposort}.
     """
 
     def __init__(self, allow_gc=True):
@@ -424,7 +424,7 @@ class PerformLinker(LocalLinker):
 
     def accept(self, env, no_recycling=None):
         """
-        :param env: a PerformLinker can have accepted one Env instance at a time.
+        :param env: a PerformLinker can have accepted one FunctionGraph instance at a time.
 
         :param no_recycling: WRITEME
 
@@ -434,7 +434,7 @@ class PerformLinker(LocalLinker):
             no_recycling = []
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
+            #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.env = env
         self.no_recycling = no_recycling
         return self
@@ -555,7 +555,7 @@ class WrapLinker(Linker):
 
     def accept(self, env, no_recycling=None):
         """
-        @type env: gof.Env
+        @type env: gof.FunctionGraph
         @param env: the env which we will link
 
         @type no_recycling: a list of Variables that belong to env.

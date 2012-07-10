@@ -48,9 +48,9 @@ def _list_of_nodes(env):
 
 class Optimizer(object):
     """WRITEME
-    An L{Optimizer} can be applied to an L{Env} to transform it.
+    An L{Optimizer} can be applied to an L{FunctionGraph} to transform it.
     It can represent an optimization or in general any kind
-    of transformation you could apply to an L{Env}.
+    of transformation you could apply to an L{FunctionGraph}.
     """
 
     def __hash__(self):
@@ -61,8 +61,8 @@ class Optimizer(object):
 
     def apply(self, env):
         """WRITEME
-        Applies the optimization to the provided L{Env}. It may use all
-        the methods defined by the L{Env}. If the L{Optimizer} needs
+        Applies the optimization to the provided L{FunctionGraph}. It may use all
+        the methods defined by the L{FunctionGraph}. If the L{Optimizer} needs
         to use a certain tool, such as an L{InstanceFinder}, it can do
         so in its L{add_requirements} method.
         """
@@ -596,7 +596,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     copied = copy.deepcopy([var1, var2, givens])
     vars = copied[0:2]
     givens = copied[2]
-    # Create Env.
+    # Create FunctionGraph.
     inputs = theano.gof.graph.inputs(vars)
     env = theano.gof.fg.FunctionGraph(inputs, vars)
     # Perform Variable substitution.
@@ -1133,7 +1133,7 @@ class NavigatorOptimizer(Optimizer):
     def __init__(self, local_opt, ignore_newtrees='auto',
             failure_callback=None):
         """
-        :param local_opt:  a LocalOptimizer to apply over a Env
+        :param local_opt:  a LocalOptimizer to apply over a FunctionGraph
             (or None is Ok too).
         :param ignore_newtrees:
             - True: new subgraphs returned by an optimization is not a
@@ -1165,7 +1165,7 @@ class NavigatorOptimizer(Optimizer):
 
     def attach_updater(self, env, importer, pruner, chin=None):
         """
-        Install some Env listeners to help the navigator deal with the
+        Install some FunctionGraph listeners to help the navigator deal with the
         ignore_trees-related functionality.
 
         :param importer: function that will be called whenever when
@@ -1174,7 +1174,7 @@ class NavigatorOptimizer(Optimizer):
             from graph.
         :param chin: "on change input" called whenever an node's inputs change.
 
-        :returns: The Env plugin that handles the three tasks.
+        :returns: The FunctionGraph plugin that handles the three tasks.
             Keep this around so that you can detach later!
         """
         if self.ignore_newtrees:
@@ -1220,7 +1220,7 @@ class NavigatorOptimizer(Optimizer):
         If there are no replacement candidates or the env rejects the
         replacements, this function returns False.
 
-        :param env:  an Env
+        :param env:  a FunctionGraph
         :param node: an Apply instance in `env`
         :param lopt: a LocalOptimizer instance that may have a better idea for
             how to compute node's outputs.

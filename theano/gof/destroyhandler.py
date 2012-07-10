@@ -217,7 +217,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
     def on_attach(self, env):
         #boilerplate from old implementation
         if self.env is not None:
-            raise Exception("A DestroyHandler instance can only serve one Env.")
+            raise Exception("A DestroyHandler instance can only serve one FunctionGraph. (Matthew 6:24)")
         for attr in ('destroyers', 'destroy_handler'):
             if hasattr(env, attr):
                 raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
@@ -356,7 +356,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
     def on_change_input(self, env, app, i, old_r, new_r):
         """app.inputs[i] changed from old_r to new_r """
         if app == 'output':
-            # app == 'output' is special key that means Env is redefining which nodes are being
+            # app == 'output' is special key that means FunctionGraph is redefining which nodes are being
             # considered 'outputs' of the graph.
             pass
         else:

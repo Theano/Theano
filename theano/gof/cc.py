@@ -412,7 +412,7 @@ class CLinker(link.Linker):
         if self.env is not None and self.env is not env:
             return type(self)().accept(env, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already"
-            #                " tied to another Env.")
+            #                " tied to another FunctionGraph.")
         self.env = env
         self.fetch_variables()
         self.no_recycling = no_recycling
@@ -936,7 +936,7 @@ class CLinker(link.Linker):
         It is followed by elements for every node in the
         topological ordering of `self.env`.
 
-        If the Op of any Apply in the Env does not have
+        If the Op of any Apply in the FunctionGraph does not have
         c_code_cache_ok()==True, then this function raises a KeyError
         exception.
 
@@ -1057,7 +1057,7 @@ class CLinker(link.Linker):
         def in_sig(i, topological_pos, i_idx):
             # assert that every input to every node is one of'
             # - an env input
-            # - an output from a node in the Env
+            # - an output from a node in the FunctionGraph
             # - a Constant
 
             # It is important that a variable (i)
@@ -1407,7 +1407,7 @@ class OpWiseCLinker(link.LocalLinker):
             return type(self)(self.fallback_on_perform).accept(env,
                                                                no_recycling)
             #raise Exception("Cannot accept from a Linker that is
-            #already tied to another Env.")
+            #already tied to another FunctionGraph.")
         self.env = env
         self.no_recycling = no_recycling
         return self
@@ -1546,7 +1546,7 @@ class DualLinker(link.Linker):
         if self.env is not None and self.env is not env:
             return type(self)(self.checker).accept(env, no_recycling)
             # raise Exception("Cannot accept from a Linker that is already "
-            #                 "tied to another Env.")
+            #                 "tied to another FunctionGraph.")
         self.env = env
         self.no_recycling = no_recycling
         return self

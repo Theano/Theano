@@ -85,7 +85,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         things more convenient for the user. The shared variables are
         transformed into implicit inputs and implicit outputs. The
         optimizations don't see which variables are shared or not.
-           2. Env: determines whether a graph is valid. for example, suppose
+           2. FunctionGraph: determines whether a graph is valid. For example,
+        suppose
         you merge the two apply nodes in our example above, ie, do the
         addition and the tanh at the same time. If you propose a merge that
         changes the resulting dtype or broadcastable pattern of V4, the env

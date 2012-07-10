@@ -211,7 +211,7 @@ class AddDestroyHandler(gof.Optimizer):
         env.extend(gof.DestroyHandler())
 
 
-class PrintCurrentEnv(gof.Optimizer):
+class PrintCurrentFunctionGraph(gof.Optimizer):
     """This optimizer is for debugging.
 
     Toss it into the optimization pipeline to see the state of things at any
@@ -222,7 +222,7 @@ class PrintCurrentEnv(gof.Optimizer):
 
     def apply(self, env):
         import theano.printing
-        print "PrintCurrentEnv:", self.header
+        print "PrintCurrentFunctionGraph:", self.header
         theano.printing.debugprint(env.outputs)
 
 
@@ -237,21 +237,21 @@ optdb.register('canonicalize', gof.EquilibriumDB(),
 optdb.register('merge1.2', gof.MergeOptimizer(),
         1.2, 'fast_run', 'fast_compile')
 
-optdb.register('Print1.21', PrintCurrentEnv('Post-canonicalize'),
+optdb.register('Print1.21', PrintCurrentFunctionGraph('Post-canonicalize'),
         1.21,)  # 'fast_run', 'fast_compile')
 
 # replace unstable subgraphs
 optdb.register('stabilize', gof.EquilibriumDB(),
         1.5, 'fast_run')
 
-optdb.register('Print1.51', PrintCurrentEnv('Post-stabilize'),
+optdb.register('Print1.51', PrintCurrentFunctionGraph('Post-stabilize'),
         1.51,)  # 'fast_run', 'fast_compile')
 
 # misc special cases for speed
 optdb.register('specialize', gof.EquilibriumDB(),
         2, 'fast_run')
 
-optdb.register('Print2.01', PrintCurrentEnv('Post-specialize'),
+optdb.register('Print2.01', PrintCurrentFunctionGraph('Post-specialize'),
         2.01,)  # 'fast_run', 'fast_compile')
 
 # misc special cases for speed that break canonicalization

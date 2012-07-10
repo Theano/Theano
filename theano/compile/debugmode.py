@@ -13,7 +13,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import FunctionGraph as Env, graph, utils, link, ops_with_inner_function
+from theano.gof import FunctionGraph,graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
 from theano.gof.python25 import all, any, product as itertools_product
@@ -649,7 +649,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     return file
 
 def _optcheck_env(input_specs, output_specs, accept_inplace=False):
-    """Create an Env for debugging.
+    """Create an FunctionGraph for debugging.
 
     :param input_specs: env inputs
     :type input_specs: WRITEME
@@ -657,8 +657,8 @@ def _optcheck_env(input_specs, output_specs, accept_inplace=False):
     :type output_specs: WRITEME
     :param accept_inplace: are inplace ops permitted in the original graph?
     :type accept_inplace: Bool
-    :rtype: `Env`
-    :returns: a new Env with a cloned graph, with debugging `Feature` instances already installed.
+    :rtype: `FunctionGraph`
+    :returns: a new FunctionGraph with a cloned graph, with debugging `Feature` instances already installed.
 
     """
     orig_inputs = [spec.variable for spec in input_specs]
@@ -1349,8 +1349,8 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             fn.maker.mode = backup_mode
 
 
-class _EnvEvent(object):
-    """A record of an event in the life of an Env.
+class _FunctionGraphEvent(object):
+    """A record of an event in the life of an FunctionGraph.
 
     The __eq__ function is important here, as it is the basis for
     comparing optimization runs.
@@ -1404,7 +1404,7 @@ class _EnvEvent(object):
         if rval:
             # nodes are not compared because this comparison is
             # supposed to be true for corresponding events that happen
-            # in different Env instances (different graphs)
+            # in different FunctionGraph instances (different graphs)
             for attr in ['kind', 'op', 'idx', 'reason']:
                 rval = rval and getattr(self, attr) == getattr(other, attr)
         return rval
@@ -1414,7 +1414,7 @@ class _EnvEvent(object):
 
 
 class _VariableEquivalenceTracker(object):
-    """A Env Feature that keeps tabs on an Env and tries to detect problems."""
+    """A FunctionGraph Feature that keeps tabs on an FunctionGraph and tries to detect problems."""
 
     env = None
     """WRITEME"""
@@ -1459,7 +1459,7 @@ class _VariableEquivalenceTracker(object):
         self.env = None
 
     def on_prune(self, env, node):
-        self.event_list.append(_EnvEvent('prune', node))
+        self.event_list.append(_FunctionGraphEvent('prune', node))
         #print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
@@ -1467,7 +1467,7 @@ class _VariableEquivalenceTracker(object):
         self.inactive_nodes.add(node)
 
     def on_import(self, env, node):
-        self.event_list.append(_EnvEvent('import', node))
+        self.event_list.append(_FunctionGraphEvent('import', node))
 
         #print 'NEW NODE', node, id(node)
         assert node not in self.active_nodes
@@ -1490,7 +1490,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_change_input(self, env, node, i, r, new_r, reason=None):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
-        self.event_list.append(_EnvEvent('change', node,
+        self.event_list.append(_FunctionGraphEvent('change', node,
                                          reason=str(reason), idx=i))
 
         self.reasons.setdefault(new_r, [])
@@ -1609,7 +1609,7 @@ class _Linker(gof.link.LocalLinker):
                 # directly from PureOp)
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
-                e = Env(*graph.clone(node.inputs, node.outputs))
+                e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
                 e.toposort = lambda: e.nodes  # WARNING: STOCHASTIC ORDER
                 #  Specifically... e.nodes is a set, but of only 1 element
 

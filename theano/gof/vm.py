@@ -485,7 +485,7 @@ class VM_Linker(link.LocalLinker):
 
     def accept(self, env, no_recycling=None):
         """
-        :param env: a PerformLinker can have accepted one Env instance
+        :param env: a PerformLinker can have accepted one FunctionGraph instance
             at a time.
 
         :param no_recycling: WRITEME

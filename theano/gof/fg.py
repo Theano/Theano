@@ -35,9 +35,6 @@ class FunctionGraph(utils.object2):
     on which the outputs depend. Variables of type Constant are
     not counted as inputs.
 
-    Historically, the FunctionGraph was called an Env. Many other objects refer
-    to the FunctionGraph they belong to as their "env".
-
     The FunctionGraph supports the replace operation which allows to replace a
     variable in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
@@ -89,6 +86,9 @@ class FunctionGraph(utils.object2):
 
     - feature.on_setup_variable(function_graph, variable):
         WRITEME
+
+    Historically, the FunctionGraph was called an Env. Keep this in mind
+    while reading out-of-date documentation, e-mail support threads, etc.
 
     """
 

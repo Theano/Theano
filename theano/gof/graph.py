@@ -234,7 +234,7 @@ class Variable(utils.object2):
 
     Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
     from an output all the way to the inputs. The opposite direction is not possible until an
-    Env has annotated the Variables with the clients field, ie, before the compilation process
+    FunctionGraph has annotated the Variables with the clients field, ie, before the compilation process
     has begun a Variable does not know which Apply nodes take it as input.
 
     **Code Example**
