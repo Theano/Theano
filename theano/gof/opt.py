@@ -11,7 +11,7 @@ import time
 import numpy
 
 import graph
-from env import InconsistencyError
+from fg import InconsistencyError
 import op
 import utils
 import unify
@@ -598,7 +598,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     givens = copied[2]
     # Create Env.
     inputs = theano.gof.graph.inputs(vars)
-    env = theano.gof.env.Env(inputs, vars)
+    env = theano.gof.fg.FunctionGraph(inputs, vars)
     # Perform Variable substitution.
     for to_replace, replace_by in givens.iteritems():
         env.replace(to_replace, replace_by)

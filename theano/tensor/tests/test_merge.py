@@ -3,7 +3,7 @@ from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof.opt import *
-from theano.gof.env import Env
+from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *
 import theano.tensor.basic as T
 
