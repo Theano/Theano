@@ -21,7 +21,7 @@ from theano import config
 import cc
 import graph
 import utils
-from env import Env
+from fg import FunctionGraph as Env
 
 
 class CLinkerObject(object):

@@ -10,7 +10,7 @@ import toolbox
 import graph
 from theano.gof.python25 import deque
 
-from env import InconsistencyError
+from fg import InconsistencyError
 
 class ProtocolError(Exception):
     """WRITEME"""

@@ -129,7 +129,7 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
-    env = gof.env.Env(inputs, outputs)
+    env = gof.fg.FunctionGraph(inputs, outputs)
 
     for node in env.nodes:
         if getattr(node.op, 'destroy_map', None):
