@@ -96,9 +96,6 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
     assert len(shape) == 2
     assert out_dtype in sparse.all_dtypes
 
-    variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
-                for k in range(n)]
-
     def _rand():
         where = numpy.random.binomial(1, p, size=shape).astype('int8')
 
@@ -106,9 +103,10 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
             value = numpy.random.randint(20, size=shape).astype(out_dtype)
         else:
             value = numpy.random.random(shape)
-
         return where * value
 
+    variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
+                for k in range(n)]
     data = [getattr(scipy.sparse, format + '_matrix')(_rand())
             for k in range(n)]
 
@@ -1410,7 +1408,7 @@ class SpSumTester(utt.InferShapeTester):
     def test_grad(self):
         for format in sparse.sparse_formats:
             for axis in self.possible_axis:
-                for struct in [True]:
+                for struct in [True, False]:
                     variable, data = sparse_random_inputs(format,
                                                           shape=(10, 10))
                     verify_grad_sparse(
@@ -1811,8 +1809,8 @@ def _hv_switch(op, expected_function):
     :Parameters:
     - `op`: HStack or VStack class.
     - `expected_function`: function from scipy for comparaison.
-
     """
+
     class XStackTester(_HVStackTester):
         op_class = op
 

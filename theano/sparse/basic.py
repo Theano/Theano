@@ -1371,8 +1371,10 @@ class SpSum(gof.op.Op):
     :note:
     - The grad implementation is controlled with the `sparse_grad`
       parameter. `True` will provide a structured grad and `False`
-      will provide a regular grad.
-    - This op does not return a sparse matrix.
+      will provide a regular grad. For both choice, the grad
+      return a sparse matrix having the same format as `x`.
+    - This op does not return a sparse matrix, but a dense tensor
+      matrix.
     """
 
     def __init__(self, axis=None, sparse_grad=False):
@@ -1414,6 +1416,9 @@ class SpSum(gof.op.Op):
             z[0] = numpy.asarray(x.sum(self.axis)).ravel()
 
     def grad(self, (x,), (gz,)):
+        if x.dtype not in continuous_dtypes:
+            return [None]
+
         if self.structured:
             if self.axis is None:
                 r = gz * theano.sparse.sp_ones_like(x)
@@ -1424,8 +1429,21 @@ class SpSum(gof.op.Op):
             else:
                 raise ValueError('Illegal value for self.axis.')
         else:
-            # TODO
-            raise NotImplementedError()
+            o_format = x.format
+            x = dense_from_sparse(x)
+            if _is_sparse_variable(gz):
+                gz = dense_from_sparse(gz)
+            if self.axis is None:
+                r = tensor.second(x, gz)
+            else:
+                ones = tensor.ones_like(x)
+                if self.axis == 0:
+                    r = tensor.addbroadcast(gz.dimshuffle('x', 0), 0) * ones
+                elif self.axis == 1:
+                    r = tensor.addbroadcast(gz.dimshuffle(0, 'x'), 1) * ones
+                else:
+                    raise ValueError('Illegal value for self.axis.')
+            r = SparseFromDense(o_format)(r)
         return [r]
 
     def infer_shape(self, node, shapes):
