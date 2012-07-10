@@ -22,7 +22,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Op, utils, Variable, Constant, Type, Apply, Env
+from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
@@ -2497,7 +2497,7 @@ class Composite(ScalarOp):
         self.name = rval
 
     def init_env(self):
-        env = Env(*gof.graph.clone(self.inputs, self.outputs))
+        env = FunctionGraph(*gof.graph.clone(self.inputs, self.outputs))
         gof.MergeOptimizer().optimize(env)
         for node in env.nodes:
             if not isinstance(node.op, ScalarOp):
