@@ -23,27 +23,27 @@ class DestroyHandler(object):
         self.map = {}
         self.do_imports_on_attach=do_imports_on_attach
 
-    def on_attach(self, env):
-        dh = self.map.setdefault(env, DestroyHandlerHelper2(do_imports_on_attach=self.do_imports_on_attach))
-        dh.on_attach(env)
+    def on_attach(self, fgraph):
+        dh = self.map.setdefault(fgraph, DestroyHandlerHelper2(do_imports_on_attach=self.do_imports_on_attach))
+        dh.on_attach(fgraph)
 
-    def on_detach(self, env):
-        self.map[env].on_detach(env)
+    def on_detach(self, fgraph):
+        self.map[fgraph].on_detach(fgraph)
 
-    def on_import(self, env, op):
-        self.map[env].on_import(env, op)
+    def on_import(self, fgraph, op):
+        self.map[fgraph].on_import(fgraph, op)
 
-    def on_prune(self, env, op):
-        self.map[env].on_prune(env, op)
+    def on_prune(self, fgraph, op):
+        self.map[fgraph].on_prune(fgraph, op)
 
-    def on_change_input(self, env, node, i, r, new_r):
-        self.map[env].on_change_input(env, node, i, r, new_r)
+    def on_change_input(self, fgraph, node, i, r, new_r):
+        self.map[fgraph].on_change_input(fgraph, node, i, r, new_r)
 
-    def validate(self, env):
-        self.map[env].validate(env)
+    def validate(self, fgraph):
+        self.map[fgraph].validate(fgraph)
 
-    def orderings(self, env):
-        return self.map[env].orderings(env)
+    def orderings(self, fgraph):
+        return self.map[fgraph].orderings(fgraph)
 
 
 def _dfs_toposort(i, r_out, orderings):
@@ -165,14 +165,14 @@ def fast_inplace_check(inputs):
     :type inputs: list
     :param inputs: inputs Variable that you want to use as inplace destination
     """
-    env = inputs[0].env
-    protected_inputs = [f.protected for f in env._features if isinstance(f,theano.compile.function_module.Supervisor)]
+    fgraph = inputs[0].fgraph
+    protected_inputs = [f.protected for f in fgraph._features if isinstance(f,theano.compile.function_module.Supervisor)]
     protected_inputs = sum(protected_inputs,[])#flatten the list
-    protected_inputs.extend(env.outputs)
+    protected_inputs.extend(fgraph.outputs)
 
     inputs = [i for i in inputs if
               not isinstance(i,graph.Constant)
-              and not env.destroyers(i)
+              and not fgraph.destroyers(i)
               and i not in protected_inputs]
     return inputs
 
@@ -211,15 +211,15 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
     """
 
     def __init__(self, do_imports_on_attach=True):
-        self.env = None
+        self.fgraph = None
         self.do_imports_on_attach = do_imports_on_attach
 
-    def on_attach(self, env):
+    def on_attach(self, fgraph):
         #boilerplate from old implementation
-        if self.env is not None:
+        if self.fgraph is not None:
             raise Exception("A DestroyHandler instance can only serve one FunctionGraph. (Matthew 6:24)")
         for attr in ('destroyers', 'destroy_handler'):
-            if hasattr(env, attr):
+            if hasattr(fgraph, attr):
                 raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
 
         def get_destroyers_of(r):
@@ -229,10 +229,10 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             except Exception:
                 return []
 
-        env.destroyers = get_destroyers_of
-        env.destroy_handler = self
+        fgraph.destroyers = get_destroyers_of
+        fgraph.destroy_handler = self
 
-        self.env = env
+        self.fgraph = fgraph
         self.destroyers = set() #set of Apply instances with non-null destroy_map
         self.view_i = {}  # variable -> variable used in calculation
         self.view_o = {}  # variable -> set of variables that use this one as a direct input
@@ -242,7 +242,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.debug_all_apps = set()
         if self.do_imports_on_attach:
-            toolbox.Bookkeeper.on_attach(self, env)
+            toolbox.Bookkeeper.on_attach(self, fgraph)
 
     def refresh_droot_impact(self):
         if self.stale_droot:
@@ -278,20 +278,20 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         return droot, impact, root_destroyer
 
-    def on_detach(self, env):
-        if env is not self.env:
-            raise Exception("detaching wrong env", env)
+    def on_detach(self, fgraph):
+        if fgraph is not self.fgraph:
+            raise Exception("detaching wrong fgraph", fgraph)
         del self.destroyers
         del self.view_i
         del self.view_o
         del self.clients
         del self.stale_droot
-        assert self.env.destroyer_handler is self
-        delattr(self.env, 'destroyers')
-        delattr(self.env, 'destroy_handler')
-        self.env = None
+        assert self.fgraph.destroyer_handler is self
+        delattr(self.fgraph, 'destroyers')
+        delattr(self.fgraph, 'destroy_handler')
+        self.fgraph = None
 
-    def on_import(self, env, app):
+    def on_import(self, fgraph, app):
         """Add Apply instance to set which must be computed"""
 
         if app in self.debug_all_apps: raise ProtocolError("double import")
@@ -321,7 +321,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.stale_droot = True
 
-    def on_prune(self, env, app):
+    def on_prune(self, fgraph, app):
         """Remove Apply instance from set which must be computed"""
         if app not in self.debug_all_apps: raise ProtocolError("prune without import")
         self.debug_all_apps.remove(app)
@@ -353,7 +353,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.stale_droot = True
 
-    def on_change_input(self, env, app, i, old_r, new_r):
+    def on_change_input(self, fgraph, app, i, old_r, new_r):
         """app.inputs[i] changed from old_r to new_r """
         if app == 'output':
             # app == 'output' is special key that means FunctionGraph is redefining which nodes are being
@@ -391,7 +391,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
 
         self.stale_droot = True
 
-    def validate(self, env):
+    def validate(self, fgraph):
         """Return None
 
         Raise InconsistencyError when
@@ -402,14 +402,14 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         #print '\nVALIDATE'
         if self.destroyers:
             try:
-                ords = self.orderings(env)
+                ords = self.orderings(fgraph)
             except Exception, e:
                 #print 'orderings failed with:', type(e), e.args
                 raise
             #print 'orderings:', ords
             try:
-                ### graph.io_toposort(env.inputs, env.outputs, ords)
-                _dfs_toposort(env.inputs, env.outputs, ords)
+                ### graph.io_toposort(fgraph.inputs, fgraph.outputs, ords)
+                _dfs_toposort(fgraph.inputs, fgraph.outputs, ords)
             except ValueError, e:
                 #print 'not passing.', ords
                 if 'cycles' in str(e):
@@ -423,7 +423,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
             pass
         return True
 
-    def orderings(self, env):
+    def orderings(self, fgraph):
         """Return orderings induced by destructive operations.
 
         Raise InconsistencyError when

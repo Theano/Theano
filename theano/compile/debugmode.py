@@ -648,12 +648,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
     return file
 
-def _optcheck_env(input_specs, output_specs, accept_inplace=False):
+def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     """Create an FunctionGraph for debugging.
 
-    :param input_specs: env inputs
+    :param input_specs: fgraph inputs
     :type input_specs: WRITEME
-    :param output_specs: env outputs
+    :param output_specs: fgraph outputs
     :type output_specs: WRITEME
     :param accept_inplace: are inplace ops permitted in the original graph?
     :type accept_inplace: Bool
@@ -667,27 +667,27 @@ def _optcheck_env(input_specs, output_specs, accept_inplace=False):
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     equivalence_tracker = _VariableEquivalenceTracker()
-    env = gof.fg.FunctionGraph(inputs, outputs,
+    fgraph = gof.fg.FunctionGraph(inputs, outputs,
             #DestroyHandler is not needed because it is actually installed by an optimization
             # after canonicalization.  This variables in a big speed gain.
             #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
             features=[equivalence_tracker])
 
     if not accept_inplace:
-        for node in env.nodes:
+        for node in fgraph.nodes:
             if getattr(node.op, 'destroy_map', None):
                 raise TypeError("Graph must not contain inplace operations",
                                 node)
 
     # We need to protect all immutable inputs from inplace operations.
-    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs)
-                          if not (spec.mutable or (hasattr(env, 'destroyers')
-                                                   and env.destroyers(input)))))
+    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs)
+                          if not (spec.mutable or (hasattr(fgraph, 'destroyers')
+                                                   and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    env.extend(gof.toolbox.PreserveNames())
+    fgraph.extend(gof.toolbox.PreserveNames())
 
-    return env, map(SymbolicOutput, updates), equivalence_tracker
+    return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
 
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
@@ -1416,7 +1416,7 @@ class _FunctionGraphEvent(object):
 class _VariableEquivalenceTracker(object):
     """A FunctionGraph Feature that keeps tabs on an FunctionGraph and tries to detect problems."""
 
-    env = None
+    fgraph = None
     """WRITEME"""
 
     equiv = None
@@ -1441,24 +1441,24 @@ class _VariableEquivalenceTracker(object):
     """WRITEME"""
 
     def __init__(self):
-        self.env = None
+        self.fgraph = None
 
-    def on_attach(self, env):
-        assert self.env is None
+    def on_attach(self, fgraph):
+        assert self.fgraph is None
         self.equiv = {}
         self.active_nodes = set()
         self.inactive_nodes = set()
-        self.env = env
+        self.fgraph = fgraph
         self.all_variables_ever = []
         self.reasons = {}
         self.replaced_by = {}
         self.event_list = []
 
-    def on_detach(self, env):
-        assert env is self.env
-        self.env = None
+    def on_detach(self, fgraph):
+        assert fgraph is self.fgraph
+        self.fgraph = None
 
-    def on_prune(self, env, node):
+    def on_prune(self, fgraph, node):
         self.event_list.append(_FunctionGraphEvent('prune', node))
         #print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
@@ -1466,7 +1466,7 @@ class _VariableEquivalenceTracker(object):
         self.active_nodes.remove(node)
         self.inactive_nodes.add(node)
 
-    def on_import(self, env, node):
+    def on_import(self, fgraph, node):
         self.event_list.append(_FunctionGraphEvent('import', node))
 
         #print 'NEW NODE', node, id(node)
@@ -1488,7 +1488,7 @@ class _VariableEquivalenceTracker(object):
                 self.reasons.setdefault(r, [])
                 self.replaced_by.setdefault(r, [])
 
-    def on_change_input(self, env, node, i, r, new_r, reason=None):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
         self.event_list.append(_FunctionGraphEvent('change', node,
                                          reason=str(reason), idx=i))
@@ -1552,16 +1552,16 @@ class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
     def __init__(self, maker):
         super(gof.LocalLinker, self).__init__()
-        self.env = None
+        self.fgraph = None
         self.maker = maker
 
-    def accept(self, env, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
             no_recycling = []
-        if self.env is not None and self.env is not env:
+        if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(self.env, self.maker).accept(env, no_recycling)
-        self.env = env
+            return type(self)(self.fgraph, self.maker).accept(fgraph, no_recycling)
+        self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
 
@@ -1574,24 +1574,24 @@ class _Linker(gof.link.LocalLinker):
             # filter_checks_isfinite
             from theano.tensor import TensorType  # to set filter_check_isfinite
             from theano import tests  # for config.unittests.rseed
-        env = self.env
+        fgraph = self.fgraph
         input_storage_ = input_storage
         output_storage_ = output_storage
-        #order = env.toposort()
+        #order = fgraph.toposort()
 
         #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
         #This will be OK, because every thunk is evaluated on a copy of its input.
-        order_outputs = copy.copy(env.equivalence_tracker.all_variables_ever)
+        order_outputs = copy.copy(fgraph.equivalence_tracker.all_variables_ever)
         order_outputs.reverse()
-        order = graph.io_toposort(env.inputs, order_outputs)
+        order = graph.io_toposort(fgraph.inputs, order_outputs)
 
-        active_order = env.toposort()  # an ordering of just the active nodes
+        active_order = fgraph.toposort()  # an ordering of just the active nodes
         active_order_set = set(active_order)
 
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
-            env, order, input_storage_, output_storage_)
+            fgraph, order, input_storage_, output_storage_)
 
         thunks_py = []  # python thunks
         thunks_c = []  # c thunks
@@ -1688,7 +1688,7 @@ class _Linker(gof.link.LocalLinker):
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling
-                            if r not in env.inputs]
+                            if r not in fgraph.inputs]
 
         # Precompute some things for storage pre-allocation
         try:
@@ -1756,7 +1756,7 @@ class _Linker(gof.link.LocalLinker):
                 # them as output storages.
                 init_outputs = {}
                 for r in storage_map:
-                    if r in env.outputs:
+                    if r in fgraph.outputs:
                         if storage_map[r][0] is not None:
                             init_outputs[r] = storage_map[r][0]
                             storage_map[r][0] = None
@@ -1961,7 +1961,7 @@ class _Linker(gof.link.LocalLinker):
                     #But it is very slow and it is not sure it will help.
                     gc.collect()
 
-                _find_bad_optimizations(order, env.equivalence_tracker.reasons,
+                _find_bad_optimizations(order, fgraph.equivalence_tracker.reasons,
                                         r_vals)
 
                 #####
@@ -1976,21 +1976,21 @@ class _Linker(gof.link.LocalLinker):
                     assert s[0] is None
 
                 # store our output variables to their respective storage lists
-                for output, storage in zip(env.outputs, output_storage):
+                for output, storage in zip(fgraph.outputs, output_storage):
                     storage[0] = r_vals[output]
 
                 # transfer all inputs back to their respective storage lists
                 for r in r_vals:
                     if r.owner is None:
-                        if r in env.inputs:
-                            assert storage_map[r] is input_storage[env.inputs.index(r)]
+                        if r in fgraph.inputs:
+                            assert storage_map[r] is input_storage[fgraph.inputs.index(r)]
                         storage_map[r][0] = r_vals[r]
 
                 # if an input was destroyed, the destroyed value should be returned
                 for r in dr_vals:
                     assert dr_vals[r][0] is not None
                     if r.owner is None:
-                        assert r in env.inputs
+                        assert r in fgraph.inputs
                         #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
                         if type(dr_vals[r][0]) is numpy.ndarray \
                                 and dr_vals[r][0].dtype == storage_map[r][0].dtype \
@@ -2043,13 +2043,13 @@ class _Linker(gof.link.LocalLinker):
         f = run_with_tensortype_filter_check(f)
 
         f.allow_gc = True
-        assert len(env.inputs) == len(input_storage)
-        assert len(env.outputs) == len(output_storage)
+        assert len(fgraph.inputs) == len(input_storage)
+        assert len(fgraph.outputs) == len(output_storage)
         #print 'make_all returning output', [id(z) for z in output_storage]
         return f, [link.Container(input, storage, readonly=False)
-                   for input, storage in zip(env.inputs, input_storage)], \
+                   for input, storage in zip(fgraph.inputs, input_storage)], \
                   [link.Container(output, storage, readonly=True)
-                   for output, storage in zip(env.outputs, output_storage)], \
+                   for output, storage in zip(fgraph.outputs, output_storage)], \
                   thunks_py, order
 
 
@@ -2115,26 +2115,26 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
 
-        # make the env
+        # make the fgraph
         for i in xrange(mode.stability_patience):
-            env, additional_outputs, equivalence_tracker = _optcheck_env(
+            fgraph, additional_outputs, equivalence_tracker = _optcheck_fgraph(
                 expanded_inputs, outputs, accept_inplace)
-            env.equivalence_tracker = equivalence_tracker
+            fgraph.equivalence_tracker = equivalence_tracker
 
-            # optimize the env
+            # optimize the fgraph
             compute_test_value_orig = theano.config.compute_test_value
             try:
                 theano.config.compute_test_value = "off"
-                optimizer(env)
+                optimizer(fgraph)
 
-                theano.compile.function_module.insert_deepcopy(env, inputs,
+                theano.compile.function_module.insert_deepcopy(fgraph, inputs,
                                                     outputs + additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
 
             if i:
-                li = env.equivalence_tracker.event_list
-                l0 = env0.equivalence_tracker.event_list
+                li = fgraph.equivalence_tracker.event_list
+                l0 = fgraph0.equivalence_tracker.event_list
                 if li != l0 :
                     infolog = StringIO()
                     print >> infolog, "WARNING: Optimization process is unstable..."
@@ -2170,22 +2170,22 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                     if self.verbose:
                         print >> sys.stderr, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
             else:
-                env0 = env
+                fgraph0 = fgraph
 
 
-        del env0
-        self.env = env
+        del fgraph0
+        self.fgraph = fgraph
         #equivalence_tracker.printstuff()
 
         linker = _Linker(self)
 
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
+        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs+additional_outputs) if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
+            self.linker = linker.accept(fgraph, no_recycling = infer_reuse_pattern(fgraph, no_borrow))
         else:
-            self.linker = linker.accept(env)
+            self.linker = linker.accept(fgraph)
 
         self.indices = indices
         self.inputs = inputs

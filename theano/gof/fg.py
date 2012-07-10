@@ -93,7 +93,7 @@ class FunctionGraph(utils.object2):
     """
 
     ### Special ###
-    # TODO: document which things that features can do to the env
+    # TODO: document which things that features can do to the fgraph
 
     def __init__(self, inputs, outputs, features=None):
         """
@@ -149,17 +149,17 @@ class FunctionGraph(utils.object2):
     ### Setup a Variable ###
 
     def __setup_r__(self, r):
-        # sets up r so it belongs to this env
-        if hasattr(r, 'env') and r.env is not None and r.env is not self:
-            raise Exception("%s is already owned by another env" % r)
-        r.env = self
+        # sets up r so it belongs to this fgraph
+        if hasattr(r, 'fgraph') and r.fgraph is not None and r.fgraph is not self:
+            raise Exception("%s is already owned by another fgraph" % r)
+        r.fgraph = self
         r.clients = []
         #self.execute_callbacks('on_setup_variable', r)
 
     def __setup_node__(self, node):
-        # sets up node so it belongs to this env
-        if hasattr(node, 'env') and node.env is not self:
-            raise Exception("%s is already owned by another env" % node)
+        # sets up node so it belongs to this fgraph
+        if hasattr(node, 'fgraph') and node.fgraph is not self:
+            raise Exception("%s is already owned by another fgraph" % node)
         if (hasattr(node.op, 'view_map') and
             not all([isinstance(view, (list, tuple))
                      for view in node.op.view_map.values()])):
@@ -172,7 +172,7 @@ class FunctionGraph(utils.object2):
             raise Exception("Op '%s' have a bad destroy map '%s',"
                             " the values must be tuples or lists." % (
                                 str(node.op), str(node.op.destroy_map)))
-        node.env = self
+        node.fgraph = self
         node.deps = {}
         #self.execute_callbacks('on_setup_node', node)
 
@@ -188,10 +188,10 @@ class FunctionGraph(utils.object2):
         them back to what they were originally.
         """
         for node in self.nodes:
-            del node.env
+            del node.fgraph
             del node.deps
         for variable in self.variables:
-            del variable.env
+            del variable.fgraph
             del variable.clients
         self.nodes = set()
         self.variables = set()
@@ -256,7 +256,7 @@ class FunctionGraph(utils.object2):
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
                 raise MissingInputError("Undeclared input", r)
-            if not getattr(r, 'env', None) is self:
+            if not getattr(r, 'fgraph', None) is self:
                 self.__setup_r__(r)
             self.variables.add(r)
 
@@ -269,11 +269,11 @@ class FunctionGraph(utils.object2):
 
         if check:
             for node in new_nodes:
-                if hasattr(node, 'env') and node.env is not self:
-                    raise Exception("%s is already owned by another env" % node)
+                if hasattr(node, 'fgraph') and node.fgraph is not self:
+                    raise Exception("%s is already owned by another fgraph" % node)
                 for r in node.inputs:
-                    if hasattr(r, 'env') and r.env is not self:
-                        raise Exception("%s is already owned by another env" % r)
+                    if hasattr(r, 'fgraph') and r.fgraph is not self:
+                        raise Exception("%s is already owned by another fgraph" % r)
                     if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
 
                         #Verbose error message
@@ -353,7 +353,7 @@ class FunctionGraph(utils.object2):
                     self.__setup_r__(input)
                     self.variables.add(input)
                 self.__add_clients__(input, [(node, i)])
-            assert node.env is self
+            assert node.fgraph is self
             self.execute_callbacks('on_import', node)
 
 
@@ -370,7 +370,7 @@ class FunctionGraph(utils.object2):
     def __prune__(self, node):
         if node not in self.nodes:
             raise Exception("%s does not belong to this FunctionGraph and cannot be pruned." % node)
-        assert node.env is self
+        assert node.fgraph is self
         # If node's outputs have no clients, removes it from the graph
         # and recursively tries to prune its inputs. If at least one
         # of the op's outputs is an output to the graph or has a client
@@ -410,7 +410,7 @@ class FunctionGraph(utils.object2):
                         r, new_r)
             self.outputs[i] = new_r
         else:
-            if node.env is not self:
+            if node.fgraph is not self:
                 raise Exception("Cannot operate on %s because it does not"
                         " belong to this FunctionGraph" % node)
             r = node.inputs[i]
@@ -442,7 +442,7 @@ class FunctionGraph(utils.object2):
         This is the main interface to manipulate the subgraph in FunctionGraph.
         For every node that uses r as input, makes it use new_r instead.
         """
-        if r.env is not self:
+        if r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong to this FunctionGraph" % r, str(reason))
         if not r.type == new_r.type:
             raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
@@ -611,10 +611,10 @@ class FunctionGraph(utils.object2):
             excess = self.nodes.difference(nodes)
             raise Exception("The nodes are inappropriately cached. missing, in excess: ", missing, excess)
         for node in nodes:
-            if node.env is not self:
+            if node.fgraph is not self:
                 raise Exception("Node should belong to the FunctionGraph.", node)
             for i, variable in enumerate(node.inputs):
-                if variable.env is not self:
+                if variable.fgraph is not self:
                     raise Exception("Input of node should belong to the FunctionGraph.", variable, (node, i))
                 if (node, i) not in variable.clients:
                     raise Exception("Inconsistent clients list.", (node, i), variable.clients)
@@ -626,7 +626,7 @@ class FunctionGraph(utils.object2):
         for variable in variables:
             if variable.owner is None and variable not in self.inputs and not isinstance(variable, graph.Constant):
                 raise Exception("Undeclared input.", variable)
-            if variable.env is not self:
+            if variable.fgraph is not self:
                 raise Exception("Variable should belong to the FunctionGraph.", variable)
             for node, i in variable.clients:
                 if node == 'output':

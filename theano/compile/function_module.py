@@ -57,9 +57,9 @@ def view_tree_set(v, treeset):
                     view_tree_set(cl.outputs[opos], treeset)
 
 
-def infer_reuse_pattern(env, outputs_to_disown):
+def infer_reuse_pattern(fgraph, outputs_to_disown):
     """
-    Given an env and a list of variables, returns the list or set of all variables which may
+    Given an fgraph and a list of variables, returns the list or set of all variables which may
     share the same underlying data storage as any of the specified variables. Used internally
     by function, FunctionMaker.
 
@@ -74,18 +74,18 @@ def infer_reuse_pattern(env, outputs_to_disown):
     return rval
 
 
-def env_updated_vars(env, expanded_inputs):
+def fgraph_updated_vars(fgraph, expanded_inputs):
     """
     Reconstruct the full "updates" dictionary, mapping from FunctionGraph input
-    variables to the env outputs that will replace their values.
+    variables to the fgraph outputs that will replace their values.
 
     :rtype: dict variable -> variable
     """
     updated_vars = {}
-    potential_values = list(env.outputs)  # copy the list
-    if len(expanded_inputs) != len(env.inputs):
-        raise ValueError('expanded_inputs must match len(env.inputs)')
-    for e_input, ivar in reversed(zip(expanded_inputs, env.inputs)):
+    potential_values = list(fgraph.outputs)  # copy the list
+    if len(expanded_inputs) != len(fgraph.inputs):
+        raise ValueError('expanded_inputs must match len(fgraph.inputs)')
+    for e_input, ivar in reversed(zip(expanded_inputs, fgraph.inputs)):
         if e_input.update is not None:
             updated_vars[ivar] = potential_values.pop()
     return updated_vars
@@ -100,15 +100,15 @@ class Supervisor:
     def __init__(self, protected):
         self.protected = list(protected)
 
-    def validate(self, env):
-        if not hasattr(env, 'destroyers'):
+    def validate(self, fgraph):
+        if not hasattr(fgraph, 'destroyers'):
             return True
-        for r in self.protected + list(env.outputs):
-            if env.destroyers(r):
+        for r in self.protected + list(fgraph.outputs):
+            if fgraph.destroyers(r):
                 raise gof.InconsistencyError("Trying to destroy a protected Variable.", r)
 
 
-def std_env(input_specs, output_specs, accept_inplace = False):
+def std_fgraph(input_specs, output_specs, accept_inplace = False):
     """
     Makes an FunctionGraph corresponding to the input specs and the output
     specs.  Any SymbolicInput in the input_specs, if its update field
@@ -129,22 +129,22 @@ def std_env(input_specs, output_specs, accept_inplace = False):
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
-    env = gof.fg.FunctionGraph(inputs, outputs)
+    fgraph = gof.fg.FunctionGraph(inputs, outputs)
 
-    for node in env.nodes:
+    for node in fgraph.nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
                 raise TypeError("Graph must not contain inplace operations", node, node.op)
             else:
-                env.extend(gof.DestroyHandler())
+                fgraph.extend(gof.DestroyHandler())
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(env, 'destroyers') and env.destroyers(input)))))
+    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    env.extend(gof.toolbox.PreserveNames())
-    return env, map(SymbolicOutput, updates)
+    fgraph.extend(gof.toolbox.PreserveNames())
+    return fgraph, map(SymbolicOutput, updates)
 
 class AliasedMemoryError(Exception):
     """Memory is aliased that should not be"""
@@ -670,8 +670,8 @@ class Function(object):
         # if we are allowing garbage collection, remove the input and output reference from the internal
         # storage cells
         if getattr(self.fn, 'allow_gc', False):
-            assert len(self.output_storage) == len(self.maker.env.outputs)
-            for o_container, o_variable in zip(self.output_storage, self.maker.env.outputs):
+            assert len(self.output_storage) == len(self.maker.fgraph.outputs)
+            for o_container, o_variable in zip(self.output_storage, self.maker.fgraph.outputs):
                 if o_variable.owner is not None:
                     # this node is the variable of computation
                     # WARNING: This circumvents the 'readonly' attribute in x
@@ -846,9 +846,9 @@ class SanityCheckFunction(Function):
 ### FunctionMaker
 ###
 
-def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
+def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     """
-    Insert deepcopy in the env to break aliasing of outputs
+    Insert deepcopy in the fgraph to break aliasing of outputs
     """
     # This loop was inserted to remove aliasing between outputs when they all
     # evaluete to the same value. Originally it was OK for outputs to be aliased,
@@ -860,28 +860,28 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
 
     # We don't insert deep copy when the output.borrow is True for all conserned outputs.
 
-    assert len(wrapped_inputs) == len(env.inputs)
-    assert len(wrapped_outputs) == len(env.outputs)
+    assert len(wrapped_inputs) == len(fgraph.inputs)
+    assert len(wrapped_outputs) == len(fgraph.outputs)
     reason = "insert_deepcopy"
-    updated_env_inputs = [env_i for i, env_i in zip(wrapped_inputs, env.inputs) if getattr(i, 'update', False)]
+    updated_fgraph_inputs = [fgraph_i for i, fgraph_i in zip(wrapped_inputs, fgraph.inputs) if getattr(i, 'update', False)]
 
-    # We can't use env.inputs as this don't include Constant Value.
-    all_graph_inputs = gof.graph.inputs(env.outputs)
+    # We can't use fgraph.inputs as this don't include Constant Value.
+    all_graph_inputs = gof.graph.inputs(fgraph.outputs)
 
-    for i in xrange(len(env.outputs)):
+    for i in xrange(len(fgraph.outputs)):
         views_of_output_i = set()
-        view_tree_set(alias_root(env.outputs[i]), views_of_output_i)
+        view_tree_set(alias_root(fgraph.outputs[i]), views_of_output_i)
         copied = False
         # do not allow outputs to be aliased
-        for j in xrange(i+1, len(env.outputs)):
+        for j in xrange(i+1, len(fgraph.outputs)):
             # We could don't put deep copy if both outputs have borrow==True
             # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
-            if env.outputs[j] in views_of_output_i:
+            if fgraph.outputs[j] in views_of_output_i:
                 if wrapped_outputs[i].borrow and wrapped_outputs[j].borrow:
-                    env.change_input('output',i, view_op(env.outputs[i]),
+                    fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
                                      reason=reason)
                 else:
-                    env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                    fgraph.change_input('output', i, deep_copy_op(fgraph.outputs[i]),
                                      reason=reason)
                 copied = True
                 break
@@ -891,28 +891,28 @@ def insert_deepcopy(env, wrapped_inputs, wrapped_outputs):
                 # do not allow outputs to be aliased to an inputs (j), unless
                 # a) that j'th input has been 'destroyed' by e.g. in-place computations
                 # b) that j'th input is a shared variable that is also being updated
-                if hasattr(env,'get_destroyers_of') and env.get_destroyers_of(input_j):
+                if hasattr(fgraph,'get_destroyers_of') and fgraph.get_destroyers_of(input_j):
                     continue
-                if input_j in updated_env_inputs:
+                if input_j in updated_fgraph_inputs:
                     continue
                 if input_j in views_of_output_i:
                     # We don't put deep_copy_op if the input and the output have borrow==True
-                    if input_j in env.inputs:
-                        j = env.inputs.index(input_j)
+                    if input_j in fgraph.inputs:
+                        j = fgraph.inputs.index(input_j)
                         if wrapped_outputs[i].borrow and wrapped_inputs[j].borrow:
-                            env.change_input('output',i, view_op(env.outputs[i]),
+                            fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
                                              reason="insert_deepcopy")
                             break
                         else:
-                            env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                            fgraph.change_input('output', i, deep_copy_op(fgraph.outputs[i]),
                                              reason="insert_deepcopy")
                             break
                     elif wrapped_outputs[i].borrow:
-                        env.change_input('output',i, view_op(env.outputs[i]),
+                        fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
                                          reason="insert_deepcopy")
                         break
                     else:
-                        env.change_input('output', i, deep_copy_op(env.outputs[i]),
+                        fgraph.change_input('output', i, deep_copy_op(fgraph.outputs[i]),
                                          reason="insert_deepcopy")
                         break
 
@@ -920,7 +920,7 @@ NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
 
-    This class has the env, the optimizer, and the linker.  When copying a `Function`, there is
+    This class has the fgraph, the optimizer, and the linker.  When copying a `Function`, there is
     no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
     variable in re-compilation.
 
@@ -1033,23 +1033,23 @@ class FunctionMaker(object):
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
         assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
 
-        # make the env (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
-        env, additional_outputs = std_env(expanded_inputs, outputs, accept_inplace)
-        env.profile = profile
+        # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
+        fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
+        fgraph.profile = profile
 
-        self.env = env
+        self.fgraph = fgraph
 
         # Fetch the optimizer and linker
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
-        # optimize the env
+        # optimize the fgraph
         compute_test_value_orig = theano.config.compute_test_value
         add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
         try:
             theano.config.compute_test_value = "off"
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
-            optimizer_profile = optimizer(env)
+            optimizer_profile = optimizer(fgraph)
             end_optimizer = time.time()
             opt_time = end_optimizer - start_optimizer
             mode.optimizer_time += opt_time
@@ -1061,7 +1061,7 @@ class FunctionMaker(object):
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface
-            insert_deepcopy(env, inputs, outputs+additional_outputs)
+            insert_deepcopy(fgraph, inputs, outputs+additional_outputs)
         finally:
             theano.config.compute_test_value = compute_test_value_orig
             gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
@@ -1072,17 +1072,17 @@ class FunctionMaker(object):
                              "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        assert len(env.outputs) == len(outputs+additional_outputs)
-        no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
+        assert len(fgraph.outputs) == len(outputs+additional_outputs)
+        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs+additional_outputs) if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
+            self.linker = linker.accept(fgraph, no_recycling = infer_reuse_pattern(fgraph, no_borrow))
         else:
-            self.linker = linker.accept(env)
+            self.linker = linker.accept(fgraph)
 
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
-                    env_updated_vars(env, expanded_inputs))
+                    fgraph_updated_vars(fgraph, expanded_inputs))
 
         self.indices = indices
         self.inputs = inputs

@@ -499,7 +499,7 @@ class Method(Component):
         mode = kwargs.pop('mode', None)
         if mode:
             f = self.build(mode, {}, True)
-            einputs, eoutputs = f.maker.env.inputs, f.maker.env.outputs
+            einputs, eoutputs = f.maker.fgraph.inputs, f.maker.fgraph.outputs
             updates = dict(((k, v) for k, v in zip(einputs[len(inputs):], eoutputs[len(outputs):])))
             inputs, outputs = einputs[:len(inputs)], eoutputs[:len(outputs)]
         rval += pprint(inputs, outputs, updates, False)

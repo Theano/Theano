@@ -82,8 +82,8 @@ def rebuild_collect_shared(outputs,
         shared inputs, and their default_update (if applicable) to update_d
         and update_expr.
 
-        v can have an env attached to it, case in which we want to clone
-        constants ( to avoid having a constant belonging to two envs)
+        v can have an fgraph attached to it, case in which we want to clone
+        constants ( to avoid having a constant belonging to two fgraphs)
         '''
         # this co-recurses with clone_a
         assert v is not None
@@ -113,7 +113,7 @@ def rebuild_collect_shared(outputs,
                         update_d[v] = v_update
                         update_expr.append((v, v_update))
         if not copy_inputs_over or (isinstance(v, Constant) and
-                                    hasattr(v, 'env')):
+                                    hasattr(v, 'fgraph')):
             ### Cloning shared variables implies copying their underlying
             ### memory buffer ?? No.
             return clone_d.setdefault(v, v.clone())
