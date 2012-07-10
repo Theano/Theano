@@ -37,7 +37,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile)
+        itensor3, Tile, AdvancedIncSubtensor)
 from theano.tests import unittest_tools as utt
 
 
@@ -6318,95 +6318,107 @@ class TestInferShape(utt.InferShapeTester):
         advec = dvector()
         adscal = dscalar()
         admat_val = rand(5, 4)
-        bdvec_val = [2, 3]
+        aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
-                            [set_subtensor(admat[bdvec_val], bdmat)],
+                            [set_subtensor(admat[aivec_val], bdmat)],
                             [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
 
-        bdvec_val = [1, 3, 2]
+        aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
-                            [set_subtensor(admat[bdvec_val], advec)],
+                            [set_subtensor(admat[aivec_val], advec)],
                             [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
 
-        bdvec_val = [0, 3, 0]
+        aivec_val = [0, 3, 0]
         self._compile_and_check([admat, adscal],
-                            [set_subtensor(admat[bdvec_val], adscal)],
+                            [set_subtensor(admat[aivec_val], adscal)],
                             [admat_val, 1], AdvancedIncSubtensor1)
 
         bdtens4 = dtensor4()
         adtens4_val = rand(4, 3, 2, 5)
-        bdvec_val = [2, 3]
+        aivec_val = [2, 3]
         self._compile_and_check([adtens4, bdtens4],
-                            [set_subtensor(adtens4[bdvec_val], bdtens4)],
+                            [set_subtensor(adtens4[aivec_val], bdtens4)],
                             [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
                             AdvancedIncSubtensor1)
 
-        bdvec_val = [1, 3, 2]
+        aivec_val = [1, 3, 2]
         self._compile_and_check([adtens4, advec],
-                            [set_subtensor(adtens4[bdvec_val], advec)],
+                            [set_subtensor(adtens4[aivec_val], advec)],
                             [adtens4_val, [1, 2, 3, 4, 5]],
                             AdvancedIncSubtensor1)
 
-        bdvec_val = [0, 3, 0]
+        aivec_val = [0, 3, 0]
         self._compile_and_check([adtens4, adscal],
-                            [set_subtensor(adtens4[bdvec_val], adscal)],
+                            [set_subtensor(adtens4[aivec_val], adscal)],
                             [adtens4_val, 1],
                             AdvancedIncSubtensor1)
 
         ## TODO: (!!) function inc_subtensor fails on line 5784 in perform in basic.py
         """
-        bdvec_val = [2, 3]
+        aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
-                            [inc_subtensor(admat[bdvec_val], bdmat)],
-                            [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
-
-        bdvec_val = [1, 3, 2]
+                            [inc_subtensor(admat[aivec_val], bdmat)],
+       
+        aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
-                            [inc_subtensor(admat[bdvec_val], advec)],
+                            [inc_subtensor(admat[aivec_val], advec)],
                             [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
 
-        bdvec_val = [0, 3, 0]
+        aivec_val = [0, 3, 0]
         self._compile_and_check([admat, adscal],
-                            [inc_subtensor(admat[bdvec_val], adscal)],
+                            [inc_subtensor(admat[aivec_val], adscal)],
                             [admat_val, 1], AdvancedIncSubtensor1)
 
         bdtens4 = dtensor4()
         adtens4_val = rand(4, 3, 2, 5)
-        bdvec_val = [2, 3]
+        aivec_val = [2, 3]
         self._compile_and_check([adtens4, bdtens4],
-                            [inc_subtensor(adtens4[bdvec_val], bdtens4)],
+                            [inc_subtensor(adtens4[aivec_val], bdtens4)],
                             [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
                             AdvancedIncSubtensor1)
 
-        bdvec_val = [1, 3, 2]
+        aivec_val = [1, 3, 2]
         self._compile_and_check([adtens4, advec],
-                            [inc_subtensor(adtens4[bdvec_val], advec)],
+                            [inc_subtensor(adtens4[aivec_val], advec)],
                             [adtens4_val, [[1, 2, 3, 4, 5]]],
                             AdvancedIncSubtensor1)
 
-        bdvec_val = [0, 3, 0]
+        aivec_val = [0, 3, 0]
         self._compile_and_check([adtens4, adscal],
-                            [inc_subtensor(adtens4[bdvec_val], adscal)],
+                            [inc_subtensor(adtens4[aivec_val], adscal)],
                             [adtens4_val, [[1, 2, 3, 4, 5]]],
                             AdvancedIncSubtensor1)
 
         """
 
         # AdvancedIncSubtensor
-        # TODO: AdvancedIncSubtensor cannot be reached through the wrappers
-        # set_subtensor and advanced_subtensor (see comment in Git, issue 476)
+        # TODO: The shape is apparently generated correctly but the final
+        # result is abnormal:
         """
-        # as an example only:
-        bdvec_val = [1, 3, 2]
-        cdvec_val = [2]
+topo_shape:
+[AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}(<TensorType(float64, matrix)>, <TensorType(float64, vector)>, TensorConstant{[1 3 2]}, TensorConstant{[0 3 3]}), Shape_i{1}(AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}.0), Shape_i{0}(AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}.0), MakeVector(Shape_i{0}.0, Shape_i{1}.0)]
+shapes_function:
+MakeVector [@A] ''   3
+ |Shape_i{0} [@B] ''   2
+ | |AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince} [@C] ''   0
+ |   |<TensorType(float64, matrix)> [@D]
+ |   |<TensorType(float64, vector)> [@E]
+ |   |TensorConstant{[1 3 2]} [@F]
+ |   |TensorConstant{[0 3 3]} [@G]
+ |Shape_i{1} [@H] ''   1
+   |AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince} [@C] ''   0
+remaining op as a class: AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}
+(5, 4) [5 4]
+        """
+        
+        aivec_val = [1, 3, 2]
+        bivec_val = [0, 3, 3]
+        advec_val = [23, 24, 25]
         self._compile_and_check([admat, advec],
-                            [set_subtensor(admat[bdvec_val, cdvec_val], adscal)],
-                            [admat_val, 1], AdvancedIncSubtensor)
-
-
-        """
-
-        # Reshape: basic 5094
+                            [set_subtensor(admat[aivec_val, bivec_val], advec)],
+                            [admat_val, advec_val], AdvancedIncSubtensor)
+    
+        # Reshape
         # TODO: The shape is apparently generated correctly but the final result is abnormal:
         """
 topo_shape:
