@@ -4,6 +4,7 @@ __docformat__ = 'restructuredtext en'
 # Standard imports
 import copy
 import logging
+import sys
 
 # Third-party imports
 import numpy
@@ -179,19 +180,33 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
            `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
 
     """
-    for ctor in reversed(shared.constructors):
-        try:
-            return ctor(value, name=name, strict=strict,
-                    allow_downcast=allow_downcast, **kwargs)
-        except TypeError:
-            continue
-    # This may happen when kwargs were supplied
-    # if kwargs were given, the generic_constructor won't be callable.
-    #
-    # This was done on purpose, the rationale being that if kwargs
-    # were supplied, the user didn't want them to be ignored.
+
+    try:
+
+        for ctor in reversed(shared.constructors):
+            try:
+                return ctor(value, name=name, strict=strict,
+                            allow_downcast=allow_downcast, **kwargs)
+            except TypeError:
+                continue
+            # This may happen when kwargs were supplied
+            # if kwargs were given, the generic_constructor won't be callable.
+            #
+            # This was done on purpose, the rationale being that if kwargs
+            # were supplied, the user didn't want them to be ignored.
+
+    except MemoryError:
+
+        # Note: the following instruction is inappropriate as it is followed
+        # automatically by a misleading message from line 207
+        # sys.stderr.write('Insufficient memory available: you might consider'
+        #           ' using \'theano.shared(..., borrow=True)\'')
+        sys.exit('Insufficient memory available: you might consider'
+                         ' using \'theano.shared(..., borrow=True)\'')
+
     raise TypeError('No suitable SharedVariable constructor could be found',
                     (value, kwargs))
+
 shared.constructors = []
 
 
