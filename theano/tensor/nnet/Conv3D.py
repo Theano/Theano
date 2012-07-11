@@ -80,10 +80,15 @@ class Conv3D(theano.Op):
         #quit(-1)
         #dCdH = printing.Print("dCdH = ",["shape"])
 
-        dCdV = ConvTransp3D.convTransp3D(W, T.zeros_like(V[0,0,0,0,:]), d, dCdH, V.shape[1:4] )
+        # Make sure the broadcasting pattern of the gradient is the the same
+        # as the initial variable
+        dCdV = ConvTransp3D.convTransp3D(W, T.zeros_like(V[0,0,0,0,:]), d, dCdH, V.shape[1:4])
+        dCdV = T.patternbroadcast(dCdV, V.broadcastable)
         WShape = W.shape
         dCdW = ConvGrad3D.convGrad3D(V,d,WShape,dCdH)
+        dCdW = T.patternbroadcast(dCdW, W.broadcastable)
         dCdb = T.sum(dCdH, axis=(0,1,2,3))
+        dCdb = T.patternbroadcast(dCdb, b.broadcastable)
         dCdd = None #not differentiable, since d is not continuous
 
         if 'name' in dir(dCdH) and dCdH.name is not None:
