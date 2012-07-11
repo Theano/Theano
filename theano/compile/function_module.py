@@ -954,6 +954,22 @@ class FunctionMaker(object):
         elif isinstance(sinput, SymbolicInput):
             return [None, [sinput]]
 
+    @property
+    def env(self):
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        return self.fgraph
+
+    @env.setter
+    def env(self,value):
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        self.fgraph = value
+
+    @env.deleter
+    def env(self):
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        del self.fgraph
+
+
     @staticmethod
     def wrap_out(output):
         if isinstance(output, SymbolicOutput):

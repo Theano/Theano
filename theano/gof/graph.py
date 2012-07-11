@@ -119,6 +119,23 @@ class Apply(utils.object2):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
 
+
+    @property
+    def env(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        return self.fgraph
+
+    @env.setter
+    def env(self,value):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        self.fgraph = value
+
+    @env.deleter
+    def env(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        del self.fgraph
+
+
     out = property(default_output,
                    doc = "alias for self.default_output()")
     """Alias for self.default_output()"""
@@ -337,6 +354,24 @@ class Variable(utils.object2):
     def __ge__(self,other):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
+
+
+	@property
+    def env(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        return self.fgraph
+
+    @env.setter
+    def env(self,value):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        self.fgraph = value
+
+    @env.deleter
+    def env(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        del self.fgraph
+
+
 
 class Constant(Variable):
     """
