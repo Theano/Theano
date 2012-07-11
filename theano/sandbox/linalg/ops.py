@@ -28,7 +28,7 @@ class Hint(Op):
     These ops are removed from the graph during canonicalization
     in order to not interfere with other optimizations.
     The idea is that prior to canonicalization, one or more Features of the
-    env should register the information contained in any Hint node, and
+    fgraph should register the information contained in any Hint node, and
     transfer that information out of the graph.
 
     """
@@ -57,9 +57,9 @@ def is_hint_node(node):
 
 
 def hints(variable):
-    if hasattr(variable, 'env'):
+    if hasattr(variable, 'fgraph'):
         try:
-            return variable.env.hints_feature.hints[variable]
+            return variable.fgraph.hints_feature.hints[variable]
         except AttributeError:
             return {}
     else:
@@ -76,7 +76,7 @@ def remove_hint_nodes(node):
         # transfer hints from graph to Feature
         try:
             for k, v in node.op.hints:
-                node.env.hints_feature.add_hint(node.inputs[0], k, v)
+                node.fgraph.hints_feature.add_hint(node.inputs[0], k, v)
         except AttributeError:
             pass
         return node.inputs
@@ -84,7 +84,7 @@ def remove_hint_nodes(node):
 
 class HintsFeature(object):
     """
-    Env Feature to track matrix properties
+    FunctionGraph Feature to track matrix properties
 
     This is a similar feature to variable 'tags'. In fact, tags are one way
     to provide hints.
@@ -129,15 +129,15 @@ class HintsFeature(object):
     # Feature inteface
     #
     #
-    def on_attach(self, env):
-        assert not hasattr(env, 'hints_feature')
-        env.hints_feature = self
+    def on_attach(self, fgraph):
+        assert not hasattr(fgraph, 'hints_feature')
+        fgraph.hints_feature = self
         # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
         self.hints = {}
-        for node in env.toposort():
-            self.on_import(env, node)
+        for node in fgraph.toposort():
+            self.on_import(fgraph, node)
 
-    def on_import(self, env, node):
+    def on_import(self, fgraph, node):
         if node.outputs[0] in self.hints:
             # this is a revert, not really an import
             for r in node.outputs + node.inputs:
@@ -157,7 +157,7 @@ class HintsFeature(object):
             if k not in new_hints:
                 new_hints[k] = v
 
-    def on_change_input(self, env, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r):
         # TODO:
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.
@@ -171,15 +171,15 @@ class HintsFeature(object):
 
 
 class HintsOptimizer(Optimizer):
-    """Optimizer that serves to add HintsFeature as an env feature.
+    """Optimizer that serves to add HintsFeature as an fgraph feature.
     """
     def __init__(self):
         Optimizer.__init__(self)
 
-    def add_requirements(self, env):
-        env.extend(HintsFeature())
+    def add_requirements(self, fgraph):
+        fgraph.extend(HintsFeature())
 
-    def apply(self, env):
+    def apply(self, fgraph):
         pass
 # -1 should make it run right before the first merge
 theano.compile.mode.optdb.register('HintsOpt',

@@ -108,8 +108,8 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         if val.size == 0:
             assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
         else:
@@ -145,8 +145,8 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.env.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f2.maker.env.toposort()]
+        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         assert _allclose(f2(val), f(val)), ('shape', shape,
                                             'pattern', pattern,
                                             sum([shape[i] for i in pattern]))
@@ -181,8 +181,8 @@ def test_sum():
             val2 = val2[::2, ::2, ::2, ::2]
         f = theano.function([a], b, mode=mode_without_gpu)
         f2 = theano.function([a2], b2, mode=mode_with_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.env.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f.maker.env.toposort()]
+        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+        assert T.Sum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert _allclose(f2(val2), f(val)), ('shape', shape,
                                              'pattern', pattern,
                                              sum([shape[i] for i in pattern]))
@@ -204,7 +204,7 @@ def test_reshape():
     f = theano.function([a], c, mode=mode_with_gpu)
     fv = f(cuda_ndarray.CudaNdarray(theano._asarray([0, 1, 2, 3, 4, 5],
                                                     dtype='float32')))
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(fv == numpy.asarray([[0, 1, 2], [3, 4, 5]]))
 
@@ -217,7 +217,7 @@ def test_reshape():
                                                      dtype='float32'))
 
     f_sub = theano.function([a, b], c - b, mode=mode_with_gpu)
-    topo = f_sub.maker.env.toposort()
+    topo = f_sub.maker.fgraph.toposort()
     assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
@@ -228,7 +228,7 @@ def test_reshape():
     b_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
 
     f_sub = theano.function([a, b], c - b, mode=mode_with_gpu)
-    topo = f_sub.maker.env.toposort()
+    topo = f_sub.maker.fgraph.toposort()
     assert any([isinstance(node.op, B.GpuReshape) for node in topo])
     assert numpy.all(f_sub(a_val, b_val) == 0.0)
     assert numpy.all(numpy.asarray(a_val) == numpy.asarray(a_val_copy))
@@ -265,7 +265,7 @@ def test_elemwise0():
     f = pfunc([b], [], updates=[(a, a + b)], mode=mode_with_gpu)
 
     #check that we work inplace.
-    assert f.maker.env.toposort()[1].op.destroy_map.items() == [(0, [0])]
+    assert f.maker.fgraph.toposort()[1].op.destroy_map.items() == [(0, [0])]
 
     a0 = a.get_value() * 1.0
     f(numpy.ones((4, 4), dtype='float32'))
@@ -278,9 +278,9 @@ def test_elemwise_bad_broadcast():
     y = cuda.fmatrix('y')
 
     f = theano.function([x, y], x * y, mode=mode_with_gpu)
-    assert len(f.maker.env.toposort()) == 2
-    assert isinstance(f.maker.env.toposort()[0].op, cuda.GpuElemwise)
-    assert f.maker.env.toposort()[1].op == cuda.host_from_gpu
+    assert len(f.maker.fgraph.toposort()) == 2
+    assert isinstance(f.maker.fgraph.toposort()[0].op, cuda.GpuElemwise)
+    assert f.maker.fgraph.toposort()[1].op == cuda.host_from_gpu
 
     try:
         f(rand_cuda_ndarray((10, 3)), rand_cuda_ndarray((10, 1)))
@@ -324,7 +324,7 @@ def test_elemwise2():
         f = pfunc([b], [], updates=[(a, (a + b).dimshuffle(pattern))],
                   mode=mode_with_gpu)
         has_elemwise = False
-        for i, node in enumerate(f.maker.env.toposort()):
+        for i, node in enumerate(f.maker.fgraph.toposort()):
             has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
         assert not has_elemwise
         #let debugmode catch errors
@@ -337,7 +337,7 @@ def test_elemwise2():
     f = pfunc([b], [], updates=[(a, (a + b).dimshuffle([2, 0, 3, 1]) *
         tensor.exp(b ** a).dimshuffle([2, 0, 3, 1]))], mode=mode_with_gpu)
     has_elemwise = False
-    for i, node in enumerate(f.maker.env.toposort()):
+    for i, node in enumerate(f.maker.fgraph.toposort()):
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -356,7 +356,7 @@ def test_elemwise3():
     new_val *= tensor.exp(1 + b ** a).dimshuffle([2, 0, 3, 1])
     f = pfunc([b], [], updates=[(a, new_val)], mode=mode_with_gpu)
     has_elemwise = False
-    for i, node in enumerate(f.maker.env.toposort()):
+    for i, node in enumerate(f.maker.fgraph.toposort()):
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -376,7 +376,7 @@ def test_elemwise4():
               updates=[(a, (a + b.dimshuffle('x', 0) * c.dimshuffle(0, 'x')))],
               mode=mode_with_gpu)
     has_elemwise = False
-    for i, node in enumerate(f.maker.env.toposort()):
+    for i, node in enumerate(f.maker.fgraph.toposort()):
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
     assert not has_elemwise
     #let debugmode catch errors
@@ -403,7 +403,7 @@ def test_elemwise_comparaison_cast():
         out = f(av, bv)
         assert numpy.all(out == ans)
         assert any([isinstance(node.op, cuda.GpuElemwise)
-                    for node in f.maker.env.toposort()])
+                    for node in f.maker.fgraph.toposort()])
 
 
 def test_elemwise_composite_float64():
@@ -417,7 +417,7 @@ def test_elemwise_composite_float64():
 
     def get_all_basic_scalar(composite_op):
         l = []
-        for i in composite_op.env.toposort():
+        for i in composite_op.fgraph.toposort():
             if isinstance(i, theano.scalar.Composite):
                 l += get_all_basic_scalar(i)
             else:
@@ -432,7 +432,7 @@ def test_elemwise_composite_float64():
 
         out = f(av, bv)
         assert numpy.all(out == ((av ** 2) < bv))
-        for node in f.maker.env.toposort():
+        for node in f.maker.fgraph.toposort():
             if isinstance(node.op, cuda.GpuElemwise):
                 if isinstance(node.op.scalar_op, theano.scalar.Composite):
                     scals = get_all_basic_scalar(node.op.scalar_op)
@@ -466,7 +466,7 @@ def test_elemwise_composite_support_code():
         theano.config.warn.identify_1pexp_bug = backup
     f_grad()
 
-    topo = f_grad.maker.env.toposort()
+    topo = f_grad.maker.fgraph.toposort()
     assert sum([isinstance(node.op, T.Elemwise) for node in topo]) == 1
     assert sum([isinstance(node.op, tcn.GpuElemwise) for node in topo]) == 1
 
@@ -692,9 +692,9 @@ def test_hostfromgpu_shape_i():
 
     f = theano.function([a], cuda.basic_ops.gpu_from_host(a), mode=m)
     assert cuda.basic_ops.gpu_from_host in [x.op
-                                            for x in f.maker.env.toposort()]
+                                            for x in f.maker.fgraph.toposort()]
     f = theano.function([a], cuda.basic_ops.gpu_from_host(a).shape, mode=m)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert isinstance(topo[0].op, T.opt.Shape_i)
     assert isinstance(topo[1].op, T.opt.Shape_i)
     assert isinstance(topo[2].op, T.opt.MakeVector)
@@ -704,9 +704,9 @@ def test_hostfromgpu_shape_i():
 
     f = theano.function([ca], cuda.basic_ops.host_from_gpu(ca), mode=m)
     assert cuda.basic_ops.host_from_gpu in [x.op
-                                            for x in f.maker.env.toposort()]
+                                            for x in f.maker.fgraph.toposort()]
     f = theano.function([ca], cuda.basic_ops.host_from_gpu(ca).shape, mode=m)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert isinstance(topo[0].op, T.opt.Shape_i)
     assert isinstance(topo[1].op, T.opt.Shape_i)
     assert isinstance(topo[2].op, T.opt.MakeVector)
@@ -737,7 +737,7 @@ def test_gpujoin_no_rebroadcast():
     _a = numpy.asarray([[1, 2], [3, 4]], dtype='float32')
     a = tcn.shared_constructor(_a)
     f = theano.function([], T.join(1, a))
-    l = f.maker.env.toposort()
+    l = f.maker.fgraph.toposort()
     assert not any([isinstance(x.op, T.Rebroadcast) for x in l])
 
 
@@ -749,9 +749,9 @@ def test_gpualloc_input_on_gpu():
     f = theano.function([b], T.ones_like(a) + b, mode=mode_without_gpu)
     f_gpu = theano.function([b], T.ones_like(a) + b, mode=mode_with_gpu)
 
-    assert sum([node.op == T.alloc for node in f.maker.env.toposort()]) == 1
+    assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 1
     assert sum([node.op == B.gpu_alloc
-                for node in f_gpu.maker.env.toposort()]) == 1
+                for node in f_gpu.maker.fgraph.toposort()]) == 1
 
     assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape) + 9,
                           f_gpu(9))
@@ -772,16 +772,16 @@ def test_gpujoin_gpualloc():
                                            T.ones_like(b)) + 4,
                              mode=mode_with_gpu)
 
-    assert sum([node.op == T.alloc for node in f.maker.env.toposort()]) == 2
-    assert sum([node.op == T.join for node in f.maker.env.toposort()]) == 1
+    assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
     assert sum([node.op == B.gpu_alloc
-                for node in f_gpu.maker.env.toposort()]) == 2
+                for node in f_gpu.maker.fgraph.toposort()]) == 2
     assert sum([node.op == B.gpu_join
-                for node in f_gpu.maker.env.toposort()]) == 1
+                for node in f_gpu.maker.fgraph.toposort()]) == 1
     assert sum([node.op == B.gpu_alloc
-                for node in f_gpu2.maker.env.toposort()]) == 2
+                for node in f_gpu2.maker.fgraph.toposort()]) == 2
     assert sum([node.op == B.gpu_join
-                for node in f_gpu2.maker.env.toposort()]) == 1
+                for node in f_gpu2.maker.fgraph.toposort()]) == 1
     assert numpy.allclose(f(a_val, b_val), f_gpu2(a_val, b_val))
 
 
@@ -797,9 +797,9 @@ def test_gpualloc_output_to_gpu():
     f(2)
     f_gpu(2)
 
-    assert sum([node.op == T.alloc for node in f.maker.env.toposort()]) == 1
+    assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 1
     assert sum([node.op == B.gpu_alloc
-                for node in f_gpu.maker.env.toposort()]) == 1
+                for node in f_gpu.maker.fgraph.toposort()]) == 1
 
     assert numpy.allclose(numpy.ones(a.get_value(borrow=True).shape) + 9,
                           f_gpu(9))
@@ -917,7 +917,7 @@ def test_advinc_subtensor1():
     expr = T.advanced_inc_subtensor1(x, y, [0, 2])
     f = theano.function([y], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
-                for node in f.maker.env.toposort()]) == 1
+                for node in f.maker.fgraph.toposort()]) == 1
     assert numpy.allclose(f(yval), [[11., 12., 13.], [4., 5., 6.],
                                     [17., 18., 19.]])
 
@@ -934,10 +934,10 @@ def test_inc_subtensor():
     f = theano.function([x, y], expr, mode=mode_with_gpu)
 
     assert sum([isinstance(node.op, cuda.GpuSubtensor)
-                for node in f.maker.env.toposort()]) == 1
+                for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc==False
-                for node in f.maker.env.toposort()]) == 1
+                for node in f.maker.fgraph.toposort()]) == 1
     assert numpy.allclose(f(xval, yval), [[1., 12., 13.],
                                           [4., 15., 16.], [7., 18., 19.]])
 
@@ -953,10 +953,10 @@ def test_set_subtensor():
     expr = T.set_subtensor(x[:, 1:3], y[:, 1:3])
     f = theano.function([x, y], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, cuda.GpuSubtensor)
-                for node in f.maker.env.toposort()]) == 1
+                for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc == True
-                for node in f.maker.env.toposort()]) == 1
+                for node in f.maker.fgraph.toposort()]) == 1
     f(xval, yval)
 
 
@@ -988,7 +988,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.env.nodes])
+                                    for node in f.maker.fgraph.nodes])
 
                     #test the optijmization local_gpu_elemwise_1
                     f = theano.function(
@@ -999,7 +999,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.env.nodes])
+                                    for node in f.maker.fgraph.nodes])
                     assert numpy.allclose(out, outputs[-1])
 
                 results_gpu, results_cpu = outputs

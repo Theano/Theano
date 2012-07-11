@@ -305,7 +305,7 @@ def infer_shape(outs, inputs, input_shapes):
     '''
     # We use a ShapeFeature because it has all the necessary logic
     # inside.  We don't use the full ShapeFeature interface, but we
-    # let it initialize itself with an empty env, otherwise we will
+    # let it initialize itself with an empty fgraph, otherwise we will
     # need to do it manually
     for inp, inp_shp in izip(inputs, input_shapes):
         if inp_shp is not None and len(inp_shp) != inp.ndim:
@@ -335,10 +335,10 @@ def infer_shape(outs, inputs, input_shapes):
                 if not inp in shape_feature.shape_of:
                     local_traverse(inp)
 
-            # shape_feature.on_import does not actually use an env
+            # shape_feature.on_import does not actually use an fgraph
             # It will call infer_shape and set_shape appropriately
-            dummy_env = None
-            shape_feature.on_import(dummy_env, out.owner)
+            dummy_fgraph = None
+            shape_feature.on_import(dummy_fgraph, out.owner)
 
     ret = []
     for o in outs:

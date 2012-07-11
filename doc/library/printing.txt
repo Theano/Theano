@@ -52,7 +52,7 @@ Theano also provides :func:`pydotprint` that creates a png image of the function
 >>> pp(gy)  # print out the gradient prior to optimization
 '((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
 >>> f = function([x], gy)
->>> pp(f.maker.env.outputs[0])
+>>> pp(f.maker.fgraph.outputs[0])
 '(2.0 * x)'
 
 The parameter in T.dscalar('x') in the first line is the name of this variable 
@@ -73,7 +73,7 @@ iteration number or other kinds of information in the name.
 
 2) The second function to print a graph is :func:`theano.printing.debugprint(variable_or_function, depth=-1)`
 
->>> theano.printing.debugprint(f.maker.env.outputs[0])
+>>> theano.printing.debugprint(f.maker.fgraph.outputs[0])
  Elemwise{mul,no_inplace} 46950805397392
    2.0 46950805310800
    x 46950804895504

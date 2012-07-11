@@ -28,7 +28,7 @@ def test_shape_i():
     x = cuda.ftensor3()
     v = cuda.CudaNdarray(numpy.zeros((3,4,5),dtype='float32'))
     f = theano.function([x],x.shape[1])
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert f(v)==4
     if theano.config.mode!='FAST_COMPILE':
         assert len(topo)==1
@@ -38,7 +38,7 @@ def test_shape():
     x = cuda.ftensor3()
     v = cuda.CudaNdarray(numpy.zeros((3,4,5),dtype='float32'))
     f = theano.function([x],x.shape)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert numpy.all(f(v)==(3,4,5))
     if theano.config.mode!='FAST_COMPILE':
         assert len(topo)==4
@@ -55,16 +55,16 @@ def test_softmax_optimizations():
 
     xe = op(x, one_of_n)
 
-    env = theano.gof.Env(
+    fgraph = theano.gof.FunctionGraph(
         [x, one_of_n],
         [op(softmax(x), one_of_n)])
-    assert env.outputs[0].owner.op == op
+    assert fgraph.outputs[0].owner.op == op
 
-    mode_with_gpu.optimizer.optimize(env)
+    mode_with_gpu.optimizer.optimize(fgraph)
 
-    assert str(env.outputs[0].owner.op) == 'OutputGuard'
-    assert env.outputs[0].owner.inputs[0].owner.op == cuda.host_from_gpu
-    assert env.outputs[0].owner.inputs[0].owner.inputs[0].owner.op == cuda.nnet.gpu_crossentropy_softmax_argmax_1hot_with_bias
+    assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
+    assert fgraph.outputs[0].owner.inputs[0].owner.op == cuda.host_from_gpu
+    assert fgraph.outputs[0].owner.inputs[0].owner.inputs[0].owner.op == cuda.nnet.gpu_crossentropy_softmax_argmax_1hot_with_bias
 
 def test_may_share_memory_cuda():
     from theano.misc.may_share_memory import may_share_memory

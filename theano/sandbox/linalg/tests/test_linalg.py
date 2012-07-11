@@ -95,8 +95,8 @@ def test_cholesky_and_cholesky_grad_shape():
         f_chol = theano.function([x], l.shape)
         g = tensor.grad(l.sum(), x)
         f_cholgrad = theano.function([x], g.shape)
-        topo_chol = f_chol.maker.env.toposort()
-        topo_cholgrad = f_cholgrad.maker.env.toposort()
+        topo_chol = f_chol.maker.fgraph.toposort()
+        topo_cholgrad = f_cholgrad.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
             assert sum([node.op.__class__ == Cholesky
                         for node in topo_chol]) == 0
@@ -285,7 +285,7 @@ def test_alloc_diag():
 
     # Test infer_shape
     f = theano.function([x], g.shape)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     if config.mode != 'FAST_COMPILE':
         assert sum([node.op.__class__ == AllocDiag for node in topo]) == 0
     for shp in [5, 0, 1]:
@@ -357,7 +357,7 @@ def test_extract_diag():
 
     # Test infer_shape
     f = theano.function([x], g.shape)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     if config.mode != 'FAST_COMPILE':
         assert sum([node.op.__class__ == ExtractDiag for node in topo]) == 0
     for shp in [(2, 3), (3, 2), (3, 3)]:

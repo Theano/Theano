@@ -44,7 +44,7 @@ the correct symbolic gradient.
 
     .. code-block:: python
 
-        pp(f.maker.env.outputs[0])
+        pp(f.maker.fgraph.outputs[0])
         '(2.0 * x)'
 
     After optimization there is only one Apply node left in the graph, which

@@ -108,7 +108,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
                   updates=[(p, p - g) for p, g in izip(params, gparams)])
 
     if 0:
-        for i, n in enumerate(train.maker.env.toposort()):
+        for i, n in enumerate(train.maker.fgraph.toposort()):
             print i, n
 
     xval = my_rand(n_batch, n_in)
@@ -202,7 +202,7 @@ def run_conv_nnet1(use_gpu):
     #print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-#    for i, n in enumerate(train.maker.env.toposort()):
+#    for i, n in enumerate(train.maker.fgraph.toposort()):
 #        print i, n
 
     xval = my_rand(*shape_img)
@@ -291,7 +291,7 @@ def run_conv_nnet2(use_gpu): # pretend we are training LeNet for MNIST
     #print 'building pfunc ...'
     train = pfunc([x,y,lr], [loss], mode=mode, updates=[(p, p-g) for p,g in zip(params, gparams)])
 
-#    for i, n in enumerate(train.maker.env.toposort()):
+#    for i, n in enumerate(train.maker.fgraph.toposort()):
 #        print i, n
 
     xval = my_rand(*shape_img)
@@ -389,7 +389,7 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
         theano.printing.debugprint(train)
     if use_gpu:
         # Check that GpuConv is used
-        topo = train.maker.env.toposort()
+        topo = train.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, tcn.blas.GpuConv)]) > 0
 
     shape_target = (n_batch,n_out)

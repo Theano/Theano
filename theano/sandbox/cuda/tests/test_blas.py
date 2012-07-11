@@ -89,7 +89,7 @@ def test_dot22scalar():
         f2 = theano.function(
                 [a, b],
                 tensor.dot(a, b) * numpy.asarray(4, 'float32'))
-        t = f.maker.env.toposort()
+        t = f.maker.fgraph.toposort()
         assert len(t) == 4
         assert isinstance(t[0].op, tcn.GpuFromHost)
         assert isinstance(t[1].op, tcn.GpuFromHost)
@@ -100,7 +100,7 @@ def test_dot22scalar():
         f = theano.function([a, b, scalar], tensor.dot(a, b) * scalar,
                 mode=mode_with_gpu)
         f2 = theano.function([a, b, scalar], tensor.dot(a, b) * scalar)
-        t = f.maker.env.toposort()
+        t = f.maker.fgraph.toposort()
         assert len(t) == 4
         assert isinstance(t[0].op, tcn.GpuFromHost)
         assert isinstance(t[1].op, tcn.GpuFromHost)
@@ -127,7 +127,7 @@ def test_gemm():
         f = pfunc([b, c], [], updates=[(a, tensor.dot(a, b) + tensor.exp(c))],
                 mode=mode_with_gpu)
         assert any([node.op == tcn.blas.gpu_gemm_inplace
-            for node in f.maker.env.toposort()])
+            for node in f.maker.fgraph.toposort()])
 
         bval = my_rand(*b_shp)
         cval = my_rand(a_shp[0], b_shp[1])
@@ -170,7 +170,7 @@ def test_gemm_no_inplace():
                 mode=mode_with_gpu)
 
         assert any([node.op == tcn.blas.gpu_gemm_no_inplace
-            for node in f.maker.env.toposort()])
+            for node in f.maker.fgraph.toposort()])
         bval = my_rand(*b_shp)
         bval2 = my_rand(*b_shp)
         rval = f(bval, bval2)
@@ -303,9 +303,9 @@ def test_downsample():
                         mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMax)
-                    for node in f.maker.env.toposort()])
+                    for node in f.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, DownsampleFactorMax)
-                    for node in f2.maker.env.toposort()])
+                    for node in f2.maker.fgraph.toposort()])
                 assert numpy.allclose(f(), f2())
 
                 # The grad is too slow on GT220 GPU
@@ -328,9 +328,9 @@ def test_downsample():
                         mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGrad)
-                            for node in g.maker.env.toposort()])
+                            for node in g.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
-                            for node in g2.maker.env.toposort()])
+                            for node in g2.maker.fgraph.toposort()])
                 assert numpy.allclose(g(), g2()), shp
 
                 # We already check that the gpu version return
@@ -397,9 +397,9 @@ class TestVectorMatrixDot(TestCase):
         assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f.maker.env.toposort()]) == 1
+                    gpu_f.maker.fgraph.toposort()]) == 1
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f2.maker.env.toposort()]) == 1
+                    gpu_f2.maker.fgraph.toposort()]) == 1
 
         # Check double-strided m
         m.set_value(
@@ -426,9 +426,9 @@ class TestVectorMatrixDot(TestCase):
         assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f.maker.env.toposort()]) == 1
+                    gpu_f.maker.fgraph.toposort()]) == 1
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f2.maker.env.toposort()]) == 1
+                    gpu_f2.maker.fgraph.toposort()]) == 1
 
     def test_gemv1(self):
         ''' test vector1+dot(matrix,vector2) '''
@@ -452,9 +452,9 @@ class TestVectorMatrixDot(TestCase):
         assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f2.maker.env.toposort()]) == 1
+                    gpu_f2.maker.fgraph.toposort()]) == 1
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f.maker.env.toposort()]) == 1
+                    gpu_f.maker.fgraph.toposort()]) == 1
 
     def test_gemv2(self):
         ''' test vector1+dot(vector2,matrix) '''
@@ -477,9 +477,9 @@ class TestVectorMatrixDot(TestCase):
         assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f2.maker.env.toposort()]) == 1
+                    gpu_f2.maker.fgraph.toposort()]) == 1
         assert sum([node.op is gpu_gemv_inplace for node in
-                    gpu_f.maker.env.toposort()]) == 1
+                    gpu_f.maker.fgraph.toposort()]) == 1
 
 
 class TestGpuGer(TestGer):

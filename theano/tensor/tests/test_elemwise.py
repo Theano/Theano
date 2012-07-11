@@ -19,8 +19,8 @@ from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
 from theano.tests import unittest_tools
 
 
-def Env(i, o):
-    e = gof.Env(i, o)
+def FunctionGraph(i, o):
+    e = gof.FunctionGraph(i, o)
     return e
 
 
@@ -40,12 +40,12 @@ class test_DimShuffle(unittest.TestCase):
             ib = [(entry == 1) for entry in xsh]
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-            f = copy(linker).accept(Env([x], [e])).make_function()
+            f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
             #test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-            f = copy(linker).accept(Env([x], [e.shape])).make_function()
+            f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
             assert all(f(numpy.ones(xsh))) == all(zsh)
 
         # Test when we drop a axis that is not broadcastable
@@ -57,7 +57,7 @@ class test_DimShuffle(unittest.TestCase):
         ib = [True, True, False]
         x = TensorType('float64', ib)('x')
         e = DimShuffle(ib, (1, 2))(x)
-        f = copy(linker).accept(Env([x], [e.shape])).make_function()
+        f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
         self.assertRaises(TypeError, f, numpy.ones((2, 1, 4)))
 
         # Test that we can't take a dimensions multiple time
@@ -92,7 +92,7 @@ class test_Broadcast(unittest.TestCase):
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(scalar.add)(x, y)
-            f = copy(linker).accept(Env([x, y], [e])).make_function()
+            f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
@@ -105,7 +105,7 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.add)(x, y)
-                f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
                 assert tuple(f(xv, yv)) == tuple(zv.shape)
 
     def with_linker_inplace(self, linker):
@@ -120,7 +120,7 @@ class test_Broadcast(unittest.TestCase):
             x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
             y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
             e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
-            f = copy(linker).accept(Env([x, y], [e])).make_function()
+            f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
             yv = numpy.asarray(numpy.random.rand(*ysh))
             zv = xv + yv
@@ -134,7 +134,7 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
-                f = copy(linker).accept(Env([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
                 zv = xv + yv
@@ -159,7 +159,7 @@ class test_Broadcast(unittest.TestCase):
         x = TensorType('float64', [0, 0])('x')
         y = TensorType('float64', [1, 1])('y')
         e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
-        f = gof.CLinker().accept(Env([x, y], [e])).make_function()
+        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
         xv = numpy.ones((5, 5))
         yv = numpy.random.rand(1, 1)
         f(xv, yv)
@@ -169,7 +169,7 @@ class test_Broadcast(unittest.TestCase):
         x = TensorType('float64', [0, 0, 0, 0, 0])('x')
         y = TensorType('float64', [0, 0, 0, 0, 0])('y')
         e = Elemwise(scalar.add)(x, y)
-        f = gof.CLinker().accept(Env([x, y], [e])).make_function()
+        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
         xv = numpy.random.rand(2, 2, 2, 2, 2)
         yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
         zv = xv + yv
@@ -178,7 +178,7 @@ class test_Broadcast(unittest.TestCase):
     def test_same_inputs(self):
         x = TensorType('float64', [0, 0])('x')
         e = Elemwise(scalar.add)(x, x)
-        f = gof.CLinker().accept(Env([x], [e])).make_function()
+        f = gof.CLinker().accept(FunctionGraph([x], [e])).make_function()
         xv = numpy.random.rand(2, 2)
         zv = xv + xv
         assert (f(xv) == zv).all()
@@ -216,7 +216,7 @@ class test_CAReduce(unittest.TestCase):
             if tosum is None:
                 tosum = range(len(xsh))
 
-            f = copy(linker).accept(Env([x], [e])).make_function()
+            f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
 
             if not "int" in dtype:
@@ -318,7 +318,7 @@ class test_CAReduce(unittest.TestCase):
                     e = tensor_op(x, axis=tosum)
                 if tosum is None:
                     tosum = range(len(xsh))
-                f = copy(linker).accept(Env([x], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
                 if not(scalar_op in [scalar.maximum, scalar.minimum] and
                        ((xsh == () or numpy.prod(xsh) == 0))):
                     assert all(f(xv) == zv.shape)

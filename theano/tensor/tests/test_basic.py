@@ -1516,10 +1516,10 @@ class TestAlloc(unittest.TestCase):
             grad_derp = theano.grad(derp, some_vector)
             fgrad = theano.function([some_vector], grad_derp,
                                     mode=self.mode)
-            topo_obj = fobj.maker.env.toposort()
+            topo_obj = fobj.maker.fgraph.toposort()
             assert numpy.sum([isinstance(node.op, alloc)
                               for node in topo_obj]) == 0
-            topo_grad = fgrad.maker.env.toposort()
+            topo_grad = fgrad.maker.fgraph.toposort()
 
             #print subtensor
             #theano.printing.debugprint(fgrad)
@@ -1536,7 +1536,7 @@ class TestAlloc(unittest.TestCase):
             out = alloc()(val, 50, 60)
 
             f = theano.function([], out)
-            topo = f.maker.env.toposort()
+            topo = f.maker.fgraph.toposort()
             assert numpy.sum([isinstance(node.op, alloc)
                               for node in topo]) == 1
             assert not isinstance(topo[0].op,
@@ -1582,7 +1582,7 @@ def test_identity():
         f = function([sym], tensor_copy(sym))
         assert numpy.all(obj == f(obj))
         assert obj.dtype == f(obj).dtype
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo)==1
         if theano.config.mode != 'FAST_COMPILE':
             assert isinstance(topo[0].op, theano.compile.function_module.DeepCopyOp)
@@ -2313,7 +2313,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def eval_output_and_check(self, t, list=False):
         f = inplace_func([], t, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
         if not list:
@@ -2584,7 +2584,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         gn = grad(sum(exp(t)), n)
 
         f = inplace_func([], gn, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         if not self.fast_compile:
             assert len(topo_)==6
@@ -2602,7 +2602,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         t = n[1,0]
         gn = grad(sum(exp(t)), n)
         f = self.function([], gn)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         if not self.fast_compile:
             assert len(topo_)==6
@@ -2675,7 +2675,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = self.function([l], t, op=self.adv_sub1)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
@@ -2690,7 +2690,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = self.function([idx], t, op=self.adv_sub1)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_)==1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
@@ -2715,7 +2715,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             for t_shape, shape in zip(t_shapes,shapes):
                 assert numpy.all(t_shape == shape)
             assert tensor.Subtensor not in [ x.op for x in
-                                           f.maker.env.toposort() ]
+                                           f.maker.fgraph.toposort() ]
 
     def test_shape_i_scalar(self):
         # Each axis is treated independently by shape_i/shape operators
@@ -2732,7 +2732,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                           mode=mode_opt,
                           op=self.ops,
                           N=0)
-        assert tensor.Subtensor not in [x.op for x in f.maker.env.toposort()]
+        assert tensor.Subtensor not in [x.op for x in f.maker.fgraph.toposort()]
         for start in [-8,-5,-4,-1,0,1,4,5,8]:
             for stop in [-8,-5,-4,-1,0,1,4,5,8]:
                 for step in [-3,-1,2,5]:
@@ -2894,7 +2894,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             t = n[idx_]
             gn = grad(sum(exp(t)), n)
             f = self.function([], [gn, gn.shape], op=self.adv_incsub1)
-            topo = f.maker.env.toposort()
+            topo = f.maker.fgraph.toposort()
             if not self.fast_compile:
                 assert any([isinstance(node.op, self.adv_incsub1) and node.op.inplace for node in topo])
             else:
@@ -3209,7 +3209,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def eval_outputs_and_check_join(self, outputs):
         f = theano.function([], outputs, self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
         variables = f()
         if isinstance(variables, (tuple, list)) and len(variables) == 1:
@@ -3221,7 +3221,7 @@ class T_Join_and_Split(unittest.TestCase):
         if make_vector_op is None:
             make_vector_op = self.make_vector_op
         f = theano.function([], outputs, self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, make_vector_op)]
         variables = f()
         if isinstance(variables, (tuple, list)) and len(variables) == 1:
@@ -3268,10 +3268,10 @@ class T_Join_and_Split(unittest.TestCase):
         val = f(1, 2)
         #print val
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
-        assert f.maker.env.outputs[0].dtype == self.floatX
+        assert f.maker.fgraph.outputs[0].dtype == self.floatX
 
     def test_stack_scalar_make_vector_dtype(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
@@ -3282,10 +3282,10 @@ class T_Join_and_Split(unittest.TestCase):
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
-        assert f.maker.env.outputs[0].dtype == 'int64'
+        assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_stack_scalar_make_vector_constant(self):
         '''Test that calling stack() on scalars instantiates MakeVector,
@@ -3298,10 +3298,10 @@ class T_Join_and_Split(unittest.TestCase):
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [10, 1, 2, 3]))
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
-        assert f.maker.env.outputs[0].dtype == 'int64'
+        assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
@@ -3310,7 +3310,7 @@ class T_Join_and_Split(unittest.TestCase):
         c = tensor.concatenate([m])
         f = theano.function(inputs=[m], outputs=[c],
                             mode=self.mode.including('local_join_1'))
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, theano.compile.DeepCopyOp)
 
@@ -3432,7 +3432,7 @@ class T_Join_and_Split(unittest.TestCase):
         s = join(ax, a, b)
 
         f = inplace_func([ax], [s], mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         want = numpy.array([[1, 2, 3], [4, 5, 6], [1, 2, 3], [4, 5, 6]])
@@ -3455,7 +3455,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         a, b, c = triple
         f = function([x, y], [b, c, a], mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, opt.MakeVector)]
 
         assert numpy.allclose(f(4, 5), [5, 9, 4])
@@ -3489,7 +3489,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert not c.type.broadcastable[1]
 
         f = function([], c, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
@@ -3515,7 +3515,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert not c.type.broadcastable[0]
 
         f = function([], c, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
@@ -3547,7 +3547,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert not c.type.broadcastable[0]
 
         f = function([], c, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
@@ -3567,7 +3567,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert not b.type.broadcastable[1]
 
         f = function([], b, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert not [True for node in topo if isinstance(node.op, self.join_op)]
 
@@ -3599,7 +3599,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert hb[0] and hb[1] and hb[2] and hb[3] and not hb[4] and hb[5]
 
         f = function([a, b, c, d, e], f, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
@@ -3642,25 +3642,25 @@ class T_Join_and_Split(unittest.TestCase):
         # Test dim 0
         z = join(0, x1, x2, x3)
         f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
 
         out = f(get_mat(3, 4), get_mat(2, 4), get_mat(1, 4))
         assert (out == [6, 4]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
-            for node in f.maker.env.toposort():
+            for node in f.maker.fgraph.toposort():
                 assert not isinstance(node.op, tensor.Join)
 
         # Test dim 1
         z = join(1, x1, x2, x3)
         f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
 
         out = f( get_mat(3, 4), get_mat(3, 4), get_mat(3, 5))
         assert (out == [3, 13]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
-            for node in f.maker.env.toposort():
+            for node in f.maker.fgraph.toposort():
                 assert not isinstance(node.op, tensor.Join)
 
         # Test hide error
@@ -4283,14 +4283,14 @@ class T_reshape(unittest.TestCase):
         c = reshape(b, as_tensor_variable(6), ndim=1)
         f = inplace_func([b], c)
         assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-        #print f.maker.env.toposort()
+        #print f.maker.fgraph.toposort()
         #check that we remove the useless reshape
 
         #basic to 1 dim(with list)
         c = reshape(b, (as_tensor_variable(6),), ndim=1)
         f = inplace_func([b], c)
         assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
-        #print f.maker.env.toposort()
+        #print f.maker.fgraph.toposort()
         #check that we remove the useless reshape
 
         #basic to shape object of same ndim
@@ -4329,9 +4329,9 @@ class T_reshape(unittest.TestCase):
         #test infer_shape
         f_sub = function([a,b], (c-b).shape)
         if config.mode=="FAST_COMPILE":
-            assert len(f_sub.maker.env.toposort())==3
+            assert len(f_sub.maker.fgraph.toposort())==3
         else:
-            topo = f_sub.maker.env.toposort()
+            topo = f_sub.maker.fgraph.toposort()
             assert len(topo)==1
             topo[0].op == theano.compile.function_module.deep_copy_op
             #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
@@ -4341,7 +4341,7 @@ class T_reshape(unittest.TestCase):
         c = reshape(b, (b.shape[0],b.shape[1],1))
         f = inplace_func([b], c)
         assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
-        assert f.maker.env.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
+        assert f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
 
         assert numpy.all(f_sub(a_val,b_val)==[2,3])
 
@@ -4736,7 +4736,7 @@ class TestARange(unittest.TestCase):
             mode = 'FAST_RUN'
         mode = compile.mode.get_mode(mode).excluding('fusion')
         f = function([start, stop, step], out.shape, mode=mode)
-        assert len(f.maker.env.toposort())==7
+        assert len(f.maker.fgraph.toposort())==7
 #7 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{float64}}(Elemwise{sub,no_inplace}.0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, step), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
 
         if config.cast_policy == 'custom':
@@ -4758,7 +4758,7 @@ class TestARange(unittest.TestCase):
 
         out = arange(start, stop, 1)
         f = function([start, stop], out.shape, mode=mode)
-        assert len(f.maker.env.toposort())==4
+        assert len(f.maker.fgraph.toposort())==4
 #4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
         if config.cast_policy == 'custom':
             assert out.dtype == start.type.dtype
@@ -4776,7 +4776,7 @@ class TestARange(unittest.TestCase):
 
         out = arange(0, stop, 1)
         f = function([stop], out.shape, mode=mode)
-        assert len(f.maker.env.toposort())==2
+        assert len(f.maker.fgraph.toposort())==2
         #[Elemwise{Cast{int64}}(stop), MakeVector(Elemwise{Cast{int64}}.0)]
 
         if config.cast_policy == 'custom':
@@ -5595,7 +5595,7 @@ class test_broadcast(unittest.TestCase):
         y = addbroadcast(x, 0)
         f = theano.function([x], y.shape)
         assert (f(numpy.zeros((1, 5), dtype=config.floatX)) == [1, 5]).all()
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 2
             assert isinstance(topo[0].op, opt.Shape_i)
@@ -5605,7 +5605,7 @@ class test_broadcast(unittest.TestCase):
         y = unbroadcast(x, 0)
         f = theano.function([x], y.shape)
         assert (f(numpy.zeros((2, 5), dtype=config.floatX)) == [2, 5]).all()
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 3
             assert isinstance(topo[0].op, opt.Shape_i)
@@ -5616,7 +5616,7 @@ class test_broadcast(unittest.TestCase):
         y = unbroadcast(x, 0)
         f = theano.function([x], y.shape)
         assert (f(numpy.zeros((1, 5), dtype=config.floatX)) == [1, 5]).all()
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert len(topo) == 2
             assert isinstance(topo[0].op, opt.Shape_i)
@@ -5640,7 +5640,7 @@ def test_mod():
     as Python. That is what we want.
     """
     x, y = fscalars('xy')
-    fn = gof.DualLinker().accept(gof.Env([x, y], [x % y])).make_function()
+    fn = gof.DualLinker().accept(gof.FunctionGraph([x, y], [x % y])).make_function()
     for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
                 (1, 2), (-1, 2), (1, -2), (-1, -2),
                 (5, 3), (-5, 3), (5, -3), (-5, -3)
@@ -5688,7 +5688,7 @@ def test_unalign():
 
     av, bv = tensor.vectors('ab')
     f = theano.function([av, bv], 2 * av + 3 * bv)
-    f.maker.env.toposort()
+    f.maker.fgraph.toposort()
     # FAST_COMPILE use the python code that support unaligned data
     # The DebugMode make a copy of the inputs, so they will be aligned.
     should_raise = theano.config.mode not in ["FAST_COMPILE", "DebugMode",

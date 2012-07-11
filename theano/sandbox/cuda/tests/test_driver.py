@@ -26,7 +26,7 @@ def test_nvidia_driver1():
     A = cuda.shared_constructor(a)
     f = theano.function(inputs=[], outputs=A.sum(), mode=mode_with_gpu,
                         profile=False)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert len(topo) == 2
     assert sum(isinstance(node.op, B.GpuSum) for node in topo) == 1
     if not numpy.allclose(f(), a.sum()):
@@ -59,7 +59,7 @@ def test_nvidia_driver3():
     var = cuda.fvector()
     f = theano.function([var], var + 1, mode=mode_with_gpu,
                         profile=False)
-    topo = f.maker.env.toposort()
+    topo = f.maker.fgraph.toposort()
     assert any([isinstance(node.op, cuda.GpuElemwise) for node in topo])
     assert theano.sandbox.cuda.use.device_number is not None
 

@@ -38,9 +38,9 @@ class TestCallbacks(unittest.TestCase):
                     linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
-        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort())
+        assert sum(self.n_callbacks.values()) == len(f.maker.fgraph.toposort())
         f(1, 2, 3)
-        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort()) * 2
+        assert sum(self.n_callbacks.values()) == len(f.maker.fgraph.toposort()) * 2
 
 
     def test_callback_with_ifelse(self):

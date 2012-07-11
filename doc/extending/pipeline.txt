@@ -43,14 +43,14 @@ The subgraph given by the end user is wrapped in a structure called
 *FunctionGraph*. That structure defines several hooks on adding and
 removing (pruning) nodes as well as on modifying links between nodes
 (for example, modifying an input of an :ref:`apply` node) (see the
-article about :ref:`libdoc_gof_env` for more information).
+article about :ref:`libdoc_gof_fgraph` for more information).
 
 FunctionGraph provides a method to change the input of an Apply node from one
 Variable to another and a more high-level method to replace a Variable
 with another. This is the structure that :ref:`Optimizers
 <optimization>` work on.
 
-Some relevant :ref:`Features <libdoc_gof_envfeature>` are typically added to the
+Some relevant :ref:`Features <libdoc_gof_fgraphfeature>` are typically added to the
 FunctionGraph, namely to prevent any optimization from operating inplace on
 inputs declared as immutable.
 

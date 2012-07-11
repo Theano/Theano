@@ -247,7 +247,7 @@ class TestScan(unittest.TestCase):
                                        allow_input_downcast=True)
 
                 if n_steps is not None and abs(n_steps) == 1:
-                    all_nodes = my_f.maker.env.toposort()
+                    all_nodes = my_f.maker.fgraph.toposort()
                     assert len([x for x in all_nodes
                                 if isinstance(x.op, ScanOp)]) == 0
                 print >>sys.stderr, '   n_steps', n_steps
@@ -491,7 +491,7 @@ class TestScan(unittest.TestCase):
                                    updates=updates,
                                    allow_input_downcast=True)
             if abs(n_steps) == 1:
-                assert len([x for x in my_f.maker.env.toposort()
+                assert len([x for x in my_f.maker.fgraph.toposort()
                         if isinstance(x.op, scan_module.scan_op.ScanOp)]) == 0
 
             rng = numpy.random.RandomState(utt.fetch_seed())
@@ -532,7 +532,7 @@ class TestScan(unittest.TestCase):
                                updates=updates,
                                allow_input_downcast=True)
         if n_steps is not None and abs(n_steps) == 1:
-            assert len([x for x in my_f.maker.env.toposort()
+            assert len([x for x in my_f.maker.fgraph.toposort()
                     if isinstance(x.op, scan_module.scan_op.ScanOp)]) == 0
         # get random initial values
         rng = numpy.random.RandomState(utt.fetch_seed())

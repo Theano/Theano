@@ -186,7 +186,7 @@ class t_gemm(TestCase):
         #test constant merge with gemm
         f = theano.function([a, b], updates={s: lr1 * T.dot(a, b) +
                                                 l2_reg * lr2 * s},
-                            mode=mode_not_fast_compile).maker.env.toposort()
+                            mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
         # 2e-06)]
@@ -196,7 +196,7 @@ class t_gemm(TestCase):
         #test factored scalar with merge
         f = theano.function([a, b], updates={s: lr1 * (T.dot(a, b) -
                                                         l2_reg * s)},
-                            mode=mode_not_fast_compile).maker.env.toposort()
+                            mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
         # -2e-06)]
@@ -206,7 +206,7 @@ class t_gemm(TestCase):
         #test factored scalar with merge and neg
         f = theano.function([a, b],
                             updates={s: s - lr1 * (s * .0002 + T.dot(a, b))},
-                            mode=mode_not_fast_compile).maker.env.toposort()
+                            mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, -0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
         # 0.999998)]
@@ -395,7 +395,7 @@ def test_res_is_a():
     assert not res_is_a(a + a, T.sqrt)
     assert res_is_a(T.sqrt(a + a), T.sqrt)
 
-    #leave the maxclients  stuff untested because it requires being in an env.
+    #leave the maxclients  stuff untested because it requires being in an fgraph.
 
 
 class t_as_scalar(TestCase):
@@ -477,7 +477,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
                 mode='FAST_RUN',
                 on_unused_input='ignore')
         nb_gemm = 0
-        for node in f.maker.env.nodes:
+        for node in f.maker.fgraph.nodes:
             if node.op == T.dot:
                 raise Failure('dot not changed to gemm_inplace in graph')
             if node.op == _dot22:
@@ -487,11 +487,11 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
         assert nb_gemm == expected_nb_gemm, (nb_gemm, expected_nb_gemm)
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 allow_input_downcast=True, on_unused_input='ignore')
-        for node in g.maker.env.nodes:
+        for node in g.maker.fgraph.nodes:
             if node.op == gemm_inplace:
                 raise Exception('gemm_inplace in original graph')
 
-        graphlen = len(f.maker.env.toposort())
+        graphlen = len(f.maker.fgraph.toposort())
         if max_graphlen and (graphlen <= max_graphlen):
             # theano.printing.debugprint(f)
             assert False, 'graphlen=%i>%i' % (graphlen, max_graphlen)
@@ -510,7 +510,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
             raise Failure('GEMM is computing the wrong output. max_rel_err =',
                           max_abs_err)
     except Failure:
-        for node in f.maker.env.toposort():
+        for node in f.maker.fgraph.toposort():
             print 'GRAPH', node
         raise
 
@@ -560,14 +560,14 @@ def test_gemm_opt_double_gemm():
     try:
         f = inplace_func([Param(ii, mutable=True) for ii in i], o,
                 mode='FAST_RUN', on_unused_input='ignore')
-        for node in f.maker.env.nodes:
+        for node in f.maker.fgraph.nodes:
             if node.op == T.dot:
                 raise Failure('dot in graph')
             if node.op == _dot22:
                 raise Failure('_dot22 in graph')
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 on_unused_input='ignore')
-        #for node in g.maker.env.nodes:
+        #for node in g.maker.fgraph.nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 
         rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
@@ -585,7 +585,7 @@ def test_gemm_opt_double_gemm():
                 'GEMM is computing the wrong output. max_rel_err =',
                 max_abs_err)
     except Failure:
-        for node in f.maker.env.toposort():
+        for node in f.maker.fgraph.toposort():
             print 'GRAPH', node
         raise
 
@@ -665,7 +665,7 @@ def test_upcasting_scalar_nogemm():
     rval = T.dot(w, v) * alpha + t
 
     f = theano.function([w, v, t, alpha], rval)
-    t = f.maker.env.toposort()
+    t = f.maker.fgraph.toposort()
     assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
@@ -682,7 +682,7 @@ def test_upcasting_scalar_nogemm():
     finally:
         config.on_opt_error = on_opt_error
 
-    t = f.maker.env.toposort()
+    t = f.maker.fgraph.toposort()
     assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
@@ -759,11 +759,11 @@ def test_gemm_opt_vector_stuff():
     u, v = T.vector(), T.vector()
 
     f = inplace_func([a, u, v], a + T.dot(u, v), mode='FAST_RUN')
-    if gemm_inplace in [n.op for n in f.maker.env.nodes]:
+    if gemm_inplace in [n.op for n in f.maker.fgraph.nodes]:
         raise Failure('gemm_inplace in graph')
 
     f = inplace_func([a, u, X, Y], a * u + T.dot(X, Y), mode='FAST_RUN')
-    if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
+    if (gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
         raise Failure('gemm_inplace in graph')
 
 
@@ -802,7 +802,7 @@ def test_gemm_unrolled():
 
         unrolled_theano = theano.function([], updates={V: cur_V, H: cur_H},
                                    name='unrolled_theano')
-        nb_dot = sum([1 for node in unrolled_theano.maker.env.toposort()
+        nb_dot = sum([1 for node in unrolled_theano.maker.fgraph.toposort()
                       if isinstance(node.op, (theano.tensor.Dot,
                                               theano.tensor.blas.Dot22,
                                               theano.tensor.blas.Gemm))])
@@ -822,16 +822,16 @@ def test_inplace0():
 
     f = inplace_func([Z, b, R, S],
             [Z * (Z + b * T.dot(R, S).T)], mode='FAST_RUN')
-    if (gemm_inplace in [n.op for n in f.maker.env.nodes]):
-        print pp(f.maker.env.outputs[0])
+    if (gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
+        print pp(f.maker.fgraph.outputs[0])
         raise Failure('gemm_inplace in graph')
-    assert gemm_no_inplace in [n.op for n in f.maker.env.nodes]
+    assert gemm_no_inplace in [n.op for n in f.maker.fgraph.nodes]
 
     # gemm_inplace should be inserted here, to work in-place on Z*c
     f = inplace_func([X, Y, Z, a, b, R, S, c],
             [Z * (c * Z + a * T.dot(X, Y) + b * T.dot(R, S).T)],
             mode='FAST_RUN')
-    if (not gemm_inplace in [n.op for n in f.maker.env.nodes]):
+    if (not gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
         theano.printing.debugprint(f)
         raise Failure('no gemm_inplace in graph')
 
@@ -843,7 +843,7 @@ def test_inplace1():
             [Z + Z + T.dot(X, Y)], mode='FAST_RUN')
     #theano.printing.debugprint(f)
     # it doesn't work inplace because we didn't mark Z as mutable input
-    assert [n.op for n in f.maker.env.nodes] == [gemm_no_inplace]
+    assert [n.op for n in f.maker.fgraph.nodes] == [gemm_no_inplace]
 
 
 def test_dot22():
@@ -852,7 +852,7 @@ def test_dot22():
         for dtype2 in ['float32', 'float64', 'complex64', 'complex128']:
             b = T.matrix(dtype=dtype2)
             f = theano.function([a, b], T.dot(a, b), mode=mode_blas_opt)
-            topo = f.maker.env.toposort()
+            topo = f.maker.fgraph.toposort()
             if dtype1 == dtype2:
                 assert _dot22 in [x.op for x in topo], (dtype1, dtype2)
             else:
@@ -891,7 +891,7 @@ def test_dot22scalar():
                     cst2 = theano.tensor.basic.constant(.1, dtype=dtype4)
 
                     def check_dot22scalar(func, len_topo_scalar=-1):
-                        topo = func.maker.env.toposort()
+                        topo = func.maker.fgraph.toposort()
                         ops = [x.op for x in topo]
                         dtype4_upcast = theano.scalar.upcast(dtype4, dtype1,
                                                              dtype2)
@@ -930,7 +930,7 @@ def test_dot22scalar():
                         if False:
                             f = theano.function([a, b], cst * T.dot(a, b),
                                                 mode=mode_blas_opt)
-                            topo = f.maker.env.toposort()
+                            topo = f.maker.fgraph.toposort()
                             check_dot22scalar(f, 1)
 
                             f(av, bv)
@@ -939,7 +939,7 @@ def test_dot22scalar():
                             f = theano.function([a, b, c],
                                                 cst * c * T.dot(a, b),
                                                 mode=mode_blas_opt)
-                            topo = f.maker.env.toposort()
+                            topo = f.maker.fgraph.toposort()
                             check_dot22scalar(f, 2)
 
                             f(av, bv, cv)
@@ -947,7 +947,7 @@ def test_dot22scalar():
                         f = theano.function([a, b, c],
                                             c * cst * T.dot(a, b),
                                             mode=mode_blas_opt)
-                        topo = f.maker.env.toposort()
+                        topo = f.maker.fgraph.toposort()
                         check_dot22scalar(f, 2)
                         f(av, bv, cv)
 
@@ -957,7 +957,7 @@ def test_dot22scalar():
                         f = theano.function([a, b, c],
                                             cst2 * c * cst * T.dot(a, b),
                                             mode=m2)
-                        topo = f.maker.env.toposort()
+                        topo = f.maker.fgraph.toposort()
                         check_dot22scalar(f, 2)
                         f(av, bv, cv)
 
@@ -965,14 +965,14 @@ def test_dot22scalar():
                             f = theano.function([a, b, c],
                                                 c * cst * a * T.dot(a, b),
                                                 mode=m2)
-                            topo = f.maker.env.toposort()
+                            topo = f.maker.fgraph.toposort()
                             check_dot22scalar(f, 2)
                             f(sv, sv, sv)
 
                             f = theano.function([a, b, c],
                                                 cst * c * a * T.dot(a, b),
                                                 mode=mode_blas_opt)
-                            topo = f.maker.env.toposort()
+                            topo = f.maker.fgraph.toposort()
                             #currently the canonizer don't always
                             # merge all Mul together...  dot22scalar
                             # optimizer does not do a recursive search
@@ -988,7 +988,7 @@ def test_dot22scalar():
                             f = theano.function([a, b, c],
                                                 c * a * cst * T.dot(a, b),
                                                 mode=m2)
-                            topo = f.maker.env.toposort()
+                            topo = f.maker.fgraph.toposort()
                             check_dot22scalar(f, 2)
                             f(sv, sv, sv)
 
@@ -1009,15 +1009,15 @@ def test_dot22scalar_cast():
     for scalar_int_type in T.int_dtypes:
         y = T.scalar(dtype=scalar_int_type)
         f = theano.function([A, y], T.dot(A, A) * y, mode=mode_blas_opt)
-        assert _dot22scalar in [x.op for x in f.maker.env.toposort()]
+        assert _dot22scalar in [x.op for x in f.maker.fgraph.toposort()]
     A = T.fmatrix()
     for scalar_int_type in T.int_dtypes:
         y = T.scalar(dtype=scalar_int_type)
         f = theano.function([A, y], T.dot(A, A) * y, mode=mode_blas_opt)
         if scalar_int_type in ['int32', 'int64']:
-            assert _dot22 in [x.op for x in f.maker.env.toposort()]
+            assert _dot22 in [x.op for x in f.maker.fgraph.toposort()]
         else:
-            assert _dot22scalar in [x.op for x in f.maker.env.toposort()]
+            assert _dot22scalar in [x.op for x in f.maker.fgraph.toposort()]
 
 
 def test_dot_w_self():
@@ -1112,7 +1112,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
         assert topo[0].op.inplace == False
@@ -1125,7 +1125,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = g.maker.env.toposort()
+        topo = g.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
         if config.mode != 'FAST_COMPILE':
@@ -1163,7 +1163,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
-        topo = f.maker.env.toposort()
+        topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         assert topo[-1].op.inplace == False
 
@@ -1175,7 +1175,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
-        topo = g.maker.env.toposort()
+        topo = g.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         if config.mode != 'FAST_COMPILE':
             assert topo[-1].op.inplace == True
@@ -1269,7 +1269,7 @@ class BaseGemv(object):
 
         oy_func = theano.function([], oy, mode=self.mode)
 
-        topo = oy_func.maker.env.toposort()
+        topo = oy_func.maker.fgraph.toposort()
         self.assertFunctionContains1(oy_func, self.gemv)
 
         oy_val = oy_func()
@@ -1444,7 +1444,7 @@ class BaseGemv(object):
         # then scaled by alpha and to t with a fused elemwise.
         n_gemvs = 0
         #theano.printing.debugprint(f, print_type=True)
-        for node in f.maker.env.toposort():
+        for node in f.maker.fgraph.toposort():
             if node.op == self.gemv_inplace:
                 n_gemvs += 1
                 assert node.outputs[0].dtype == 'float32'
