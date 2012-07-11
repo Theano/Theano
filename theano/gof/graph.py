@@ -12,6 +12,7 @@ __docformat__ = "restructuredtext en"
 from copy import copy
 
 import theano
+import warnings
 from theano.gof import utils
 from theano.gof.python25 import deque
 
@@ -356,7 +357,7 @@ class Variable(utils.object2):
                                   self.__class__.__name__)
 
 
-	@property
+    @property
     def env(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
         return self.fgraph
