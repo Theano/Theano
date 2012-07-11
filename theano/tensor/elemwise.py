@@ -1594,8 +1594,9 @@ class Sum(CAReduceDtype):
             else:
                 new_dims.append(i)
                 i += 1
-        return Elemwise(scalar.second)(
-                        x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
+        ds_op = DimShuffle(gz.type.broadcastable, new_dims)
+        gx = Elemwise(scalar.second)(x, ds_op(gz).astype(x.dtype))
+        return [gx]
 
     def R_op(self, inputs, eval_points):
         # There is just one element in inputs and eval_points, the axis are
