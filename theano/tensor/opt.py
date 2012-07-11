@@ -3140,16 +3140,34 @@ def local_cut_useless_reduce(node):
 @gof.local_optimizer([])
 def local_sum_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
-    if isinstance(node.op, T.CAReduce) and node.op.axis is not None:
+    if isinstance(node.op, T.CAReduce):
         reduced, = node.inputs
-        axis = list(node.op.axis)
-        cuttable = [a for a in axis if reduced.broadcastable[a]]
-        if cuttable == axis:
-            # -- in this case we can remove the reduction completely
-            pattern = [p for p in range(reduced.ndim) if p not in cuttable]
-            rval = reduced.dimshuffle(*pattern)
-            return [rval]
-
+        odtype = node.outputs[0].dtype
+        if node.op.axis is None:
+            if all(reduced.broadcastable):
+                return [reduced.dimshuffle().astype(odtype)]
+        else:
+            axis = list(node.op.axis)
+            cuttable = [a for a in axis if reduced.broadcastable[a]]
+            if cuttable:
+                # -- we can remove some axes of summation,
+                #    which simplifies the codegen for sum, especially on GPU
+                new_axis = []
+                pattern = []
+                ii = 0
+                for p in range(reduced.ndim):
+                    if p not in cuttable:
+                        if p in axis:
+                            new_axis.append(ii)
+                        pattern.append(p)
+                        ii += 1
+                new_reduced = reduced.dimshuffle(*pattern)
+                if new_axis:
+                    new_op = node.op.__class__(axis=new_axis)
+                    return [new_op(new_reduced)]
+                else:
+                    # -- in this case we can remove the reduction completely
+                    return [new_reduced.astype(odtype)]
 
 @register_specialize
 @gof.local_optimizer([])

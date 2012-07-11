@@ -46,6 +46,7 @@ from theano.tensor import (
         )
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
+from theano.compile.mode import optdb
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
@@ -3287,6 +3288,51 @@ class T_local_sum(unittest.TestCase):
             f = theano.function([x], y)
         finally:
             config.on_opt_error = backup
+
+    def test_local_sum_broadcast_all_0(self):
+        optimizer = optdb.query(self.mode._optimizer)
+
+        x = T.TensorType('int64', (True, True, True))()
+        env = Env([x], [x.sum()])
+        optimizer.optimize(env)
+        assert not any([
+            isinstance(node.op, T.CAReduce)
+            for node in env.toposort()])
+
+    def test_local_sum_broadcast_all_1(self):
+        optimizer = optdb.query(self.mode._optimizer)
+
+        x = T.TensorType('int64', (True, True))()
+        env = Env([x], [x.sum(axis=[0, 1])])
+        optimizer.optimize(env)
+        assert not any([
+            isinstance(node.op, T.CAReduce)
+            for node in env.toposort()])
+
+    def test_local_sum_broadcast_some_0(self):
+        optimizer = optdb.query(self.mode._optimizer)
+
+        x = T.TensorType('int64', (True, False, True))()
+        env = Env([x], [x.sum(axis=[0, 1])])
+        optimizer.optimize(env)
+        order = env.toposort()
+        assert 1 == sum([isinstance(node.op, T.CAReduce) for node in order])
+        op = order[-2].op
+        assert isinstance(op, T.CAReduce)
+        # -- the leading broadcastable dimension has been dropped
+        #   by the local_sum_broadcastable optimization
+        #   now summation is over the original x's dimension 1.
+        assert order[-2].inputs[0].ndim == 2, order[-2]
+        assert op.axis == (0,), op.axis
+
+    def test_local_sum_broadcast_some_1(self):
+        optimizer = optdb.query(self.mode._optimizer)
+
+        x = T.TensorType('int64', (True, False, True))()
+        env = Env([x], [x.sum(axis=[0, 2])])
+        optimizer.optimize(env)
+        order = env.toposort()
+        assert 0 == sum([isinstance(node.op, T.CAReduce) for node in order])
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):
