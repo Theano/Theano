@@ -956,17 +956,20 @@ class FunctionMaker(object):
 
     @property
     def env(self):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         return self.fgraph
 
     @env.setter
     def env(self,value):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         self.fgraph = value
 
     @env.deleter
     def env(self):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         del self.fgraph
 
 
