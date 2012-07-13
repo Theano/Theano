@@ -2656,6 +2656,11 @@ def round_half_away_from_zero(a):
 def sqr(a):
     """square of a"""
 
+#alias to sqr, included to maintain similarity with numpy interface
+def square(a):
+    """square of a"""
+    return sqr(a)
+
 
 @_scal_elemwise_with_nfunc('sqrt', 1, 1)
 def sqrt(a):
