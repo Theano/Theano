@@ -1410,11 +1410,14 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
 
 def binary_crossentropy(output, target):
     """
-    Compute the crossentropy of binary output wrt binary target.
+    Compute the crossentropy of binary random variables
+    output and target are each expectations of binary random
+    variables; target may be exactly 0 or 1 but output must
+    lie strictly between 0 and 1.
+    @note: we could use the x log y op to support output=0
+    @ and output=1. The gradient would still be undefined though.
     @note: We do not sum, crossentropy is computed by component.
     @todo: Rewrite as a scalar, and then broadcast to tensor.
-    @todo: This is essentially duplicated as cost.cross_entropy
-    @warning: OUTPUT and TARGET are reversed in cost.cross_entropy
     """
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
