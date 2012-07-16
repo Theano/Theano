@@ -954,20 +954,19 @@ class FunctionMaker(object):
         elif isinstance(sinput, SymbolicInput):
             return [None, [sinput]]
 
-    @property
-    def env(self):
+    def env_getter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
         return self.fgraph
 
-    @env.setter
-    def env(self,value):
+    def env_setter(self,value):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
         self.fgraph = value
 
-    @env.deleter
-    def env(self):
+    def env_deleter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'")
         del self.fgraph
+
+    env = property(env_getter, env_setter, env_deleter)
 
 
     @staticmethod
