@@ -4,12 +4,15 @@ graphs.
 """
 __docformat__ = "restructuredtext en"
 
-import sys
 import numpy
 
-from theano.compile import module, In, Component
+from theano.compile import In, Component
 from theano.gof import Container
 from theano.tensor import raw_random
+import warnings
+
+def deprecation_warning():
+    warnings.warn("RandomStreams is deprecated and will be removed in release 0.7. Use shared_randomstreams.RandomStreams or MRG_RandomStreams instead.",stacklevel = 3)
 
 
 class RandomStreamsInstance(object):
@@ -121,7 +124,7 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
 
     """
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, no_warn = False):
         """:type seed: None or int
 
         :param seed: a default seed to initialize the RandomState
@@ -129,6 +132,8 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
         for more details.
 
         """
+        if not no_warn:
+            deprecation_warning()
         super(RandomStreams, self).__init__(no_warn = True)
         self.random_state_variables = []
         self.default_instance_seed = seed
