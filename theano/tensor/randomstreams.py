@@ -129,7 +129,7 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
         for more details.
 
         """
-        super(RandomStreams, self).__init__()
+        super(RandomStreams, self).__init__(no_warn = True)
         self.random_state_variables = []
         self.default_instance_seed = seed
 

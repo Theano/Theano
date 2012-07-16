@@ -404,7 +404,7 @@ def _obj_is_wrappable_as_tensor(x):
 def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor,
-                                _wrap_tensor_into_member)
+                                _wrap_tensor_into_member, no_warn = True)
 
 
 if int(config.tensor.cmp_sloppy) > 1:
