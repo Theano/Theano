@@ -121,20 +121,19 @@ class Apply(utils.object2):
         return self.outputs[do]
 
 
-    @property
-    def env(self):
+    def env_getter(self):
         warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
         return self.fgraph
 
-    @env.setter
-    def env(self,value):
+    def env_setter(self,value):
         warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
         self.fgraph = value
 
-    @env.deleter
-    def env(self):
+    def env_deleter(self):
         warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
         del self.fgraph
+
+    env = property(env_getter, env_setter, env_deleter)
 
 
     out = property(default_output,
@@ -357,20 +356,19 @@ class Variable(utils.object2):
                                   self.__class__.__name__)
 
 
-    @property
-    def env(self):
+    def env_getter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
         return self.fgraph
 
-    @env.setter
-    def env(self,value):
+    def env_setter(self,value):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
         self.fgraph = value
 
-    @env.deleter
-    def env(self):
+    def env_deleter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
         del self.fgraph
+
+    env = property(env_getter, env_setter, env_deleter)
 
 
 
