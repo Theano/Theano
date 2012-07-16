@@ -122,15 +122,18 @@ class Apply(utils.object2):
 
 
     def env_getter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         return self.fgraph
 
     def env_setter(self,value):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         self.fgraph = value
 
     def env_deleter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         del self.fgraph
 
     env = property(env_getter, env_setter, env_deleter)
@@ -357,15 +360,18 @@ class Variable(utils.object2):
 
 
     def env_getter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         return self.fgraph
 
     def env_setter(self,value):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         self.fgraph = value
 
     def env_deleter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'")
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel = 2)
         del self.fgraph
 
     env = property(env_getter, env_setter, env_deleter)
