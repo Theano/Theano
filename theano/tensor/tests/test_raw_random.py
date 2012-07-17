@@ -5,13 +5,14 @@ import numpy as N
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.raw_random import *
-from theano.tensor import raw_random
-
+from theano.tensor import (raw_random, ivector, dvector, iscalar, dcol,
+                           dtensor3)
+from theano.tests import unittest_tools as utt
 from theano import tensor
 
 from theano import compile, config, gof
 
-class T_random_function(unittest.TestCase):
+class T_random_function(utt.InferShapeTester):
     def setUp(self):
         utt.seed_rng()
 
@@ -872,7 +873,184 @@ class T_random_function(unittest.TestCase):
         assert normal(rng_R, avg=tensor.constant(0, dtype='float64'),
                       dtype='float32')[1].dtype == 'float32'
 
+    def setUp(self):
+
+        super(T_random_function, self).setUp()
+
+    def test_infer_shape(self):
+
+        rng_R = random_state_type()
+        rng_R_val = numpy.random.RandomState(utt.fetch_seed())
+
+        # no shape specified, default args
+        post_r, out = uniform(rng_R)
+        self._compile_and_check([rng_R], [out], [rng_R_val],
+                             RandomFunction)
+
+        post_r, out = uniform(rng_R, size=None, ndim=2)
+        self._compile_and_check([rng_R], [out], [rng_R_val],
+                                RandomFunction)
+
+        post_r, out = multinomial(rng_R)
+
+        # ERROR: 'graph contains cycles'
+        """
+        self._compile_and_check([rng_R], [out], [rng_R_val],
+                                RandomFunction)
+        """
+
+        # no shape specified, args have to be broadcasted
+        low = tensor.TensorType(dtype='float64',
+                broadcastable=(False, True, True))()
+        high = tensor.TensorType(dtype='float64',
+                broadcastable=(True, True, True, False))()
+        post_r, out = uniform(rng_R, size=None, ndim=2, low=low, high=high)
+        low_val = [[[3]], [[4]], [[-5]]]
+        high_val = [[[[5, 8]]]]
+        self._compile_and_check([rng_R, low, high], [out],
+                                [rng_R_val, low_val, high_val],
+                                RandomFunction)
+
+        # multinomial, specified shape
+        n = iscalar()
+        pvals = dvector()
+        size_val = (7, 3)
+        n_val = 6
+        pvals_val = [0.2] * 5
+        post_r, out = multinomial(rng_R, size=size_val, n=n, pvals=pvals,
+                                  ndim=2)
+
+        # ERROR: 'graph contains cycles'
+        # see NOTE 1 below
+        """
+        self._compile_and_check([rng_R, n, pvals], [out],
+                                [rng_R_val, n_val, pvals_val],
+                                RandomFunction)
+        """
+
+        # uniform vector low and high
+        low = dvector()
+        high = dvector()
+        post_r, out = uniform(rng_R, low=low, high=1)
+        low_val = [-5, .5, 0, 1]
+        self._compile_and_check([rng_R, low], [out], [rng_R_val, low_val],
+                          RandomFunction)
+
+        low_val = [.9]
+        self._compile_and_check([rng_R, low], [out], [rng_R_val, low_val],
+                          RandomFunction)
+
+        post_r, out = uniform(rng_R, low=low, high=high)
+        low_val = [-4., -2]
+        high_val = [-1, 0]
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        low_val = [-4.]
+        high_val = [-1]
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        # uniform broadcasting low and high
+        low = dvector()
+        high = dcol()
+        post_r, out = uniform(rng_R, low=low, high=high)
+        low_val = [-5, .5, 0, 1]
+        high_val = [[1.]]
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        low_val = [.9]
+        high_val = [[1.], [1.1], [1.5]]
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        low_val = [-5, .5, 0, 1]
+        high_val = [[1.], [1.1], [1.5]]
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        # uniform with vector slice
+        low = dvector()
+        high = dvector()
+        post_r, out = uniform(rng_R, low=low, high=high)
+        low_val = [.1, .2, .3]
+        high_val = [1.1, 2.2, 3.3]
+        size_val = (3, )
+        self._compile_and_check([rng_R, low, high], [out],
+                                [rng_R_val, low_val[:-1],
+                                high_val[:-1]], RandomFunction)
+
+        # uniform with explicit size and size implicit in parameters
+        # NOTE 1: Would it be desirable that size could also be supplied
+        # as a Theano variable?
+        post_r, out = uniform(rng_R, size=size_val, low=low, high=high)
+        self._compile_and_check([rng_R, low, high], [out], [rng_R_val, low_val,
+                                high_val], RandomFunction)
+
+        # binomial with vector slice
+        n = ivector()
+        prob = dvector()
+        post_r, out = binomial(rng_R, n=n, p=prob)
+        n_val = [1, 2, 3]
+        prob_val = [.1, .2, .3]
+        size_val = (3, )
+        self._compile_and_check([rng_R, n, prob], [out],
+                                [rng_R_val, n_val[:-1],
+                                prob_val[:-1]], RandomFunction)
+
+        # binomial with explicit size and size implicit in parameters
+        # cf. NOTE 1
+        post_r, out = binomial(rng_R, n=n, p=prob, size=size_val)
+        self._compile_and_check([rng_R, n, prob], [out], [rng_R_val, n_val,
+                                prob_val], RandomFunction)
+
+        # normal with vector slice
+        avg = dvector()
+        std = dvector()
+        post_r, out = normal(rng_R, avg=avg, std=std)
+        avg_val = [1, 2, 3]
+        std_val = [.1, .2, .3]
+        size_val = (3, )
+        self._compile_and_check([rng_R, avg, std], [out],
+                                [rng_R_val, avg_val[:-1],
+                                std_val[:-1]], RandomFunction)
+
+        # normal with explicit size and size implicit in parameters
+        # cf. NOTE 1
+        post_r, out = normal(rng_R, avg=avg, std=std, size=size_val)
+        self._compile_and_check([rng_R, avg, std], [out], [rng_R_val, avg_val,
+                                std_val], RandomFunction)
+
+        # multinomial with tensor-3 probabilities
+        pvals = dtensor3()
+        n = iscalar()
+        post_r, out = multinomial(rng_R, n=n, pvals=pvals, size=(1, -1))
+        pvals_val = [[[.1, .9], [.2, .8], [.3, .7]]]
+        n_val = 9
+
+        # ERROR: 'graph contains cycles'
+        """
+        self._compile_and_check([rng_R, n, pvals], [out],
+                                [rng_R_val, n_val,
+                                pvals_val], RandomFunction)
+
+        post_r, out = multinomial(rng_R, n=n, pvals=pvals, size=(10, 1, -1))
+
+        self._compile_and_check([rng_R, n, pvals], [out],
+                                [rng_R_val, n_val,
+                                pvals_val], RandomFunction)
+        """
+
 
 if __name__ == '__main__':
+
+    """
+
     from theano.tests import main
     main("test_raw_random")
+    """
+
+    t = T_random_function('setUp')
+    t.setUp()
+    t.test_infer_shape()
