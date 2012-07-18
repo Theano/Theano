@@ -2657,6 +2657,10 @@ def sqr(a):
     """square of a"""
 
 
+#alias to sqr, included to maintain similarity with numpy interface
+square = sqr
+
+
 @_scal_elemwise_with_nfunc('sqrt', 1, 1)
 def sqrt(a):
     """square root of a"""
