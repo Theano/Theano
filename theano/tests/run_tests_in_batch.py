@@ -25,14 +25,14 @@ If 'time_profile=True', this script conducts time-profiling of the tests:
        every group of 'batch_size' (100 by default), until all tests have
        been run.
        The results are deposited in the files 'timeprof_sort' and
-       'timeprof_nosort'. Both contain one record for each test and comprise
-       the following fields:
+       'timeprof_nosort' in the current directory. Both contain one record for
+       each test and comprise the following fields:
        - test running-time
        - nosetests sequential test number
        - test name
        - name of class to which test belongs (if any), otherwise full
          information is contained in test name
-       - test outcome ('OK' or 'FAILED')
+       - test outcome ('OK', 'FAILED TEST' or 'FAILED PARSING')
        In 'timeprof_sort', test records are sorted according to run-time
        whereas in 'timeprof_nosort' records are reported according to
        sequential number. The former classification is the main information
@@ -78,6 +78,7 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
 
     If batch_size is None, we use a default value of 100.
     """
+
     if stdout is None:
         stdout = sys.stdout
     if stderr is None:
@@ -101,6 +102,9 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
 
 
 def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
+
+    # Setting aside current working directory for later saving
+    sav_dir = os.getcwd()
     if len(argv) == 1:
         tests_dir = theano.__path__[0]
         other_args = []
@@ -221,7 +225,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
         prof_master_nosort = []
         prof_rawlog = []
         dummy_out = open(os.devnull, 'w')
-        for test_floor in xrange(1, n_tests + 1, batch_size):
+
+        batch_size = 1
+        for test_floor in xrange(250, 251, batch_size):
+        #for test_floor in xrange(1, n_tests + 1, batch_size):
             for test_id in xrange(test_floor, min(test_floor + batch_size,
                                                  n_tests + 1)):
                 proc = subprocess.Popen(
@@ -251,11 +258,11 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                     else:
                         prof_time = 0.
                         prof_pass = 'FAILED TEST'
-                except:
+                except Exception:
                     prof_time = 0
                     prof_id = '#' + str(test_id)
                     prof_test = ('FAILED PARSING, see raw log for details'
-                                'on test')
+                                 'on test')
                     prof_pass = ''
                 prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
                 # appending tuple to master list
@@ -267,12 +274,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                                   key=lambda test: test[0], reverse=True)
 
         # saving results to readable files
-        path_nosort = os.path.join(theano.__path__[0], '..',
-                                   'bin', 'timeprof_nosort')
-        path_sort = os.path.join(theano.__path__[0], '..',
-                                   'bin', 'timeprof_sort')
-        path_rawlog = os.path.join(theano.__path__[0], '..',
-                                   'bin', 'timeprof_rawlog')
+        path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
+        path_sort = os.path.join(sav_dir, 'timeprof_sort')
+        path_rawlog = os.path.join(sav_dir, 'timeprof_rawlog')
         f_nosort = open(path_nosort, 'w')
         f_sort = open(path_sort, 'w')
         f_rawlog = open(path_rawlog, 'w')
