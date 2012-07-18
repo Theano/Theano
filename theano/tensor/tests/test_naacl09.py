@@ -13,8 +13,8 @@ from theano.tests import unittest_tools
 
 def cross_entropy(target, output, axis=1):
     """
-    @todo: This is essentially duplicated as nnet_ops.binary_crossentropy
-    @warning: OUTPUT and TARGET are reversed in nnet_ops.binary_crossentropy
+    @todo: This is essentially duplicated as tensor.nnet.binary_crossentropy
+    @warning: OUTPUT and TARGET are reversed in tensor.nnet.binary_crossentropy
     """
     return -T.mean(target * T.log(output) + (1 - target) * T.log(1 - output), axis=axis)
 def quadratic(target, output, axis=1):
