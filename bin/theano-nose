@@ -13,40 +13,20 @@ It is also used to load the KnownFailure plugin, in order to hide
 KnownFailureTests error messages. Use --without-knownfailure to
 disable that plugin.
 
-There are two additonal local options: '--batch[n=x]' and '--time-profile'.
+There are two additional local options: '--batch[=n]' and '--time-profile'.
 
-If '--batch[n=x]' is used without '--time-profile', this script will call
+If '--batch[=n]' is used without '--time-profile', this script will call
 run_tests_in_batch.py` in order to run the tests by batches, not all at the
-same time. `run_tests_in_batch.py` will in turn call back this script in
-another process. The batches will comprise 100 elements each by default and
-x elements if the option 'n=x' is specified.
+same time. The batches will comprise 100 elements each by default and
+x elements if the option '=n' is specified.
 
 If the '--time-profile' option is used, it will call `run_tests_in_batch.py`
-with the option time_profile=True to conduct time-profiling of the tests: Each
-test will be run and timed separately and the results will be deposited in the
-files 'timeprof_sort' and 'timeprof_nosort' whose location is specified in
-`run_tests_in_batch.py`. If the '--batch n=x' option is also specified,
-notification of the progresses will be made to standard output after every
-group of x tests.  Otherwise, notification will occur after every group of 100
-tests.
+with the option time_profile=True to conduct time-profiling of the tests.
+(See 'help' function below for details.)  If also specified, '--batch[=n]'
+option will be interpreted as an indication of the number of tests to be run
+between notifications of progress to standard output.
 
-The files 'timeprof_sort' and 'timeprof_nosort' both contain one record for
-each test and comprise the following fields:
-- test running-time
-- nosetests sequential test number
-- test name
-- name of class to which test belongs (if any), otherwise full
-  information is contained in test name
-- test outcome ('OK' or 'FAILED')
-
-In 'timeprof_sort', test records are sorted according to running-time whereas in
-'timeprof_nosort' records are sorted according to sequential number. The former
-classification is the main information source for time-profiling. Since tests
-belonging to same or close classes and files have close sequential numbers, the
-latter may be used to identify duration patterns among the tests. A full log is
-also saved as 'timeprof_rawlog''.
- 
-
+`run_tests_in_batch.py` will in turn call back this script in another process
 """
 
 import logging
@@ -63,6 +43,7 @@ def main():
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
         sys.argv.remove(arg)
+    batch_size = None    
     if len(batch_args):
         if len(batch_args) > 1:
             _logger.warn(
@@ -73,23 +54,17 @@ def main():
         elems = batch_arg.split('=', 1)
         if len(elems) == 2:
             batch_size = int(elems[1])
-        else:
-            # Use run_tests_in_batch's default
-            batch_size = None
 
-   # Handle --time_prof arguments
+    # Handle --time_prof arguments
     time_prof_args = [arg for arg in sys.argv if arg=='--time-profile']
     for arg in time_prof_args:
         sys.argv.remove(arg)
             
     # Time-profiling and batch modes
-    from theano.tests import run_tests_in_batch
-    if len(time_prof_args) and len(batch_args):
-        return run_tests_in_batch.main(batch_size=batch_size, time_profile=True)
-    elif len(time_prof_args):
-        return run_tests_in_batch.main(batch_size=None, time_profile=True)
-    elif len(batch_args):
-        return run_tests_in_batch.main(batch_size=batch_size, time_profile=False)
+    if len(time_prof_args) or len(batch_args):
+        from theano.tests import run_tests_in_batch
+        return run_tests_in_batch.main(batch_size=batch_size,
+                            time_profile=len(time_prof_args) > 0)
 
     # Non-batch mode.
     addplugins = []
@@ -126,11 +101,11 @@ def help():
 
             --time-profile:
                 Each test will be run and timed separately and the results will
-                be deposited in the files 'timeprof_sort' and 'timeprof_nosort'
-                whose location is specified in 'run_tests_in_batch.py`. If the
-                '--batch n=x' option is also specified, notification of the
+                be deposited in the files 'timeprof_sort', 'timeprof_nosort'
+                and 'timeprof_rawlog' in the current directory. If the
+                '--batch[=n]' option is also specified, notification of the
                 progresses will be made to standard output after every group of
-                x tests.  Otherwise, notification will occur after every group
+                n tests.  Otherwise, notification will occur after every group
                 of 100 tests.
     
                 The files 'timeprof_sort' and 'timeprof_nosort' both contain one
@@ -140,8 +115,7 @@ def help():
                 - test name
                 - name of class to which test belongs (if any), otherwise full
                   information is contained in test name
-                - name of class to which test belongs
-                - test outcome ('OK' or 'FAILED')
+                - test outcome ('OK', 'FAILED TEST' or 'FAILED PARSING')
     
                 In 'timeprof_sort', test records are sorted according to
                 running-time whereas in 'timeprof_nosort' records are reported
@@ -150,7 +124,6 @@ def help():
                 to same or close classes and files have close sequential, the
                 latter may be used to identify duration patterns among the tests
                 numbers. A full log is also saved as 'timeprof_rawlog'.
-
     
             --help, -h: Displays this help.
 
