@@ -3217,9 +3217,6 @@ def test_speed_rnn():
     # multiplication - the heart of an ESN or RNN.
     #
     import theano.scalar.sharedvar
-    print """Warning: the updates version runs slower than python because by
-    default the blas optimizations don't replace dot with dot22.
-    Why is that?"""
 
     L = 10000
     N = 50
@@ -3267,15 +3264,15 @@ def test_speed_rnn():
                     s_i: s_i + 1,
                     shared_r: s_rinc},
                 mode=theano.Mode(linker='cvm'))
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         f_fn = f.fn
-        print f_fn
+        #print f_fn
         t2 = time.time()
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
         t3 = time.time()
         print 'theano (updates, cvm)', t3 - t2
-        print shared_r.get_value()
+        #print shared_r.get_value()
 
 
 def test_speed_batchrnn():
@@ -3296,9 +3293,6 @@ def test_speed_batchrnn():
     # multiplication - the heart of an ESN or RNN.
     #
     import theano.scalar.sharedvar
-    print """Warning: the updates version runs slower than python because by
-    default the blas optimizations don't replace dot with dot22.
-    Why is that?"""
 
     L = 100
     B = 50
@@ -3333,9 +3327,9 @@ def test_speed_batchrnn():
                                 s_i: s_i + 1,
                                 shared_r: s_rinc},
                 mode=theano.Mode(linker='cvm'))
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         f_fn = f.fn
-        print f_fn
+        #print f_fn
         t2 = time.time()
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
