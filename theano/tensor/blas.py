@@ -1350,6 +1350,7 @@ class GemmOptimizer(Optimizer):
     """Graph optimizer for inserting Gemm operations"""
     def __init__(self):
         Optimizer.__init__(self)
+        self.warned = False
 
     def add_requirements(self, fgraph):
         fgraph.extend(toolbox.ReplaceValidate())
@@ -1398,7 +1399,7 @@ class GemmOptimizer(Optimizer):
                             zip(node.outputs, new_outputs),
                             [old_dot22],
                             reason='GemmOptimizer',
-                            warn=nb_replacement_didn_t_remove == 0
+                            warn=not self.warned
                         )
                         did_something = True
                         nb_replacement += 1
@@ -1406,10 +1407,9 @@ class GemmOptimizer(Optimizer):
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
                         nb_inconsistency_replace += 1
-                        pass
                     except ReplacementDidntRemovedError, e:
                         nb_replacement_didn_t_remove += 1
-                        pass
+                        self.warned = True
             nb_iter += 1
         return (self, nb_iter, nb_replacement, nb_replacement_didn_t_remove,
                 nb_inconsistency_make, nb_inconsistency_replace,

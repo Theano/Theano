@@ -479,10 +479,10 @@ def pydotprint(fct, outfile=None,
                high_contrast=True, cond_highlight=None, colorCodes=None,
                max_label_size=50, scan_graphs=False,
                var_with_name_simple=False,
-               print_output_file=True
+               print_output_file=True,
+               assert_nb_all_strings=-1
                ):
-    """
-    print to a file in png format the graph of op of a compile theano fct.
+    """print to a file in png format the graph of op of a compile theano fct.
 
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
@@ -509,6 +509,10 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
+    :param assert_nb_all_strings: Used for tests. This assert the
+                number of uniq string node in the dot graph. This is
+                used in tests to verify that dot won't merge Theano
+                node.
 
     In the graph, ellipses are Apply Nodes (the execution of an op)
     and boxes are variables.  If variables have names they are used as
@@ -526,6 +530,7 @@ def pydotprint(fct, outfile=None,
     grey boxes are variables that are not outputs and are not used
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
        HostFromGpu)
+
     """
     if colorCodes is None:
         colorCodes = default_colorCodes
@@ -622,6 +627,13 @@ def pydotprint(fct, outfile=None,
                 varstr = varstr + idx
         elif len(varstr) > max_label_size:
             varstr = varstr[:max_label_size - 3] + '...'
+            idx = 1
+            while varstr in all_strings:
+                idx += 1
+                suffix = ' id=' + str(idx)
+                varstr = (varstr[:max_label_size - 3 - len(suffix)] +
+                          '...' +
+                          suffix)
         var_str[var] = varstr
         all_strings.add(varstr)
 
@@ -656,6 +668,13 @@ def pydotprint(fct, outfile=None,
                 applystr = applystr + idx
         elif len(applystr) > max_label_size:
             applystr = applystr[:max_label_size - 3] + '...'
+            idx = 1
+            while applystr in all_strings:
+                idx += 1
+                suffix = ' id=' + str(idx)
+                applystr = (applystr[:max_label_size - 3 - len(suffix)] +
+                            '...' +
+                            suffix)
 
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
@@ -698,10 +717,10 @@ def pydotprint(fct, outfile=None,
         for id, var in enumerate(node.inputs):
             varstr = var_name(var)
             label = str(var.type)
-            if len(label) > max_label_size:
-                label = label[:max_label_size - 3] + '...'
             if len(node.inputs) > 1:
                 label = str(id) + ' ' + label
+            if len(label) > max_label_size:
+                label = label[:max_label_size - 3] + '...'
             if var.owner is None:
                 if high_contrast:
                     g.add_node(pd.Node(varstr,
@@ -751,10 +770,14 @@ def pydotprint(fct, outfile=None,
 
     if not outfile.endswith('.' + format):
         outfile += '.' + format
-    g.write(outfile, prog='dot', format=format)
 
+    g.write(outfile, prog='dot', format=format)
     if print_output_file:
         print 'The output file is available at', outfile
+
+    if assert_nb_all_strings != -1:
+        assert len(all_strings) == assert_nb_all_strings
+
     if scan_graphs:
         scan_ops = [(idx, x) for idx, x in enumerate(fct_fgraph.toposort())
                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
