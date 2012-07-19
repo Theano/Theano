@@ -634,6 +634,9 @@ class Shape_i(T.Op):
             #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
 
+    def infer_shape(self, node, input_shapes):
+        return [()]
+
     def grad(self, inp, grads):
         return [None]
 

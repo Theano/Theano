@@ -29,6 +29,7 @@ from theano.tensor.opt import (
         mul_canonizer,
         out2in,
         Shape_i,
+        Assert
         )
 from theano import tensor
 from theano import tensor as T
@@ -2392,7 +2393,11 @@ class test_shapeoptimizer(unittest.TestCase):
         print f([[1, 2], [2, 3]])
 
 
-class test_assert(unittest.TestCase):
+class test_assert(utt.InferShapeTester):
+
+    def setUp(self):
+        super(test_assert, self).setUp()
+    
     def test0(self):
         x=T.scalar()
         y=T.scalar()
@@ -2448,7 +2453,24 @@ class test_assert(unittest.TestCase):
         assert len(topo[0].inputs)==3
         assert topo[1].op==theano.compile.function_module.deep_copy_op
 
+    def test_infer_shape(self):
 
+        adscal = dscalar()
+        bdscal = dscalar()
+        adscal_val = numpy.random.rand()
+        bdscal_val = numpy.random.rand() + 1
+        out = theano.tensor.opt.assert_(adscal, bdscal)
+        self._compile_and_check([adscal, bdscal], [out],
+                        [adscal_val, bdscal_val], Assert)
+
+        admat = dmatrix()
+        admat_val = numpy.random.rand(3, 4)
+        adscal_val += 1
+        out = theano.tensor.opt.assert_(admat, adscal, bdscal)
+        self._compile_and_check([admat, adscal, bdscal], [out],
+                        [admat_val, adscal_val, bdscal_val], Assert)
+
+        
 def test_local_mul_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -3680,6 +3702,45 @@ def test_local_upcast_elemwise_constant_inputs():
     f = function([s], [tensor.grad(x, s)])
     f([-42, -2.1, -1, -0.5, 0, 0.2, 1, 2, 12])
 
+
+class TestShape_i(utt.InferShapeTester):
+
+    def setUp(self):
+        super(TestShape_i, self).setUp()
+
+    def test_perform(self):
+
+        advec = dvector()
+        advec_val = numpy.random.rand(3)
+        f = function([advec], Shape_i(0)(advec))
+        out = f(advec_val)
+        assert numpy.allclose(out, advec_val.shape[0])
+
+        admat = dmatrix()
+        admat_val = numpy.random.rand(4, 3)
+        for i in xrange(2):
+            f = function([admat], Shape_i(i)(admat))
+            out = f(admat_val)
+            assert numpy.allclose(out, admat_val.shape[i])
+
+    def test_infer_shape(self):
+        admat = dmatrix()
+        admat_val = numpy.random.rand(3, 4)
+        self._compile_and_check([admat], [Shape_i(0)(admat)],
+                        [admat_val], Shape_i)
+
+        self._compile_and_check([admat], [Shape_i(1)(admat)],
+                        [admat_val], Shape_i)
+
+
 if __name__ == '__main__':
+    t = TestShape_i('setUp')
+    t.setUp()
+    t.test_perform()
+    t.test_infer_shape()
+
+    """
 #    unittest.main()
     test_fusion().tes_memory_leak()
+    """
+    
