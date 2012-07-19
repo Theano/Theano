@@ -428,56 +428,6 @@ def test_diag_grad():
     utt.verify_grad(d, [diag_mat],
             mode=theano.Mode(linker='py', optimizer='fast_compile'))
 
-
-def test_row_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(R)
-
-    f = theano.function([x, s], sp.row_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense.T * s_val).T
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
-
-    verify_grad_sparse(sp.row_scale, [x_val, s_val], structured=False)
-
-
-def test_col_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(C)
-
-    f = theano.function([x, s], sp.col_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense * s_val)
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
-
-    verify_grad_sparse(sp.col_scale, [x_val, s_val], structured=False)
-
 if __name__ == '__main__':
     if 0:
         test_remove0()

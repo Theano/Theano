@@ -1287,10 +1287,26 @@ neg = Neg()
 
 
 class ColScaleCSC(gof.op.Op):
+    """Scale each columns of a sparse matrix by the corresponding
+    element of a dense vector
+
+    :param x: A sparse matrix.
+    :param s: A dense vector with length equal to the number
+              of columns of `x`.
+
+    :return: A sparse matrix in the same format as `x` which
+             each column had been multiply by the corresponding
+             element of `s`.
+
+    :note:
+    - The grad implemented is structured.
     """
-    Scale each columns of a sparse matrix by the corresponding element
-    of a dense vector
-    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, x, s):
         if x.format != 'csc':
@@ -1300,7 +1316,7 @@ class ColScaleCSC(gof.op.Op):
     def perform(self, node, (x, s), (z,)):
         M, N = x.shape
         assert x.format == 'csc'
-        assert s.shape == (N,)
+        assert s.shape == (N, )
 
         y = x.copy()
 
@@ -1312,12 +1328,34 @@ class ColScaleCSC(gof.op.Op):
     def grad(self, (x, s), (gz,)):
         return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
 
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
 
 class RowScaleCSC(gof.op.Op):
-    """
-    Scale each row of a sparse matrix by the corresponding element of
+    """Scale each row of a sparse matrix by the corresponding element of
     a dense vector
+
+    :param x: A sparse matrix.
+    :param s: A dense vector with length equal to the number
+              of rows of `x`.
+
+    :return: A sparse matrix in the same format as `x` which
+             each row had been multiply by the corresponding
+             element of `s`.
+
+    :note:
+    - The grad implemented is structured.
     """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
 
     def make_node(self, x, s):
         return gof.Apply(self, [x, s], [x.type()])
@@ -1325,7 +1363,7 @@ class RowScaleCSC(gof.op.Op):
     def perform(self, node, (x, s), (z,)):
         M, N = x.shape
         assert x.format == 'csc'
-        assert s.shape == (M,)
+        assert s.shape == (M, )
 
         indices = x.indices
         indptr = x.indptr
@@ -1340,6 +1378,12 @@ class RowScaleCSC(gof.op.Op):
 
     def grad(self, (x, s), (gz,)):
         return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def col_scale(x, s):
