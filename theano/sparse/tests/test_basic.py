@@ -1370,6 +1370,88 @@ def test_size():
         check()
 
 
+class ColScaleCSCTester(utt.InferShapeTester):
+    def setUp(self):
+        super(ColScaleCSCTester, self).setUp()
+        self.op = sparse.col_scale
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(10))
+
+            f = theano.function(variable, self.op(*variable))
+
+            tested = f(*data)
+            x, s = data[0].toarray(), data[1][numpy.newaxis, :]
+            expected = x * s
+
+            assert tested.format == format
+            assert numpy.allclose(tested.toarray(), expected)
+
+    def test_infer_shape(self):
+        for format, cls in [('csc', sparse.ColScaleCSC),
+                            ('csr', sparse.RowScaleCSC)]:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(10))
+
+            self._compile_and_check(variable,
+                                    [self.op(*variable)],
+                                    data,
+                                    cls)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(10))
+
+            verify_grad_sparse(self.op, data, structured=True)
+
+
+class RowScaleCSCTester(utt.InferShapeTester):
+    def setUp(self):
+        super(RowScaleCSCTester, self).setUp()
+        self.op = sparse.row_scale
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(8))
+
+            f = theano.function(variable, self.op(*variable))
+
+            tested = f(*data)
+            x, s = data[0].toarray(), data[1][:, numpy.newaxis]
+            expected = x * s
+
+            assert tested.format == format
+            assert numpy.allclose(tested.toarray(), expected)
+
+    def test_infer_shape(self):
+        for format, cls in [('csc', sparse.RowScaleCSC),
+                            ('csr', sparse.ColScaleCSC)]:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(8))
+
+            self._compile_and_check(variable,
+                                    [self.op(*variable)],
+                                    data,
+                                    cls)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format, shape=(8, 10))
+            variable.append(tensor.vector())
+            data.append(numpy.random.random(8))
+
+            verify_grad_sparse(self.op, data, structured=True)
+
+
 class SpSumTester(utt.InferShapeTester):
     possible_axis = [None, 0, 1]
 
