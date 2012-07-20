@@ -119,8 +119,19 @@ square_diagonal = SquareDiagonal()
 
 
 class EnsureSortedIndices(Op):
-    """
-    Remove explicit zeros from a sparse matrix, and resort indices
+    """Resort indices of a sparse matrix.
+
+    CSR column indices are not necessarily sorted. Likewise
+    for CSC row indices. Use `ensure_sorted_indices` when sorted
+    indices are required (e.g. when passing data to other
+    libraries).
+
+    :param x: A sparse matrix.
+
+    :return: The same as `x` with indices sorted.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, inplace):
@@ -128,15 +139,18 @@ class EnsureSortedIndices(Op):
         if self.inplace:
             self.view_map = {0: [0]}
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        z = output_storage[0]
+    def perform(self, node, (x, ), (z, )):
         if self.inplace:
-            x.sort_indices()
-            z[0] = x
+            z[0] = x.sort_indices()
         else:
             z[0] = x.sorted_indices()
 
@@ -151,11 +165,26 @@ class EnsureSortedIndices(Op):
             return self.__class__.__name__ + "{inplace}"
         else:
             return self.__class__.__name__ + "{no_inplace}"
-
 ensure_sorted_indices = EnsureSortedIndices(inplace=False)
 
 
 def clean(x):
+    """Remove explicit zeros from a sparse matrix, and
+    resort indices.
+
+    CSR column indices are not necessarily sorted. Likewise
+    for CSC row indices. Use `clean` when sorted
+    indices are required (e.g. when passing data to other
+    libraries) and to ensure there is no zeros in the data.
+
+    :param x: A sparse matrix.
+
+    :return: The same as `x` with indices sorted and zeros
+             removed.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
+    """
     return ensure_sorted_indices(remove0(x))
 
 

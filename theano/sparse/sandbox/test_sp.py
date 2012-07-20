@@ -446,45 +446,75 @@ class SquareDiagonalTester(utt.InferShapeTester):
                     structured=False)
 
 
-def test_ensure_sorted_indices():
-    x = 2000
-    y = 2000
-    sparsity = 1000
-    for i in range(2):
-        # testing both csc and csr
-        if i is 0:
-            # csc
-            input_tensor = theano.sparse.csc_dmatrix()
-            sample = scipy.sparse.csc_matrix(random_lil((x,y),'float64',sparsity))
-        else:
-            # csr
-            input_tensor = theano.sparse.csr_dmatrix()
-            sample = scipy.sparse.csr_matrix(random_lil((x,y),'float64',sparsity))
+class EnsureSortedIndicesTester(utt.InferShapeTester):
+    def setUp(self):
+        super(EnsureSortedIndicesTester, self).setUp()
+        self.op_class = sp.EnsureSortedIndices
+        self.op = sp.ensure_sorted_indices
 
-        sort_op = sp.ensure_sorted_indices(input_tensor)
-        f = theano.function([input_tensor], sort_op)
-        sorted_scipy = sample.sorted_indices()
-        sorted_theano = f(sample)
-        assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
+    def test_op(self):
+        for format in theano.sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
 
-def test_square_diagonal_grad():
-    def d(x):
-        return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
-    utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data).toarray()
+                expected = data[0].sorted_indices().toarray()
 
-def test_diag_grad():
-    def d(x):
-        sp_x = theano.sparse.csc_from_dense(x)
-        diag_x = sp.diag(sp_x)
-        return diag_x.sum()
+                assert numpy.allclose(tested, expected)
 
-    diag_mat = numpy.zeros((4,4))
-    for idx in xrange(4):
-        diag_mat[idx, idx] += idx * 0.1
+    def test_infer_shape(self):
+        for format in theano.sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
 
-    utt.verify_grad(d, [diag_mat],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
+    def test_grad(self):
+        for format in theano.sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
+
+class CleanTester(utt.InferShapeTester):
+    def setUp(self):
+        super(CleanTester, self).setUp()
+        self.op = sp.clean
+
+    def test_op(self):
+        for format in theano.sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+
+                data[0][0, 0] = data[0][1, 1] = 0
+
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data)
+                expected = data[0]
+                expected.eliminate_zeros()
+
+                assert all(tested.data == expected.data)
+                assert not all(tested.data == 0)
+
+                tested = tested.toarray()
+                expected = expected.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_grad(self):
+        for format in theano.sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
 
 if __name__ == '__main__':
     if 0:
