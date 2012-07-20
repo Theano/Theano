@@ -4,17 +4,15 @@
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
 
-# Detect whether or not the user has setuptools and use the bundled
-# distribute_setup.py bootstrap module if they don't.
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    import distribute_setup
-    distribute_setup.use_setuptools()
-    from setuptools import setup, find_packages
-
 import os
 import subprocess
+from fnmatch import fnmatchcase
+from distutils.util import convert_path
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
 
 CLASSIFIERS = """\
 Development Status :: 4 - Beta
@@ -52,6 +50,23 @@ SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
+
+
+def find_packages(where='.', exclude=()):
+    out = []
+    stack=[(convert_path(where), '')]
+    while stack:
+        where, prefix = stack.pop(0)
+        for name in os.listdir(where):
+            fn = os.path.join(where,name)
+            if ('.' not in name and os.path.isdir(fn) and
+                os.path.isfile(os.path.join(fn, '__init__.py'))
+            ):
+                out.append(prefix+name)
+                stack.append((fn, prefix+name+'.'))
+    for pat in list(exclude) + ['ez_setup', 'distribute_setup']:
+        out = [item for item in out if not fnmatchcase(item, pat)]
+    return out
 
 
 def git_version():
