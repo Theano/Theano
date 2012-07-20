@@ -37,7 +37,9 @@ from theano.sparse import (
     structured_sigmoid, structured_exp, structured_log,
     structured_pow, structured_minimum, structured_maximum, structured_add,
     MulSV, mul_s_v, StructuredAddSV, structured_add_s_v,
-    SamplingDot, sampling_dot)
+    SamplingDot, sampling_dot,
+    Diag, diag, SquareDiagonal, square_diagonal,
+    EnsureSortedIndices, ensure_sorted_indices, clean)
 
 from theano.tests import unittest_tools as utt
 from theano.tensor.basic import _allclose
@@ -1497,6 +1499,158 @@ class SpSumTester(utt.InferShapeTester):
                         self.op_class(axis=axis, sparse_grad=struct),
                         data,
                         structured=struct)
+
+
+class DiagTester(utt.InferShapeTester):
+    def setUp(self):
+        super(DiagTester, self).setUp()
+        self.op_class = Diag
+        self.op = diag
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
+
+            z = self.op(*variable)
+            assert z.type.broadcastable == (False, )
+
+            f = theano.function(variable, z)
+            tested = f(*data)
+            expected = data[0].toarray().diagonal()
+
+            assert numpy.allclose(tested, expected)
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
+            self._compile_and_check(variable,
+                                    [self.op(*variable)],
+                                    data,
+                                    self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
+            verify_grad_sparse(
+                self.op,
+                data,
+                structured=False)
+
+
+class SquareDiagonalTester(utt.InferShapeTester):
+    def setUp(self):
+        super(SquareDiagonalTester, self).setUp()
+        self.op_class = SquareDiagonal
+        self.op = square_diagonal
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data).toarray()
+
+                expected = numpy.diag(*data)
+                assert numpy.allclose(tested, expected)
+                assert tested.dtype == expected.dtype
+                assert tested.shape == expected.shape
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
+
+class EnsureSortedIndicesTester(utt.InferShapeTester):
+    def setUp(self):
+        super(EnsureSortedIndicesTester, self).setUp()
+        self.op_class = EnsureSortedIndices
+        self.op = ensure_sorted_indices
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data).toarray()
+                expected = data[0].sorted_indices().toarray()
+
+                assert numpy.allclose(tested, expected)
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
+
+class CleanTester(utt.InferShapeTester):
+    def setUp(self):
+        super(CleanTester, self).setUp()
+        self.op = clean
+
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+
+                data[0][0, 0] = data[0][1, 1] = 0
+
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data)
+                expected = data[0]
+                expected.eliminate_zeros()
+
+                assert all(tested.data == expected.data)
+                assert not all(tested.data == 0)
+
+                tested = tested.toarray()
+                expected = expected.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for shape in zip(range(5, 9), range(3, 7)[::-1]):
+                variable, data = sparse_random_inputs(format, shape=shape)
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
 
 
 class Remove0Tester(utt.InferShapeTester):
