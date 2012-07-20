@@ -18,6 +18,7 @@ from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 from theano.sparse import verify_grad_sparse
+from theano.sparse.tests.test_basic import sparse_random_inputs
 
 
 class TestSP(unittest.TestCase):
@@ -363,30 +364,87 @@ class TestSP(unittest.TestCase):
                     utt.verify_grad(d, [kvals])
 
 
-def test_diag():
-    m = theano.sparse.csc_matrix()
-    d = sp.diag(m)
-    f = theano.function([m], d)
-    f2 = theano.function([m], d.shape)
-    for K in 1, 5:
-        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),
-                dtype=theano.config.floatX)
-        diag = numpy.diagonal(np_matrix)
-        sp_matrix = scipy.sparse.csc_matrix(np_matrix)
+class DiagTester(utt.InferShapeTester):
+    def setUp(self):
+        super(DiagTester, self).setUp()
+        self.op_class = sp.Diag
+        self.op = sp.diag
 
-        assert numpy.all(diag == f(sp_matrix))
-        assert f2(sp_matrix) == diag.shape
+    def test_op(self):
+        for format in theano.sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
 
-def test_square_diagonal():
-    for K in 1, 5:
-        d = tensor.ivector()
-        sd = sp.square_diagonal(d)
-        f = theano.function([d], sd)
-        n = numpy.zeros((K,K), dtype='int32')
-        for i in range(K):
-            n[i,i] = i
+            z = self.op(*variable)
+            assert z.type.broadcastable == (False, )
 
-        assert numpy.all(n == f(range(K)).toarray())
+            f = theano.function(variable, z)
+            tested = f(*data)
+            expected = data[0].toarray().diagonal()
+
+            assert numpy.allclose(tested, expected)
+
+    def test_infer_shape(self):
+        for format in theano.sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
+            self._compile_and_check(variable,
+                                    [self.op(*variable)],
+                                    data,
+                                    self.op_class)
+
+    def test_grad(self):
+        for format in theano.sparse.sparse_formats:
+            variable, data = sparse_random_inputs(format,
+                                                  shape=(10, 10))
+            verify_grad_sparse(
+                self.op,
+                data,
+                structured=False)
+
+
+class SquareDiagonalTester(utt.InferShapeTester):
+    def setUp(self):
+        super(SquareDiagonalTester, self).setUp()
+        self.op_class = sp.SquareDiagonal
+        self.op = sp.square_diagonal
+
+    def test_op(self):
+        for format in theano.sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                f = theano.function(variable, self.op(*variable))
+                tested = f(*data).toarray()
+
+                expected = numpy.diag(*data)
+                assert numpy.allclose(tested, expected)
+                assert tested.dtype == expected.dtype
+                assert tested.shape == expected.shape
+
+    def test_infer_shape(self):
+        for format in theano.sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
+
+    def test_grad(self):
+        for format in theano.sparse.sparse_formats:
+            for size in range(5, 9):
+                variable = [tensor.vector()]
+                data = [numpy.random.random(size)]
+
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
 
 def test_ensure_sorted_indices():
     x = 2000
