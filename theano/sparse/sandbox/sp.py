@@ -9,6 +9,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 #### COPIED FROM hpu/icml09/sp.py
 
 import numpy
+import scipy
 from scipy import sparse as scipy_sparse
 
 import theano
@@ -30,69 +31,62 @@ def register_specialize(lopt, *tags, **kwargs):
 
 
 class Diag(Op):
+    """Extract the diagonal of a square sparse matrix as a dense
+    vector.
+
+    :param x: A square sparse matrix in csc format.
+
+    :return: A dense vector representing the diagonal elements.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured, since
+      the output is a dense vector.
     """
-    Extract the diagonal of a square sparse matrix as a dense vector.
-    """
+
     def __eq__(self, other):
         return (type(self) == type(other))
 
     def __hash__(self):
         return hash(type(self))
-
-    def __str__(self):
-        return "Diag"
 
     def make_node(self, x):
         return gof.Apply(self, [x], [tensor.tensor(broadcastable=(False,),
                                                    dtype=x.dtype)])
 
     def perform(self, node, (x,), (z,)):
-        M, N = x.shape
-        if M != N:
-            raise ValueError("DenseDiag argument not square. Shape:", x.shape)
+        N, M = x.shape
+        if N != M:
+            raise ValueError('Diag only apply on square matrix')
+        z[0] = x.diagonal()
 
-        assert x.format == 'csc'
-
-        data = x.data
-        indices = x.indices
-        indptr = x.indptr
-
-        diag = numpy.zeros(N, x.dtype)
-
-        #TODO: try using ndarrays and then prune() on the result
-        # it could be optimized in the case the sparse structure
-        # does not allow index duplication
-
-        for j in xrange(0, N):
-            for i_idx in xrange(indptr[j], indptr[j + 1]):
-                if indices[i_idx] == j:
-                    diag[j] += data[i_idx]
-        z[0] = diag
-
-    def grad(self, (diag,), (gz,)):
+    def grad(self, (x,), (gz,)):
         return [square_diagonal(gz)]
 
     def infer_shape(self, nodes, shapes):
-        matrix_shape = shapes[0]
-        diag_length = matrix_shape[0]
-        return [(diag_length,)]
+        return [(tensor.minimum(*shapes[0]), )]
 
+    def __str__(self):
+        return self.__class__.__name__
 diag = Diag()
 
 
 class SquareDiagonal(Op):
-    """
-    Return a square sparse (csc) matrix whose diagonal
+    """Return a square sparse (csc) matrix whose diagonal
     is given by the dense vector argument.
+
+    :param x: Dense vector for the diagonal.
+
+    :return: A sparse matrix having `x` as diagonal.
+
+    :note:
+    - The grad implemented is regular, i.e. not structured.
     """
+
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
-
-    def __str__(self):
-        return "SquareDiagonal"
 
     def make_node(self, diag):
         diag = tensor.as_tensor_variable(diag)
@@ -102,20 +96,25 @@ class SquareDiagonal(Op):
         return gof.Apply(self, [diag],
                 [sparse.SparseType(dtype=diag.dtype, format='csc')()])
 
-    def perform(self, node, (diag,), (z,)):
-        N, = diag.shape
-        indptr = range(N + 1)
-        indices = indptr[0:N]
-        z[0] = scipy_sparse.csc_matrix((diag, indices, indptr),
-                                       (N, N), copy=True)
+    def perform(self, node, inputs, (z,)):
+        diag, o_shape = inputs[0], inputs[0].shape * 2
 
-    def grad(self, input, (gz,)):
+        N = len(diag)
+        data = diag[:N]
+        indices = range(N)
+        indptr = range(N + 1)
+        tup = (data, indices, indptr)
+
+        z[0] = scipy.sparse.csc_matrix(tup, copy=True)
+
+    def grad(self, inputs, (gz,)):
         return [diag(gz)]
 
     def infer_shape(self, nodes, shapes):
-        diag_length = shapes[0][0]
-        return [(diag_length, diag_length)]
+        return [(shapes[0][0], shapes[0][0])]
 
+    def __str__(self):
+        return self.__class__.__name__
 square_diagonal = SquareDiagonal()
 
 

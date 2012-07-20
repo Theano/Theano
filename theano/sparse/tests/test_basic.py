@@ -102,7 +102,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
         if out_dtype in sparse.discrete_dtypes:
             value = numpy.random.randint(20, size=shape).astype(out_dtype)
         else:
-            value = numpy.random.random(shape)
+            value = numpy.random.random(shape).astype(out_dtype)
         return where * value
 
     variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
