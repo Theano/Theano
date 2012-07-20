@@ -847,7 +847,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (out && (out->nd != self->nd ||
                 CudaNdarray_HOST_DIMS(out)[0] != nb_indices))
         out = NULL;
-    int dims[self->nd];
+    int * dims = (int *)malloc(sizeof(int) * self->nd);
     dims[0] = nb_indices;
 
     for (int i=1 ; i<self->nd ; i++) {
@@ -860,11 +860,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         out = (CudaNdarray*)CudaNdarray_New();
         if (!out){
             Py_DECREF(indices_obj);
+            free(dims);
             return NULL;
         }
         if (CudaNdarray_alloc_contiguous(out, self->nd, dims)) {
             Py_DECREF(out);
             Py_DECREF(indices_obj);
+            free(dims);
             return NULL;
         }
     }else {
@@ -913,6 +915,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             return NULL;
         }
     }
+    free(dims);
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
     switch (self->nd) {
         case 1:
