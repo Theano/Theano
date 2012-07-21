@@ -577,6 +577,13 @@ class T_sum_dtype(unittest.TestCase):
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
             for output_dtype in imap(str, theano.scalar.all_types):
+                # If the output is a complex, the gradient of the sum will
+                # cast the complex to the input dtype. We can't call the normal
+                # cast on a complex to a not complex as this is ambiguous.
+                if (not input_dtype.startswith('complex') and
+                    output_dtype.startswith('complex')):
+                    continue
+
                 axis = axes[idx % len(axes)]
                 # If output_dtype would force a downcast, we expect a TypeError
                 # We always allow int/uint inputs with float/complex outputs.
