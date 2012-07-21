@@ -18,15 +18,15 @@ There are two additional local options: '--batch[=n]' and '--time-profile'.
 If '--batch[=n]' is used without '--time-profile', this script will call
 run_tests_in_batch.py` in order to run the tests by batches, not all at the
 same time. The batches will comprise 100 elements each by default and
-x elements if the option '=n' is specified.
+'n' elements if the option '=n' is specified.
 
 If the '--time-profile' option is used, it will call `run_tests_in_batch.py`
 with the option time_profile=True to conduct time-profiling of the tests.
-(See 'help' function below for details.)  If also specified, '--batch[=n]'
+(See 'help' function below for details.) If also specified, '--batch[=n]'
 option will be interpreted as an indication of the number of tests to be run
 between notifications of progress to standard output.
 
-`run_tests_in_batch.py` will in turn call back this script in another process
+`run_tests_in_batch.py` will in turn call back this script in another process.
 """
 
 import logging
@@ -36,14 +36,14 @@ _logger.setLevel(logging.WARN)
 import nose
 import textwrap
 import sys
-
+from nose.plugins import Plugin
 
 def main():
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
         sys.argv.remove(arg)
-    batch_size = None    
+    batch_size = None
     if len(batch_args):
         if len(batch_args) > 1:
             _logger.warn(
@@ -80,6 +80,13 @@ def main():
                 'Use --without-knownfailure to disable this warning.')
     else:
         sys.argv.remove('--without-knownfailure')
+        
+    # When 'theano-nose' is called-back under the time-profile option, an
+    # instance of the custom Nosetests plugin class 'DisabDocString' (see
+    # below) is loaded. The latter ensures that the test name will not be
+    # replaced in display by the first line of the documentation string.
+    if '--disabdocstring' in sys.argv:
+        addplugins.append(DisabDocString())
 
     return nose.main(addplugins=addplugins)
 
@@ -95,7 +102,7 @@ def help():
         Local options:
 
             --batch[=n]:
-                If specified without option '--time-profile'', do not run all
+                If specified without option '--time-profile', do not run all
                 the tests in one run, but split the execution in batches of
                 `n` tests each. Default n is 100.
 
@@ -105,7 +112,7 @@ def help():
                 and 'timeprof_rawlog' in the current directory. If the
                 '--batch[=n]' option is also specified, notification of the
                 progresses will be made to standard output after every group of
-                n tests.  Otherwise, notification will occur after every group
+                n tests. Otherwise, notification will occur after every group
                 of 100 tests.
     
                 The files 'timeprof_sort' and 'timeprof_nosort' both contain one
@@ -115,7 +122,8 @@ def help():
                 - test name
                 - name of class to which test belongs (if any), otherwise full
                   information is contained in test name
-                - test outcome ('OK', 'FAILED TEST' or 'FAILED PARSING')
+                - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or
+                  'FAILED PARSING')
     
                 In 'timeprof_sort', test records are sorted according to
                 running-time whereas in 'timeprof_nosort' records are reported
@@ -135,6 +143,63 @@ def help():
     print textwrap.dedent(help_msg)
 
 
+class DisabDocString(Plugin):
+    
+    """
+    When activated, a custom Nosetests plugin created through this class
+    will preclude automatic replacement in display of the name of the test
+    by the first line in its documentation string.
+    
+    Sources:
+    http://nose.readthedocs.org/en/latest/developing.html
+    http://nose.readthedocs.org/en/latest/further_reading.html
+    http://www.siafoo.net/article/54
+    https://github.com/nose-devs/nose/issues/294
+    http://python-nose.googlecode.com/svn/trunk/nose/plugins/base.py
+    Nat Williams:
+    https://github.com/Merino/nose-description-fixer-plugin/commit/
+        df94596f29c04fea8001713dd9b04bf3720aebf4
+    """
+    
+    enabled = False # plugin disabled by default
+    score = 2000  # high score ensures priority over other plugins
+    
+    def __init__(self):
+        # 'super.__init__(self):' would have achieved exactly the same
+        if self.name is None:
+            self.name = self.__class__.__name__.lower()
+        if self.enableOpt is None:
+            self.enableOpt = ("enable_plugin_%s"
+                              % self.name.replace('-', '_'))
+
+    def options(self, parser, env):
+        env_opt = 'NOSE_WITH_%s' % self.name.upper()
+        # latter expression to be used if plugin called from the command line
+        parser.add_option("--%s" % self.name,
+                          # will be called with Nosetests 'main' or 'run'
+                          # function's' argument '--disabdocstring'
+                          action="store_true",
+                          dest=self.enableOpt,
+                          # the latter entails that the boolean self.enableOpt
+                          # is set to 'True' when plugin is called through a
+                          # function's argument
+                          default=env.get(env_opt),
+                          # entails that plugin will be enabled when command
+                          # line trigger 'env_opt' will be activated
+                          help="Enable plugin %s: %s [%s]" %
+                          (self.__class__.__name__,
+                           self.help(), env_opt))
+
+    def configure(self, options, conf):
+        self.conf = conf
+        # plugin will be enabled when called through argument
+        self.enabled = getattr(options, self.enableOpt)
+
+    def describeTest(self, test):
+        # 'describeTest' is also called when the test result in Nosetests calls
+        # 'test.shortDescription()' and can thus be used to alter the display.
+        return False
+    
 if __name__ == '__main__':
     if '--help' in sys.argv or '-h' in sys.argv:
         help()

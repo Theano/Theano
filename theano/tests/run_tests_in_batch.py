@@ -13,10 +13,10 @@ Otherwise, only tests found in the directory given as argument are run.
 If 'time_profile=False', this script performs three tasks:
     1. Run `nosetests --collect-only --with-id` to collect test IDs
     2. Run `nosetests --with-id i1 ... iN` with batches of 'batch_size'
-       indices,until all tests have been run (currently batch_size=100 by
+       indices, until all tests have been run (currently batch_size=100 by
        default).
     3. Run `nosetests --failed` to re-run only tests that failed
-        => The output of this 3rd step is the one you should care about
+       => The output of this 3rd step is the one you should care about
 
 If 'time_profile=True', this script conducts time-profiling of the tests:
     1. Run `nosetests --collect-only --with-id` to collect test IDs
@@ -32,11 +32,11 @@ If 'time_profile=True', this script conducts time-profiling of the tests:
        - test name
        - name of class to which test belongs (if any), otherwise full
          information is contained in test name
-       - test outcome ('OK', 'FAILED TEST' or 'FAILED PARSING')
+       - test outcome ('OK', 'SKIPPED TESTS', 'FAILED TEST' or 'FAILED PARSING')
        In 'timeprof_sort', test records are sorted according to run-time
        whereas in 'timeprof_nosort' records are reported according to
        sequential number. The former classification is the main information
-       source for time-profiling.  Since tests belonging to same or close
+       source for time-profiling. Since tests belonging to same or close
        classes and files have close sequential numbers, the latter may be used
        to identify duration patterns among the tests. A full log is also saved
        as 'timeprof_rawlog'.
@@ -150,7 +150,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
         failed = set()
         print """\
 ###################################
-# RUNNING TESTS IN BATCHES OF %s  #
+# RUNNING TESTS IN BATCHES OF %s #
 ###################################""" % batch_size
         # We suppress all output because we want the user to focus only on
         # the failed tests, which are re-run (with output) below.
@@ -168,7 +168,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                 stdin=dummy_in.fileno())
             # Recover failed test indices from the 'failed' field of the
             # '.noseids' file. We need to do it after each batch because
-            # otherwise this field  may get erased. We use a set because it
+            # otherwise this field may get erased. We use a set because it
             # seems like it is not systematically erased though, and we want
             # to avoid duplicates.
             failed = failed.union(cPickle.load(open(noseids_file, 'rb'))
@@ -225,15 +225,17 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
         prof_master_nosort = []
         prof_rawlog = []
         dummy_out = open(os.devnull, 'w')
-
-        batch_size = 1
-        for test_floor in xrange(250, 251, batch_size):
-        #for test_floor in xrange(1, n_tests + 1, batch_size):
+        for test_floor in xrange(1, n_tests + 1, batch_size):
             for test_id in xrange(test_floor, min(test_floor + batch_size,
                                                  n_tests + 1)):
                 proc = subprocess.Popen(
                     ([python, theano_nose, '-v', '--with-id']
-                    + [str(test_id)] + other_args),
+                    + [str(test_id)] + other_args +
+                     ['--disabdocstring']),
+                    # the previous option calls a custom Nosetests plugin
+                    # precluding automatic sustitution of doc. string for
+                    # test name in display
+                    # (see class 'DisabDocString' in file theano-nose)
                     stderr=subprocess.PIPE,
                     stdout=dummy_out.fileno(),
                     stdin=dummy_in.fileno())
@@ -253,8 +255,18 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                         prof_test += s + ' '
                     if 'OK' in err:
                         pos_ok = getIndexOfLast(l_err, 'OK')
-                        prof_time = float(l_err[pos_ok - 1][0:-1])
-                        prof_pass = 'OK'
+                        if len(l_err) == pos_ok + 1:
+                            prof_time = float(l_err[pos_ok - 1][0:-1])
+                            prof_pass = 'OK'
+                        elif 'SKIP' in l_err[pos_ok + 1]:
+                            prof_time = 0.
+                            prof_pass = 'SKIPPED TEST'
+                        elif 'KNOWNFAIL' in l_err[pos_ok + 1]:
+                            prof_time = float(l_err[pos_ok - 1][0:-1])
+                            prof_pass = 'OK'
+                        else:
+                            prof_time = 0.
+                            prof_pass = 'FAILED TEST'
                     else:
                         prof_time = 0.
                         prof_pass = 'FAILED TEST'
@@ -262,7 +274,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                     prof_time = 0
                     prof_id = '#' + str(test_id)
                     prof_test = ('FAILED PARSING, see raw log for details'
-                                 'on test')
+                                 ' on test')
                     prof_pass = ''
                 prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
                 # appending tuple to master list
@@ -308,3 +320,5 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 
 if __name__ == '__main__':
     sys.exit(main())
+
+    
