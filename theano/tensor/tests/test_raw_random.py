@@ -123,8 +123,8 @@ class T_random_function(utt.InferShapeTester):
         assert not numpy.allclose(val0, val1)
 
     def test_no_inplace(self):
-        """Test that when not running inplace, the RandomState is'
-        ' not updated"""
+        """Test that when not running inplace, the RandomState is
+        not updated"""
         rf = RandomFunction('uniform', tensor.dvector)
         rng_R = random_state_type()
 
@@ -236,8 +236,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertRaises(TypeError, permutation, rng_R, size=None, ndim=2)
 
     def test_random_function_ndim_added(self):
-        """Test that random_function helper function accepts ndim_added as'
-        ' keyword argument"""
+        """Test that random_function helper function accepts ndim_added as
+        keyword argument"""
         # If using numpy's uniform distribution, ndim_added should be 0,
         # because the shape provided as argument is the output shape.
         # Specifying a different ndim_added will change the Op's output ndim,
@@ -339,8 +339,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_binomial(self):
-        """Test that raw_random.binomial generates the same results'
-        ' as numpy."""
+        """Test that raw_random.binomial generates the same results
+        as numpy."""
         # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
@@ -391,8 +391,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_random_integers(self):
-        """Test that raw_random.random_integers generates the same'
-        ' results as numpy."""
+        """Test that raw_random.random_integers generates the same
+        results as numpy."""
         # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
@@ -418,8 +418,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_permutation_helper(self):
-        """Test that raw_random.permutation_helper generates the same'
-        ' results as numpy,
+        """Test that raw_random.permutation_helper generates the same
+        results as numpy,
         and that the 'ndim_added' keyword behaves correctly."""
         # permutation_helper needs "ndim_added=1", because its output
         # is one dimension more than its "shape" argument (and there's
@@ -476,8 +476,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertRaises(ValueError, f2)
 
     def test_permutation(self):
-        """Test that raw_random.permutation generates the same'
-        ' results as numpy."""
+        """Test that raw_random.permutation generates the same
+        results as numpy."""
         rng_R = random_state_type()
         post_r, out = permutation(rng_R, size=(9,), n=6)
         print 'OUT NDIM', out.ndim
@@ -505,8 +505,8 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.all(val1 == numpy_val1))
 
     def test_multinomial(self):
-        """Test that raw_random.multinomial generates the same'
-        ' results as numpy."""
+        """Test that raw_random.multinomial generates the same
+        results as numpy."""
         # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         post_r, out = multinomial(rng_R, (7, 3), 6, [0.2] * 5)
@@ -1076,13 +1076,5 @@ class T_random_function(utt.InferShapeTester):
 
 
 if __name__ == '__main__':
-
-    """
-
     from theano.tests import main
     main("test_raw_random")
-    """
-
-    t = T_random_function('setUp')
-    t.setUp()
-    t.test_infer_shape()
