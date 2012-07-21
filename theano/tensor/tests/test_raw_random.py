@@ -922,10 +922,12 @@ class T_random_function(utt.InferShapeTester):
         self._compile_and_check([rng_R], [out], [rng_R_val],
                                 RandomFunction)
 
+        """
+        #infer_shape don't work for multinomial.
+        #The parameter ndim_added is set to 1 and in this case, the infer_shape
+        #inplementation don't know how to infer the shape
         post_r, out = multinomial(rng_R)
 
-        # ERROR: 'graph contains cycles'
-        """
         self._compile_and_check([rng_R], [out], [rng_R_val],
                                 RandomFunction)
         """
@@ -943,6 +945,8 @@ class T_random_function(utt.InferShapeTester):
                                 RandomFunction)
 
         # multinomial, specified shape
+        """
+        #infer_shape don't work for multinomial
         n = iscalar()
         pvals = dvector()
         size_val = (7, 3)
@@ -951,9 +955,6 @@ class T_random_function(utt.InferShapeTester):
         post_r, out = multinomial(rng_R, size=size_val, n=n, pvals=pvals,
                                   ndim=2)
 
-        # ERROR: 'graph contains cycles'
-        # see NOTE 1 below
-        """
         self._compile_and_check([rng_R, n, pvals], [out],
                                 [rng_R_val, n_val, pvals_val],
                                 RandomFunction)
@@ -1054,14 +1055,14 @@ class T_random_function(utt.InferShapeTester):
                                 std_val], RandomFunction)
 
         # multinomial with tensor-3 probabilities
+        """
+        #multinomial infer_shape don't work.
         pvals = dtensor3()
         n = iscalar()
         post_r, out = multinomial(rng_R, n=n, pvals=pvals, size=(1, -1))
         pvals_val = [[[.1, .9], [.2, .8], [.3, .7]]]
         n_val = 9
 
-        # ERROR: 'graph contains cycles'
-        """
         self._compile_and_check([rng_R, n, pvals], [out],
                                 [rng_R_val, n_val,
                                 pvals_val], RandomFunction)
