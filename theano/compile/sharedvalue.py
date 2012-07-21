@@ -195,14 +195,10 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
             # This was done on purpose, the rationale being that if kwargs
             # were supplied, the user didn't want them to be ignored.
 
-    except MemoryError:
-
-        # Note: the following instruction is inappropriate as it is followed
-        # automatically by a misleading message from line 207
-        # sys.stderr.write('Insufficient memory available: you might consider'
-        #           ' using \'theano.shared(..., borrow=True)\'')
-        sys.exit('Insufficient memory available: you might consider'
-                         ' using \'theano.shared(..., borrow=True)\'')
+    except MemoryError, e:
+        e.args = e.args + ('you might consider'
+                           ' using \'theano.shared(..., borrow=True)\'',)
+        raise
 
     raise TypeError('No suitable SharedVariable constructor could be found',
                     (value, kwargs))
