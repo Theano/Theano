@@ -514,6 +514,8 @@ def local_gpu_ger(node):
             tensor.blas_c.CGer(destructive=False): gpu_ger_no_inplace,
             tensor.blas.Ger(destructive=True): gpu_ger_no_inplace,
             tensor.blas.Ger(destructive=False): gpu_ger_no_inplace,
+            tensor.blas_scipy.ScipyGer(destructive=True): gpu_ger_no_inplace,
+            tensor.blas_scipy.ScipyGer(destructive=False): gpu_ger_no_inplace,
             }
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
