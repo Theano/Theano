@@ -42,6 +42,8 @@ def get_lock(lock_dir=None, **kw):
 
     :param kw: Additional arguments to be forwarded to the `lock` function when
     acquiring the lock.
+
+    :note: We can lock only on 1 directory at a time.
     """
     if lock_dir is None:
         lock_dir = os.path.join(config.compiledir, 'lock_dir')
