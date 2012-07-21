@@ -184,7 +184,8 @@ class RandomFunction(gof.Op):
         else:
             # if shape == () then it will depend on args
             # if ndim_added != 0 and shape != () then it will depend on args
-            sample_shp = node.outputs[1].shape
+            #Use the default infer_shape implementation.
+            raise tensor.ShapeError()
 
         return [None, [sample_shp[i] for i in xrange(node.outputs[1].ndim)]]
 
