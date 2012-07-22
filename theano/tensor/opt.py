@@ -426,8 +426,10 @@ def dimshuffle_as_view(node):
     new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
-
-register_specialize(dimshuffle_as_view, 'inplace')
+compile.optdb.register('dimshuffle_as_view',
+                       TopoOptimizer(dimshuffle_as_view,
+    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
