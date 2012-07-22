@@ -3188,7 +3188,8 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
 
 class T_local_sum(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().including('canonicalize')
+        self.mode = theano.compile.get_default_mode().including('canonicalize',
+                                                                'specialize')
 
     def test_local_sum_all_to_none(self):
         a = T.tensor3()
