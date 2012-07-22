@@ -3144,7 +3144,12 @@ def local_cut_useless_reduce(node):
             return [summed]
 
 
-@register_canonicalize
+#Enabling this optimization at canonicalization step break this test:
+#theano/tensor/tests/test_opt.py:T_local_sum.test_local_sum_broadcast_some_0
+# see gh-790 issue.
+#
+#@register_canonicalize
+@register_specialize
 @gof.local_optimizer([])
 def local_sum_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
@@ -3176,6 +3181,7 @@ def local_sum_broadcastable(node):
                 else:
                     # -- in this case we can remove the reduction completely
                     return [new_reduced.astype(odtype)]
+
 
 @register_specialize
 @gof.local_optimizer([])
