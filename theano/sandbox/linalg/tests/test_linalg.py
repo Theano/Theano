@@ -1,5 +1,6 @@
 import numpy
 import numpy.linalg
+import scipy.linalg
 
 import theano
 from theano import tensor, function
@@ -26,6 +27,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        matrix_dot,
                                        spectral_radius_bound,
                                        imported_scipy,
+                                       a_xinv_b
                                        )
 
 from nose.plugins.skip import SkipTest
@@ -436,3 +438,41 @@ def test_spectral_radius_bound():
     except ValueError:
         ok = True
     assert ok
+
+
+def test_a_xinv_b():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = _generate_positive_definite(rng, n = 4).astype(config.floatX)
+    a = rng.rand(4, 4).astype(config.floatX)
+    b = rng.rand(4, 4).astype(config.floatX)
+
+    #numpy
+    l_factor = scipy.linalg.cho_factor(x)
+    xb = scipy.linalg.cho_solve(l_factor, b)
+    xa = scipy.linalg.cho_solve(l_factor, a.T)
+    z = numpy.dot(xa.T, xb)
+
+    #theano
+    x_ = theano.tensor.matrix()
+    a_ = theano.tensor.matrix()
+    b_ = theano.tensor.matrix()
+
+    f = theano.function(inputs = [a_, x_, b_], outputs = a_xinv_b(a_, x_, b_))
+
+    assert numpy.allclose(f(a, x, b), z)
+
+def test_a_xinv_b_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = _generate_positive_definite(rng)
+    a = rng.rand(2, 2)
+    b = rng.rand(2, 2)
+
+    tensor.verify_grad(a_xinv_b, [a, x, b], rng=rng)
+
+def _generate_positive_definite(rng, n = 2):
+    """ Return a radnom positive definite square matrix """
+
+    m = rng.rand(n, n)
+    for i in range(n):
+        m[i,i] = 20*(.1+m[i,i])
+    return numpy.dot(numpy.transpose(m),m)
