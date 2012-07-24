@@ -2,14 +2,17 @@
 """
 __docformat__ = "restructuredtext en"
 
-import sys, traceback, logging
+import logging
+import sys
+import traceback
 _logger = logging.getLogger('theano.compile.function')
 
 from io import In
 from function_module import orig_function
 from profiling import ProfileStats
 from pfunc import pfunc
-from numpy import any #for to work in python 2.4
+from numpy import any  # to work in python 2.4
+
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -167,16 +170,16 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         raise Exception("Inputs variable of a Theano function should be contained in a list, even when there is a single input.")
 
     # compute some features of the arguments:
-    uses_In = any([isinstance(i, In) for i in inputs]) #N.B. the square brackets are ncessary
-    uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])#N.B. the square brackets are ncessary
+    uses_In = any([isinstance(i, In) for i in inputs])  # N.B. the square brackets are ncessary
+    uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])  # N.B. the square brackets are ncessary
     uses_updates = (updates != [])
     uses_givens = (givens != [])
 
     # See if we have any mutable / borrow inputs
     check_for_aliased_inputs = False
     for i in inputs:
-        if (isinstance(i, In) and ( (hasattr(i,'borrow') and i.borrow) or
-                                   (hasattr(i,'mutable') and i.mutable)) ):
+        if (isinstance(i, In) and ((hasattr(i, 'borrow') and i.borrow) or
+                                   (hasattr(i, 'mutable') and i.mutable))):
             check_for_aliased_inputs = True
 
     if uses_In or uses_tuple:
@@ -185,9 +188,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             raise NotImplementedError('profiling not supported in old-style function')
         if uses_updates or uses_givens:
             raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
-        fn =  orig_function(inputs, outputs,
-                mode=mode,
-                accept_inplace=accept_inplace, name=name)
+        fn = orig_function(inputs, outputs,
+                           mode=mode,
+                           accept_inplace=accept_inplace, name=name)
     else:
         fn = pfunc(params=inputs,
                 outputs=outputs,
@@ -195,7 +198,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                 updates=updates,
                 givens=givens,
                 no_default_updates=no_default_updates,
-                accept_inplace=accept_inplace,name=name,
+                accept_inplace=accept_inplace, name=name,
                 rebuild_strict=rebuild_strict,
                 allow_input_downcast=allow_input_downcast,
                 on_unused_input=on_unused_input,
