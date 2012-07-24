@@ -533,6 +533,9 @@ class MakeVector(T.Op):
             # assume that out has correct dtype. there is no cheap way to check
             out[0][...] = inputs
 
+    def infer_shape(self, node, ishapes):
+        return [(len(ishapes),)]
+            
     def grad(self, inputs, output_gradients):
         # If the output is of an integer dtype, no gradient shall pass
         if 'int' in self.dtype:
@@ -633,6 +636,9 @@ class Shape_i(T.Op):
             #      shape_i ops for various types of variables.
             #      Do not continue this madness.
             return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
+
+    def infer_shape(self, node, input_shapes):
+        return [()]
 
     def grad(self, inp, grads):
         return [None]

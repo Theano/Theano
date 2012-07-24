@@ -29,6 +29,8 @@ from theano.tensor.opt import (
         mul_canonizer,
         out2in,
         Shape_i,
+        Assert,
+        MakeVector
         )
 from theano import tensor
 from theano import tensor as T
@@ -2392,7 +2394,11 @@ class test_shapeoptimizer(unittest.TestCase):
         print f([[1, 2], [2, 3]])
 
 
-class test_assert(unittest.TestCase):
+class test_assert(utt.InferShapeTester):
+
+    def setUp(self):
+        super(test_assert, self).setUp()
+    
     def test0(self):
         x=T.scalar()
         y=T.scalar()
@@ -2448,7 +2454,24 @@ class test_assert(unittest.TestCase):
         assert len(topo[0].inputs)==3
         assert topo[1].op==theano.compile.function_module.deep_copy_op
 
+    def test_infer_shape(self):
 
+        adscal = dscalar()
+        bdscal = dscalar()
+        adscal_val = numpy.random.rand()
+        bdscal_val = numpy.random.rand() + 1
+        out = theano.tensor.opt.assert_(adscal, bdscal)
+        self._compile_and_check([adscal, bdscal], [out],
+                        [adscal_val, bdscal_val], Assert)
+
+        admat = dmatrix()
+        admat_val = numpy.random.rand(3, 4)
+        adscal_val += 1
+        out = theano.tensor.opt.assert_(admat, adscal, bdscal)
+        self._compile_and_check([admat, adscal, bdscal], [out],
+                        [admat_val, adscal_val, bdscal_val], Assert)
+
+        
 def test_local_mul_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -3414,18 +3437,23 @@ class T_local_sum_dimshuffle(unittest.TestCase):
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
 
 
-def test_make_vector():
-    b = T.bscalar()
-    i = T.iscalar()
-    d = T.dscalar()
+class TestMakeVector(utt.InferShapeTester):
 
-    #TODO: draw random values instead. Not really important.
-    val = {b: 2,
-           i: -3,
-           d: 0.7}
+    def setUp(self):
+        super(TestMakeVector, self).setUp()
 
-    # Should work
-    for (dtype, inputs) in [("int8", (b, b)),
+    def test_make_vector():
+        b = T.bscalar()
+        i = T.iscalar()
+        d = T.dscalar()
+
+        #TODO: draw random values instead. Not really important.
+        val = {b: 2,
+               i: -3,
+               d: 0.7}
+
+        # Should work
+        for (dtype, inputs) in [("int8", (b, b)),
                             ("int32", (i, b)),
                             ("int32", (b, i)),
                             ("float64", (b, i)),
@@ -3434,55 +3462,55 @@ def test_make_vector():
                             ("float64", ()),
                             ("int64", ()),
                             ]:
-        mv = opt.MakeVector(dtype=dtype)(*inputs)
-        assert mv.dtype == dtype
-        f = theano.function([b, i, d], mv, on_unused_input='ignore')
-        f_val = f(val[b], val[i], val[d])
-        #print 'f_val =', f_val
+            mv = opt.MakeVector(dtype=dtype)(*inputs)
+            assert mv.dtype == dtype
+            f = theano.function([b, i, d], mv, on_unused_input='ignore')
+            f_val = f(val[b], val[i], val[d])
+            #print 'f_val =', f_val
 
-        s = mv.sum()
-        gb = T.grad(s, b, disconnected_inputs='ignore')
-        gi = T.grad(s, i, disconnected_inputs='ignore')
-        gd = T.grad(s, d, disconnected_inputs='ignore')
-        #print 'gb =', gb
-        #print 'gi =', gi
-        #print 'gd =', gd
+            s = mv.sum()
+            gb = T.grad(s, b, disconnected_inputs='ignore')
+            gi = T.grad(s, i, disconnected_inputs='ignore')
+            gd = T.grad(s, d, disconnected_inputs='ignore')
+            #print 'gb =', gb
+            #print 'gi =', gi
+            #print 'gd =', gd
 
-        g = theano.function([b, i, d], [gb, gi, gd])
-        g_val = g(val[b], val[i], val[d])
-        #print 'g_val =', g_val
+            g = theano.function([b, i, d], [gb, gi, gd])
+            g_val = g(val[b], val[i], val[d])
+            #print 'g_val =', g_val
 
-        if dtype.startswith('int'):
-            # The gradient should be 0
-            assert numpy.allclose(g_val, 0)
-        else:
-            for var, grval in zip((b, i, d), g_val):
-                float_inputs = []
-                if var.dtype.startswith('int'):
-                    assert grval == 0
-                elif var not in inputs:
-                    assert grval == 0
-                else:
-                    float_inputs.append(var)
+            if dtype.startswith('int'):
+                # The gradient should be 0
+                assert numpy.allclose(g_val, 0)
+            else:
+                for var, grval in zip((b, i, d), g_val):
+                    float_inputs = []
+                    if var.dtype.startswith('int'):
+                        assert grval == 0
+                    elif var not in inputs:
+                        assert grval == 0
+                    else:
+                        float_inputs.append(var)
 
-            # Build a function that takes float_inputs, use fix values for the
-            # other inputs, and returns the MakeVector. Use it for verify_grad.
-            if float_inputs:
-                def fun(*fl_inputs):
-                    f_inputs = []
-                    for var in f_inputs:
-                        if var in fl_inputs:
-                            # use symbolic variable
-                            f_inputs.append(var)
-                        else:
-                            # use constant value
-                            f_inputs.append(val[var])
-                    return opt.MakeVector(dtype=dtype)(*f_inputs)
+                # Build a function that takes float_inputs, use fix values for the
+                # other inputs, and returns the MakeVector. Use it for verify_grad.
+                if float_inputs:
+                    def fun(*fl_inputs):
+                        f_inputs = []
+                        for var in f_inputs:
+                            if var in fl_inputs:
+                                # use symbolic variable
+                                f_inputs.append(var)
+                            else:
+                                # use constant value
+                                f_inputs.append(val[var])
+                        return opt.MakeVector(dtype=dtype)(*f_inputs)
 
-                utt.verify_grad(fun, [val[ri] for ri in float_inputs])
+                    utt.verify_grad(fun, [val[ri] for ri in float_inputs])
 
-    #should fail
-    for (dtype, inputs) in [("int8", (b, i)),
+        #should fail
+        for (dtype, inputs) in [("int8", (b, i)),
                             ("int8", (i, b)),
                             ("int8", (b, d)),
                             ("int8", (i, i)),
@@ -3490,11 +3518,37 @@ def test_make_vector():
                             ("int32", (i, d)),
                             ("float32", (i, d)),
                            ]:
-        try:
-            opt.MakeVector(dtype=dtype)(*inputs)
-            raise Exception("Theano should have raised an error")
-        except AssertionError:
-            pass
+            try:
+                opt.MakeVector(dtype=dtype)(*inputs)
+                raise Exception("Theano should have raised an error")
+            except AssertionError:
+                pass
+
+    def test_infer_shape(self):
+        adscal = dscalar()
+        bdscal = dscalar()
+        aiscal = iscalar()
+        biscal = iscalar()
+        ciscal = iscalar()
+        discal = iscalar()
+        adscal_val = numpy.random.rand()
+        bdscal_val = numpy.random.rand()
+        aiscal_val = numpy.random.randint(10)
+        biscal_val = numpy.random.randint(10)
+        ciscal_val = numpy.random.randint(10)
+        discal_val = numpy.random.randint(10)
+        self._compile_and_check([adscal, aiscal],
+                            [MakeVector('float64')(adscal, aiscal)],
+                            [adscal_val, aiscal_val], MakeVector)
+
+        self._compile_and_check([adscal, bdscal, aiscal],
+                            [MakeVector('float64')(adscal, bdscal, aiscal)],
+                            [adscal_val, bdscal_val, aiscal_val], MakeVector)
+
+        self._compile_and_check([aiscal, biscal, ciscal, discal],
+                    [MakeVector('int32')(aiscal, biscal, ciscal, discal)],
+                    [aiscal_val, biscal_val, ciscal_val, discal_val],
+                     MakeVector)
 
 
 def test_local_join_1():
@@ -3680,6 +3734,45 @@ def test_local_upcast_elemwise_constant_inputs():
     f = function([s], [tensor.grad(x, s)])
     f([-42, -2.1, -1, -0.5, 0, 0.2, 1, 2, 12])
 
+
+class TestShape_i(utt.InferShapeTester):
+
+    def setUp(self):
+        super(TestShape_i, self).setUp()
+
+    def test_perform(self):
+
+        advec = dvector()
+        advec_val = numpy.random.rand(3)
+        f = function([advec], Shape_i(0)(advec))
+        out = f(advec_val)
+        assert numpy.allclose(out, advec_val.shape[0])
+
+        admat = dmatrix()
+        admat_val = numpy.random.rand(4, 3)
+        for i in xrange(2):
+            f = function([admat], Shape_i(i)(admat))
+            out = f(admat_val)
+            assert numpy.allclose(out, admat_val.shape[i])
+
+    def test_infer_shape(self):
+        admat = dmatrix()
+        admat_val = numpy.random.rand(3, 4)
+        self._compile_and_check([admat], [Shape_i(0)(admat)],
+                        [admat_val], Shape_i)
+
+        self._compile_and_check([admat], [Shape_i(1)(admat)],
+                        [admat_val], Shape_i)
+
+
 if __name__ == '__main__':
+    t = TestMakeVector('setUp')
+    t.setUp()
+    #t.test_perform()
+    t.test_infer_shape()
+
+    """
 #    unittest.main()
     test_fusion().tes_memory_leak()
+    """
+    
