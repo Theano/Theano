@@ -451,7 +451,7 @@ class Stack(VM):
                             if not hasattr(o[0], 'size'):
                                 size.append(-1)
                                 continue
-                            s=o[0].size
+                            s = o[0].size
                             dtype = str(o[0].dtype)
                             dtype2 = dtype[-2:]
                             # KeyError here: couldn't determine the
@@ -540,8 +540,8 @@ class VM_Linker(link.LocalLinker):
 
     def accept(self, fgraph, no_recycling=None):
         """
-        :param fgraph: a PerformLinker can have accepted one FunctionGraph instance
-            at a time.
+        :param fgraph: a PerformLinker can have accepted one FunctionGraph
+            instance at a time.
 
         :param no_recycling: WRITEME
 
@@ -661,7 +661,7 @@ class VM_Linker(link.LocalLinker):
                 assert type(compute_map_list[0]) is list
 
             if self.allow_gc:
-                dependency_map=self.compute_gc_dependencies(storage_map)
+                dependency_map = self.compute_gc_dependencies(storage_map)
                 dependency_map_list = [
                     [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
                     for i in xrange(len(vars_idx_inv))]
@@ -777,8 +777,8 @@ class VM_Linker(link.LocalLinker):
         return vm
 
     def make_all(self, profiler=None, input_storage=None,
-            output_storage = None,
-            ):
+                 output_storage=None,
+                ):
         fgraph = self.fgraph
         order = list(fgraph.toposort())
         no_recycling = self.no_recycling
@@ -819,8 +819,8 @@ class VM_Linker(link.LocalLinker):
 
         return (vm,
                 [link.Container(input, storage)
-                    for input, storage in zip(fgraph.inputs, input_storage)],
+                 for input, storage in zip(fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True)
-                    for output, storage in zip(fgraph.outputs, output_storage)],
+                 for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)
