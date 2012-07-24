@@ -40,10 +40,14 @@ else:
     default_openmp = count > 1
 
 AddConfigVar('openmp',
-             "Enable or not parallel computation on the CPU with OpenMP. "
-             "It is the default value used when creating an Op that support it"
-             ". The best is to define it via Theano configuration "
-             "file or with the environment variable THEANO_FLAGS.",
+             "Enable (or not) parallel computation on the CPU with OpenMP. "
+             "This is the default value used when creating an Op that "
+             "supports OpenMP parallelization. It is preferable to define it "
+             "via the Theano configuration file ~/.theanorc or with the "
+             "environment variable THEANO_FLAGS. Parallelization is only "
+             "done for some operations that implement it, and even for "
+             "operations that implement parallelism, each operation is free "
+             "to respect this flag or not.",
              BoolParam(default_openmp),
              in_c_key=False,
          )
