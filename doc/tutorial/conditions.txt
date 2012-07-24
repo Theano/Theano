@@ -4,7 +4,9 @@
 Conditions
 ==========
 
-**IfElse vs switch**
+IfElse vs switch
+================
+
 
 - Build condition over symbolic variables.
 - IfElse Op takes a `boolean` condition and two variables to compute as input.
@@ -14,6 +16,7 @@ Conditions
   evaluates one variable respect to the condition.
 
 **Example**
+
 
 .. code-block:: python
 
@@ -49,7 +52,7 @@ Conditions
       f_lazyifelse(val1, val2, big_mat1, big_mat2)
   print 'time spent evaluating one value %f sec'%(time.clock()-tic)
 
-In this example, IfElse Op spend less time (about an half) than Switch
+In this example, IfElse Op spends less time (about an half) than Switch
 since it computes only one variable instead of both.
 
 .. code-block:: python

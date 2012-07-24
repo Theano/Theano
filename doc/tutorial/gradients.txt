@@ -264,3 +264,19 @@ or, making use of the *R-operator*:
 >>> f([4,4],[2,2])
 array([ 4.,  4.])
 
+
+Final notes
+===========
+
+
+* T.grad works symbolically: takes and returns a Theano variable.
+
+* Can be compared to a macro: can be applied multiple times.
+
+* Handles scalar costs only.
+
+* However, a simple recipe allows to compute efficiently vector x Jacobian and vector x Hessian.
+
+* Work is in progress on the missing optimizations to be able to compute efficiently the full
+     Jacobian and Hessian matrices and Jacobian times x vector.
+
