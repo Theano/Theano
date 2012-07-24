@@ -5,6 +5,10 @@
 Graph Structures
 ================
 
+
+Theano Graphs
+=============
+
 Debugging or profiling code written in Theano is not that simple if you
 do not know what goes on under the hood. This chapter is meant to
 introduce you to a required minimum of the inner workings of Theano, 
@@ -136,3 +140,23 @@ twice or reformulate parts of the graph to a GPU specific version.
 
 For example, one (simple) optimization that Theano uses is to replace 
 the pattern :math:`\frac{xy}{y}` by :math:`x`.
+
+
+**Example**
+
+Consider the following example of optimization:
+
+>>> import theano
+>>> a = theano.tensor.vector("a")      # declare symbolic variable
+>>> b = a + a**10                      # build symbolic expression
+>>> f = theano.function([a], b)        # compile function
+>>> print f([0,1,2])                   # prints `array([0,2,1026])`
+
+
+======================================================  =====================================================
+        Unoptimized graph                                    Optimized graph
+======================================================  =====================================================
+.. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
+======================================================  =====================================================
+
+Symbolic programming involves a paradigm shift: people need to use it to understand it.

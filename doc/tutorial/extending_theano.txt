@@ -310,8 +310,10 @@ You can also add this at the end of the test file:
        t.setUp()
        t.test_double_rop()
 
-Exercises 8
------------
+-------------------------------------------
+
+**Exercise**
+
 
 - Run the code in the file double_op.py.
 - Modify and execute to compute: x * y
