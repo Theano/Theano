@@ -1399,7 +1399,9 @@ class GemmOptimizer(Optimizer):
                             zip(node.outputs, new_outputs),
                             [old_dot22],
                             reason='GemmOptimizer',
-                            warn=not self.warned
+                            #For now we disable the warning as we know case
+                            #that we need to fix.
+                            warn=False,  # warn=not self.warned
                         )
                         did_something = True
                         nb_replacement += 1
