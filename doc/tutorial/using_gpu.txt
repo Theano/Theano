@@ -179,7 +179,7 @@ mistake by failing to account for the resulting memory aliasing.
 
 
 What can be accelerated on the GPU?
-------------------------------------
+-----------------------------------
 
 The performance characteristics will change as we continue to optimize our
 implementations, and vary from device to device, but to give a rough idea of
@@ -205,7 +205,7 @@ what to expect right now:
 
 
 Tips for improving performance on GPU
---------------------------------------
+-------------------------------------
 
 * Consider 
   adding ``floatX = float32`` to your .theanorc file if you plan to do a lot of
@@ -239,3 +239,261 @@ Changing the value of shared variables
 To change the value of a shared variable, e.g. to provide new data to process,
 use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
 see :ref:`aliasing`.
+
+-------------------------------------------
+
+**Exercise**
+
+
+Consider the logistic regression:
+
+.. code-block:: python
+    
+    import numpy
+    import theano
+    import theano.tensor as T
+    rng = numpy.random
+
+    N = 400
+    feats = 784
+    D = (rng.randn(N, feats).astype(theano.config.floatX),
+    rng.randint(size=N,low=0, high=2).astype(theano.config.floatX))
+    training_steps = 10000
+
+    # Declare Theano symbolic variables
+    x = T.matrix("x")
+    y = T.vector("y")
+    w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
+    b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+    x.tag.test_value = D[0]
+    y.tag.test_value = D[1]
+    #print "Initial model:"
+    #print w.get_value(), b.get_value()
+
+
+    # Construct Theano expression graph
+    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probabily of having a one
+    prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
+    xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
+    cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
+    gw,gb = T.grad(cost, [w,b])
+
+    # Compile expressions to functions
+    train = theano.function(
+                inputs=[x,y],
+                outputs=[prediction, xent],
+                updates={w:w-0.01*gw, b:b-0.01*gb},
+                name = "train")
+    predict = theano.function(inputs=[x], outputs=prediction,
+                name = "predict")
+
+    if any( [x.op.__class__.__name__=='Gemv' for x in
+    train.maker.fgraph.toposort()]):
+        print 'Used the cpu'
+    elif any( [x.op.__class__.__name__=='GpuGemm' for x in
+    train.maker.fgraph.toposort()]):
+        print 'Used the gpu'
+    else:
+        print 'ERROR, not able to tell if theano used the cpu or the gpu'
+        print train.maker.fgraph.toposort()
+
+
+
+    for i in range(training_steps):
+        pred, err = train(D[0], D[1])
+    #print "Final model:"
+    #print w.get_value(), b.get_value()
+
+    print "target values for D"
+    print D[1]
+
+    print "prediction on D"
+    print predict(D[0])
+
+   
+
+* Modify and execute this example to run on GPU with floatX=float32 and 
+  time with "time python file.py".
+
+* Is there an increase in speed from CPU to GPU?
+
+* Where does it come from? (Use ProfileMode)
+
+* What can be done to further increase the speed of the GPU version?
+
+
+.. Note::
+
+   * Only 32 bit floats are supported (being worked on)
+   * Only 1 GPU per process
+   * Use the Theano flag ``device=gpu`` to tell to use the GPU device
+   * Use ``device=gpu{0, 1, ...}`` to specify which GPU if you have more than one
+   * Shared variables with float32 dtype are by default moved to the GPU memory space
+
+   * Apply the Theano flag ``floatX=float32`` through (``theano.config.floatX``) in your code
+   * Cast inputs before putting them into a shared variable
+   * Circumvent the automatic cast of int32 with float32 to float64:
+    
+     * A new casting mechanism is being developed
+     * Insert manual cast in your code or use [u]int{8,16}
+     * Insert manual cast around the mean operator (which involves a division by the length, which is an int64)
+
+
+-------------------------------------------
+
+Software for Directly Programming a GPU
+---------------------------------------
+
+Theano is a meta-programmer, doesn't really count.
+
+* CUDA: C extension by NVIDIA 
+
+ * Vendor-specific
+
+ * Numeric libraries (BLAS, RNG, FFT) maturing.
+
+* OpenCL: multi-vendor version of CUDA
+
+ * More general, standardized
+
+ * Fewer libraries, less adoption.
+
+* PyCUDA: python bindings to CUDA driver interface
+
+ * Python interface to CUDA:
+   Access Nvidia's CUDA parallel computation API from Python.
+   Convenience: Makes it easy to do GPU meta-programming from within Python. Helpful documentation.
+   (i.e. abstractions to compile low-level CUDA code from Python: ``pycuda.driver.SourceModule``).
+   Completeness: Binding to all of CUDA's driver API.
+   Automatic error checking: All CUDA errors are automatically translated into Python exceptions.
+   Speed: PyCUDA's base layer is written in C++.
+
+ * Memory management of GPU objects:
+   GPU memory buffer: \texttt{pycuda.gpuarray.GPUArray}
+   Object cleanup tied to lifetime of objects (RAII, Resource Acquisition Is Initialization).
+   Makes it much easier to write correct, leak- and crash-free code.
+   PyCUDA knows about dependencies (e.g. it won't detach from a context before all memory allocated in it is also freed).
+
+* PyOpenCL: PyCUDA for OpenCL
+
+
+Example: PyCUDA
+---------------
+
+.. code-block:: python
+
+  import pycuda.autoinit
+  import pycuda.driver as drv
+  import numpy
+  
+  from pycuda.compiler import SourceModule
+  mod = SourceModule("""
+  __global__ void multiply_them(float *dest, float *a, float *b)
+  {
+    const int i = threadIdx.x;
+    dest[i] = a[i] * b[i];
+  }
+  """)
+
+  multiply_them = mod.get_function("multiply_them")
+  
+  a = numpy.random.randn(400).astype(numpy.float32)
+  b = numpy.random.randn(400).astype(numpy.float32)
+  
+  dest = numpy.zeros_like(a)
+  multiply_them(
+          drv.Out(dest), drv.In(a), drv.In(b),
+          block=(400,1,1), grid=(1,1))
+
+  assert numpy.allclose(dest, a*b)
+  print dest
+
+-------------------------------------------
+
+**Exercise**
+
+- Run the preceding example.
+
+- Modify and execute it to work for a matrix of 20 x 10.
+
+
+-------------------------------------------
+
+
+.. _pyCUDA_theano:
+
+Example: Theano + PyCUDA
+------------------------
+
+.. code-block:: python
+
+    import numpy, theano
+    import theano.misc.pycuda_init
+    from pycuda.compiler import SourceModule
+    import theano.sandbox.cuda as cuda
+
+    class PyCUDADoubleOp(theano.Op):
+        def __eq__(self, other):
+            return type(self) == type(other)
+        def __hash__(self):
+            return hash(type(self))
+        def __str__(self):
+            return self.__class__.__name__
+        def make_node(self, inp):
+            inp = cuda.basic_ops.gpu_contiguous(
+               cuda.basic_ops.as_cuda_ndarray_variable(inp))
+            assert inp.dtype == "float32"
+            return theano.Apply(self, [inp], [inp.type()])
+        def make_thunk(self, node, storage_map, _, _2):
+            mod = SourceModule("""
+        __global__ void my_fct(float * i0, float * o0, int size) {
+        int i = blockIdx.x*blockDim.x + threadIdx.x;
+        if(i<size){
+            o0[i] = i0[i]*2;
+        }
+      }""")
+            pycuda_fct = mod.get_function("my_fct")
+            inputs = [ storage_map[v] for v in node.inputs]
+            outputs = [ storage_map[v] for v in node.outputs]
+            def thunk():
+                z = outputs[0]
+                if z[0] is None or z[0].shape!=inputs[0][0].shape:
+                    z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
+                grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
+                pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+                           block=(512,1,1), grid=grid)
+            return thunk
+    
+
+Test it!:
+
+>>> x = theano.tensor.fmatrix()
+>>> f = theano.function([x], PyCUDADoubleOp()(x))
+>>> xv=numpy.ones((4,5), dtype="float32")
+>>> assert numpy.allclose(f(xv), xv*2)
+>>> print numpy.asarray(f(xv))
+
+-------------------------------------------
+
+**Exercise**
+
+
+- Run the preceding example.
+
+- Modify and execute the example to multiple two matrix: x * y.
+
+- Modify and execute the example to return 2 outputs: x + y and x - y.
+
+  - Our current elemwise fusion generates computation with only 1 output.
+
+- Modify and execute the example to support stride (i.e. so as not constrain the input to be c contiguous).
+
+
+-------------------------------------------
+
+
+
+
+
+
+

@@ -1,9 +1,8 @@
 .. _adding:
 
-========================================
-Baby steps - Adding two numbers together
-========================================
-
+====================
+Baby steps - Algebra
+====================
 
 Adding two scalars
 ==================
@@ -57,8 +56,6 @@ instruction. Behind the scenes, ``f`` was being compiled into C code.
   type of both ``x`` and ``y`` is ``theano.tensor.ivector``.
 
 
--------------------------------------------
-
 **Step 1**
 
 >>> x = T.dscalar('x')
@@ -91,8 +88,6 @@ given name. If you provide no argument, the symbol will be unnamed. Names
 are not required, but they can help debugging.
 
 
--------------------------------------------
-
 **Step 2**
 
 The second step is to combine ``x`` and ``y`` into their sum ``z``:
@@ -106,7 +101,6 @@ function to pretty-print out the computation associated to ``z``.
 >>> print pp(z)
 (x + y)
 
--------------------------------------------
 
 **Step 3**
 
@@ -174,3 +168,19 @@ with numpy arrays may be found :ref:`here <libdoc_tensor_creation>`.
    You, the user---not the system architecture---have to choose whether your
    program will use 32- or 64-bit integers (``i`` prefix vs. the ``l`` prefix)
    and floats (``f`` prefix vs. the ``d`` prefix).
+
+-------------------------------------------
+
+**Exercise**
+
+.. code-block:: python
+
+  import theano
+  a = theano.tensor.vector() # declare variable
+  out = a + a**10               # build symbolic expression
+  f = theano.function([a], out)   # compile function
+  print f([0,1,2])  # prints `array([0,2,1026])`
+  
+Modify and execute this code to compute this expression: a**2 + b**2 + 2*a*b.
+
+-------------------------------------------

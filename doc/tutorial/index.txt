@@ -27,10 +27,11 @@ you out.
     numpy
     adding
     examples
-    gradients
-    loading_and_saving
     symbolic_graphs
+    printing_drawing	
+    gradients
     modes
+    loading_and_saving
     aliasing
     conditions
     loop

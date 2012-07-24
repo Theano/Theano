@@ -310,14 +310,18 @@ You can also add this at the end of the test file:
        t.setUp()
        t.test_double_rop()
 
-Exercises 8
------------
+-------------------------------------------
+
+**Exercise**
+
 
 - Run the code in the file double_op.py.
 - Modify and execute to compute: x * y
 - Modify and execute the example to return 2 outputs: x + y and x - y
 
   - Our current element-wise fusion generates computation with only 1 output.
+
+-------------------------------------------
 
 GPU Op
 ------
