@@ -883,7 +883,7 @@ class ConvOp(Op):
         return [din, dw]
 
     def c_headers(self):
-        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<omp.h>' ]
+        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
         return (8, self.openmp)
