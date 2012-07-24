@@ -159,9 +159,8 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     :param pt: List of inputs to realize the tests.
     :param structured: True to tests with a structured grad,
                        False otherwise.
-    :param *args: Other `verify_grad` parameter if any.
-    :param **kwargs: Other `verify_grad` key word parameter
-                     if any.
+    :param *args: Other `verify_grad` parameters if any.
+    :param **kwargs: Other `verify_grad` keywords if any.
 
     :return: None
     """
