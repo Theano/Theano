@@ -145,7 +145,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                the cvm is a linker that replaces this python loop with a c
                loop to avoid continuously changing between python and c.
                The CVM is faster for 2 reasons:
-                 1) It's internal logic in C, so no Python interpreter overhead.
+                 1) Its internal logic in C, so no Python interpreter overhead.
                  2) It makes native calls from the VM logic into thunks that
                  have been compiled using the CLinker.
                the vm is a linker that was developed to prototype the cvm. it
