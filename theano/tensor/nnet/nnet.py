@@ -774,7 +774,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     nin=3
     nout=1
-    """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
+    """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
     def __init__(self, **kwargs):
         gof.Op.__init__(self,**kwargs)
     def __eq__(self, other):
