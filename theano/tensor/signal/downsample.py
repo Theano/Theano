@@ -65,7 +65,8 @@ class DownsampleFactorMax(Op):
 
         :param imgshape: the shape of a tensor of images. The last two elements are interpreted
         as the number of rows, and the number of cols.
-        :type imgshape: tuple, list, or similar.
+        :type imgshape: tuple, list, or similar of integer or
+        scalar Theano variable.
 
         :param ds: downsample factor over rows and columns
         :type ds: list or tuple of two ints
@@ -83,10 +84,15 @@ class DownsampleFactorMax(Op):
             raise TypeError('imgshape must have at least two elements (rows, cols)')
         r, c = imgshape[-2:]
         rval = list(imgshape[:-2])+[ r/ds[0], c/ds[1]]
+
         if not ignore_border:
-            if r % ds[0]:
+            if isinstance(r, theano.Variable):
+                rval[-2] = tensor.switch(r % ds[0], rval[-2] + 1, rval[-2])
+            elif r % ds[0]:
                 rval[-2] += 1
-            if c % ds[1]:
+            if isinstance(c, theano.Variable):
+                rval[-1] = tensor.switch(c % ds[1], rval[-1] + 1, rval[-1])
+            elif c % ds[1]:
                 rval[-1] += 1
         return rval
 
@@ -148,6 +154,10 @@ class DownsampleFactorMax(Op):
                     for j in xrange(x_usable3):
                         zj = j / ds1
                         zz[n,k,zi,zj] = __builtin__.max(zz[n,k,zi,zj], x[n,k,i,j])
+
+    def infer_shape(self, node, in_shapes):
+        shp = self.out_shape(in_shapes[0], self.ds, self.ignore_border)
+        return [shp]
 
     def grad(self, inp, grads):
         x, = inp
@@ -274,6 +284,9 @@ class DownsampleFactorMaxGrad(Op):
                             gx[n,k,i,j] = gz[n,k,zi,zj]
                         else: gx[n,k,i,j] = 0
         gx_stg[0] = gx
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
 
     def c_code(self, node, name, inp, out, sub):
         x, z, gz = inp
