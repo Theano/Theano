@@ -106,6 +106,9 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
         import theano.sandbox.cuda.tests.test_driver
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
+
+import configdefaults_late
+
 # Use config.numpy to call numpy.seterr
 import numpy
 if config.numpy.seterr_all == 'None':
