@@ -1,17 +1,18 @@
 .. _gpu_data_convert:
 
 ===================================
-PyCUDA/CUDAMat/Gnumpy compatibility
+PyCUDA/CUDAMat/gnumpy compatibility
 ===================================
 
 PyCUDA
 ======
 
-Currently PyCUDA and Theano have different objects to store GPU
+Currently, PyCUDA and Theano have different objects to store GPU
 data. The two implementations do not support the same set of features.
 Theano's implementation is called CudaNdarray and supports
-strides. It supports only the float32 dtype. PyCUDA's implementation
-is called GPUArray and doesn't support strides. However, it can deal with all Numpy and Cuda dtypes.
+*strides*. It also only supports the float32 dtype. PyCUDA's implementation
+is called GPUArray and doesn't support *strides*. However, it can deal with
+all NumPy and CUDA dtypes.
 
 We are currently working on having the same base object that will
 mimic Numpy. Until this is ready, here is some information on how to
@@ -23,8 +24,8 @@ Transfer
 You can use the `theano.misc.pycuda_utils` module to convert GPUArray to and
 from CudaNdarray. The functions `to_cudandarray(x, copyif=False)` and
 `to_gpuarray(x)` return a new object that occupies the same memory space
-as the original. Otherwise it raises a ValueError. Because GPUArray don't
-support strides, if the CudaNdarray is strided, we could copy it to
+as the original. Otherwise it raises a ValueError. Because GPUArrays don't
+support *strides*, if the CudaNdarray is strided, we could copy it to
 have a non-strided copy. The resulting GPUArray won't share the same
 memory region. If you want this behavior, set `copyif=True` in
 `to_gpuarray`.
@@ -33,7 +34,7 @@ Compiling with PyCUDA
 ---------------------
 
 You can use PyCUDA to compile CUDA functions that work directly on
-CudaNdarray. Here is an example from the file `theano/misc/tests/test_pycuda_theano_simple.py`
+CudaNdarrays. Here is an example from the file `theano/misc/tests/test_pycuda_theano_simple.py`:
 
 .. code-block:: python
 
@@ -75,7 +76,7 @@ CudaNdarray. Here is an example from the file `theano/misc/tests/test_pycuda_the
 Theano op using PyCUDA function
 -------------------------------
 
-You can use gpu function compiled with PyCUDA in a Theano op. Here is an example..
+You can use a GPU function compiled with PyCUDA in a Theano op. Here is an example:
 
 .. code-block:: python
 
@@ -119,15 +120,15 @@ You can use gpu function compiled with PyCUDA in a Theano op. Here is an example
 CUDAMat
 =======
 
-There are functions for conversion between CUDAMat and Theano CudaNdArray objects. 
+There are functions for conversion between CUDAMats and Theano CudaNdArray objects. 
 They obey the same principles as PyCUDA's functions and can be found in
 theano.misc.cudamat_utils.py
 
 WARNING: There is a strange problem associated with stride/shape with those converters. 
 To work, the test needs a transpose and reshape...
 
-Gnumpy
+gnumpy
 ======
 
-There are conversion functions between gnumpy garray object and Theano CudaNdArray. 
+There are conversion functions between gnumpy garray objects and Theano CudaNdArrays. 
 They are also similar to PyCUDA's and can be found in theano.misc.gnumpy_utils.py

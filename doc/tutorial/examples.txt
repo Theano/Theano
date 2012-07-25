@@ -2,11 +2,11 @@
 .. _basictutexamples:
 
 =============
-More examples
+More Examples
 =============
 
 
-Logistic function
+Logistic Function
 =================
 
 Here's another straightforward example, though a bit more elaborate
@@ -61,7 +61,7 @@ array([[ 0.5       ,  0.73105858],
        [ 0.26894142,  0.11920292]])
 
 
-Computing more than one thing at the same time
+Computing More than one Thing at the Same Time
 ==============================================
 
 Theano supports functions with multiple outputs. For example, we can
@@ -94,7 +94,7 @@ was reformatted for readability):
         [ 1.,  4.]])]
 
 
-Setting a default value for an argument
+Setting a Default Value for an Argument
 =======================================
 
 Let's say you want to define a function that adds two numbers, except
@@ -152,7 +152,7 @@ array(33.0)
 
 .. _functionstateexample:
 
-Using shared variables
+Using Shared Variables
 ======================
 
 It is also possible to make a function with an internal state. For
@@ -227,7 +227,7 @@ array(0)
 
 You might be wondering why the updates mechanism exists.  You can always
 achieve a similar thing by returning the new expressions, and working with
-them in numpy as usual.  The updates mechanism can be a syntactic convenience,
+them in NumPy as usual.  The updates mechanism can be a syntactic convenience,
 but it is mainly there for efficiency.  Updates to shared variables can
 sometimes be done more quickly using in-place algorithms (e.g. low-rank matrix
 updates).  Also, theano has more control over where and how shared variables are
@@ -252,15 +252,15 @@ array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
 array(0)
 
-The givens parameter can be used to replace any symbolic variable, not just a
+The ``givens`` parameter can be used to replace any symbolic variable, not just a
 shared variable. You can replace constants, and expressions, in general.  Be
-careful though, not to allow the expressions introduced by a givens
+careful though, not to allow the expressions introduced by a ``givens``
 substitution to be co-dependent, the order of substitution is not defined, so
 the substitutions have to work in any order.
 
 In practice, a good way of thinking about the ``givens`` is as a mechanism
 that allows you to replace any part of your formula with a different
-expression that evaluates to a tensor of same shape and dtype. ``givens``
+expression that evaluates to a tensor of same shape and dtype.
 
 .. _using_random_numbers:
 
@@ -270,17 +270,17 @@ Using Random Numbers
 Because in Theano you first express everything symbolically and
 afterwards compile this expression to get functions,
 using pseudo-random numbers is not as straightforward as it is in
-numpy, though also not too complicated.
+NumPy, though also not too complicated.
 
 The way to think about putting randomness into Theano's computations is
-to put random variables in your graph. Theano will allocate a numpy
+to put random variables in your graph. Theano will allocate a NumPy
 RandomStream object (a random number generator) for each such
 variable, and draw from it as necessary. We will call this sort of
 sequence of random numbers a *random stream*. *Random streams* are at
 their core shared variables, so the observations on shared variables
 hold here as well.
 
-Brief example
+Brief Example
 -------------
 
 Here's a brief example.  The setup code is:
@@ -325,8 +325,8 @@ random variable appears three times in the output expression.
 
 >>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
-Seedings Streams
-----------------
+Seeding Streams
+---------------
 
 Random variables can be seeded individually or collectively.
 
@@ -344,7 +344,7 @@ of the random variables.
 
 >>> srng.seed(902340)  # seeds rv_u and rv_n with different seeds each
 
-Sharing Streams between Functions
+Sharing Streams Between Functions
 ---------------------------------
 
 As usual for shared variables, the random number generators used for random
@@ -362,7 +362,7 @@ For example:
 >>> v2 = f()             # v2 != v1
 
 
-Others Random Distributions
+Other Random Distributions
 ---------------------------
 
 There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
@@ -371,7 +371,7 @@ There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 .. _logistic_regression:
 
 
-A Real example: Logistic Regression
+A Real Example: Logistic Regression
 ===================================
 
 The preceding elements are put to work in this more realistic example. It will be used repeatedly.  

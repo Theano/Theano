@@ -6,15 +6,16 @@ Debugging Theano: FAQ and Troubleshooting
 =========================================
 
 There are many kinds of bugs that might come up in a computer program.
-This page is structured as an FAQ.  It should provide recipes to tackle common
+This page is structured as a FAQ.  It should provide recipes to tackle common
 problems, and introduce some of the tools that we use to find problems in our
 Theano code, and even (it happens) in Theano's internals, such as
 :ref:`using_debugmode`.
 
-Isolating the problem/Testing Theano compiler
+Isolating the Problem/Testing Theano Compiler
 ---------------------------------------------
 
-You can run your Theano function in a DebugMode(:ref:`using_debugmode`). This test the Theano optimizations and help to find where NaN, inf and other problem come from.
+You can run your Theano function in a DebugMode(:ref:`using_debugmode`). 
+This tests the Theano optimizations and helps to find where NaN, inf and other problems come from.
 
 
 Using Test Values
@@ -102,7 +103,7 @@ can get Theano to give us the exact source of the error.
     # provide Theano with a default test-value
     x.tag.test_value = numpy.random.rand(5,10)
 
-In the above, we're tagging the symbolic matrix ``x`` with a special test
+In the above, we are tagging the symbolic matrix ``x`` with a special test
 value. This allows Theano to evaluate symbolic expressions on-the-fly (by
 calling the ``perform`` method of each Op), as they are being defined. Sources
 of error can thus be identified with much more precision and much earlier in
@@ -122,8 +123,8 @@ following error message, which properly identifies line 23 as the culprit.
 
 The compute_test_value mechanism works as follows:
 
-* Theano Constants and SharedVariable are used as is. No need to instrument them.
-* A Theano ``Variable`` (i.e. ``dmatrix``, ``vector``, etc.) should be
+* Theano ``constants`` and ``shared variables`` are used as is. No need to instrument them.
+* A Theano ``variable`` (i.e. ``dmatrix``, ``vector``, etc.) should be
   given a special test value through the attribute ``tag.test_value``.
 * Theano automatically instruments intermediate results. As such, any quantity
   derived from ``x`` will be given a `tag.test_value` automatically.
@@ -139,11 +140,11 @@ The compute_test_value mechanism works as follows:
   variable is missing a test value.
 
 .. note::
-  This feature is currently not compatible with ``Scan`` and also with Ops
+  This feature is currently incompatible with ``Scan`` and also with Ops
   which do not implement a ``perform`` method.
 
 
-How do I print an intermediate value in a Function/Method?
+How do I Print an Intermediate Value in a Function/Method?
 ----------------------------------------------------------
 
 Theano provides a 'Print' Op to do this.
@@ -177,7 +178,7 @@ precise inspection of what's being computed where, when, and how, see the
     to remove them to know if this is the cause or not.
 
 
-How do I print a graph (before or after compilation)?
+How do I Print a Graph (before or after compilation)?
 ----------------------------------------------------------
 
 Theano provides two functions (:func:`theano.pp` and
@@ -190,7 +191,7 @@ You can read about them in :ref:`libdoc_printing`.
 
 
 
-The function I compiled is too slow, what's up?
+The Function I Compiled is Too Slow, what's up?
 -----------------------------------------------
 First, make sure you're running in FAST_RUN mode.  
 FAST_RUN is the default mode, but make sure by passing ``mode='FAST_RUN'``
@@ -207,10 +208,10 @@ Tips:
 
 .. _faq_wraplinker:
 
-How do I step through a compiled function with the WrapLinker?
+How do I Step through a Compiled Function with the WrapLinker?
 --------------------------------------------------------------
 
-This is not exactly an FAQ, but the doc is here for now...
+This is not exactly a FAQ, but the doc is here for now...
 It's pretty easy to roll-your-own evaluation mode.
 Check out this one:
 
@@ -248,7 +249,7 @@ Use your imagination :)
 This can be a really powerful debugging tool.
 Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
 
-How to use pdb ?
+How to Use pdb ?
 ----------------
 
 In the majority of cases, you won't be executing from the interactive shell
@@ -294,7 +295,7 @@ The call stack contains a few useful informations to trace back the source
 of the error. There's the script where the compiled function was called --
 but if you're using (improperly parameterized) prebuilt modules, the error
 might originate from ops in these modules, not this script. The last line
-tells us about the Op that caused the exception. In thise case it's a "mul"
+tells us about the Op that caused the exception. In this case it's a "mul"
 involving Variables name "a" and "b". But suppose we instead had an
 intermediate result to which we hadn't given a name.
 

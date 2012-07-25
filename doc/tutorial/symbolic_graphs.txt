@@ -12,7 +12,7 @@ Theano Graphs
 Debugging or profiling code written in Theano is not that simple if you
 do not know what goes on under the hood. This chapter is meant to
 introduce you to a required minimum of the inner workings of Theano, 
-for more details see :ref:`extending`.
+for more detail see :ref:`extending`.
 
 The first step in writing Theano code is to write down all mathematical 
 relations using symbolic placeholders (**variables**). When writing down 
@@ -28,8 +28,8 @@ Theano builds internally a graph structure composed of interconnected
 **variables**. It is important to make the difference between the
 definition of a computation represented by an **op** and its application
 to some actual data which is represented by the **apply** node. For more
-details about these building blocks see :ref:`variable`, :ref:`op`, 
-:ref:`apply`. A graph example is the following:
+detail about these building blocks see :ref:`variable`, :ref:`op`, 
+:ref:`apply`. Here is a an example of a graph:
 
 
 **Code**
@@ -77,7 +77,7 @@ output. You can now print the name of the op that is applied to get
 >>> y.owner.op.name
 'Elemwise{mul,no_inplace}'
 
-So a elementwise multiplication is used to compute ``y``. This
+Hence, an elementwise multiplication is used to compute ``y``. This
 multiplication is done between the inputs:
 
 >>> len(y.owner.inputs)
@@ -101,9 +101,9 @@ same shape as x. This is done by using the op ``DimShuffle`` :
 [2.0]
 
 
-Starting from this graph structure it is easy to understand how 
-*automatic differentiation* is done, or how the symbolic relations
-can be optimized for performance or stability.
+Starting from this graph structure it is easier to understand how 
+*automatic differentiation* proceeds and how the symbolic relations
+can be *optimized* for performance or stability.
 
 
 Automatic Differentiation
@@ -159,4 +159,4 @@ Consider the following example of optimization:
 .. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
 ======================================================  =====================================================
 
-Symbolic programming involves a paradigm shift: people need to use it to understand it.
+Symbolic programming involves a paradigm shift: it is best to use it in order to understand it.

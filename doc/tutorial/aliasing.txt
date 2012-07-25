@@ -7,39 +7,39 @@ Understanding Memory Aliasing for Speed and Correctness
 
 The aggressive reuse of memory is one of the ways Theano makes code fast, and
 it's important for the correctness and speed of your program that you understand
-which buffers Theano might alias to which others.
+which buffers Theano might alias to which other.
 
-This file describes the principles for how Theano treats memory, and explains
-when you might want to change the default behaviour of some functions and
+This section describes the principles based on which Theano treats memory, and explains
+when you might want to alter the default behaviour of some functions and
 methods for faster performance.
 
 
-The memory model: 2 spaces
-==========================
+The Memory Model: Two Spaces
+============================
 
 There are some simple principles that guide Theano's treatment of memory.  The
 main idea is that there is a pool of memory managed by Theano, and Theano tracks
 changes to values in that pool.
 
- 1. Theano manages its own memory space, which typically does not overlap with
-    the memory of normal python variables that non-Theano code creates.
+* Theano manages its own memory space, which typically does not overlap with
+  the memory of normal Python variables that non-Theano code creates.
 
- 1. Theano Functions only modify buffers that are in Theano's memory space.
+* Theano functions only modify buffers that are in Theano's memory space.
 
- 1. Theano's memory space includes the buffers allocated to store shared
-    variables and the temporaries used to evaluate Functions.
+* Theano's memory space includes the buffers allocated to store shared
+  variables and the temporaries used to evaluate functions.
 
- 1. Physically, Theano's memory space may be spread across the host, a GPU
-    device(s), and in the future may even include objects on a remote machine.
+* Physically, Theano's memory space may be spread across the host, a GPU
+  device(s), and in the future may even include objects on a remote machine.
 
- 1. The memory allocated for a shared variable buffer is unique: it is never
-    aliased to another shared variable.
+* The memory allocated for a shared variable buffer is unique: it is never
+  aliased to another shared variable.
 
- 1. Theano's managed memory is constant while Theano Functions are not running
-    and Theano library code is not running.
+* Theano's managed memory is constant while Theano functions are not running
+  and Theano's library code is not running.
 
- 1. The default behaviour of Function is to return user-space values for
-    outputs, and to expect user-space values for inputs.
+* The default behaviour of a function is to return user-space values for
+  outputs, and to expect user-space values for inputs.
     
 The distinction between Theano-managed memory and user-managed memory can be
 broken down by some Theano functions (e.g. shared, get_value and the
@@ -49,9 +49,9 @@ operations) at the expense of risking subtle bugs in the overall program (by
 aliasing memory).
 
 The rest of this section is aimed at helping you to understand when it is safe
-to use the ``borrow=True`` argument and reap the benefit of faster code.
+to use the ``borrow=True`` argument and reap the benefits of faster code.
 
-Borrowing when creating shared variables
+Borrowing when Creating Shared Variables
 ========================================
 
 A ``borrow`` argument can be provided to the shared-variable constructor.
@@ -109,7 +109,7 @@ It is not a reliable technique to use ``borrow=True`` to modify shared variables
 by side-effect, because with some devices (e.g. GPU devices) this technique will
 not work.
 
-Borrowing when accessing value of shared variables
+Borrowing when Accessing Value of Shared Variables
 ==================================================
 
 Retrieving
@@ -139,7 +139,7 @@ The reason that ``borrow=True`` might still make a copy is that the internal
 representation of a shared variable might not be what you expect.  When you
 create a shared variable by passing a numpy array for example, then ``get_value()``
 must return a numpy array too.  That's how Theano can make the GPU use
-transparent.  But when you are using a GPU (or in future perhaps a remote machine), then the numpy.ndarray
+transparent.  But when you are using a GPU (or in the future perhaps a remote machine), then the numpy.ndarray
 is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
@@ -213,7 +213,7 @@ be costly.  Here are a few tips to ensure fast and efficient use of GPU memory a
 here: :ref:`libdoc_cuda_var`)
 
 
-Retrieving and assigning via the .value property
+Retrieving and Assigning via the .value Property
 ------------------------------------------------
 
 Shared variables have a ``.value`` property that is connected to ``get_value``
@@ -234,7 +234,7 @@ potential impact on your code, use the ``.get_value`` and ``.set_value`` methods
 directly with appropriate flags.
 
 
-Borrowing when constructing Function objects
+Borrowing when Constructing Function Objects
 ============================================
 
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
@@ -276,6 +276,7 @@ hints that give more flexibility to the compilation and optimization of the
 graph.
 
 *Take home message:*
+
 When an input ``x`` to a function is not needed after the function returns and you
 would like to make it available to Theano as additional workspace, then consider
 marking it with ``In(x, borrow=True)``.  It may make the function faster and
