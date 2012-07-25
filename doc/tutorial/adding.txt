@@ -1,10 +1,10 @@
 .. _adding:
 
 ====================
-Baby steps - Algebra
+Baby Steps - Algebra
 ====================
 
-Adding two scalars
+Adding two Scalars
 ==================
 
 So, to get us started with Theano and get a feel of what we're working with, 
@@ -117,7 +117,7 @@ argument is what we want to see as output when we apply the function.
 ``f`` may then be used like a normal Python function.
 
 
-Adding two matrices
+Adding two Matrices
 ===================
 
 You might already have guessed how to do this. Indeed, the only change
