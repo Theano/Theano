@@ -5,7 +5,7 @@
 Extending Theano
 ****************
 
-Theano graphs
+Theano Graphs
 -------------
 
 - Theano works with symbolic graphs
@@ -40,7 +40,6 @@ Inputs and Outputs are lists of Theano variables
    See :ref:`dev_start_guide` for information about git, github, the
    development workflow and how to make a quality contribution.
 
-Op contract
 -----------
 
 
@@ -96,13 +95,13 @@ at run time. Currently there are 2 different possibilites:
 implement the :func:`perform`
 and/or :func:`c_code <Op.c_code>` (and other related :ref:`c methods
 <cop>`), or the :func:`make_thunk` method. The ``perform`` allows
-to easily wrap an existing python function into Theano. The ``c_code``
-and related methods allow the op to generate c code that will be 
+to easily wrap an existing Python function into Theano. The ``c_code``
+and related methods allow the op to generate C code that will be 
 compiled and linked by Theano. On the other hand, the ``make_thunk``
 method will be called only once during compilation and should generate
 a ``thunk``: a standalone function that when called will do the wanted computations.
 This is useful if you want to generate code and compile it yourself. For
-example, this allows you to use PyCUDA to compile gpu code.
+example, this allows you to use PyCUDA to compile GPU code.
 
 Also there are 2 methods that are highly recommended to be implemented. They are
 needed in order to merge duplicate computations involving your op. So if you
@@ -110,7 +109,7 @@ do not want Theano to execute your op multiple times with the same inputs,
 do implement them. Those methods are :func:`__eq__` and
 :func:`__hash__`.
 
-The :func:`infer_shape` method allows to infer shape of some variable, somewhere in the
+The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
 middle of the computational graph without actually computing the outputs (when possible).
 This could be helpful if one only needs the shape of the output instead of the actual outputs.
 
@@ -123,7 +122,7 @@ string representation of your Op.
 The :func:`R_op` method is needed if you want `theano.tensor.Rop` to
 work with your op.
 
-Op example
+Op Example
 ----------
 
 .. code-block:: python
@@ -164,7 +163,7 @@ Op example
                 return eval_points
             return self.grad(inputs, eval_points)
 
-Try it!
+Try it!:
 
 .. code-block:: python
 
@@ -177,15 +176,14 @@ Try it!
     print inp
     print out
 
-How to test it
+How To Test it
 --------------
 
 Theano has some functions to simplify testing. These help test the
 ``infer_shape``, ``grad`` and ``R_op`` methods. Put the following code
 in a file and execute it with the ``nosetests`` program.
 
-Basic tests
-===========
+**Basic Tests**
 
 Basic tests are done by you just by using the Op and checking that it
 returns the right answer. If you detect an error, you must raise an
@@ -210,8 +208,7 @@ exception. You can use the `assert` keyword to automatically raise an
             # Compare the result computed to the expected value.
             assert numpy.allclose(inp * 2, out)
 
-Testing the infer_shape
-=======================
+**Testing the infer_shape**
 
 When a class inherits from the ``InferShapeTester`` class, it gets the
 `self._compile_and_check` method that tests the Op ``infer_shape``
@@ -248,8 +245,7 @@ see it fail, you can implement an incorrect ``infer_shape``.
                                     # Op that should be removed from the graph.
                                     self.op_class)
 
-Testing the gradient
-====================
+**Testing the gradient**
 
 The function :ref:`verify_grad <validating_grad>`
 verifies the gradient of an Op or Theano graph. It compares the
@@ -266,8 +262,7 @@ the multiplication by 2).
             theano.tests.unittest_tools.verify_grad(self.op,
                                                     [numpy.random.rand(5, 7, 2)])
 
-Testing the Rop
-===============
+**Testing the Rop**
 
 The class :class:`RopLop_checker`, give the functions
 :func:`RopLop_checker.check_mat_rop_lop`,
@@ -310,27 +305,33 @@ You can also add this at the end of the test file:
        t.setUp()
        t.test_double_rop()
 
+
+**Testing GPU Ops**
+
+
+Ops that execute on the GPU should inherit from the
+``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows Theano
+to make the distinction between both. Currently, we use this to test
+if the NVIDIA driver works correctly with our sum reduction code on the
+GPU.
+
+
 -------------------------------------------
 
 **Exercise**
 
 
-- Run the code in the file double_op.py.
-- Modify and execute to compute: x * y
-- Modify and execute the example to return 2 outputs: x + y and x - y
+Run the code in the file double_op.py.
 
-  - Our current element-wise fusion generates computation with only 1 output.
+Modify and execute to compute: x * y.
+
+Modify and execute the example to return 2 outputs: x + y and x - y
+(our current element-wise fusion generates computation with only 1 output).
 
 -------------------------------------------
 
-GPU Op
-------
 
-Op that execute on the GPU should inherit from the
-``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows Theano
-to make the distinction between both. Currently, we use this to test
-if the NVIDIA driver works correctly with our sum reduction code on the
-gpu.
+
 
 
 Documentation
