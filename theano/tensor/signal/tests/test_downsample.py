@@ -158,28 +158,13 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         gz = tensor.dtensor4()
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3), (3, 2))
-        image_val = rng.rand(2, 3, 3, 4)
-        out_shapes = [[[2, 3, 3, 4], [2, 3, 3, 4]],
-                       [[2, 3, 1, 2], [2, 3, 2, 2]],
-                       [[2, 3, 1, 1], [2, 3, 1, 2]],
-                       [[2, 3, 1, 1], [2, 3, 2, 2]],
-                       [[2, 3, 1, 2], [2, 3, 1, 2]]]
 
-        """
         image_val = rng.rand(4, 6, 7, 9)
         out_shapes = [[[4, 6, 7, 9], [4, 6, 7, 9]],
                       [[4, 6, 3, 4], [4, 6, 4, 5]],
                       [[4, 6, 2, 3], [4, 6, 3, 3]],
                       [[4, 6, 3, 3], [4, 6, 4, 3]],
                       [[4, 6, 2, 4], [4, 6, 3, 5]]]
-        image_val = rng.rand(4, 10, 64, 64)
-        out_shapes = [[[4, 10, 64, 64], [4, 10, 64, 64]],
-                      [[4, 10, 32, 32], [4, 10, 32, 32]],
-                      [[4, 10, 21, 21], [4, 10, 22, 22]],
-                      [[4, 10, 32, 21], [4, 10, 32, 22]],
-                      [[4, 10, 21, 32], [4, 10, 22, 32]]]
-
-        """
 
         for i, maxpoolshp in enumerate(maxpoolshps):
             for j, ignore_border in enumerate([True, False]):
