@@ -200,15 +200,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                         DownsampleFactorMaxGrad)
 
 
-"""
+
 
 if __name__ == '__main__':
     unittest.main()
-
-"""
-
-if __name__ == '__main__':
-
-    t = TestDownsampleFactorMax('setUp')
-    t.setUp()
-    t.test_infer_shape()
