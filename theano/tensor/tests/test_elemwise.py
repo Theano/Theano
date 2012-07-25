@@ -429,9 +429,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))
-            xv = numpy.asarray(numpy.random.rand(*xsh))
+            xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [CAReduce(add, axis=tosum)(x)],
+                            [CAReduce(scalar.add, axis=tosum)(x)],
                             [xv], CAReduce, ["local_cut_useless_reduce"])
 
 
@@ -811,10 +811,10 @@ class TestElemwise(unittest_tools.InferShapeTester):
             dtype = theano.config.floatX
             t_left = TensorType(dtype, [(entry == 1) for entry in s_left])()
             t_right = TensorType(dtype, [(entry == 1) for entry in s_right])()
-            t_left_val = numpy.zeros(s_left)
-            t_right_val = numpy.zeros(s_right)
+            t_left_val = numpy.zeros(s_left, dtype=dtype)
+            t_right_val = numpy.zeros(s_right, dtype=dtype)
             self._compile_and_check([t_left, t_right],
-                            [Elemwise(add)(t_left, t_right)],
+                            [Elemwise(scalar.add)(t_left, t_right)],
                             [t_left_val, t_right_val], Elemwise)
 
 

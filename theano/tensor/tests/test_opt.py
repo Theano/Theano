@@ -3442,7 +3442,7 @@ class TestMakeVector(utt.InferShapeTester):
     def setUp(self):
         super(TestMakeVector, self).setUp()
 
-    def test_make_vector():
+    def test_make_vector(self):
         b = T.bscalar()
         i = T.iscalar()
         d = T.dscalar()
