@@ -716,6 +716,26 @@ class ConvOp(Op):
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             raise NotImplementedError('todo')
 
+        if self.out_mode == 'valid' and (self.dx, self.dy) != (1, 1):
+            # Use the gradient as defined in conv3D, because the implementation
+            # by Conv is slow (about 3x slower than conv3D, and probably 10x
+            # slower than it could be), and incorrect when dx or dy > 2.
+
+            # build a "node", that should be equivalent to the one given by
+            # self.make_node, but using conv3D instead of self.
+            tmp_node = theano.tensor.nnet.conv3D(
+                    V=inputs.dimshuffle(0, 2, 3, 'x', 1),
+                    W=kerns[:, :, ::-1, ::-1].dimshuffle(0, 2, 3, 'x', 1),
+                    b=theano.tensor.alloc(numpy.asarray(0, dtype=kerns.dtype), kerns.shape[0]),
+                    d=(self.dx, self.dy, 1))
+            node = theano.tensor.addbroadcast(tmp_node, 3).dimshuffle(0, 4, 1, 2)
+
+            # mimic what happens inside theano.grad: get the input gradient
+            # of the final cost wrt all variables involved.
+            tmp_gmap = theano.gradient.grad_sources_inputs([(node, gz)], [inputs, kerns])
+
+            return [tmp_gmap[inputs], tmp_gmap[kerns]]
+
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError("ERROR: We disable ConvOp.grad now when dx or "\
                     "dy are different from 1 and 2, as there is a bug in it.")
@@ -863,7 +883,7 @@ class ConvOp(Op):
         return [din, dw]
 
     def c_headers(self):
-        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<omp.h>' ]
+        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
         return (8, self.openmp)

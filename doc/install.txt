@@ -228,7 +228,7 @@ get the code using `Git <http://git-scm.com>`__:
 
     git clone git://github.com/Theano/Theano.git
 
-From here, the easiest way to get started is
+From here, the easiest way to get started is (this requires setuptools_ or distribute_ to be installed):
 
 .. code-block:: bash
 

@@ -6,8 +6,7 @@ from theano.gof.cc import *
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
-from theano.gof import env
-from theano.gof import toolbox
+from theano.gof import fg
 
 
 def as_variable(x):
@@ -171,7 +170,7 @@ def inputs():
 
 
 def Env(inputs, outputs):
-    e = env.Env(inputs, outputs)
+    e = fg.FunctionGraph(inputs, outputs)
     return e
 
 

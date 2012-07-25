@@ -133,7 +133,7 @@ class ProfileStats(object):
     # time spent optimizing graph (FunctionMaker.__init__)
 
     validate_time = 0.0
-    # time spent in env.validate
+    # time spent in fgraph.validate
     # This is a subset of optimizer_time that is dominated by toposort()
     # when the destorymap feature is included.
 
@@ -506,7 +506,7 @@ class ProfileStats(object):
                 t * 100 / local_time,
                 t,
                 a,
-                a.env.toposort().index(a),
+                a.fgraph.toposort().index(a),
                 self.apply_callcount[a])
             for a, t in self.apply_time.items()]
         atimes.sort()
@@ -671,7 +671,7 @@ if 0: # old code still to be ported from ProfileMode
         print "List of apply that don't have float64 as input but have float64 in outputs. Usefull to know if we forgot some cast when using floatX=float32 or gpu code."
         print '<Apply> <Apply position> <fct name> <inputs type> <outputs type>'
         for fct in fct_call.keys():
-            for idx, node in enumerate(fct.maker.env.toposort()):
+            for idx, node in enumerate(fct.maker.fgraph.toposort()):
                 if any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.outputs) and not any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.inputs):
                     print str(node), idx, fct.name, str([getattr(i,'dtype',None) for i in node.inputs]),str([getattr(i,'dtype',None) for i in node.outputs])
 
@@ -702,17 +702,17 @@ if 0: # old code still to be ported from ProfileMode
                         print fct.name, i.name, i.type, i
 
         if outputs_size:
-            fct_memory={}#env->dict(node->(outputs size))
+            fct_memory={}#fgraph->dict(node->(outputs size))
             var_mem = {}
             for node,val in outputs_size.items():
-                fct_memory.setdefault(node.env,{})
-                fct_memory[node.env][node]=val
+                fct_memory.setdefault(node.fgraph,{})
+                fct_memory[node.fgraph][node]=val
                 for out,v in zip(node.outputs,val):
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
-            for env,nodes_mem in fct_memory.iteritems():
-                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
+            for fgraph,nodes_mem in fct_memory.iteritems():
+                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.fgraph is fgraph][0].name
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
                 print "    Max without gc, inplace and view (KB)",size_sum/1024
 
@@ -726,12 +726,12 @@ if 0: # old code still to be ported from ProfileMode
                 items.sort(key=lambda a: a[1])
                 items.reverse()
 
-                order = env.toposort()
+                order = fgraph.toposort()
                 computed, last_user = gc_helper(order)
                 for node in order:
                     post_thunk_old_storage.append([ input_idx
                                                     for input_idx,input in enumerate(node.inputs)
-                                                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                                                    if (input in computed) and (input not in fgraph.outputs) and node == last_user[input]])
                 for node,val in items[:n_apply_to_print]:
                     dmap = getattr(node.op,'destroy_map',None)
                     vmap = getattr(node.op,'view_map',None)
@@ -787,7 +787,7 @@ if 0: # old code still to be ported from ProfileMode
         def get_scalar_ops(s):
             if isinstance(s, theano.scalar.Composite):
                 l = []
-                for node in s.env.toposort():
+                for node in s.fgraph.toposort():
                     l+=get_scalar_ops(node.op)
                 return l
             else: return [s]

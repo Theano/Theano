@@ -331,7 +331,7 @@ To install it on Linux, you can do like this:
 .. code-block:: bash
 
    cd
-   git clone https://github.com/gabrielelanaro/emacs-for-python.git .emacs.d/emacs-for-python
+   git clone https://github.com/gabrielelanaro/emacs-for-python.git ~/.emacs.d/emacs-for-python
 
 
 Then in your ``~/.emacs`` file, add this:
@@ -348,6 +348,8 @@ Then in your ``~/.emacs`` file, add this:
    (require 'epy-python) ;; If you want the python facilities [optional]
    (require 'epy-completion) ;; If you want the autocompletion settings [optional]
    (require 'epy-editing) ;; For configurations related to editing [optional]
+   ;; [newer version of emacs-for-python]
+   (require 'epy-nose) ;; For shortcut to call nosetests [optional]
 
    ;; Define f10 to previous error
    ;; Define f11 to next error

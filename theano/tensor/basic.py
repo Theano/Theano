@@ -6008,7 +6008,19 @@ class AdvancedSubtensor(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def infer_shape(self, node, ishapes):
-        return node.env.shape_feature.default_infer_shape(node, ishapes)
+        # Really special case
+        if len(ishapes) == 3:
+            xshp, ind1shp, ind2shp = ishapes
+            if len(xshp) == 2 and len(ind1shp) == 1 and len(ind2shp) == 1:
+                # if the graph is correct, we can assume ind1shp[0] and
+                # ind2shp[0] will have the same value.
+                # Try to return the one closest to the graph input.
+                if node.inputs[2].owner is None:
+                    return [ind2shp]
+                else:
+                    return [ind1shp]
+        # Default case, we don't know
+        return node.fgraph.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self, node, inputs, out_):
         out, = out_
@@ -6055,6 +6067,16 @@ class AdvancedIncSubtensor(Op):
                         (x, y) + inputs,
                         [tensor(dtype=x.type.dtype,
                             broadcastable=x.type.broadcastable)])
+            raise NotImplementedError(
+                'Advanced indexing increment of x (of dimension %i) by y'
+                ' (of dimension %i) with these argument dimensions (%s) not'
+                ' supported yet'
+                % (x.ndim, y.ndim,
+                   ','.join(str(input.ndim) for input in inputs)))
+        raise NotImplementedError(
+            'Advanced indexing increment of x (of dim %i) by y (of dim %i)'
+            ' with arguments (%s) not supported yet'
+            % (x.ndim, y.ndim, ','.join(str(input) for input in inputs)))
 
     def perform(self, node, inputs, out_):
         out, = out_

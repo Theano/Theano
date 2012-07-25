@@ -392,26 +392,26 @@ class T_extending(unittest.TestCase):
         from theano.gof import toolbox
 
         class Simplify(gof.Optimizer):
-            def add_requirements(self, env):
-                env.extend(toolbox.ReplaceValidate())
-            def apply(self, env):
-                for node in env.toposort():
+            def add_requirements(self, fgraph):
+                fgraph.extend(toolbox.ReplaceValidate())
+            def apply(self, fgraph):
+                for node in fgraph.toposort():
                     if node.op == div:
                         x, y = node.inputs
                         z = node.outputs[0]
                         if x.owner and x.owner.op == mul:
                             a, b = x.owner.inputs
                             if y == a:
-                                env.replace_validate(z, b)
+                                fgraph.replace_validate(z, b)
                             elif y == b:
-                                env.replace_validate(z, a)
+                                fgraph.replace_validate(z, a)
 
         simplify = Simplify()
         x = double('x')
         y = double('y')
         z = double('z')
         a = add(z, mul(div(mul(y, x), y), div(z, x)))
-        e = gof.Env([x, y, z], [a])
+        e = gof.FunctionGraph([x, y, z], [a])
         simplify.optimize(e)
 
         class LocalSimplify(gof.LocalOptimizer):
@@ -437,7 +437,7 @@ class T_extending(unittest.TestCase):
         y = double('y')
         z = double('z')
         a = add(z, mul(div(mul(y, x), y), div(z, x)))
-        e = gof.Env([x, y, z], [a])
+        e = gof.FunctionGraph([x, y, z], [a])
         simplify = gof.TopoOptimizer(local_simplify)
         simplify.optimize(e)
 
@@ -802,14 +802,14 @@ class T_using_gpu(unittest.TestCase):
             r = f()
         print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
         print 'Result is', r
-        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
             print 'Used the cpu'
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
-            assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 
@@ -834,12 +834,12 @@ class T_using_gpu(unittest.TestCase):
             print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 
@@ -868,12 +868,12 @@ class T_using_gpu(unittest.TestCase):
             print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 class T_fibby(unittest.TestCase):

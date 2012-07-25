@@ -1041,11 +1041,13 @@ class Elemwise(Op):
         else:
             return ()
 
-# def elemwise_to_scal(env):
+# def elemwise_to_scal(fgraph):
+# TODO: why is this commented out? should it be removed?
+#       it has needed maintenance despite being commented
 #     mapping = {}
 #     inputs = []
 #     outputs = []
-#     for node in env.io_toposort():
+#     for node in fgraph.io_toposort():
 #         if not isinstance(node.op, Elemwise):
 #             raise TypeError('All ops in the graph must be Elemwise.')
 
@@ -1594,8 +1596,9 @@ class Sum(CAReduceDtype):
             else:
                 new_dims.append(i)
                 i += 1
-        return Elemwise(scalar.second)(
-                        x, DimShuffle(gz.type.broadcastable, new_dims)(gz)),
+        ds_op = DimShuffle(gz.type.broadcastable, new_dims)
+        gx = Elemwise(scalar.second)(x, ds_op(gz).astype(x.dtype))
+        return [gx]
 
     def R_op(self, inputs, eval_points):
         # There is just one element in inputs and eval_points, the axis are

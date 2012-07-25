@@ -77,10 +77,10 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
     assert any([isinstance(node.op,
                            T.nnet.CrossentropySoftmaxArgmax1HotWithBias)
-                for node in classify.maker.env.toposort()])
+                for node in classify.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
                            cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias)
-                for node in classify_gpu.maker.env.toposort()])
+                for node in classify_gpu.maker.fgraph.toposort()])
 
     out = classify(yy, b_values, dot_value)
     gout = classify_gpu(yy, b_values, dot_value)
@@ -129,10 +129,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     #theano.printing.debugprint(gpu_f)
 
     assert any([isinstance(node.op, T.nnet.CrossentropySoftmax1HotWithBiasDx)
-                for node in cpu_f.maker.env.toposort()])
+                for node in cpu_f.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
                            cuda.nnet.GpuCrossentropySoftmax1HotWithBiasDx)
-                for node in gpu_f.maker.env.toposort()])
+                for node in gpu_f.maker.fgraph.toposort()])
 
     cpu_out = cpu_f(softmax_output_value)
     gpu_out = gpu_f(softmax_output_value)
@@ -177,8 +177,8 @@ def test_softmax_with_bias():
 
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.env.toposort()[-1].op == T.nnet.softmax_with_bias
-    assert isinstance(f_gpu.maker.env.toposort()[-2].op,
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias
+    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmaxWithBias)
 
     def cmp(n, m, catch=False):
@@ -222,8 +222,8 @@ def test_softmax():
     z = T.nnet.softmax(x)
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.env.toposort()[-1].op == T.nnet.softmax
-    assert isinstance(f_gpu.maker.env.toposort()[-2].op,
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
+    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmax)
 
     def cmp(n, m, catch=False):

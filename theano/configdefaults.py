@@ -16,38 +16,6 @@ AddConfigVar('floatX',
         EnumStr('float64', 'float32'),
         )
 
-#http://pyprocessing.berlios.de/
-#True if the environment variable OMP_NUM_THREADS!=1 or
-#if we detect more then 1 CPU core. Otherwise False.
-default_openmp = True
-var = os.getenv('OMP_NUM_THREADS', None)
-if var:
-    try:
-        int(var)
-    except ValueError:
-        raise TypeError("The environment variable OMP_NUM_THREADS"
-                        " should be a number, got '%s'." % var)
-    else:
-        default_openmp = not int(var) == 1
-else:
-    count = cpuCount()
-    if count == -1:
-        _logger.warning("We are not able to detect the number of CPU cores."
-                        " We disable openmp by default. To remove this"
-                        " warning, set the environment variable"
-                        " OMP_NUM_THREADS to the number of threads you"
-                        " want theano to use.")
-    default_openmp = count > 1
-
-AddConfigVar('openmp',
-             "Enable or not parallel computation on the CPU with OpenMP. "
-             "It is the default value used when creating an Op that support it"
-             ". The best is to define it via Theano configuration "
-             "file or with the environment variable THEANO_FLAGS.",
-             BoolParam(default_openmp),
-             in_c_key=False,
-         )
-
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX',
@@ -119,6 +87,7 @@ AddConfigVar('mode',
                 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
         in_c_key=False)
 
+gxx_avail = True
 # Test whether or not g++ is present: disable C code if it is not.
 # Using the dummy file descriptor below is a workaround for a crash experienced
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
@@ -144,6 +113,7 @@ except OSError:
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded.')
+    gxx_avail = False
 
 del dummy_stdin
 
@@ -296,7 +266,7 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('None', 'all', '0.3', '0.4', '0.4.1', '0.5',
+             EnumStr('None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
                      allow_override=False),
              in_c_key=False)
 

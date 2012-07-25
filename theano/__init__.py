@@ -50,7 +50,7 @@ import gof
 from gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
-     InconsistencyError, Env, \
+     InconsistencyError, FunctionGraph, \
      Apply, Variable, Constant, \
      Op, \
      opt, \
@@ -105,6 +105,9 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
+
+
+import configdefaults_late
 
 # Use config.numpy to call numpy.seterr
 import numpy

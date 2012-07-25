@@ -104,7 +104,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         f = theano.function([c, x1, x2, y1, y2], z, mode=self.mode)
         self.assertFunctionContains1(f, self.get_ifelse(2))
 
-        ifnode = [x for x in f.maker.env.toposort()
+        ifnode = [x for x in f.maker.fgraph.toposort()
                   if isinstance(x.op, IfElse)][0]
         assert len(ifnode.outputs) == 2
 
@@ -217,7 +217,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z2 = ifelse(c, x + 2, y + 2)
         z = z1 + z2
         f = theano.function([c, x, y], z)
-        assert len([x for x in f.maker.env.toposort()
+        assert len([x for x in f.maker.fgraph.toposort()
                     if isinstance(x.op, IfElse)]) == 1
 
     def test_remove_useless_inputs1(self):
@@ -228,7 +228,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z = ifelse(c, (x, x), (y, y))
         f = theano.function([c, x, y], z)
 
-        ifnode = [x for x in f.maker.env.toposort()
+        ifnode = [x for x in f.maker.fgraph.toposort()
                   if isinstance(x.op, IfElse)][0]
         assert len(ifnode.inputs) == 3
 
@@ -242,7 +242,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z = ifelse(c, (x1, x1, x1, x2, x2), (y1, y1, y2, y2, y2))
         f = theano.function([c, x1, x2, y1, y2], z)
 
-        ifnode = [x for x in f.maker.env.toposort()
+        ifnode = [x for x in f.maker.fgraph.toposort()
                   if isinstance(x.op, IfElse)][0]
         assert len(ifnode.outputs) == 3
 
@@ -261,7 +261,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
 
         f = theano.function([x1, x2, y1, y2, w1, w2, c], out,
                             allow_input_downcast=True)
-        assert isinstance(f.maker.env.toposort()[-1].op, IfElse)
+        assert isinstance(f.maker.fgraph.toposort()[-1].op, IfElse)
         rng = numpy.random.RandomState(utt.fetch_seed())
         vx1 = rng.uniform()
         vx2 = rng.uniform()
@@ -290,7 +290,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
 
         f = theano.function([x1, y1, y2, c], out,
                             allow_input_downcast=True)
-        assert isinstance(f.maker.env.toposort()[-1].op, IfElse)
+        assert isinstance(f.maker.fgraph.toposort()[-1].op, IfElse)
         rng = numpy.random.RandomState(utt.fetch_seed())
         vx1 = rng.uniform()
         vy1 = rng.uniform()
@@ -314,7 +314,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
 
         f = theano.function([x1, x2, y1, y2, w1, w2, c], out,
                             allow_input_downcast=True)
-        assert isinstance(f.maker.env.toposort()[-1].op, IfElse)
+        assert isinstance(f.maker.fgraph.toposort()[-1].op, IfElse)
         rng = numpy.random.RandomState(utt.fetch_seed())
         vx1 = rng.uniform()
         vx2 = rng.uniform()
@@ -351,7 +351,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
             ifelse(c, x1, x2) + ifelse(c, y1, y2) + w2)
         f = theano.function([x1, x2, y1, y2, w1, w2, c], out,
                             allow_input_downcast=True)
-        assert len([x for x in f.maker.env.toposort()
+        assert len([x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, IfElse)]) == 1
 
         rng = numpy.random.RandomState(utt.fetch_seed())

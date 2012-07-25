@@ -114,7 +114,7 @@ Caching
 The current way of caching is from a hash of the generated code. That is inefficient because code has to be generated each time, which might be a costly process. Furthermore, usage of hashing in sets make it difficult to ensure a consistent ordering of Ops in graphs where several orderings are valid, so the generated C code is potentially different each time. Here is a proposal for a better way to compute the hash:
   * Result_hash = Result version + Result desc
   * Op_hash = Op version + Op desc + input/output hashes
-  * Env_hash = Env version + combination of the Op hashes and their traversal order wrt a consistent traversal method
+  * FunctionGraph_hash = FunctionGraph version + combination of the Op hashes and their traversal order wrt a consistent traversal method
 
 The version could be set explicitly via a ``__version__`` field or it could simply be equal to the file's last modification date. We could also have a ``__nocache__`` field indicating that code produced by the Op or Result cannot be cached.
 

@@ -375,7 +375,7 @@ def default_blas_ldflags():
                         # options part.
                         ['-L%s' % l for l in blas_info['library_dirs']] +
                         ['-l%s' % l for l in blas_info['libraries']] +
-                        extra)
+                        [])
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
         return "-lblas"
@@ -1350,12 +1350,13 @@ class GemmOptimizer(Optimizer):
     """Graph optimizer for inserting Gemm operations"""
     def __init__(self):
         Optimizer.__init__(self)
+        self.warned = False
 
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-        env.extend(DestroyHandler())
+    def add_requirements(self, fgraph):
+        fgraph.extend(toolbox.ReplaceValidate())
+        fgraph.extend(DestroyHandler())
 
-    def apply(self, env):
+    def apply(self, fgraph):
         did_something = True
         nb_iter = 0
         nb_replacement = 0
@@ -1368,7 +1369,7 @@ class GemmOptimizer(Optimizer):
         time_toposort = 0
         while did_something:
             t0 = time.time()
-            nodelist = list(env.toposort())
+            nodelist = list(fgraph.toposort())
             time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
@@ -1378,7 +1379,7 @@ class GemmOptimizer(Optimizer):
                                    (theano.scalar.Add, theano.scalar.Sub,
                                     theano.scalar.Neg, theano.scalar.Mul))):
                     continue
-                if not node in env.nodes:
+                if not node in fgraph.nodes:
                     # This mean that we already removed this node from
                     # the graph
                     continue
@@ -1394,11 +1395,13 @@ class GemmOptimizer(Optimizer):
                     new_outputs, old_dot22 = new_outputs
                     assert len(new_outputs) == len(node.outputs)
                     try:
-                        env.replace_all_validate_remove(
+                        fgraph.replace_all_validate_remove(
                             zip(node.outputs, new_outputs),
                             [old_dot22],
                             reason='GemmOptimizer',
-                            warn=nb_replacement_didn_t_remove == 0
+                            #For now we disable the warning as we know case
+                            #that we need to fix.
+                            warn=False,  # warn=not self.warned
                         )
                         did_something = True
                         nb_replacement += 1
@@ -1406,10 +1409,9 @@ class GemmOptimizer(Optimizer):
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
                         nb_inconsistency_replace += 1
-                        pass
                     except ReplacementDidntRemovedError, e:
                         nb_replacement_didn_t_remove += 1
-                        pass
+                        self.warned = True
             nb_iter += 1
         return (self, nb_iter, nb_replacement, nb_replacement_didn_t_remove,
                 nb_inconsistency_make, nb_inconsistency_replace,

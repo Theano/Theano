@@ -847,7 +847,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (out && (out->nd != self->nd ||
                 CudaNdarray_HOST_DIMS(out)[0] != nb_indices))
         out = NULL;
-    int dims[self->nd];
+    int * dims = (int *)malloc(sizeof(int) * self->nd);
     dims[0] = nb_indices;
 
     for (int i=1 ; i<self->nd ; i++) {
@@ -860,11 +860,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         out = (CudaNdarray*)CudaNdarray_New();
         if (!out){
             Py_DECREF(indices_obj);
+            free(dims);
             return NULL;
         }
         if (CudaNdarray_alloc_contiguous(out, self->nd, dims)) {
             Py_DECREF(out);
             Py_DECREF(indices_obj);
+            free(dims);
             return NULL;
         }
     }else {
@@ -877,12 +879,14 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (! clipmode){
             Py_DECREF(indices_obj);
             Py_DECREF(out);
+            free(dims);
             return NULL;
         }
         if (strcmp(clipmode, "raise") != 0) {
             PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only the raise mode is currently supported");
             Py_DECREF(indices_obj);
             Py_DECREF(out);
+            free(dims);
             return NULL;
         }
         Py_DECREF(clipmode_obj);
@@ -901,6 +905,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (!err_var) { // PyErr set by device_malloc
             Py_DECREF(indices_obj);
             Py_DECREF(out);
+            free(dims);
             return NULL;
         }
         cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
@@ -910,9 +915,11 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                          cudaGetErrorString(err));
             Py_DECREF(indices_obj);
             Py_DECREF(out);
+            free(dims);
             return NULL;
         }
     }
+
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
     switch (self->nd) {
         case 1:
@@ -994,7 +1001,8 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                         "CudaNdarray_TakeFrom: only input with 1, 2 or 3"
                         " dimensions are currently supported");
         
-    }        
+    }
+    free(dims);
     CNDA_THREAD_SYNC;
     cudaError_t err = cudaGetLastError();
     if (cudaSuccess != err) {

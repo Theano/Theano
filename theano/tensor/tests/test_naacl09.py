@@ -13,8 +13,8 @@ from theano.tests import unittest_tools
 
 def cross_entropy(target, output, axis=1):
     """
-    @todo: This is essentially duplicated as nnet_ops.binary_crossentropy
-    @warning: OUTPUT and TARGET are reversed in nnet_ops.binary_crossentropy
+    @todo: This is essentially duplicated as tensor.nnet.binary_crossentropy
+    @warning: OUTPUT and TARGET are reversed in tensor.nnet.binary_crossentropy
     """
     return -T.mean(target * T.log(output) + (1 - target) * T.log(1 - output), axis=axis)
 def quadratic(target, output, axis=1):
@@ -548,7 +548,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     #print 'BUILD took %.3fs'%(time.time() - t)
     prog_str = []
     idx_of_node = {}
-    for i, node in enumerate(m.pretraining_update.maker.env.toposort()):
+    for i, node in enumerate(m.pretraining_update.maker.fgraph.toposort()):
         idx_of_node[node] = i
         if False and i > -1:
             print '   ', i, node, [(ii, idx_of_node.get(ii.owner, 'IN')) for ii in node.inputs]
@@ -557,7 +557,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     #print input_pretraining_gradients[4].owner.inputs[1].owner.inputs
     #sys.exit()
 
-    #print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.env.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
+    #print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.fgraph.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
     rng = N.random.RandomState(unittest_tools.fetch_seed(23904))
 

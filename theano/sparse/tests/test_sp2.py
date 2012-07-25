@@ -2,7 +2,7 @@ import time
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 try:
     import scipy.sparse as sp
     import scipy.sparse
@@ -10,113 +10,57 @@ except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
 import theano
+from theano import tensor
+from theano import sparse
 
-from theano import tensor as T
-from theano import sparse as S
-if not S.enable_sparse:
+if not theano.sparse.enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
 from theano.sparse.sandbox import sp2 as S2
 
 from theano.tests import unittest_tools as utt
-
-def as_sparse_format(data, format):
-    if format == 'csc':
-        return scipy.sparse.csc_matrix(data)
-    elif format == 'csr':
-        return scipy.sparse.csr_matrix(data)
-    else:
-        raise NotImplementedError()
+from theano.sparse.basic import verify_grad_sparse
 
 
-def eval_outputs(outputs):
-    return compile.function([], outputs)()[0]
+class BinomialTester(utt.InferShapeTester):
+    n = tensor.scalar()
+    p = tensor.scalar()
+    shape = tensor.lvector()
+    _n = 5
+    _p = .25
+    _shape = np.asarray([3, 5], dtype='int64')
 
+    inputs = [n, p, shape]
+    _inputs = [_n, _p, _shape]
 
-def random_lil(shape, dtype, nnz):
-    rval = sp.lil_matrix(shape, dtype=dtype)
-    huge = 2 ** 30
-    for k in range(nnz):
-        # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=len(shape)) % shape
-        value = numpy.random.rand()
-        #if dtype *int*, value will always be zeros!
-        if "int" in dtype:
-            value = int(value * 100)
-        rval.__setitem__(
-                idx,
-                value)
-    return rval
-
-
-class test_structured_add_s_v(unittest.TestCase):
     def setUp(self):
-        utt.seed_rng()
+        super(BinomialTester, self).setUp()
+        self.op_class = S2.Binomial
 
-    def test_structured_add_s_v_grad(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
-                
-                S.verify_grad_sparse(S2.structured_add_s_v,
-                    [spmat, mat], structured=True)
-    
-    def test_structured_add_s_v(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                x = S.SparseType(format, dtype=dtype)()
-                y = T.vector(dtype=dtype)
-                f = theano.function([x, y], S2.structured_add_s_v(x, y))
-                
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                spones = spmat.copy()
-                spones.data = numpy.ones_like(spones.data)
-                mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
-                
-                out = f(spmat, mat)
-                
-                assert numpy.allclose(out.toarray(), spones.multiply(spmat + mat))
+    def test_op(self):
+        for sp_format in sparse.sparse_formats:
+            for o_type in sparse.float_dtypes:
+                f = theano.function(
+                    self.inputs,
+                    S2.Binomial(sp_format, o_type)(*self.inputs))
 
+                tested = f(*self._inputs)
 
-class test_mul_s_v(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
+                assert tested.shape == tuple(self._shape)
+                assert tested.format == sp_format
+                assert tested.dtype == o_type
+                assert np.allclose(np.floor(tested.todense()),
+                                   tested.todense())
 
-    def test_structured_add_s_v_grad(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
-                
-                S.verify_grad_sparse(S2.mul_s_v,
-                    [spmat, mat], structured=True)
-    
-    def test_mul_s_v(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                x = S.SparseType(format, dtype=dtype)()
-                y = T.vector(dtype=dtype)
-                f = theano.function([x, y], S2.mul_s_v(x, y))
-                
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
-                
-                out = f(spmat, mat)
-                
-                assert numpy.allclose(out.toarray(), spmat.toarray() * mat)
+    def test_infer_shape(self):
+        for sp_format in sparse.sparse_formats:
+            for o_type in sparse.float_dtypes:
+                self._compile_and_check(
+                    self.inputs,
+                    [S2.Binomial(sp_format, o_type)(*self.inputs)],
+                    self._inputs,
+                    self.op_class)
+
 
 if __name__ == '__main__':
     unittest.main()

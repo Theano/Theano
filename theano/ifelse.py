@@ -536,11 +536,11 @@ def cond_merge_ifs_false(node):
 
 class CondMerge(gof.Optimizer):
     """ Graph Optimizer that merges different cond ops """
-    def add_requirements(self, env):
-        env.extend(gof.toolbox.ReplaceValidate())
+    def add_requirements(self, fgraph):
+        fgraph.extend(gof.toolbox.ReplaceValidate())
 
-    def apply(self, env):
-        nodelist = list(env.toposort())
+    def apply(self, fgraph):
+        nodelist = list(fgraph.toposort())
         cond_nodes = filter(lambda s: isinstance(s.op, IfElse), nodelist)
         if len(cond_nodes) < 2:
             return False
@@ -581,7 +581,7 @@ class CondMerge(gof.Optimizer):
                 else:
                     old_outs += proposal.outputs
                 pairs = zip(old_outs, new_outs)
-                env.replace_all_validate(pairs, reason='cond_merge')
+                fgraph.replace_all_validate(pairs, reason='cond_merge')
 
 
 @gof.local_optimizer([None])
