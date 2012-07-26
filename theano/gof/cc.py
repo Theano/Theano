@@ -719,9 +719,11 @@ class CLinker(link.Linker):
                 pass
 
         c_compiler = self.c_compiler()
-        ret += c_compiler.compile_args()
 
         ret = list(set(ret))  # to remove duplicate
+        # The args set by the compiler include the user flags. We do not want
+        # to reorder them
+        ret += c_compiler.compile_args()
         for x in [y.type for y in self.variables] + [
             y.op for y in self.node_order]:
             try:
