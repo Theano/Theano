@@ -224,13 +224,12 @@ class NVCC_compiler(object):
             preargs2.append('/Zi')
             cmd.extend(['-Xlinker', '/DEBUG'])
 
-        if sys.platform != 'win32':
-            if local_bitwidth() == 64:
-                cmd.append('-m64')
-                preargs2.append('-m64')
-            else:
-                cmd.append('-m32')
-                preargs2.append('-m32')
+        if local_bitwidth() == 64:
+            cmd.append('-m64')
+            preargs1.append('-m64')
+        else:
+            cmd.append('-m32')
+            preargs1.append('-m32')
 
         if len(preargs2) > 0:
             cmd.extend(['-Xcompiler', ','.join(preargs2)])
