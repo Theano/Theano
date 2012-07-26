@@ -11,11 +11,13 @@ from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension, local_bitwidth)
+from theano.gof.python25 import any
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
 
-from theano.configparser import config, AddConfigVar, StrParam, BoolParam
+from theano.configparser import (config, AddConfigVar, StrParam,
+                                 BoolParam, ConfigParam)
 
 AddConfigVar('nvcc.compiler_bindir',
              "If defined, nvcc compiler driver will seek g++ and gcc"
@@ -32,9 +34,21 @@ if config.cuda.nvccflags != '':
             'Please use nvcc.flags instead. You provided value: %s'
             % config.cuda.nvccflags)
 
+
+def filter_nvcc_flags(s):
+    assert isinstance(s, str)
+    flags = [flag for flag in s.split(' ') if flag]
+    if any([f for f in flags if not f.startswith("-")]):
+        raise ValueError(
+            "Theano nvcc.flags support only parameter/value pair without"
+            " space between them. e.g.: '--machine 64' is not supported,"
+            " but '--machine=64' is supported. Please add the '=' symbol."
+            " nvcc.flags value is '%s'" % s)
+    return ' '.join(flags)
 AddConfigVar('nvcc.flags',
         "Extra compiler flags for nvcc",
-        StrParam(config.cuda.nvccflags))
+        ConfigParam(config.cuda.nvccflags, filter_nvcc_flags))
+
 
 AddConfigVar('nvcc.fastmath',
         "",
