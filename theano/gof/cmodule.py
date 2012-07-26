@@ -650,6 +650,12 @@ class ModuleCache(object):
                                     msg='broken cache directory [EOF]',
                                     level=logging.WARNING)
                             continue
+                        except ValueError:
+                            # This can happen when we have bad config value
+                            # in the cuda.nvcc_compiler.py file.
+                            # We should not hide it here, as this will cause
+                            # an unrelated error to appear.
+                            raise
                         except Exception:
                             unpickle_failure()
                             if delete_if_problem:
