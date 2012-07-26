@@ -3313,54 +3313,59 @@ class T_local_sum(unittest.TestCase):
         finally:
             config.on_opt_error = backup
 
-    def test_local_reduce_broadcast_all_0(self):
-        optimizer = optdb.query(self.mode._optimizer)
 
-        x = T.TensorType('int64', (True, True, True))()
-        g = FunctionGraph([x], [x.sum()])
-        optimizer.optimize(g)
-        assert not any([
-            isinstance(node.op, T.CAReduce)
-            for node in g.toposort()])
+class T_local_reduce(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.get_default_mode().including('canonicalize',
+                                                                'specialize')
+
+    def test_local_reduce_broadcast_all_0(self):
+        for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
+                    tensor.max, tensor.min]:
+            x = T.TensorType('int64', (True, True, True))()
+            f = theano.function([x], [fct(x)], mode=self.mode)
+            assert not any([
+                isinstance(node.op, T.CAReduce)
+                for node in f.maker.fgraph.toposort()])
 
     def test_local_reduce_broadcast_all_1(self):
-        optimizer = optdb.query(self.mode._optimizer)
-
-        x = T.TensorType('int64', (True, True))()
-        g = FunctionGraph([x], [x.sum(axis=[0, 1])])
-        optimizer.optimize(g)
-        assert not any([
-            isinstance(node.op, T.CAReduce)
-            for node in g.toposort()])
+        for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
+                    tensor.max, tensor.min]:
+            x = T.TensorType('int64', (True, True))()
+            f = theano.function([x], [fct(x, axis=[0, 1])], mode=self.mode)
+            assert not any([
+                isinstance(node.op, T.CAReduce)
+                for node in f.maker.fgraph.toposort()])
 
     def test_local_reduce_broadcast_some_0(self):
-        optimizer = optdb.query(self.mode._optimizer)
+        for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
+                    tensor.max, tensor.min]:
+            x = T.TensorType('int64', (True, False, True))()
+            f = theano.function([x], [fct(x, axis=[0, 1])], mode=self.mode)
 
-        x = T.TensorType('int64', (True, False, True))()
-        g = FunctionGraph([x], [x.sum(axis=[0, 1])])
-        optimizer.optimize(g)
-        order = g.toposort()
-        assert 1 == sum([isinstance(node.op, T.CAReduce) for node in order])
-        if config.mode == 'FAST_COMPILE':
-            node = order[-1]
-        else:
-            node = order[-2]
-        op = node.op
-        assert isinstance(op, T.CAReduce)
-        # -- the leading broadcastable dimension has been dropped
-        #   by the local_reduce_broadcastable optimization
-        #   now summation is over the original x's dimension 1.
-        assert node.inputs[0].ndim == 2, node
-        assert op.axis == (0,), op.axis
+            order = f.maker.fgraph.toposort()
+            assert 1 == sum([isinstance(node.op, T.CAReduce)
+                             for node in order])
+
+            node = [node for node in order if isinstance(node.op,
+                                                         tensor.CAReduce)][0]
+
+            op = node.op
+            assert isinstance(op, T.CAReduce)
+            # -- the leading broadcastable dimension has been dropped
+            #   by the local_reduce_broadcastable optimization
+            #   now summation is over the original x's dimension 1.
+            assert node.inputs[0].ndim == 2, node
+            assert op.axis == (0,), op.axis
 
     def test_local_reduce_broadcast_some_1(self):
-        optimizer = optdb.query(self.mode._optimizer)
-
-        x = T.TensorType('int64', (True, False, True))()
-        g = FunctionGraph([x], [x.sum(axis=[0, 2])])
-        optimizer.optimize(g)
-        order = g.toposort()
-        assert 0 == sum([isinstance(node.op, T.CAReduce) for node in order])
+        for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
+                    tensor.max, tensor.min]:
+            x = T.TensorType('int64', (True, True, True))()
+            f = theano.function([x], [fct(x, axis=[0, 2])], mode=self.mode)
+            assert not any([
+                isinstance(node.op, T.CAReduce)
+                for node in f.maker.fgraph.toposort()])
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):
