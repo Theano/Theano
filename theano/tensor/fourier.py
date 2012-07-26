@@ -89,7 +89,7 @@ class Fourier(gof.Op):
         if len(shape_a) == 1:
             return [(n,)]
         elif isinstance(axis, tensor.TensorConstant):
-            out_shape = list(shape_a[0: axis.data]) + [n] +\
+            out_shape = list(shape_a[0: axis.data.item()]) + [n] +\
             list(shape_a[axis.data + 1:])
         else:
             l = len(shape_a)
@@ -105,7 +105,7 @@ class Fourier(gof.Op):
         a = inputs[0]
         n = inputs[1]
         axis = inputs[2]
-        output_storage[0][0] = numpy.fft.fft(a, n=int(n), axis=axis)
+        output_storage[0][0] = numpy.fft.fft(a, n=int(n), axis=axis.item())
 
     def grad(self, inputs, cost_grad):
         """
