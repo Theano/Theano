@@ -1097,8 +1097,16 @@ class CrossentropyCategorical1Hot(gof.Op):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
-    def infer_shape(self, node, in_shapes):
-        return [(in_shapes[0][0],)]
+#Enabling this infer_shape method make 2 tests fail:
+#theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
+#     {test_softmax_grad_optimizations,test_softmax_grad_optimizations_vector}
+# This is caused by the local_fill_to_alloc that call broadcast_like
+# that look into the shape feature and return a Rebroadcast instead of an alloc.
+# I disable this infer_shape until we fix the optimizations or determine that
+# this is not needed anymore and we update the tests.
+        # see issue gh-788
+#    def infer_shape(self, node, in_shapes):
+#        return [(in_shapes[0][0],)]
 
     def grad(self, inp, grads):
         coding, one_of_n = inp
