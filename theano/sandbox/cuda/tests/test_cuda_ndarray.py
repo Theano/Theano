@@ -380,6 +380,7 @@ def test_reshape():
         #print n_bb
 
         assert numpy.all(aa == n_bb)
+        assert aa.shape == n_bb.shape
 
         # Test the not contiguous case
         shape_1_2x = (shape_1[0] * 2,) + shape_1[1:]
@@ -396,6 +397,7 @@ def test_reshape():
         #print n_bb
 
         assert numpy.all(aa == n_bb)
+        assert aa.shape == n_bb.shape
 
     def bad_subtest(shape_1, shape_2, rng):
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
