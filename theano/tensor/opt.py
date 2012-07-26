@@ -3176,7 +3176,12 @@ def local_reduce_broadcastable(node):
                         ii += 1
                 new_reduced = reduced.dimshuffle(*pattern)
                 if new_axis:
-                    new_op = node.op.__class__(axis=new_axis)
+                    if type(node.op) == theano.tensor.elemwise.CAReduce:
+                        # This happen for tensor.max(), tensor.min()
+                        new_op = node.op.__class__(node.op.scalar_op,
+                                                   axis=new_axis)
+                    else:
+                        new_op = node.op.__class__(axis=new_axis)
                     return [new_op(new_reduced)]
                 else:
                     # -- in this case we can remove the reduction completely
