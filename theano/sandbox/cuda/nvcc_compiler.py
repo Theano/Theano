@@ -40,7 +40,7 @@ def filter_nvcc_flags(s):
     flags = [flag for flag in s.split(' ') if flag]
     if any([f for f in flags if not f.startswith("-")]):
         raise ValueError(
-            "Theano nvcc.flags support only parameter/value pair without"
+            "Theano nvcc.flags support only parameter/value pairs without"
             " space between them. e.g.: '--machine 64' is not supported,"
             " but '--machine=64' is supported. Please add the '=' symbol."
             " nvcc.flags value is '%s'" % s)
@@ -226,10 +226,8 @@ class NVCC_compiler(object):
 
         if local_bitwidth() == 64:
             cmd.append('-m64')
-            preargs1.append('-m64')
         else:
             cmd.append('-m32')
-            preargs1.append('-m32')
 
         if len(preargs2) > 0:
             cmd.extend(['-Xcompiler', ','.join(preargs2)])
