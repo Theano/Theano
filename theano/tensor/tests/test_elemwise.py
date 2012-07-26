@@ -8,6 +8,7 @@ import numpy
 from numpy.testing import dec
 
 import theano
+from theano.gof.python25 import all
 from theano.gof import Variable, Op
 from theano import gof, scalar, config
 
