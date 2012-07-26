@@ -857,6 +857,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             dx[i, y_idx[i]] -= dy[i]  # scalar decrement
         output_storage[0][0] = dx
 
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
+
     def grad(self, inp, grads):
         dy, sm, y_idx = inp
         g_dx, = grads
@@ -1031,8 +1034,11 @@ class CrossentropyCategorical1HotGrad(gof.Op):
         for i in xrange(len(g_y)):
             g_coding[i, true_one_of_n[i]] = -g_y[i] / coding_dist[i,
                                                         true_one_of_n[i]]
-
         g_coding_strg[0] = g_coding
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[1]]
+
 crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 
@@ -1091,6 +1097,17 @@ class CrossentropyCategorical1Hot(gof.Op):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
+#Enabling this infer_shape method make 2 tests fail:
+#theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
+#     {test_softmax_grad_optimizations,test_softmax_grad_optimizations_vector}
+# This is caused by the local_fill_to_alloc that call broadcast_like
+# that look into the shape feature and return a Rebroadcast instead of an alloc.
+# I disable this infer_shape until we fix the optimizations or determine that
+# this is not needed anymore and we update the tests.
+        # see issue gh-788
+#    def infer_shape(self, node, in_shapes):
+#        return [(in_shapes[0][0],)]
+
     def grad(self, inp, grads):
         coding, one_of_n = inp
         g_y, = grads
@@ -1121,7 +1138,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
                     fgraph.replace_all_validate([(nll, new_nll), (sm, new_sm)],
-                            reason="crossentropy_to_crossentropy_with_softmax")
+                reason="crossentropy_to_crossentropy_with_softmax_with_bias")
                     return True
 
         return False
@@ -1645,6 +1662,11 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         out[:, 0].fill(self.val.data)
         out[:, 1:] = mat
 
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[0][0], in_shapes[0][1] + 1)
+        return [shp]
+        
+
     def grad(self, inp, grads):
         mat, = inp
         goutput, = grads
@@ -1693,6 +1715,10 @@ class Prepend_scalar_to_each_row(gof.Op):
             out = output[0]
         out[:, 0].fill(val)
         out[:, 1:] = mat
+
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[1][0], in_shapes[1][1] + 1)
+        return [shp]
 
     def grad(self, inp, grads):
         val, mat = inp
