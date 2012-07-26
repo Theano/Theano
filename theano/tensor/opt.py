@@ -3151,7 +3151,7 @@ def local_cut_useless_reduce(node):
 #@register_canonicalize
 @register_specialize
 @gof.local_optimizer([])
-def local_sum_broadcastable(node):
+def local_reduce_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
     if isinstance(node.op, T.CAReduce):
         reduced, = node.inputs
