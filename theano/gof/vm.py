@@ -469,6 +469,7 @@ class VM_Linker(link.LocalLinker):
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
             intermediate values during computation of a function.
+            If None use as default the Theano flag allow_gc value.
 
         use_cloop - use the C-based virtual machine if possible
 
@@ -477,6 +478,8 @@ class VM_Linker(link.LocalLinker):
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
         """
+        if allow_gc is None:
+            allow_gc = config.allow_gc
         self.fgraph = None
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
