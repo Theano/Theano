@@ -464,7 +464,7 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=True, use_cloop=False, callback=None):
+    def __init__(self, allow_gc=None, use_cloop=False, callback=None, lazy=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
@@ -477,6 +477,11 @@ class VM_Linker(link.LocalLinker):
             the virtual machine.  It will be called with four arguments called
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
+        lazy - Useful only when use_cloop is False. When lazy is None, auto
+            detect if lazy evaluation is needed and use the apropriate
+            version. If lazy it True/False, for the version used between
+            Loop/LoopGC and Stack.
+
         """
         if allow_gc is None:
             allow_gc = config.allow_gc
@@ -484,6 +489,7 @@ class VM_Linker(link.LocalLinker):
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
         self.callback = callback
+        self.lazy = lazy
         self.updated_vars = {}
 
     def accept(self, fgraph, no_recycling=None):
@@ -677,7 +683,10 @@ class VM_Linker(link.LocalLinker):
                     )
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
-            if all([(not th.lazy) for th in thunks]):
+            lazy = self.lazy
+            if lazy is None:
+                lazy = not all([(not th.lazy) for th in thunks])
+            if not lazy:
                 # there is no conditional in the graph
                 if self.allow_gc:
                     vm = LoopGC(
