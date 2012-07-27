@@ -16,6 +16,7 @@ from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
 
+
 if enable_sparse == False:
     raise SkipTest('Optional package sparse disabled')
 
@@ -74,7 +75,7 @@ def random_lil(shape, dtype, nnz):
     return rval
 
 
-def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
+def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
     """Return a tuple containing everything needed to
     perform a test.
 
@@ -86,6 +87,11 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
     :param n: Number of variable.
     :param out_dtype: dtype of output.
     :param p: Sparsity proportion.
+    :param gap: Tuple for the range of the random sample. When
+                length is 1, it is assumed to be the exclusive
+                max, when `gap` = (`a`, `b`) it provide a sample
+                from [a, b[. If `None` is used, it provide [0, 1]
+                for float dtypes and [0, 50[ for integer dtypes.
 
     :return: (variable, data) where both `variable`
              and `data` are list.
@@ -97,21 +103,32 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5):
     assert 0 <= p and p <= 1
     assert len(shape) == 2
     assert out_dtype in sparse.all_dtypes
+    assert gap is None or isinstance(gap, (tuple, list))
 
     def _rand():
         where = numpy.random.binomial(1, p, size=shape).astype('int8')
 
         if out_dtype in sparse.discrete_dtypes:
-            value = numpy.random.randint(20, size=shape).astype(out_dtype)
+            if not gap:
+                value = numpy.random.randint(50, size=shape)
+            else:
+                value = numpy.random.randint(*gap, size=shape)
         else:
-            value = numpy.random.random(shape).astype(out_dtype)
+            if not gap:
+                value = numpy.random.random(shape)
+            elif len(gap) == 2:
+                a, b = gap
+                value = a + numpy.random.random(shape) * b - a
+            else:
+                value = numpy.random.random(shape) * gap[0]
+
+        value.astype(out_dtype)
         return where * value
 
     variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
                 for k in range(n)]
-    data = [getattr(scipy.sparse, format + '_matrix')(_rand())
+    data = [getattr(scipy.sparse, format + '_matrix')(_rand(), dtype=out_dtype)
             for k in range(n)]
-
     return (variable, data)
 
 
@@ -2220,73 +2237,202 @@ class MultinomialTester(utt.InferShapeTester):
                                 self.op_class)
 
 
-class _StructuredMonoidUnaryTester(unittest.TestCase):
-    def test_op(self):
-        for format in sparse.sparse_formats:
-            x = getattr(theano.sparse, format + '_matrix')()
-            spa = getattr(sp, format + '_matrix')
+def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
+                     grad_test=True):
+    """Return the appropriate test class for the elemwise on sparse.
 
-            a = spa(numpy.random.random_integers(5, size=(3, 4)) - 1,
-                    dtype=theano.config.floatX)
+    :param op: Op to test.
+    :expected_f: Function use to compare. This function must act
+                 on dense matrix. If the op the structured
+                 see the `structure_function` decorator to make
+                 this function structured.
+    :param gap: Tuple for the range of the random sample. When
+                length is 1, it is assumed to be the exclusive
+                max, when `gap` = (`a`, `b`) it provide a sample
+                from [a, b[. If `None` is used, it provide [0, 1]
+                for float dtypes and [0, 50[ for integer dtypes.
+    :param test_dtypes: Particular dtypes for testing the op.
+                        If `None`, this is set to the most common
+                        dtypes.
+    :param grad_test: True for testing the grad. False will
+                      skip this test.
 
-            f = theano.function([x], self.op(x))
+    :return: The class that perform the tests, not an instance
+             of the class.
+    """
 
-            tested = f(a)
-            expected = self.expected_op(a.todense())
-            expected[a.todense() == 0] = 0
+    if test_dtypes is None:
+        test_dtypes = [d for d in sparse.all_dtypes
+                       if not (d == 'int' or
+                               d == 'int8' or
+                               d in sparse.complex_dtypes)]
 
-            assert tested.shape == expected.shape
-            assert tested.dtype == expected.dtype
-            assert numpy.allclose(tested.todense(), expected)
+    class Tester(unittest.TestCase):
+        __name__ = op.__name__.capitalize() + 'Tester'
+
+        def setUp(self):
+            super(Tester, self).setUp()
+            self.op = op
+            self.expected_f = expected_f
+
+        def test_op(self):
+            for format in sparse.sparse_formats:
+                for dtype in test_dtypes:
+                    variable, data = sparse_random_inputs(
+                        format,
+                        shape=(4, 7),
+                        out_dtype=dtype,
+                        gap=gap)
+
+                    f = theano.function(variable, self.op(*variable))
+
+                    tested = f(*data)
+
+                    data = [m.toarray() for m in data]
+                    expected = self.expected_f(*data)
+
+                    assert tested.format == format
+                    tested = tested.toarray()
+
+                    try:
+                        assert numpy.allclose(tested, expected)
+                    except AssertionError:
+                        raise AssertionError(self.__name__)
+
+        if grad_test:
+            def test_grad(self):
+                for format in sparse.sparse_formats:
+                    for dtype in sparse.float_dtypes:
+                        variable, data = sparse_random_inputs(
+                            format,
+                            shape=(4, 7),
+                            out_dtype=dtype)
+
+                        verify_grad_sparse(self.op,
+                                           data,
+                                           structured=True)
+    return Tester
 
 
-class StructuredSigmoidTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredSigmoidTester, self).setUp()
-        self.op = structured_sigmoid
-        self.expected_op = lambda x: 1.0 / (1.0 + numpy.exp(-x))
+def structure_function(f, index=0):
+    """Decorator to structure a function wich
+    apply on dense matrix.
 
+    Here, the inputs of the function must be
+    dense matrix. The sparse pattern is
+    determined by finding the zeros.
 
-class StructuredExpTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredExpTester, self).setUp()
-        self.op = structured_exp
-        self.expected_op = numpy.exp
+    :param index: The index of the parameter
+                  from wich the function must
+                  be structured.
 
+    :return: The structured function for its
+             `index` parameter.
+    """
 
-class StructuredLogTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredLogTester, self).setUp()
-        self.op = structured_log
-        self.expected_op = numpy.log
+    def structured_function(*args, **kwargs):
+        pattern = args[index]
+        evaluated = f(*args)
+        evaluated[pattern == 0] = 0
+        return evaluated
+    return structured_function
 
+StructuredSigmoidTester = elemwise_checker(
+    sparse.structured_sigmoid,
+    structure_function(lambda x: 1.0 / (1.0 + numpy.exp(-x))))
 
-class StructuredPowTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredPowTester, self).setUp()
-        self.op = lambda x: structured_pow(x, 2)
-        self.expected_op = lambda x: numpy.power(x, 2)
+StructuredLogTester = elemwise_checker(
+    sparse.structured_exp,
+    structure_function(numpy.exp))
 
+StructuredLogTester = elemwise_checker(
+    sparse.structured_log,
+    structure_function(numpy.log))
 
-class StructuredMinimumTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredMinimumTester, self).setUp()
-        self.op = lambda x: structured_minimum(x, 2)
-        self.expected_op = lambda x: numpy.minimum(x, 2)
+StructuredPowTester = elemwise_checker(
+    lambda x: sparse.structured_pow(x, 2),
+    structure_function(lambda x: numpy.power(x, 2)))
 
+StructuredMinimumTester = elemwise_checker(
+    lambda x: structured_minimum(x, 2),
+    structure_function(lambda x: numpy.minimum(x, 2)),
+    grad_test=False)
 
-class StructuredMaximumTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredMaximumTester, self).setUp()
-        self.op = lambda x: structured_maximum(x, 2)
-        self.expected_op = lambda x: numpy.maximum(x, 2)
+StructuredMaximumTester = elemwise_checker(
+    lambda x: structured_maximum(x, 2),
+    structure_function(lambda x: numpy.maximum(x, 2)),
+    grad_test=False)
 
+StructuredAddTester = elemwise_checker(
+    lambda x: structured_add(x, 2),
+    structure_function(lambda x: numpy.add(x, 2)))
 
-class StructuredAddTester(_StructuredMonoidUnaryTester):
-    def setUp(self):
-        super(StructuredAddTester, self).setUp()
-        self.op = lambda x: structured_add(x, 2)
-        self.expected_op = lambda x: numpy.add(x, 2)
+SinTester = elemwise_checker(
+    sparse.sin,
+    numpy.sin)
+
+TanTester = elemwise_checker(
+    sparse.tan,
+    numpy.tan)
+
+ArcSinTester = elemwise_checker(
+    sparse.arcsin,
+    numpy.arcsin,
+    gap=(-1, 1))
+
+ArcTanTester = elemwise_checker(
+    sparse.arctan,
+    numpy.arctan)
+
+SinhTester = elemwise_checker(
+    sparse.sinh,
+    numpy.sinh)
+
+ArcSinhTester = elemwise_checker(
+    sparse.arcsinh,
+    numpy.arcsinh)
+
+TanhTester = elemwise_checker(
+    sparse.tanh,
+    numpy.tanh)
+
+ArcTanhTester = elemwise_checker(
+    sparse.arctanh,
+    numpy.arctanh,
+    gap=(-0.9, 1))
+
+RintTester = elemwise_checker(
+    sparse.rint,
+    numpy.rint,
+    grad_test=False,
+    test_dtypes=sparse.float_dtypes)
+
+SgnTester = elemwise_checker(
+    sparse.sgn,
+    numpy.sign,
+    grad_test=False)
+
+CeilTester = elemwise_checker(
+    sparse.ceil,
+    numpy.ceil,
+    grad_test=False)
+
+FloorTester = elemwise_checker(
+    sparse.floor,
+    numpy.floor,
+    grad_test=False)
+
+Log1pTester = elemwise_checker(
+    sparse.log1p,
+    numpy.log1p)
+
+SqrTester = elemwise_checker(
+    sparse.sqr,
+    lambda x: x * x)
+
+SqrtTester = elemwise_checker(
+    sparse.sqrt,
+    numpy.sqrt)
 
 
 class MulSVTester(unittest.TestCase):
