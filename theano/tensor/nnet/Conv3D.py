@@ -121,7 +121,7 @@ class Conv3D(theano.Op):
 
     def perform(self, node, inputs, output_storage):
         V, W, b, d = inputs
-        print "Conv3D python code"
+#        print "Conv3D python code"
         output_storage[0][0] = computeH(V,W,b,d)
 
     def infer_shape(self, node, input_shapes):
