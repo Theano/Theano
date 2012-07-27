@@ -369,7 +369,14 @@ class Stack(VM):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = 0
+                                    #DO NOT set compute_map to 0
+
+                                    #If values become False and the
+                                    #current_apply is still in the
+                                    #stack, this will cause it to be
+                                    #recomputed! This can cause wrong value
+                                    #with some combiation of inplace op.
+                                    compute_map[i][0] = 2
                 elif not computed_ins:
                     # -- Non-lazy case, need inputs
                     apply_stack.append(current_apply)
@@ -429,7 +436,9 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = None
+                                    #See the not lazy gc code for explanations
+                                    #Of compute_map change
+                                    compute_map[i][0] = 2
 
         # Hacky coarse gc final pass
         # This is required until we have a proper gc algorithm for graphs with
