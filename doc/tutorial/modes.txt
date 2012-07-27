@@ -13,7 +13,7 @@ The ``config`` module contains several ``attributes`` that modify Theano's behav
 attributes are examined during the import of the ``theano`` module and several are assumed to be
 read-only.
 
-*As a rule, the attributes in this module should not be modified by user code.*
+*As a rule, the attributes in the* ``config`` *module should not be modified inside the user code.*
 
 Theano's code comes with default values for these attributes, but you can
 override them from your .theanorc file, and override those values in turn by
@@ -25,13 +25,16 @@ The order of precedence is:
 2. an assignment in :envvar:`THEANO_FLAGS`
 3. an assignment in the .theanorc file (or the file indicated in :envvar:`THEANORC`)
 
-You can print out the current/effective configuration at any time by printing
+You can display the current/effective configuration at any time by printing
 theano.config.  For example, to see a list  of all active configuration
 variables, type this from the command-line:
 
 .. code-block:: bash
 
     python -c 'import theano; print theano.config' | less
+
+
+For more detail, see :ref:`Configuration <libdoc_config>` in the library.
 
 -------------------------------------------
 
@@ -136,7 +139,7 @@ Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
-- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python
+- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and Python
     implementations. This mode can take much longer than the other modes,
     but can identify many kinds of problems.
 - ``'PROFILE_MODE'``: Same optimization then FAST_RUN, put print some profiling information
@@ -168,11 +171,11 @@ Here is a table to compare the different linkers.
 =============  =========  =================  =========  ===
 linker         gc [#gc]_  Raise error by op  Overhead   Definition
 =============  =========  =================  =========  ===
-c|py [#cpy1]_  yes        yes                "+++"      Try c code. If none exist for an op, use python
+c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exist for an op, use Python
 c|py_nogc      no         yes                "++"       As c|py, but without gc
-c              no         yes                "+"        Use only c code (if none available for an op, raise an error)
-py             yes        yes                "+++"      Use only python code
-c&py [#cpy2]_  no         yes                "+++++"    Use c and python code
+c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
+py             yes        yes                "+++"      Use only Python code
+c&py [#cpy2]_  no         yes                "+++++"    Use c and Python code
 ProfileMode    no         no                 "++++"     Compute some extra profiling info
 DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===
@@ -184,6 +187,9 @@ DebugMode      no         yes                VERY HIGH  Make many checks on what
          reallocate memory, and lower the overhead (make it faster...)
 .. [#cpy1] default
 .. [#cpy2] Deprecated
+
+
+For more detail, see :ref:`Mode<libdoc_compile_mode>` in the library.
 
 
 .. _using_debugmode:
@@ -230,12 +236,13 @@ In the example above, there is no way to guarantee that a future call to say,
 
 If you instantiate DebugMode using the constructor (see :class:`DebugMode`)
 rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
-constructor arguments.  See :ref:`DebugMode <debugMode>` for details.
-The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
+constructor arguments. The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE'``)
 is quite strict.
 
+For more detail, see :ref:`DebugMode<libdoc_compile_mode>` in the library.
 
 .. _using_profilemode:
+
 
 ProfileMode
 ===========
@@ -352,7 +359,9 @@ the *Op-wise summary*, the execution time of all Apply nodes executing
 the same Op are grouped together and the total execution time per Op
 is shown (so if you use ``dot`` twice, you will see only one entry
 there corresponding to the sum of the time spent in each of them).
-
 Finally, notice that the ProfileMode also shows which Ops were running a C
 implementation.
+
+
+For more detail, see :ref:`ProfileMode<libdoc_compile_mode>` in the library.
 

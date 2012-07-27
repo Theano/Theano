@@ -7,7 +7,7 @@ Baby Steps - Algebra
 Adding two Scalars
 ==================
 
-So, to get us started with Theano and get a feel of what we're working with, 
+To get us started with Theano and get a feel of what we're working with, 
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
@@ -38,7 +38,7 @@ to add. Note that from now on, we will use the term
 
 If you are following along and typing into an interpreter, you may have
 noticed that there was a slight delay in executing the ``function``
-instruction. Behind the scenes, ``f`` was being compiled into C code.
+instruction. Behind the scene, ``f`` was being compiled into C code.
 
 
 .. note:
@@ -80,12 +80,13 @@ TensorType(float64, scalar)
 >>> x.type is T.dscalar
 True
 
-You can learn more about the structures in Theano in :ref:`graphstructures`.
-
 By calling ``T.dscalar`` with a string argument, you create a
 *Variable* representing a floating-point scalar quantity with the
 given name. If you provide no argument, the symbol will be unnamed. Names
 are not required, but they can help debugging.
+
+More will be said in a moment regarding Theano's inner structure. You
+could also learn more by looking into :ref:`graphstructures`.
 
 
 **Step 2**
@@ -112,9 +113,8 @@ and giving ``z`` as output:
 The first argument to :func:`function <function.function>` is a list of Variables
 that will be provided as inputs to the function. The second argument
 is a single Variable *or* a list of Variables. For either case, the second
-argument is what we want to see as output when we apply the function.
-
-``f`` may then be used like a normal Python function.
+argument is what we want to see as output when we apply the function. ``f`` may
+then be used like a normal Python function.
 
 
 Adding two Matrices
@@ -132,14 +132,14 @@ from the previous example is that you need to instantiate ``x`` and
 >>> z = x + y
 >>> f = function([x, y], z)
 
-``dmatrix`` is the Type for matrices of doubles. And then we can use
+``dmatrix`` is the Type for matrices of doubles. Then we can use
 our new function on 2D arrays:
 
 >>> f([[1, 2], [3, 4]], [[10, 20], [30, 40]])
 array([[ 11.,  22.],
        [ 33.,  44.]])
 
-The variable is a numpy array. We can also use numpy arrays directly as
+The variable is a NumPy array. We can also use NumPy arrays directly as
 inputs:
 
 >>> import numpy
@@ -160,8 +160,8 @@ The following types are available:
 * **double**: dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4
 * **complex**: cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4
 
-The previous list is not exhaustive. A guide to all types compatible
-with numpy arrays may be found :ref:`here <libdoc_tensor_creation>`.
+The previous list is not exhaustive and a guide to all types compatible
+with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creation>`.
 
 .. note::
 

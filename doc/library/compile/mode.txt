@@ -1,3 +1,6 @@
+
+.. _libdoc_compile_mode:
+
 ======================================
 :mod:`mode` -- controlling compilation
 ======================================

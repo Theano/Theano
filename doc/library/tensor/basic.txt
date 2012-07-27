@@ -1,6 +1,8 @@
 
 .. currentmodule:: tensor
 
+.. _libdoc_basic_tensor:
+
 ===========================
 Basic Tensor Functionality
 ===========================

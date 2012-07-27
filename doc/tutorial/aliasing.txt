@@ -84,7 +84,7 @@ subsequently make to ``np_array`` have no effect on our shared variable.
 If we are running this with the CPU as the device,
 then changes we make to np_array *right away* will show up in
 ``s_true.get_value()``
-because numpy arrays are mutable, and ``s_true`` is using the ``np_array``
+because NumPy arrays are mutable, and ``s_true`` is using the ``np_array``
 object as it's internal buffer.
 
 However, this aliasing of ``np_array`` and ``s_true`` is not guaranteed to occur,
@@ -137,15 +137,15 @@ But both of these calls might create copies of the internal memory.
 
 The reason that ``borrow=True`` might still make a copy is that the internal
 representation of a shared variable might not be what you expect.  When you
-create a shared variable by passing a numpy array for example, then ``get_value()``
-must return a numpy array too.  That's how Theano can make the GPU use
+create a shared variable by passing a NumPy array for example, then ``get_value()``
+must return a NumPy array too.  That's how Theano can make the GPU use
 transparent.  But when you are using a GPU (or in the future perhaps a remote machine), then the numpy.ndarray
 is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
 ``get_value``.  It will never cast the internal object (always return in
 constant time), but might return various datatypes depending on contextual
-factors (e.g. the compute device, the dtype of the numpy array).
+factors (e.g. the compute device, the dtype of the NumPy array).
 
 .. code-block:: python
 
