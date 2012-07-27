@@ -9,7 +9,7 @@ One of Theano's design goals is to specify computations at an
 abstract level, so that the internal function compiler has a lot of flexibility
 about how to carry out those computations.  One of the ways we take advantage of
 this flexibility is in carrying out calculations on an Nvidia graphics card when
-there is a CUDA-enabled device in present in the computer.
+there is a CUDA-enabled device present in the computer.
 
 Setting Up CUDA
 ----------------
@@ -50,7 +50,7 @@ file and run it.
 
 The program just computes the exp() of a bunch of random numbers.
 Note that we use the `shared` function to
-make sure that the input `x` are stored on the graphics device.
+make sure that the input `x` is stored on the graphics device.
 
 If I run this program (in thing.py) with device=cpu, my computer takes a little over 7 seconds,
 whereas on the GPU it takes just over 0.4 seconds. The GPU will not always produce the exact 
@@ -72,12 +72,12 @@ Note that for now GPU operations in Theano require floatX to be float32 (see als
 Returning a Handle to Device-Allocated Data
 -------------------------------------------
 
-The speedup is not greater in the example above because the function is
+The speedup is not greater in the preceding example because the function is
 returning its result as a NumPy ndarray which has already been copied from the
 device to the host for your convenience.  This is what makes it so easy to swap in device=gpu, but
 if you don't mind being less portable, you might prefer to see a bigger speedup by changing
 the graph to express a computation with a GPU-stored result.  The gpu_from_host
-Op means "copy the input from the host to the gpu" and it is optimized away
+Op means "copy the input from the host to the GPU" and it is optimized away
 after the T.exp(x) is replaced by a GPU version of exp().
 
 .. If you modify this code, also change :
@@ -127,7 +127,7 @@ To really get maximum performance in this simple example, we need to use an :cla
 instance to tell Theano not to copy the output it returns to us.  Theano allocates memory for
 internal use like a working buffer, but by default it will never return a result that is
 allocated in the working buffer.  This is normally what you want, but our example is so simple
-that it has the un-wanted side-effect of really slowing things down.
+that it has the unwanted side-effect of really slowing things down.
 
 .. 
     TODO:
@@ -195,7 +195,7 @@ what to expect right now:
   dimension-shuffling and  constant-time reshaping will be equally fast on GPU
   as on CPU.
 * Summation 
-  over rows/columns of tensors can be a little slower on the GPU than on the CPU
+  over rows/columns of tensors can be a little slower on the GPU than on the CPU.
 * Copying 
   of large quantities of data to and from a device is relatively slow, and
   often cancels most of the advantage of one or two accelerated functions on
@@ -207,10 +207,10 @@ Tips for Improving Performance on GPU
 -------------------------------------
 
 * Consider 
-  adding ``floatX = float32`` to your .theanorc file if you plan to do a lot of
+  adding ``floatX=float32`` to your .theanorc file if you plan to do a lot of
   GPU work.
 * Prefer  
-  constructors like 'matrix' 'vector' and 'scalar' to 'dmatrix', 'dvector' and
+  constructors like 'matrix', 'vector' and 'scalar' to 'dmatrix', 'dvector' and
   'dscalar' because the former will give you float32 variables when
   floatX=float32.
 * Ensure 
@@ -226,9 +226,9 @@ Tips for Improving Performance on GPU
   mode='PROFILE_MODE'. This should print some timing information at program
   termination (atexit). Is time being used sensibly?   If an Op or Apply is
   taking more time than its share, then if you know something about GPU
-  programming have a look at how it's implemented in theano.sandbox.cuda.
+  programming, have a look at how it's implemented in theano.sandbox.cuda.
   Check the line like 'Spent Xs(X%) in cpu Op, Xs(X%) in gpu Op and Xs(X%) transfert Op'
-  that can tell you if not enough of your graph is on the gpu or if there
+  that can tell you if not enough of your graph is on the GPU or if there
   is too much memory transfert.
 
 
@@ -290,9 +290,9 @@ Consider the logistic regression:
         print 'Used the cpu'
     elif any( [x.op.__class__.__name__=='GpuGemm' for x in
     train.maker.fgraph.toposort()]):
-        print 'Used the gpu'
+        print 'Used the GPU'
     else:
-        print 'ERROR, not able to tell if theano used the cpu or the gpu'
+        print 'ERROR, not able to tell if theano used the cpu or the GPU'
         print train.maker.fgraph.toposort()
 
 
@@ -342,7 +342,7 @@ What can be done to further increase the speed of the GPU version?
 Software for Directly Programming a GPU
 ---------------------------------------
 
-Leaving aside Theano which is a meta-programmer, there are:
+Leaving aside Theano which is a meta-programmer, there is:
 
 * CUDA: C extension by NVIDIA 
 
@@ -361,7 +361,7 @@ Leaving aside Theano which is a meta-programmer, there are:
 
    * Convenience: Makes it easy to do GPU meta-programming from within Python. Helpful documentation.
 
-     (abstractions to compile low-level CUDA code from Python: ``pycuda.driver.SourceModule``).
+     (abstractions to compile low-level CUDA code from Python: ``pycuda.driver.SourceModule``)
 
    * Completeness: Binding to all of CUDA's driver API.
 
@@ -369,15 +369,15 @@ Leaving aside Theano which is a meta-programmer, there are:
 
    * Speed: PyCUDA's base layer is written in C++.
 
-   * Memory management of GPU objects:
+   * Good memory management of GPU objects:
 
-     GPU memory buffer: \texttt{pycuda.gpuarray.GPUArray}.
-
-     Object cleanup tied to lifetime of objects (RAII, Resource Acquisition Is Initialization).
+     Object cleanup tied to lifetime of objects (RAII, 'Resource Acquisition Is Initialization').
 
      Makes it much easier to write correct, leak- and crash-free code.
 
      PyCUDA knows about dependencies (e.g. it won't detach from a context before all memory allocated in it is also freed).
+
+     (GPU memory buffer: \texttt{pycuda.gpuarray.GPUArray})
 
 * PyOpenCL: PyCUDA for OpenCL
 
@@ -419,8 +419,7 @@ Leaving aside Theano which is a meta-programmer, there are:
 
 Run the preceding example.
 
-Modify and execute it to work for a matrix of 20 x 10.
-
+Modify and execute to work for a matrix of shape (20, 10).
 
 -------------------------------------------
 
@@ -485,13 +484,12 @@ To test it:
 
 Run the preceding example.
 
-Modify and execute the example to multiple two matrix: x * y.
+Modify and execute to multiply two matrices: x * y.
 
-Modify and execute the example to return 2 outputs: x + y and x - y.
+Modify and execute to return two outputs: x + y and x - y.
 (Currently, elemwise fusion generates computation with only 1 output.)
 
-Modify and execute the example to support *stride* (i.e. so as not constrain the input to be c contiguous).
-
+Modify and execute to support *stride* (i.e. so as not constrain the input to be c contiguous).
 
 -------------------------------------------
 

@@ -5,6 +5,14 @@
 More Examples
 =============
 
+At this point it would be wise to begin familiarizing yourself 
+more systematically with Theano's fundamental objects and operations by browsing
+this section of the library: :ref:`libdoc_basic_tensor`.
+
+As the tutorial unfolds, you should also gradually acquaint yourself with the other
+relevant areas of the library and with the relevant subjects of the documentation
+entrance page.
+
 
 Logistic Function
 =================
@@ -82,7 +90,7 @@ squared difference between two matrices ``a`` and ``b`` at the same time:
    shortcut for allocating symbolic variables that we will often use in the
    tutorials.
 
-When we use the function, it will return the three variables (the printing
+When we use the function f, it returns the three variables (the printing
 was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
@@ -119,7 +127,7 @@ give a default value of 1 for ``y`` by creating a ``Param`` instance with
 its ``default`` field set to 1.
 
 Inputs with default values must follow inputs without default
-values (like python's functions).  There can be multiple inputs with default values. These parameters can
+values (like Python's functions).  There can be multiple inputs with default values. These parameters can
 be set positionally or by name, as in standard Python:
 
 
@@ -146,8 +154,11 @@ array(33.0)
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
    the mechanism at work in ``Param(y, default=1)``.  In the case of ``Param(w,
-   default=2, name='w_by_name')``, we override the symbolic variable's name
+   default=2, name='w_by_name')``. We override the symbolic variable's name
    attribute with a name to be used for this function.
+
+
+You may like to see :ref:`Function<usingfunction>` in the library for more detail.
 
 
 .. _functionstateexample:
@@ -172,9 +183,9 @@ internal state, and returns the old state value.
 >>> accumulator = function([inc], state, updates=[(state, state+inc)])
 
 This code introduces a few new concepts.  The ``shared`` function constructs
-so-called :term:`shared variables <shared variable>`.
-These are hybrid symbolic and non-symbolic
-variables.  Shared variables can be used in symbolic expressions just like
+so-called :ref:`shared variables<libdoc_compile_shared>`.
+These are hybrid symbolic and non-symbolic variables whose value may be shared 
+between multiple functions.  Shared variables can be used in symbolic expressions just like
 the objects returned by ``dmatrices(...)`` but they also have an internal
 value, that defines the value taken by this symbolic variable in *all* the
 functions that use it.  It is called a *shared* variable because its value is
@@ -189,7 +200,7 @@ will replace the ``.value`` of each shared variable with the result of the
 corresponding expression".  Above, our accumulator replaces the ``state``'s value with the sum
 of the state and the increment amount.
 
-Anyway, let's try it out!
+Let's try it out!
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
@@ -214,7 +225,7 @@ array(-1)
 array(2)
 
 As we mentioned above, you can define more than one function to use the same
-shared variable.  These functions can both update the value.
+shared variable.  These functions can all update the value.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
@@ -226,7 +237,7 @@ array(2)
 array(0)
 
 You might be wondering why the updates mechanism exists.  You can always
-achieve a similar thing by returning the new expressions, and working with
+achieve a similar result by returning the new expressions, and working with
 them in NumPy as usual.  The updates mechanism can be a syntactic convenience,
 but it is mainly there for efficiency.  Updates to shared variables can
 sometimes be done more quickly using in-place algorithms (e.g. low-rank matrix
@@ -278,7 +289,9 @@ RandomStream object (a random number generator) for each such
 variable, and draw from it as necessary. We will call this sort of
 sequence of random numbers a *random stream*. *Random streams* are at
 their core shared variables, so the observations on shared variables
-hold here as well.
+hold here as well. Theanos's random objects are defined and implemented in 
+:ref:`RandomStreams<libdoc_tensor_shared_randomstreams>` and, at a lower level, 
+in :ref:`RandomStreamsBase<libdoc_tensor_raw_random>`.
 
 Brief Example
 -------------
@@ -301,7 +314,9 @@ Here's a brief example.  The setup code is:
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
 distribution.  Likewise,  'rv_n' represents a random stream of 2x2 matrices of
 draws from a normal distribution.  The distributions that are implemented are
-defined in :class:`RandomStreams`.
+defined in :class:`RandomStreams` and, at a lower level, in :ref:`raw_random<_libdoc_tensor_raw_random>`.
+
+  .. TODO: repair the latter reference on RandomStreams
 
 Now let's use these objects.  If we call f(), we get random uniform numbers.
 The internal state of the random number generator is automatically updated,
@@ -312,7 +327,7 @@ so we get different random numbers every time.
 
 When we add the extra argument ``no_default_updates=True`` to
 ``function`` (as in ``g``), then the random number generator state is
-not affected by calling the returned function.  So for example, calling
+not affected by calling the returned function.  So, for example, calling
 ``g`` multiple times will return the same numbers.
 
 >>> g_val0 = g()  # different numbers from f_val0 and f_val1
@@ -374,7 +389,7 @@ There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 A Real Example: Logistic Regression
 ===================================
 
-The preceding elements are put to work in this more realistic example. It will be used repeatedly.  
+The preceding elements are featured in this more realistic example.  It will be used repeatedly.  
 
 .. code-block:: python
 
@@ -401,7 +416,8 @@ The preceding elements are put to work in this more realistic example. It will b
   prediction = p_1 > 0.5                    # The prediction thresholded
   xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy loss function
   cost = xent.mean() + 0.01*(w**2).sum()    # The cost to minimize
-  gw,gb = T.grad(cost, [w,b])		  # Compute the gradient of cost
+  gw,gb = T.grad(cost, [w,b])		  # Compute the gradient of the cost:
+					  # we shall return to this
 
   # Compile
   train = theano.function(

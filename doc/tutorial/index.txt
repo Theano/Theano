@@ -5,17 +5,17 @@
 Tutorial
 ========
 
-Let us start an interactive session (e.g. ``python`` or ``ipython``) and import Theano.
+Let us start an interactive session (e.g. with ``python`` or ``ipython``) and import Theano.
 
 >>> from theano import *
 
-Many of symbols you will need to use are in the ``tensor`` subpackage
-of Theano. Let's import that subpackage under a handy name like
-``T`` (many tutorials use this convention).
+Several of the symbols you will need to use are in the ``tensor`` subpackage
+of Theano. Let us import that subpackage under a handy name like
+``T`` (the tutorials will frequently use this convention).
 
 >>> import theano.tensor as T
 
-If that worked you are ready for the tutorial, otherwise check your
+If that succeeded you are ready for the tutorial, otherwise check your
 installation (see :ref:`install`).
 
 Throughout the tutorial, bear in mind that there is a :ref:`glossary` to help
@@ -32,14 +32,14 @@ you out.
     gradients
     modes
     loading_and_saving
-    aliasing
     conditions
     loop
     sparse
     using_gpu
     gpu_data_convert
+    aliasing
     shape_info
     remarks
-    extending_theano
     debug_faq
+    extending_theano
     faq
