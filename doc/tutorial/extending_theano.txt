@@ -119,7 +119,7 @@ includes your op.
 The :func:`__str__` method is useful in order to provide a more meaningful
 string representation of your Op.
 
-The :func:`R_op` method is needed if you want `theano.tensor.Rop` to
+The :func:`R_op` method is needed if you want ``theano.tensor.Rop`` to
 work with your op.
 
 Op Example
@@ -211,16 +211,16 @@ exception. You can use the `assert` keyword to automatically raise an
 **Testing the infer_shape**
 
 When a class inherits from the ``InferShapeTester`` class, it gets the
-`self._compile_and_check` method that tests the Op ``infer_shape``
+``self._compile_and_check`` method that tests the Op ``infer_shape``
 method. It tests that the Op gets optimized out of the graph if only
 the shape of the output is needed and not the output
 itself. Additionally, it checks that such an optimized graph computes
 the correct shape, by comparing it to the actual shape of the computed
 output.
 
-`self._compile_and_check` compiles a Theano function. It takes as
+``self._compile_and_check`` compiles a Theano function. It takes as
 parameters the lists of input and output Theano variables, as would be
-provided to theano.function, and a list of real values to pass to the
+provided to ``theano.function``, and a list of real values to pass to the
 compiled function (don't use shapes that are symmetric, e.g. (3, 3),
 as they can easily to hide errors). It also takes the Op class to
 verify that no Ops of that type appear in the shape-optimized graph.
@@ -263,6 +263,8 @@ the multiplication by 2).
                                                     [numpy.random.rand(5, 7, 2)])
 
 **Testing the Rop**
+
+.. TODO: repair defective links in the following paragraph
 
 The class :class:`RopLop_checker`, give the functions
 :func:`RopLop_checker.check_mat_rop_lop`,
@@ -315,6 +317,9 @@ to make the distinction between both. Currently, we use this to test
 if the NVIDIA driver works correctly with our sum reduction code on the
 GPU.
 
+
+A more extensive discussion than this section's may be found in the advanced
+tutorial :ref:`Extending Theano<extending>`
 
 -------------------------------------------
 

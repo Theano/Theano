@@ -5,13 +5,13 @@ How Shape Information is Handled by Theano
 ==========================================
 
 It is not possible to strictly enforce the shape of a Theano variable when
-building a graph since the particular value provided for a parameter of the theano.function can change the
-shape any Theano variable in its graph.
+building a graph since the particular value provided at run-time for a parameter of a
+Theano function may condition the shape of the Theano variables in its graph.
 
 Currently, information regarding shape is used in two ways in Theano:
 
-- When the exact output shape is known, to generate faster C code for
-  the 2d convolution on the CPU and GPU.
+- To generate faster C code for the 2d convolution on the CPU and the GPU,
+  when the exact output shape is known in advance.
 
 - To remove computations in the graph when we only want to know the
   shape, but not the actual value of a variable. This is done with the
@@ -39,7 +39,7 @@ output.
 Shape Inference Problem
 =======================
 
-Theano propagates shape information in the graph. Sometimes this
+Theano propagates information about shape in the graph. Sometimes this
 can lead to errors. For example:
 
 .. code-block:: python
@@ -90,18 +90,18 @@ example), an inferred shape is computed directly, without executing
 the computation itself (there is no ``join`` in the first output or debugprint).
 
 This makes the computation of the shape faster, but it can also hide errors. In
-the example, the computation of the shape of ``join`` is done on the first
-theano variable in the ``join`` computation and not on the other.
+the example, the computation of the shape of the output of ``join`` is done only
+based on the first input Theano variable, which leads to an error.
 
 This might happen with other ops such as elemwise, dot, ...
-Indeed, to make some optimizations (for speed or stability, for instance),
+Indeed, to perform some optimizations (for speed or stability, for instance),
 Theano assumes that the computation is correct and consistent
 in the first place, as it does here.
 
-You can detect those problem by running the code without this
+You can detect those problems by running the code without this
 optimization, with the Theano flag
-`optimizer_excluding=local_shape_to_shape_i`. You can also have the
-same effect by running in the mode FAST_COMPILE (it will not apply this
+``optimizer_excluding=local_shape_to_shape_i``. You can also obtain the
+same effect by running in the modes FAST_COMPILE (it will not apply this
 optimization, nor most other optimizations) or DEBUG_MODE (it will test
 before and after all optimizations (much slower)).
 
@@ -109,21 +109,21 @@ before and after all optimizations (much slower)).
 Specifing Exact Shape
 =====================
 
-Currently, specifying a shape is not as easy and flexible as we want and we plan some
+Currently, specifying a shape is not as easy and flexible as we wish and we plan some
 upgrade.  Here is the current state of what can be done:
 
-- You can pass the shape info directly to the `ConvOp` created
+- You can pass the shape info directly to the ``ConvOp`` created
   when calling conv2d. You simply add the parameters image_shape
   and filter_shape to the call. They must be tuples of 4
-  elements. Ex:
+  elements. For example:
 
 .. code-block:: python
 
     theano.tensor.nnet.conv2d(..., image_shape=(7,3,5,5), filter_shape=(2,3,4,4))
 
-- You can use the SpecifyShape op to add shape info anywhere in the
+- You can use the SpecifyShape op to add shape information anywhere in the
   graph. This allows to perform some optimizations. In the following example,
-  this allows to precompute the Theano function to a constant.
+  this makes it possible to precompute the Theano function to a constant.
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ upgrade.  Here is the current state of what can be done:
 Future Plans
 ============
 
-- Add the parameter "constant shape" to theano.shared(). This is probably
+  The parameter "constant shape" will be added to ``theano.shared()``. This is probably
   the most frequent case with ``shared variables``. This will make the code
   simpler and will make it possible to check that the shape does not change when
   updating the shared variable.

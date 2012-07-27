@@ -22,7 +22,7 @@ Using Test Values
 -----------------
 
 As of v.0.4.0, Theano has a new mechanism by which graphs are executed
-on-the-fly, before a theano.function is ever compiled. Since optimizations
+on-the-fly, before a ``theano.function`` is ever compiled. Since optimizations
 haven't been applied at this stage, it is easier for the user to locate the
 source of some bug. This functionality is enabled through the config flag
 ``theano.config.compute_test_value``. Its use is best shown through the
@@ -131,12 +131,12 @@ The compute_test_value mechanism works as follows:
 
 `compute_test_value` can take the following values:
 
-* ``off``: default behavior. This debugging mechanism is inactive.
-* ``raise``: compute test values on the fly. Any variable for which a test
+* ``off``: Default behavior. This debugging mechanism is inactive.
+* ``raise``: Compute test values on the fly. Any variable for which a test
   value is required, but not provided by the user, is treated as an error. An
   exception is raised accordingly.
-* ``warn``: idem, but a warning is issued instead of an Exception.
-* ``ignore``: silently ignore the computation of intermediate test values, if a
+* ``warn``: Idem, but a warning is issued instead of an Exception.
+* ``ignore``: Silently ignore the computation of intermediate test values, if a
   variable is missing a test value.
 
 .. note::
@@ -181,6 +181,8 @@ precise inspection of what's being computed where, when, and how, see the
 How do I Print a Graph (before or after compilation)?
 ----------------------------------------------------------
 
+.. TODO: dead links in the next paragraph
+
 Theano provides two functions (:func:`theano.pp` and
 :func:`theano.printing.debugprint`) to print a graph to the terminal before or after
 compilation.  These two functions print expression graphs in different ways:
@@ -203,8 +205,14 @@ Apply nodes, and which Ops are eating up your CPU cycles.
 
 Tips:
 
-* use the flags floatX=float32 to use float32 instead of float64 for the theano type matrix(),vector(),...(if you used dmatrix, dvector() they stay at float64).
-* Check that in the profile mode that there is no Dot operation and you're multiplying two matrices of the same type. Dot should be optimized to dot22 when the inputs are matrices and of the same type. This can happen when using floatX=float32 and something in the graph makes one of the inputs float64.
+* use the flags ``floatX=float32`` to use *float32* instead of *float64* 
+  for the theano type matrix(),vector(),...(if you used dmatrix, dvector()
+  they stay at *float64*).
+* Check that in the profile mode that there is no Dot operation and you're
+  multiplying two matrices of the same type. Dot should be optimized to
+  dot22 when the inputs are matrices and of the same type. This can happen
+  when using floatX=float32 and something in the graph makes one of the
+  inputs *float64*.
 
 .. _faq_wraplinker:
 
@@ -239,7 +247,7 @@ along with its position in the graph, the arguments to the ``perform`` or
 
 Admittedly, this may be a huge amount of
 output to read through if you are using big tensors... but you can choose to
-put logic inside of the print_eval function  that would, for example, only
+put logic inside of the *print_eval* function  that would, for example, only
 print something out if a certain kind of Op was used, at a certain program
 position, or if a particular value shows up in one of the inputs or outputs.
 Use your imagination :)
@@ -247,7 +255,7 @@ Use your imagination :)
 .. TODO: documentation for link.WrapLinkerMany
 
 This can be a really powerful debugging tool.
-Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
+Note the call to *fn* inside the call to *print_eval*; without it, the graph wouldn't get computed at all!
 
 How to Use pdb ?
 ----------------
@@ -296,7 +304,7 @@ of the error. There's the script where the compiled function was called --
 but if you're using (improperly parameterized) prebuilt modules, the error
 might originate from ops in these modules, not this script. The last line
 tells us about the Op that caused the exception. In this case it's a "mul"
-involving Variables name "a" and "b". But suppose we instead had an
+involving variables with names "a" and "b". But suppose we instead had an
 intermediate result to which we hadn't given a name.
 
 After learning a few things about the graph structure in Theano, we can use
@@ -329,7 +337,7 @@ explore around the graph.
 
 That graph is purely symbolic (no data, just symbols to manipulate it
 abstractly). To get information about the actual parameters, you explore the
-"thunks" objects, which bind the storage for the inputs (and outputs) with
+"thunk" objects, which bind the storage for the inputs (and outputs) with
 the function itself (a "thunk" is a concept related to closures). Here, to
 get the current node's first input's shape, you'd therefore do "p
 thunk.inputs[0][0].shape", which prints out "(3, 4)".

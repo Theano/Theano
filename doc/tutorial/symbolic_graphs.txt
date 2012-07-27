@@ -11,8 +11,8 @@ Theano Graphs
 
 Debugging or profiling code written in Theano is not that simple if you
 do not know what goes on under the hood. This chapter is meant to
-introduce you to a required minimum of the inner workings of Theano, 
-for more detail see :ref:`extending`.
+introduce you to a required minimum of the inner workings of Theano.  
+For more detail see :ref:`extending`.
 
 The first step in writing Theano code is to write down all mathematical 
 relations using symbolic placeholders (**variables**). When writing down 
@@ -103,7 +103,7 @@ same shape as x. This is done by using the op ``DimShuffle`` :
 
 Starting from this graph structure it is easier to understand how 
 *automatic differentiation* proceeds and how the symbolic relations
-can be *optimized* for performance or stability.
+can be *optimized* for performance or stability.  
 
 
 Automatic Differentiation
@@ -121,6 +121,9 @@ Using the
 `chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_ 
 these gradients can be composed in order to obtain the expression of the 
 gradient of the graph's output with respect to the graph's inputs .
+
+A coming section of this tutorial will address the topic of differentiation
+in greater detail.
 
 
 Optimizations
@@ -141,10 +144,15 @@ twice or reformulate parts of the graph to a GPU specific version.
 For example, one (simple) optimization that Theano uses is to replace 
 the pattern :math:`\frac{xy}{y}` by :math:`x`.
 
+Further information regarding the optimization
+:ref:`process<optimization>` and the specific :ref:`optimizations<optimizations>` that are applicable
+is respectively available in the library and on the entrance page of the documentation.  
+
 
 **Example**
 
-Consider the following example of optimization:
+Symbolic programming involves a change of paradigm: it will become clearer
+as we apply it. Consider the following example of optimization:
 
 >>> import theano
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
@@ -158,5 +166,3 @@ Consider the following example of optimization:
 ======================================================  =====================================================
 .. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
 ======================================================  =====================================================
-
-Symbolic programming involves a paradigm shift: it is best to use it in order to understand it.
