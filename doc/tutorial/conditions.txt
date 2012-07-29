@@ -8,11 +8,11 @@ IfElse vs Switch
 ================
 
 
-- Both Ops build a condition over symbolic variables.
-- ``IfElse`` takes a `boolean` condition and two variables as inputs.
-- ``Switch`` takes a `tensor` as condition and two variables as inputs.
+- Both ops build a condition over symbolic variables.
+- ``IfElse`` takes a *boolean* condition and two variables as inputs.
+- ``Switch`` takes a *tensor* as condition and two variables as inputs.
   ``switch`` is an elementwise operation and is thus more general than ``ifelse``.
-- Whereas ``switch`` evaluates both 'output' variables, ``ifelse`` is lazy and only
+- Whereas ``switch`` evaluates both *output* variables, ``ifelse`` is lazy and only
   evaluates one variable with respect to the condition.
 
 **Example**
@@ -52,7 +52,7 @@ IfElse vs Switch
       f_lazyifelse(val1, val2, big_mat1, big_mat2)
   print 'time spent evaluating one value %f sec'%(time.clock()-tic)
 
-In this example, the ``IfElse`` Op spends less time (about half as much) than ``Switch``
+In this example, the ``IfElse`` op spends less time (about half as much) than ``Switch``
 since it computes only one variable out of the two.
 
 .. code-block:: python
@@ -64,7 +64,7 @@ since it computes only one variable out of the two.
 
 Unless ``linker='vm'`` or ``linker='cvm'`` are used, ``ifelse`` will compute both
 variables and take the same computation time as ``switch``. Although the linker
-is not currently set by default to 'cvm', it will be in the near future.
+is not currently set by default to ``cvm``, it will be in the near future.
 
 There is no automatic optimization replacing a ``switch`` with a
 broadcasted scalar to an ``ifelse``, as this is not always faster. See

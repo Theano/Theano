@@ -9,13 +9,13 @@ PyCUDA
 
 Currently, PyCUDA and Theano have different objects to store GPU
 data. The two implementations do not support the same set of features.
-Theano's implementation is called CudaNdarray and supports
+Theano's implementation is called *CudaNdarray* and supports
 *strides*. It also only supports the *float32* dtype. PyCUDA's implementation
-is called GPUArray and doesn't support *strides*. However, it can deal with
+is called *GPUArray* and doesn't support *strides*. However, it can deal with
 all NumPy and CUDA dtypes.
 
-We are currently working on having the same base object that will
-mimic Numpy. Until this is ready, here is some information on how to
+We are currently working on having the same base object for both that will
+also mimic Numpy. Until this is ready, here is some information on how to
 use both objects in the same script.
 
 Transfer
@@ -24,8 +24,8 @@ Transfer
 You can use the ``theano.misc.pycuda_utils`` module to convert GPUArray to and
 from CudaNdarray. The functions ``to_cudandarray(x, copyif=False)`` and
 ``to_gpuarray(x)`` return a new object that occupies the same memory space
-as the original. Otherwise it raises a ValueError. Because GPUArrays don't
-support *strides*, if the CudaNdarray is strided, we could copy it to
+as the original. Otherwise it raises a *ValueError*. Because GPUArrays don't
+support strides, if the CudaNdarray is strided, we could copy it to
 have a non-strided copy. The resulting GPUArray won't share the same
 memory region. If you want this behavior, set ``copyif=True`` in
 ``to_gpuarray``.
@@ -122,13 +122,15 @@ CUDAMat
 
 There are functions for conversion between CUDAMat objects and Theano's CudaNdArray objects. 
 They obey the same principles as Theano's PyCUDA functions and can be found in
-theano.misc.cudamat_utils.py
+``theano.misc.cudamat_utils.py``.
 
-WARNING: There is a strange problem associated with stride/shape with those converters. 
-In order to work, the test needs a transpose and reshape...
+.. TODO: this statement is unclear:
+
+WARNING: There is a peculiar problem associated with stride/shape with those converters. 
+In order to work, the test needs a *transpose* and *reshape*...
 
 Gnumpy
 ======
 
-There are conversion functions between Gnumpy ``garray`` objects and Theano CudaNdArray objects. 
-They are also similar to Theano's PyCUDA functions and can be found in theano.misc.gnumpy_utils.py.
+There are conversion functions between Gnumpy *garray* objects and Theano CudaNdArray objects. 
+They are also similar to Theano's PyCUDA functions and can be found in ``theano.misc.gnumpy_utils.py``.

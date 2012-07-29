@@ -19,7 +19,7 @@ relations using symbolic placeholders (**variables**). When writing down
 these expressions you use operations like ``+``, ``-``, ``**``,
 ``sum()``, ``tanh()``. All these are represented internally as **ops**. 
 An **op** represents a certain computation on some type of inputs
-producing some type of output. You can see it as a function definition
+producing some type of output. You can see it as a *function definition*
 in most programming languages. 
 
 Theano builds internally a graph structure composed of interconnected 
@@ -69,15 +69,15 @@ Take for example the following code:
     x = T.dmatrix('x')
     y = x*2.
 
-If you print `type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
+If you enter ``type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
 which is the apply node that connects the op and the inputs to get this
 output. You can now print the name of the op that is applied to get 
-``y``:
+*y*:
 
 >>> y.owner.op.name
 'Elemwise{mul,no_inplace}'
 
-Hence, an elementwise multiplication is used to compute ``y``. This
+Hence, an elementwise multiplication is used to compute *y*. This
 multiplication is done between the inputs:
 
 >>> len(y.owner.inputs)
@@ -89,7 +89,7 @@ InplaceDimShuffle{x,x}.0
 
 Note that the second input is not 2 as we would have expected. This is 
 because 2 was first :term:`broadcasted <broadcasting>` to a matrix of 
-same shape as x. This is done by using the op ``DimShuffle`` :
+same shape as *x*. This is done by using the op ``DimShuffle`` :
 
 >>> type(y.owner.inputs[1])
 <class 'theano.tensor.basic.TensorVariable'>
@@ -122,7 +122,7 @@ Using the
 these gradients can be composed in order to obtain the expression of the 
 gradient of the graph's output with respect to the graph's inputs .
 
-A coming section of this tutorial will address the topic of differentiation
+A following section of this tutorial will examine the topic of differentiation
 in greater detail.
 
 
@@ -131,7 +131,7 @@ Optimizations
 
 When compiling a Theano function, what you give to the
 :func:`theano.function <function.function>` is actually a graph
-(starting from the outputs variables you can traverse the graph up to
+(starting from the output variables you can traverse the graph up to
 the input variables). While this graph structure shows how to compute
 the output from the input, it also offers the possibility to improve the  
 way this computation is carried out. The way optimizations work in 
