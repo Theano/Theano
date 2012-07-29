@@ -18,7 +18,7 @@ Currently, information regarding shape is used in two ways in Theano:
   `Op.infer_shape <http://deeplearning.net/software/theano/extending/cop.html#Op.infer_shape>`_
   method.
 
-  ex:
+  Example:
 
   .. code-block:: python
 
@@ -40,7 +40,7 @@ Shape Inference Problem
 =======================
 
 Theano propagates information about shape in the graph. Sometimes this
-can lead to errors. For example:
+can lead to errors. Consider this example:
 
 .. code-block:: python
 
@@ -90,19 +90,19 @@ example), an inferred shape is computed directly, without executing
 the computation itself (there is no ``join`` in the first output or debugprint).
 
 This makes the computation of the shape faster, but it can also hide errors. In
-the example, the computation of the shape of the output of ``join`` is done only
+this example, the computation of the shape of the output of ``join`` is done only
 based on the first input Theano variable, which leads to an error.
 
-This might happen with other ops such as elemwise, dot, ...
+This might happen with other ops such as ``elemwise`` and ``dot``, for example.
 Indeed, to perform some optimizations (for speed or stability, for instance),
 Theano assumes that the computation is correct and consistent
 in the first place, as it does here.
 
 You can detect those problems by running the code without this
-optimization, with the Theano flag
+optimization, using the Theano flag
 ``optimizer_excluding=local_shape_to_shape_i``. You can also obtain the
-same effect by running in the modes FAST_COMPILE (it will not apply this
-optimization, nor most other optimizations) or DEBUG_MODE (it will test
+same effect by running in the modes ``FAST_COMPILE`` (it will not apply this
+optimization, nor most other optimizations) or ``DEBUG_MODE`` (it will test
 before and after all optimizations (much slower)).
 
 
@@ -113,15 +113,15 @@ Currently, specifying a shape is not as easy and flexible as we wish and we plan
 upgrade.  Here is the current state of what can be done:
 
 - You can pass the shape info directly to the ``ConvOp`` created
-  when calling conv2d. You simply add the parameters image_shape
-  and filter_shape to the call. They must be tuples of 4
+  when calling ``conv2d``. You simply set the parameters ``image_shape``
+  and ``filter_shape`` inside the call. They must be tuples of 4
   elements. For example:
 
 .. code-block:: python
 
     theano.tensor.nnet.conv2d(..., image_shape=(7,3,5,5), filter_shape=(2,3,4,4))
 
-- You can use the SpecifyShape op to add shape information anywhere in the
+- You can use the ``SpecifyShape`` op to add shape information anywhere in the
   graph. This allows to perform some optimizations. In the following example,
   this makes it possible to precompute the Theano function to a constant.
 
@@ -138,6 +138,6 @@ Future Plans
 ============
 
   The parameter "constant shape" will be added to ``theano.shared()``. This is probably
-  the most frequent case with ``shared variables``. This will make the code
+  the most frequent occurrence with ``shared`` variables. It will make the code
   simpler and will make it possible to check that the shape does not change when
-  updating the shared variable.
+  updating the ``shared`` variable.

@@ -74,7 +74,7 @@ Computing More than one Thing at the Same Time
 
 Theano supports functions with multiple outputs. For example, we can
 compute the :ref:`elementwise <libdoc_tensor_elementwise>` difference, absolute difference, and
-squared difference between two matrices ``a`` and ``b`` at the same time:
+squared difference between two matrices *a* and *b* at the same time:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_3
@@ -123,7 +123,7 @@ array(35.0)
 
 This makes use of the :ref:`Param <function_inputs>` class which allows
 you to specify properties of your function's parameters with greater detail. Here we
-give a default value of 1 for ``y`` by creating a ``Param`` instance with
+give a default value of 1 for *y* by creating a ``Param`` instance with
 its ``default`` field set to 1.
 
 Inputs with default values must follow inputs without default
@@ -149,7 +149,7 @@ array(34.0)
 array(33.0)
 
 .. note::
-   ``Param`` does not know the name of the local variables ``y`` and ``w``
+   ``Param`` does not know the name of the local variables *y* and *w*
    that are passed as arguments.  The symbolic variable objects have name
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
@@ -171,7 +171,7 @@ example, let's say we want to make an accumulator: at the beginning,
 the state is initialized to zero. Then, on each function call, the state
 is incremented by the function's argument.
 
-First let's define the ``accumulator`` function. It adds its argument to the
+First let's define the *accumulator* function. It adds its argument to the
 internal state, and returns the old state value.
 
 .. If you modify this code, also change :
@@ -187,13 +187,13 @@ so-called :ref:`shared variables<libdoc_compile_shared>`.
 These are hybrid symbolic and non-symbolic variables whose value may be shared 
 between multiple functions.  Shared variables can be used in symbolic expressions just like
 the objects returned by ``dmatrices(...)`` but they also have an internal
-value, that defines the value taken by this symbolic variable in *all* the
+value that defines the value taken by this symbolic variable in *all* the
 functions that use it.  It is called a *shared* variable because its value is
 shared between many functions.  The value can be accessed and modified by the
 ``.get_value()`` and ``.set_value()`` methods. We will come back to this soon.
 
-The other new thing in this code is the ``updates`` parameter of function.
-The updates is a list of pairs of the form (shared-variable, new expression).
+The other new thing in this code is the ``updates`` parameter of ``function``.
+``updates`` must be supplied with a list of pairs of the form (shared-variable, new expression).
 It can also be a dictionary whose keys are shared-variables and values are
 the new expressions.  Either way, it means "whenever this function runs, it
 will replace the ``.value`` of each shared variable with the result of the
@@ -241,9 +241,9 @@ achieve a similar result by returning the new expressions, and working with
 them in NumPy as usual.  The updates mechanism can be a syntactic convenience,
 but it is mainly there for efficiency.  Updates to shared variables can
 sometimes be done more quickly using in-place algorithms (e.g. low-rank matrix
-updates).  Also, theano has more control over where and how shared variables are
+updates).  Also, Theano has more control over where and how shared variables are
 allocated, which is one of the important elements of getting good performance
-on the GPU.
+on the :ref:`GPU<using_gpu>`.
 
 It may happen that you expressed some formula using a shared variable, but
 you do *not* want to use its value. In this case, you can use the
@@ -326,16 +326,16 @@ so we get different random numbers every time.
 >>> f_val1 = f()  #different numbers from f_val0
 
 When we add the extra argument ``no_default_updates=True`` to
-``function`` (as in ``g``), then the random number generator state is
+``function`` (as in *g*), then the random number generator state is
 not affected by calling the returned function.  So, for example, calling
-``g`` multiple times will return the same numbers.
+*g* multiple times will return the same numbers.
 
 >>> g_val0 = g()  # different numbers from f_val0 and f_val1
 >>> g_val1 = g()  # same numbers as g_val0!
 
 An important remark is that a random variable is drawn at most once during any
-single function execution.  So the ``nearly_zeros`` function is guaranteed to
-return approximately 0 (except for rounding error) even though the ``rv_u``
+single function execution.  So the *nearly_zeros* function is guaranteed to
+return approximately 0 (except for rounding error) even though the *rv_u*
 random variable appears three times in the output expression.
 
 >>> nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
@@ -363,8 +363,8 @@ Sharing Streams Between Functions
 ---------------------------------
 
 As usual for shared variables, the random number generators used for random
-variables are common between functions.  So our ``nearly_zeros`` function will
-update the state of the generators used in function ``f`` above.
+variables are common between functions.  So our *nearly_zeros* function will
+update the state of the generators used in function *f* above.
 
 For example:
 
@@ -416,8 +416,9 @@ The preceding elements are featured in this more realistic example.  It will be 
   prediction = p_1 > 0.5                    # The prediction thresholded
   xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy loss function
   cost = xent.mean() + 0.01*(w**2).sum()    # The cost to minimize
-  gw,gb = T.grad(cost, [w,b])		  # Compute the gradient of the cost:
-					  # we shall return to this
+  gw,gb = T.grad(cost, [w,b])		  # Compute the gradient of the cost
+					  # (we shall return to this in a 
+					  # following section of this tutorial)
 
   # Compile
   train = theano.function(
