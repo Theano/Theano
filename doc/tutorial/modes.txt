@@ -173,11 +173,11 @@ Here is a table to compare the different linkers.
 =============  =========  =================  =========  ===
 linker         gc [#gc]_  Raise error by op  Overhead   Definition
 =============  =========  =================  =========  ===
-c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exist for an op, use Python
+c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exists for an op, use Python
 c|py_nogc      no         yes                "++"       As c|py, but without gc
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only Python code
-c&py [#cpy2]_  no         yes                "+++++"    Use c and Python code
+c&py [#cpy2]_  no         yes                "+++++"    Use C and Python code
 ProfileMode    no         no                 "++++"     Compute some extra profiling info
 DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===

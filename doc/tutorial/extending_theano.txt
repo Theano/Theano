@@ -40,6 +40,8 @@ Inputs and Outputs are lists of Theano variables.
    See the :ref:`dev_start_guide` for information about git, github, the
    development workflow and how to make a quality contribution.
 
+
+Op Contract
 -----------
 
 
@@ -163,7 +165,7 @@ Op Example
                 return eval_points
             return self.grad(inputs, eval_points)
 
-Try it!:
+You can try it as follows:
 
 .. code-block:: python
 
@@ -176,8 +178,9 @@ Try it!:
     print inp
     print out
 
-How To Test it
 
+How To Test it
+--------------
 
 Theano has some functions to simplify testing. These help test the
 ``infer_shape``, ``grad`` and ``R_op`` methods. Put the following code
@@ -221,9 +224,9 @@ output.
 ``self._compile_and_check`` compiles a Theano function. It takes as
 parameters the lists of input and output Theano variables, as would be
 provided to ``theano.function``, and a list of real values to pass to the
-compiled function (don't use shapes that are symmetric, e.g. (3, 3),
-as they can easily to hide errors). It also takes the op class as a parameter to
-verify that no instance of it appears in the shape-optimized graph.
+compiled function (do not use symmetric shapes, e.g. (3, 3),
+as they can easily hide errors). It also takes the op class as a parameter
+in order to verify that no instance of it appears in the shape-optimized graph.
 
 If there is an error, the function raises an exception. If you want to
 see it fail, you can implement an incorrect ``infer_shape``.
@@ -297,23 +300,42 @@ GPU.
 Running Your Tests
 ------------------
 
-You can run the command ``nosetests`` in the Theano folder to run all of Theano's
-tests, including yours if they are somewhere in the directory structure.
-The following command lines have these purposes:
+To perform your tests, you may select either one of the three following methods:
 
-* ``nosetests test_file.py``: run all the tests in the file *test_file.py*.
+**theano-nose**
 
-* ``nosetests test_file.py:test_DoubleRop``: run only the tests found inside the test.
-  class *test_DoubleRop*
+The method of choice to run every test located in a specific folder
+or in Theano's path is to run the file ``theano-nose`` which is by default located in
+the ``theano/bin`` folder. If a folder is specified on the command line, every test
+it contains will be conducted. Otherwise, every test found in Theano's path will be.
 
-* ``nosetests test_file.py:test_DoubleRop.test_double_op``: run only the test *test_double_op*
+Help with the use and functionalities of ``theano-nose`` may be obtained by running
+it with the command line parameter ``--help (-h)``. 
+
+**nosetests**
+
+The command ``nosetests`` can also be used.  Although it lacks the useful 
+functionalities that ``theano-nose`` provides, you can use ``nosetests`` similarly
+to ``theano-nose`` to run all tests in Theano's
+path or in a specific folder. Nevertheless, ``nosetests`` is particularly useful for development
+purposes since it allows to request for specific tests.  For instance, the following command
+lines may be used for these respective purposes:
+
+* ``nosetests test_file.py``: Run every test found in the file *test_file.py*.
+
+* ``nosetests test_file.py:test_DoubleRop``: Run every test found inside the class *test_DoubleRop*.
+
+* ``nosetests test_file.py:test_DoubleRop.test_double_op``: Run only the test *test_double_op*
   in the class *test_DoubleRop*.
 
 More documentation on ``nosetests`` is available here:
 `nosetests <http://readthedocs.org/docs/nose/en/latest/>`_.
 
-Alternatively, you can add the following block of code the end of the test file and run it
-file so as to have the test *test_DoubleRop.test_double_op* performed:
+**In-file**
+
+One may also add a block of code similar to the following at the end of the
+file containing a specific test of interest and run the file. In this example, the test
+*test_DoubleRop* in the class *test_double_op* would be performed.
 
 .. code-block:: python
 
