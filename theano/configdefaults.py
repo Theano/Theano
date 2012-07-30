@@ -346,7 +346,7 @@ AddConfigVar('warn.vm_gc_bug',
         " If your code was affected by this bug, a warning"
         " will be printed during the code execution if you use the"
         "`linker=vm,vm.lazy=True,warn.vm_gc_bug=True` Theano flags."
-        "This warning is diabled by default as it was not released.",
+        "This warning is disabled by default as the bug was not released.",
         BoolParam(False),
         in_c_key=False)
 
