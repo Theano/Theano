@@ -501,7 +501,7 @@ class ScanSaveMem(gof.Optimizer):
                     # 2.3.1 extract idx list of subtensor
                     this_slice = tensor.basic.get_idx_list(cl.inputs,
                                                      cl.op.idx_list)
-                    if this_slice == None:
+                    if this_slice is None:
                         # if unable to extract idx_list
                         #=> outputs needs all its intermediate values
                         global_nsteps = None
@@ -601,7 +601,7 @@ class ScanSaveMem(gof.Optimizer):
                 else:
                     this_slice = tensor.basic.get_idx_list(cl.inputs,
                                                          cl.op.idx_list)
-                    if this_slice == None:
+                    if this_slice is None:
                         store_steps[i] = 0
                         break
 

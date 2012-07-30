@@ -909,7 +909,7 @@ class test_fusion(unittest.TestCase):
                 continue
             print "new cases", id
 
-            if shared_fn == None:
+            if shared_fn is None:
                 assert gpu==False
                 f = compile.function(list(sym_inputs), g,mode=mode)
                 for x in range(nb_repeat):
@@ -2398,7 +2398,7 @@ class test_assert(utt.InferShapeTester):
 
     def setUp(self):
         super(test_assert, self).setUp()
-    
+
     def test0(self):
         x=T.scalar()
         y=T.scalar()
@@ -2471,7 +2471,7 @@ class test_assert(utt.InferShapeTester):
         self._compile_and_check([admat, adscal, bdscal], [out],
                         [admat_val, adscal_val, bdscal_val], Assert)
 
-        
+
 def test_local_mul_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':

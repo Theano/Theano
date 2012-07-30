@@ -1648,7 +1648,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         mat, = inp
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
-        if output[0] == None:
+        if output[0] is None:
             output[0] = numpy.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
@@ -1665,7 +1665,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
     def infer_shape(self, node, in_shapes):
         shp = (in_shapes[0][0], in_shapes[0][1] + 1)
         return [shp]
-        
+
 
     def grad(self, inp, grads):
         mat, = inp
@@ -1703,7 +1703,7 @@ class Prepend_scalar_to_each_row(gof.Op):
         val, mat = inp
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
-        if output[0] == None:
+        if output[0] is None:
             output[0] = numpy.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
