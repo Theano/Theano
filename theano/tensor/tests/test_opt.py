@@ -909,7 +909,7 @@ class test_fusion(unittest.TestCase):
                 continue
             print "new cases", id
 
-            if shared_fn == None:
+            if shared_fn is None:
                 assert gpu==False
                 f = compile.function(list(sym_inputs), g,mode=mode)
                 for x in range(nb_repeat):

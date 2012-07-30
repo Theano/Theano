@@ -454,7 +454,7 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=None):
     """
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
-    if dtype == None:
+    if dtype is None:
         dtype = tensor.scal.upcast(theano.config.floatX, avg.dtype, std.dtype)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, avg, std)
     op = RandomFunction('normal',

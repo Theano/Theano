@@ -1312,7 +1312,7 @@ class CAReduce(Op):
             fail = sub["fail"]
             pattern = [0] * len(node.inputs[0].broadcastable)
             axis = self.axis
-            if axis == None:
+            if axis is None:
                 axis = range(len(pattern))
             for i in axis:
                 pattern[i] = 1

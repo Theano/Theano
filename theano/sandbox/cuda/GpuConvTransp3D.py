@@ -379,7 +379,7 @@ def computeR(W,b,d,H,Rshape = None):
         videoWidth = (outputWidth-1) * dc + filterWidth
         videoDur = (outputDur-1) * dt + filterDur
 
-        if Rshape != None and Rshape[0] != -1:
+        if Rshape is not None and Rshape[0] != -1:
             if Rshape[0] < videoHeight:
                 print (Rshape[0], videoHeight)
                 assert False

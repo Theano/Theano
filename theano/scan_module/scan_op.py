@@ -1293,7 +1293,7 @@ class Scan(PureOp):
         ## 8. Mask the outputs that are not differentiable
         # backwards pass
         for i in xrange(len(inner_gfn_outs)):
-            if inner_gfn_outs[i] == None:
+            if inner_gfn_outs[i] is None:
                 inner_gfn_outs[i] = tensor.zeros_like(diff_inputs[i])
 
         ## 9. Mask the g_outs that are Nones :

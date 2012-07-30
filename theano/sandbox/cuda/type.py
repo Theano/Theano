@@ -62,7 +62,7 @@ class CudaNdarrayType(Type):
     """
 
     def __init__(self, broadcastable, name=None, dtype=None):
-        if dtype != None and dtype != 'float32':
+        if dtype is not None and dtype != 'float32':
             raise TypeError('%s only supports dtype float32 for now. Tried '
                             'using dtype %s for variable %s' %
                             (self.__class__.__name__, dtype, name))

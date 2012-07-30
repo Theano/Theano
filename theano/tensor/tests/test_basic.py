@@ -5888,7 +5888,7 @@ def test_transpose():
     assert tensor.transpose(x1).name == 'x1.T'
     assert tensor.transpose(x2).name == 'x2.T'
     assert tensor.transpose(x3).name == 'x3.T'
-    assert tensor.transpose(tensor.dmatrix()).name == None
+    assert tensor.transpose(tensor.dmatrix()).name is None
 
 
 if __name__ == '__main__':
