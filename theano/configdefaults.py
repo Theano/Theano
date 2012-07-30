@@ -339,6 +339,17 @@ AddConfigVar('warn.gpu_set_subtensor1',
         BoolParam(warn_default('0.6')),
         in_c_key=False)
 
+AddConfigVar('warn.vm_gc_bug',
+        "There was a bug that existed in the default Theano configuration"
+        " just in the development version between July 5 2012"
+        " and July 30 2012. This was not in a released version."
+        " If your code was affected by this bug, a warning"
+        " will be printed during the code execution if you use the"
+        "`linker=vm,vm.lazy=True,warn.vm_gc_bug=True` Theano flags."
+        "This warning is disabled by default as the bug was not released.",
+        BoolParam(False),
+        in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "

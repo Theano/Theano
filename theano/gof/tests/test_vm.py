@@ -306,3 +306,9 @@ def test_vm_gc():
     f = theano.function([theano.In(x, mutable=True)], [p + 1, p + 2],
                         mode=mode)
     f([1, 2, 3])
+
+    p = RunOnce()(x)
+    pp = p + p
+    f = theano.function([x], [pp + pp],
+                        mode=mode)
+    f([1, 2, 3])
