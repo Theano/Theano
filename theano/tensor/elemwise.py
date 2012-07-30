@@ -1209,8 +1209,12 @@ class CAReduce(Op):
                 # if available
                 if variable.shape[dimension] == 0:
                     if hasattr(self.scalar_op, 'identity'):
-                        variable = numpy.array(self.scalar_op.identity)
-                        break
+                        # Compute the shape of the output
+                        v_shape = list(variable.shape)
+                        del v_shape[dimension]
+                        variable = numpy.empty(tuple(v_shape),
+                                               dtype=variable.dtype)
+                        variable.fill(self.scalar_op.identity)
                     else:
                         raise ValueError((
                             "Input (%s) has zero-size on axis %s, but "
