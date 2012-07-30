@@ -426,6 +426,7 @@ def dimshuffle_as_view(node):
     new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
+#Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
                        TopoOptimizer(dimshuffle_as_view,
     failure_callback=TopoOptimizer.warn_inplace), 60,
@@ -3145,7 +3146,7 @@ def local_cut_useless_reduce(node):
 
 
 #Enabling this optimization at canonicalization step break this test:
-#theano/tensor/tests/test_opt.py:T_local_sum.test_local_sum_broadcast_some_0
+#theano/tensor/tests/test_opt.py:T_local_reduce.test_local_reduce_broadcast_some_0
 # see gh-790 issue.
 #
 #@register_canonicalize
