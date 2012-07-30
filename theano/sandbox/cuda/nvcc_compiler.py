@@ -317,6 +317,9 @@ class NVCC_compiler(object):
             _logger.info("NVCC: %s", eline)
 
         if p.returncode:
+            for i, l in enumerate(src_code.split('\n')):
+                print >> sys.stderr,  i + 1, l
+            print >> sys.stderr, '==============================='
             # filter the output from the compiler
             for l in nvcc_stderr.split('\n'):
                 if not l:
@@ -331,9 +334,6 @@ class NVCC_compiler(object):
                 except Exception:
                     pass
                 print >> sys.stderr, l
-            print >> sys.stderr, '==============================='
-            for i, l in enumerate(src_code.split('\n')):
-                print >> sys.stderr,  i + 1, l
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:
