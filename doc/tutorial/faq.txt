@@ -24,10 +24,9 @@ internals cannot be modified.
 Faster gcc optimization
 -----------------------
 
-You can enable faster gcc optimization with the cxxflags. This list of flags was suggested on the mailing list::
-
+You can enable faster gcc optimization with the ``cxxflags``. This list of flags was suggested on the mailing list::
 
     cxxflags=-march=native -O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer
 
-Use it at your own risk. Some people warned that the -ftree-loop-distribution optimization caused them wrong results in the past.
-Also the -march=native must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.
+Use it at your own risk. Some people warned that the ``-ftree-loop-distribution`` optimization resulted in wrong results in the past.
+Also the ``-march=native`` flag must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.

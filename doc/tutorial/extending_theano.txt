@@ -37,7 +37,7 @@ Inputs and Outputs are lists of Theano variables.
 
 .. note::
 
-   See :ref:`dev_start_guide` for information about git, github, the
+   See the :ref:`dev_start_guide` for information about git, github, the
    development workflow and how to make a quality contribution.
 
 -----------
@@ -96,7 +96,7 @@ implement the :func:`perform`
 and/or :func:`c_code <Op.c_code>` methods (and other related :ref:`c methods
 <cop>`), or the :func:`make_thunk` method. ``perform`` allows
 to easily wrap an existing Python function into Theano. ``c_code``
-and related methods allow the op to generate C code that will be 
+and the related methods allow the op to generate C code that will be 
 compiled and linked by Theano. On the other hand, ``make_thunk``
 will be called only once during compilation and should generate
 a ``thunk``: a standalone function that when called will do the wanted computations.
@@ -177,7 +177,7 @@ Try it!:
     print out
 
 How To Test it
---------------
+
 
 Theano has some functions to simplify testing. These help test the
 ``infer_shape``, ``grad`` and ``R_op`` methods. Put the following code
@@ -284,28 +284,6 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
        def test_double_rop(self):
            self.check_rop_lop(DoubleRop()(self.x), self.in_shape)
 
-Running your tests
-==================
-
-You can run ``nosetests`` in the Theano folder to run all of Theano's
-tests, including yours if they are somewhere in the directory
-structure.  For instance, you can run the following command lines to ``nosetests test_file.py`` to run only the
-tests in that file. You can run ``nosetests
-test_file.py:test_DoubleRop`` to run only the tests inside that test
-class. You can run ``nosetests
-test_file.py:test_DoubleRop.test_double_op`` to run only one
-particular test. More `nosetests
-<http://readthedocs.org/docs/nose/en/latest/>`_ documentation.
-
-You can also add this block the end of the test file and run the file:
-
-.. code-block:: python
-
-    if __name__ == '__main__':
-       t = test_DoubleRop("test_double_rop")
-       t.setUp()
-       t.test_double_rop()
-
 
 **Testing GPU Ops**
 
@@ -316,8 +294,35 @@ use this to test if the NVIDIA driver works correctly with our sum reduction cod
 GPU.
 
 
-A more extensive discussion of this section's topic may be found in the advanced
-tutorial :ref:`Extending Theano<extending>`
+Running Your Tests
+------------------
+
+You can run the command ``nosetests`` in the Theano folder to run all of Theano's
+tests, including yours if they are somewhere in the directory structure.
+The following command lines have these purposes:
+
+* ``nosetests test_file.py``: run all the tests in the file *test_file.py*.
+
+* ``nosetests test_file.py:test_DoubleRop``: run only the tests found inside the test.
+  class *test_DoubleRop*
+
+* ``nosetests test_file.py:test_DoubleRop.test_double_op``: run only the test *test_double_op*
+  in the class *test_DoubleRop*.
+
+More documentation on ``nosetests`` is available here:
+`nosetests <http://readthedocs.org/docs/nose/en/latest/>`_.
+
+Alternatively, you can add the following block of code the end of the test file and run it
+file so as to have the test *test_DoubleRop.test_double_op* performed:
+
+.. code-block:: python
+
+    if __name__ == '__main__':
+       t = test_DoubleRop("test_double_rop")
+       t.setUp()
+       t.test_double_rop()
+
+
 
 -------------------------------------------
 
@@ -336,9 +341,10 @@ Modify and execute the example to return 2 outputs: x + y and x - y
 
 
 
+**A Final Note:**
 
-Documentation
--------------
+A more extensive discussion of this section's content may be found in the advanced
+tutorial :ref:`Extending Theano<extending>`
 
-See :ref:`metadocumentation`, for some information on how to generate
-and do documentation.
+You should also see :ref:`metadocumentation`, for information on how to generate the
+documentation for your extensions.

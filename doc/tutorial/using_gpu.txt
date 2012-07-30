@@ -241,7 +241,7 @@ Tips for Improving Performance on GPU
 Changing the Value of Shared Variables
 --------------------------------------
 
-To change the value of a shared variable, e.g. to provide new data to processes,
+To change the value of a ``shared`` variable, e.g. to provide new data to processes,
 use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
 see :ref:`aliasing`.
 
@@ -327,7 +327,7 @@ What can be done to further increase the speed of the GPU version?
 
 .. Note::
 
-   * Only 32 bits floats are currently supported (development is in process).
+   * Only 32 bits floats are currently supported (development is in progress).
    * ``Shared`` variables with *float32* dtype are by default moved to the GPU memory space.
 
    * There is a limit of one GPU per process.
@@ -475,7 +475,7 @@ Modify and execute to work for a matrix of shape (20, 10).
             return thunk
     
 
-To test it:
+Use this code to test it:
 
 >>> x = theano.tensor.fmatrix()
 >>> f = theano.function([x], PyCUDADoubleOp()(x))
@@ -495,7 +495,7 @@ Modify and execute to multiply two matrices: *x* * *y*.
 Modify and execute to return two outputs: *x + y* and *x - y*.
 (Currently, *elemwise fusion* generates computation with only 1 output.)
 
-Modify and execute to support *stride* (i.e. so as not constrain the input to be C-contiguous).
+Modify and execute to support *stride* (i.e. so as not constrain the input to be *C-contiguous*).
 
 -------------------------------------------
 
