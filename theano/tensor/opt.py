@@ -426,8 +426,11 @@ def dimshuffle_as_view(node):
     new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
-
-register_specialize(dimshuffle_as_view, 'inplace')
+#Step 60 is the inplace optimization stage.
+compile.optdb.register('dimshuffle_as_view',
+                       TopoOptimizer(dimshuffle_as_view,
+    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
@@ -3142,9 +3145,14 @@ def local_cut_useless_reduce(node):
             return [summed]
 
 
-@register_canonicalize
+#Enabling this optimization at canonicalization step break this test:
+#theano/tensor/tests/test_opt.py:T_local_reduce.test_local_reduce_broadcast_some_0
+# see gh-790 issue.
+#
+#@register_canonicalize
+@register_specialize
 @gof.local_optimizer([])
-def local_sum_broadcastable(node):
+def local_reduce_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
     if isinstance(node.op, T.CAReduce):
         reduced, = node.inputs
@@ -3169,11 +3177,17 @@ def local_sum_broadcastable(node):
                         ii += 1
                 new_reduced = reduced.dimshuffle(*pattern)
                 if new_axis:
-                    new_op = node.op.__class__(axis=new_axis)
+                    if type(node.op) == theano.tensor.elemwise.CAReduce:
+                        # This happen for tensor.max(), tensor.min()
+                        new_op = node.op.__class__(node.op.scalar_op,
+                                                   axis=new_axis)
+                    else:
+                        new_op = node.op.__class__(axis=new_axis)
                     return [new_op(new_reduced)]
                 else:
                     # -- in this case we can remove the reduction completely
                     return [new_reduced.astype(odtype)]
+
 
 @register_specialize
 @gof.local_optimizer([])
