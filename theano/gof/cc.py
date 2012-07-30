@@ -1395,8 +1395,10 @@ class OpWiseCLinker(link.LocalLinker):
 
     def __init__(self,
             fallback_on_perform=True,
-            allow_gc=True,
+            allow_gc=None,
             nice_errors=True):
+        if allow_gc is None:
+            allow_gc = config.allow_gc
         self.fgraph = None
         self.fallback_on_perform = fallback_on_perform
         self.nice_errors = nice_errors

@@ -12,7 +12,7 @@ from theano.gof.python25 import all
 import theano
 config = theano.config
 
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,25 @@ AddConfigVar('profile',
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
         BoolParam(False))
+
+
+def filter_vm_lazy(val):
+    if val == 'False' or val is False:
+        return False
+    elif val == 'True' or val is True:
+        return True
+    elif val == 'None':
+        return None
+    else:
+        raise ValueError('Valid values for an vm.lazy parameter '
+                        'should be None, False or True, not `%s`.' % val)
+
+AddConfigVar('vm.lazy',
+             "Useful only for the vm linkers. When lazy is None,"
+             " auto detect if lazy evaluation is needed and use the apropriate"
+             " version. If lazy it True/False, force the version used between"
+             " Loop/LoopGC and Stack.",
+         ConfigParam('None', filter_vm_lazy))
 
 raise_with_op = link.raise_with_op
 
@@ -369,7 +388,14 @@ class Stack(VM):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = 0
+                                    #DO NOT set compute_map to 0
+
+                                    #If values become False and the
+                                    #current_apply is still in the
+                                    #stack, this will cause it to be
+                                    #recomputed! This can cause wrong value
+                                    #with some combiation of inplace op.
+                                    compute_map[i][0] = 2
                 elif not computed_ins:
                     # -- Non-lazy case, need inputs
                     apply_stack.append(current_apply)
@@ -429,7 +455,9 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = None
+                                    #See the not lazy gc code for explanations
+                                    #Of compute_map change
+                                    compute_map[i][0] = 2
 
         # Hacky coarse gc final pass
         # This is required until we have a proper gc algorithm for graphs with
@@ -464,11 +492,12 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=True, use_cloop=False, callback=None):
+    def __init__(self, allow_gc=None, use_cloop=False, callback=None, lazy=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
             intermediate values during computation of a function.
+            If None use as default the Theano flag allow_gc value.
 
         use_cloop - use the C-based virtual machine if possible
 
@@ -476,11 +505,19 @@ class VM_Linker(link.LocalLinker):
             the virtual machine.  It will be called with four arguments called
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
+        lazy - Useful only when use_cloop is False. When lazy is None, auto
+            detect if lazy evaluation is needed and use the apropriate
+            version. If lazy it True/False, force the version used between
+            Loop/LoopGC and Stack.
+
         """
+        if allow_gc is None:
+            allow_gc = config.allow_gc
         self.fgraph = None
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
         self.callback = callback
+        self.lazy = lazy
         self.updated_vars = {}
 
     def accept(self, fgraph, no_recycling=None):
@@ -674,7 +711,10 @@ class VM_Linker(link.LocalLinker):
                     )
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
-            if all([(not th.lazy) for th in thunks]):
+            lazy = self.lazy
+            if lazy is None:
+                lazy = not all([(not th.lazy) for th in thunks])
+            if not lazy:
                 # there is no conditional in the graph
                 if self.allow_gc:
                     vm = LoopGC(

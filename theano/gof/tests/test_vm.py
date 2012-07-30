@@ -279,3 +279,30 @@ if run_memory_usage_tests:
         time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False, use_cloop=True))
 
 
+class RunOnce(theano.Op):
+    def __init__(self):
+        self.nb_run = 0
+
+    def make_node(self, x):
+        return theano.Apply(self, [x], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        assert self.nb_run == 0
+        self.nb_run += 1
+        outputs[0][0] = inputs[0].copy()
+
+
+def test_vm_gc():
+    """This already caused a bug in the trunk of Theano.
+
+    The bug was introduced in the trunk the July 5, 2012 and fixed the
+    July 30
+
+    """
+    pass
+    x = theano.tensor.vector()
+    p = RunOnce()(x)
+    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(lazy=True))
+    f = theano.function([theano.In(x, mutable=True)], [p + 1, p + 2],
+                        mode=mode)
+    f([1, 2, 3])

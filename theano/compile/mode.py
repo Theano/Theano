@@ -63,11 +63,11 @@ def check_equal(x, y):
 predefined_linkers = {
     'py': gof.PerformLinker(),
     'c': gof.CLinker(),
-    'c|py': gof.OpWiseCLinker(allow_gc=True),
+    'c|py': gof.OpWiseCLinker(),
     'c|py_nogc': gof.OpWiseCLinker(allow_gc=False),
     'c&py': gof.DualLinker(checker=check_equal),
-    'vm': gof.vm.VM_Linker(allow_gc=True, use_cloop=False),
-    'cvm': gof.vm.VM_Linker(allow_gc=True, use_cloop=True),
+    'vm': gof.vm.VM_Linker(use_cloop=False),
+    'cvm': gof.vm.VM_Linker(use_cloop=True),
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
     'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True),
     }
