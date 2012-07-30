@@ -12,7 +12,7 @@ from theano.gof.python25 import all
 import theano
 config = theano.config
 
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +22,25 @@ AddConfigVar('profile',
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
         BoolParam(False))
+
+
+def filter_vm_lazy(val):
+    if val == 'False':
+        return False
+    elif val == 'True':
+        return True
+    elif val == 'None':
+        return None
+    else:
+        raise ValueError('Valid values for an vm.lazy parameter '
+                        'should be None, False or True, not `%s`.' % val)
+
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
              " auto detect if lazy evaluation is needed and use the apropriate"
              " version. If lazy it True/False, force the version used between"
              " Loop/LoopGC and Stack.",
-        BoolParam(False))
+         ConfigParam('None', filter_vm_lazy))
 
 raise_with_op = link.raise_with_op
 
