@@ -1112,10 +1112,13 @@ class FunctionMaker(object):
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
 
-        self.required = [(i.value == None) for i in self.inputs]
+        self.required = [(i.value is None) for i in self.inputs]
         self.refeed = [
-                (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
-                    for i in self.inputs]
+                (i.value is not None and
+                 not isinstance(i.value, gof.Container) and
+                 i.update is None)
+                for i in self.inputs
+        ]
 
     def _check_unused_inputs(self, inputs, outputs, on_unused_input):
         if on_unused_input is None:
