@@ -295,8 +295,8 @@ class RunOnce(theano.Op):
 def test_vm_gc():
     """This already caused a bug in the trunk of Theano.
 
-    The bug was introduced in the trunk the July 5, 2012 andfixed the
-    July 27
+    The bug was introduced in the trunk the July 5, 2012 and fixed the
+    July 30
 
     """
     pass
