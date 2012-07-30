@@ -249,7 +249,8 @@ class Variable(utils.object2):
 
     - `RandomVariable`
 
-    A Variable which is the output of a symbolic computation will have an owner != None.
+    A Variable which is the output of a symbolic computation will have an owner
+    not equal to None.
 
     Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
     from an output all the way to the inputs. The opposite direction is not possible until an
