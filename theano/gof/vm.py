@@ -505,10 +505,11 @@ class VM_Linker(link.LocalLinker):
             the virtual machine.  It will be called with four arguments called
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
-        lazy - Useful only when use_cloop is False. When lazy is None, auto
+        lazy - Useful only when use_cloop is False. When lazy is None, use the
+            theano flag vm.lazy value. Then if we have a None(default) we auto
             detect if lazy evaluation is needed and use the apropriate
-            version. If lazy it True/False, force the version used between
-            Loop/LoopGC and Stack.
+            version. If lazy it is True or False, we force the version used
+            between Loop/LoopGC and Stack.
 
         """
         if allow_gc is None:
@@ -712,6 +713,8 @@ class VM_Linker(link.LocalLinker):
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
             lazy = self.lazy
+            if lazy is None:
+                lazy = config.vm.lazy
             if lazy is None:
                 lazy = not all([(not th.lazy) for th in thunks])
             if not lazy:
