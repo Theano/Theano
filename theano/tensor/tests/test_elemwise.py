@@ -389,10 +389,6 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
 
-    @dec.knownfailureif(
-        True,
-        ("When there is nan in the input of CAReduce,"
-         " we don't have a good output. "))
     def test_c_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.CLinker(), scalar.add, dtype=dtype,
