@@ -1683,7 +1683,7 @@ class Diag(gof.op.Op):
         return [square_diagonal(gz)]
 
     def infer_shape(self, nodes, shapes):
-        return [(shapes[0][0], )]
+        return [(tensor.minimum(*shapes[0]), )]
 
     def __str__(self):
         return self.__class__.__name__
