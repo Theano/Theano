@@ -1665,7 +1665,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
     def infer_shape(self, node, in_shapes):
         shp = (in_shapes[0][0], in_shapes[0][1] + 1)
         return [shp]
-        
+
 
     def grad(self, inp, grads):
         mat, = inp
