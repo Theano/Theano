@@ -9,6 +9,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 #### COPIED FROM hpu/icml09/sp.py
 
 import numpy
+import scipy
 from scipy import sparse as scipy_sparse
 
 import theano
@@ -18,213 +19,17 @@ from theano.gof.python25 import all, any
 from theano.sparse.basic import Remove0, remove0
 
 # To maintain compatibility
-from theano.sparse import SpSum, sp_sum
+from theano.sparse import (
+    SpSum, sp_sum,
+    ColScaleCSC, RowScaleCSC, col_scale, row_scale,
+    Diag, diag, SquareDiagonal, square_diagonal,
+    EnsureSortedIndices, ensure_sorted_indices, clean)
 
 
 def register_specialize(lopt, *tags, **kwargs):
     theano.compile.optdb['specialize'].register(
         (kwargs and kwargs.pop('name')) or lopt.__name__, lopt, 'fast_run',
         *tags)
-
-
-class Diag(Op):
-    """
-    Extract the diagonal of a square sparse matrix as a dense vector.
-    """
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return "Diag"
-
-    def make_node(self, x):
-        return gof.Apply(self, [x], [tensor.tensor(broadcastable=(False,),
-                                                   dtype=x.dtype)])
-
-    def perform(self, node, (x,), (z,)):
-        M, N = x.shape
-        if M != N:
-            raise ValueError("DenseDiag argument not square. Shape:", x.shape)
-
-        assert x.format == 'csc'
-
-        data = x.data
-        indices = x.indices
-        indptr = x.indptr
-
-        diag = numpy.zeros(N, x.dtype)
-
-        #TODO: try using ndarrays and then prune() on the result
-        # it could be optimized in the case the sparse structure
-        # does not allow index duplication
-
-        for j in xrange(0, N):
-            for i_idx in xrange(indptr[j], indptr[j + 1]):
-                if indices[i_idx] == j:
-                    diag[j] += data[i_idx]
-        z[0] = diag
-
-    def grad(self, (diag,), (gz,)):
-        return [square_diagonal(gz)]
-
-    def infer_shape(self, nodes, shapes):
-        matrix_shape = shapes[0]
-        diag_length = matrix_shape[0]
-        return [(diag_length,)]
-
-diag = Diag()
-
-
-class SquareDiagonal(Op):
-    """
-    Return a square sparse (csc) matrix whose diagonal
-    is given by the dense vector argument.
-    """
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return "SquareDiagonal"
-
-    def make_node(self, diag):
-        diag = tensor.as_tensor_variable(diag)
-        if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-
-        return gof.Apply(self, [diag],
-                [sparse.SparseType(dtype=diag.dtype, format='csc')()])
-
-    def perform(self, node, (diag,), (z,)):
-        N, = diag.shape
-        indptr = range(N + 1)
-        indices = indptr[0:N]
-        z[0] = scipy_sparse.csc_matrix((diag, indices, indptr),
-                                       (N, N), copy=True)
-
-    def grad(self, input, (gz,)):
-        return [diag(gz)]
-
-    def infer_shape(self, nodes, shapes):
-        diag_length = shapes[0][0]
-        return [(diag_length, diag_length)]
-
-square_diagonal = SquareDiagonal()
-
-
-class ColScaleCSC(Op):
-    """
-    Scale each columns of a sparse matrix by the corresponding element
-    of a dense vector
-    """
-
-    def make_node(self, x, s):
-        if x.format != 'csc':
-            raise ValueError('x was not a csc matrix')
-        return gof.Apply(self, [x, s], [x.type()])
-
-    def perform(self, node, (x, s), (z,)):
-        M, N = x.shape
-        assert x.format == 'csc'
-        assert s.shape == (N,)
-
-        y = x.copy()
-
-        for j in xrange(0, N):
-            y.data[y.indptr[j]: y.indptr[j + 1]] *= s[j]
-
-        z[0] = y
-
-    def grad(self, (x, s), (gz,)):
-        return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
-
-
-class RowScaleCSC(Op):
-    """
-    Scale each row of a sparse matrix by the corresponding element of
-    a dense vector
-    """
-
-    def make_node(self, x, s):
-        return gof.Apply(self, [x, s], [x.type()])
-
-    def perform(self, node, (x, s), (z,)):
-        M, N = x.shape
-        assert x.format == 'csc'
-        assert s.shape == (M,)
-
-        indices = x.indices
-        indptr = x.indptr
-
-        y_data = x.data.copy()
-
-        for j in xrange(0, N):
-            for i_idx in xrange(indptr[j], indptr[j + 1]):
-                y_data[i_idx] *= s[indices[i_idx]]
-
-        z[0] = scipy_sparse.csc_matrix((y_data, indices, indptr), (M, N))
-
-    def grad(self, (x, s), (gz,)):
-        return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
-
-
-def col_scale(x, s):
-    if x.format == 'csc':
-        return ColScaleCSC()(x, s)
-    elif x.format == 'csr':
-        return RowScaleCSC()(x.T, s).T
-    else:
-        raise NotImplementedError()
-
-
-def row_scale(x, s):
-    return col_scale(x.T, s).T
-
-
-class EnsureSortedIndices(Op):
-    """
-    Remove explicit zeros from a sparse matrix, and resort indices
-    """
-
-    def __init__(self, inplace):
-        self.inplace = inplace
-        if self.inplace:
-            self.view_map = {0: [0]}
-
-    def make_node(self, x):
-        return gof.Apply(self, [x], [x.type()])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        z = output_storage[0]
-        if self.inplace:
-            x.sort_indices()
-            z[0] = x
-        else:
-            z[0] = x.sorted_indices()
-
-    def grad(self, inputs, output_grad):
-        return [output_grad[0]]
-
-    def infer_shape(self, node, i0_shapes):
-        return i0_shapes
-
-    def __str__(self):
-        if self.inplace:
-            return self.__class__.__name__ + "{inplace}"
-        else:
-            return self.__class__.__name__ + "{no_inplace}"
-
-ensure_sorted_indices = EnsureSortedIndices(inplace=False)
-
-
-def clean(x):
-    return ensure_sorted_indices(remove0(x))
 
 
 class ConvolutionIndices(Op):
