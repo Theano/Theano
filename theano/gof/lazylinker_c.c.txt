@@ -771,7 +771,8 @@ int lazy_rec_eval(CLazyLinker * self, Py_ssize_t var_idx, PyObject*one, PyObject
 
           Py_INCREF(Py_None);
           err = PyList_SetItem(self->var_value_cells[i_idx], 0, Py_None);
-          self->var_computed[i_idx] = 0;
+//See the Stack gc implementation for why we change it to 2 and not 0.
+          self->var_computed[i_idx] = 2;
           if (err) goto fail;
         }
     }
@@ -972,7 +973,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.17);
+  PyObject *result = PyFloat_FromDouble(0.18);
   return result;
 }
 
