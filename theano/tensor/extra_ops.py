@@ -163,7 +163,7 @@ class BinCountOp(theano.Op):
     def infer_shape(self, node, ins_shapes):
         x = node.inputs[0]
         m = basic.max(x) + 1
-        if self.minlength != None:
+        if self.minlength is not None:
             m = basic.maximum(m, self.minlength)
         return [[m]]
 
@@ -286,7 +286,7 @@ class RepeatOp(theano.Op):
     def make_node(self, x, repeats):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
-        if self.axis == None:
+        if self.axis is None:
             out_type = theano.tensor.TensorType(dtype=x.dtype,
                                                 broadcastable=[False])
         else:
@@ -326,7 +326,7 @@ class RepeatOp(theano.Op):
         repeats = node.inputs[1]
         out_shape = list(i0_shapes)
 
-        if self.axis == None:
+        if self.axis is None:
             if repeats.ndim == 0:
                 if len(i0_shapes) == 0:
                     out_shape = [repeats]

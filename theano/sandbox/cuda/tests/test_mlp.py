@@ -59,7 +59,7 @@ def get_mode(use_gpu, check_isfinite=True):
 
 
 def print_mode(mode):
-    if mode != None and isinstance(mode, (theano.compile.ProfileMode,)):
+    if mode is not None and isinstance(mode, (theano.compile.ProfileMode,)):
         mode.print_summary()
 
 

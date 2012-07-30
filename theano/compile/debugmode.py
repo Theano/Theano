@@ -589,7 +589,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         r_name = getattr(r, 'name', '')
         # normally if the name isn't set, it'll be None, so
-        # r_name == None here
+        # r_name is None here
         if r_name is None:
             r_name = ''
 

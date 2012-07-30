@@ -361,7 +361,7 @@ class ConvOp(Op):
         self.dy=dy
         self.verbose=verbose
         self.version=version
-        if openmp == None:
+        if openmp is None:
             openmp = config.openmp
         self.openmp = openmp
 

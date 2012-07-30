@@ -421,7 +421,7 @@ class T_module(unittest.TestCase):
         m = M.make()
         m.y = 77
         assert m.f(23) == 100
-        assert m.x == None
+        assert m.x is None
         m.x = 1000
         assert m.g(23) == 977
         assert m.y == 77

@@ -3175,10 +3175,10 @@ class Mean(elemwise.CAReduce):
         output[0] = numpy.mean(input, axis=self.axis)
 
     def c_code(self, node, name, inames, onames, sub):
-        if self.axis != None:
+        if self.axis is not None:
             return super(Op, self).c_code(node, name, inames, onames, sub)
         ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
-        #TODO: c_code perform support only axis==None
+        #TODO: c_code perform support only axis is None
         return ret + """
   *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
   """ % (onames[0], inames[0])
