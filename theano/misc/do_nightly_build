@@ -68,6 +68,11 @@ THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
+echo "Executing nosetests with mode=FAST_RUN,vm.lazy=True,floatX=float32"
+THEANO_FLAGS=${FLAGS},mode=vm_lazy,floatX=float32 ${NOSETESTS} ${ARGS}
+echo "Number of elements in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
 echo "Executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
