@@ -25,9 +25,9 @@ AddConfigVar('profile_optimizer',
 
 
 def filter_vm_lazy(val):
-    if val == 'False':
+    if val == 'False' or val is False:
         return False
-    elif val == 'True':
+    elif val == 'True' or val is True:
         return True
     elif val == 'None':
         return None
