@@ -3,10 +3,12 @@ VMs that run Theano graph computations.
 A VM is not actually different from a Linker, we just decided
 VM was a better name at some point
 """
+import link
 import logging
 import sys
 import time
-import link
+import warnings
+
 from theano.gof.python25 import all
 
 import theano
@@ -396,6 +398,19 @@ class Stack(VM):
                                     #recomputed! This can cause wrong value
                                     #with some combiation of inplace op.
                                     compute_map[i][0] = 2
+                                    if (config.warn.vm_gc_bug and
+                                        current_apply in apply_stack and
+                                        getattr(current_apply.op,
+                                                'destroy_map',
+                                                False)):
+                                        warnings.warn(
+        "There was bug that existed in the default Theano configuration"
+        " just in the development version between July 5 2012"
+        " and July 30 2012. This was not in a released version."
+        "The bug was affecting this script.",
+        #The stack level is not good when inside a Scan.
+        stacklevel=3
+                                        )
                 elif not computed_ins:
                     # -- Non-lazy case, need inputs
                     apply_stack.append(current_apply)
