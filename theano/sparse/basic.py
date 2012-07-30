@@ -1563,7 +1563,7 @@ class SpSum(gof.op.Op):
       matrix.
     """
 
-    def __init__(self, axis=None, sparse_grad=False):
+    def __init__(self, axis=None, sparse_grad=True):
         super(SpSum, self).__init__()
         self.axis = axis
         self.structured = sparse_grad
@@ -1683,7 +1683,7 @@ class Diag(gof.op.Op):
         return [square_diagonal(gz)]
 
     def infer_shape(self, nodes, shapes):
-        return [(tensor.minimum(*shapes[0]), )]
+        return [(shapes[0][0], )]
 
     def __str__(self):
         return self.__class__.__name__
