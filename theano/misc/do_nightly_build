@@ -68,8 +68,8 @@ THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
-echo "Executing nosetests with mode=FAST_RUN,vm.lazy=True,floatX=float32"
-THEANO_FLAGS=${FLAGS},mode=vm_lazy,floatX=float32 ${NOSETESTS} ${ARGS}
+echo "Executing nosetests with mode=vm,vm.lazy=True,floatX=float32"
+THEANO_FLAGS=${FLAGS},mode=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
