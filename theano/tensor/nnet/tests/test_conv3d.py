@@ -97,8 +97,8 @@ class DummyConvTransp3D:
         self.dW = rng.uniform(-1, 1, self.W.get_value(borrow=True).shape)
         self.db = rng.uniform(-1, 1, self.b.get_value(borrow=True).shape)
         self.dH = rng.uniform(-1, 1, self.H.get_value(borrow=True).shape)
-        self.dW, self.db, self.dH = shared(self.dW), shared(self.db),
-        shared(self.dH)
+        self.dW, self.db = shared(self.dW), shared(self.db),
+        self.dH = shared(self.dH)
 
         self.d = d
         self.RShape = RShape
