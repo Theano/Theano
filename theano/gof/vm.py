@@ -22,6 +22,12 @@ AddConfigVar('profile',
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
         BoolParam(False))
+AddConfigVar('vm.lazy',
+             "Useful only for the vm linkers. When lazy is None,"
+             " auto detect if lazy evaluation is needed and use the apropriate"
+             " version. If lazy it True/False, force the version used between"
+             " Loop/LoopGC and Stack.",
+        BoolParam(False))
 
 raise_with_op = link.raise_with_op
 
@@ -488,7 +494,7 @@ class VM_Linker(link.LocalLinker):
 
         lazy - Useful only when use_cloop is False. When lazy is None, auto
             detect if lazy evaluation is needed and use the apropriate
-            version. If lazy it True/False, for the version used between
+            version. If lazy it True/False, force the version used between
             Loop/LoopGC and Stack.
 
         """

@@ -302,6 +302,7 @@ def test_vm_gc():
     pass
     x = theano.tensor.vector()
     p = RunOnce()(x)
+    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(lazy=True))
     f = theano.function([theano.In(x, mutable=True)], [p + 1, p + 2],
-                        mode=theano.Mode(linker='vm_lazy'))
-    f([1,2,3])
+                        mode=mode)
+    f([1, 2, 3])
