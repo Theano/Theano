@@ -8,7 +8,7 @@ import numpy
 from numpy.testing import dec
 
 import theano
-from theano.gof.python25 import all
+from theano.gof.python25 import all, any
 from theano.gof import Variable, Op
 from theano import gof, scalar, config
 
@@ -673,7 +673,7 @@ class T_mean_dtype(unittest.TestCase):
                     if sum_dtype in tensor.discrete_dtypes:
                         assert mean_var.dtype == 'float64', (mean_var.dtype, sum_dtype)
                     else:
-                        assert mean_var.dtype == sum_dtype, (mean_var.dtype, output_dtype)
+                        assert mean_var.dtype == sum_dtype, (mean_var.dtype, sum_dtype)
 
                     # Check that we can take the gradient, when implemented
                     try:
