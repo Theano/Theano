@@ -18,7 +18,7 @@ import shared_randomstreams
 from randomstreams import \
     RandomStreams
 
-random = RandomStreams(seed=0xBAD5EED)
+random = RandomStreams(seed=0xBAD5EED, no_warn = True)
 """Imitate the numpy.random symbol with a tensor.random one"""
 
 from elemwise import \
