@@ -5316,7 +5316,12 @@ class Reshape(Op):
             newshape.len = %(new_ndim)s;
             for (int ii = 0; ii < %(new_ndim)s; ++ii)
             {
-                new_dims[ii] = ((dtype_%(shp)s*)(%(shp)s->data + ii * %(shp)s->strides[0]))[0];
+                // -- We do not want an explicit cast here. the shp can be any
+                // -- int* dtype. The compiler will explicitly upcast it, but
+                // -- will err if this will downcast. This could happen if the
+                // -- user pass an int64 dtype, but npy_intp endup being int32.
+                new_dims[ii] = ((dtype_%(shp)s*)(
+                        %(shp)s->data + ii * %(shp)s->strides[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, NPY_ANYORDER);
