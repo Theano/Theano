@@ -11,8 +11,20 @@ from theano.gof import Container
 from theano.tensor import raw_random
 import warnings
 
+
 def deprecation_warning():
-    warnings.warn("RandomStreams is deprecated and will be removed in release 0.7. Use shared_randomstreams.RandomStreams or MRG_RandomStreams instead.",stacklevel = 3)
+    # Make sure the warning is displayed only once.
+    if deprecation_warning.already_displayed:
+        return
+
+    warnings.warn((
+        "RandomStreams is deprecated and will be removed in release 0.7. "
+        "Use shared_randomstreams.RandomStreams or "
+        "MRG_RandomStreams instead."),
+        stacklevel=3)
+    deprecation_warning.already_displayed = True
+
+deprecation_warning.already_displayed = False
 
 
 class RandomStreamsInstance(object):
