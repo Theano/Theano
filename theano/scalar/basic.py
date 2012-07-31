@@ -753,7 +753,7 @@ class ScalarOp(Op):
                 return self.__class__.__name__
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 class UnaryScalarOp(ScalarOp):
@@ -1078,7 +1078,9 @@ class Maximum(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         if any([i.type in complex_types for i in node.inputs]):
             raise NotImplementedError()
-        return "%(z)s = ((%(y)s)>(%(x)s)? (%(y)s):(%(x)s));" % locals()
+        # Test for both y>x and x>=y to detect NaN
+        return ('%(z)s = ((%(y)s)>(%(x)s)? (%(y)s): '
+                    '((%(x)s)>=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
         assert gz.type not in complex_types
@@ -1103,7 +1105,8 @@ class Minimum(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         if any([i.type in complex_types for i in node.inputs]):
             raise NotImplementedError()
-        return "%(z)s = ((%(y)s)<(%(x)s)? (%(y)s):(%(x)s));" % locals()
+        return ('%(z)s = ((%(y)s)<(%(x)s)? (%(y)s): '
+                    '((%(x)s)<=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
         assert gz.type not in complex_types
