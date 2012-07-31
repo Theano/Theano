@@ -1485,13 +1485,13 @@ class SpSumTester(utt.InferShapeTester):
                 variable, data = sparse_random_inputs(format,
                                                       shape=(10, 10))
 
-                z = theano.sparse.sp_sum(*variable, axis=axis)
+                z = theano.sparse.sp_sum(variable[0], axis=axis)
                 if axis == None:
                     assert z.type.broadcastable == ()
                 else:
                     assert z.type.broadcastable == (False, )
 
-                f = theano.function(variable, self.op(*variable, axis=axis))
+                f = theano.function(variable, self.op(variable[0], axis=axis))
                 tested = f(*data)
                 expected = data[0].todense().sum(axis).ravel()
                 assert numpy.allclose(tested, expected)
@@ -1502,7 +1502,7 @@ class SpSumTester(utt.InferShapeTester):
                 variable, data = sparse_random_inputs(format,
                                                       shape=(10, 10))
                 self._compile_and_check(variable,
-                                        [self.op(*variable, axis=axis)],
+                                        [self.op(variable[0], axis=axis)],
                                         data,
                                         self.op_class)
 
