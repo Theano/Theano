@@ -39,7 +39,8 @@ from theano.sparse import (
     SamplingDot, sampling_dot,
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean,
-    ConstructSparseFromList, construct_sparse_from_list)
+    ConstructSparseFromList, construct_sparse_from_list,
+    TrueDot, true_dot)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -2624,6 +2625,92 @@ class StructuredAddSVTester(unittest.TestCase):
 
                 utt.assert_allclose(spones.multiply(spmat + mat),
                                     out.toarray())
+
+
+class TrueDotTester(utt.InferShapeTester):
+    def setUp(self):
+        super(TrueDotTester, self).setUp()
+        self.op = true_dot
+        self.op_class = TrueDot
+
+    def test_op_ss(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10),
+                                                      out_dtype=dtype,
+                                                      n=2,
+                                                      p=0.1)
+
+                f = theano.function(variable, self.op(*variable))
+
+                tested = f(*data)
+
+                x, y = [m.toarray() for m in data]
+                expected = numpy.dot(x, y)
+
+                assert tested.format == format
+                assert tested.dtype == expected.dtype
+                tested = tested.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_op_sd(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10),
+                                                      out_dtype=dtype,
+                                                      n=2,
+                                                      p=0.1)
+                variable[1] = tensor.TensorType(dtype=dtype,
+                                                broadcastable=(False, False))()
+                data[1] = data[1].toarray()
+
+                f = theano.function(variable, self.op(*variable))
+
+                tested = f(*data)
+                expected = numpy.dot(data[0].toarray(), data[1])
+
+                assert tested.format == format
+                assert tested.dtype == expected.dtype
+                tested = tested.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                (x, ), (x_value, ) = sparse_random_inputs(format,
+                                                          shape=(9, 10),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                (y, ), (y_value, ) = sparse_random_inputs(format,
+                                                          shape=(10, 24),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                variable = [x, y]
+                data = [x_value, y_value]
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.float_dtypes:
+                (x, ), (x_value, ) = sparse_random_inputs(format,
+                                                          shape=(9, 10),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                (y, ), (y_value, ) = sparse_random_inputs(format,
+                                                          shape=(10, 24),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                variable = [x, y]
+                data = [x_value, y_value]
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
 
 
 class SamplingDotTester(utt.InferShapeTester):
