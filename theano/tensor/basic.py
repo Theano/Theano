@@ -6432,10 +6432,12 @@ def tensordot(x, y=None, axes=2):
 
     axes = TensorDot.parse_axes(axes)
 
-    # check whether axes is valid given the dimensions of x and y
+    # Check whether axes is valid given the dimensions of x and y.
+    # Note that 'axes' is the number of corresponding axes, not a
+    # position (see doc. for numpy.tensordot).
     if numpy.isscalar(axes):
-        if axes >= x.ndim or axes >= y.ndim:
-            raise ValueError('axes should be smaller than the dimension of '\
+        if axes > x.ndim or axes > y.ndim:
+            raise ValueError('axes should be not greater than the dimension of '\
                     'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim, y.ndim))
     elif isinstance(axes, (list, tuple)):
 
