@@ -2,41 +2,61 @@ import unittest
 
 import numpy
 
-from theano import gof, tensor,compile
+from theano import gof, tensor, compile
 
 from theano.sparse.tests.test_basic import eval_outputs
-from theano.sparse.basic import _is_sparse_variable, _is_dense_variable, as_sparse_variable, _is_sparse, _mtypes, _mtype_to_str
+from theano.sparse.basic import _(
+    is_sparse_variable, _is_dense_variable,
+    as_sparse_variable, _is_sparse, _mtypes, _mtype_to_str)
 from theano.sparse import SparseType, dense_from_sparse, transpose
 
-###############
-#
-# TrueDot
-#
-class TrueDot(gof.op.Op):
-    """
-    Attributes:
-    grad_preserves_dense - a boolean flags [default: True].
-    grad_preserves_dense controls whether gradients with respect to inputs
-    are converted to dense matrices when the corresponding input y is
-    dense (not in a L{SparseVariable} wrapper). This is generally a good idea
-    when L{Dot} is in the middle of a larger graph, because the types
-    of gy will match that of y. This conversion might be inefficient if
-    the gradients are graph outputs though, hence this mask.
 
-    @todo: Simplify code by splitting into DotSS and DotSD.
+class TrueDot(gof.op.Op):
+    """Calculate the true dot operation between two matrices.
+
+    `TrueDot` is different of `StructuredDot` for sparse matrix
+    since the grad of `TrueDot` is regular, i.e. not structured.
+
+    The parameter `grad_preserves_dense`, controlled by the
+    constructor, is a boolean flags to controls whether gradients
+    with respect to inputs are converted to dense matrices when the
+    corresponding input y is dense (not in a L{SparseVariable} wrapper).
+    This is generally a good idea when L{Dot} is in the middle of a
+    larger graph, because the types of gy will match that of y. This
+    conversion might be inefficient if the gradients are graph outputs
+    though, hence this mask.
+
+    :param x: Sparse matrix for the left operand.
+    :param y: Sparse or dense matrix for the right operand.
+
+    :return: The dot product `x` . `y`.
+
+    :note:
+     - The grad implemented is regular, i.e. not structured.
     """
+
+    # TODO
+    # Simplify code by splitting into DotSS and DotSD.
+
     def __init__(self, grad_preserves_dense=True):
         self.grad_preserves_dense = grad_preserves_dense
+
     def __eq__(self, other):
-        return type(self) == type(other) and self.grad_preserves_dense == other.grad_preserves_dense
+        return (type(self) == type(other) and
+                self.grad_preserves_dense == other.grad_preserves_dense)
+
     def __hash__(self):
         return hash(self.grad_preserves_dense)
+
     def __ne__(self, other):
         return not (self == other)
+
     def make_node(self, x, y):
-        """
-        :note: Because of trickiness of implementing, we assume that the left argument x is SparseVariable (not dense)
-        """
+        # NOTE
+        # Because of trickiness of implementing,
+        # we assume that the left argument x is a
+        # SparseVariable (not dense)
+
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
 
@@ -52,17 +72,22 @@ class TrueDot(gof.op.Op):
             raise NotImplementedError()
 
         inputs = [x, y]    # Need to convert? e.g. assparse
-        outputs = [SparseType(dtype = x.type.dtype, format = myformat).make_variable()]
+        outputs = [SparseType(dtype=x.type.dtype,
+                              format=myformat).make_variable()]
         return gof.Apply(self, inputs, outputs)
+
     def perform(self, node, inp, out_):
-        """
-        @todo: Verify that output is sufficiently sparse, and raise a warning if it is not
-        @todo: Also determine that we are storing the output in the best storage format?
-        """
+        # TODO
+        # -Verify that output is sufficiently sparse,
+        #  and raise a warning if it is not.
+        # -Also determine that we are storing the
+        #  output in the best storage format?
+
         x, y = inp
         out, = out_
         rval = x.dot(y)
         out[0] = rval
+
     def grad(self, inp, grads):
         x, y = inp
         gz, = grads
@@ -74,16 +99,21 @@ class TrueDot(gof.op.Op):
                 rval[1] = dense_from_sparse(rval[1])
         return rval
 
+
 def true_dot(x, y, grad_preserves_dense=True):
-    """
-    @todo: Maybe the triple-transposition formulation (when x is dense)
-    is slow. See if there is a direct way to do this.
-    """
-    if hasattr(x, 'getnnz'): x = as_sparse_variable(x)
-    if hasattr(y, 'getnnz'): y = as_sparse_variable(y)
+    # TODO
+    # Maybe the triple-transposition formulation
+    # (when x is dense) is slow. See if there is a
+    # direct way to do this.
+
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
+
     if not x_is_sparse_variable and not y_is_sparse_variable:
         raise TypeError()
     if x_is_sparse_variable:
@@ -99,7 +129,7 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicSS(self):
         for mtype in _mtypes:
-            x = as_sparse_variable(mtype((500,3)))
+            x = as_sparse_variable(mtype((500, 3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.assertTrue(_is_sparse_variable(x))
@@ -107,14 +137,14 @@ class test_true_dot(unittest.TestCase):
             xT = x.T
             self.assertTrue(_is_sparse_variable(xT))
 
-            zop = true_dot(x,xT)
+            zop = true_dot(x, xT)
             self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
             self.assertTrue(_is_sparse(z))
-            self.assertTrue(z.shape == (500,500))
+            self.assertTrue(z.shape == (500, 500))
             self.assertTrue(type(z) is mtype)
 
-            w = mtype((500,500))
+            w = mtype((500, 500))
             w[(10, 10)] = 1
             w[(20, 20)] = 4
             self.assertTrue(z.shape == w.shape)
@@ -122,7 +152,7 @@ class test_true_dot(unittest.TestCase):
             self.assertTrue(z.dtype == w.dtype)
 
             #self.assertTrue(z == w)
-            self.assertTrue(abs(z-w).nnz == 0)
+            self.assertTrue(abs(z - w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
@@ -130,7 +160,7 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicSD(self):
         for mtype in _mtypes:
-            x = as_sparse_variable(mtype((500,3)))
+            x = as_sparse_variable(mtype((500, 3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.assertTrue(_is_sparse_variable(x))
@@ -138,14 +168,14 @@ class test_true_dot(unittest.TestCase):
             y = tensor.as_tensor_variable([[1., 2], [3, 4], [2, 1]])
             self.assertTrue(_is_dense_variable(y))
 
-            zop = true_dot(x,y)
+            zop = true_dot(x, y)
             self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
             self.assertTrue(_is_sparse(z))
-            self.assertTrue(z.shape == (500,2))
+            self.assertTrue(z.shape == (500, 2))
             self.assertTrue(type(z) is mtype)
 
-            w = mtype((500,2))
+            w = mtype((500, 2))
             w[(10, 0)] = 3.
             w[(20, 0)] = 4
             w[(10, 1)] = 4
@@ -155,7 +185,7 @@ class test_true_dot(unittest.TestCase):
             self.assertTrue(z.dtype == w.dtype)
 
             #self.assertTrue(z == w)
-            self.assertTrue(abs(z-w).nnz == 0)
+            self.assertTrue(abs(z - w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
@@ -163,7 +193,7 @@ class test_true_dot(unittest.TestCase):
 
     def test_basicDS(self):
         for mtype in _mtypes:
-            x = as_sparse_variable(mtype((500,3)))
+            x = as_sparse_variable(mtype((500, 3)))
             x.data[(10, 1)] = 1
             x.data[(20, 2)] = 2
             self.assertTrue(_is_sparse_variable(x))
@@ -179,22 +209,24 @@ class test_true_dot(unittest.TestCase):
             self.assertTrue(_is_sparse_variable(zop))
             z = eval_outputs([zop])
             self.assertTrue(_is_sparse(z))
-            self.assertTrue(z.shape == (500,2))
+            self.assertTrue(z.shape == (500, 2))
 #            self.assertTrue(type(z) is mtype)
 
-            w = mtype((500,2))
+            w = mtype((500, 2))
             w[(10, 0)] = 3.
             w[(20, 0)] = 4
             w[(10, 1)] = 4
             w[(20, 1)] = 2
             self.assertTrue(z.shape == w.shape)
-            # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.assertTrue(type(z) == type(w))
+            # Type should switch from csr to csc and vice-versa,
+            # so don't perform this test
+            # self.assertTrue(type(z) == type(w))
             self.assertTrue(z.dtype == w.dtype)
 
-            # Type should switch from csr to csc and vice-versa, so don't perform this test
-            #self.assertTrue(z == w)
-            self.assertTrue(abs(z-w).nnz == 0)
+            # Type should switch from csr to csc and vice-versa,
+            # so don't perform this test
+            # self.assertTrue(z == w)
+            self.assertTrue(abs(z - w).nnz == 0)
 
             z = z.todense()
             w = w.todense()
@@ -202,17 +234,19 @@ class test_true_dot(unittest.TestCase):
 
     def test_graph_bprop0(self):
         for mtype in _mtypes:
-            x = tensor.matrix('x') #TensorType('float64', broadcastable=[False,False], name='x')
-            w = SparseType(dtype = 'float64', format = _mtype_to_str[mtype]).make_variable()
+            # x = TensorType('float64', broadcastable=[False,False], name='x')
+            x = tensor.matrix('x')
+            w = SparseType(dtype='float64',
+                           format=_mtype_to_str[mtype]).make_variable()
             xw = dense_from_sparse(true_dot(w, x))
             y = dense_from_sparse(true_dot(w.T, xw))
-            diff = x-y
+            diff = x - y
             loss = tensor.sum(tensor.sqr(diff))
             gw = tensor.grad(loss, w)
             trainfn = compile.function([x, w], [y, loss, gw])
 
             x = numpy.asarray([[1., 2], [3, 4], [2, 1]])
-            w = mtype((500,3))
+            w = mtype((500, 3))
             w[(10, 1)] = 1
             w[(20, 2)] = 2
             lr = 0.001
@@ -227,19 +261,20 @@ class test_true_dot(unittest.TestCase):
 
     def test_graph_bprop_rand(self):
         for i in range(10):
-            xorig = numpy.random.rand(3,2)
+            xorig = numpy.random.rand(3, 2)
             for mtype in _mtypes:
                 x = tensor.matrix('x')
-                w = SparseType(dtype = 'float64', format = _mtype_to_str[mtype]).make_variable()
+                w = SparseType(dtype='float64',
+                               format= mtype_to_str[mtype]).make_variable()
                 xw = dense_from_sparse(true_dot(w, x))
                 y = dense_from_sparse(true_dot(w.T, xw))
-                diff = x-y
+                diff = x - y
                 loss = tensor.sum(tensor.sqr(diff))
                 gw = tensor.grad(loss, w)
                 trainfn = compile.function([x, w], [y, loss, gw])
 
                 x = xorig
-                w = mtype((500,3))
+                w = mtype((500, 3))
                 w[(10, 1)] = 1
                 w[(20, 2)] = 2
                 lr = 0.001
