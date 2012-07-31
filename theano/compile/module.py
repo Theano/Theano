@@ -23,10 +23,18 @@ import mode as get_mode
 #parts of theano do "from module import *"
 #So rather than printing out a warning if you import from this module, we
 #must stick a warning inside all of the components
-def deprecation_warning():
-    warnings.warn("theano modules are deprecated and will be removed in release 0.7",
-        stacklevel = 3)
 
+def deprecation_warning():
+    # Make sure the warning is displayed only once.
+    if deprecation_warning.already_displayed:
+        return
+
+    warnings.warn(
+            "theano modules are deprecated and will be removed in release 0.7",
+            stacklevel=3)
+    deprecation_warning.already_displayed = True
+
+deprecation_warning.already_displayed = False
 
 
 def name_join(*args):
