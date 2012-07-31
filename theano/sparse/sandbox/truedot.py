@@ -1,15 +1,21 @@
 import unittest
 
+import theano
 import numpy
+import scipy.sparse as sp
 
+from theano import sparse
 from theano import gof, tensor, compile
 
 from theano.sparse.tests.test_basic import eval_outputs
-from theano.sparse.basic import _(
-    is_sparse_variable, _is_dense_variable,
+from theano.sparse.basic import (
+    _is_sparse_variable, _is_dense_variable,
     as_sparse_variable, _is_sparse, _mtypes, _mtype_to_str)
 from theano.sparse import SparseType, dense_from_sparse, transpose
 
+from theano.sparse.tests.test_basic import sparse_random_inputs
+from theano.tests import unittest_tools as utt
+from theano.sparse import verify_grad_sparse
 
 class TrueDot(gof.op.Op):
     """Calculate the true dot operation between two matrices.
@@ -29,7 +35,7 @@ class TrueDot(gof.op.Op):
     :param x: Sparse matrix for the left operand.
     :param y: Sparse or dense matrix for the right operand.
 
-    :return: The dot product `x` . `y`.
+    :return: The dot product `x` . `y` in a sparse matrix.
 
     :note:
      - The grad implemented is regular, i.e. not structured.
@@ -46,7 +52,7 @@ class TrueDot(gof.op.Op):
                 self.grad_preserves_dense == other.grad_preserves_dense)
 
     def __hash__(self):
-        return hash(self.grad_preserves_dense)
+        return hash(type(self)) ^ hash(self.grad_preserves_dense)
 
     def __ne__(self, other):
         return not (self == other)
@@ -71,7 +77,7 @@ class TrueDot(gof.op.Op):
         else:
             raise NotImplementedError()
 
-        inputs = [x, y]    # Need to convert? e.g. assparse
+        inputs = [x, y]  # Need to convert? e.g. assparse
         outputs = [SparseType(dtype=x.type.dtype,
                               format=myformat).make_variable()]
         return gof.Apply(self, inputs, outputs)
@@ -86,18 +92,25 @@ class TrueDot(gof.op.Op):
         x, y = inp
         out, = out_
         rval = x.dot(y)
+        if not sp.issparse(rval):
+            rval = getattr(sp, x.format + '_matrix')(rval)
         out[0] = rval
 
-    def grad(self, inp, grads):
-        x, y = inp
-        gz, = grads
+    def grad(self, (x, y), (gz, )):
         assert _is_sparse_variable(gz)
         assert _is_sparse_variable(x)
+
         rval = [true_dot(gz, y.T), true_dot(x.T, gz)]
         if _is_dense_variable(y):
             if self.grad_preserves_dense:
                 rval[1] = dense_from_sparse(rval[1])
         return rval
+
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][0], shapes[1][1])]
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def true_dot(x, y, grad_preserves_dense=True):
@@ -123,7 +136,93 @@ def true_dot(x, y, grad_preserves_dense=True):
         return transpose(TrueDot(grad_preserves_dense)(y.T, x.T))
 
 
-class test_true_dot(unittest.TestCase):
+class TrueDotTester(utt.InferShapeTester):
+    def setUp(self):
+        super(TrueDotTester, self).setUp()
+        self.op = true_dot
+        self.op_class = TrueDot
+
+    def test_op_ss(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10),
+                                                      out_dtype=dtype,
+                                                      n=2,
+                                                      p=0.1)
+
+                f = theano.function(variable, self.op(*variable))
+
+                tested = f(*data)
+
+                x, y = [m.toarray() for m in data]
+                expected = numpy.dot(x, y)
+
+                assert tested.format == format
+                assert tested.dtype == expected.dtype
+                tested = tested.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_op_sd(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                variable, data = sparse_random_inputs(format,
+                                                      shape=(10, 10),
+                                                      out_dtype=dtype,
+                                                      n=2,
+                                                      p=0.1)
+                variable[1] = tensor.TensorType(dtype=dtype,
+                                                broadcastable=(False, False))()
+                data[1] = data[1].toarray()
+
+                f = theano.function(variable, self.op(*variable))
+
+                tested = f(*data)
+                expected = numpy.dot(data[0].toarray(), data[1])
+
+                assert tested.format == format
+                assert tested.dtype == expected.dtype
+                tested = tested.toarray()
+                assert numpy.allclose(tested, expected)
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.all_dtypes:
+                (x, ), (x_value, ) = sparse_random_inputs(format,
+                                                          shape=(9, 10),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                (y, ), (y_value, ) = sparse_random_inputs(format,
+                                                          shape=(10, 24),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                variable = [x, y]
+                data = [x_value, y_value]
+                self._compile_and_check(variable,
+                                        [self.op(*variable)],
+                                        data,
+                                        self.op_class)
+
+    def test_grad(self):
+        for format in sparse.sparse_formats:
+            for dtype in sparse.float_dtypes:
+                (x, ), (x_value, ) = sparse_random_inputs(format,
+                                                          shape=(9, 10),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                (y, ), (y_value, ) = sparse_random_inputs(format,
+                                                          shape=(10, 24),
+                                                          out_dtype=dtype,
+                                                          p=0.1)
+                variable = [x, y]
+                data = [x_value, y_value]
+                verify_grad_sparse(
+                    self.op,
+                    data,
+                    structured=False)
+
+
+class TrueDotTester2(unittest.TestCase):
     def setUp(self):
         numpy.random.seed(44)
 
@@ -210,7 +309,7 @@ class test_true_dot(unittest.TestCase):
             z = eval_outputs([zop])
             self.assertTrue(_is_sparse(z))
             self.assertTrue(z.shape == (500, 2))
-#            self.assertTrue(type(z) is mtype)
+            # self.assertTrue(type(z) is mtype)
 
             w = mtype((500, 2))
             w[(10, 0)] = 3.
@@ -254,7 +353,7 @@ class test_true_dot(unittest.TestCase):
             for epoch in xrange(50):
                 y, loss, gw = trainfn(x, w)
                 w = w - (lr * gw)
-                print loss
+                # print loss
 
             self.assertTrue(origloss > loss)
             self.assertTrue('1.05191241115' == str(loss))
@@ -265,7 +364,7 @@ class test_true_dot(unittest.TestCase):
             for mtype in _mtypes:
                 x = tensor.matrix('x')
                 w = SparseType(dtype='float64',
-                               format= mtype_to_str[mtype]).make_variable()
+                               format=_mtype_to_str[mtype]).make_variable()
                 xw = dense_from_sparse(true_dot(w, x))
                 y = dense_from_sparse(true_dot(w.T, xw))
                 diff = x - y
