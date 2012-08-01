@@ -48,6 +48,11 @@ void * device_malloc(size_t size)
     cudaError_t err = cudaMalloc(&rval, size);
     if (cudaSuccess != err)
     {
+        // Clear the error flag, cudaMalloc doesn't do it.
+        // Currently this returns the same thing as err, but if in future
+        // it returns something else I still don't see why we should ignore
+        // it.  All we want to do here is reset the flag.
+        cudaGetLastError();
 #if COMPUTE_GPU_MEM_USED
         fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
 #else
@@ -86,6 +91,11 @@ int device_free(void *ptr)
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
+        // Clear the error flag, cudaMalloc doesn't do it.
+        // Currently this returns the same thing as err, but if in future
+        // it returns something else I still don't see why we should ignore
+        // it.  All we want to do here is reset the flag.
+        cudaGetLastError();
 #if COMPUTE_GPU_MEM_USED
         fprintf(stderr, "Error freeing device pointer %p (%s).%d byte already allocated\n", ptr, cudaGetErrorString(err), _allocated_size);
 #else
@@ -910,6 +920,11 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         }
         cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
         if (cudaSuccess != err) {
+            // Clear the error flag, cudaMalloc doesn't do it.
+            // Currently this returns the same thing as err, but if in future
+            // it returns something else I still don't see why we should ignore
+            // it.  All we want to do here is reset the flag.
+            cudaGetLastError();
             PyErr_Format(PyExc_RuntimeError,
                          "Error setting device error code to 0. %s",
                          cudaGetErrorString(err));
@@ -2129,6 +2144,11 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
             Py_XDECREF(rval);
             if (err)
             {
+                // Clear the error flag, cudaMalloc doesn't do it.
+                // Currently this returns the same thing as err, but if in future
+                // it returns something else I still don't see why we should ignore
+                // it.  All we want to do here is reset the flag.
+                cudaGetLastError();
                 PyErr_SetString(PyExc_RuntimeError,
                                 "CudaNdarray.__setitem__: cudaMemset failed");
                 return -1;
@@ -2401,6 +2421,11 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 
     cudaError_t err = cudaMemGetInfo(&free, &total);
     if (err != cudaSuccess){
+        // Clear the error flag, cudaMalloc doesn't do it.
+        // Currently this returns the same thing as err, but if in future
+        // it returns something else I still don't see why we should ignore
+        // it.  All we want to do here is reset the flag.
+        cudaGetLastError();
         PyErr_Format(PyExc_RuntimeError,
                      "Error while getting memory info about the gpu: %s",
                      cudaGetErrorString(err));
