@@ -707,11 +707,19 @@ class VM_Linker(link.LocalLinker):
                 prereq_var_idxs.sort()  # TODO: why sort?
                 node_prereqs.append(prereq_var_idxs)
 
+            # Builds the list of input storage to update (according to update
+            # rules) when the outputs are computed.
+            # They are in the same order as the second part of output_vars
+            # (output_vars contains first the returned outputs, then the
+            # values of the update expressions).
             update_storage = []
+            update_in_from_out = {}
             for (ivar, ovar) in updated_vars.items():
                 if ivar != ovar:
-                    update_storage.append(vars_idx[ivar])  # dst
-                    update_storage.append(vars_idx[ovar])  # src
+                    update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
+            for oidx in output_vars:
+                if oidx in update_in_from_out:
+                    update_storage.append(update_in_from_out[oidx])
 
             c0 = sys.getrefcount(node_n_inputs)
             vm = CVM(
