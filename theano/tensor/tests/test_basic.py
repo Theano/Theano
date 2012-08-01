@@ -6179,9 +6179,19 @@ class TestInferShape(utt.InferShapeTester):
                                 [TensorDot(axes)(admat, bdmat)],
                             [admat_val, bdmat_val], TensorDot)
 
+        axes = ((0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
         admat_val = rand(5, 4)
         bdmat_val = rand(4, 5)
         axes = ((1,), (0,))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        axes = ((0, 1), (1, 0))
         self._compile_and_check([admat, bdmat],
                                 [TensorDot(axes)(admat, bdmat)],
                         [admat_val, bdmat_val], TensorDot)
@@ -6317,6 +6327,14 @@ class TestInferShape(utt.InferShapeTester):
                                 [Join()(aiscal, admat, bdmat, cdmat)],
                         [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
 
+        admat_val = rand(4, 1)
+        bdmat_val = rand(4, 3)
+        cdmat_val = rand(4, 2)
+        aiscal_val = 1
+        self._compile_and_check([aiscal, admat, bdmat, cdmat],
+                                [Join()(aiscal, admat, bdmat, cdmat)],
+                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+
         # PermuteRowElements
         abool = True
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -6407,8 +6425,6 @@ class TestInferShape(utt.InferShapeTester):
                  ciscal_val, discal_val], Alloc)
 
         # MaxAndArgmax,
-        # Note: axis as a tensor.iscalar or constant conflicts with
-        # make_node in basic
         adtens3_val = rand(4, 5, 3)
         self._compile_and_check([adtens3],
                 MaxAndArgmax()(adtens3, None),
@@ -6595,7 +6611,7 @@ class TestInferShape(utt.InferShapeTester):
         aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
                             [inc_subtensor(admat[aivec_val], bdmat)],
-       
+
         aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
                             [inc_subtensor(admat[aivec_val], advec)],
@@ -6646,15 +6662,15 @@ MakeVector [@A] ''   3
    |AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince} [@C] ''   0
 remaining op as a class: AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}
 (5, 4) [5 4]
-        """
-        
+
         aivec_val = [1, 3, 2]
         bivec_val = [0, 3, 3]
         advec_val = [23, 24, 25]
         self._compile_and_check([admat, advec],
                             [set_subtensor(admat[aivec_val, bivec_val], advec)],
                             [admat_val, advec_val], AdvancedIncSubtensor)
-    
+        """
+
         # Reshape
         # TODO: The shape is apparently generated correctly but the final result is abnormal:
         """
@@ -6672,7 +6688,7 @@ MakeVector [@A] ''   3
 remaining op as a class: Reshape{2}
 shapes generated:
 (4, 3) [4 3]
-        """
+
 
         admat = dmatrix()
         ndim = 2
@@ -6705,7 +6721,7 @@ shapes generated:
         self._compile_and_check([adtens4],
                                 [tile(adtens4, aivec_val, ndim)],
                                 [adtens4_val], Tile)
-
+        """
 
 if __name__ == '__main__':
 
