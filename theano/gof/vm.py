@@ -548,7 +548,12 @@ class VM_Linker(link.LocalLinker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)().accept(fgraph, no_recycling)
+            return type(self)(
+                    allow_gc=self.allow_gc,
+                    use_cloop=self.use_cloop,
+                    callback=self.callback,
+                    lazy=self.lazy
+                    ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
