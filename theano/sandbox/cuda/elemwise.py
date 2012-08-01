@@ -36,8 +36,14 @@ class SupportCodeError(Exception):
 
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
-    #cache_version = ()
-    cache_version = (15, verbose)
+
+    @property
+    def cache_version(self):
+        ver = self.scalar_op.c_code_cache_version()
+        if ver:
+            return (16, self.verbose, self.sync, ver)
+        else:
+            return ver
 
     def __init__(self, scalar_op, sync=True, inplace_pattern=None):
         """
