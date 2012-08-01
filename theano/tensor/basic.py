@@ -4120,19 +4120,15 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     elif isinstance(x.owner.op, AdvancedSubtensor1):
         real_x = x.owner.inputs[0]
         ilist = x.owner.inputs[1]
-        if set_instead_of_inc:
-            the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=True)
-        else:
-            the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=False)
+        the_op = AdvancedIncSubtensor1(inplace,
+                                       set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, ilist)
     elif isinstance(x.owner.op, AdvancedSubtensor):
         real_x = x.owner.inputs[0]
         coordvec_0 = x.owner.inputs[1]
-        coordvec_1 =  x.owner.inputs[2]
-        if set_instead_of_inc:
-            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=True)
-        else:
-            the_op = AdvancedIncSubtensor(inplace, set_instead_of_inc=False)
+        coordvec_1 = x.owner.inputs[2]
+        the_op = AdvancedIncSubtensor(inplace,
+                                      set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, coordvec_0, coordvec_1)
     else:
         raise TypeError('x must be result of a subtensor operation')
