@@ -527,6 +527,8 @@ class VM_Linker(link.LocalLinker):
             between Loop/LoopGC and Stack.
 
         """
+        # Note: if more parameters are added to __init__, make sure to forward
+        # them in the "type(self)(...)" call in the "accept" method below.
         if allow_gc is None:
             allow_gc = config.allow_gc
         self.fgraph = None
@@ -543,11 +545,15 @@ class VM_Linker(link.LocalLinker):
 
         :param no_recycling: WRITEME
 
-        :returns: self (TODO: WHY? Who calls this function?)
+        :returns: self if fgraph is the first FunctionGraph that has ever been
+            associated to self, else, a new VM_Linker associated to fgraph.
         """
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
+            # Build a new VM_Linker, and call accept on that one.
+            # Warning: make sure to forward the correct values of
+            # all parameters to __init__ here.
             return type(self)(
                     allow_gc=self.allow_gc,
                     use_cloop=self.use_cloop,
