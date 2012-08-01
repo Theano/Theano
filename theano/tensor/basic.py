@@ -2183,6 +2183,11 @@ class MaxAndArgmax(Op):
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
+        if isinstance(axis, Variable):
+            if not isinstance(axis, Constant):
+                raise TypeError("MaxAndArgmax need a constant axis")
+            axis = [axis.data]
+
         if isinstance(axis, int):
             axis = [axis]
         elif isinstance(axis, (tuple, list)):
@@ -2192,6 +2197,7 @@ class MaxAndArgmax(Op):
                 assert axis == range(x.type.ndim), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it.")
+
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
