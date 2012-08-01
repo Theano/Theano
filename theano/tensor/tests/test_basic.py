@@ -6448,8 +6448,6 @@ class TestInferShape(utt.InferShapeTester):
                                 [adtens3_val], Mean)
 
         # IncSubtensor
-        # Note: Is testing only for the 4-tensor below sufficient?
-        # Please determine and take action.
         admat = dmatrix()
         bdmat = dmatrix()
         advec = dvector()
@@ -6562,11 +6560,11 @@ class TestInferShape(utt.InferShapeTester):
                             [adtens4_val, 1],
                             AdvancedIncSubtensor1)
 
-        ## TODO: (!!) function inc_subtensor fails on line 5784 in perform in basic.py
-        """
         aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
-                            [inc_subtensor(admat[aivec_val], bdmat)],
+                                [inc_subtensor(admat[aivec_val], bdmat)],
+                                [admat_val, [[1, 2, 3, 4], [5, 6, 7, 8]]],
+                                AdvancedIncSubtensor1)
 
         aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
@@ -6583,22 +6581,22 @@ class TestInferShape(utt.InferShapeTester):
         aivec_val = [2, 3]
         self._compile_and_check([adtens4, bdtens4],
                             [inc_subtensor(adtens4[aivec_val], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]],
+                                           [[[6, 7, 8, 9, 10]]]]],
                             AdvancedIncSubtensor1)
 
-        aivec_val = [1, 3, 2]
+        aivec_val = [1, 2, 1]
         self._compile_and_check([adtens4, advec],
                             [inc_subtensor(adtens4[aivec_val], advec)],
-                            [adtens4_val, [[1, 2, 3, 4, 5]]],
+                            [adtens4_val, [1, 2, 3, 4, 5]],
                             AdvancedIncSubtensor1)
 
         aivec_val = [0, 3, 0]
         self._compile_and_check([adtens4, adscal],
                             [inc_subtensor(adtens4[aivec_val], adscal)],
-                            [adtens4_val, [[1, 2, 3, 4, 5]]],
+                            [adtens4_val, 2],
                             AdvancedIncSubtensor1)
 
-        """
 
         # AdvancedIncSubtensor
         # TODO: The shape is apparently generated correctly but the final
