@@ -2193,16 +2193,30 @@ class GpuAlloc(GpuOp):
         str += "if(%(out)s==NULL\n" % locals()
         for idx,sh in enumerate(shps):
             str += "||CudaNdarray_HOST_DIMS(%(out)s)[%(idx)s]!=dims[%(idx)s]" % locals()
-        str+="""){
-        Py_XDECREF(%(out)s);
-        %(out)s= (CudaNdarray*)CudaNdarray_New();
-        CudaNdarray_alloc_contiguous(%(out)s, %(nd)s, dims);
-    }
-    if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
-    {
-    %(fail)s;
-    }
-""" % locals()
+        str += """){
+            Py_XDECREF(%(out)s);
+            %(out)s = (CudaNdarray*)CudaNdarray_New();
+            if (!%(out)s)
+            {
+                // exception already set
+                %(fail)s;
+            }
+            if (CudaNdarray_alloc_contiguous(%(out)s, %(nd)s, dims))
+            {
+                // exception already set
+                Py_XDECREF(%(out)s);
+                %(out)s = NULL;
+                %(fail)s;
+            }
+        }
+        if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
+        {
+            // exception already set
+            Py_XDECREF(%(out)s);
+            %(out)s = NULL;
+            %(fail)s;
+        }
+        """ % locals()
         return str
 
     def infer_shape(self, node, input_shapes):
@@ -2213,7 +2227,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
