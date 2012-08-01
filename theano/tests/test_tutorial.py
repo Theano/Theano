@@ -800,16 +800,17 @@ class T_using_gpu(unittest.TestCase):
         t0 = time.time()
         for i in xrange(iters):
             r = f()
-        print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+        t1 = time.time()
+        print 'Looping %d times took' % iters, t1 - t0, 'seconds'
         print 'Result is', r
-        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+        if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
             print 'Used the cpu'
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
-            assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 
@@ -831,15 +832,16 @@ class T_using_gpu(unittest.TestCase):
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 
@@ -865,15 +867,16 @@ class T_using_gpu(unittest.TestCase):
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 class T_fibby(unittest.TestCase):
