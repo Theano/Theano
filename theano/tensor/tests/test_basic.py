@@ -5881,10 +5881,10 @@ class TestInferShape(utt.InferShapeTester):
                                 tensordot_grad(axes)(admat, bdmat, gzdscal),
                         [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
 
-        # Note: The two following tests currently fail and should unlikely be
+        # Note: The two following tests currently fail and should unlikely be,
         # for the shape of a grad is very simple and similar to that of the inputs.
         # Additional tests involving 3-tensors and 4-tensors will be included once
-        # this is resolved. Suggestion: first solve issues with 'tensordot' next.
+        # this is resolved.
 
         """
         gzdscal = dscalar()
@@ -6236,15 +6236,7 @@ class TestInferShape(utt.InferShapeTester):
                                 [SpecifyShape()(adtens4, aivec)],
                                 [adtens4_val, aivec_val], SpecifyShape)
 
-        # Mean: basic 3047
-        # TODO: conflict between following lines of _init_ and perform
-        # in basic.py
-        #
-        # elemwise.CAReduce.__init__(self, scal.add, axis)
-        # output[0] = numpy.mean(input, axis=self.axis)
-        #
-        # to be resolved as desired/appropriate
-
+        # Mean
         adtens3_val = rand(3, 4, 5)
         aiscal_val = 2
         self._compile_and_check([adtens3],
@@ -6404,61 +6396,59 @@ class TestInferShape(utt.InferShapeTester):
                             [adtens4_val, 2],
                             AdvancedIncSubtensor1)
 
-
         # AdvancedIncSubtensor
-        # TODO: The shape is apparently generated correctly but the final
-        # result is abnormal:
-        """
-topo_shape:
-[AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}(<TensorType(float64, matrix)>, <TensorType(float64, vector)>, TensorConstant{[1 3 2]}, TensorConstant{[0 3 3]}), Shape_i{1}(AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}.0), Shape_i{0}(AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}.0), MakeVector(Shape_i{0}.0, Shape_i{1}.0)]
-shapes_function:
-MakeVector [@A] ''   3
- |Shape_i{0} [@B] ''   2
- | |AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince} [@C] ''   0
- |   |<TensorType(float64, matrix)> [@D]
- |   |<TensorType(float64, vector)> [@E]
- |   |TensorConstant{[1 3 2]} [@F]
- |   |TensorConstant{[0 3 3]} [@G]
- |Shape_i{1} [@H] ''   1
-   |AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince} [@C] ''   0
-remaining op as a class: AdvancedIncSubtensor{Finplace=ainplace=linplace=sinplace=e, T set_instead_of_incr set_instead_of_incu set_instead_of_ince}
-(5, 4) [5 4]
-
         aivec_val = [1, 3, 2]
         bivec_val = [0, 3, 3]
         advec_val = [23, 24, 25]
         self._compile_and_check([admat, advec],
-                            [set_subtensor(admat[aivec_val, bivec_val], advec)],
-                            [admat_val, advec_val], AdvancedIncSubtensor)
-        """
+                    [set_subtensor(admat[aivec_val, bivec_val], advec)],
+                    [admat_val, advec_val], AdvancedIncSubtensor)
 
         # Reshape
-        # TODO: The shape is apparently generated correctly but the final result is abnormal:
-        """
-topo_shape:
-[Reshape{2}(<TensorType(float64, matrix)>, <TensorType(int32, vector)>),
-        Shape_i{1}(Reshape{2}.0), Shape_i{0}(Reshape{2}.0), MakeVector(Shape_i{0}.0, Shape_i{1}.0)]
-shapes_function:
-MakeVector [@A] ''   3
- |Shape_i{0} [@B] ''   2
- | |Reshape{2} [@C] ''   0
- |   |<TensorType(float64, matrix)> [@D]
- |   |<TensorType(int32, vector)> [@E]
- |Shape_i{1} [@F] ''   1
-   |Reshape{2} [@C] ''   0
-remaining op as a class: Reshape{2}
-shapes generated:
-(4, 3) [4 3]
-
-
+        # TODO: generalize infer_shape to account for tensor variable
+        # (non-constant) input shape
         admat = dmatrix()
+        aivec = ivector()
         ndim = 2
         admat_val = rand(3, 4)
-        self._compile_and_check([admat, aivec],
-                                [Reshape(ndim, '_name')(admat, aivec)],
-                                [admat_val, [4, 3]], Reshape)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [4, 3])],
+                                [admat_val], Reshape)
 
-        # Tile: basic 5292
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [4, -1])],
+                                [admat_val], Reshape)
+
+        # enable when infer_shape is generalized:
+        # self._compile_and_check([admat, aivec],
+        #                        [Reshape(ndim)(admat, aivec)],
+        #                        [admat_val, [4, 3]], Reshape)
+        #
+        # self._compile_and_check([admat, aivec],
+        #                        [Reshape(ndim)(admat, aivec)],
+        #                        [admat_val, [4, -1]], Reshape)
+
+        adtens4 = dtensor4()
+        ndim = 4
+        adtens4_val = rand(2, 4, 3, 5)
+        self._compile_and_check([adtens4],
+                                [Reshape(ndim)(adtens4, [1, -1, 10, 4])],
+                                [adtens4_val], Reshape)
+
+        self._compile_and_check([adtens4],
+                                [Reshape(ndim)(adtens4, [1, 3, 10, 4])],
+                                [adtens4_val], Reshape)
+
+        # enable when infer_shape is generalized:
+        # self._compile_and_check([adtens4, aivec],
+        #                        [Reshape(ndim)(adtens4, aivec)],
+        #                        [adtens4_val, [1, -1, 10, 4]], Reshape)
+        #
+        # self._compile_and_check([adtens4, aivec],
+        #                        [Reshape(ndim)(adtens4, aivec)],
+        #                        [adtens4_val, [1, 3, 10, 4]], Reshape)
+
+        # Tile
         advec = dvector()
         advec_val = rand(5)
         aivec_val = [3]
@@ -6482,7 +6472,7 @@ shapes generated:
         self._compile_and_check([adtens4],
                                 [tile(adtens4, aivec_val, ndim)],
                                 [adtens4_val], Tile)
-        """
+
 
 if __name__ == '__main__':
 

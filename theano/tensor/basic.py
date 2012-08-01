@@ -5179,17 +5179,40 @@ class Reshape(Op):
 
         # Here, we only simplify if the shape (node.inputs[1]) is a constant,
         # ideally it would suffice to check that it is always non-negative.
+        
+        """
         oshape = []
         for i in xrange(self.ndim):
             default_os_i = theano.tensor.opt.Shape_i(i)(node.outputs[0])
             try:
-                os_i = get_constant_value(node.inputs[1][i]).item()
+                os_i = node.inputs[1][i]
                 if os_i == -1:
                     os_i = default_os_i
             except TypeError:
+                print 'erreur'
                 os_i = default_os_i
             oshape.append(os_i)
         return [tuple(oshape)]
+	"""
+	
+	# In contrast with the preceding block, the following will handle 
+	# an entry equal to -1 in desired shape
+	requ = node.inputs[1]
+	if isinstance(requ, theano.tensor.TensorConstant):
+	    requ = list(requ.data)
+	    requ_part = [ele for ele in requ if ele != -1]
+	    crit = len(requ) - len(requ_part)
+	    if crit == 1:
+		missing = numpy.prod(ishapes[0]) / numpy.prod(requ_part) 
+		for i, ele in enumerate(requ):
+		    if ele == -1:
+			requ[i] = missing
+	    elif crit > 1:
+		raise ValueError('shape argument to Reshape.perform'
+                             ' must have at most one entry equal to -1')
+  	    return [requ]
+	else:
+	    return node.env.shape_feature.default_infer_shape(node, ishapes)
 
 
 def reshape(x, newshape, ndim=None, name=None):
@@ -5992,6 +6015,9 @@ class AdvancedIncSubtensor(Op):
                     'are too big (>= 2^32 elements). It is possible that '
                     'out[0] (%s), with shape %s, is not correctly filled.'
                     % (out[0], out[0].shape))
+
+    def infer_shape(self, node, ishapes):
+        return [ishapes[0]]
 
     def grad(self, inpt, output_gradients):
         x, y = inpt[:2]
