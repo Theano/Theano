@@ -5922,6 +5922,11 @@ class AdvancedSubtensor(Op):
 
 class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
+
+    :note: We need the numpy.inplace_increment() function currently
+        numpy's PR 326 to be able to make an inplace version of this
+        op.
+
     """
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
@@ -5938,14 +5943,8 @@ class AdvancedIncSubtensor(Op):
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,
-                "inplace=".join(str(self.inplace)),
-                " set_instead_of_inc".join(str(self. set_instead_of_inc)))
-
-    def props(self):
-        return (self.inplace, self.set_instead_of_inc)
-
-    def __repr__(self):
-        return 'AdvancedIncSubtensor{%s}' % str(self.props())
+                "inplace=" + str(self.inplace),
+                " set_instead_of_inc=" + str(self. set_instead_of_inc))
 
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
