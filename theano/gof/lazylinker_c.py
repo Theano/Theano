@@ -13,7 +13,7 @@ if config.compiledir not in sys.path:
     sys.path.append(config.compiledir)
 
 force_compile = False
-version = 0.18 # must match constant returned in function get_version()
+version = 0.20  # must match constant returned in function get_version()
 
 
 try:
