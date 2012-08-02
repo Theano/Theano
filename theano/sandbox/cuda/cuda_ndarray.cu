@@ -91,7 +91,7 @@ int device_free(void *ptr)
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
-        // Clear the error flag, cudaMalloc doesn't do it.
+        // Clear the error flag, cudaFree doesn't do it.
         // Currently this returns the same thing as err, but if in future
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
@@ -920,7 +920,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         }
         cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
         if (cudaSuccess != err) {
-            // Clear the error flag, cudaMalloc doesn't do it.
+            // Clear the error flag, cudaMemset doesn't do it.
             // Currently this returns the same thing as err, but if in future
             // it returns something else I still don't see why we should ignore
             // it.  All we want to do here is reset the flag.
@@ -2144,7 +2144,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
             Py_XDECREF(rval);
             if (err)
             {
-                // Clear the error flag, cudaMalloc doesn't do it.
+                // Clear the error flag, cudaMemset doesn't do it.
                 // Currently this returns the same thing as err, but if in future
                 // it returns something else I still don't see why we should ignore
                 // it.  All we want to do here is reset the flag.
@@ -2421,7 +2421,7 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 
     cudaError_t err = cudaMemGetInfo(&free, &total);
     if (err != cudaSuccess){
-        // Clear the error flag, cudaMalloc doesn't do it.
+        // Clear the error flag, cudaMemGetInfo doesn't do it.
         // Currently this returns the same thing as err, but if in future
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
