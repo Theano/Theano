@@ -1381,7 +1381,7 @@ class ColScaleCSCTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(10))
+            data.append(numpy.random.random(10).astype(config.floatX))
 
             f = theano.function(variable, self.op(*variable))
 
@@ -1397,7 +1397,7 @@ class ColScaleCSCTester(utt.InferShapeTester):
                             ('csr', sparse.RowScaleCSC)]:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(10))
+            data.append(numpy.random.random(10).astype(config.floatX))
 
             self._compile_and_check(variable,
                                     [self.op(*variable)],
@@ -1408,7 +1408,7 @@ class ColScaleCSCTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(10))
+            data.append(numpy.random.random(10).astype(config.floatX))
 
             verify_grad_sparse(self.op, data, structured=True)
 
@@ -1422,7 +1422,7 @@ class RowScaleCSCTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(8))
+            data.append(numpy.random.random(8).astype(config.floatX))
 
             f = theano.function(variable, self.op(*variable))
 
@@ -1438,7 +1438,7 @@ class RowScaleCSCTester(utt.InferShapeTester):
                             ('csr', sparse.ColScaleCSC)]:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(8))
+            data.append(numpy.random.random(8).astype(config.floatX))
 
             self._compile_and_check(variable,
                                     [self.op(*variable)],
@@ -1449,7 +1449,7 @@ class RowScaleCSCTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
             variable.append(tensor.vector())
-            data.append(numpy.random.random(8))
+            data.append(numpy.random.random(8).astype(config.floatX))
 
             verify_grad_sparse(self.op, data, structured=True)
 
@@ -1550,7 +1550,7 @@ class SquareDiagonalTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for size in range(5, 9):
                 variable = [tensor.vector()]
-                data = [numpy.random.random(size)]
+                data = [numpy.random.random(size).astype(config.floatX)]
 
                 f = theano.function(variable, self.op(*variable))
                 tested = f(*data).toarray()
@@ -1564,7 +1564,7 @@ class SquareDiagonalTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for size in range(5, 9):
                 variable = [tensor.vector()]
-                data = [numpy.random.random(size)]
+                data = [numpy.random.random(size).astype(config.floatX)]
 
                 self._compile_and_check(variable,
                                         [self.op(*variable)],
@@ -1575,7 +1575,7 @@ class SquareDiagonalTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for size in range(5, 9):
                 variable = [tensor.vector()]
-                data = [numpy.random.random(size)]
+                data = [numpy.random.random(size).astype(config.floatX)]
 
                 verify_grad_sparse(
                     self.op,
