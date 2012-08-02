@@ -2578,6 +2578,11 @@ def exp2(a):
     """2^`a`"""
 
 
+@_scal_elemwise_with_nfunc('expm1', 1, 1)
+def expm1(a):
+    """e^`a - 1`"""
+
+
 @_scal_elemwise_with_nfunc('negative', 1, 1)
 def neg(a):
     """-a"""
