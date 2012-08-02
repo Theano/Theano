@@ -103,7 +103,7 @@ typedef struct {
     Py_ssize_t * node_n_prereqs;
     Py_ssize_t ** node_prereqs;
 
-    Py_ssize_t * update_storage; // dst0, src0, dst1, src1, ... cells to switch after a call
+    Py_ssize_t * update_storage; // input cells to update with the last outputs in output_vars
     Py_ssize_t n_updates;
 
     void ** thunk_cptr_fn;
@@ -467,8 +467,6 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
     if (unpack_list_of_ssize_t(update_storage, &self->update_storage, &self->n_updates,
                                "updates_storage"))
       return -1;
-    assert((self->n_updates % 2) == 0);
-    self->n_updates /= 2;
     return 0;
 }
 static void set_position_of_error(CLazyLinker * self, int owner_idx)
@@ -841,26 +839,35 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
       if (!err)
         {
           // save references to outputs prior to updating storage containers
-          if ((call_i + 1) == n_calls)
+          assert (self->n_output_vars >= self->n_updates);
+          Py_DECREF(rval);
+          rval = PyList_New(self->n_output_vars);
+          for (int i = 0; i < (self->n_output_vars); ++i)
             {
-              assert (self->n_output_vars >= self->n_updates);
-              Py_DECREF(rval);
-              rval = PyList_New(self->n_output_vars);
-              for (int i = 0; i < (self->n_output_vars); ++i)
+              Py_ssize_t src = self->output_vars[i];
+              PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
+              if (self->var_computed[src] != 1)
                 {
-                  Py_ssize_t src = self->output_vars[i];
-                  PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
-                  Py_INCREF(item);
-                  PyList_SetItem(rval, i, item);
+                  err = 1;
+                  PyErr_Format(PyExc_AssertionError,
+                               "The compute map of output %d should contain "
+                               "1 at the end of execution, not %d.",
+                               i, self->var_computed[src]);
+                  break;
                 }
+              Py_INCREF(item);
+              PyList_SetItem(rval, i, item);
             }
+        }
 
+      if (!err)
+        {
+          // Update the inputs that have an update rule
           for (int i = 0; i < self->n_updates; ++i)
             {
-              Py_ssize_t dst = self->update_storage[2*i];
-              Py_ssize_t src = self->update_storage[2*i+1];
-              PyObject* tmp = PyList_GetItem(self->var_value_cells[src], 0);
+              PyObject* tmp = PyList_GetItem(rval, self->n_output_vars - self->n_updates + i);
               Py_INCREF(tmp);
+              Py_ssize_t dst = self->update_storage[i];
               PyList_SetItem(self->var_value_cells[dst], 0, tmp);
             }
         }
@@ -973,7 +980,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.18);
+  PyObject *result = PyFloat_FromDouble(0.20);
   return result;
 }
 
