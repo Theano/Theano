@@ -846,10 +846,22 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
             {
               Py_ssize_t src = self->output_vars[i];
               PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
+              if (self->var_computed[src] != 1)
+                {
+                  err = 1;
+                  PyErr_Format(PyExc_AssertionError,
+                               "The compute map of output %d should contain "
+                               "1 at the end of execution, not %d.",
+                               i, self->var_computed[src]);
+                  break;
+                }
               Py_INCREF(item);
               PyList_SetItem(rval, i, item);
             }
+        }
 
+      if (!err)
+        {
           // Update the inputs that have an update rule
           for (int i = 0; i < self->n_updates; ++i)
             {
@@ -968,7 +980,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.19);
+  PyObject *result = PyFloat_FromDouble(0.20);
   return result;
 }
 
