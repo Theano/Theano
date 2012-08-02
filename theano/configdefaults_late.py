@@ -7,6 +7,7 @@ This is needed as we need to have parsed the previous
 import os
 import logging
 import subprocess
+import tempfile
 
 import theano
 from theano.configparser import (
@@ -63,16 +64,19 @@ int main( int argc, const char* argv[] )
         }
 }
         """
-        p = os.path.join(config.compiledir, 'test_omp.c')
-        f = open(p, 'w')
-        f.write(code)
-        f.close()
-        p = subprocess.Popen(['g++', '-fopenmp', p], stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         stdin=dummy_stdin.fileno())
-        p.wait()
-        if p.returncode != 0:
-            default_openmp = False
+        fd, path = tempfile.mkstemp(suffix='.c', prefix='test_omp_')
+        try:
+            os.write(fd, code)
+            os.close(fd)
+            proc = subprocess.Popen(['g++', '-fopenmp', path],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    stdin=dummy_stdin.fileno())
+            proc.wait()
+            if proc.returncode != 0:
+                default_openmp = False
+        finally:
+            os.remove(path)
     except OSError, e:
         default_openmp = False
 
