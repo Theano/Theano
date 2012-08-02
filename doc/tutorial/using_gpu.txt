@@ -135,12 +135,16 @@ Running the GPU at Full Speed
 ------------------------------
 
 ..  TODO: the discussion of this section is unintelligible to a beginner
+..  TODO: is it better now?
 
 
 To really get maximum performance in this simple example, we need to use an :class:`Out`
-instance to tell Theano not to copy the output it returns to us.  Theano allocates memory for
-internal use like a working buffer, but by default it will never return a result that is
-allocated in the working buffer.  This is normally what you want, but our example is so simple
+instance to tell Theano not to copy the output it returns to us.
+This is because Theano pre-allocates memory for internal use (like working buffers), and by default
+will never return a result that is aliased to one of its internal buffers: instead, it will
+copy the buffers associated to outputs into newly allocated memory at each function call.
+This is to ensure that subsequent function calls will not overwrite previously computed outputs.
+Although this is normally what you want, our example is so simple
 that it has the unwanted side-effect of really slowing things down.
 
 
@@ -148,6 +152,8 @@ that it has the unwanted side-effect of really slowing things down.
     TODO:
     The story here about copying and working buffers is misleading and potentially not correct
     ... why exactly does borrow=True cut 75% of the runtime ???
+
+..  TODO: Answer by Olivier D: it sounds correct to me -- memory allocations must be slow.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_3
