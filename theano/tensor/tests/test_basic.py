@@ -909,6 +909,16 @@ FloorTester = makeBroadcastTester(op=tensor.floor,
         #      yet it does not...
         grad=_grad_broadcast_unary_normal)
 
+TruncInplaceTester = makeBroadcastTester(
+    op=inplace.floor_inplace,
+    expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+    good=_good_broadcast_unary_normal_no_complex,
+    inplace=True)
+TruncTester = makeBroadcastTester(
+    op=tensor.floor,
+    expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+    good=_good_broadcast_unary_normal_no_complex)
+
 FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
         expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
         good=_good_broadcast_unary_normal_no_complex,

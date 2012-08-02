@@ -1719,6 +1719,18 @@ class Floor(UnaryScalarOp):
 floor = Floor(same_out_nocomplex, name='floor')
 
 
+class Trunc(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.trunc(x)
+
+    def grad(self, (x,), (gz,)):
+        return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()
+trunc = Trunc(same_out_nocomplex, name='trunc')
+
+
 class RoundHalfToEven(UnaryScalarOp):
     """
     This function implement the same rounding than numpy: Round half to even
