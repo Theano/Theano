@@ -4,61 +4,64 @@
 Sparse
 ======
 
-Sparse matrices
+Sparse Matrices
 ===============
 
-In general, sparse matrices provide the same functionnality as regular
-matrices. The difference lie in the way the element of the matrix are 
-stored. These matrices do not store zeros element of a matrix, so it takes
-advantage of a high number of zeros elements. This reduce compution 
-time by using specific algorithms and, obviously, it reduces memory usage
-since zeros are not stored in memory. We usually refer to normaly stored
-matrices as dense matrices.
+In general, *sparse* matrices provide the same functionality as regular
+matrices. The difference lies in the way the elements of *sparse* matrices are 
+represented and stored in memory. Only the non-zero elements of the latter are stored.
+This has some potential advantages: first, this
+may obviously lead to reduced memory usage and, second, clever
+storage methods may lead to reduced computation time through the use of
+sparse specific algorithms. We usually refer to the generically stored matrices
+as *dense* matrices.
 
-The sparse package povide efficient algorithms, but it is not recommended 
-in all cases or for all matrices. An obvious exemple is if the
-sparsity proportion if very low. The sparsity proportion refer to the
-ratio of the number of zeros elements over the number of all element.
-A low sparsity proportion may results in use of more space in memory
-since not only the actual data is stored, but also the position of all
-the elements of the matrix. This would also takes more computation
-time and a dense matrix with regular optimized algorithms may do a
-better jobs. Other exemples depend on what would be done with the
-matrix and the structure of the matrix itself.
+Theano's sparse package provides efficient algorithms, but its use is not recommended 
+in all cases or for all matrices. As an obvious example, consider the case where
+the *sparsity proportion* if very low. The *sparsity proportion* refers to the
+ratio of the number of zero elements to the number of all elements in a matrix.
+A low sparsity proportion may result in the use of more space in memory
+since not only the actual data is stored, but also the position of nearly every
+element of the matrix. This would also require more computation
+time whereas a dense matrix representation along with regular optimized algorithms might do a
+better job. Other examples may be found at the nexus of the specific purpose and structure
+of the matrices.
 
-Since sparse matrices are not store in contiguous array, there is many
-way to represent them in memory. This is usually designated by the ``format``
-of the matrix. Theano sparse matrix package is based on the scipy
-sparse package, so all informations about the sparse matrices can be found
-in the scipy documentation. As scipy, Theano does not implement sparse for
-arrays with a number of dimension different of 2. 
+Since sparse matrices are not stored in contiguous arrays, there are several
+ways to represent them in memory. This is usually designated by the so-called ``format``
+of the matrix. Since Theano's sparse matrix package is based on the SciPy
+sparse package, complete information about sparse matrices can be found
+in the SciPy documentation. Like SciPy, Theano does not implement sparse formats for
+arrays with a number of dimensions different from two. 
 
-So far, theano implements two ``formats`` of sparse matrix: ``csc`` and ``csr``.
-They are almost the same format except ``csc`` is based on the columns of the
-matrix and ``csr`` is based on the rows. They both have the same purpose:
-provide efficient algorithms to make linear algebra operations. On the other
-hand, they fail to access their elements easily. That mean if you are planning
-to access elements of a sparse matrix a lot in your computation graph, maybe
+So far, Theano implements two ``formats`` of sparse matrix: ``csc`` and ``csr``.
+Those are almost identical except that ``csc`` is based on the *columns* of the
+matrix and ``csr`` is based on its *rows*. They both have the same purpose:
+to provide for the use of efficient algorithms performing linear algebra operations. A disadvantage is that 
+they fail to ensure easy access to the elements of the underlying matrix. This means that if you are planning
+to access elements of a sparse matrix a lot in your computational graph, perhaps
 a tensor variable could be a better choice.
 
-More documentation in the :ref:`Sparse Library Reference <libdoc_sparse>`.
+More documentation may be found in the :ref:`Sparse Library Reference <libdoc_sparse>`.
 
-Compressed sparse format
+Compressed Sparse Format
 ========================
 
-Compressed sparse formats are the ``format`` supported by Theano. There is two
-of them: one based on columns and one based on rows. They both have the same attributes:
-``data``, ``indices``, ``indptr`` and ``shape``. The ``shape`` atribute is exactly
-the same as the shape attribute of a dense matrix. It can be specified at the
-creation of a sparse matrix if the shape cannot be infered from the first
-three attributes.
+Theano supports two *compressed sparse formats*  ``csc`` and ``csr``, respectively based on columns
+and rows. They have both the same attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
 
-The ``data`` attribute is a one dimentionnal ndarray which contains all the
-non zeros elements of the sparse matrix. The ``indices`` and ``indptr``
-attribute are used to store the position of the data in the sparse matrix.
+  * The ``shape`` attribute is exactly the same as the ``shape`` attribute of a dense (i.e. generic)
+    matrix. It can be explicitly specified at the creation of a sparse matrix if it cannot be infered
+    from the first three attributes.
 
-Before going further, here is the import that is assumed for the rest of the
-tutorial.
+  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which contains all the non-zero
+    elements of the sparse matrix.
+
+  * The ``indices`` and ``indptr`` attributes are used to store the position of the data in the
+    sparse matrix.
+
+Before going further, here are the ``import`` statements that are assumed for the rest of the
+tutorial:
 
 >>> import theano
 >>> import numpy as np
@@ -66,12 +69,12 @@ tutorial.
 >>> from theano import tensor as T
 >>> from theano import sparse as S
 
-CSC matrix
+CSC Matrix
 ----------
 
-For the Compressed Sparse Column matrices, ``indices`` stands for the indices
+In the *Compressed Sparse Column* format, ``indices`` stands for the indices
 of the data along the column and ``indptr`` stands for the column index of the 
-matrix. The folowing exemple returns the i-th column of the matrix.
+matrix. The following example builds a matrix and returns its columns.
 
 >>> data = np.asarray([7, 8, 9])
 >>> indices = np.asarray([0, 1, 2])
@@ -86,19 +89,19 @@ matrix. The folowing exemple returns the i-th column of the matrix.
 [0, 1] [7, 8]
 >>> i = 1
 >>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[2] [3]
+[2] [9]
 >>> i = 2
 >>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
 [] []
 
-CSR matrix
+CSR Matrix
 ----------
 
-For the Compressed Sparse Row matrices, ``indices`` stands for the indices
+In the *Compressed Sparse Row* format, ``indices`` stands for the indices
 of the data along the row and ``indptr`` stands for the row index of the 
-matrix. The folowing exemple returns the i-th row of the matrix.
+matrix. The following example builds a matrix and returns its rows.
 
->>> data = np.asarray([1, 2, 3])
+>>> data = np.asarray([7, 8, 9])
 >>> indices = np.asarray([0, 1, 2])
 >>> indptr = np.asarray([0, 2, 3, 3])
 >>> m = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
@@ -111,37 +114,37 @@ matrix. The folowing exemple returns the i-th row of the matrix.
 [0, 1] [7, 8]
 >>> i = 1
 >>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[2] [3]
+[2] [9]
 >>> i = 2
 >>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
 [] []
 
 
-Handling sparse in Theano
+Handling Sparse in Theano
 =========================
 
-Most of the ops in Theano depends on the ``format`` of the sparse matrix.
-That is why there is two kinds of sparse variable: ``csc_matrix`` and 
-``csr_matrix``. These two constructors can be called with the usual name and
-specific dtype, but no broadcastable flags is allowed. This is forbiden 
-since sparse package does not provide any way to handle a number of
-dimension different of two. The set of all accepted dtypes for the sparse
+Most of the ops in Theano depend on the ``format`` of the sparse matrix.
+That is why there are two kinds of constructors of sparse variables: ``csc_matrix`` and 
+``csr_matrix``. These can be called with the usual ``name`` and
+``dtype`` parameters, but no ``broadcastable`` flags are allowed. This is forbidden 
+since the sparse package does not provide any way to handle a number of
+dimensions different from two. The set of all accepted ``dtype`` for the sparse
 matrices can be found in ``sparse.all_dtypes``.
 
 >>> S.all_dtypes
 set(['int32', 'int16', 'float64', 'complex128', 'complex64', 'int64', 'int8', 'float32'])
 
-Properties and construction
+Properties and Construction
 ---------------------------
 
-Sparse variable does not provide direct access to its properties, but
-this can be done using the ``csm_properties`` function. This will return
-a tuple of one dimensionnal tensor variable that represent the internal
+Although sparse variables do not allow direct access to their properties, 
+this can be accomplished using the ``csm_properties`` function. This will return
+a tuple of one-dimensional ``tensor`` variable that represents the internal characteristics
 of the sparse matrix.
 
-In order to reconstruct a sparse matrix from some properties, ``CSC``
+In order to reconstruct a sparse matrix from some properties, the functions ``CSC``
 and ``CSR`` can be used. This will create the sparse matrix in the desired
-format. As an example, the folowing code reconstructs a ``csc`` matrix into
+format. As an example, the following code reconstructs a ``csc`` matrix into
 a ``csr`` one.
 
 >>> x = S.csc_matrix(name='x', dtype='int64')
@@ -158,30 +161,30 @@ a ``csr`` one.
  [1 0 0]
  [1 0 0]]
 
-The last example show that one format can be obtained by transposition of
-the other. In fact, when calling the ``transpose`` function,
-the format of the resulting matrix will not be the same as the one
-in input.
+The last example shows that one format can be obtained from transposition of
+the other. Indeed, when calling the ``transpose`` function,
+the sparse characteristics of the resulting matrix cannot be the same as the one
+provided as input.
 
-To and fro
+To and Fro
 ----------
 
-To move back and forth from dense matrix to sparse matrix, theano
-provide the ``dense_from_sparse``, ``csr_from_dense`` and 
-``csc_from_dense`` functions. No details must be added; here is 
-an example that does completly nothing.
+To move back and forth from a dense matrix to a sparse matrix representation, Theano
+provides the ``dense_from_sparse``, ``csr_from_dense`` and 
+``csc_from_dense`` functions. No additional detail must be provided. Here is 
+an example that performs a full cycle from sparse to sparse:
 
 >>> x = S.csc_matrix(name='x', dtype='float32')
 >>> y = S.dense_from_sparse(x)
 >>> z = S.csc_from_dense(y)
 
-Structured operation
+Structured Operation
 --------------------
 
-Many ops are set to make use of the very peculiar structure of the sparse
-matrices. These ops are said structured and they simply do not make any
-computation to the zeros elements of the matrix. They can be tough as being
-apply only on the data attribute of the sparse matrix.
+Several ops are set to make use of the very peculiar structure of the sparse
+matrices. These ops are said to be *structured* and simply do not perform any
+computations on the zero elements of the sparse matrix. They can be thought as being
+applied only to the data attribute of the latter.
 
 >>> x = S.csc_matrix(name='x', dtype='float32')
 >>> y = S.structured_add(x, 2)
@@ -199,11 +202,11 @@ apply only on the data attribute of the sparse matrix.
 Gradient
 --------
 
-The gradient of the sparse ops can also be structured. Some ops provide
-a way to change if the grad is structured or not and the documentation can
-be used to determine if the grad of an op is regular or structured or the
-implementation can be modify. When a structured grad is calculated, the
-computation is done only for the non zeros elements of the sparse matrix.
+The gradients of the ops in the sparse module can also be structured. Some ops provide
+a *flag* to indicate if the gradient is to be structured or not. The documentation can
+be used to determine if the gradient of an op is regular or structured or if its
+implementation can be modified. Similarly to structured ops, when a structured gradient is calculated, the
+computation is done only for the non-zero elements of the sparse matrix.
 
-More documentation about the grad of specific ops is in the
+More documentation regarding the gradients of specific ops can be found in the
 :ref:`Sparse Library Reference <libdoc_sparse>`.
