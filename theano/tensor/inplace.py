@@ -132,6 +132,10 @@ def floor_inplace(a):
     """floor of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def trunc_inplace(a):
+    """trunc of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def round_half_to_even_inplace(a):
     """round_half_to_even_inplace(a) (inplace on `a`)"""
 

@@ -2636,6 +2636,11 @@ def floor(a):
     """floor of a"""
 
 
+@_scal_elemwise_with_nfunc('trunc', 1, 1)
+def trunc(a):
+    """trunc of a"""
+
+
 @constructor
 def iround(a, mode="half_away_from_zero"):
     """cast(round(a,mode),'int64')"""
