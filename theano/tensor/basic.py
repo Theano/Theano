@@ -5326,7 +5326,7 @@ class Reshape(Op):
         return [tuple(oshape)]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
@@ -5350,10 +5350,17 @@ class Reshape(Op):
                         %(shp)s->data + ii * %(shp)s->strides[0]))[0];
             }
             Py_XDECREF(%(z)s);
-            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, NPY_ANYORDER);
+            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, PyArray_CORDER);
+            if (!%(z)s)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "Could not reshape array.");
+                %(fail)s;
+            }
             """ % locals()
         else:
             return Op.c_code(self, node, name, inputs, outputs, sub)
+
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:

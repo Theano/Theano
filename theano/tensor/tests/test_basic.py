@@ -4335,7 +4335,16 @@ class T_reshape(unittest.TestCase):
         #basic to 1 dim(without list)
         c = reshape(b, as_tensor_variable(6), ndim=1)
         f = inplace_func([b], c)
-        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
+
+        b_val1 = numpy.asarray([[0,1,2],[3,4,5]])
+        c_val1 = numpy.asarray([0,1,2,3,4,5])
+        b_val2 = b_val1.T
+        c_val2 = numpy.asarray([0,3,1,4,2,5])
+
+        f_out1 = f(b_val1)
+        f_out2 = f(b_val2)
+        assert numpy.all(f_out1 == c_val1), (f_out1, c_val1)
+        assert numpy.all(f_out2 == c_val2), (f_out2, c_val2)
         #print f.maker.fgraph.toposort()
         #check that we remove the useless reshape
 
