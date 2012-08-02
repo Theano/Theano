@@ -148,6 +148,14 @@ def sqrt_inplace(a):
     """square root of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def deg2rad_inplace(a):
+    """convert degree `a` to radian(inplace on `a`)"""
+
+@_scal_inplace
+def rad2deg_inplace(a):
+    """convert radian `a` to degree(inplace on `a`)"""
+
+@_scal_inplace
 def cos_inplace(a):
     """cosine of `a` (inplace on `a`)"""
 
