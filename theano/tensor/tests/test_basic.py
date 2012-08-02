@@ -1790,7 +1790,8 @@ class T_max_and_argmax(unittest.TestCase):
         data = rand(2, 3)
         n = as_tensor_variable(data)
         for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
-                                 ([0, 1], None), ([1, 0], None)]:
+                                 ([0, 1], None), ([1, 0], None),
+                                 (constant(0), 0)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'
             self.assertTrue(numpy.all(v == numpy.max(data, np_axis)))

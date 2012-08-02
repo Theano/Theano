@@ -300,10 +300,6 @@ class NVCC_compiler(object):
         finally:
             os.chdir(orig_dir)
 
-        if nvcc_stdout:
-            # this doesn't happen to my knowledge
-            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
-
         for eline in nvcc_stderr.split('\n'):
             if not eline:
                 continue
@@ -334,10 +330,15 @@ class NVCC_compiler(object):
                 except Exception:
                     pass
                 print >> sys.stderr, l
+            print nvcc_stdout
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print nvcc_stdout
+
+        if nvcc_stdout:
+            # this doesn't happen to my knowledge
+            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
 
         #touch the __init__ file
         file(os.path.join(location, "__init__.py"), 'w').close()
