@@ -2033,6 +2033,44 @@ class Sqrt(UnaryScalarOp):
 sqrt = Sqrt(upgrade_to_float, name='sqrt')
 
 
+class Deg2Rad(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.deg2rad(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz * numpy.pi / 180,
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = %(x)s * M_PI / 180.0;" % locals()
+deg2rad = Deg2Rad(upgrade_to_float, name='deg2rad')
+
+
+class Rad2Deg(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.rad2deg(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz * 180. / numpy.pi,
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = %(x)s * 180.0 / M_PI;" % locals()
+rad2deg = Rad2Deg(upgrade_to_float, name='rad2deg')
+
+
 class Cos(UnaryScalarOp):
     def impl(self, x):
         return numpy.cos(x)
