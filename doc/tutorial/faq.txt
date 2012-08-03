@@ -33,3 +33,8 @@ You can enable faster gcc optimization with the cxxflags. This list of flags was
 
 Use it at your own risk. Some people warned that the -ftree-loop-distribution optimization caused them wrong results in the past.
 Also the -march=native must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.
+
+Related Projects
+----------------
+
+We try to list in this `wiki page <https://github.com/Theano/Theano/wiki/Related-projects>`_ other Theano related projects.
