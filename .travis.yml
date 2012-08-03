@@ -7,6 +7,7 @@ python:
 install:
 #If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install numpy --use-mirrors"
-  - "pip install . --use-mirrors"
+#We can't install SciPy as there is no BLAS installed.
+  - "pip install . --no-deps --use-mirrors"
 # command to run tests
 script: theano-nose
