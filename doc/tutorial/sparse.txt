@@ -192,7 +192,8 @@ Structured Operation
 Several ops are set to make use of the very peculiar structure of the sparse
 matrices. These ops are said to be *structured* and simply do not perform any
 computations on the zero elements of the sparse matrix. They can be thought as being
-applied only to the data attribute of the latter.
+applied only to the data attribute of the latter. Note that these structured ops
+provide a structured gradient. More explication below.
 
 >>> x = sparse.csc_matrix(name='x', dtype='float32')
 >>> y = sparse.structured_add(x, 2)
