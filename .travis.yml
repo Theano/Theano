@@ -4,6 +4,9 @@ python:
 #  - "2.7"
 #  - "3.2"
 # command to install dependencies
-install: "pip install . --use-mirrors"
+install:
+#If we don't install numpy before SciPy Scipy 0.10.1 build fail.
+  - "pip install numpy --use-mirrors"
+  - "pip install . --use-mirrors"
 # command to run tests
 script: theano-nose
