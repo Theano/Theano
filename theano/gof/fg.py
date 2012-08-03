@@ -575,9 +575,8 @@ class FunctionGraph(utils.object2):
         This is used primarily by the destroy_handler feature to ensure that all
         clients of any destroyed inputs have already computed their outputs.
 
-        :note: This only call the orderings() fct on all features. It don't take
-               care of computation dependencies by itself.
-               Do the DestroyHandler take orderings() fct take care of this?
+        :note: This only calls the orderings() fct on all features. It does not
+               take care of computation dependencies by itself.
 
         """
         ords = {}
