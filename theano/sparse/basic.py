@@ -159,8 +159,8 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     :param pt: List of inputs to realize the tests.
     :param structured: True to tests with a structured grad,
                        False otherwise.
-    :param *args: Other `verify_grad` parameters if any.
-    :param **kwargs: Other `verify_grad` keywords if any.
+    :param args: Other `verify_grad` parameters if any.
+    :param kwargs: Other `verify_grad` keywords if any.
 
     :return: None
     """
@@ -543,9 +543,8 @@ class CSMProperties(gof.Op):
     :return: (data, indices, indptr, shape), the properties
              of `csm`.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
-    - `infer_shape` method is not available for this op.
+    :note: The grad implemented is regular, i.e. not structured.
+           `infer_shape` method is not available for this op.
     """
 
     # NOTE
@@ -653,9 +652,8 @@ class CSM(gof.Op):
     :return: A sparse matrix having the properties
              speficied by the inputs.
 
-    :note:
-    - The grad method returns a dense vector, so it provide
-      a regular grad.
+    :note: The grad method returns a dense vector, so it provide
+           a regular grad.
     """
 
     # should view the other inputs too, but viewing multiple inputs is not
@@ -968,8 +966,8 @@ class Cast(gof.op.Op):
 
     :return: Same as `x` but having `out_type` as dtype.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not
+           structured.
     """
 
     def __init__(self, out_type):
@@ -1026,12 +1024,11 @@ class DenseFromSparse(gof.op.Op):
 
     :return: A dense matrix, the same as `x`.
 
-    :note:
-    - The grad implementation can be controlled
-      through the constructor via the `structured`
-      parameter. `True` will provide a structured
-      grad while `False` will provide a regular
-      grad. By default, the grad is structured.
+    :note: The grad implementation can be controlled
+           through the constructor via the `structured`
+           parameter. `True` will provide a structured
+           grad while `False` will provide a regular
+           grad. By default, the grad is structured.
     """
 
     def __init__(self, structured=True):
@@ -1090,11 +1087,10 @@ class SparseFromDense(gof.op.Op):
     :return: The same as `x` in a sparse matrix
              format.
 
-    :note:
-    - The grad implementation is regular, i.e.
-      not structured.
-    - The output sparse format can also be controlled
-      via the `format` parameter in the constructor.
+    :note: The grad implementation is regular, i.e.
+           not structured.
+    :note: The output sparse format can also be controlled
+           via the `format` parameter in the constructor.
     """
 
     def __init__(self, format):
@@ -1171,8 +1167,7 @@ class GetItem2d(gof.op.Op):
 
     :return: The slice corresponding in `x`.
 
-    :note:
-    - The grad is not implemented for this op.
+    :note: The grad is not implemented for this op.
     """
 
     def __eq__(self, other):
@@ -1269,8 +1264,7 @@ class GetItemScalar(gof.op.Op):
 
     :return: The item corresponding in `x`.
 
-    :note:
-    - The grad is not implemented for this op.
+    :note:  The grad is not implemented for this op.
     """
 
     def __eq__(self, other):
@@ -1324,11 +1318,11 @@ class Transpose(gof.op.Op):
 
     :return: `x` transposed.
 
-    :note:
-    - The returned matrix will not be in the same format. `csc`
-      matrix will be changed in `csr` matrix and `csr` matrix in
-      `csc` matrix.
-    - The grad is regular, i.e. not structured.
+    :note: The returned matrix will not be in the
+           same format. `csc` matrix will be changed
+           in `csr` matrix and `csr` matrix in `csc`
+           matrix.
+    :note: The grad is regular, i.e. not structured.
     """
 
     format_map = {'csr': 'csc',
@@ -1371,8 +1365,7 @@ class Neg(gof.op.Op):
 
     :return: -`x`.
 
-    :note:
-    - The grad is regular, i.e. not structured.
+    :note: The grad is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -1413,8 +1406,7 @@ class ColScaleCSC(gof.op.Op):
     #          each column had been multiply by the corresponding
     #          element of `s`.
 
-    # :note:
-    # - The grad implemented is structured.
+    # :note: The grad implemented is structured.
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -1461,8 +1453,7 @@ class RowScaleCSC(gof.op.Op):
     #          each row had been multiply by the corresponding
     #          element of `s`.
 
-    # :note:
-    # - The grad implemented is structured.
+    # :note: The grad implemented is structured.
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -1511,8 +1502,7 @@ def col_scale(x, s):
              each column had been multiply by the corresponding
              element of `s`.
 
-    :note:
-    - The grad implemented is structured.
+    :note:  The grad implemented is structured.
     """
 
     if x.format == 'csc':
@@ -1535,8 +1525,7 @@ def row_scale(x, s):
              each row had been multiply by the corresponding
              element of `s`.
 
-    :note:
-    - The grad implemented is structured.
+    :note:  The grad implemented is structured.
     """
     return col_scale(x.T, s).T
 
@@ -1554,13 +1543,12 @@ class SpSum(gof.op.Op):
 
     :return: The sum of `x` in a dense format.
 
-    :note:
-    - The grad implementation is controlled with the `sparse_grad`
-      parameter. `True` will provide a structured grad and `False`
-      will provide a regular grad. For both choice, the grad
-      return a sparse matrix having the same format as `x`.
-    - This op does not return a sparse matrix, but a dense tensor
-      matrix.
+    :note: The grad implementation is controlled with the `sparse_grad`
+           parameter. `True` will provide a structured grad and `False`
+           will provide a regular grad. For both choice, the grad
+           return a sparse matrix having the same format as `x`.
+    :note: This op does not return a sparse matrix, but a dense tensor
+           matrix.
     """
 
     def __init__(self, axis=None, sparse_grad=True):
@@ -1658,9 +1646,8 @@ class Diag(gof.op.Op):
 
     :return: A dense vector representing the diagonal elements.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured, since
-      the output is a dense vector.
+    :note: The grad implemented is regular, i.e. not structured, since
+           the output is a dense vector.
     """
 
     def __eq__(self, other):
@@ -1698,8 +1685,7 @@ class SquareDiagonal(gof.op.Op):
 
     :return: A sparse matrix having `x` as diagonal.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -1750,8 +1736,7 @@ class EnsureSortedIndices(gof.op.Op):
 
     :return: The same as `x` with indices sorted.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, inplace):
@@ -1802,8 +1787,7 @@ def clean(x):
     :return: The same as `x` with indices sorted and zeros
              removed.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
     return ensure_sorted_indices(remove0(x))
 
@@ -1816,8 +1800,7 @@ class AddSS(gof.op.Op):
 
     :return: `x`+`y`
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -1866,9 +1849,9 @@ class AddSSData(gof.op.Op):
 
     :return: The sum of the two sparse matrix element wise.
 
-    :note:
-    - `x` and `y` are assumed to have the same sparsity pattern.
-    - The grad implemented is structured.
+    :note: `x` and `y` are assumed to have the same
+           sparsity pattern.
+    :note: The grad implemented is structured.
     """
 
     def __eq__(self, other):
@@ -1917,8 +1900,7 @@ class AddSD(gof.op.Op):
 
     :return: `x`+`y`
 
-    :note:
-    - The grad implemented is structured on `x`.
+    :note: The grad implemented is structured on `x`.
     """
 
     def __eq__(self, other):
@@ -2026,10 +2008,9 @@ class StructuredAddSVCSR(gof.Op):
     # :return: A sparse matrix containing the addition of the vector to
     #          the data of the sparse matrix.
 
-    # :note:
-    # - The a_* are the properties of a sparse matrix in csr
-    #   format.
-    # - This op is used as an optimization for StructuredAddSV.
+    # :note: The a_* are the properties of a sparse matrix in csr
+    #        format.
+    # :note: This op is used as an optimization for StructuredAddSV.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -2145,10 +2126,9 @@ def add(x, y):
 
     :return: `x` + `y`
 
-    :note:
-    - At least one of `x` and `y` must be a sparse matrix.
-    - The grad will be structured only when one of the variable
-      will be a dense matrix.
+    :note: At least one of `x` and `y` must be a sparse matrix.
+    :note: The grad will be structured only when one of the
+           variable will be a dense matrix.
     """
 
     if hasattr(x, 'getnnz'):
@@ -2181,10 +2161,9 @@ def sub(x, y):
 
     :return: `x` - `y`
 
-    :note:
-    - At least one of `x` and `y` must be a sparse matrix.
-    - The grad will be structured only when one of the variable
-      will be a dense matrix.
+    :note: At least one of `x` and `y` must be a sparse matrix.
+    :note: The grad will be structured only when one of the variable
+           will be a dense matrix.
     """
 
     return x + (-y)
@@ -2198,8 +2177,7 @@ class MulSS(gof.op.Op):
 
     :return: `x` * `y`
 
-    :note:
-    - At least one of `x` and `y` must be a sparse matrix.
+    :note: At least one of `x` and `y` must be a sparse matrix.
     """
 
     def __eq__(self, other):
@@ -2242,8 +2220,7 @@ class MulSD(gof.op.Op):
 
     :return: `x` * `y`
 
-    :note:
-    - The grad is regular, i.e. not structured..
+    :note: The grad is regular, i.e. not structured..
     """
 
     def __eq__(self, other):
@@ -2336,12 +2313,11 @@ class MulSDCSC(gof.Op):
 
     # :return: The multiplication of the two matrix element wise.
 
-    # :note:
-    # - `a_data`, `a_indices` and `a_indptr` must be the properties
-    #   of a sparse matrix in csc format.
-    # - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-    #   cannot be a complex type.
-    # - This op is used as an optimization of mul_s_d.
+    # :note: `a_data`, `a_indices` and `a_indptr` must be the properties
+    #         of a sparse matrix in csc format.
+    # :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+    #        cannot be a complex type.
+    # :note: This op is used as an optimization of mul_s_d.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -2450,12 +2426,11 @@ class MulSDCSR(gof.Op):
 
     # :return: The multiplication of the two matrix element wise.
 
-    # :note:
-    # - `a_data`, `a_indices` and `a_indptr` must be the properties
-    #   of a sparse matrix in csr format.
-    # - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-    #   cannot be a complex type.
-    # - This op is used as an optimization of mul_s_d.
+    # :note: `a_data`, `a_indices` and `a_indptr` must be the properties
+    #         of a sparse matrix in csr format.
+    # :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+    #        cannot be a complex type.
+    # :note: This op is used as an optimization of mul_s_d.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -2562,8 +2537,7 @@ class MulSV(gof.op.Op):
 
     :Return: The product x * y element wise.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -2614,12 +2588,11 @@ class MulSVCSR(gof.Op):
 
     # :return: The multiplication of the two matrix element wise.
 
-    # :note:
-    # - `a_data`, `a_indices` and `a_indptr` must be the properties
-    #   of a sparse matrix in csr format.
-    # - The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-    #   cannot be a complex type.
-    # - This op is used as an optimization of MulSV.
+    # :note: `a_data`, `a_indices` and `a_indptr` must be the properties
+    #         of a sparse matrix in csr format.
+    # :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+    #        cannot be a complex type.
+    # :note: This op is used as an optimization of MulSV.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -2724,9 +2697,8 @@ def mul(x, y):
 
     :return: `x` + `y`
 
-    :note:
-    - At least one of `x` and `y` must be a sparse matrix.
-    - The grad is regular, i.e. not structured.
+    :note: At least one of `x` and `y` must be a sparse matrix.
+    :note: The grad is regular, i.e. not structured.
     """
 
     x = as_sparse_or_tensor_variable(x)
@@ -2756,9 +2728,8 @@ class HStack(gof.op.Op):
 
     :return: The concatenation of the sparse arrays column wise.
 
-    :note:
-    - The number of line of the sparse matrix must agree.
-    - The grad implemented is regular, i.e. not structured.
+    :note: The number of line of the sparse matrix must agree.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, format=None, dtype=None):
@@ -2838,9 +2809,8 @@ def hstack(blocks, format=None, dtype=None):
 
     :return: The concatenation of the sparse array column wise.
 
-    :note:
-    - The number of line of the sparse matrix must agree.
-    - The grad implemented is regular, i.e. not structured.
+    :note: The number of line of the sparse matrix must agree.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     blocks = [as_sparse_variable(i) for i in blocks]
@@ -2859,9 +2829,8 @@ class VStack(HStack):
 
     :return: The concatenation of the sparse arrays row wise.
 
-    :note:
-    - The number of column of the sparse matrix must agree.
-    - The grad implemented is regular, i.e. not structured.
+    :note: The number of column of the sparse matrix must agree.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def perform(self, node, block, (out, )):
@@ -2912,9 +2881,8 @@ def vstack(blocks, format=None, dtype=None):
 
     :return: The concatenation of the sparse array row wise.
 
-    :note:
-    - The number of column of the sparse matrix must agree.
-    - The grad implemented is regular, i.e. not structured.
+    :note: The number of column of the sparse matrix must agree.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     blocks = [as_sparse_variable(i) for i in blocks]
@@ -2924,8 +2892,14 @@ def vstack(blocks, format=None, dtype=None):
 
 
 class Remove0(gof.Op):
-    """
-    Remove explicit zeros from a sparse matrix, and resort indices
+    """Remove explicit zeros from a sparse matrix, and
+    resort indices.
+
+    :param x: Sparse matrix.
+
+    :return: Exactly `x` but with a data attribute
+             exempt of zeros.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __init__(self, inplace=False, *args, **kwargs):
@@ -3207,8 +3181,7 @@ class StructuredDot(gof.Op):
 
     :return: The dot product of `a` and `b`.
 
-    :note:
-    - The grad implemented is structured.
+    :note: The grad implemented is structured.
     """
 
     def __eq__(self, other):
@@ -3303,8 +3276,7 @@ def structured_dot(x, y):
 
     :return: The dot product of `a` and `b`.
 
-    :note:
-    - The grad implemented is structured.
+    :note: The grad implemented is structured.
     """
 
     # @todo: Maybe the triple-transposition formulation (when x is dense)
@@ -3342,9 +3314,8 @@ class StructuredDotCSC(gof.Op):
 
     # :return: The dot product of `a` and `b`.
 
-    # :note:
-    # - The grad implemented is structured.
-    # - This op is used as an optimization for StructuredDot.
+    # :note: The grad implemented is structured.
+    # :note: This op is used as an optimization for StructuredDot.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -3532,9 +3503,8 @@ class StructuredDotCSR(gof.Op):
 
     # :return: The dot product of `a` and `b`.
 
-    # :note:
-    # - The grad implemented is structured.
-    # - This op is used as an optimization for StructuredDot.
+    # :note: The grad implemented is structured.
+    # :note: This op is used as an optimization for StructuredDot.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -3704,8 +3674,7 @@ class SamplingDot(gof.op.Op):
     :return: A dense matrix containing the dot product of `x` by `y`.T only
              where `p` is 1.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
@@ -3784,11 +3753,10 @@ class SamplingDotCSR(gof.Op):
     # :return: A dense matrix containing the dot product of `x` by `y`.T only
     #          where `p` is 1.
 
-    # :note:
-    # - If we have the input of mixed dtype, we insert cast elemwise
-    #   in the graph to be able to call blas function as they don't
-    #   allow mixed dtype.
-    # - This op is used as an optimization for SamplingDot.
+    # :note: If we have the input of mixed dtype, we insert cast elemwise
+    #        in the graph to be able to call blas function as they don't
+    #        allow mixed dtype.
+    # :note: This op is used as an optimization for SamplingDot.
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -4028,10 +3996,9 @@ class StructuredDotGradCSC(gof.Op):
     # :return: The grad of `a`.`b` for `a` accumulated
     #          with g_ab.
 
-    # :note:
-    # - The grad implemented is structured.
-    # - a_* are the corresponding properties of a sparse
-    #   matrix in csc format.
+    # :note: The grad implemented is structured.
+    # :note: a_* are the corresponding properties of a sparse
+    #        matrix in csc format.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -4164,10 +4131,9 @@ class StructuredDotGradCSR(gof.Op):
     # :return: The grad of `a`.`b` for `a` accumulated
     #          with g_ab.
 
-    # :note:
-    # - The grad implemented is structured.
-    # - a_* are the corresponding properties of a sparse
-    #   matrix in csr format.
+    # :note: The grad implemented is structured.
+    # :note: a_* are the corresponding properties of a sparse
+    #        matrix in csr format.
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -4302,9 +4268,8 @@ class Dot(gof.op.Op):
 
     :return: The dot product `x`.`y` in a dense format.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
-    - At least one of `x` or `y` must be a sparse matrix.
+    :note: The grad implemented is regular, i.e. not structured.
+    :note: At least one of `x` or `y` must be a sparse matrix.
     """
 
     def __eq__(self, other):
@@ -4381,9 +4346,8 @@ def dot(x, y):
 
     :return: The dot product `x`.`y` in a dense format.
 
-    :note:
-    - The grad implemented is regular, i.e. not structured.
-    - At least one of `x` or `y` must be a sparse matrix.
+    :note: The grad implemented is regular, i.e. not structured.
+    :note: At least one of `x` or `y` must be a sparse matrix.
     """
 
     if hasattr(x, 'getnnz'):
@@ -4410,9 +4374,8 @@ class Usmm(gof.op.Op):
 
     :return: The dense matrix resulting from `alpha` * `x` `y` + `z`.
 
-    :note:
-    - The grad is not implemented for this op.
-    - At least one of `x` or `y` must be a sparse matrix.
+    :note: The grad is not implemented for this op.
+    :note: At least one of `x` or `y` must be a sparse matrix.
     """
 
     # We don't implement the infer_shape as it is
@@ -4484,10 +4447,9 @@ class UsmmCscDense(gof.Op):
 
     # :return: The dense matrix resulting from `alpha` * `x` `y` + `z`.
 
-    # :note:
-    # - The grad is not implemented for this op.
-    # - Optimized version os Usmm when `x` is in csc format and
-    #   `y` is dense.
+    # :note: The grad is not implemented for this op.
+    # :note: Optimized version os Usmm when `x` is in csc format and
+    #        `y` is dense.
 
     def __init__(self, inplace):
         self.inplace = inplace
