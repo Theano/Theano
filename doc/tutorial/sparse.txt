@@ -73,9 +73,12 @@ tutorial:
 CSC Matrix
 ----------
 
-In the *Compressed Sparse Column* format, ``indices`` stands for the indices
-of the data along the column and ``indptr`` stands for the column index of the 
-matrix. The following example builds a matrix and returns its columns.
+In the *Compressed Sparse Column* format, ``indices`` stands for the column index
+of the data and ``indptr`` tells where the column starts in the ``data`` and in the
+``indices`` attributes. ``indptr`` can be tought as giving the slice which must be
+applied to the other attribute in order to get each column of the matrix. The following
+example builds a matrix and returns its columns. It prints the i-th column indexes in the
+first list and their corresponding value in the second list.
 
 >>> data = np.asarray([7, 8, 9])
 >>> indices = np.asarray([0, 1, 2])
@@ -98,9 +101,12 @@ matrix. The following example builds a matrix and returns its columns.
 CSR Matrix
 ----------
 
-In the *Compressed Sparse Row* format, ``indices`` stands for the indices
-of the data along the row and ``indptr`` stands for the row index of the 
-matrix. The following example builds a matrix and returns its rows.
+In the *Compressed Sparse Row* format, ``indices`` stands for the row index
+of the data and ``indptr`` tells where the row starts in the ``data`` and in the
+``indices`` attributes. ``indptr`` can be tought as giving the slice which must be
+applied to the other attribute in order to get each row of the matrix. The following
+example builds a matrix and returns its rows. It prints the i-th row indexes in the
+first list and their corresponding values in the second list.
 
 >>> data = np.asarray([7, 8, 9])
 >>> indices = np.asarray([0, 1, 2])
@@ -125,22 +131,35 @@ Handling Sparse in Theano
 =========================
 
 Most of the ops in Theano depend on the ``format`` of the sparse matrix.
-That is why there are two kinds of constructors of sparse variables: ``csc_matrix`` and 
-``csr_matrix``. These can be called with the usual ``name`` and
-``dtype`` parameters, but no ``broadcastable`` flags are allowed. This is forbidden 
-since the sparse package does not provide any way to handle a number of
-dimensions different from two. The set of all accepted ``dtype`` for the sparse
-matrices can be found in ``sparse.all_dtypes``.
+That is why there are two kinds of constructors of sparse variables:
+``csc_matrix`` and ``csr_matrix``. These can be called with the usual
+``name`` and ``dtype`` parameters, but no ``broadcastable`` flags are
+allowed. This is forbidden since the sparse package, as the SciPy sparse module,
+does not provide any way to handle a number of dimensions different from two.
+The set of all accepted ``dtype`` for the sparse matrices can be found in
+``sparse.all_dtypes``.
 
 >>> sparse.all_dtypes
-set(['int32', 'int16', 'float64', 'complex128', 'complex64', 'int64', 'int8', 'float32'])
+set(['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'complex64', 'complex128'])
+
+To and Fro
+----------
+
+To move back and forth from a dense matrix to a sparse matrix representation, Theano
+provides the ``dense_from_sparse``, ``csr_from_dense`` and
+``csc_from_dense`` functions. No additional detail must be provided. Here is
+an example that performs a full cycle from sparse to sparse:
+
+>>> x = sparse.csc_matrix(name='x', dtype='float32')
+>>> y = sparse.dense_from_sparse(x)
+>>> z = sparse.csc_from_dense(y)
 
 Properties and Construction
 ---------------------------
 
 Although sparse variables do not allow direct access to their properties, 
 this can be accomplished using the ``csm_properties`` function. This will return
-a tuple of one-dimensional ``tensor`` variable that represents the internal characteristics
+a tuple of one-dimensional ``tensor`` variables that represents the internal characteristics
 of the sparse matrix.
 
 In order to reconstruct a sparse matrix from some properties, the functions ``CSC``
@@ -166,18 +185,6 @@ The last example shows that one format can be obtained from transposition of
 the other. Indeed, when calling the ``transpose`` function,
 the sparse characteristics of the resulting matrix cannot be the same as the one
 provided as input.
-
-To and Fro
-----------
-
-To move back and forth from a dense matrix to a sparse matrix representation, Theano
-provides the ``dense_from_sparse``, ``csr_from_dense`` and 
-``csc_from_dense`` functions. No additional detail must be provided. Here is 
-an example that performs a full cycle from sparse to sparse:
-
->>> x = sparse.csc_matrix(name='x', dtype='float32')
->>> y = sparse.dense_from_sparse(x)
->>> z = sparse.csc_from_dense(y)
 
 Structured Operation
 --------------------
