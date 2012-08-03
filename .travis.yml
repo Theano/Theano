@@ -5,7 +5,7 @@ python:
 #  - "3.2"
 # command to install dependencies
 install:
-#If we don't install numpy before SciPy Scipy 0.10.1 build fail.
+#If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install numpy --use-mirrors"
   - "pip install . --use-mirrors"
 # command to run tests
