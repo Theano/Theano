@@ -60,8 +60,8 @@ Environment Variables
 .. envvar:: THEANORC
 
     The location[s] of the .theanorc file[s] in ConfigParser format.
-    It defaults to ``$HOME/.theanorc``. On Windows, it defalt to
-    ``$HOME/.theanorc:$HOME/.theanorc.txt`` to make Windows users life
+    It defaults to ``$HOME/.theanorc``. On Windows, it defaults to
+    ``$HOME/.theanorc:$HOME/.theanorc.txt`` to make Windows users' life
     easier.
 
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:

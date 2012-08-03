@@ -536,7 +536,7 @@ Then you must install g++. You can do this by installing XCode. See the first bu
    If you use the trunk or version 0.6 or later of Theano, we try to
    automaticaly link with the EPD blas version.  Due to Mac OS
    peculiarities, we need a user intervention to do it.  We detect
-   if the user did the modification and if not, we tell him how todo
+   if the user did the modification and if not, we tell him how to do
    it.
 
 .. _macports:

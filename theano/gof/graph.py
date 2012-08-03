@@ -239,13 +239,13 @@ class Variable(utils.object2):
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
-    - `TensorVariable` subclass of Variable that represent numpy.ndarray object
+    - `TensorVariable` subclass of Variable that represents a numpy.ndarray object
 
     - `SharedTensorVariable` Shared version of TensorVariable
 
-    - `SparseVariable` subclass of Variable that represent scipy.sparse.{csc,csr}_matrix object
+    - `SparseVariable` subclass of Variable that represents a scipy.sparse.{csc,csr}_matrix object
 
-    - `CudaNdarrayVariable` subclass of Variable that represent our object on the GPU that is a subset of numpy.ndarray
+    - `CudaNdarrayVariable` subclass of Variable that represents our object on the GPU that is a subset of numpy.ndarray
 
     - `RandomVariable`
 
