@@ -2050,14 +2050,14 @@ class Deg2Rad(UnaryScalarOp):
         if gz.type in complex_types:
             raise NotImplementedError()
         if x.type in float_types:
-            return gz * numpy.pi / 180,
+            return gz * numpy.asarray(numpy.pi / 180, gz.type),
         else:
             return None,
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = %(x)s * M_PI / 180.0;" % locals()
+        return "%(z)s = %(x)s * (M_PI / 180.0);" % locals()
 deg2rad = Deg2Rad(upgrade_to_float, name='deg2rad')
 
 
@@ -2069,14 +2069,14 @@ class Rad2Deg(UnaryScalarOp):
         if gz.type in complex_types:
             raise NotImplementedError()
         if x.type in float_types:
-            return gz * 180. / numpy.pi,
+            return gz * numpy.asarray(180. / numpy.pi, gz.type),
         else:
             return None,
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = %(x)s * 180.0 / M_PI;" % locals()
+        return "%(z)s = %(x)s * (180.0 / M_PI);" % locals()
 rad2deg = Rad2Deg(upgrade_to_float, name='rad2deg')
 
 
