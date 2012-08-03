@@ -1,7 +1,7 @@
 """
-This file define Theano flags, but we define them later in the import order.
+This file defines Theano flags which need to be defined late in import order.
 
-This is needed as we need to have parsed the previous
+This is needed as they rely on the values of other previously-defined flags.
 """
 
 import os
@@ -49,8 +49,8 @@ else:
 dummy_stdin = open(os.devnull)
 
 if default_openmp and theano.configdefaults.gxx_avail:
-    #check if g++ support openmp. We need to compile a file as the EPD
-    #version have openmp enabled in the specs file but do not include
+    #check if g++ supports openmp. We need to compile a file as the EPD
+    #version has openmp enabled in the specs file but does not include
     #the OpenMP files.
     try:
         code = """
@@ -68,6 +68,7 @@ int main( int argc, const char* argv[] )
         try:
             os.write(fd, code)
             os.close(fd)
+            fd = None
             proc = subprocess.Popen(['g++', '-fopenmp', path],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
@@ -76,7 +77,12 @@ int main( int argc, const char* argv[] )
             if proc.returncode != 0:
                 default_openmp = False
         finally:
-            os.remove(path)
+            # Ensure `fd` is closed before we remove the temporary file.
+            try:
+                if fd is not None:
+                    os.close(fd)
+            finally:
+                os.remove(path)
     except OSError, e:
         default_openmp = False
 

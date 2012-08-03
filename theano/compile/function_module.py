@@ -956,17 +956,17 @@ class FunctionMaker(object):
 
     def env_getter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         return self.fgraph
 
     def env_setter(self,value):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         self.fgraph = value
 
     def env_deleter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         del self.fgraph
 
     env = property(env_getter, env_setter, env_deleter)
@@ -1035,13 +1035,11 @@ class FunctionMaker(object):
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
 
-
         # Wrap them in In or Out instances if needed.
         #import pudb; pudb.set_trace()
-        inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
+        inputs, outputs = map(self.wrap_in, inputs), map(self.wrap_out, outputs)
         _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update
             for i in inputs if getattr(i, 'update', False)])
-
 
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
@@ -1049,7 +1047,7 @@ class FunctionMaker(object):
         #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
+        assert expanded_inputs == inputs  # JB - I added this to make sure we could delete above
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
         fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
@@ -1079,7 +1077,7 @@ class FunctionMaker(object):
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface
-            insert_deepcopy(fgraph, inputs, outputs+additional_outputs)
+            insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
         finally:
             theano.config.compute_test_value = compute_test_value_orig
             gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
@@ -1090,10 +1088,10 @@ class FunctionMaker(object):
                              "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        assert len(fgraph.outputs) == len(outputs+additional_outputs)
-        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs+additional_outputs) if not spec.borrow]
+        assert len(fgraph.outputs) == len(outputs + additional_outputs)
+        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs + additional_outputs) if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(fgraph, no_recycling = infer_reuse_pattern(fgraph, no_borrow))
+            self.linker = linker.accept(fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
 
@@ -1170,8 +1168,8 @@ class FunctionMaker(object):
         """
 
         if input_storage is None:
-            input_storage = [None]*len(self.inputs)
-        input_storage_lists = [] # list of independent one-element lists, will be passed to the linker
+            input_storage = [None] * len(self.inputs)
+        input_storage_lists = []  # list of independent one-element lists, will be passed to the linker
         defaults = []
 
         # The following loop is to fill in the input_storage_lists and defaults lists.
@@ -1224,11 +1222,9 @@ class FunctionMaker(object):
                 refeed,
                 storage))
 
-
-
         # Get a function instance
         start_linker = time.time()
-        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
+        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage_lists)
         end_linker = time.time()
 
         linker_time = end_linker - start_linker
@@ -1238,28 +1234,28 @@ class FunctionMaker(object):
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
 
-
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                 defaults, self.unpack_single, self.return_none, self)
         fn.profile = self.profile
         return fn
 
+
 def _pickle_FunctionMaker(self):
     kwargs = dict(
-                inputs = self.inputs,
-                outputs = self.orig_outputs,
-                mode = self.mode,
-                accept_inplace = self.accept_inplace,
-                function_builder = self.function_builder,
-                profile = self.profile,
+                inputs=self.inputs,
+                outputs=self.orig_outputs,
+                mode=self.mode,
+                accept_inplace=self.accept_inplace,
+                function_builder=self.function_builder,
+                profile=self.profile,
                 )
     return (_constructor_FunctionMaker, (kwargs,))
+
 
 def _constructor_FunctionMaker(kwargs):
     return FunctionMaker(**kwargs)
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
-
 
 
 try:
@@ -1276,6 +1272,7 @@ except TypeError:
 
 __checkers = []
 
+
 def check_equal(x, y):
     for checker in __checkers:
         try:
@@ -1284,6 +1281,7 @@ def check_equal(x, y):
             continue
     return x == y
     #raise Exception('No checker for equality between %s and %s' % (x, y))
+
 
 def register_checker(checker):
     __checkers.insert(0, checker)
