@@ -2183,10 +2183,6 @@ class MaxAndArgmax(Op):
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
-        if isinstance(axis, Variable):
-            if not isinstance(axis, Constant):
-                raise TypeError("MaxAndArgmax needs a constant axis")
-            axis = [axis.data]
 
         if isinstance(axis, int):
             axis = [axis]
@@ -2197,7 +2193,12 @@ class MaxAndArgmax(Op):
                 assert axis == range(x.type.ndim), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it.")
-
+        elif isinstance(axis, Variable):
+            if not isinstance(axis, TensorConstant):
+                raise TypeError("MaxAndArgmax needs a constant axis")
+            axis = axis.data
+            if axis.ndim == 0:
+                axis = [axis]
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
@@ -2218,8 +2219,8 @@ class MaxAndArgmax(Op):
                 raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (axis, x.type.ndim))
-            all_axes.add(ax)
-
+            all_axes.add(ax.item())
+        assert axis.ndim == 1
         inputs = [x, axis]
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the max / argmax.
