@@ -68,6 +68,7 @@ int main( int argc, const char* argv[] )
         try:
             os.write(fd, code)
             os.close(fd)
+            fd = None
             proc = subprocess.Popen(['g++', '-fopenmp', path],
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
@@ -76,7 +77,12 @@ int main( int argc, const char* argv[] )
             if proc.returncode != 0:
                 default_openmp = False
         finally:
-            os.remove(path)
+            # Ensure `fd` is closed before we remove the temporary file.
+            try:
+                if fd is not None:
+                    os.close(fd)
+            finally:
+                os.remove(path)
     except OSError, e:
         default_openmp = False
 
