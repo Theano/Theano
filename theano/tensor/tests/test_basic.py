@@ -1057,29 +1057,38 @@ _good_broadcast_unary_wide = dict(
     empty=(numpy.asarray([]),),)
 _grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
 
+if theano.config.floatX == 'float32':
+    angle_eps = 1e-4
+else:
+    angle_eps = 1e-10
+
 Deg2RadTester = makeBroadcastTester(
     op=tensor.deg2rad,
     expected=numpy.deg2rad,
     good=_good_broadcast_unary_normal_no_complex,
-    grad=_grad_broadcast_unary_normal_no_complex)
+    grad=_grad_broadcast_unary_normal_no_complex,
+    eps=angle_eps)
 Deg2RadInplaceTester = makeBroadcastTester(
     op=inplace.deg2rad_inplace,
     expected=numpy.deg2rad,
     good=_good_broadcast_unary_normal_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex,
-    inplace=True)
+    inplace=True,
+    eps=angle_eps)
 
 Rad2DegTester = makeBroadcastTester(
     op=tensor.rad2deg,
     expected=numpy.rad2deg,
     good=_good_broadcast_unary_normal_no_complex,
-    grad=_grad_broadcast_unary_normal_no_complex)
+    grad=_grad_broadcast_unary_normal_no_complex,
+    eps=angle_eps)
 Rad2DegInplaceTester = makeBroadcastTester(
     op=inplace.rad2deg_inplace,
     expected=numpy.rad2deg,
     good=_good_broadcast_unary_normal_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex,
-    inplace=True)
+    inplace=True,
+    eps=angle_eps)
 
 SinTester = makeBroadcastTester(op=tensor.sin,
                                 expected=numpy.sin,
