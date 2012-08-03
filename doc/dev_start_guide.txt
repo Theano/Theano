@@ -505,3 +505,4 @@ Other tools that can help you
  * `line_profiler <http://pypi.python.org/pypi/line_profiler/>`_: Line-by-line profiler.
  * `memory_profiler <http://fseoane.net/blog/2012/line-by-line-report-of-memory-usage/>`_: memory profiler
  * `runsnake <http://www.vrplumber.com/programming/runsnakerun/>`_: Gui for cProfile(time profiler) and Meliae(memory profiler)
+ * `hub <https://github.com/defunkt/hub>`_: A tool that add github command to the git command line.
