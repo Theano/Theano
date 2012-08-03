@@ -2185,7 +2185,7 @@ class MaxAndArgmax(Op):
         x = _as_tensor_variable(x)
         if isinstance(axis, Variable):
             if not isinstance(axis, Constant):
-                raise TypeError("MaxAndArgmax need a constant axis")
+                raise TypeError("MaxAndArgmax needs a constant axis")
             axis = [axis.data]
 
         if isinstance(axis, int):
