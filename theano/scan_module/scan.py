@@ -197,11 +197,12 @@ def scan(fn,
 
         * ``initial`` -- Theano variable that represents the initial
           state of a given output. In case the output is not computed
-          recursively (think of a map) and does not require a initial
-          state this field can be skiped. Given that only the previous
-          time step of the output is used by ``fn`` the initial state
-          should have the same shape as the output. If multiple time
-          taps are used, the initial state should have one extra
+          recursively (think of a map) and does not require an initial
+          state this field can be skipped. Given that (only) the previous
+          time step of the output is used by ``fn``, the initial state
+          **should have the same shape** as the output and **should not
+          involve a downcast** of the data type of the output. If multiple
+          time taps are used, the initial state should have one extra
           dimension that should cover all the possible taps. For example
           if we use ``-5``, ``-2`` and ``-1`` as past taps, at step 0,
           ``fn`` will require (by an abuse of notation) ``output[-5]``,

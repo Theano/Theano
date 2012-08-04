@@ -18,7 +18,8 @@ of Theano. Let us import that subpackage under a handy name like
 If that succeeded you are ready for the tutorial, otherwise check your
 installation (see :ref:`install`).
 
-Throughout the tutorial, bear in mind that there is a :ref:`glossary` to help
+Throughout the tutorial, bear in mind that there is a :ref:`glossary` as well
+as *index* and *modules* links in the upper-right corner of each page to help
 you out.
 
 .. toctree::

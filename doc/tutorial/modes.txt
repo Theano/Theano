@@ -82,16 +82,15 @@ Consider the logistic regression:
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
 
-    if any( [x.op.__class__.__name__=='Gemv' for x in
+    if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
     train.maker.fgraph.toposort()]):
-        print 'Used the cpu'
-    elif any( [x.op.__class__.__name__=='GpuGemm' for x in
+	print 'Used the cpu'
+    elif any([x.op.__class__.__name__ in ['GpuGemm', 'GpuGemv'] for x in
     train.maker.fgraph.toposort()]):
-        print 'Used the gpu'
+	print 'Used the gpu'
     else:
-        print 'ERROR, not able to tell if theano used the cpu or the gpu'
-        print train.maker.fgraph.toposort()
-
+	print 'ERROR, not able to tell if theano used the cpu or the gpu'
+	print train.maker.fgraph.toposort()
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
@@ -127,6 +126,10 @@ time the execution using the command line ``time python file.py``.
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
      * Notice that a new casting mechanism is being developed.
 
+.. TODO: repair this link
+
+:download:`Solution<../modes_solution_1.py>`
+
 -------------------------------------------
 
 Mode
@@ -142,7 +145,7 @@ Theano defines the following modes by name:
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
 - ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and Python 
-    implementations. This mode can take much longer than the other modes,but can identify
+    implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
 - ``'PROFILE_MODE'``: Same optimization then FAST_RUN, put print some profiling information
 

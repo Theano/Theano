@@ -144,7 +144,7 @@ The ``compute_test_value`` mechanism works as follows:
   which do not implement a ``perform`` method.
 
 
-How do I Print an Intermediate Value in a Function/Method?
+"How do I Print an Intermediate Value in a Function/Method?"
 ----------------------------------------------------------
 
 Theano provides a 'Print' op to do this.
@@ -259,8 +259,8 @@ Use your imagination :)
 This can be a really powerful debugging tool. Note the call to *fn* inside the call to
 *print_eval*; without it, the graph wouldn't get computed at all!
 
-How to Use pdb ?
-----------------
+How to Use pdb
+--------------
 
 In the majority of cases, you won't be executing from the interactive shell
 but from a set of Python scripts. In such cases, the use of the Python

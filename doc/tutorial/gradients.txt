@@ -98,7 +98,7 @@ Computing the Jacobian
 ======================
 
 In Theano's parlance, the term *Jacobian* designates the tensor comprising the
-first differences of the output of a function with respect to its inputs.
+first partial derivatives of the output of a function with respect to its inputs.
 (This is a generalization of to the so-called Jacobian matrix in Mathematics.) 
 Theano implements the :func:`theano.gradient.jacobian` macro that does all
 that is needed to compute the Jacobian. The following text explains how
@@ -115,7 +115,7 @@ do is to loop over the entries in *y* and compute the gradient of
     manner all kinds of recurrent equations. While creating
     symbolic loops (and optimizing them for performance) is a hard task,
     effort is being done for improving the performance of ``scan``. We 
-    shall return to ``scan`` later in this tutorial.
+    shall return to :ref:`scan<tutloop>` later in this tutorial.
 
 >>> x = T.dvector('x')
 >>> y = x**2

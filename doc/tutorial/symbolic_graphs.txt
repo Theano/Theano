@@ -18,18 +18,18 @@ The first step in writing Theano code is to write down all mathematical
 relations using symbolic placeholders (**variables**). When writing down 
 these expressions you use operations like ``+``, ``-``, ``**``,
 ``sum()``, ``tanh()``. All these are represented internally as **ops**. 
-An **op** represents a certain computation on some type of inputs
+An *op* represents a certain computation on some type of inputs
 producing some type of output. You can see it as a *function definition*
 in most programming languages. 
 
 Theano builds internally a graph structure composed of interconnected 
 **variable** nodes, **op** nodes and **apply** nodes. An 
-**apply** node represents the application of an **op** to some 
-**variables**. It is important to make the difference between the
-definition of a computation represented by an **op** and its application
-to some actual data which is represented by the **apply** node. For more
-detail about these building blocks see :ref:`variable`, :ref:`op`, 
-:ref:`apply`. Here is a an example of a graph:
+*apply* node represents the application of an *op* to some 
+*variables*. It is important to draw the difference between the
+definition of a computation represented by an *op* and its application
+to some actual data which is represented by the *apply* node. For more
+detail about these building blocks refer to :ref:`variable`, :ref:`op`, 
+:ref:`apply`. Here is an example of a graph:
 
 
 **Code**
@@ -54,9 +54,9 @@ detail about these building blocks see :ref:`variable`, :ref:`op`,
     WARNING: hyper-links and ref's seem to break the PDF build when placed
     into this figure caption.
 
-Arrows in this :ref:`figure <tutorial-graphfigure>` represent references to the 
+Arrows in this figure represent references to the 
 Python objects pointed at. The blue
-box is an :ref:`apply` node. Red boxes are :ref:`variable` nodes. Green
+box is an :ref:`Apply` node. Red boxes are :ref:`Variable` nodes. Green
 circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
 
@@ -111,18 +111,18 @@ Automatic Differentiation
 
 Having the graph structure, computing automatic differentiation is
 simple. The only thing :func:`tensor.grad` has to do is to traverse the
-graph from the outputs back towards the inputs through all :ref:`apply`
-nodes (:ref:`apply` nodes are those that define which computations the
-graph does). For each such :ref:`apply` node, its  :ref:`op` defines 
-how to compute the gradient of the node's outputs with respect to its
-inputs. Note that if an :ref:`op` does not provide this information, 
-it is assumed that the gradient is not defined.
+graph from the outputs back towards the inputs through all *apply*
+nodes (*apply* nodes are those that define which computations the
+graph does). For each such *apply* node, its  *op* defines 
+how to compute the *gradient* of the node's outputs with respect to its
+inputs. Note that if an *op* does not provide this information, 
+it is assumed that the *gradient* is not defined.
 Using the 
 `chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_ 
 these gradients can be composed in order to obtain the expression of the 
-gradient of the graph's output with respect to the graph's inputs .
+*gradient* of the graph's output with respect to the graph's inputs .
 
-A following section of this tutorial will examine the topic of differentiation
+A following section of this tutorial will examine the topic of :ref:`differentiation<tutcomputinggrads>`
 in greater detail.
 
 
@@ -142,7 +142,7 @@ identical subgraphs and ensure that the same values are not computed
 twice or reformulate parts of the graph to a GPU specific version.
 
 For example, one (simple) optimization that Theano uses is to replace 
-the pattern :math:`\frac{xy}{y}` by :math:`x`.
+the pattern :math:`\frac{xy}{y}` by *x.*
 
 Further information regarding the optimization
 :ref:`process<optimization>` and the specific :ref:`optimizations<optimizations>` that are applicable
