@@ -4,9 +4,6 @@
 Sparse
 ======
 
-Sparse Matrices
-===============
-
 In general, *sparse* matrices provide the same functionality as regular
 matrices. The difference lies in the way the elements of *sparse* matrices are 
 represented and stored in memory. Only the non-zero elements of the latter are stored.

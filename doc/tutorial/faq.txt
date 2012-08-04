@@ -15,7 +15,7 @@ be implemented on Theano variables:
 
    TypeError: object of type 'TensorVariable' has no len()
 
-Python requires that *__len__* returns an integer, yet it cannot be done as Theano's symbolic variables. However, `var.shape[0]` can be used as a workaround.
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's are symbolic variables. However, `var.shape[0]` can be used as a workaround.
 
 This error message cannot be made more explicit because the relevant aspects of Python's 
 internals cannot be modified.
@@ -36,3 +36,18 @@ Related Projects
 
 We try to list in this `wiki page <https://github.com/Theano/Theano/wiki/Related-projects>`_ other Theano related projects.
 
+
+"What are Theano's Limitations?"
+-------------------------------
+
+Theano offers a good amount of flexibility, but has some limitations too.
+You must answer for yourself the following question: How can my algorithm be cleverly written 
+so as to make the most of what Theano can do?
+
+Here is a list of some of the known limitations:
+
+- *While*- or *for*-Loops within an expression graph are supported, but only via
+  the :func:`theano.scan` op (which puts restrictions on how the loop body can
+  interact with the rest of the graph).
+
+- Neither *goto* nor *recursion* is supported or planned within expression graphs.
