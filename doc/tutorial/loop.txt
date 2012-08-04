@@ -32,9 +32,12 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano.tensor as T
   theano.config.warn.subtensor_merge_bug = False
 
-  k = T.iscalar("k"); A = T.vector("A")
+  k = T.iscalar("k")
+  A = T.vector("A")
 
-  def inner_fct(prior_result, A): return prior_result * A
+  def inner_fct(prior_result, A):
+      return prior_result * A
+
   # Symbolic description of the result
   result, updates = theano.scan(fn=inner_fct,
                               outputs_info=T.ones_like(A),
@@ -61,7 +64,8 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   theano.config.warn.subtensor_merge_bug = False	
 
   coefficients = theano.tensor.vector("coefficients")
-  x = T.scalar("x"); max_coefficients_supported = 10000
+  x = T.scalar("x")
+  max_coefficients_supported = 10000
 
   # Generate the components of the polynomial
   full_range=theano.tensor.arange(max_coefficients_supported)
@@ -70,6 +74,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
                                   outputs_info=None,
                                   sequences=[coefficients, full_range],
                                   non_sequences=x)
+
   polynomial = components.sum()
   calculate_polynomial = theano.function(inputs=[coefficients, x],
                                        outputs=polynomial)
@@ -87,6 +92,11 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 Run both examples.
 
 Modify and execute the polynomial example to have the reduction done by ``scan``.
+
+
+.. TODO: repair this link as well as the code in the target file
+
+:download:`Solution<../loop_solution_1.py>`
 
 
 -------------------------------------------

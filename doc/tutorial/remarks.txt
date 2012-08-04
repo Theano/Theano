@@ -5,21 +5,8 @@
 Some general Remarks
 =====================
 
-.. TODO: This discussion is awkward. Even with this beneficial reordering (28 July 2012)
-..  its purpose and message are for the moment unclear. 
-
-
-Limitations
------------
-
-Theano offers a good amount of flexibility, but has some limitations too.
-You must answer for yourself the following question: How can my algorithm be cleverly written 
-so as to make the most of what Theano can do?
-
-
-- *While*- or *for*-Loops within an expression graph are supported, but only via
-  the :func:`theano.scan` op (which puts restrictions on how the loop body can
-  interact with the rest of the graph).
-
-- Neither *goto* nor *recursion* is supported or planned within expression graphs.
+.. This section is reserved for remarks and discussions of a general scope regarding the
+.. nature and development of Theano.
+.. The FAQ section is dedicated to specifics, i.e. information regarding the what, how,
+.. why and if of Theano. 
 

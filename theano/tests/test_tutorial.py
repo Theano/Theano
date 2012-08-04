@@ -797,6 +797,7 @@ class T_using_gpu(unittest.TestCase):
         rng = numpy.random.RandomState(22)
         x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
         f = function([], T.exp(x))
+        # print f.maker.fgraph.toposort()
         t0 = time.time()
         for i in xrange(iters):
             r = f()
@@ -810,7 +811,6 @@ class T_using_gpu(unittest.TestCase):
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
             assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
-
 
 
     def test_using_gpu_2(self):
@@ -828,6 +828,7 @@ class T_using_gpu(unittest.TestCase):
             rng = numpy.random.RandomState(22)
             x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
             f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
@@ -838,11 +839,8 @@ class T_using_gpu(unittest.TestCase):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
-
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
-
-
-
+	   
+	    assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
     def test_using_gpu_3(self):
@@ -862,6 +860,7 @@ class T_using_gpu(unittest.TestCase):
             f = function([],
                     Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
                         borrow=True))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()

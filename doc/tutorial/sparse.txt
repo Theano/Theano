@@ -8,7 +8,7 @@ This is an admittedly too short discussion on the use of sparse matrices within 
 Some aspects are still not well documented regarding for instance how we take care of the
 gradient. The following may at least be mentioned: There are 2 types of gradient 
 calculations that may be involved in sparse operations. The *full gradient* computes a 
-gradient for all values even if they are equal to 0 whereas and the *structured gradient*
+gradient for all values even if they are equal to 0 whereas the *structured gradient*
 returns a gradient only for values that are not equal to 0. You need to check the code to
 know which gradient exactly an op implements.
 

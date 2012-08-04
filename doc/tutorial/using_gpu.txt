@@ -44,6 +44,7 @@ file and run it.
     rng = numpy.random.RandomState(22)
     x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
     f = function([], T.exp(x))
+    print f.maker.fgraph.toposort()	
     t0 = time.time()
     for i in xrange(iters):
         r = f()
@@ -55,22 +56,31 @@ The program just computes the ``exp()`` of a bunch of random numbers.
 Note that we use the ``shared`` function to
 make sure that the input *x* is stored on the graphics device.
 
-If I run this program (in thing.py) with ``device=cpu``, my computer takes a little over 7 seconds,
-whereas on the GPU it takes just over 0.4 seconds. The GPU will not always produce the exact 
-same floating-point numbers as the CPU. As a benchmark, a loop that calls ``numpy.exp(x.value)`` also takes about 7 seconds.
+.. the following figures have been measured twice on BART3 on 2 Aug 2012 with no other job running simultaneously 
+
+If I run this program (in check1.py) with ``device=cpu``, my computer takes a little over 3 seconds,
+whereas on the GPU it takes just over 0.64 seconds. The GPU will not always produce the exact 
+same floating-point numbers as the CPU. As a benchmark, a loop that calls ``numpy.exp(x.get_value())`` takes about 46 seconds.
 
 .. code-block:: text
 
-    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python thing.py 
-    Looping 1000 times took 7.17374897003 seconds
-    Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753 1.62323285]
+    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
+    [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
+    Looping 1000 times took 3.06635117531 seconds
+    Result is [ 1.23178029  1.61879337  1.52278066 ...,  2.20771813  2.29967761
+      1.62323284]
+    Used the cpu
 
-    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python thing.py 
-    Using gpu device 0: GeForce GTX 285
-    Looping 1000 times took 0.418929815292 seconds
-    Result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check1.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>), HostFromGpu(GpuElemwise{exp,no_inplace}.0)]
+    Looping 1000 times took 0.638810873032 seconds
+    Result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
+      1.62323296]
+    Used the gpu
 
 Note that GPU operations in Theano require for now ``floatX`` to be *float32* (see also below).
+
 
 Returning a Handle to Device-Allocated Data
 -------------------------------------------
@@ -99,6 +109,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
     rng = numpy.random.RandomState(22)
     x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
     f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
+    print f.maker.fgraph.toposort()
     t0 = time.time()
     for i in xrange(iters):
         r = f()
@@ -111,10 +122,14 @@ The output from this program is
 
 .. code-block:: text
 
-    Using gpu device 0: GeForce GTX 285
-    Looping 1000 times took 0.185714006424 seconds
-    Result is <CudaNdarray object at 0x3e9e970>
-    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check2.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+    Looping 1000 times took 0.34898686409 seconds
+    Result is <CudaNdarray object at 0x6a7a5f0>
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
+      1.62323296]
+    Used the gpu
 
 Here we've shaved off about 50% of the run-time by simply not copying the
 resulting array back to the host.
@@ -126,18 +141,14 @@ NumPy casting mechanism.
 Running the GPU at Full Speed
 ------------------------------
 
-..  TODO: the discussion of this section is unintelligible to a beginner
-..  TODO: is it better now?
-
-
-To really get maximum performance in this simple example, we need to use an :class:`Out`
-instance to tell Theano not to copy the output it returns to us.
-This is because Theano pre-allocates memory for internal use (like working buffers), and by default
-will never return a result that is aliased to one of its internal buffers: instead, it will
-copy the buffers associated to outputs into newly allocated memory at each function call.
-This is to ensure that subsequent function calls will not overwrite previously computed outputs.
-Although this is normally what you want, our example is so simple
-that it has the unwanted side-effect of really slowing things down.
+To really get maximum performance in this simple example, we need to use an
+:class:`out<function.Out>` instance with the flag ``borrow=True`` to tell Theano not to copy
+the output it returns to us. This is because Theano pre-allocates memory for internal use 
+(like working buffers), and by default will never return a result that is aliased to one of
+its internal buffers: instead, it will copy the buffers associated to outputs into newly 
+allocated memory at each function call. This is to ensure that subsequent function calls will
+not overwrite previously computed outputs. Although this is normally what you want, our last
+example was so simple that it had the unwanted side-effect of really slowing things down.
 
 
 .. 
@@ -156,7 +167,7 @@ that it has the unwanted side-effect of really slowing things down.
     import numpy
     import time
 
-    vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
+    vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
     iters = 1000
 
     rng = numpy.random.RandomState(22)
@@ -164,6 +175,7 @@ that it has the unwanted side-effect of really slowing things down.
     f = function([], 
             Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
                 borrow=True))
+    print f.maker.fgraph.toposort()
     t0 = time.time()
     for i in xrange(iters):
         r = f()
@@ -172,25 +184,43 @@ that it has the unwanted side-effect of really slowing things down.
     print 'Numpy result is', numpy.asarray(r)
     print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
 
-Running this version of the code takes just under 0.05 seconds, over 140x faster than
+Running this version of the code takes just over 0.05 seconds, that is 60x faster than
 the CPU implementation!
 
 .. code-block:: text
 
-    Using gpu device 0: GeForce GTX 285
-    Looping 1000 times took 0.0497219562531 seconds
-    Result is <CudaNdarray object at 0x31eeaf0>
-    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761 1.62323296]
+    With *flag* ``borrow=True``:
 
-This version of the code using ``borrow=True`` is slightly less safe because if we had saved
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+    Looping 1000 times took 0.31614613533 seconds
+    Result is <CudaNdarray object at 0x77e9270>
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
+      1.62323296]
+    Used the gpu
+
+    With *flag* ``borrow=False``:
+
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+    Looping 1000 times took 0.0502779483795 seconds
+    Result is <CudaNdarray object at 0x83e5cb0>
+    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
+      1.62323296]
+    Used the gpu
+
+
+This version of the code including the flag ``borrow=True`` is slightly less safe because if we had saved
 the *r* returned from one function call, we would have to take care and remember that its value might
 be over-written by a subsequent function call.  Although ``borrow=True`` makes a dramatic difference
 in this example, be careful!  The advantage of ``borrow=True`` is much weaker in larger graphs, and 
 there is a lot of potential for making a mistake by failing to account for the resulting memory aliasing.
 
 
-What Can Be Accelerated on the GPU?
------------------------------------
+What Can Be Accelerated on the GPU
+----------------------------------
 
 The performance characteristics will change as we continue to optimize our
 implementations, and vary from device to device, but to give a rough idea of
@@ -236,7 +266,7 @@ Tips for Improving Performance on GPU
   eliminate transfer time for GPU ops using those variables.
 * If you aren't happy with the performance you see, try building your functions with 
   ``mode='PROFILE_MODE'``. This should print some timing information at program
-  termination (at exit). Is time being used sensibly?   If an op or Apply is
+  termination. Is time being used sensibly?   If an op or Apply is
   taking more time than its share, then if you know something about GPU
   programming, have a look at how it's implemented in theano.sandbox.cuda.
   Check the line similar to *Spent Xs(X%) in cpu op, Xs(X%) in gpu op and Xs(X%) in transfer op*.
@@ -254,7 +284,6 @@ see :ref:`aliasing`.
 -------------------------------------------
 
 **Exercise**
-
 
 Consider the logistic regression:
 
@@ -297,16 +326,15 @@ Consider the logistic regression:
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
 
-    if any( [x.op.__class__.__name__=='Gemv' for x in
+    if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
     train.maker.fgraph.toposort()]):
-        print 'Used the cpu'
-    elif any( [x.op.__class__.__name__=='GpuGemm' for x in
+	print 'Used the cpu'
+    elif any([x.op.__class__.__name__ in ['GpuGemm', 'GpuGemv'] for x in
     train.maker.fgraph.toposort()]):
-        print 'Used the GPU'
+	print 'Used the gpu'
     else:
-        print 'ERROR, not able to tell if theano used the cpu or the GPU'
-        print train.maker.fgraph.toposort()
-
+	print 'ERROR, not able to tell if theano used the cpu or the gpu'
+	print train.maker.fgraph.toposort()
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
@@ -328,12 +356,12 @@ Is there an increase in speed from CPU to GPU?
 
 Where does it come from? (Use ``ProfileMode``)
 
-What can be done to further increase the speed of the GPU version?
+What can be done to further increase the speed of the GPU version? Put your ideas to test.
 
 
 .. Note::
 
-   * Only 32 bits floats are currently supported (development is in progress).
+   * Only 32 bit floats are currently supported (development is in progress).
    * ``Shared`` variables with *float32* dtype are by default moved to the GPU memory space.
 
    * There is a limit of one GPU per process.
@@ -348,57 +376,117 @@ What can be done to further increase the speed of the GPU version?
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
      * Notice that a new casting mechanism is being developed.
 
+.. TODO: repair this link
+
+:download:`Solution<../using_gpu_solution_1.py>`
 
 -------------------------------------------
+
 
 Software for Directly Programming a GPU
 ---------------------------------------
 
 Leaving aside Theano which is a meta-programmer, there are:
 
-* **CUDA**: C extension by NVIDIA 
+* **CUDA**: GPU programming API by NVIDIA based on extension to C (CUDA C) 
 
-   * Vendor-specific
+  * Vendor-specific
 
-   * Numeric libraries (BLAS, RNG, FFT) are maturing.
+  * Numeric libraries (BLAS, RNG, FFT) are maturing.
 
 * **OpenCL**: multi-vendor version of CUDA
 
-   * More general, standardized.
+  * More general, standardized.
 
-   * Fewer libraries, lesser spread.
+  * Fewer libraries, lesser spread.
 
 * **PyCUDA**: Python bindings to CUDA driver interface allow to access Nvidia's CUDA parallel 
   computation API from Python
 
-   * Convenience: Makes it easy to do GPU meta-programming from within Python. Helpful documentation.
+  * Convenience:
 
-     (abstractions to compile low-level CUDA code from Python: ``pycuda.driver.SourceModule``)
+    Makes it easy to do GPU meta-programming from within Python.
+ 
+    Abstractions to compile low-level CUDA code from Python (``pycuda.driver.SourceModule``).
 
-   * Completeness: Binding to all of CUDA's driver API.
+    GPU memory buffer (``pycuda.gpuarray.GPUArray``).
+  
+    Helpful documentation.
 
-   * Automatic error checking: All CUDA errors are automatically translated into Python exceptions.
+  * Completeness: Binding to all of CUDA's driver API.
 
-   * Speed: PyCUDA's base layer is written in C++.
+  * Automatic error checking: All CUDA errors are automatically translated into Python exceptions.
 
-   * Good memory management of GPU objects:
+  * Speed: PyCUDA's base layer is written in C++.
 
-     Object cleanup tied to lifetime of objects (RAII, 'Resource Acquisition Is Initialization').
+  * Good memory management of GPU objects:
 
-     Makes it much easier to write correct, leak- and crash-free code.
+    Object cleanup tied to lifetime of objects (RAII, 'Resource Acquisition Is Initialization').
 
-     PyCUDA knows about dependencies (e.g. it won't detach from a context before all memory allocated in it is also freed).
+    Makes it much easier to write correct, leak- and crash-free code.
 
-     (GPU memory buffer: \texttt{``pycuda.gpuarray.GPUArray``})
+    PyCUDA knows about dependencies (e.g. it won't detach from a context before all memory
+    allocated in it is also freed).
+     
+
+  (This is adapted from PyCUDA's `documentation <http://documen.tician.de/pycuda/index.html>`_ 
+  and Andreas Kloeckner's `website <http://mathema.tician.de/software/pycuda>`_ on PyCUDA.)
+
 
 * **PyOpenCL**: PyCUDA for OpenCL
 
+Learning to Program with PyCUDA
+-------------------------------
+
+If you already enjoy a good proficiency with the C programming language, you
+may easily leverage your knowledge by learning, first, to program a GPU with the
+CUDA extension to C (CUDA C) and, second, to use PyCUDA to access the CUDA
+API with a Python wrapper.
+
+The following resources will assist you in this learning process:
+
+* **CUDA API and CUDA C: Introductory**
+
+  * `NVIDIA's slides <http://www.sdsc.edu/us/training/assets/docs/NVIDIA-02-BasicsOfCUDA.pdf>`_
+
+  * `Stein's (NYU) slides <http://www.cs.nyu.edu/manycores/cuda_many_cores.pdf>`_
+  
+* **CUDA API and CUDA C: Advanced**
+
+  * `MIT IAP2009 CUDA <https://sites.google.com/site/cudaiap2009/home>`_
+    (full coverage: lectures, leading Kirk-Hwu textbook, examples, additional resources)
+
+  * `Course U. of Illinois <http://courses.engr.illinois.edu/ece498/al/index.html>`_
+    (full lectures, Kirk-Hwu textbook)
+
+  * `NVIDIA's knowledge base <http://www.nvidia.com/content/cuda/cuda-developer-resources.html>`_
+    (extensive coverage, levels from introductory to advanced)
+
+  * `practical issues <http://stackoverflow.com/questions/2392250/understanding-cuda-grid-dimensions-block-dimensions-and-threads-organization-s>`_
+    (on the relationship between grids, blocks and threads; see also linked and related issues on same page)
+
+  * `CUDA optimisation <http://www.gris.informatik.tu-darmstadt.de/cuda-workshop/slides.html>`_
+
+* **PyCUDA: Introductory**
+
+  * `Kloeckner's slides <http://www.gputechconf.com/gtcnew/on-demand-gtc.php?sessionTopic=&searchByKeyword=kloeckner&submit=&select=+&sessionEvent=2&sessionYear=2010&sessionFormat=3>`_
+
+  * `Kloeckner' website <http://mathema.tician.de/software/pycuda>`_ 
+
+* **PYCUDA: Advanced**
+
+  * `PyCUDA documentation website <http://documen.tician.de/pycuda/>`_
+
+
+The following examples give a foretaste of programming a GPU with PyCUDA. Once
+you feel competent enough, you may try yourself on the corresponding exercises.
 
 **Example: PyCUDA**
 
 
 .. code-block:: python
 
+  # (from PyCUDA's documentation)
   import pycuda.autoinit
   import pycuda.driver as drv
   import numpy
@@ -499,7 +587,11 @@ Run the preceding example.
 Modify and execute to multiply two matrices: *x* * *y*.
 
 Modify and execute to return two outputs: *x + y* and *x - y*.
-(Currently, *elemwise fusion* generates computation with only 1 output.)
+
+(Notice that Theano's current *elemwise fusion* optimization is
+only applicable to computations involving a single output. Hence, to gain
+efficiency over the basic solution that is asked here, the two operations would
+have to be jointly optimized explicitly in the code.)
 
 Modify and execute to support *stride* (i.e. so as not constrain the input to be *C-contiguous*).
 

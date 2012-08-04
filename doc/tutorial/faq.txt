@@ -15,7 +15,7 @@ be implemented on Theano variables:
 
    TypeError: object of type 'TensorVariable' has no len()
 
-Python requires that *__len__* returns an integer, yet it cannot be done as Theano's symbolic variables. However, `var.shape[0]` can be used as a workaround.
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's are symbolic variables. However, `var.shape[0]` can be used as a workaround.
 
 This error message cannot be made more explicit because the relevant aspects of Python's 
 internals cannot be modified.
@@ -30,3 +30,20 @@ You can enable faster gcc optimization with the ``cxxflags``. This list of flags
 
 Use it at your own risk. Some people warned that the ``-ftree-loop-distribution`` optimization resulted in wrong results in the past.
 Also the ``-march=native`` flag must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.
+
+
+
+"What are Theano's Limitations?"
+-------------------------------
+
+Theano offers a good amount of flexibility, but has some limitations too.
+You must answer for yourself the following question: How can my algorithm be cleverly written 
+so as to make the most of what Theano can do?
+
+Here is a list of some of the known limitations:
+
+- *While*- or *for*-Loops within an expression graph are supported, but only via
+  the :func:`theano.scan` op (which puts restrictions on how the loop body can
+  interact with the rest of the graph).
+
+- Neither *goto* nor *recursion* is supported or planned within expression graphs.

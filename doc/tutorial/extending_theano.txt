@@ -10,8 +10,8 @@ Theano Graphs
 
 - Theano works with symbolic graphs.
 - Those graphs are bi-partite graphs (graph with 2 types of nodes).
-- The 2 types of nodes are Apply and Variable nodes.
-- Each Apply node has a link to the op that it executes.
+- The two types of nodes are ``Apply`` and ``Variable`` nodes.
+- Each ``Apply`` node has a link to the op that it executes.
 
 Inputs and Outputs are lists of Theano variables.
 
@@ -21,24 +21,25 @@ Inputs and Outputs are lists of Theano variables.
 .. note::
 
     This tutorial does not cover how to make an op that returns a view or
-    modify the values in its inputs. So all
-    Ops created with the instructions here MUST return newly allocated
+    modifies the values in its inputs. Thus, all ops created with the 
+    instructions described here MUST return newly allocated
     memory or reuse the memory provided in the parameter
-    output_storage of the :func:`perform` function. See :ref:`views_and_inplace`
-    for explanation of how to do this.
+    ``output_storage`` of the :func:`perform` function. See :ref:`views_and_inplace`
+    for an explanation on how to do this.
 
-    If your Op returns a view or change the value on its inputs
-    without doing as said in that page, Theano will run, but will
-    return good results for some graphs, but bad results for others.
+    If your op returns a view or changes the value of its inputs
+    without doing as prescribed in that page, Theano will run, but will
+    return correct results for some graphs and wrong results for others.
 
-    It is recommented that you run your tests in DebugMode (Theano flag
-    mode=DebugMode) that checks if your Op behaves correctly in this
+    It is recommended that you run your tests in DebugMode (Theano *flag*
+    ``mode=DebugMode``) since it verifies if your op behaves correctly in this
     regard.
 
 .. note::
 
-   See the :ref:`dev_start_guide` for information about git, github, the
-   development workflow and how to make a quality contribution.
+   See the :ref:`dev_start_guide` for information regarding the versioning
+   framework, namely about *git* and *GitHub*, regarding the development workflow and
+   how to make a quality contribution.
 
 
 Op Contract
@@ -90,7 +91,7 @@ Op Contract
 
 .. ../extending/op.txt
 
-There are 2 mandatory methods that one needs to implement.
+There are two mandatory methods that one needs to implement.
 The first one is :func:`make_node`. The second one 
 would describe the computations that are required to be done
 at run time. Currently there are 2 different possibilites:
@@ -105,7 +106,7 @@ a ``thunk``: a standalone function that when called will do the wanted computati
 This is useful if you want to generate code and compile it yourself. For
 example, this allows you to use PyCUDA to compile GPU code.
 
-Also there are 2 methods that are highly recommended to be implemented. They are
+Also there are two methods whose implementations are highly recommended. They are
 needed in order to merge duplicate computations involving your op. So if you
 do not want Theano to execute your op multiple times with the same inputs,
 do implement them. Those methods are :func:`__eq__` and
@@ -182,9 +183,9 @@ You can try it as follows:
 How To Test it
 --------------
 
-Theano has some functions to simplify testing. These help test the
+Theano has some functionalities to simplify testing. These help test the
 ``infer_shape``, ``grad`` and ``R_op`` methods. Put the following code
-in a file and execute it with the ``nosetests`` program.
+in a file and execute it with the ``theano-nose`` program.
 
 **Basic Tests**
 
@@ -304,10 +305,24 @@ To perform your tests, you may select either one of the three following methods:
 
 **theano-nose**
 
-The method of choice to run every test located in a specific folder
-or in Theano's path is to run the file ``theano-nose`` which is by default located in
-the ``theano/bin`` folder. If a folder is specified on the command line, every test
-it contains will be conducted. Otherwise, every test found in Theano's path will be.
+The method of choice to conduct tests is to run the file ``theano-nose``. In a regular
+Theano installation, the latter will be on the operating system's path and directly accessible.
+Otherwise, it can be accessed in the ``Theano/bin`` folder. The following command
+lines may be used for the corresponding purposes:
+
+* ``theano-nose``: Run every test found in Theano's path.
+
+* ``theano-nose folder_name``: Run every test found in the folder *folder_name*.
+
+* ``theano-nose test_file.py``: Run every test found in the file *test_file.py*.
+
+The following are particularly useful for development purposes since they call for
+particular classes or even for particular tests: 
+
+* ``theano-nose test_file.py:test_DoubleRop``: Run every test found inside the class *test_DoubleRop*.
+
+* ``theano-nose test_file.py:test_DoubleRop.test_double_op``: Run only the test *test_double_op*
+  in the class *test_DoubleRop*.
 
 Help with the use and functionalities of ``theano-nose`` may be obtained by running
 it with the command line parameter ``--help (-h)``. 
@@ -315,18 +330,10 @@ it with the command line parameter ``--help (-h)``.
 **nosetests**
 
 The command ``nosetests`` can also be used.  Although it lacks the useful 
-functionalities that ``theano-nose`` provides, you can use ``nosetests`` similarly
-to ``theano-nose`` to run all tests in Theano's
-path or in a specific folder. Nevertheless, ``nosetests`` is particularly useful for development
-purposes since it allows to request for specific tests.  For instance, the following command
-lines may be used for these respective purposes:
+functionalities that ``theano-nose`` provides, ``nosetests`` can be called similarly
+to ``theano-nose`` from any folder in Python's path like so:
 
-* ``nosetests test_file.py``: Run every test found in the file *test_file.py*.
-
-* ``nosetests test_file.py:test_DoubleRop``: Run every test found inside the class *test_DoubleRop*.
-
-* ``nosetests test_file.py:test_DoubleRop.test_double_op``: Run only the test *test_double_op*
-  in the class *test_DoubleRop*.
+``nosetests [suffix similar to the above]``.
 
 More documentation on ``nosetests`` is available here:
 `nosetests <http://readthedocs.org/docs/nose/en/latest/>`_.
@@ -351,16 +358,25 @@ file containing a specific test of interest and run the file. In this example, t
 **Exercise**
 
 
-Run the code in the file double_op.py.
+Run the code of the *DoubleOp* example above.
 
 Modify and execute to compute: x * y.
 
-Modify and execute the example to return 2 outputs: x + y and x - y
-(our current element-wise fusion generates computation with only 1 output).
+Modify and execute the example to return two outputs: x + y and x - y.
+
+You can omit the Rop functions. Try to implement the testing apparatus described above.
+
+(Notice that Theano's current *elemwise fusion* optimization is
+only applicable to computations involving a single output. Hence, to gain
+efficiency over the basic solution that is asked here, the two operations would
+have to be jointly optimized explicitly in the code.)
+
+
+.. TODO: repair this link
+
+:download:`Solution<../extending_theano_solution_1.py>`
 
 -------------------------------------------
-
-
 
 
 **A Final Note:**
