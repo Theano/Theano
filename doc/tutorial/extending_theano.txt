@@ -306,8 +306,8 @@ To perform your tests, you may select either one of the three following methods:
 **theano-nose**
 
 The method of choice to conduct tests is to run the file ``theano-nose``. In a regular
-Theano installation, the latter will be on the operating system's path and directly accessible.
-Otherwise, it can be accessed in the ``Theano/bin`` folder. The following command
+Theano installation, the latter will be on the operating system's path and directly accessible
+from any folder. Otherwise, it can be accessed in the ``Theano/bin`` folder. The following command
 lines may be used for the corresponding purposes:
 
 * ``theano-nose``: Run every test found in Theano's path.
