@@ -295,11 +295,10 @@ class RunOnce(theano.Op):
 def test_vm_gc():
     """This already caused a bug in the trunk of Theano.
 
-    The bug was introduced in the trunk the July 5, 2012 and fixed the
-    July 30
+    The bug was introduced in the trunk on July 5th, 2012 and fixed on
+    July 30th.
 
     """
-    pass
     x = theano.tensor.vector()
     p = RunOnce()(x)
     mode = theano.Mode(linker=theano.gof.vm.VM_Linker(lazy=True))

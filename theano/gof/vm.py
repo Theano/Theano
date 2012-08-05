@@ -40,7 +40,7 @@ def filter_vm_lazy(val):
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
              " auto detect if lazy evaluation is needed and use the apropriate"
-             " version. If lazy it True/False, force the version used between"
+             " version. If lazy is True/False, force the version used between"
              " Loop/LoopGC and Stack.",
          ConfigParam('None', filter_vm_lazy))
 
@@ -396,7 +396,7 @@ class Stack(VM):
                                     #current_apply is still in the
                                     #stack, this will cause it to be
                                     #recomputed! This can cause wrong value
-                                    #with some combiation of inplace op.
+                                    #with some combination of inplace op.
                                     compute_map[i][0] = 2
                                     if (config.warn.vm_gc_bug and
                                         current_apply in apply_stack and
@@ -471,7 +471,7 @@ class Stack(VM):
                                 if empty_storage_map:
                                     storage_map[i][0] = None
                                     #See the not lazy gc code for explanations
-                                    #Of compute_map change
+                                    #of compute_map change
                                     compute_map[i][0] = 2
 
         # Hacky coarse gc final pass
@@ -513,7 +513,7 @@ class VM_Linker(link.LocalLinker):
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
             intermediate values during computation of a function.
-            If None use as default the Theano flag allow_gc value.
+            If None use as default the value of the Theano flag allow_gc.
 
         use_cloop - use the C-based virtual machine if possible
 
