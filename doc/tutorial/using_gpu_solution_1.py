@@ -309,14 +309,14 @@ Test them first, as they are not guaranteed to always provide a speedup.
 Facts:
 Examine and compare 'Single Op-wise' summaries for CPU and GPU. GPU ops 'GpuFromHost' (and 'HostFromGpu') by themselves
 consume a large amount of extra time. Furthermore, notice that each of the GPU ops consumes more time than its CPU counterpart.
-An additional experiment would also confirm that adding ou 'out' instance in the GPU version would only bring about a minor
+An additional experiment also confirms that adding an 'out' instance in the GPU version only brings about a minor
 improvement in this situation.
 
 Tentative conclusion:
-The large number of training steps (10000) generates disproportionate GPU overhead costs.
+The large number of external training steps (10000) generates disproportionate GPU overhead costs.
 
 Tentative solution:
-Include the training steps inside the definition of the Theano functionA tentative solution would
+Include the training steps inside the definition of the Theano function.
 
 Implement this solution and put it to test.
 
