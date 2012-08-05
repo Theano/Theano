@@ -44,7 +44,7 @@ file and run it.
     rng = numpy.random.RandomState(22)
     x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
     f = function([], T.exp(x))
-    print f.maker.fgraph.toposort()	
+    print f.maker.fgraph.toposort()
     t0 = time.time()
     for i in xrange(iters):
         r = f()
@@ -339,14 +339,14 @@ Consider again the logistic regression:
                 name = "predict")
 
     if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
-    train.maker.fgraph.toposort()]):
-	print 'Used the cpu'
+            train.maker.fgraph.toposort()]):
+        print 'Used the cpu'
     elif any([x.op.__class__.__name__ in ['GpuGemm', 'GpuGemv'] for x in
-    train.maker.fgraph.toposort()]):
-	print 'Used the gpu'
+              train.maker.fgraph.toposort()]):
+        print 'Used the gpu'
     else:
-	print 'ERROR, not able to tell if theano used the cpu or the gpu'
-	print train.maker.fgraph.toposort()
+        print 'ERROR, not able to tell if theano used the cpu or the gpu'
+        print train.maker.fgraph.toposort()
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
