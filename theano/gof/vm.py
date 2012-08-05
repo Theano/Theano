@@ -507,7 +507,8 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=None, use_cloop=False, callback=None, lazy=None):
+    def __init__(self, allow_gc=None, use_cloop=False, callback=None,
+                 lazy=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
