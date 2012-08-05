@@ -120,10 +120,10 @@ del dummy_stdin
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('allow_gc',
              "Do we default to delete intermediate results during Theano"
-             " function call? Doing so lower the memory requirement, but ask"
-             " that we reallocate memory at the next function call."
-             " This is implemented for the default linker, but not work all"
-             " linker",
+             " function calls? Doing so lowers the memory requirement, but"
+             " asks that we reallocate memory at the next function call."
+             " This is implemented for the default linker, but may not work"
+             " for all linkers.",
              BoolParam(True),
              in_c_key=False)
 
