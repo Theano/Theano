@@ -15,7 +15,7 @@ be implemented on Theano variables:
 
    TypeError: object of type 'TensorVariable' has no len()
 
-Python requires that *__len__* returns an integer, yet it cannot be done as Theano's are symbolic variables. However, `var.shape[0]` can be used as a workaround.
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
 
 This error message cannot be made more explicit because the relevant aspects of Python's 
 internals cannot be modified.

@@ -51,8 +51,7 @@ components, updates = theano.scan(fn=lambda coeff, power, free_var:
                                 outputs_info=None,
                                 sequences=[coefficients, full_range],
                                 non_sequences=x)
-#polynomial = components.sum()
-polynomial1 = components
+polynomial = components.sum()
 calculate_polynomial1 = theano.function(inputs=[coefficients, x],
                                      outputs=polynomial)
 

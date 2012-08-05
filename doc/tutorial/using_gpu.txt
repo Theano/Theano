@@ -56,7 +56,7 @@ The program just computes the ``exp()`` of a bunch of random numbers.
 Note that we use the ``shared`` function to
 make sure that the input *x* is stored on the graphics device.
 
-.. the following figures have been measured twice on BART3 on 2 Aug 2012 with no other job running simultaneously 
+.. the following figures have been measured twice on BART3 on Aug 2nd 2012 with no other job running simultaneously 
 
 If I run this program (in check1.py) with ``device=cpu``, my computer takes a little over 3 seconds,
 whereas on the GPU it takes just over 0.64 seconds. The GPU will not always produce the exact 
@@ -189,7 +189,7 @@ the CPU implementation!
 
 .. code-block:: text
 
-    With *flag* ``borrow=True``:
+    With *flag* ``borrow=False``:
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
     Using gpu device 0: GeForce GTX 580
@@ -200,7 +200,7 @@ the CPU implementation!
       1.62323296]
     Used the gpu
 
-    With *flag* ``borrow=False``:
+    With *flag* ``borrow=True``:
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
     Using gpu device 0: GeForce GTX 580
@@ -285,7 +285,7 @@ see :ref:`aliasing`.
 
 **Exercise**
 
-Consider the logistic regression:
+Consider again the logistic regression:
 
 .. code-block:: python
     
@@ -350,7 +350,8 @@ Consider the logistic regression:
    
 
 Modify and execute this example to run on GPU with ``floatX=float32`` and 
-time it using the command line ``time python file.py``.
+time it using the command line ``time python file.py``. (Of course, you may use some of your answer
+to the exercise in section :ref:`Configuration Settings and Compiling Mode<using_modes>`.)
 
 Is there an increase in speed from CPU to GPU?
 

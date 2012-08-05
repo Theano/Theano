@@ -113,7 +113,7 @@ Having the graph structure, computing automatic differentiation is
 simple. The only thing :func:`tensor.grad` has to do is to traverse the
 graph from the outputs back towards the inputs through all *apply*
 nodes (*apply* nodes are those that define which computations the
-graph does). For each such *apply* node, its  *op* defines 
+graph does). For each such *apply* node, its *op* defines 
 how to compute the *gradient* of the node's outputs with respect to its
 inputs. Note that if an *op* does not provide this information, 
 it is assumed that the *gradient* is not defined.

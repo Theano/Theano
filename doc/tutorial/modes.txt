@@ -105,7 +105,8 @@ Consider the logistic regression:
 
    
 Modify and execute this example to run on CPU (the default) with floatX=float32 and 
-time the execution using the command line ``time python file.py``.
+time the execution using the command line ``time python file.py``.  Save your code 
+as it will be useful later on. 
 
 .. TODO: To be resolved:
  
