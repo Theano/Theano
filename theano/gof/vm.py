@@ -404,10 +404,10 @@ class Stack(VM):
                                                 'destroy_map',
                                                 False)):
                                         warnings.warn(
-        "There was a bug that existed in the default Theano configuration"
-        " just in the development version between July 5 2012"
-        " and July 30 2012. This was not in a released version."
-        "The bug was affecting this script.",
+        "There was a bug that existed in the default Theano configuration,"
+        " only in the development version between July 5th 2012"
+        " and July 30th 2012. This was not in a released version."
+        " The bug was affecting this script.",
         #The stack level is not good when inside a Scan.
         stacklevel=3
                                         )
@@ -521,7 +521,7 @@ class VM_Linker(link.LocalLinker):
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
         lazy - Useful only when use_cloop is False. When lazy is None, use the
-            theano flag vm.lazy value. Then if we have a None(default) we auto
+            theano flag vm.lazy value. Then if we have a None (default) we auto
             detect if lazy evaluation is needed and use the apropriate
             version. If lazy is True or False, we force the version used
             between Loop/LoopGC and Stack.
