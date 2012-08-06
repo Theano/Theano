@@ -4664,6 +4664,9 @@ class Rebroadcast(Op):
 
     def __init__(self, *axis):
         self.axis = dict(axis)
+        for axis, broad in self.axis.iteritems():
+            assert isinstance(axis, (numpy.integer, int)), (
+                "Rebroadcast need integers axis. Got ", axis)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axis == other.axis
