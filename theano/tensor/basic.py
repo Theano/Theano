@@ -2585,6 +2585,11 @@ def exp2(a):
     """2^`a`"""
 
 
+@_scal_elemwise_with_nfunc('expm1', 1, 1)
+def expm1(a):
+    """e^`a` - 1"""
+
+
 @_scal_elemwise_with_nfunc('negative', 1, 1)
 def neg(a):
     """-a"""
@@ -2632,6 +2637,11 @@ def floor(a):
     """floor of a"""
 
 
+@_scal_elemwise_with_nfunc('trunc', 1, 1)
+def trunc(a):
+    """trunc of a"""
+
+
 @constructor
 def iround(a, mode="half_away_from_zero"):
     """cast(round(a,mode),'int64')"""
@@ -2671,6 +2681,16 @@ square = sqr
 @_scal_elemwise_with_nfunc('sqrt', 1, 1)
 def sqrt(a):
     """square root of a"""
+
+
+@_scal_elemwise_with_nfunc('deg2rad', 1, 1)
+def deg2rad(a):
+    """convert degree a to radian"""
+
+
+@_scal_elemwise_with_nfunc('rad2deg', 1, 1)
+def rad2deg(a):
+    """convert radian a to degree"""
 
 
 @_scal_elemwise_with_nfunc('cos', 1, 1)

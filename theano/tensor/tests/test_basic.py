@@ -810,6 +810,10 @@ _good_broadcast_unary_normal_no_complex = dict(
         empty=[numpy.asarray([])],
         )
 
+_grad_broadcast_unary_normal_no_complex = dict(
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+        corner_case=[corner_case_grad])
+
 _grad_broadcast_unary_normal = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
         corner_case = [corner_case_grad],
@@ -905,6 +909,16 @@ FloorTester = makeBroadcastTester(op=tensor.floor,
         #      yet it does not...
         grad=_grad_broadcast_unary_normal)
 
+TruncInplaceTester = makeBroadcastTester(
+    op=inplace.floor_inplace,
+    expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+    good=_good_broadcast_unary_normal_no_complex,
+    inplace=True)
+TruncTester = makeBroadcastTester(
+    op=tensor.floor,
+    expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+    good=_good_broadcast_unary_normal_no_complex)
+
 FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
         expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
         good=_good_broadcast_unary_normal_no_complex,
@@ -965,6 +979,18 @@ Exp2InplaceTester = makeBroadcastTester(op=inplace.exp2_inplace,
                                          good=_good_broadcast_unary_normal,
                                          grad=_grad_broadcast_unary_normal,
                                          inplace=True)
+
+
+Expm1Tester = makeBroadcastTester(op=tensor.expm1,
+                                  expected=numpy.expm1,
+                                  good=_good_broadcast_unary_normal,
+                                  grad=_grad_broadcast_unary_normal)
+Expm1InplaceTester = makeBroadcastTester(op=inplace.expm1_inplace,
+                                         expected=numpy.expm1,
+                                         good=_good_broadcast_unary_normal,
+                                         grad=_grad_broadcast_unary_normal,
+                                         inplace=True)
+
 
 _good_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),
                                       integers=(randint_ranged(1, 5, (2, 3)),),
@@ -1030,6 +1056,39 @@ _good_broadcast_unary_wide = dict(
     complex=(randc128_ranged(-1000, 1000, (2, 3)),),
     empty=(numpy.asarray([]),),)
 _grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
+
+if theano.config.floatX == 'float32':
+    angle_eps = 1e-4
+else:
+    angle_eps = 1e-10
+
+Deg2RadTester = makeBroadcastTester(
+    op=tensor.deg2rad,
+    expected=numpy.deg2rad,
+    good=_good_broadcast_unary_normal_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex,
+    eps=angle_eps)
+Deg2RadInplaceTester = makeBroadcastTester(
+    op=inplace.deg2rad_inplace,
+    expected=numpy.deg2rad,
+    good=_good_broadcast_unary_normal_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex,
+    inplace=True,
+    eps=angle_eps)
+
+Rad2DegTester = makeBroadcastTester(
+    op=tensor.rad2deg,
+    expected=numpy.rad2deg,
+    good=_good_broadcast_unary_normal_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex,
+    eps=angle_eps)
+Rad2DegInplaceTester = makeBroadcastTester(
+    op=inplace.rad2deg_inplace,
+    expected=numpy.rad2deg,
+    good=_good_broadcast_unary_normal_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex,
+    inplace=True,
+    eps=angle_eps)
 
 SinTester = makeBroadcastTester(op=tensor.sin,
                                 expected=numpy.sin,
