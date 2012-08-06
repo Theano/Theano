@@ -131,7 +131,7 @@ to your machine, you can install to an alternate prefix using
 
 .. code-block:: bash
 
-    pip install Theano --install-option='--prefix=~/.local
+    pip install Theano --install-option='--prefix=~/.local'
 
 e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
 install Theano into ``.local/lib/python2.4/site-packages`` inside your home
