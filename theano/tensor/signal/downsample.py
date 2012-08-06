@@ -83,7 +83,7 @@ class DownsampleFactorMax(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements (rows, cols)')
         r, c = imgshape[-2:]
-        rval = list(imgshape[:-2])+[ r/ds[0], c/ds[1]]
+        rval = list(imgshape[:-2]) + [ r // ds[0], c // ds[1] ]
 
         if not ignore_border:
             if isinstance(r, theano.Variable):
