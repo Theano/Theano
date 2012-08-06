@@ -1722,6 +1722,18 @@ class Floor(UnaryScalarOp):
 floor = Floor(same_out_nocomplex, name='floor')
 
 
+class Trunc(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.trunc(x)
+
+    def grad(self, (x,), (gz,)):
+        return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()
+trunc = Trunc(same_out_nocomplex, name='trunc')
+
+
 class RoundHalfToEven(UnaryScalarOp):
     """
     This function implement the same rounding than numpy: Round half to even
@@ -1978,6 +1990,25 @@ class Exp2(UnaryScalarOp):
 exp2 = Exp2(upgrade_to_float, name='exp2')
 
 
+class Expm1(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.expm1(x)
+
+    def grad(self, (x, ), (gz, )):
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            return gz * exp(x),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = exp(%(x)s) - 1;" % locals()
+expm1 = Expm1(upgrade_to_float, name='expm1')
+
+
 class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x * x
@@ -2012,6 +2043,44 @@ class Sqrt(UnaryScalarOp):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = sqrt(%(x)s);" % locals()
 sqrt = Sqrt(upgrade_to_float, name='sqrt')
+
+
+class Deg2Rad(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.deg2rad(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz * numpy.asarray(numpy.pi / 180, gz.type),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = %(x)s * (M_PI / 180.0);" % locals()
+deg2rad = Deg2Rad(upgrade_to_float, name='deg2rad')
+
+
+class Rad2Deg(UnaryScalarOp):
+    def impl(self, x):
+        return numpy.rad2deg(x)
+
+    def grad(self, (x,), (gz,)):
+        if gz.type in complex_types:
+            raise NotImplementedError()
+        if x.type in float_types:
+            return gz * numpy.asarray(180. / numpy.pi, gz.type),
+        else:
+            return None,
+
+    def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = %(x)s * (180.0 / M_PI);" % locals()
+rad2deg = Rad2Deg(upgrade_to_float, name='rad2deg')
 
 
 class Cos(UnaryScalarOp):
