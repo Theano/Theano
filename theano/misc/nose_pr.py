@@ -58,7 +58,7 @@ def setup():
 
     try:
         os.mkdir(basedir)
-    except OSError as e:
+    except OSError, e:
         if e.errno != errno.EEXIST:
             raise
     os.chdir(basedir)
