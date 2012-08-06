@@ -145,8 +145,8 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
 
@@ -165,11 +165,10 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
-
 
     # test ids=CHAR, stop_on_name=True
     s = StringIO.StringIO()
@@ -184,11 +183,10 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
-
 
     # test ids=
     s = StringIO.StringIO()
@@ -204,7 +202,7 @@ def test_debugprint():
    |E 
 """
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
