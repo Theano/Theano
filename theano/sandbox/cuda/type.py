@@ -130,20 +130,20 @@ class CudaNdarrayType(Type):
         if other.type == self:
             return other
 
-        if not isinstance(other.type, tensor.TensorType):
+        if not isinstance(other.type, (tensor.TensorType, CudaNdarrayType)):
             raise TypeError('Incompatible type', (self, other.type))
         if (other.type.dtype != self.dtype):
             raise TypeError('Incompatible dtype', (self.dtype,
                                                    other.type.dtype))
-        if numpy.any([bi and not obi
-                for obi, bi in zip(
-                    other.type.broadcastable,
-                    self.broadcastable)]):
-            raise TypeError('Incompatible broadcastable', (self.broadcastable,
-                other.type.broadcastable))
+        if other.type.ndim != self.ndim:
+            raise TypeError('Incompatible number of dimensions.'
+                            ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            rebroadcast = tensor.Rebroadcast(*enumerate(self.broadcastable))
-            other = rebroadcast(other)
+            raise TypeError('Incompatible broadcastable dimensions.'
+                            ' Expected %s, got %s.' %
+                            (str(other.type.broadcastable),
+                             str(self.broadcastable)))
+
         return theano.sandbox.cuda.basic_ops.GpuFromHost()(other)
 
     @staticmethod

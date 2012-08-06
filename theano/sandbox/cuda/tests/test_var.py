@@ -5,12 +5,9 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano import tensor
 
-from theano import sparse
-from theano.tensor import TensorType
-from theano.tests import unittest_tools as utt
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
-
+import theano.sandbox.cuda as cuda
 # Skip test if cuda_ndarray is not available.
 if cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -66,6 +63,10 @@ class T_updates(unittest.TestCase):
         f = theano.function([], y, updates={x: x + 1})
         f()
 
+        # Test that we can update with a CudaVariable
+        f = theano.function([], y, updates={x: cuda.gpu_from_host(x + 1)})
+        f()
+
     def test_2(self):
         # This test case uses code mentionned in #698
         data = numpy.random.rand(10, 10).astype('float32')
@@ -79,14 +80,42 @@ class T_updates(unittest.TestCase):
                 updates=output_updates, givens=output_givens)
         output_func()
 
-    def test_3(self):
-        # Test that broadcastable dimensions don't screw up
-        # update expressions.
+    def test_err_ndim(self):
+        # Test that we raise a good error message when we don't
+        # same the same number of dimensions.
         data = numpy.random.rand(10, 10).astype('float32')
         output_var = f32sc(name="output", value=data)
 
         # the update_var has type matrix, and the update expression
         # is a broadcasted scalar, and that should be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                          updates={output_var:
+                                   output_var.sum()})
+
+    def test_err_broadcast(self):
+        # Test that we raise a good error message when we don't
+        # same the same number of dimensions.
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = f32sc(name="output", value=data)
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                          updates={output_var:
+                                   output_var.sum().dimshuffle('x', 'x')})
+
+    def test_broadcast(self):
+        # Test that we can rebroadcast
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = f32sc(name="output", value=data)
+
+        up = tensor.unbroadcast(output_var.sum().dimshuffle('x', 'x'), 0, 1)
         output_func = theano.function(inputs=[], outputs=[],
-                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+                                      updates={output_var: up})
+        output_func()
+
+        up = tensor.patternbroadcast(output_var.sum().dimshuffle('x', 'x'),
+                                     output_var.type.broadcastable)
+        output_func = theano.function(inputs=[], outputs=[],
+                                      updates={output_var: up})
         output_func()
