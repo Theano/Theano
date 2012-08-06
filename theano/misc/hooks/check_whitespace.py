@@ -88,8 +88,9 @@ def run_mercurial_command(hg_command):
     hg_command_tuple.insert(0, hg_executable)
     try:
         hg_subprocess = Popen(hg_command_tuple, stdout=PIPE, stderr=PIPE)
-    except OSError:
+    except OSError, e:
         print >> sys.stderr, "Can't find the hg executable!"
+        print e
         sys.exit(1)
 
     hg_out, hg_err = hg_subprocess.communicate()
