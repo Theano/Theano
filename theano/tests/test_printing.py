@@ -50,9 +50,9 @@ def test_pydotprint_cond_highlight():
 def test_pydotprint_long_name():
     """This is a REALLY PARTIAL TEST.
 
-    It print a graph where there is variable and apply node that
-    there too long name is different, but not the shortened name.
-    We should not merge those node in the dot graph.
+    It prints a graph where there are variable and apply nodes whose long
+    names are different, but not the shortened names.
+    We should not merge those nodes in the dot graph.
 
     """
 
@@ -145,8 +145,8 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
 
@@ -165,11 +165,10 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
-
 
     # test ids=CHAR, stop_on_name=True
     s = StringIO.StringIO()
@@ -184,11 +183,10 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
-
 
     # test ids=
     s = StringIO.StringIO()
@@ -204,7 +202,7 @@ def test_debugprint():
    |E 
 """
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference

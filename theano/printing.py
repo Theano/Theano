@@ -482,7 +482,8 @@ def pydotprint(fct, outfile=None,
                print_output_file=True,
                assert_nb_all_strings=-1
                ):
-    """print to a file in png format the graph of op of a compile theano fct.
+    """
+    Print to a file (png format) the graph of a compiled theano function's ops.
 
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
@@ -509,10 +510,10 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
-    :param assert_nb_all_strings: Used for tests. This assert the
-                number of uniq string node in the dot graph. This is
-                used in tests to verify that dot won't merge Theano
-                node.
+    :param assert_nb_all_strings: Used for tests. If non-negative, assert that
+                the number of unique string nodes in the dot graph is equal to
+                this number. This is used in tests to verify that dot won't
+                merge Theano nodes.
 
     In the graph, ellipses are Apply Nodes (the execution of an op)
     and boxes are variables.  If variables have names they are used as

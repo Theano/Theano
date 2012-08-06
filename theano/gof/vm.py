@@ -40,7 +40,7 @@ def filter_vm_lazy(val):
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
              " auto detect if lazy evaluation is needed and use the apropriate"
-             " version. If lazy it True/False, force the version used between"
+             " version. If lazy is True/False, force the version used between"
              " Loop/LoopGC and Stack.",
          ConfigParam('None', filter_vm_lazy))
 
@@ -396,7 +396,7 @@ class Stack(VM):
                                     #current_apply is still in the
                                     #stack, this will cause it to be
                                     #recomputed! This can cause wrong value
-                                    #with some combiation of inplace op.
+                                    #with some combination of inplace op.
                                     compute_map[i][0] = 2
                                     if (config.warn.vm_gc_bug and
                                         current_apply in apply_stack and
@@ -404,10 +404,10 @@ class Stack(VM):
                                                 'destroy_map',
                                                 False)):
                                         warnings.warn(
-        "There was a bug that existed in the default Theano configuration"
-        " just in the development version between July 5 2012"
-        " and July 30 2012. This was not in a released version."
-        "The bug was affecting this script.",
+        "There was a bug that existed in the default Theano configuration,"
+        " only in the development version between July 5th 2012"
+        " and July 30th 2012. This was not in a released version."
+        " The bug was affecting this script.",
         #The stack level is not good when inside a Scan.
         stacklevel=3
                                         )
@@ -471,7 +471,7 @@ class Stack(VM):
                                 if empty_storage_map:
                                     storage_map[i][0] = None
                                     #See the not lazy gc code for explanations
-                                    #Of compute_map change
+                                    #of compute_map change
                                     compute_map[i][0] = 2
 
         # Hacky coarse gc final pass
@@ -507,12 +507,13 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=None, use_cloop=False, callback=None, lazy=None):
+    def __init__(self, allow_gc=None, use_cloop=False, callback=None,
+                 lazy=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
             intermediate values during computation of a function.
-            If None use as default the Theano flag allow_gc value.
+            If None use as default the value of the Theano flag allow_gc.
 
         use_cloop - use the C-based virtual machine if possible
 
@@ -521,7 +522,7 @@ class VM_Linker(link.LocalLinker):
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
         lazy - Useful only when use_cloop is False. When lazy is None, use the
-            theano flag vm.lazy value. Then if we have a None(default) we auto
+            theano flag vm.lazy value. Then if we have a None (default) we auto
             detect if lazy evaluation is needed and use the apropriate
             version. If lazy is True or False, we force the version used
             between Loop/LoopGC and Stack.

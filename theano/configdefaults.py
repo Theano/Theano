@@ -120,10 +120,10 @@ del dummy_stdin
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('allow_gc',
              "Do we default to delete intermediate results during Theano"
-             " function call? Doing so lower the memory requirement, but ask"
-             " that we reallocate memory at the next function call."
-             " This is implemented for the default linker, but not work all"
-             " linker",
+             " function calls? Doing so lowers the memory requirement, but"
+             " asks that we reallocate memory at the next function call."
+             " This is implemented for the default linker, but may not work"
+             " for all linkers.",
              BoolParam(True),
              in_c_key=False)
 
@@ -340,13 +340,13 @@ AddConfigVar('warn.gpu_set_subtensor1',
         in_c_key=False)
 
 AddConfigVar('warn.vm_gc_bug',
-        "There was a bug that existed in the default Theano configuration"
-        " just in the development version between July 5 2012"
-        " and July 30 2012. This was not in a released version."
+        "There was a bug that existed in the default Theano configuration,"
+        " only in the development version between July 5th 2012"
+        " and July 30th 2012. This was not in a released version."
         " If your code was affected by this bug, a warning"
         " will be printed during the code execution if you use the"
-        "`linker=vm,vm.lazy=True,warn.vm_gc_bug=True` Theano flags."
-        "This warning is disabled by default as the bug was not released.",
+        " `linker=vm,vm.lazy=True,warn.vm_gc_bug=True` Theano flags."
+        " This warning is disabled by default as the bug was not released.",
         BoolParam(False),
         in_c_key=False)
 
