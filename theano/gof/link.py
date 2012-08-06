@@ -433,7 +433,7 @@ class PerformLinker(LocalLinker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)().accept(fgraph, no_recycling)
+            return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
