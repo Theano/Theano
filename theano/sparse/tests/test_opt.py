@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 import numpy
 try:
     import scipy.sparse as sp
