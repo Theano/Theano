@@ -275,6 +275,10 @@ def mod_inplace(a, b):
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
 
+@_scal_inplace
+def conj_inplace(a):
+    """elementwise conjugate (inplace on `a`)"""
+
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))
 pprint.assign(sub_inplace, printing.OperatorPrinter('-=', -2, 'left'))

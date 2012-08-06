@@ -86,6 +86,11 @@ class Gamma(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         return gz * gamma(x) * psi(x),
 
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in float_types:
+            return """%(z)s = tgamma(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+
     def __eq__(self, other):
         return type(self) == type(other)
 
