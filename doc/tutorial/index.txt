@@ -29,7 +29,7 @@ you out.
     adding
     examples
     symbolic_graphs
-    printing_drawing	
+    printing_drawing
     gradients
     modes
     loading_and_saving

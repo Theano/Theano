@@ -69,7 +69,7 @@ CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_t
       gb = cuda_ndarray.CudaNdarray(b)
       dest = cuda_ndarray.CudaNdarray.zeros(a.shape)
       multiply_them(dest, ga, gb,
-		    block=(400, 1, 1), grid=(1, 1))
+                    block=(400, 1, 1), grid=(1, 1))
       assert (numpy.asarray(dest) == a * b).all()
 
 

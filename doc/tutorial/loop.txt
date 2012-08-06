@@ -61,7 +61,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import numpy
   import theano
   import theano.tensor as T
-  theano.config.warn.subtensor_merge_bug = False	
+  theano.config.warn.subtensor_merge_bug = False
 
   coefficients = theano.tensor.vector("coefficients")
   x = T.scalar("x")
