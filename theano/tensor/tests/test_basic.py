@@ -1383,6 +1383,12 @@ ConjTester = makeBroadcastTester(
     op=tensor.conj,
     expected=numpy.conj,
     good=_good_broadcast_unary_normal)
+ConjInplaceTester = makeBroadcastTester(
+    op=tensor.conj,
+    expected=numpy.conj,
+    good=_good_broadcast_unary_normal,
+    inplace=True)
+
 
 DotTester = makeTester(name = 'DotTester',
                         op = dot,
