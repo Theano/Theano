@@ -1350,6 +1350,22 @@ _good_broadcast_unary_gammaln = dict(
 _grad_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(1e-8, 10, (2, 3)),),)
 
+GammaTester = makeBroadcastTester(
+    op=tensor.gamma,
+    expected=scipy.special.gamma,
+    good=_good_broadcast_unary_gammaln,
+    grad=_grad_broadcast_unary_gammaln,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+GammaInplaceTester = makeBroadcastTester(
+    op=inplace.gamma_inplace,
+    expected=scipy.special.gamma,
+    good=_good_broadcast_unary_gammaln,
+    grad=_grad_broadcast_unary_gammaln,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
 GammaLnTester = makeBroadcastTester(
     op=tensor.gammaln,
     expected=expected_gammaln,
@@ -1401,6 +1417,31 @@ OnesLikeTester = makeBroadcastTester(
         good=_good_broadcast_unary_normal,
         grad=_grad_broadcast_unary_normal,
         name='OnesLike')
+
+# Complex operations
+_good_complex_from_polar = dict(
+    same_shapes=(abs(rand(2, 3)), rand(2, 3)),
+    not_same_dimensions=(abs(rand(2, 2)), rand(2)),
+    scalar=(abs(rand(2, 3)), rand(1, 1)),
+    row=(abs(rand(2, 3)), rand(1, 3)),
+    column=(abs(rand(2, 3)), rand(2, 1)),
+    integers=(abs(randint(2, 3)), randint(2, 3)),
+    empty=(numpy.asarray([]), numpy.asarray([1])),)
+_grad_complex_from_polar = dict(
+    same_shapes=(abs(rand(2, 3)), rand(2, 3)),
+    scalar=(abs(rand(2, 3)), rand(1, 1)),
+    row=(abs(rand(2, 3)), rand(1, 3)),
+    column=(abs(rand(2, 3)), rand(2, 1)))
+
+ComplexFromPolarTester = makeBroadcastTester(
+    op=tensor.complex_from_polar,
+    expected=lambda r, theta: r * numpy.cos(theta) + 1j * r * numpy.sin(theta),
+    good=_good_complex_from_polar)
+
+ConjTester = makeBroadcastTester(
+    op=tensor.conj,
+    expected=numpy.conj,
+    good=_good_broadcast_unary_normal)
 
 DotTester = makeTester(name = 'DotTester',
                         op = dot,

@@ -2769,6 +2769,11 @@ def erfc(a):
 
 
 @_scal_elemwise
+def gamma(a):
+    """gamma function"""
+
+
+@_scal_elemwise
 def gammaln(a):
     """log gamma function"""
 
@@ -2798,10 +2803,14 @@ def complex(real, imag):
     """Return complex-valued tensor with `real` and `imag` components"""
 
 
+@_scal_elemwise_with_nfunc('conj', 1, -1)
+def conj(z):
+    """Return the complex conjugate of `z`."""
+
+
 @_scal_elemwise
 def complex_from_polar(abs, angle):
-    """Return complex-valued tensor from polar coordinate specification"""
-
+    """Return complex-valued tensor from polar coordinate specification."""
 
 ##########################
 # Misc

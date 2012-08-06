@@ -220,6 +220,10 @@ def erfc_inplace(a):
     """complementary error function"""
 
 @_scal_inplace
+def gamma_inplace(a):
+    """gamma function"""
+
+@_scal_inplace
 def gammaln_inplace(a):
     """log gamma function"""
 
