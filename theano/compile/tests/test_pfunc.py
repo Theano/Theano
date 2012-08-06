@@ -335,6 +335,16 @@ class Test_pfunc(unittest.TestCase):
         inc_by_y()
         self.assertTrue(x.get_value() == 1)
 
+    def test_update_err_broadcast(self):
+        # Test that broadcastable dimensions raise error
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = shared(name="output", value=data)
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(numpy.ones((2, 3)))

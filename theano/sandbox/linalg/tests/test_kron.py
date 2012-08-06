@@ -1,4 +1,6 @@
+from nose.plugins.skip import SkipTest
 import numpy
+
 from theano import tensor, function
 from theano.tests import unittest_tools as utt
 from theano.sandbox.linalg.kron import Kron, kron
@@ -8,6 +10,9 @@ try:
     imported_scipy = True
 except ImportError:
     imported_scipy = False
+
+if not imported_scipy:
+    raise SkipTest('Kron Op need the scipy package to be installed')
 
 
 class TestKron(utt.InferShapeTester):
@@ -20,8 +25,6 @@ class TestKron(utt.InferShapeTester):
         self.op = kron
 
     def test_perform(self):
-        assert imported_scipy, (
-            "Scipy not available. Scipy is needed for TestKron")
         x = tensor.dmatrix()
         y = tensor.dmatrix()
         f = function([x, y], kron(x, y))
