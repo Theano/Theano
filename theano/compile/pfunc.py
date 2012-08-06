@@ -198,17 +198,25 @@ def rebuild_collect_shared(outputs,
                              (store_into, update_d[store_into]))
 
         # filter_variable ensure smooth conversion of cpu/gpu Types
-        update_val = store_into.type.filter_variable(update_val)
-        if update_val.type != store_into.type:
-            err_msg = ('an update must have the same type as the '
-                       'original shared variable(dest, dest.type, '
-                       'update_val, update_val.type)')
-            err_arg = (store_into,
-                       store_into.type,
-                       update_val,
-                       update_val.type)
+        try:
+            update_val = store_into.type.filter_variable(update_val)
+        except TypeError, e:
+            err_msg = ('An update must have the same type as the'
+                       ' original shared variable (shared_var=%s,'
+                       ' shared_var.type=%s,'
+                       ' update_val=%s, update_val.type=%s).' % (
+                           store_into,
+                           store_into.type,
+                           update_val,
+                           update_val.type))
+            err_sug = ('If the difference is related to the broadcast pattern,'
+                       ' you can call the'
+                       ' tensor.unbroadcast(var, axis_to_unbroadcast[, ...])'
+                       ' function to remove broadcastable dimensions.')
 
-            raise TypeError(err_msg, err_arg)
+            raise TypeError(err_msg, err_sug)
+        assert update_val.type == store_into.type
+
         update_d[store_into] = update_val
         update_expr.append((store_into, update_val))
 
