@@ -328,7 +328,7 @@ class Mode(object):
         self.linker_time = 0
 
     def __str__(self):
-        return "Mode(linker = %s, optimizer = %s)" % (
+        return "%s(linker = %s, optimizer = %s)" % (self.__class__.__name__,
                 self.provided_linker, self.provided_optimizer)
 
     def __get_optimizer(self):

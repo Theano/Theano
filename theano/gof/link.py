@@ -433,7 +433,7 @@ class PerformLinker(LocalLinker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)().accept(fgraph, no_recycling)
+            return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
             #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
@@ -552,6 +552,22 @@ class WrapLinker(Linker):
         self.fgraph = None
         self.linkers = linkers
         self.wrapper = wrapper
+
+    def __copy__(self):
+        """
+        Shallow copy of a WrapLinker.
+
+        @returns: A copy of self, where each of the linkers in self.linkers
+            have been shallow-copied.
+
+        It is useful because in FunctionMaker, copy.copy is called on the
+        Mode's linker, so that it is not modified inplace when linker.accept()
+        is called. In this case, we want the wrapped linkers to be copied too.
+        """
+        other = self.__class__(
+                linkers=[copy(l) for l in self.linkers],
+                wrapper=self.wrapper)
+        return other
 
     def accept(self, fgraph, no_recycling=None):
         """

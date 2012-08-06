@@ -1408,8 +1408,11 @@ class OpWiseCLinker(link.LocalLinker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)(self.fallback_on_perform).accept(fgraph,
-                                                               no_recycling)
+            return type(self)(
+                    fallback_on_perform=self.fallback_on_perform,
+                    allow_gc=self.allow_gc,
+                    nice_errors=self.nice_errors
+                    ).accept(fgraph, no_recycling)
             #raise Exception("Cannot accept from a Linker that is
             #already tied to another FunctionGraph.")
         self.fgraph = fgraph

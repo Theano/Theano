@@ -1560,7 +1560,7 @@ class _Linker(gof.link.LocalLinker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(self.fgraph, self.maker).accept(fgraph, no_recycling)
+            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
