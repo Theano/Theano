@@ -2,7 +2,7 @@ import numpy
 from theano.gof import Op, Apply
 from theano import tensor, function
 from theano.tests import unittest_tools as utt
-from theano.sandbox.linalg import matrix_inverse, kron, solve
+from theano.sandbox.linalg import matrix_inverse, kron
 
 try:
     import scipy.linalg
@@ -89,9 +89,9 @@ class Solve(Op):
         try:
             output_storage[0][0] = scipy.linalg.solve(a, b, self.sym_pos,
                         self.lower, self.overwrite_a, self.overwrite_b)
-        except:
-            raise  Exception('%s: array \'a\' is singular'
-                             % self.__class__.__name__)
+        except Exception, e:
+            e.args = e.args + ('array \'a\' might be singular',) 
+            raise 
 
     def grad(self, inputs, cost_grad):
         """
@@ -146,79 +146,3 @@ def solve(a, b, sym_pos=False, lower=False, overwrite_a=False,
 #      with Ops solve() or solve_triangular()
 
 
-class TestSolve(utt.InferShapeTester):
-
-    rng = numpy.random.RandomState(43)
-
-    def setUp(self):
-
-        super(TestSolve, self).setUp()
-        self.op_class = Solve
-        self.op = solve
-
-    def test_perform(self):
-
-        x = tensor.dmatrix()
-        y = tensor.dmatrix()
-        f = function([x, y], self.op(x, y))
-
-        a = numpy.random.rand(4, 4)
-        for shp1 in [(4, 5), (4, 1)]:
-            b = numpy.random.rand(*shp1)
-            out = f(a, b)
-            assert numpy.allclose(out, scipy.linalg.solve(a, b))
-
-        a = numpy.random.rand(1, 1)
-        for shp1 in [(1, 5), (1, 1)]:
-            b = numpy.random.rand(*shp1)
-            out = f(a, b)
-            assert numpy.allclose(out, scipy.linalg.solve(a, b))
-
-        y = tensor.dvector()
-        f = function([x, y], self.op(x, y))
-        a = numpy.random.rand(4, 4)
-        b = numpy.random.rand(4)
-        out = f(a, b)
-        assert numpy.allclose(out, scipy.linalg.solve(a, b))
-
-    def test_gradient(self):
-
-        utt.verify_grad(self.op, [numpy.random.rand(5, 5),
-                                numpy.random.rand(5, 1)],
-                        n_tests=1, rng=TestSolve.rng)
-
-        utt.verify_grad(self.op, [numpy.random.rand(4, 4),
-                                       numpy.random.rand(4, 3)],
-                      n_tests=1, rng=TestSolve.rng)
-
-        utt.verify_grad(self.op, [numpy.random.rand(4, 4),
-                                         numpy.random.rand(4)],
-                      n_tests=1, rng=TestSolve.rng)
-
-    def test_infer_shape(self):
-
-        x = tensor.dmatrix()
-        y = tensor.dmatrix()
-
-        self._compile_and_check([x, y], [self.op(x, y)],
-                                [numpy.random.rand(5, 5),
-                                 numpy.random.rand(5, 2)],
-                                self.op_class)
-
-        self._compile_and_check([x, y], [self.op(x, y)],
-                                [numpy.random.rand(4, 4),
-                                 numpy.random.rand(4, 1)],
-                                self.op_class)
-        y = tensor.dvector()
-        self._compile_and_check([x, y], [self.op(x, y)],
-                                [numpy.random.rand(4, 4),
-                                 numpy.random.rand(4)],
-                                self.op_class)
-
-
-if __name__ == "__main__":
-    t = TestSolve('setUp')
-    t.setUp()
-    t.test_perform()
-    t.test_gradient()
-    t.test_infer_shape()
