@@ -75,6 +75,30 @@ class Erfc(UnaryScalarOp):
 erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
+class Gamma(UnaryScalarOp):
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.gamma(x)
+
+    def impl(self, x):
+        return Gamma.st_impl(x)
+
+    def grad(self, (x, ), (gz, )):
+        return gz * gamma(x) * psi(x),
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in float_types:
+            return """%(z)s = tgamma(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+gamma = Gamma(upgrade_to_float, name='gamma')
+
+
 class GammaLn(UnaryScalarOp):
     """
     Log gamma function.

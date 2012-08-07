@@ -2425,9 +2425,6 @@ complex = Complex(name='complex')
 class Conj(UnaryScalarOp):
     def impl(self, x):
         return numpy.conj(x)
-
-    def grad(self, (x, ), (gz, )):
-        return [conj(gz)]
 conj = Conj(same_out, name='conj')
 
 
@@ -2447,10 +2444,9 @@ class ComplexFromPolar(BinaryScalarOp):
             return numpy.complex128(numpy.complex(x, y))
 
     def grad(self, (r, theta), (gz,)):
-        gr = cos(theta) * real(gz) + sin(theta) * imag(gz)
-        gtheta = -real(gz) * r * sin(theta) + imag(gz) * r * cos(theta)
-        return [cast(gr, r.type.dtype),
-                cast(gtheta, theta.type.dtype)]
+        gr = gz * complex_from_polar(1, theta)
+        gtheta = gz * complex_from_polar(r, -theta)
+        return [gr, gtheta]
 complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 
 
