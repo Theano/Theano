@@ -4,12 +4,13 @@ from theano import tensor, function
 from theano.tests import unittest_tools as utt
 from theano.sandbox.linalg import matrix_inverse, kron, solve, Solve
 
-
 try:
     import scipy.linalg
     imported_scipy = True
 except ImportError:
     imported_scipy = False
+assert imported_scipy, ("Scipy not available. Scipy is needed for the"
+        " TestSolve class")
       
 
 class TestSolve(utt.InferShapeTester):
