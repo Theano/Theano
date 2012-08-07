@@ -1291,12 +1291,18 @@ _good_broadcast_unary_gammaln = dict(
 _grad_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(1e-8, 10, (2, 3)),),)
 
+if theano.config.floatX == 'float32':
+    gamma_eps = 2e-4
+else:
+    gamma_eps = 2e-10
+
 GammaTester = makeBroadcastTester(
     op=tensor.gamma,
     expected=scipy.special.gamma,
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
+    eps=gamma_eps,
     skip=skip_scipy)
 GammaInplaceTester = makeBroadcastTester(
     op=inplace.gamma_inplace,
@@ -1304,6 +1310,7 @@ GammaInplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
+    eps=gamma_eps,
     inplace=True,
     skip=skip_scipy)
 
