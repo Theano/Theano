@@ -220,6 +220,10 @@ def erfc_inplace(a):
     """complementary error function"""
 
 @_scal_inplace
+def gamma_inplace(a):
+    """gamma function"""
+
+@_scal_inplace
 def gammaln_inplace(a):
     """log gamma function"""
 
@@ -270,6 +274,10 @@ def mod_inplace(a, b):
 @_scal_inplace
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
+
+@_scal_inplace
+def conj_inplace(a):
+    """elementwise conjugate (inplace on `a`)"""
 
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))
