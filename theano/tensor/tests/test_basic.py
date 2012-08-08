@@ -1238,7 +1238,7 @@ del _good_broadcast_unary_normal_no_int['integers']
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
-
+    expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
     skip_scipy = False
@@ -1298,7 +1298,7 @@ else:
 
 GammaTester = makeBroadcastTester(
     op=tensor.gamma,
-    expected=scipy.special.gamma,
+    expected=expected_gamma,
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
@@ -1306,7 +1306,7 @@ GammaTester = makeBroadcastTester(
     skip=skip_scipy)
 GammaInplaceTester = makeBroadcastTester(
     op=inplace.gamma_inplace,
-    expected=scipy.special.gamma,
+    expected=expected_gamma,
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
