@@ -1477,16 +1477,23 @@ class _tensor_py_operators:
     #                     "Variable) due to Python restriction. You can use "
     #                     "TheanoVariable.shape[0] instead.")
 
-    def reshape(self, shape, ndim=None):
-        """Return a reshaped view/copy of this variable.
+    def reshape(self, shape, ndim=None, order='C'):
+        """
+        Return a reshaped view/copy of this variable.
 
         :param shape: something that can be converted to a symbolic vector of
             integers
 
         :param ndim: the length of the shape.  Passing None here means for
-            theano to try and guess the length of `shape`.
+            theano to try and guess the length of `shape`
+
+        :param order: 'C' (default) or 'F'.  Determines whether the array data
+            should be viewed as in C order (first dimension major; last
+            dimension contiguous) or FORTRAN order (last dimension major; first
+            dimension contiguous)
         """
-        return reshape(self, shape, ndim=ndim)
+
+        return reshape(self, shape, ndim=ndim, order=order)
 
     def dimshuffle(self, *pattern):
         """
@@ -5375,11 +5382,18 @@ class Reshape(Op):
             return Op.c_code(self, node, name, inputs, outputs, sub)
 
 
-def reshape(x, newshape, ndim=None, name=None):
+def reshape(x, newshape, ndim=None, name=None, order='C'):
     if ndim is None:
         ndim = get_vector_length(newshape)
     op = Reshape(ndim, name)
-    rval = op(x, newshape)
+    if order == 'C':
+        rval = op(x, newshape)
+    elif order == 'F':
+        rval = op(x.T, newshape[::-1])
+        rval = rval.T
+    else:
+        raise ValueError('reshape(): \'order\' argument must be either'
+                  ' \'C\' (default) or \'F\'')
     return rval
 
 
@@ -6478,11 +6492,13 @@ def tensordot(x, y=None, axes=2):
 
     axes = TensorDot.parse_axes(axes)
 
-    # check whether axes is valid given the dimensions of x and y
+    # Check whether axes is valid given the dimensions of x and y.
+    # Note that 'axes' is the number of corresponding axes, not a
+    # position (see doc. for numpy.tensordot).
     if numpy.isscalar(axes):
-        if axes >= x.ndim or axes >= y.ndim:
-            raise ValueError('axes should be smaller than the dimension of '\
-                    'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim, y.ndim))
+        if axes > x.ndim or axes > y.ndim:
+            raise ValueError('axes should be not greater than the dimension'\
+                    'of x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim, y.ndim))
     elif isinstance(axes, (list, tuple)):
 
         if isinstance(axes[0], (list, tuple)) and \
