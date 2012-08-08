@@ -111,8 +111,10 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
         if out_dtype in sparse.discrete_dtypes:
             if not gap:
                 value = numpy.random.randint(50, size=shape)
+            elif len(gap) == 2:
+                value = numpy.random.randint(gap[0], gap[1], size=shape)
             else:
-                value = numpy.random.randint(*gap, size=shape)
+                value = numpy.random.randint(gap[0], size=shape)
         else:
             if not gap:
                 value = numpy.random.random(shape)
@@ -2298,12 +2300,24 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                         raise AssertionError(self.__name__)
 
                 # Test with int8 as dtype
-                if 'int 8' in test_dtypes:
+                # These tests are not in the loop for two reasons.
+                # First, in recent version of numpy, when a numpy
+                # function have int8 as input dtype, it returns a
+                # float16 as output dtype. Since this does not provide
+                # enough precision, we upcast the data before we apply the
+                # function.
+                # Second, the tolerance for the checkup in DebugMode
+                # is too high.
+                if 'int8' in test_dtypes:
+                    if gap:
+                        domain = gap
+                    else:
+                        domain = (0, 5)
                     variable, data = sparse_random_inputs(
                         format,
                         shape=(4, 7),
                         out_dtype='int8',
-                        gap=(0, 5))
+                        gap=domain)
 
                     f = theano.function(variable, self.op(*variable))
 
