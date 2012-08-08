@@ -1304,6 +1304,7 @@ if imported_scipy_special:
 else:
     expected_erf = []
     expected_erfc = []
+    expected_gamma = []
     expected_gammaln = []
     expected_psi = []
     skip_scipy = "scipy is not present"
