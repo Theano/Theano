@@ -46,22 +46,6 @@ perhaps a tensor variable could be a better choice.
 
 More documentation may be found in the :ref:`Sparse Library Reference <libdoc_sparse>`.
 
-Compressed Sparse Format
-========================
-
-Theano supports two *compressed sparse formats*  ``csc`` and ``csr``, respectively based on columns
-and rows. They have both the same attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
-
-  * The ``shape`` attribute is exactly the same as the ``shape`` attribute of a dense (i.e. generic)
-    matrix. It can be explicitly specified at the creation of a sparse matrix if it cannot be infered
-    from the first three attributes.
-
-  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which contains all the non-zero
-    elements of the sparse matrix.
-
-  * The ``indices`` and ``indptr`` attributes are used to store the position of the data in the
-    sparse matrix.
-
 Before going further, here are the ``import`` statements that are assumed for the rest of the
 tutorial:
 
@@ -70,62 +54,46 @@ tutorial:
 >>> import scipy.sparse as sp
 >>> from theano import sparse
 
-CSC Matrix
-----------
+Compressed Sparse Format
+========================
 
-In the *Compressed Sparse Column* format, ``indices`` stands for the column index
-of the data and ``indptr`` tells where the column starts in the ``data`` and in the
-``indices`` attributes. ``indptr`` can be tought as giving the slice which must be
-applied to the other attribute in order to get each column of the matrix. The following
-example builds a matrix and returns its columns. It prints the i-th column indexes in the
-first list and their corresponding value in the second list.
+.. Changes to this section should also result in changes to library/sparse/index.txt.
 
->>> data = np.asarray([7, 8, 9])
->>> indices = np.asarray([0, 1, 2])
->>> indptr = np.asarray([0, 2, 3, 3])
->>> m = sp.csc_matrix((data, indices, indptr), shape=(3, 3))
->>> print m.toarray()
-[[7 0 0]
- [8 0 0]
- [0 9 0]]
->>> i = 0
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[0, 1] [7, 8]
->>> i = 1
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[2] [9]
->>> i = 2
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[] []
+Theano supports two *compressed sparse formats*  ``csc`` and ``csr``, respectively based on columns
+and rows. They have both the same attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
 
-CSR Matrix
-----------
+  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which contains all the non-zero
+    elements of the sparse matrix.
 
-In the *Compressed Sparse Row* format, ``indices`` stands for the row index
-of the data and ``indptr`` tells where the row starts in the ``data`` and in the
-``indices`` attributes. ``indptr`` can be tought as giving the slice which must be
-applied to the other attribute in order to get each row of the matrix. The following
-example builds a matrix and returns its rows. It prints the i-th row indexes in the
-first list and their corresponding values in the second list.
+  * The ``indices`` and ``indptr`` attributes are used to store the position of the data in the
+    sparse matrix.
 
->>> data = np.asarray([7, 8, 9])
->>> indices = np.asarray([0, 1, 2])
->>> indptr = np.asarray([0, 2, 3, 3])
->>> m = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
->>> print m.toarray()
-[[7 8 0]
- [0 0 9]
- [0 0 0]]
->>> i = 0
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[0, 1] [7, 8]
->>> i = 1
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[2] [9]
->>> i = 2
->>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
-[] []
+  * The ``shape`` attribute is exactly the same as the ``shape`` attribute of a dense (i.e. generic)
+    matrix. It can be explicitly specified at the creation of a sparse matrix if it cannot be infered
+    from the first three attributes.
 
+Which format should I use?
+--------------------------
+
+At the end, the format does not affect the length of the ``data`` and ``indices`` attributes. They are both
+completly fixed by the number of elements you want to store. The only thing that changes with the format
+is ``indptr``. In ``csc`` format, the matrix is compressed along columns so a lower number of columns will
+result in less memory use. On the other hand, with the ``csr`` format, the matrix is compressed along
+the rows and with a matrix that have a lower number of rows, ``csr`` format is a better choice. So here is the rule:
+
+.. note::
+
+    If shape[0] > shape[1], use ``csr`` format. Otherwise, use ``csc``.
+
+Sometimes, since the sparse module is young, ops does not exist for both format. So here is 
+what may be the most relevent rule:
+
+.. note::
+
+    Use the format compatible with the ops in your computation graph.
+
+The documentation about the ops and their supported format may be found in 
+the :ref:`Sparse Library Reference <libdoc_sparse>`.
 
 Handling Sparse in Theano
 =========================
