@@ -86,8 +86,17 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     if argv is None:
         argv = sys.argv
     if theano_nose is None:
-        theano_nose = os.path.join(theano.__path__[0], '..',
-                                   'bin', 'theano-nose')
+    #If Theano is installed with pip/easy_install, it can be in the
+    #*/lib/python2.7/site-packages/theano, but theano-nose in */bin
+        for i in range(1, 5):
+            path = theano.__path__[0]
+            for _ in range(i):
+                path = os.path.join(path, '..')
+            path = os.path.join(path, 'bin', 'theano-nose')
+            if os.path.exists(path):
+                theano_nose = path
+    if theano_nose is None:
+        raise Exception("Not able to find theano_nose")
     if batch_size is None:
         batch_size = 100
     stdout_backup = sys.stdout
