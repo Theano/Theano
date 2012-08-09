@@ -1,13 +1,13 @@
-import sys
-
 import numpy as np
 import numpy
 
 import theano
 from theano.tests import unittest_tools as utt
-from theano.tensor.extra_ops import *
+from theano.tensor.extra_ops import (BinCountOp, bincount, DiffOp, diff,
+        SqueezeOp, squeeze, RepeatOp, repeat, Bartlett, bartlett,
+        FillDiagonal, fill_diagonal)
 from theano import tensor as T
-from theano import config, tensor, function, scalar
+from theano import config, tensor, function
 
 
 class TestBinCountOp(utt.InferShapeTester):
@@ -134,11 +134,11 @@ class TestDiffOp(utt.InferShapeTester):
         x = T.vector('x')
         a = np.random.random(50).astype(config.floatX)
 
-        gf = theano.function([x], T.grad(T.sum(diff(x)), x))
+        theano.function([x], T.grad(T.sum(diff(x)), x))
         utt.verify_grad(self.op, [a])
 
         for k in range(TestDiffOp.nb):
-            dg = theano.function([x], T.grad(T.sum(diff(x, n=k)), x))
+            theano.function([x], T.grad(T.sum(diff(x, n=k)), x))
             utt.verify_grad(DiffOp(n=k), [a], eps=7e-3)
 
 
@@ -171,7 +171,7 @@ class TestSqueezeOp(utt.InferShapeTester):
         x = T.tensor4('x')
         a = np.random.random((1, 1, 3, 4)).astype(config.floatX)
 
-        gf = theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
+        theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
         utt.verify_grad(SqueezeOp(out_nd=2), [a])
 
 
