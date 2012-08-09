@@ -3138,6 +3138,7 @@ def structured_monoid(tensor_op):
             data = tensor_op(data, *xs)
 
             return CSM(x.format)(data, ind, ptr, shape)
+        wrapper.__name__ = str(tensor_op.scalar_op)
         return wrapper
     return decorator
 
@@ -3191,6 +3192,112 @@ def structured_maximum(x, y):
 def structured_add(x):
     """structured addition of sparse matrix
     x and scalar y.
+    """
+    # see decorator for function body
+
+
+# Sparse operation (map 0 to 0)
+@structured_monoid(tensor.sin)
+def sin(x):
+    """Elemwise sinus of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.tan)
+def tan(x):
+    """Elemwise tan of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.arcsin)
+def arcsin(x):
+    """Elemwise arcsinus of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.arctan)
+def arctan(x):
+    """Elemwise arctan of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.sinh)
+def sinh(x):
+    """Elemwise sinh of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.arcsinh)
+def arcsinh(x):
+    """Elemwise arcsinh of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.tanh)
+def tanh(x):
+    """Elemwise tanh of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.arctanh)
+def arctanh(x):
+    """Elemwise arctanh of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.round_half_to_even)
+def rint(x):
+    """Elemwise round half to even of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.sgn)
+def sgn(x):
+    """Elemwise signe of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.ceil)
+def ceil(x):
+    """Elemwise ceiling of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.floor)
+def floor(x):
+    """Elemwise floor of `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.log1p)
+def log1p(x):
+    """Elemwise log(1 + `x`).
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.sqr)
+def sqr(x):
+    """Elemwise `x` * `x`.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.sqrt)
+def sqrt(x):
+    """Elemwise square root of `x`.
     """
     # see decorator for function body
 
