@@ -437,7 +437,9 @@ class SparseType(gof.Type):
         # This is Fred suggestion for a quick and dirty way of checking
         # aliasing .. this can potentially be further refined (ticket #374)
         if _is_sparse(a) and _is_sparse(b):
-            return a is b
+            return (SparseType.may_share_memory(a, b.data) or
+                    SparseType.may_share_memory(a, b.indices) or
+                    SparseType.may_share_memory(a, b.indptr))
         if _is_sparse(b) and isinstance(a, numpy.ndarray):
             a, b = b, a
         if _is_sparse(a) and isinstance(b, numpy.ndarray):

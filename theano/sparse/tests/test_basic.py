@@ -1342,6 +1342,10 @@ def test_may_share_memory():
                         (b.indptr, a, False),
                         (b.indices, a, False),
                         (as_ar(b.shape), a, False),
+                        (a.transpose(), a, True),
+                        (b.transpose(), b, True),
+                        (a.transpose(), b, False),
+                        (b.transpose(), a, False),
                         ]:
 
         assert SparseType.may_share_memory(a_, b_) == rep
