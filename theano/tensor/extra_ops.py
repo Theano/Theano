@@ -3,7 +3,7 @@ import numpy
 
 import theano
 import basic
-from theano import gof, tensor, function, scalar
+from theano import gof, tensor, scalar
 from theano.sandbox.linalg.ops import diag
 
 
@@ -132,6 +132,21 @@ class BinCountOp(theano.Op):
 
         if x.dtype not in BinCountOp.compatible_type:
             raise TypeError("Inputs dtype must be an integer.")
+
+        # Some dtypes are not supported by numpy's implementation of bincount.
+        # Until another one is available, we should fail at graph construction
+        # time, not wait for execution.
+        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        if int_bitwidth == 64:
+            numpy_unsupported_dtypes = ('uint64',)
+        if int_bitwidth == 32:
+            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+
+        if x.dtype in numpy_unsupported_dtypes:
+            raise TypeError(
+                    ("Input dtypes %s are not supported by numpy.bincount, "
+                    % numpy_unsupported_dtypes), x.dtype)
+
         if x.ndim != 1:
             raise TypeError("Inputs must be of dimension 1.")
 
@@ -286,6 +301,25 @@ class RepeatOp(theano.Op):
     def make_node(self, x, repeats):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
+
+        if repeats.dtype not in tensor.discrete_dtypes:
+            raise TypeError("repeats.dtype must be an integer.")
+
+        # Some dtypes are not supported by numpy's implementation of repeat.
+        # Until another one is available, we should fail at graph construction
+        # time, not wait for execution.
+        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        if int_bitwidth == 64:
+            numpy_unsupported_dtypes = ('uint64',)
+        if int_bitwidth == 32:
+            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+
+        if repeats.dtype in numpy_unsupported_dtypes:
+            raise TypeError(
+                    ("dtypes %s are not supported by numpy.repeat "
+                     "for the 'repeats' parameter, "
+                     % numpy_unsupported_dtypes), repeats.dtype)
+
         if self.axis is None:
             out_type = theano.tensor.TensorType(dtype=x.dtype,
                                                 broadcastable=[False])
