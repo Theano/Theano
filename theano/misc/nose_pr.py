@@ -134,7 +134,7 @@ def run_tests(venv):
     try:
 
         return True, check_output([iptest], stderr=STDOUT).decode('utf-8')
-    except CalledProcessError as e:
+    except CalledProcessError, e:
         return False, e.output.decode('utf-8')
     finally:
         # Restore $PATH

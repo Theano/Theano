@@ -82,24 +82,24 @@ class T_updates(unittest.TestCase):
 
     def test_err_ndim(self):
         # Test that we raise a good error message when we don't
-        # same the same number of dimensions.
+        # have the same number of dimensions.
         data = numpy.random.rand(10, 10).astype('float32')
         output_var = f32sc(name="output", value=data)
 
         # the update_var has type matrix, and the update expression
-        # is a broadcasted scalar, and that should be allowed.
+        # is a broadcasted scalar, and that should not be allowed.
         self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
                           updates={output_var:
                                    output_var.sum()})
 
     def test_err_broadcast(self):
         # Test that we raise a good error message when we don't
-        # same the same number of dimensions.
+        # have the same number of dimensions.
         data = numpy.random.rand(10, 10).astype('float32')
         output_var = f32sc(name="output", value=data)
 
         # the update_var has type matrix, and the update expression
-        # is a broadcasted scalar, and that should be allowed.
+        # is a broadcasted scalar, and that should not be allowed.
         self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
                           updates={output_var:
                                    output_var.sum().dimshuffle('x', 'x')})

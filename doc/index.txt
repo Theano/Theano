@@ -34,8 +34,8 @@ Download
 ========
 
 Theano is now `available on PyPI`_, and can be installed via ``easy_install
-Theano``, or by downloading and unpacking the tarball and typing ``python
-setup.py install``.
+Theano``, ``pip install Theano`` or by downloading and unpacking the tarball
+and typing ``python setup.py install``.
 
 Those interested in bleeding-edge features should obtain the latest development
 version, available via::
@@ -47,6 +47,10 @@ You can then place the checkout directory on your ``$PYTHONPATH`` or use
 directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
+
+Master Tests Status:
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png
 
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
 .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
