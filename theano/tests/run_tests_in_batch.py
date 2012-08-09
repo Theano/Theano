@@ -95,6 +95,7 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
             path = os.path.join(path, 'bin', 'theano-nose')
             if os.path.exists(path):
                 theano_nose = path
+                break
     if theano_nose is None:
         raise Exception("Not able to find theano_nose")
     if batch_size is None:
