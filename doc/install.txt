@@ -203,6 +203,10 @@ the Theano cache like this:
 Bleeding-edge install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Master Tests Status:
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png
+
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 If you want the bleeding-edge without developing the code you can use pip for
