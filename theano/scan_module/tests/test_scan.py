@@ -841,7 +841,7 @@ class T_Scan(unittest.TestCase):
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
         assert numpy.allclose(theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1)
+        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1, theano_x1 - numpy_x1)
         # assert that it was done in place
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
