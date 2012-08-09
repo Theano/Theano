@@ -4270,6 +4270,9 @@ class Dot(gof.op.Op):
 
     :note: The grad implemented is regular, i.e. not structured.
     :note: At least one of `x` or `y` must be a sparse matrix.
+    :note: When the operation has the form dot(csr_matrix, dense)
+           the gradient of this operation can be performed inplace
+           by UsmmCscDense. This leads to significant speed-ups.
     """
 
     def __eq__(self, other):
