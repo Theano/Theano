@@ -193,13 +193,20 @@ def print_results(pr, results_urls, unavailable_pythons=unavailable_pythons):
 
 
 def dump_results(num, results, pr):
-    with open(os.path.join(basedir, 'lastresults.pkl'), 'wb') as f:
+    f = open(os.path.join(basedir, 'lastresults.pkl'), 'wb')
+    try:
         pickle.dump((num, results, pr, unavailable_pythons), f)
+    finally:
+        f.close()
 
 
 def load_results():
-    with open(os.path.join(basedir, 'lastresults.pkl'), 'rb') as f:
-        return pickle.load(f)
+    f = open(os.path.join(basedir, 'lastresults.pkl'), 'rb')
+    try:
+        ret = pickle.load(f)
+    finally:
+        f.close()
+    return ret
 
 
 def save_logs(results, pr):
@@ -211,8 +218,11 @@ def save_logs(results, pr):
 
             result_locn = os.path.abspath(os.path.join('venv-%s' % py,
                                         pr['head']['sha'][:7] + ".log"))
-            with io.open(result_locn, 'w', encoding='utf-8') as f:
+            f = io.open(result_locn, 'w', encoding='utf-8')
+            try:
                 f.write(log)
+            finally:
+                f.close()
 
             results_paths.append((py, False, result_locn, missing_libraries))
 
