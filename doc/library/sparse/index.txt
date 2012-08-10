@@ -119,32 +119,48 @@ List of Implemented Operations
 ==============================
 
 - Moving from and to sparse
-    - :class:`DenseFromSparse <theano.sparse.basic.DenseFromSparse>` and ``dense_from_sparse``
-    - :class:`SparseFromDense <theano.sparse.basic.SparseFromDense>` and ``csr_from_dense``, ``csc_from_dense``
+    - :class:`DenseFromSparse <theano.sparse.basic.DenseFromSparse>` and ``dense_from_sparse``.
+      Both grad are implemented. Structured by default.
+    - :class:`SparseFromDense <theano.sparse.basic.SparseFromDense>` and ``csr_from_dense``, ``csc_from_dense``.
+      The grad implemented is structured.
 
 - Construction of Sparses and their Properties
-    - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix
-    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` to get the properties of a sparse matrix
-    - ``sp_ones_like``
-    - ``sp_zeros_like``
-    - :class:`SquareDiagonal <theano.sparse.basic.SquareDiagonal>` and ``square_diagonal``
+    - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix.
+      The grad implemented is regular.
+    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` to get the properties of a sparse matrix.
+      The grad implemented is regular.
+    - :func:`sp_ones_like <theano.sparse.basic.sp_ones_like>`.
+      The grad implemented is regular.
+    - :func:`sp_zeros_like <theano.sparse.basic.sp_zeros_like>`.
+      The grad implemented is regular.
+    - :class:`SquareDiagonal <theano.sparse.basic.SquareDiagonal>` and ``square_diagonal``.
+      The grad implemented is regular.
 
 - Cast
     - :class:`Cast <theano.sparse.basic.Cast>` with ``bcast``, ``wcast``, ``icast``, ``lcast``,
-      ``fcast``, ``dcast``, ``ccast``, and ``zcast``
+      ``fcast``, ``dcast``, ``ccast``, and ``zcast``.
+      The grad implemented is regular.
 
 - Transpose
-    - :class:`Transpose <theano.sparse.basic.Transpose>` and ``transpose``
+    - :class:`Transpose <theano.sparse.basic.Transpose>` and ``transpose``.
+      The grad implemented is regular.
 
 - Basic Arithmetic
-    - :class:`Neg <theano.sparse.basic.Neg>` for negation
-    - ``add`` for addition
-    - ``sub`` for substraction
-    - ``mul`` for multiplication
-    - ``col_scale`` to multiply by a vector along the columns
-    - ``row_slace`` to multiply by a vector along the rows
+    - :class:`Neg <theano.sparse.basic.Neg>`.
+      The grad implemented is regular.
+    - :func:`add <theano.sparse.basic.add>`.
+      The grad implemented is regular.
+    - :func:`sub <theano.sparse.basic.sub>`.
+      The grad implemented is regular.
+    - :func:`mul <theano.sparse.basic.mul>`.
+      The grad implemented is regular.
+    - :func:`col_scale <theano.sparse.basic.col_scale>` to multiply by a vector along the columns.
+      The grad implemented is structured.
+    - :func:`row_slace <theano.sparse.basic.row_scale>` to multiply by a vector along the rows.
+      The grad implemented is structured.
 
-- Monoid (Element-wise operation with only one input)
+- Monoid (Element-wise operation with only one sparse input).
+  `They all have a structured grad.`
     - ``structured_sigmoid``
     - ``structured_exp``
     - ``structured_log``
@@ -169,33 +185,45 @@ List of Implemented Operations
     - ``sqrt``
 
 - Dot Product
-    - :class:`Dot <theano.sparse.basic.Dot>` and ``dot``
-    - :class:`StructuredDot <theano.sparse.basic.StructuredDot>` and ``structured_dot``
-    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and ``sampling_dot``
-    - :class:`Usmm <theano.sparse.basic.Usmm>` and ``usmm``
+    - :class:`Dot <theano.sparse.basic.Dot>` and ``dot``.
+      The grad implemented is regular.
+    - :class:`StructuredDot <theano.sparse.basic.StructuredDot>`
+      and :func:`structured_dot <theano.sparse.basic.structured_dot>`.
+      The grad implemented is structured.
+    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and ``sampling_dot``.
+      The grad implemented is structured for `p`.
+    - :class:`Usmm <theano.sparse.basic.Usmm>` and ``usmm``.
+      There is no grad implemented for this op.
 
 - Slice Operations
-    - sparse_variable[N, N], return a tensor scalar
+    - sparse_variable[N, N], return a tensor scalar.
+      There is no grad implemented for this operation.
     - sparse_variable[M:N, O:P], return a sparse matrix
+      There is no grad implemented for this operation.
     - Sparse variable don't support [M, N:O] and [M:N, O] as we don't support sparse vector
       and returning a sparse matrix would break the numpy interface.
       Use [M:M+1, N:O] and [M:N, O:O+1] instead.
-    - :class:`Diag <theano.sparse.basic.Diag>` and ``diag``
+    - :class:`Diag <theano.sparse.basic.Diag>` and ``diag``.
+      The grad implemented is regular.
 
 - Concatenation
-    - :class:`HStack <theano.sparse.basic.HStack>` and ``hstack``
-    - :class:`VStack <theano.sparse.basic.VStack>` and ``vstack``
+    - :class:`HStack <theano.sparse.basic.HStack>` and ``hstack``.
+      The grad implemented is regular.
+    - :class:`VStack <theano.sparse.basic.VStack>` and ``vstack``.
+      The grad implemented is regular.
 
 - Probability
+  `There is no grad implemented for these operations.`
     - :class:`Poisson <theano.sparse.basic.Poisson>` and ``poisson``
     - :class:`Binomial <theano.sparse.basic.Binomial>` and ``csc_fbinomial``, ``csc_dbinomial``
       ``csr_fbinomial``, ``csr_dbinomial``
     - :class:`Multinomial <theano.sparse.basic.Multinomial>` and ``multinomial``
 
 - Internal Representation
+  `They all have a regular grad implemented.`
     - :class:`EnsureSortedIndices <theano.sparse.basic.EnsureSortedIndices>` and ``ensure_sorted_indices``
     - :class:`Remove0 <theano.sparse.basic.Remove0>` and ``remove0``
-    - ``clean`` to resort indices and remove zeros
+    - :func:`clean <theano.sparse.basic.clean>` to resort indices and remove zeros
 
 ===================================================================
 :mod:`sparse` --  Sparse Op

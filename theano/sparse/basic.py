@@ -233,12 +233,29 @@ def constant(x, name=None):
 
 
 def sp_ones_like(x):
+    """Construct a sparse matrix of ones
+    with the same sparsity pattern.
+
+    :param x: Sparse matrix to take
+              the sparsity pattern.
+
+    :return: The same as `x` with data
+             changed for ones.
+    """
     # TODO: don't restrict to CSM formats
     data, indices, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(tensor.ones_like(data), indices, indptr, shape)
 
 
 def sp_zeros_like(x):
+    """Construct a sparse matrix of zeros.
+
+    :param x: Sparse matrix to take
+              the shape.
+
+    :return: The same as `x` with zero entries
+             for all element.
+    """
     #TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
@@ -2178,6 +2195,7 @@ class MulSS(gof.op.Op):
     :return: `x` * `y`
 
     :note: At least one of `x` and `y` must be a sparse matrix.
+    :note: The grad implemented is regular, i.e. not structured.
     """
 
     def __eq__(self, other):
