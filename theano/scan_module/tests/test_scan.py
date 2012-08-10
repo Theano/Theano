@@ -920,8 +920,8 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1)
+        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0)
+        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1)
         # assert that it was done in place
         # not that x0 should not be inplace of vu2 because you are using
         # past values of u2, and therefore you are not allowed to work
