@@ -176,11 +176,15 @@ List of Implemented Operations
     - ``arcsinh``
     - ``tanh``
     - ``arctanh``
+    - ``rad2deg``
+    - ``deg2rad``
     - ``rint``
     - ``ceil``
     - ``floor``
+    - ``trunc``
     - ``sgn``
     - ``log1p``
+    - ``expm1``
     - ``sqr``
     - ``sqrt``
 
