@@ -3280,6 +3280,34 @@ def log1p(x):
     # see decorator for function body
 
 
+@structured_monoid(tensor.expm1)
+def expm1(x):
+    """Elemwise e^`x` - 1.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.deg2rad)
+def deg2rad(x):
+    """Elemwise degree to radian.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.rad2deg)
+def rad2deg(x):
+    """Elemwise radian to degree.
+    """
+    # see decorator for function body
+
+
+@structured_monoid(tensor.trunc)
+def trunc(x):
+    """Elemwise truncature.
+    """
+    # see decorator for function body
+
+
 @structured_monoid(tensor.sqr)
 def sqr(x):
     """Elemwise `x` * `x`.
