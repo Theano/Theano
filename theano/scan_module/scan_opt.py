@@ -279,8 +279,10 @@ class PushOutNonSeqScan(gof.Optimizer):
             # Reconstruct node
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
             nw_node = nwScan.make_node(* (node.inputs + nw_outer))
-            fgraph.replace_all_validate(zip(node.outputs, nw_node.outputs),
-                                     reason='scan_push_computation_out')
+            fgraph.replace_all_validate_remove(
+                zip(node.outputs, nw_node.outputs),
+                remove=[node],
+                reason='scan_push_computation_out')
             return True
         elif to_keep == []:
             # Nothing in the inner graph should be kept
@@ -358,8 +360,9 @@ class ScanInplaceOptimizer(Optimizer):
 
                 new_outs = new_op.make_node(*inputs).outputs
                 try:
-                    fgraph.replace_all_validate(
+                    fgraph.replace_all_validate_remove(
                         zip(node.outputs, new_outs),
+                        remove=[node],
                         reason=self.__class__.__name__)
                     op = new_op
                     node = new_outs[0].owner
@@ -826,7 +829,9 @@ class ScanSaveMem(gof.Optimizer):
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
 
-                fgraph.replace_all_validate(old_new, reason='scan_save_mem')
+                fgraph.replace_all_validate_remove(old_new,
+                                                   remove=[node],
+                                                   reason='scan_save_mem')
 
     def apply(self, fgraph):
 
@@ -1021,7 +1026,9 @@ class ScanMerge(gof.Optimizer):
         for subset in all_sets:
             if len(subset) > 1:
                 proposal = self.merge(subset)
-                fgraph.replace_all_validate(proposal, reason='scan_merge')
+                fgraph.replace_all_validate_remove(proposal,
+                                                   remove=subset,
+                                                   reason='scan_merge')
 
 
 # after const merge but before stabilize so that we can have identity
