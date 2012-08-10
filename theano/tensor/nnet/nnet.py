@@ -1633,15 +1633,16 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 
     def make_node(self, mat):
         #check type of input
-        if not isinstance(mat,gof.Variable) or not mat.type==tensor.matrix().type:
-            raise TypeError("Expected a matrix as input")
         x = tensor.as_tensor_variable(mat)
+        if not mat.type.broadcastable == (False, False):
+            raise TypeError("Expected a matrix as input")
         y = tensor.as_tensor_variable(self.val)
+        assert y.ndim == 0
         if x.type.dtype != y.type.dtype:
             TypeError(
                 "the value to prepend don't have the same type as the matrix")
 
-        node = Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[mat], outputs=[mat.type()])
         return node
 
     def perform(self, node, inp, out):
@@ -1685,18 +1686,18 @@ class Prepend_scalar_to_each_row(gof.Op):
 
     def make_node(self, val, mat):
         #check type of input
+        x = tensor.as_tensor_variable(mat)
         if isinstance(val, float):
             val = scalar.constant(val)
-        if (not isinstance(mat, gof.Variable) or
-            not mat.type == tensor.matrix().type):
+        if not mat.type.broadcastable == (False, False):
             raise TypeError("Expected a matrix as input")
-        x = tensor.as_tensor_variable(mat)
         y = tensor.as_tensor_variable(val)
+        assert y.ndim == 0
         if x.type.dtype != y.type.dtype:
             TypeError(
                 "the value to prepend don't have the same type as the matrix")
 
-        node = Apply(op=self, inputs=[val, mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[val, mat], outputs=[mat.type()])
         return node
 
     def perform(self, node, inp, out):
