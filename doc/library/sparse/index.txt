@@ -119,33 +119,32 @@ List of Implemented Operations
 ==============================
 
 - Moving from and to sparse
-    - :class:`DenseFromSparse` and ``dense_from_sparse``
-    - :class:`SparseFromDense` and ``csr_from_dense``, ``csc_from_dense``
+    - :class:`DenseFromSparse <theano.sparse.basic.DenseFromSparse>` and ``dense_from_sparse``
+    - :class:`SparseFromDense <theano.sparse.basic.SparseFromDense>` and ``csr_from_dense``, ``csc_from_dense``
 
 - Construction of Sparses and their Properties
-    - :class:`CSC` to construct a ``csc`` matrix
-    - :class:`CSR` to construct a ``csr`` matrix
-    - :class:`CSMProperties` to get the properties of a sparse matrix
+    - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix
+    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` to get the properties of a sparse matrix
     - ``sp_ones_like``
     - ``sp_zeros_like``
-    - :class:`SquareDiagonal` and ``square_diagonal``
+    - :class:`SquareDiagonal <theano.sparse.basic.SquareDiagonal>` and ``square_diagonal``
 
 - Cast
-    - :class:`Cast` with ``bcast``, ``wcast``, ``icast``, ``lcast``, 
+    - :class:`Cast <theano.sparse.basic.Cast>` with ``bcast``, ``wcast``, ``icast``, ``lcast``,
       ``fcast``, ``dcast``, ``ccast``, and ``zcast``
 
 - Transpose
-    - :class:`Transpose` and ``transpose``
+    - :class:`Transpose <theano.sparse.basic.Transpose>` and ``transpose``
 
 - Basic Arithmetic
-    - :class:`Neg` for negation
+    - :class:`Neg <theano.sparse.basic.Neg>` for negation
     - ``add`` for addition
     - ``sub`` for substraction
     - ``mul`` for multiplication
     - ``col_scale`` to multiply by a vector along the columns
     - ``row_slace`` to multiply by a vector along the rows
 
-- Monoid (Is applied only with one sparse as input)
+- Monoid (Element-wise operation with only one input)
     - ``structured_sigmoid``
     - ``structured_exp``
     - ``structured_log``
@@ -170,10 +169,10 @@ List of Implemented Operations
     - ``sqrt``
 
 - Dot Product
-    - :class:`Dot` and ``dot``
-    - :class:`StructuredDot` and ``structured_dot``
-    - :class:`SamplingDot` and ``sampling_dot``
-    - :class:`Usmm` and ``usmm``
+    - :class:`Dot <theano.sparse.basic.Dot>` and ``dot``
+    - :class:`StructuredDot <theano.sparse.basic.StructuredDot>` and ``structured_dot``
+    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and ``sampling_dot``
+    - :class:`Usmm <theano.sparse.basic.Usmm>` and ``usmm``
 
 - Slice Operations
     - sparse_variable[N, N], return a tensor scalar
@@ -181,21 +180,21 @@ List of Implemented Operations
     - Sparse variable don't support [M, N:O] and [M:N, O] as we don't support sparse vector
       and returning a sparse matrix would break the numpy interface.
       Use [M:M+1, N:O] and [M:N, O:O+1] instead.
-    - :class:`Diag` and ``diag``
+    - :class:`Diag <theano.sparse.basic.Diag>` and ``diag``
 
 - Concatenation
-    - :class:`HStack` and ``hstack``
-    - :class:`VStack` and ``vstack``
+    - :class:`HStack <theano.sparse.basic.HStack>` and ``hstack``
+    - :class:`VStack <theano.sparse.basic.VStack>` and ``vstack``
 
 - Probability
-    - :class:`Poisson` and ``poisson``
-    - :class:`Binomial` and ``csc_fbinomial``, ``csc_dbinomial``
+    - :class:`Poisson <theano.sparse.basic.Poisson>` and ``poisson``
+    - :class:`Binomial <theano.sparse.basic.Binomial>` and ``csc_fbinomial``, ``csc_dbinomial``
       ``csr_fbinomial``, ``csr_dbinomial``
-    - :class:`Multinomial` and ``multinomial``
+    - :class:`Multinomial <theano.sparse.basic.Multinomial>` and ``multinomial``
 
 - Internal Representation
-    - :class:`EnsureSortedIndices` and ``ensure_sorted_indices``
-    - :class:`Remove0` and ``remove0``
+    - :class:`EnsureSortedIndices <theano.sparse.basic.EnsureSortedIndices>` and ``ensure_sorted_indices``
+    - :class:`Remove0 <theano.sparse.basic.Remove0>` and ``remove0``
     - ``clean`` to resort indices and remove zeros
 
 ===================================================================
