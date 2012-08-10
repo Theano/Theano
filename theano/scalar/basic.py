@@ -1186,6 +1186,7 @@ class Mul(ScalarOp):
         for input in inputs:
             if input.type in continuous_types:
                 if gz.type in complex_types:
+                    raise NotImplementedError()
                     # zr+zi = (xr + xi)(yr + yi)
                     # zr+zi = (xr*yr - xi*yi) + (xr yi + xi yr )
                     otherprod = mul(*(utils.difference(inputs, [input])))
@@ -1492,14 +1493,17 @@ class Pow(BinaryScalarOp):
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
 
     def grad(self, (x, y), (gz, )):
-        if gz.type in complex_types:
-            raise NotImplementedError()
-        if x.type in float_types:
+        if x.type in complex_types:
+            #raise NotImplementedError()
+            first_part = gz * y * x ** (y - 1)
+        elif x.type in float_types:
             first_part = gz * y * x ** (y - 1)
         else:
             first_part = None
 
-        if y.type in float_types:
+        if y.type in complex_types:
+            raise NotImplementedError()
+        elif y.type in float_types:
             second_part = gz * log(x) * x ** y
         else:
             second_part = None
@@ -1654,8 +1658,13 @@ class Abs(UnaryScalarOp):
         return numpy.abs(x)
 
     def grad(self, (x, ), (gz, )):
-        if x.type in float_types + complex_types:
-            return gz * x / abs(x),  # formula works for complex and real
+        if x.type in float_types:
+            # I did not use the formula below, because I don't know if
+            # conj(x) is optimized away if x is real.
+            return gz * x / abs(x),
+        elif x.type in complex_types:
+            # This formula works for real and complex
+            return gz * conj(x) / abs(x),
         else:
             return None,
 
@@ -2359,7 +2368,7 @@ class Imag(UnaryScalarOp):
 
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
-            return [complex(0, gz)]
+            return [-complex(0, gz)]
         elif x.type in float_types:
             return [second(x, 0)]
         else:
@@ -2418,7 +2427,7 @@ class Complex(BinaryScalarOp):
 
     def grad(self, (x, y), (gz,)):
         return [cast(real(gz), x.type.dtype),
-                cast(imag(gz), y.type.dtype)]
+                -cast(imag(gz), y.type.dtype)]
 complex = Complex(name='complex')
 
 
@@ -2445,8 +2454,9 @@ class ComplexFromPolar(BinaryScalarOp):
 
     def grad(self, (r, theta), (gz,)):
         gr = gz * complex_from_polar(1, theta)
-        gtheta = gz * complex_from_polar(r, -theta)
+        gtheta = gz * complex_from_polar(r, theta + numpy.pi / 2)
         return [gr, gtheta]
+
 complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 
 
