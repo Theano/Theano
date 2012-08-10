@@ -3,7 +3,7 @@ import theano
 from theano.tensor import *
 from theano.tests import unittest_tools as utt
 
-from numpy.testing import dec
+from numpy.testing.noseclasses import KnownFailureTest
 
 class TestRealImag(unittest.TestCase):
 
@@ -55,7 +55,6 @@ class TestRealImag(unittest.TestCase):
         mval = numpy.asarray(rng.randn(2,5))
         utt.verify_grad(f, [mval])
 
-    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
     def test_mul_mixed0(self):
 
         def f(a):
@@ -66,12 +65,9 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2,5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
-            raise
+        except NotImplementedError:
+            raise KnownFailureTest("Complex grads not enabled, see #178")
 
-    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
     def test_mul_mixed1(self):
 
         def f(a):
@@ -82,11 +78,9 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2,5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
-            raise
-    @dec.knownfailureif(True,"Complex grads not enabled, see #178")
+        except NotImplementedError:
+            raise KnownFailureTest("Complex grads not enabled, see #178")
+
     def test_mul_mixed(self):
 
         def f(a,b):
@@ -98,10 +92,8 @@ class TestRealImag(unittest.TestCase):
         bval = rng.randn(5)
         try:
             utt.verify_grad(f, [aval, bval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
-            raise
+        except NotImplementedError:
+            raise KnownFailureTest("Complex grads not enabled, see #178")
 
     def test_polar_grads(self):
         def f(m):
