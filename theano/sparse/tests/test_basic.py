@@ -2490,6 +2490,30 @@ Log1pTester = elemwise_checker(
     numpy.log1p,
     gap=(0.5, 10))
 
+Expm1Tester = elemwise_checker(
+    sparse.expm1,
+    numpy.expm1)
+
+Deg2RadTester = elemwise_checker(
+    sparse.deg2rad,
+    numpy.deg2rad,
+    test_dtypes=[m for m in sparse.all_dtypes
+                 if not  m in sparse.complex_dtypes])
+
+Rad2DegTester = elemwise_checker(
+    sparse.rad2deg,
+    numpy.rad2deg,
+    test_dtypes=[m for m in sparse.all_dtypes
+                 if not  m in sparse.complex_dtypes])
+
+
+TruncTester = elemwise_checker(
+    sparse.trunc,
+    numpy.trunc,
+    test_dtypes=[m for m in sparse.all_dtypes
+                 if not  m in sparse.complex_dtypes])
+
+
 SqrTester = elemwise_checker(
     sparse.sqr,
     lambda x: x * x)
