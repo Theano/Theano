@@ -628,6 +628,8 @@ class T_sum_dtype(unittest.TestCase):
                     sum_var = x.sum(dtype=output_dtype, axis=axis)
                     assert sum_var.dtype == output_dtype
 
+                    if "complex" in input_dtype:
+                        continue
                     # Check that we can take the gradient
                     grad_var = tensor.grad(sum_var.sum(), x,
                             disconnected_inputs='ignore')
@@ -676,6 +678,8 @@ class T_mean_dtype(unittest.TestCase):
                         assert mean_var.dtype == sum_dtype, (mean_var.dtype, sum_dtype)
 
                     # Check that we can take the gradient, when implemented
+                    if "complex" in mean_var.dtype:
+                        continue
                     try:
                         grad_var = tensor.grad(mean_var.sum(), x,
                                 disconnected_inputs='ignore')
@@ -729,6 +733,8 @@ class T_prod_dtype(unittest.TestCase):
                     prod_var = x.prod(dtype=output_dtype, axis=axis)
                     assert prod_var.dtype == output_dtype
 
+                    if "complex" in output_dtype:
+                        continue
                     # Check that we can take the gradient
                     grad_var = tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')

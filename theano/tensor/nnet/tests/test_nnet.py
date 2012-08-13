@@ -277,7 +277,7 @@ class T_prepend(utt.InferShapeTester):
         x = tensor.matrix('x')
         y = Prepend_scalar_constant_to_each_row(4.)(x)
         f = theano.function([x], y)
-        m = numpy.random.rand(3, 5)
+        m = numpy.random.rand(3, 5).astype(config.floatX)
         my = f(m)
         self.assertTrue(my.shape == (3, 6), my.shape)
         self.assertTrue(numpy.all(my[:, 0] == 4.0))
