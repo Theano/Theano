@@ -60,14 +60,16 @@ nvcc_version = None
 
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
-    try:
-        p = subprocess.Popen(['nvcc', '--version'], stdout=subprocess.PIPE,
+    def set_version():
+        p = subprocess.Popen([nvcc_path, '--version'], stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.wait()
         s = p.stdout.readlines()[-1].split(',')[1].strip().split()
         assert s[0] == 'release'
         global nvcc_version
         nvcc_version = s[1]
+    try:
+        set_version()
         return True
     except Exception:
         #try to find nvcc into cuda.root
@@ -75,6 +77,10 @@ def is_nvcc_available():
         if os.path.exists(p):
             global nvcc_path
             nvcc_path = p
+            try:
+                set_version()
+            except Exception:
+                return False
             return True
         else:
             return False
