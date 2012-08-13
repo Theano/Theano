@@ -132,6 +132,13 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
         #if all output gradients are None, continue
         if all(map(lambda x: x is None, g_outputs)): continue
 
+        #Disable all grad operation on complex. verify_grad don't
+        #support them and we don't know we want to handle them.
+        for var in node.inputs + node.outputs:
+            if (hasattr(var.type, 'dtype') and "complex" in var.type.dtype):
+                raise Exception("We do not support grad/Rop/Lop/verify_grad"
+                                " on complex.")
+
         output_arg = g_outputs
         input_arg = node.inputs
 

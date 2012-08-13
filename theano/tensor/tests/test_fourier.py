@@ -1,4 +1,6 @@
 import numpy
+from numpy.testing import dec
+
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
@@ -37,6 +39,7 @@ class TestFourier(utt.InferShapeTester):
                                     [numpy.random.rand(12, 4), 0],
                                     self.op_class)
 
+    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
     def test_gradient(self):
         def fft_test1(a):
             return self.op(a, None, None)
