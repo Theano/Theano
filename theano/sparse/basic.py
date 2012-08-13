@@ -267,6 +267,9 @@ class _sparse_py_operators:
     T = property(lambda self: transpose(self),
                  doc="Return aliased transpose of self (read-only)")
 
+    def astype(self, dtype):
+        return cast(self, dtype)
+
     def __neg__(self):
         return neg(self)
 
@@ -1030,6 +1033,9 @@ dcast = Cast('float64')
 ccast = Cast('complex64')
 zcast = Cast('complex128')
 
+
+def cast(variable, dtype):
+    return Cast(dtype)(variable)
 
 #
 # Conversion

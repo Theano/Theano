@@ -1951,7 +1951,7 @@ class TestCast(utt.InferShapeTester):
 
     def test_cast(self):
         cast_csc = dict([
-            (x, [theano.function([x], Cast(t)(x))
+            (x, [theano.function([x], x.astype(t))
                  for t in self.compatible_types])
             for x in self.x_csc])
 
