@@ -1936,85 +1936,66 @@ class Test_getitem(unittest.TestCase):
             assert numpy.all(t1 == r1)
 
 
-class TestCast(utt.InferShapeTester):
-    compatible_types = (tensor.int_dtypes +
-                        tensor.continuous_dtypes)
-    x_csc = [theano.sparse.csc_matrix(dtype=t) for t in compatible_types]
-    x_csr = [theano.sparse.csr_matrix(dtype=t) for t in compatible_types]
-
-    indptr = numpy.array([0, 2, 3, 6])
-    indices = numpy.array([0, 2, 2, 0, 1, 2])
-    data = numpy.array([1, 2, 3, 4, 5, 6])
-    properties = (data, indices, indptr)
-
+class CastTester(utt.InferShapeTester):
     def setUp(self):
-        super(TestCast, self).setUp()
-        self.op_class = Cast
+        super(CastTester, self).setUp()
 
     def test_cast(self):
-        cast_csc = dict([
-            (x, [theano.function([x], x.astype(t))
-                 for t in self.compatible_types])
-            for x in self.x_csc])
+        for format in sparse.sparse_formats:
+            for i_dtype in sparse.all_dtypes:
+                for o_dtype in sparse.all_dtypes:
+                    (variable, ),  (data, ) = sparse_random_inputs(
+                        format,
+                        shape=(4, 7),
+                        out_dtype=i_dtype)
 
-        cast_csr = dict([
-            (x, [theano.function([x], Cast(t)(x))
-                 for t in self.compatible_types])
-            for x in self.x_csr])
+                    func = theano.function([variable], cast(variable, o_dtype))
+                    cls = theano.function([variable], Cast(o_dtype)(variable))
+                    prop = theano.function([variable], variable.astype(o_dtype))
 
-        cast_csr_func = dict([
-            (x, [theano.function([x], cast(x, t))
-                 for t in self.compatible_types])
-            for x in self.x_csr])
+                    t_func, t_cls, t_prop = func(data), cls(data), prop(data)
 
-        for x in self.x_csc:
-            for f, t in zip(cast_csc[x], self.compatible_types):
-                a = sp.csc_matrix(self.properties, dtype=x.dtype).copy()
-                assert f(a).dtype == t
+                    expected = data.toarray().astype(o_dtype)
 
-        for x in self.x_csr:
-            for f, t in zip(cast_csr[x], self.compatible_types):
-                a = sp.csr_matrix(self.properties, dtype=x.dtype)
-                assert f(a).dtype == t
+                    assert t_func.format == format
+                    assert t_cls.format == format
+                    assert t_prop.format == format
 
-        for x in self.x_csr:
-            for f, t in zip(cast_csr_func[x], self.compatible_types):
-                a = sp.csr_matrix(self.properties, dtype=x.dtype)
-                assert f(a).dtype == t
+                    t_func = t_func.toarray()
+                    t_cls = t_cls.toarray()
+                    t_prop = t_prop.toarray()
+
+                    assert numpy.allclose(t_func, expected)
+                    assert numpy.allclose(t_cls, expected)
+                    assert numpy.allclose(t_prop, expected)
 
     def test_infer_shape(self):
-        for x in self.x_csc:
-            for t in self.compatible_types:
-                a = sp.csc_matrix(self.properties, dtype=x.dtype)
-                self._compile_and_check([x],
-                                        [Cast(t)(x)],
-                                        [a],
-                                        self.op_class)
-
-        for x in self.x_csr:
-            for t in self.compatible_types:
-                a = sp.csr_matrix(self.properties, dtype=x.dtype)
-                self._compile_and_check([x],
-                                        [Cast(t)(x)],
-                                        [a],
-                                        self.op_class)
+        for format in sparse.sparse_formats:
+            for i_dtype in sparse.all_dtypes:
+                for o_dtype in sparse.all_dtypes:
+                    variable, data = sparse_random_inputs(
+                        format,
+                        shape=(4, 7),
+                        out_dtype=i_dtype)
+                    self._compile_and_check(variable,
+                                            [Cast(o_dtype)(*variable)],
+                                            data,
+                                            Cast)
 
     def test_grad(self):
-        for dtype in tensor.float_dtypes:
-            for t in tensor.float_dtypes:
-                eps = None
-                if t == 'float32':
-                    eps = 7e-4
-                a = sp.csc_matrix(self.properties, dtype=dtype)
-                verify_grad_sparse(Cast(t), [a], eps=eps)
+        for format in sparse.sparse_formats:
+            for i_dtype in sparse.float_dtypes:
+                for o_dtype in tensor.float_dtypes:
+                    _, data = sparse_random_inputs(
+                        format,
+                        shape=(4, 7),
+                        out_dtype=i_dtype)
 
-        for dtype in tensor.float_dtypes:
-            for t in tensor.float_dtypes:
-                eps = None
-                if t == 'float32':
-                    eps = 7e-4
-                a = sp.csr_matrix(self.properties, dtype=dtype)
-                verify_grad_sparse(Cast(t), [a], eps=eps)
+                    eps = None
+                    if o_dtype == 'float32':
+                        eps = 7e-4
+
+                    verify_grad_sparse(Cast(o_dtype), data, eps=eps)
 
 
 class _HVStackTester(utt.InferShapeTester):
