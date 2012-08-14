@@ -2292,10 +2292,11 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                     # negative numbers.
                     if dtype.startswith('uint'):
                         if self.gap and len(self.gap) == 2 and self.gap[0] < 0:
-                            if self.gap[1] > 1:
+                            if self.gap[1] >= 1:
                                 self.gap = (0, self.gap[1])
                             else:
-                                continue
+                                raise TypeError('Gap not suitable for',
+                                                dtype, self.__name__)
 
                     variable, data = sparse_random_inputs(
                         format,
@@ -2335,10 +2336,12 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                             # negative numbers.
                             if dtype == 'uint8':
                                 if len(domain) == 2 and domain[0] < 0:
-                                    if domain[1] > 1:
+                                    if domain[1] >= 1:
                                         domain = (0, domain[1])
                                     else:
-                                        continue
+                                        raise TypeError('Gap not suitable for',
+                                                        dtype, self.__name__)
+
                         else:
                             domain = (0, 5)
 
