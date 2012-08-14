@@ -61,7 +61,8 @@ class T_ProfileMode_WrapLinker(unittest.TestCase):
         copy.deepcopy(modified_mode)
 
         # More straightforward test
-        assert theano.compile.mode.get_default_mode().linker.fgraph is None
+        linker = theano.compile.mode.get_default_mode().linker
+        assert not hasattr(linker, "fgraph") or linker.fgraph is None
 
 
 if __name__ == '__main__':
