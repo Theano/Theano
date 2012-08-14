@@ -264,7 +264,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                             or numpy.any(abs(variable - expected) > eps)):
                         self.fail(("Test %s::%s: Output %s gave the wrong"
                             " value. With inputs %s, expected %s (dtype %s),"
-                            " got %s (dtype %s)."
+                            " got %s (dtype %s). eps=%f"
                             " numpy.allclose returns %s %s") % (
                                 self.op,
                                 testname,
@@ -274,6 +274,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                                 expected.dtype,
                                 variable,
                                 variable.dtype,
+                                eps,
                                 numpy.allclose(variable, expected, atol=eps),
                                 numpy.allclose(variable, expected)))
 
@@ -1352,7 +1353,7 @@ _grad_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(1e-8, 10, (2, 3)),),)
 
 if theano.config.floatX == 'float32':
-    gamma_eps = 2e-4
+    gamma_eps = 3e-4
 else:
     gamma_eps = 2e-10
 
