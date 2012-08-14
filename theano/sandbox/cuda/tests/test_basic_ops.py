@@ -905,7 +905,10 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
-            t.owner.op.perform_using_take = fast
+            #DebugMode do a copy of the input, so we loose the strides.
+            if not isinstance(theano.compile.get_default_mode(),
+                              theano.compile.DebugMode):
+                t.owner.op.perform_using_take = fast
             val = theano.function([], t, mode=self.mode)()
 
             val = numpy.asarray(val)
