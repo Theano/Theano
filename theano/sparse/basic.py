@@ -3341,7 +3341,7 @@ class StructuredDot(gof.Op):
     :param a: A sparse matrix.
     :param b: A sparse or dense matrix.
 
-    :return: The dot product of `a` and `b`.
+    :return: The dot product of `a` and `b` as a dense matrix.
 
     :note: The grad implemented is structured.
     """
@@ -4425,8 +4425,8 @@ class Dot(gof.op.Op):
     one or all operands is sparse. Supported format are CSC and CSR.
     The output of the operation is dense.
 
-    :param x: Matrix variable.
-    :param y: Matrix variable.
+    :param x: sparse or dense matrix variable.
+    :param y: sparse or dense matrix variable.
 
     :return: The dot product `x`.`y` in a dense format.
 

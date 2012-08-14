@@ -858,28 +858,38 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
         # The variable fast is used to set the member perform_using_take of
         # the Op.  It is only useful for testing that we use the fast
         # version when we should. Users should not use it.
-        for data, idx, fast in [(rand(70000), range(70000), True),
-                                (rand(70000, 5), range(70000), True),
-                                (rand(70000, 2, 3), range(70000), True),
-                                (rand(1025, 1025), [5, 10], True),
-                                (rand(3, 1025, 1026), [1, 2], True),
-                                (rand(1025, 67000), [5, 10], True),
-                                (rand(3, 10, 68000), [1, 2], True),
-                                (rand(3, 69000, 11), [1, 2], True),
-                                # use too much memory to enable by default.
-                                #(rand(2*10e7), [-1, 199999999], True),
-                                (rand(4, 5), [2, 3], True),
-                                (rand(4, 2, 3), [0, 3], True),
-                                (rand(4, 2, 3), [3, 3, 1, 1, 2,
-                                                 2, 0, 0], True),
-                                (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0,
-                                                 0, -1, -2, -3, -4], True),
-                                # Test 4 dims as gpu. code use another algo
-                                # in that case. This new algo is not as much
-                                # optimized for that case.
-                                (rand(4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
-                                                    -1, -2, -3, -4], False),
-                            ]:
+        for shape, idx, fast in [((70000,), range(70000), True),
+                                 ((70000, 5), range(70000), True),
+                                 ((70000, 2, 3), range(70000), True),
+                                 ((1025, 1025), [5, 10], True),
+                                 ((3, 1025, 1026), [1, 2], True),
+                                 ((1025, 67000), [5, 10], True),
+                                 ((3, 10, 68000), [1, 2], True),
+                                 ((3, 69000, 11), [1, 2], True),
+                                 # much memory, will be disabled if needed
+                                 ((2*10e7,), [-1, 199999999], True),
+                                 ((4, 5), [2, 3], True),
+                                 ((4, 2, 3), [0, 3], True),
+                                 ((4, 2, 3), [3, 3, 1, 1, 2,
+                                              2, 0, 0], True),
+                                 ((4, 2, 3), [3, 3, 1, 1, 2, 2, 0,
+                                              0, -1, -2, -3, -4], True),
+                                 # Test 4 dims as gpu. code use another algo
+                                 # in that case. This new algo is not as much
+                                 # optimized for that case.
+                                 ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
+                                                 -1, -2, -3, -4], False),
+                             ]:
+            # If there is not enought memory on the GPU, skip the test
+            size_needed = numpy.prod(shape) * (4 + 1)
+            if isinstance(theano.compile.get_default_mode(),
+                          theano.compile.DebugMode):
+                size_needed = numpy.prod(shape) * 4 * 4
+
+            if size_needed >= theano.sandbox.cuda.mem_info()[0]:
+                #print "skip", shape
+                continue
+            data = rand(*shape)
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data, borrow=True)
 
@@ -895,7 +905,10 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
-            t.owner.op.perform_using_take = fast
+            #DebugMode do a copy of the input, so we loose the strides.
+            if not isinstance(theano.compile.get_default_mode(),
+                              theano.compile.DebugMode):
+                t.owner.op.perform_using_take = fast
             val = theano.function([], t, mode=self.mode)()
 
             val = numpy.asarray(val)
