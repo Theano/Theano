@@ -104,6 +104,8 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
     assert len(shape) == 2
     assert out_dtype in sparse.all_dtypes
     assert gap is None or isinstance(gap, (tuple, list))
+    if gap is not None and out_dtype.startswith('u'):
+        assert gap[0] >= 0
 
     def _rand():
         where = numpy.random.binomial(1, p, size=shape).astype('int8')
@@ -2268,17 +2270,30 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
             super(Tester, self).setUp()
             self.op = op
             self.expected_f = expected_f
+            self.gap = gap
 
         def test_op(self):
             for format in sparse.sparse_formats:
                 for dtype in test_dtypes:
-                    if dtype == 'int8':
+                    if dtype == 'int8' or dtype == 'uint8':
                         continue
+
+                    # When testing with unsigned integers,
+                    # we must check if the gap contains
+                    # negative numbers.
+                    if dtype.startswith('uint'):
+                        if self.gap and len(self.gap) == 2 and self.gap[0] < 0:
+                            if self.gap[1] >= 1:
+                                self.gap = (0, self.gap[1])
+                            else:
+                                raise TypeError('Gap not suitable for',
+                                                dtype, self.__name__)
+
                     variable, data = sparse_random_inputs(
                         format,
                         shape=(4, 7),
                         out_dtype=dtype,
-                        gap=gap)
+                        gap=self.gap)
 
                     f = theano.function(variable, self.op(*variable))
 
@@ -2303,45 +2318,58 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                 # function.
                 # Second, the tolerance for the checkup in DebugMode
                 # is too high.
-                if 'int8' in test_dtypes:
-                    if gap:
-                        domain = gap
-                    else:
-                        domain = (0, 5)
-                    variable, data = sparse_random_inputs(
-                        format,
-                        shape=(4, 7),
-                        out_dtype='int8',
-                        gap=domain)
+                for dtype in ['int8', 'uint8']:
+                    if dtype in test_dtypes:
+                        if self.gap:
+                            domain = self.gap
+                            # When testing with unsigned integers,
+                            # we must check if the gap contains
+                            # negative numbers.
+                            if dtype == 'uint8':
+                                if len(domain) == 2 and domain[0] < 0:
+                                    if domain[1] >= 1:
+                                        domain = (0, domain[1])
+                                    else:
+                                        raise TypeError('Gap not suitable for',
+                                                        dtype, self.__name__)
 
-                    f = theano.function(variable, self.op(*variable))
+                        else:
+                            domain = (0, 5)
 
-                    old_value = (tensor.basic.float32_atol,
-                                 tensor.basic.float32_rtol,
-                                 tensor.basic.float64_atol,
-                                 tensor.basic.float64_rtol)
-                    tensor.basic.float32_atol = 1e-4
-                    tensor.basic.float32_rtol = 1e-3
-                    tensor.basic.float64_atol = 1e-3
-                    tensor.basic.float64_rtol = 1e-4
-                    try:
-                        tested = f(*data)
-                    finally:
-                        (tensor.basic.float32_atol,
-                         tensor.basic.float32_rtol,
-                         tensor.basic.float64_atol,
-                         tensor.basic.float64_rtol) = old_value
+                        variable, data = sparse_random_inputs(
+                            format,
+                            shape=(4, 7),
+                            out_dtype=dtype,
+                            gap=domain)
 
-                    data = [m.toarray().astype('float32') for m in data]
-                    expected = self.expected_f(*data)
+                        f = theano.function(variable, self.op(*variable))
 
-                    assert tested.format == format
-                    tested = tested.toarray()
+                        old_value = (tensor.basic.float32_atol,
+                                     tensor.basic.float32_rtol,
+                                     tensor.basic.float64_atol,
+                                     tensor.basic.float64_rtol)
+                        tensor.basic.float32_atol = 1e-4
+                        tensor.basic.float32_rtol = 1e-3
+                        tensor.basic.float64_atol = 1e-3
+                        tensor.basic.float64_rtol = 1e-4
+                        try:
+                            tested = f(*data)
+                        finally:
+                            (tensor.basic.float32_atol,
+                             tensor.basic.float32_rtol,
+                             tensor.basic.float64_atol,
+                             tensor.basic.float64_rtol) = old_value
 
-                    try:
-                        assert numpy.allclose(tested, expected, rtol=1e-2)
-                    except AssertionError:
-                        raise AssertionError(self.__name__)
+                        data = [m.toarray().astype('float32') for m in data]
+                        expected = self.expected_f(*data)
+
+                        assert tested.format == format
+                        tested = tested.toarray()
+
+                        try:
+                            assert numpy.allclose(tested, expected, rtol=1e-2)
+                        except AssertionError:
+                            raise AssertionError(self.__name__)
 
         if grad_test:
             def test_grad(self):
@@ -2385,7 +2413,9 @@ StructuredSigmoidTester = elemwise_checker(
     sparse.structured_sigmoid,
     structure_function(lambda x: 1.0 / (1.0 + numpy.exp(-x))),
     test_dtypes=[m for m in sparse.all_dtypes
-                 if not m in sparse.complex_dtypes])
+                 if (not m in sparse.complex_dtypes and
+                     not m.startswith('uint'))],
+    gap=(-5, 5))
 
 StructuredExpTester = elemwise_checker(
     sparse.structured_exp,
@@ -2460,7 +2490,8 @@ SgnTester = elemwise_checker(
     numpy.sign,
     grad_test=False,
     test_dtypes=[m for m in sparse.all_dtypes
-                 if not m in sparse.complex_dtypes])
+                 if (not m in sparse.complex_dtypes and
+                     not m.startswith('uint'))])
 
 CeilTester = elemwise_checker(
     sparse.ceil,
