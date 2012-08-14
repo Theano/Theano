@@ -403,6 +403,7 @@ class SparseType(gof.Type):
     format_cls = {'csr': scipy.sparse.csr_matrix,
                   'csc': scipy.sparse.csc_matrix}
     dtype_set = set(['int8', 'int16', 'int32', 'int64', 'float32',
+                     'uint8', 'uint16', 'uint32', 'uint64',
                      'float64', 'complex64', 'complex128'])
     ndim = 2
 

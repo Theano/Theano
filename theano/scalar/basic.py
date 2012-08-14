@@ -535,7 +535,11 @@ class upgrade_to_float(object):
         conv = {int8: float32,
                 int16: float32,
                 int32: float64,
-                int64: float64}
+                int64: float64,
+                uint8: float32,
+                uint16: float32,
+                uint32: float64,
+                uint64: float64}
         return Scalar(Scalar.upcast(*[conv.get(type, type)
                                       for type in types])),
 
