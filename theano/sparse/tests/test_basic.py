@@ -33,7 +33,7 @@ from theano.sparse import (
     csc_from_dense, csr_from_dense, dense_from_sparse,
     Dot, Usmm, UsmmCscDense, sp_ones_like, GetItemScalar,
     SparseFromDense,
-    Cast, HStack, VStack, AddSSData, add_s_s_data,
+    Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     Poisson, poisson, Binomial, Multinomial, multinomial,
     structured_sigmoid, structured_exp, structured_log,
     structured_pow, structured_minimum, structured_maximum, structured_add,
@@ -1960,6 +1960,11 @@ class TestCast(utt.InferShapeTester):
                  for t in self.compatible_types])
             for x in self.x_csr])
 
+        cast_csr_func = dict([
+            (x, [theano.function([x], cast(x, t))
+                 for t in self.compatible_types])
+            for x in self.x_csr])
+
         for x in self.x_csc:
             for f, t in zip(cast_csc[x], self.compatible_types):
                 a = sp.csc_matrix(self.properties, dtype=x.dtype).copy()
@@ -1967,6 +1972,11 @@ class TestCast(utt.InferShapeTester):
 
         for x in self.x_csr:
             for f, t in zip(cast_csr[x], self.compatible_types):
+                a = sp.csr_matrix(self.properties, dtype=x.dtype)
+                assert f(a).dtype == t
+
+        for x in self.x_csr:
+            for f, t in zip(cast_csr_func[x], self.compatible_types):
                 a = sp.csr_matrix(self.properties, dtype=x.dtype)
                 assert f(a).dtype == t
 
