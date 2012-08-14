@@ -346,7 +346,6 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             if skip:
                 raise SkipTest(skip)
             for testname, inputs in self.bad_runtime.items():
-                inputs = [copy(input) for input in inputs]
                 inputrs = [shared(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
