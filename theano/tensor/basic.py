@@ -3059,7 +3059,14 @@ class Mean(elemwise.CAReduce):
     def perform(self, node, inp, out):
         input, = inp
         output, = out
-        output[0] = numpy.mean(input, axis=self.axis[0])
+        if self.axis is None:
+            axis = None
+        else:
+            axis = self.axis[0]
+        # numpy.asarray is needed as otherwise we can end up with a
+        # numpy scalar.
+        output[0] = numpy.asarray(numpy.mean(input, dtype='float64',
+                                             axis=axis))
 
     def c_code(self, node, name, inames, onames, sub):
         if self.axis != None:
