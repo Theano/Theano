@@ -300,7 +300,8 @@ TensorType and TensorVariable
 .. class:: TensorType(Type)
 
     The Type class used to mark Variables that stand for `numpy.ndarray`
-    values.  Recalling to the tutorial, the purple box in
+    values (`numpy.memmap`, which is a subclass of `numpy.ndarray`, is also allowed).
+    Recalling to the tutorial, the purple box in
     :ref:`the tutorial's graph-structure figure <tutorial-graphfigure>` is an instance of this class.
 
     .. attribute:: broadcastable
