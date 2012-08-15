@@ -6453,6 +6453,13 @@ pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'],
 class TensorDotGrad(Op):
     def __init__(self, axes):
         self.axes = TensorDot.parse_axes(axes)
+        if isinstance(self.axes, (tuple, list)) and len(self.axes) == 2:
+            # The current perform don't implement correctly those cases
+            for i in range(len(self.axes[0]) - 1):
+                if self.axes[0][i] > self.axes[0][i + 1]:
+                    raise NotImplementedError()
+                if self.axes[1][i] > self.axes[1][i + 1]:
+                    raise NotImplementedError()
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axes == other.axes
@@ -6493,6 +6500,8 @@ class TensorDotGrad(Op):
         newshapey = numpy.zeros(y.ndim)
         newshapey[[newpos for newpos in idy]] = range(y.ndim)
         gy[0] = numpy.transpose(_gy, newshapey)
+        assert gy[0].shape == y.shape
+        assert gx[0].shape == x.shape
 
     def infer_shape(self, node, in_shapes):
         inp0_shp = [node.inputs[0].shape[i]
