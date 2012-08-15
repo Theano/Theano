@@ -6292,11 +6292,7 @@ class TensorDotGrad(Op):
         assert gx[0].shape == x.shape
 
     def infer_shape(self, node, in_shapes):
-        inp0_shp = [node.inputs[0].shape[i]
-                    for i in range(node.inputs[0].ndim)]
-        inp1_shp = [node.inputs[1].shape[i]
-                    for i in range(node.inputs[1].ndim)]
-        return [inp0_shp, inp1_shp]
+        return in_shapes[:2]
 
 tensordot_grad = TensorDotGrad
 
