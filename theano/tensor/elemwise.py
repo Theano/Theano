@@ -218,7 +218,7 @@ class DimShuffle(Op):
         storage, = out
         # drop
         res = input
-        if type(res) != numpy.ndarray:
+        if type(res) != numpy.ndarray and type(res) != numpy.memmap:
             raise TypeError(res)
         shape = list(res.shape)
         for drop in reversed(self.drop):

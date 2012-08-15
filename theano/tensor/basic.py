@@ -611,6 +611,13 @@ class TensorType(Type):
             if data.dtype.num != self.numpy_dtype.num:
                 data = theano._asarray(data, dtype=self.dtype)
             # -- now fall through to ndim check
+        elif((type(data) is numpy.memmap)
+                and (data.dtype == self.numpy_dtype)):
+            # numpy.memmap is a "safe" subclass of ndarray,
+            # so we can use it whereever we expect a base ndarray.
+            # however, casting it would defeat the purpose of not
+            # loading the whole data into memory
+            pass
         elif strict:
             # If any of the two conditions above was not met,
             # we raise a meaningful TypeError.
