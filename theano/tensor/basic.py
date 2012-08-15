@@ -6185,6 +6185,12 @@ class AdvancedIncSubtensor(Op):
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
         self.set_instead_of_inc = set_instead_of_inc
+        #The assert is needed as in the pass the first argument was
+        #something else that was not used.
+        assert isinstance(inplace, bool)
+        if self.inplace:
+            raise NotImplementedError('In place computation is not'
+                                      ' implemented')
 
     def __hash__(self):
         return hash((type(self), self.inplace, self.set_instead_of_inc))
