@@ -869,7 +869,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         # typically we should not need the gradient w.r.t. dy).
         y_idx_range = tensor.arange(y_idx.shape[0])
         g_dy = tensor.sum(
-                g_dx * tensor.AdvancedIncSubtensor((y_idx_range, y_idx))(
+                g_dx * tensor.AdvancedIncSubtensor()(
                     sm, tensor.fill(dy, -1), y_idx_range, y_idx),
                 axis=1)
         g_sm = dy.dimshuffle(0, 'x') * g_dx
