@@ -971,6 +971,7 @@ class ShapeFeature(object):
                 # keep it this way. See #266 for a better long-term fix.
                 if getattr(d, 'dtype', 'int64') != 'int64':
                     assert d.dtype in theano.tensor.discrete_dtypes, d.dtype
+                    assert str(d.dtype) != 'uint64'
                     new_shape += sh[len(new_shape):i + 1]
                     new_shape[i] = theano.tensor.cast(d, 'int64')
             if new_shape:

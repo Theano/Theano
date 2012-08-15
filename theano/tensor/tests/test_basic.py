@@ -36,7 +36,10 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast)
+        tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
+        ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
+        dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
+        itensor3, Tile, AdvancedIncSubtensor)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -5165,25 +5168,40 @@ class test_tensordot(unittest.TestCase):
 
         # Test matrix-matrix
         amat = matrix()
-        axes = ((1,),(0,))
-        c = tensordot(amat, bmat, axes)
-        f3 = inplace_func([amat,bmat],c)
-        aval = rand(4,7)
-        bval = rand(7,9)
-        self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
-                                       f3(aval,bval)))
-        utt.verify_grad(TensorDot(axes), [aval,bval])
+        for axes, shps in [[((0,), (0,)), [(4, 7), (4, 9)]],
+                           [((0,), (1,)), [(4, 7), (9, 4)]],
+                           [((1,), (0,)), [(4, 7), (7, 9)]],
+                           [((1,), (1,)), [(4, 7), (9, 7)]],
+                           [((0, 1), (0, 1)), [(4, 7), (4, 7)]],
+#                           [((0, 1), (1, 0)), [(4, 7), (7, 4)]],
+#                           [((1, 0), (1, 0)), [(4, 7), (4, 7)]],
+#                           [((1, 0), (0, 1)), [(4, 7), (7, 4)]],
+                       ]:
+            c = tensordot(amat, bmat, axes)
+            f3 = inplace_func([amat, bmat], c)
+            aval = rand(*shps[0])
+            bval = rand(*shps[1])
+            self.assertTrue(numpy.allclose(numpy.tensordot(aval, bval, axes),
+                                           f3(aval, bval)))
+            utt.verify_grad(TensorDot(axes), [aval, bval])
 
         # Test ndarray-matrix, sum over one dim of matrix
-        atens = tensor4()
-        axes = ((2,),(1,))
-        c = tensordot(atens, bmat, axes)
-        f4 = inplace_func([atens,bmat],c)
-        aval = rand(1,2,3,4)
-        bval = rand(2,3)
-        self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
-                                       f4(aval,bval)))
-        utt.verify_grad(TensorDot(axes), [aval,bval])
+        for axes, shps in [[((2,), (1,)), [(1, 2, 3, 4), (2, 3)]],
+                           [((0,), (1,)), [(1, 2, 3, 4), (3, 1)]],
+                           [((0,), (0,)), [(1, 2, 3, 4), (1, 3)]],
+                           [((3,), (0,)), [(1, 2, 3, 4), (4, 1)]],
+#                           [((3, 1), (0, 1)), [(1, 2, 3, 4), (4, 2)]],
+#                           [((0, 1), (1, 0)), [(1, 2, 3, 4), (2, 1)]],
+#                           [((3, 1), (1, 0)), [(1, 2, 3, 4), (2, 4)]],
+        ]:
+            atens = tensor4()
+            c = tensordot(atens, bmat, axes)
+            f4 = inplace_func([atens, bmat], c)
+            aval = rand(*shps[0])
+            bval = rand(*shps[1])
+            self.assertTrue(numpy.allclose(numpy.tensordot(aval, bval, axes),
+                                           f4(aval, bval)))
+            utt.verify_grad(TensorDot(axes), [aval, bval])
 
         # Test ndarray-ndarray
         atens = tensor4()
@@ -6060,6 +6078,664 @@ def test_transpose():
     assert tensor.transpose(tensor.dmatrix()).name is None
 
 
+class TestInferShape(utt.InferShapeTester):
+
+    def test_infer_shape(self):
+
+        # tensordot_grad
+        admat = dmatrix()
+        bdmat = dmatrix()
+        gzdmat = dmatrix()
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        gzdmat_val = rand(4, 3)
+        axes = 1
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                        [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal = dscalar()
+        gzdscal_val = rand()
+        axes = 2
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        gzdmat_val = rand(4, 3)
+        axes = ((1, ), (0, ))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        axes = ((1, 0))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(3, 4)
+        gzdmat_val = rand(5, 3)
+        axes = ((0, ), (1, ))
+        self._compile_and_check([admat, bdmat, gzdmat],
+                                tensordot_grad(axes)(admat, bdmat, gzdmat),
+                            [admat_val, bdmat_val, gzdmat_val], tensordot_grad)
+
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal_val = rand()
+        axes = ((0, 1), (0, 1))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        # tensordot_grad currently do not support not ordered axes
+
+        """
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        gzdscal_val = rand()
+        axes = ((0, 1), (1, 0))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+
+        gzdscal = dscalar()
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        gzdscal_val = rand()
+        axes = ((1, 0 ), (1, 0))
+        self._compile_and_check([admat, bdmat, gzdscal],
+                                tensordot_grad(axes)(admat, bdmat, gzdscal),
+                        [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
+        """
+
+        # tensordot
+        admat = dmatrix()
+        bdmat = dmatrix()
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        axes = 1
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        axes = 2
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        axes = ((1, ), (0, ))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        axes = ((1, 0))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(3, 4)
+        axes = ((0, ), (1, ))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        axes = ((0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                            [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        axes = ((1,), (0,))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        axes = ((0, 1), (1, 0))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(5, 4)
+        axes = ((0, 1), (0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        admat_val = rand(5, 4)
+        bdmat_val = rand(4, 5)
+        axes = ((1, 0), (0, 1))
+        self._compile_and_check([admat, bdmat],
+                                [TensorDot(axes)(admat, bdmat)],
+                        [admat_val, bdmat_val], TensorDot)
+
+        adtens3 = dtensor3()
+        admat_val = rand(5, 4)
+        adtens3_val = rand(5, 4, 3)
+        axes = 2
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens3_val = rand(4, 5, 3)
+        axes = ((1, 0), (0, 1))
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens3_val = rand(4, 3, 5)
+        axes = ((1, 0), (0, 2))
+        self._compile_and_check([admat, adtens3],
+                                [TensorDot(axes)(admat, adtens3)],
+                        [admat_val, adtens3_val], TensorDot)
+
+        adtens4 = dtensor4()
+        admat_val = rand(5, 4)
+        adtens4_val = rand(5, 4, 3, 2)
+        axes = 2
+        self._compile_and_check([admat, adtens4],
+                                [TensorDot(axes)(admat, adtens4)],
+                        [admat_val, adtens4_val], TensorDot)
+
+        adtens4_val = rand(4, 3, 2, 5)
+        axes = ((1, 0), (0, 3))
+        self._compile_and_check([admat, adtens4],
+                                [TensorDot(axes)(admat, adtens4)],
+                        [admat_val, adtens4_val], TensorDot)
+
+        # Flatten
+        adtens = tensor3()
+        adtens_val = rand(4, 5, 3)
+        outdim = 2
+        self._compile_and_check([adtens],
+                                [Flatten(outdim)(adtens)],
+                                [adtens_val], Flatten)
+
+        outdim = 1
+        self._compile_and_check([adtens],
+                                [Flatten(outdim)(adtens)],
+                                [adtens_val], Flatten)
+
+        # Eye
+        aiscal = iscalar()
+        biscal = iscalar()
+        ciscal = iscalar()
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [4, 4, 0], Eye)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [4, 5, 0], Eye)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Eye()(aiscal, biscal, ciscal)],
+                                [3, 5, 0], Eye)
+
+        # Shape
+        # 'opt.Makevector' precludes optimizer from disentangling
+        # elements of shape
+        self._compile_and_check([adtens],
+                                [Shape()(adtens)],
+                                [adtens_val], (opt.MakeVector, Shape))
+
+        # Dot
+        advec = dvector()
+        bdvec = dvector()
+        advec_val = rand(4)
+        bdvec_val = rand(4)
+        self._compile_and_check([advec, bdvec],
+                                [Dot()(advec, bdvec)],
+                                [advec_val, bdvec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        admat_val = rand(4, 5)
+        bdmat_val = rand(5, 3)
+        self._compile_and_check([admat, bdmat],
+                                [Dot()(admat, bdmat)],
+                                [admat_val, bdmat_val],
+                                (Dot, tensor.blas.Dot22))
+
+        admat_val = rand(5, 4)
+        self._compile_and_check([admat, advec],
+                                [Dot()(admat, advec)],
+                                [admat_val, advec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        bdmat_val = rand(4, 5)
+        self._compile_and_check([advec, bdmat],
+                                [Dot()(advec, bdmat)],
+                                [advec_val, bdmat_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        # Split
+        aivec = ivector()
+        adtens_val = rand(4, 10, 3)
+        aivec_val = [2, 5, 3]
+        self._compile_and_check([adtens, aiscal, aivec],
+                                [Split(3)(adtens, aiscal, aivec)[0]],
+                                [adtens_val, 1, aivec_val], (Split))
+
+        # Join
+        cdmat = dmatrix()
+        admat_val = rand(1, 3)
+        bdmat_val = rand(3, 3)
+        cdmat_val = rand(4, 3)
+        aiscal_val = 0
+        self._compile_and_check([aiscal, admat, bdmat, cdmat],
+                                [Join()(aiscal, admat, bdmat, cdmat)],
+                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+
+        admat_val = rand(4, 1)
+        bdmat_val = rand(4, 3)
+        cdmat_val = rand(4, 2)
+        aiscal_val = 1
+        self._compile_and_check([aiscal, admat, bdmat, cdmat],
+                                [Join()(aiscal, admat, bdmat, cdmat)],
+                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+
+        # PermuteRowElements
+        abool = True
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        advec_val = rand(5)
+        aivec_val = rng.permutation(5).astype('int32')
+        self._compile_and_check([advec, aivec],
+                                [PermuteRowElements()(advec, aivec, abool)],
+                        [advec_val, aivec_val], PermuteRowElements)
+
+        admat_val = rand(3, 5)
+        self._compile_and_check([admat, aivec],
+                                [PermuteRowElements()(admat, aivec, abool)],
+                        [admat_val, aivec_val], PermuteRowElements)
+
+        adtens3 = dtensor3()
+        adtens3_val = rand(3, 2, 5)
+        self._compile_and_check([adtens3, aivec],
+                                [PermuteRowElements()(adtens3, aivec, abool)],
+                        [adtens3_val, aivec_val], PermuteRowElements)
+
+        aimat = imatrix()
+        perma = rng.permutation(5).astype('int32')
+        permb = rng.permutation(5).astype('int32')
+        permc = rng.permutation(5).astype('int32')
+        aimat_val = numpy.vstack((perma, permb, permc))
+        admat_val = rand(3, 5)
+        self._compile_and_check([admat, aimat],
+                                [PermuteRowElements()(admat, aimat, abool)],
+                        [admat_val, aimat_val], PermuteRowElements)
+
+        aitens3 = itensor3()
+        perma = rng.permutation(5).astype('int32')
+        permb = rng.permutation(5).astype('int32')
+        permc = rng.permutation(5).astype('int32')
+        bimat_val = numpy.vstack((perma, permb, permc))
+        aitens3_val = numpy.empty((2, 3, 5), 'int32')
+        aitens3_val[0, ::, ::] = aimat_val
+        aitens3_val[1, ::, ::] = bimat_val
+        self._compile_and_check([admat, aitens3],
+                                [PermuteRowElements()(admat, aitens3, abool)],
+                        [admat_val, aitens3_val], PermuteRowElements)
+
+        # ScalarFromTensor
+        aiscal = iscalar()
+        aconst = constant(45)
+        self._compile_and_check([aiscal],
+                            [TensorFromScalar()(ScalarFromTensor()(aiscal))],
+                                [45], ScalarFromTensor,
+                                excluding=["local_tensor_scalar_tensor"])
+
+        # TensorFromScalar
+        aiscal = scal.float64()
+
+        self._compile_and_check([aiscal],
+                                [TensorFromScalar()(aiscal)],
+                        [4.], TensorFromScalar)
+
+        # Rebroadcast
+        adtens4 = dtensor4()
+        adict = [(0, False), (1, True), (2, False), (3, True)]
+        adtens4_val = rand(2, 1, 3, 1)
+        self._compile_and_check([adtens4],
+                                [Rebroadcast(*adict)(adtens4)],
+                                [adtens4_val], Rebroadcast)
+
+        adtens4_bro = TensorType('float64', (True, True, True, False))()
+        bdict = [(0, True), (1, False), (2, False), (3, False)]
+        adtens4_bro_val = rand(1, 1, 1, 3)
+        self._compile_and_check([adtens4_bro],
+                                [Rebroadcast(*bdict)(adtens4_bro)],
+                                [adtens4_bro_val], Rebroadcast)
+
+        # Alloc
+        randint = numpy.random.random_integers
+        adscal = dscalar()
+        aiscal = lscalar()
+        biscal = lscalar()
+        ciscal = lscalar()
+        discal = lscalar()
+        adscal_val = rand()
+        aiscal_val = randint(3, 5, size=())
+        biscal_val = randint(3, 5, size=())
+        ciscal_val = randint(3, 5, size=())
+        discal_val = randint(3, 5, size=())
+        self._compile_and_check([adscal, aiscal, biscal, ciscal, discal],
+                [Alloc()(adscal, aiscal, biscal, ciscal, discal)],
+                [adscal_val, aiscal_val, biscal_val,
+                 ciscal_val, discal_val], Alloc)
+
+        # MaxAndArgmax,
+        adtens3_val = rand(4, 5, 3)
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, None),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 0),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 1),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, 2),
+                [adtens3_val], MaxAndArgmax)
+
+        self._compile_and_check([adtens3],
+                MaxAndArgmax()(adtens3, [0, 1, 2]),
+                [adtens3_val], MaxAndArgmax)
+
+        # ARange
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [0, 5, 1], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [2, 11, 4], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [-5, 1, 1], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [10, 2, -2], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [10, 2, 2], ARange)
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [ARange('int64')(aiscal, biscal, ciscal)],
+                                [0, 0, 1], ARange)
+
+        # SpecifyShape
+        aivec_val = [3, 4, 2, 5]
+        adtens4_val = rand(*aivec_val)
+        self._compile_and_check([adtens4, aivec],
+                                [SpecifyShape()(adtens4, aivec)],
+                                [adtens4_val, aivec_val], SpecifyShape)
+
+        # Mean
+        adtens3_val = rand(3, 4, 5)
+        aiscal_val = 2
+        self._compile_and_check([adtens3],
+                                [Mean(None)(adtens3)],
+                                [adtens3_val], Mean)
+        self._compile_and_check([adtens3],
+                                [Mean(aiscal_val)(adtens3)],
+                                [adtens3_val], Mean)
+
+        # IncSubtensor
+        admat = dmatrix()
+        bdmat = dmatrix()
+        advec = dvector()
+        adscal = dscalar()
+        admat_val = rand(5, 4)
+        self._compile_and_check([admat, bdmat],
+                            [inc_subtensor(admat[2:4], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
+
+        self._compile_and_check([admat, advec],
+                            [inc_subtensor(admat[2], advec)],
+                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [inc_subtensor(admat[2, 3], adscal)],
+                            [admat_val, 1], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [inc_subtensor(admat[1:3, 2], adscal)],
+                            [admat_val, 1], IncSubtensor)
+
+        self._compile_and_check([admat, bdmat],
+                            [set_subtensor(admat[2:4], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
+
+        self._compile_and_check([admat, advec],
+                            [set_subtensor(admat[2], advec)],
+                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [set_subtensor(admat[2, 3], adscal)],
+                            [admat_val, 1], IncSubtensor)
+
+        self._compile_and_check([admat, adscal],
+                            [set_subtensor(admat[1:3, 2], adscal)],
+                            [admat_val, 1], IncSubtensor)
+
+        bdtens4 = dtensor4()
+        adtens4_val = rand(3, 4, 2, 5)
+        self._compile_and_check([adtens4, bdtens4],
+                            [inc_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor)
+
+        self._compile_and_check([adtens4, bdmat],
+                            [inc_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
+                            [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
+
+        self._compile_and_check([adtens4, advec],
+                            [inc_subtensor(adtens4[0, 1, ::, 4], advec)],
+                            [adtens4_val, [1, 2]], IncSubtensor)
+
+        self._compile_and_check([adtens4, adscal],
+                            [inc_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
+                            [adtens4_val, 1], IncSubtensor)
+
+        self._compile_and_check([adtens4, bdtens4],
+                            [set_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor)
+
+        self._compile_and_check([adtens4, bdmat],
+                            [set_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
+                            [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
+
+        self._compile_and_check([adtens4, advec],
+                            [set_subtensor(adtens4[0, 1, ::, 4], advec)],
+                            [adtens4_val, [1, 2]], IncSubtensor)
+
+        self._compile_and_check([adtens4, adscal],
+                            [set_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
+                            [adtens4_val, 1], IncSubtensor)
+
+        # AdvancedIncSubtensor1
+        admat = dmatrix()
+        bdmat = dmatrix()
+        advec = dvector()
+        adscal = dscalar()
+        admat_val = rand(5, 4)
+        aivec_val = [2, 3]
+        self._compile_and_check([admat, bdmat],
+                            [set_subtensor(admat[aivec_val], bdmat)],
+                            [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
+
+        aivec_val = [1, 3, 2]
+        self._compile_and_check([admat, advec],
+                            [set_subtensor(admat[aivec_val], advec)],
+                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+
+        aivec_val = [0, 3, 0]
+        self._compile_and_check([admat, adscal],
+                            [set_subtensor(admat[aivec_val], adscal)],
+                            [admat_val, 1], AdvancedIncSubtensor1)
+
+        bdtens4 = dtensor4()
+        adtens4_val = rand(4, 3, 2, 5)
+        aivec_val = [2, 3]
+        self._compile_and_check([adtens4, bdtens4],
+                            [set_subtensor(adtens4[aivec_val], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
+                            AdvancedIncSubtensor1)
+
+        aivec_val = [1, 3, 2]
+        self._compile_and_check([adtens4, advec],
+                            [set_subtensor(adtens4[aivec_val], advec)],
+                            [adtens4_val, [1, 2, 3, 4, 5]],
+                            AdvancedIncSubtensor1)
+
+        aivec_val = [0, 3, 0]
+        self._compile_and_check([adtens4, adscal],
+                            [set_subtensor(adtens4[aivec_val], adscal)],
+                            [adtens4_val, 1],
+                            AdvancedIncSubtensor1)
+
+        aivec_val = [2, 3]
+        self._compile_and_check([admat, bdmat],
+                                [inc_subtensor(admat[aivec_val], bdmat)],
+                                [admat_val, [[1, 2, 3, 4], [5, 6, 7, 8]]],
+                                AdvancedIncSubtensor1)
+
+        aivec_val = [1, 3, 2]
+        self._compile_and_check([admat, advec],
+                            [inc_subtensor(admat[aivec_val], advec)],
+                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+
+        aivec_val = [0, 3, 0]
+        self._compile_and_check([admat, adscal],
+                            [inc_subtensor(admat[aivec_val], adscal)],
+                            [admat_val, 1], AdvancedIncSubtensor1)
+
+        bdtens4 = dtensor4()
+        adtens4_val = rand(4, 3, 2, 5)
+        aivec_val = [2, 3]
+        self._compile_and_check([adtens4, bdtens4],
+                            [inc_subtensor(adtens4[aivec_val], bdtens4)],
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]],
+                                           [[[6, 7, 8, 9, 10]]]]],
+                            AdvancedIncSubtensor1)
+
+        aivec_val = [1, 2, 1]
+        self._compile_and_check([adtens4, advec],
+                            [inc_subtensor(adtens4[aivec_val], advec)],
+                            [adtens4_val, [1, 2, 3, 4, 5]],
+                            AdvancedIncSubtensor1)
+
+        aivec_val = [0, 3, 0]
+        self._compile_and_check([adtens4, adscal],
+                            [inc_subtensor(adtens4[aivec_val], adscal)],
+                            [adtens4_val, 2],
+                            AdvancedIncSubtensor1)
+
+        # AdvancedIncSubtensor
+        aivec_val = [1, 3, 2]
+        bivec_val = [0, 3, 3]
+        advec_val = [23, 24, 25]
+        self._compile_and_check([admat, advec],
+                    [set_subtensor(admat[aivec_val, bivec_val], advec)],
+                    [admat_val, advec_val], AdvancedIncSubtensor)
+
+        # Reshape
+        # TODO: generalize infer_shape to account for tensor variable
+        # (non-constant) input shape
+        admat = dmatrix()
+        aivec = ivector()
+        ndim = 2
+        admat_val = rand(3, 4)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [4, 3])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [4, -1])],
+                                [admat_val], Reshape)
+
+        # enable when infer_shape is generalized:
+        # self._compile_and_check([admat, aivec],
+        #                        [Reshape(ndim)(admat, aivec)],
+        #                        [admat_val, [4, 3]], Reshape)
+        #
+        # self._compile_and_check([admat, aivec],
+        #                        [Reshape(ndim)(admat, aivec)],
+        #                        [admat_val, [4, -1]], Reshape)
+
+        adtens4 = dtensor4()
+        ndim = 4
+        adtens4_val = rand(2, 4, 3, 5)
+        self._compile_and_check([adtens4],
+                                [Reshape(ndim)(adtens4, [1, -1, 10, 4])],
+                                [adtens4_val], Reshape)
+
+        self._compile_and_check([adtens4],
+                                [Reshape(ndim)(adtens4, [1, 3, 10, 4])],
+                                [adtens4_val], Reshape)
+
+        # enable when infer_shape is generalized:
+        # self._compile_and_check([adtens4, aivec],
+        #                        [Reshape(ndim)(adtens4, aivec)],
+        #                        [adtens4_val, [1, -1, 10, 4]], Reshape)
+        #
+        # self._compile_and_check([adtens4, aivec],
+        #                        [Reshape(ndim)(adtens4, aivec)],
+        #                        [adtens4_val, [1, 3, 10, 4]], Reshape)
+
+        # Tile
+        advec = dvector()
+        advec_val = rand(5)
+        aivec_val = [3]
+        ndim = 1
+        self._compile_and_check([advec],
+                                [tile(advec, aivec_val, ndim)],
+                                [advec_val], Tile)
+
+        admat = dmatrix()
+        admat_val = rand(2, 4)
+        aivec_val = [2, 3]
+        ndim = None
+        self._compile_and_check([admat],
+                                [tile(admat, aivec_val)],
+                                [admat_val], Tile)
+
+        adtens4 = dtensor4()
+        adtens4_val = rand(2, 4, 3, 5)
+        aivec_val = [2, 3, 1, 4]
+        ndim = 4
+        self._compile_and_check([adtens4],
+                                [tile(adtens4, aivec_val, ndim)],
+                                [adtens4_val], Tile)
+
+
+if __name__ == '__main__':
+
+    t = TestInferShape('setUp')
+    t.setUp()
+    t.test_infer_shape()
+
+
+
+
+
+
+"""
+
 if __name__ == '__main__':
     if 0:
         unittest.main()
@@ -6069,3 +6745,4 @@ if __name__ == '__main__':
         suite = unittest.TestLoader()
         suite = suite.loadTestsFromTestCase(testcase)
         unittest.TextTestRunner(verbosity=2).run(suite)
+"""
