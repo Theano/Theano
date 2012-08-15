@@ -360,6 +360,10 @@ class RepeatOp(theano.Op):
         repeats = node.inputs[1]
         out_shape = list(i0_shapes)
 
+        #uint64 shape are not supported.
+        dtype = None
+        if repeats.dtype in ['uint8', 'uint16', 'uint32']:
+            dtype = 'int64'
         if self.axis is None:
             if repeats.ndim == 0:
                 if len(i0_shapes) == 0:
@@ -370,12 +374,12 @@ class RepeatOp(theano.Op):
                         res = res * d
                     out_shape = (res * repeats, )
             else:
-                out_shape = [theano.tensor.sum(repeats)]
+                out_shape = [theano.tensor.sum(repeats, dtype=dtype)]
         else:
             if repeats.ndim == 0:
                 out_shape[self.axis] = out_shape[self.axis] * repeats
             else:
-                out_shape[self.axis] = theano.tensor.sum(repeats)
+                out_shape[self.axis] = theano.tensor.sum(repeats, dtype=dtype)
         return [out_shape]
 
     def __str__(self):
