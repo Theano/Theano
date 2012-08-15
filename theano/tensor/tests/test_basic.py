@@ -4937,25 +4937,40 @@ class test_tensordot(unittest.TestCase):
 
         # Test matrix-matrix
         amat = matrix()
-        axes = ((1,),(0,))
-        c = tensordot(amat, bmat, axes)
-        f3 = inplace_func([amat,bmat],c)
-        aval = rand(4,7)
-        bval = rand(7,9)
-        self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
-                                       f3(aval,bval)))
-        utt.verify_grad(TensorDot(axes), [aval,bval])
+        for axes, shps in [[((0,), (0,)), [(4, 7), (4, 9)]],
+                           [((0,), (1,)), [(4, 7), (9, 4)]],
+                           [((1,), (0,)), [(4, 7), (7, 9)]],
+                           [((1,), (1,)), [(4, 7), (9, 7)]],
+                           [((0, 1), (0, 1)), [(4, 7), (4, 7)]],
+#                           [((0, 1), (1, 0)), [(4, 7), (7, 4)]],
+#                           [((1, 0), (1, 0)), [(4, 7), (4, 7)]],
+#                           [((1, 0), (0, 1)), [(4, 7), (7, 4)]],
+                       ]:
+            c = tensordot(amat, bmat, axes)
+            f3 = inplace_func([amat, bmat], c)
+            aval = rand(*shps[0])
+            bval = rand(*shps[1])
+            self.assertTrue(numpy.allclose(numpy.tensordot(aval, bval, axes),
+                                           f3(aval, bval)))
+            utt.verify_grad(TensorDot(axes), [aval, bval])
 
         # Test ndarray-matrix, sum over one dim of matrix
-        atens = tensor4()
-        axes = ((2,),(1,))
-        c = tensordot(atens, bmat, axes)
-        f4 = inplace_func([atens,bmat],c)
-        aval = rand(1,2,3,4)
-        bval = rand(2,3)
-        self.assertTrue(numpy.allclose(numpy.tensordot(aval,bval,axes),
-                                       f4(aval,bval)))
-        utt.verify_grad(TensorDot(axes), [aval,bval])
+        for axes, shps in [[((2,), (1,)), [(1, 2, 3, 4), (2, 3)]],
+                           [((0,), (1,)), [(1, 2, 3, 4), (3, 1)]],
+                           [((0,), (0,)), [(1, 2, 3, 4), (1, 3)]],
+                           [((3,), (0,)), [(1, 2, 3, 4), (4, 1)]],
+#                           [((3, 1), (0, 1)), [(1, 2, 3, 4), (4, 2)]],
+#                           [((0, 1), (1, 0)), [(1, 2, 3, 4), (2, 1)]],
+#                           [((3, 1), (1, 0)), [(1, 2, 3, 4), (2, 4)]],
+        ]:
+            atens = tensor4()
+            c = tensordot(atens, bmat, axes)
+            f4 = inplace_func([atens, bmat], c)
+            aval = rand(*shps[0])
+            bval = rand(*shps[1])
+            self.assertTrue(numpy.allclose(numpy.tensordot(aval, bval, axes),
+                                           f4(aval, bval)))
+            utt.verify_grad(TensorDot(axes), [aval, bval])
 
         # Test ndarray-ndarray
         atens = tensor4()
@@ -5881,10 +5896,7 @@ class TestInferShape(utt.InferShapeTester):
                                 tensordot_grad(axes)(admat, bdmat, gzdscal),
                         [admat_val, bdmat_val, gzdscal_val], tensordot_grad)
 
-        # Note: The two following tests currently fail and should unlikely be,
-        # for the shape of a grad is very simple and similar to that of the inputs.
-        # Additional tests involving 3-tensors and 4-tensors will be included once
-        # this is resolved.
+        # tensordot_grad currently do not support not ordered axes
 
         """
         gzdscal = dscalar()
