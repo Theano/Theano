@@ -240,7 +240,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                         new_inp[...] = inp[...]
                         new_v.append(new_inp)
                     else:
-                        new_v.append(copy(inp))
+                        new_v.append(inp)
                 self.good[new_k] = new_v
 
                 # We only need one value, no need to copy all of them
