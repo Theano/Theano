@@ -6169,7 +6169,7 @@ class AdvancedSubtensor(Op):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
-        return [AdvancedIncSubtensor()(zeros_like(x), gz,
+        return [advanced_inc_subtensor(zeros_like(x), gz,
                                        *rest)] + [None] * len(rest)
 
 
@@ -6262,7 +6262,7 @@ class AdvancedIncSubtensor(Op):
             return [None]
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
-
+advanced_inc_subtensor = AdvancedIncSubtensor()
 
 #########################
 # Linalg : Dot
