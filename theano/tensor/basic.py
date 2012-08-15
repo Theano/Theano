@@ -1881,6 +1881,9 @@ class TensorFromScalar(Op):
         out, = out_
         out[0] = numpy.asarray(s)
 
+    def infer_shape(self, node, in_shapes):
+        return [()]
+
     def grad(self, inp, grads):
         s, = inp
         dt, = grads
@@ -1910,6 +1913,9 @@ class ScalarFromTensor(Op):
         s, = inp
         out, = out_
         out[0] = s.flatten()[0]
+
+    def infer_shape(self, node, in_shapes):
+        return [()]
 
     def grad(self, inp, grads):
         s, = inp
@@ -2063,6 +2069,9 @@ class Shape(Op):
         x, = inp
         out, = out_
         out[0] = theano._asarray(x.shape, dtype='int64')
+
+    def infer_shape(self, node, in_shapes):
+        return [[len(in_shapes[0])]]
 
     def grad(self, inp, grads):
         return [None]
@@ -2879,6 +2888,10 @@ class Eye(gof.Op):
         out, = out_
         out[0] = numpy.eye(n, m, k, dtype=self.dtype)
 
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
     def grad(self, inp, grads):
         return [None, None, None]
 
@@ -3194,6 +3207,7 @@ def prod(input, axis=None, dtype=None, keepdims=False):
 class Mean(elemwise.CAReduce):
     def __init__(self, axis=None):
         elemwise.CAReduce.__init__(self, scal.add, axis)
+        assert self.axis is None or len(self.axis) == 1
 
     def __str__(self):
         if self.axis is not None:
@@ -3208,7 +3222,7 @@ class Mean(elemwise.CAReduce):
     def perform(self, node, inp, out):
         input, = inp
         output, = out
-        output[0] = numpy.mean(input, axis=self.axis)
+        output[0] = numpy.mean(input, axis=self.axis[0])
 
     def c_code(self, node, name, inames, onames, sub):
         if self.axis is not None:
@@ -4278,13 +4292,16 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     elif isinstance(x.owner.op, AdvancedSubtensor1):
         real_x = x.owner.inputs[0]
         ilist = x.owner.inputs[1]
-        if set_instead_of_inc:
-            the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=True)
-        else:
-            the_op = AdvancedIncSubtensor1(inplace, set_instead_of_inc=False)
+        the_op = AdvancedIncSubtensor1(inplace,
+                                       set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, ilist)
     elif isinstance(x.owner.op, AdvancedSubtensor):
-        raise NotImplementedError()
+        real_x = x.owner.inputs[0]
+        coordvec_0 = x.owner.inputs[1]
+        coordvec_1 = x.owner.inputs[2]
+        the_op = AdvancedIncSubtensor(inplace,
+                                      set_instead_of_inc=set_instead_of_inc)
+        return the_op(real_x, y, coordvec_0, coordvec_1)
     else:
         raise TypeError('x must be result of a subtensor operation')
 
@@ -4637,6 +4654,18 @@ class Split(Op):
             general_key[axis] = slice(lower_idx, upper_idx, None)
             outputs[i][0] = x.__getitem__(general_key).copy()
             lower_idx = upper_idx
+
+    def infer_shape(self, node, in_shapes):
+        axis = node.inputs[1]
+        splits = node.inputs[2]
+        shp_x, shp_axis, shp_splits = in_shapes
+        out_shapes = []
+        for i in range(self.len_splits):
+            temp = as_tensor_variable(shp_x)
+            temp = set_subtensor(temp[axis], splits[i])
+            temp = [temp[i] for i in range(len(shp_x))]
+            out_shapes.append(temp)
+        return out_shapes
 
     def grad(self, inputs, g_outputs):
         """Join the gradients along the axis that was used to split x."""
@@ -5326,17 +5355,33 @@ class Reshape(Op):
 
         # Here, we only simplify if the shape (node.inputs[1]) is a constant,
         # ideally it would suffice to check that it is always non-negative.
-        oshape = []
-        for i in xrange(self.ndim):
-            default_os_i = theano.tensor.opt.Shape_i(i)(node.outputs[0])
-            try:
-                os_i = get_constant_value(node.inputs[1][i]).item()
-                if os_i == -1:
+
+        requ = node.inputs[1]
+        if isinstance(requ, theano.tensor.TensorConstant):
+            requ = list(requ.data)
+            requ_part = [ele for ele in requ if ele != -1]
+            crit = len(requ) - len(requ_part)
+            if crit == 1:
+                missing = numpy.prod(ishapes[0]) / numpy.prod(requ_part)
+                for i, ele in enumerate(requ):
+                    if ele == -1:
+                        requ[i] = missing
+            elif crit > 1:
+                raise ValueError('shape argument to Reshape.perform'
+                    ' must have at most one entry equal to -1')
+            return [requ]
+        else:
+            oshape = []
+            for i in xrange(self.ndim):
+                default_os_i = theano.tensor.opt.Shape_i(i)(node.outputs[0])
+                try:
+                    os_i = get_constant_value(node.inputs[1][i]).item()
+                    if os_i == -1:
+                        os_i = default_os_i
+                except TypeError:
                     os_i = default_os_i
-            except TypeError:
-                os_i = default_os_i
-            oshape.append(os_i)
-        return [tuple(oshape)]
+                oshape.append(os_i)
+            return [tuple(oshape)]
 
     def c_code_cache_version(self):
         return (2,)
@@ -5426,6 +5471,12 @@ class Flatten(Op):
                         (numpy.prod(x.shape[outdim - 1:]),))
             out[0] = x.reshape(newshape)
 
+    def infer_shape(self, node, in_shapes):
+        in_shp, = in_shapes
+        out_shape = (in_shp[:self.outdim - 1] +
+                        (numpy.prod(in_shp[self.outdim - 1:]),))
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, = inp
         g_out, = grads
@@ -5495,6 +5546,26 @@ class Tile(Op):
         if len(out[0].shape) != self.ndim:
             raise ValueError('Tile.perform produced incorrect shape')
 
+    def infer_shape(self, node, in_shapes):
+        # Note: in contrast with numpy, it is assumed that x.shape and reps
+        # have equal length;  see also tile function below
+
+        # Note: if reps were to be allowed not to be a constant and x.shape
+        # and reps to be unequal, the following block of code could be used:
+        ## prepend 1 to x.shape if needed
+        # if self.ndim > x.ndim:
+        # shp = concatenate(ones(self.ndim - x.ndim), shp)
+        ## prepend 1 to reps if needed
+        # reps = concatenate(ones(self.ndim - reps.shape[0]), reps)
+
+        x, reps = node.inputs
+        shp = in_shapes[0]
+        tiled_shp = shp * reps
+        out_shape = []
+        for i in range(self.ndim):
+            out_shape.append(tiled_shp[i])
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, reps = inp
         g_out, = grads
@@ -5507,21 +5578,26 @@ def tile(x, reps, ndim=None):
     Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
     for details.
 
-    Currently, `reps` must be a constant.
+    Currently, `reps` must be a constant, x.ndim and len(reps) must be equal
+    and, if specified, 'ndim' must be equal to both.
 
     TODO: expand this.
     """
+
+    try: 
+        assert python_all([int(i) == i for i in iter(reps)]) 
+    except (TypeError, AssertionError): 
+        raise ValueError("reps argument to tile must be a constant (e.g. " 
+        "tuple, list of integers)") 
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
+    elif (ndim is not None) and ndim != x.ndim:
+        raise ValueError("if specified, ndim must be equal to both x.ndim and "
+                         "len(reps)")
 
     if not hasattr(tile, 'op'):
         tile.op = {}
 
-    try:
-        assert python_all([int(i) == i for i in iter(reps)])
-    except (TypeError, AssertionError):
-        raise ValueError("reps argument to tile must be a constant (e.g. "
-                         "tuple, list of integers)")
     if ndim is None:
         ndim = len(reps)
 
@@ -5774,6 +5850,15 @@ class PermuteRowElements(Op):
 
         self._rec_perform(node, x, y, inverse, outs[0], curdim=0)
 
+    def infer_shape(self, node, in_shapes):
+        shp_x = in_shapes[0]
+        shp_y = in_shapes[1]
+        assert len(shp_x) == len(shp_y)
+        out_shape = []
+        for i in range(len(shp_x)):
+            out_shape.append(maximum(shp_x[i], shp_y[i]))
+        return [out_shape]
+
     def grad(self, inp, grads):
         x, y, inverse = inp
         gz, = grads
@@ -6001,6 +6086,8 @@ class AdvancedSubtensor(Op):
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
         #FIXME
+        # Note (9 Jul 2012): what does this 'FIXME' mean? Possibly that the
+        # current implementation must be generalized? Please specify.
         if x.ndim == 2 and len(inputs) == 2:
             ind1 = as_tensor_variable(inputs[0])
             ind2 = as_tensor_variable(inputs[1])
@@ -6074,16 +6161,29 @@ class AdvancedSubtensor(Op):
 
 class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
+
+    :note: We need the numpy.inplace_increment() function currently
+        numpy's PR 326 to be able to make an inplace version of this
+        op.
+
     """
 
-    def __eq__(self, other):
-        return self.__class__ == other.__class__
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        self.inplace = inplace
+        self.set_instead_of_inc = set_instead_of_inc
 
     def __hash__(self):
-        return hash(self.__class__)
+        return hash((type(self), self.inplace, self.set_instead_of_inc))
+
+    def __eq__(self, other):
+        return (type(self) == type(other)
+                and self.inplace == other.inplace
+                and self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s{%s, %s}" % (self.__class__.__name__,
+                "inplace=" + str(self.inplace),
+                " set_instead_of_inc=" + str(self. set_instead_of_inc))
 
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
@@ -6098,21 +6198,31 @@ class AdvancedIncSubtensor(Op):
                         [tensor(dtype=x.type.dtype,
                             broadcastable=x.type.broadcastable)])
             raise NotImplementedError(
-                'Advanced indexing increment of x (of dimension %i) by y'
+                'Advanced indexing increment/set of x (of dimension %i) by y'
                 ' (of dimension %i) with these argument dimensions (%s) not'
                 ' supported yet'
                 % (x.ndim, y.ndim,
                    ','.join(str(input.ndim) for input in inputs)))
         raise NotImplementedError(
-            'Advanced indexing increment of x (of dim %i) by y (of dim %i)'
+            'Advanced indexing increment/set of x (of dim %i) by y (of dim %i)'
             ' with arguments (%s) not supported yet'
             % (x.ndim, y.ndim, ','.join(str(input) for input in inputs)))
 
     def perform(self, node, inputs, out_):
+        # TODO: 1. opt to make this in place 2. generalize as described in
+        # AdvancedSubtensor's perform TODO
+
         out, = out_
-        # TODO: same thing as in AdvancedSubtensor's perform TODO
-        out[0] = inputs[0].copy()
-        out[0][inputs[2:]] += inputs[1]
+        if not self.inplace:
+            out[0] = inputs[0].copy()
+        else:
+            raise NotImplementedError('In place computation is not'
+                                      ' implemented')
+        if self.set_instead_of_inc:
+            out[0][inputs[2:]] = inputs[1]
+        else:
+            out[0][inputs[2:]] += inputs[1]
+
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
@@ -6121,6 +6231,9 @@ class AdvancedIncSubtensor(Op):
                     'are too big (>= 2^32 elements). It is possible that '
                     'out[0] (%s), with shape %s, is not correctly filled.'
                     % (out[0], out[0].shape))
+
+    def infer_shape(self, node, ishapes):
+        return [ishapes[0]]
 
     def grad(self, inpt, output_gradients):
         x, y = inpt[:2]
@@ -6340,6 +6453,13 @@ pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'],
 class TensorDotGrad(Op):
     def __init__(self, axes):
         self.axes = TensorDot.parse_axes(axes)
+        if isinstance(self.axes, (tuple, list)) and len(self.axes) == 2:
+            # The current perform don't implement correctly those cases
+            for i in range(len(self.axes[0]) - 1):
+                if self.axes[0][i] > self.axes[0][i + 1]:
+                    raise NotImplementedError()
+                if self.axes[1][i] > self.axes[1][i + 1]:
+                    raise NotImplementedError()
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axes == other.axes
@@ -6380,6 +6500,11 @@ class TensorDotGrad(Op):
         newshapey = numpy.zeros(y.ndim)
         newshapey[[newpos for newpos in idy]] = range(y.ndim)
         gy[0] = numpy.transpose(_gy, newshapey)
+        assert gy[0].shape == y.shape
+        assert gx[0].shape == x.shape
+
+    def infer_shape(self, node, in_shapes):
+        return in_shapes[:2]
 
 tensordot_grad = TensorDotGrad
 
@@ -6455,6 +6580,21 @@ class TensorDot(Op):
             # add that.
             e.args = e.args + (x.shape, y.shape, self.axes)
             raise
+
+    def infer_shape(self, node, in_shapes):
+        shape_x, shape_y = in_shapes
+        out_shape = []
+        if isinstance(self.axes, (list, tuple)):
+            iter = (i for i in range(len(shape_x)) if i not in self.axes[0])
+            for i in iter:
+                out_shape.append(shape_x[i])
+            iter = (i for i in range(len(shape_y)) if i not in self.axes[1])
+            for i in iter:
+                out_shape.append(shape_y[i])
+        else:
+            out_shape = list(shape_x)[shape_x.ndim - self.axes] + \
+                        list(shape_y)[shape_y.ndim - self.axes, shape_y.ndim]
+        return [out_shape]
 
     def grad(self, inp, grads):
         x, y = inp
