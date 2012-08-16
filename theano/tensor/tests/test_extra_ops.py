@@ -4,7 +4,7 @@ import numpy
 import theano
 from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (BinCountOp, bincount, DiffOp, diff,
-        SqueezeOp, squeeze, RepeatOp, repeat, Bartlett, bartlett,
+        squeeze, RepeatOp, repeat, Bartlett, bartlett,
         FillDiagonal, fill_diagonal)
 from theano import tensor as T
 from theano import config, tensor, function
@@ -142,37 +142,47 @@ class TestDiffOp(utt.InferShapeTester):
             utt.verify_grad(DiffOp(n=k), [a], eps=7e-3)
 
 
-class TestSqueezeOp(utt.InferShapeTester):
+class SqueezeTester(utt.InferShapeTester):
+    shape_list = [(1, 3),
+                  (1, 2, 3),
+                  (1, 5, 1 , 1, 6)]
+    broadcast_list = [[True, False],
+                      [True, False, False],
+                      [True, False, True, True, False]]
+
+
     def setUp(self):
-        super(TestSqueezeOp, self).setUp()
-        self.op_class = SqueezeOp
-        self.op = SqueezeOp(out_nd=1)
+        super(SqueezeTester, self).setUp()
+        self.op = squeeze
 
-    def test_squeezeOp(self):
-        x = T.matrix('x')
-        a = np.random.random((1, 50)).astype(config.floatX)
+    def test_op(self):
+        for shape, broadcast in zip(self.shape_list, self.broadcast_list):
+            data = numpy.random.random(size=shape).astype(theano.config.floatX)
+            variable = tensor.TensorType(theano.config.floatX, broadcast)()
 
-        f = theano.function([x], squeeze(x, out_nd=1))
-        assert np.allclose(np.squeeze(a), f(a))
+            f = theano.function([variable], self.op(variable))
 
-        x = T.tensor4('x')
-        f = theano.function([x], squeeze(x, out_nd=2))
+            expected = numpy.squeeze(data)
+            tested = f(data)
 
-        a = np.random.random((1, 1, 2, 3)).astype(config.floatX)
-        assert np.allclose(np.squeeze(a), f(a))
+            assert numpy.allclose(tested, expected)
 
-        a = np.random.random((1, 2, 2, 1)).astype(config.floatX)
-        assert np.allclose(np.squeeze(a), f(a))
+    def test_infer_shape(self):
+        for shape, broadcast in zip(self.shape_list, self.broadcast_list):
+            data = numpy.random.random(size=shape).astype(theano.config.floatX)
+            variable = tensor.TensorType(theano.config.floatX, broadcast)()
 
-        a = np.random.random((4, 1, 2, 1)).astype(config.floatX)
-        assert np.allclose(np.squeeze(a), f(a))
+            self._compile_and_check([variable],
+                                    [self.op(variable)],
+                                    [data],
+                                    tensor.DimShuffle)
 
     def test_grad(self):
-        x = T.tensor4('x')
-        a = np.random.random((1, 1, 3, 4)).astype(config.floatX)
+        for shape, broadcast in zip(self.shape_list, self.broadcast_list):
+            data = numpy.random.random(size=shape).astype(theano.config.floatX)
+            variable = tensor.TensorType(theano.config.floatX, broadcast)()
 
-        theano.function([x], T.grad(T.sum(squeeze(x, out_nd=1)), x))
-        utt.verify_grad(SqueezeOp(out_nd=2), [a])
+            utt.verify_grad(self.op, [data])
 
 
 class TestRepeatOp(utt.InferShapeTester):
