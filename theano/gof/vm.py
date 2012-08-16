@@ -716,8 +716,7 @@ class VM_Linker(link.LocalLinker):
             update_storage = []
             update_in_from_out = {}
             for (ivar, ovar) in updated_vars.items():
-                if ivar != ovar:
-                    update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
+                update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
             for oidx in output_vars:
                 if oidx in update_in_from_out:
                     update_storage.append(update_in_from_out[oidx])
