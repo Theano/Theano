@@ -141,6 +141,11 @@ class BinCountOp(theano.Op):
             numpy_unsupported_dtypes = ('uint64',)
         if int_bitwidth == 32:
             numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+        intp_bitwidth = theano.gof.cmodule.local_bitwidth()
+        if intp_bitwidth == 32:
+            out_type = basic.ivector()
+        elif intp_bitwidth == 64:
+            out_type = basic.lvector()
 
         if x.dtype in numpy_unsupported_dtypes:
             raise TypeError(
@@ -152,10 +157,9 @@ class BinCountOp(theano.Op):
 
         if weights is None:
             weights = theano.gof.Constant(theano.gof.Generic(), None)
-            out_type = x.type()
         else:
             weights = basic.as_tensor_variable(weights)
-            out_type = weights.type()
+            out_type = basic.dvector()
             if weights.ndim != 1:
                 raise TypeError("Weights cannot have a number of"
                                 "dimension different of 1.")
