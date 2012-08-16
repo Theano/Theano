@@ -25,13 +25,13 @@ from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse import (
     verify_grad_sparse, as_sparse_variable,
     CSC, CSR, CSM, CSMProperties, csm_properties,
-    SparseType, CSMGrad, CSMGradC,
-    StructuredDot, StructuredDotCSC,
+    SparseType, CSMGrad,
+    StructuredDot,
     StructuredDotGradCSC, StructuredDotGradCSR,
     AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
     add, mul, structured_dot, transpose,
     csc_from_dense, csr_from_dense, dense_from_sparse,
-    Dot, Usmm, UsmmCscDense, sp_ones_like, GetItemScalar,
+    Dot, Usmm, sp_ones_like, GetItemScalar,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     Poisson, poisson, Binomial, Multinomial, multinomial,
@@ -41,6 +41,8 @@ from theano.sparse import (
     SamplingDot, sampling_dot,
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean)
+
+from theano.sparse.opt import (StructuredDotCSC, UsmmCscDense, CSMGradC)
 
 from theano.tests import unittest_tools as utt
 from theano.tensor.basic import _allclose
@@ -1218,7 +1220,7 @@ class UsmmTests(unittest.TestCase):
                 assert isinstance(topo[1].op, theano.tensor.DimShuffle)
                 assert isinstance(topo[2].op, theano.tensor.Subtensor)
                 assert topo[3].op == theano.tensor.neg
-                assert isinstance(topo[4].op, theano.sparse.UsmmCscDense)
+                assert isinstance(topo[4].op, UsmmCscDense)
                 if inplace:
                     assert topo[4].op.inplace
             elif not fast_compile:
