@@ -1546,6 +1546,7 @@ class CAReduceDtype(CAReduce):
         # We need to redefine make_node so that, if self.dtype is None,
         # we can infer what dtype should be, and create a node from an Op
         # of the appropriate dtype.
+        input = as_tensor_variable(input)
         dtype = self._output_dtype(input.dtype)
         assert dtype is not None
         if dtype == self.dtype:
