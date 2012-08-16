@@ -214,15 +214,14 @@ def bincount(x, weights=None, minlength=None):
 
 
 def squeeze(x):
-    """Remove broadcastable dimension from
+    """Remove broadcastable dimensions from
     the shape of an array.
 
-    It returns the input array, but with with all or a subset of the
-    dimensions with the broadcastable dimensions removed. This is
+    It returns the input array, but with the
+    broadcastable dimensions removed. This is
     always `x` itself or a view into `x`.
 
     :param x: Input data, tensor variable.
-    :param out_nd: Output number of dimension for this op.
 
     :return: `x` without its broadcastable dimensions.
     """
