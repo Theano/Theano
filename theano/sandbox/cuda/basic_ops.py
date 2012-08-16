@@ -11,7 +11,7 @@ from theano import tensor, scalar, config
 
 from theano.gof.python25 import all, any
 
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, device_properties
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import filter as type_support_filter
 
@@ -1938,6 +1938,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     #If True or False, we assert that we use the take version or not
     #If None, we choose the best one applicable
     perform_using_take = None
+    max_threads = 0
 
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
@@ -1977,9 +1978,18 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
 
             idx = idx.view("float32")
             idx = cuda_ndarray.cuda_ndarray.CudaNdarray(idx)
+            if self.max_threads == 0:
+                num = theano.sandbox.cuda.use.device_number
+                if device_properties(num)['regsPerBlock'] < (8192 * 2):
+                    self.max_threads = 256
+                else:
+                    self.max_threads = 512
+
             o = x.take(idx,
                        0,  # axis
-                       out_[0][0])  # return
+                       out_[0][0],  # return
+                       "raise",
+                       self.max_threads)
             if x is not x_orig:
                 o = o.reshape(out_shape)
             out[0] = o

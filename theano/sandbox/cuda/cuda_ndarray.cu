@@ -758,8 +758,10 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     PyObject * axis_obj = Py_None;
     PyObject * out_obj = Py_None;
     PyObject * clipmode_obj = NULL;
-    if (! PyArg_ParseTuple(args, "O|OOO", &indices_obj, &axis_obj,
-                           &out_obj, &clipmode_obj))
+    int max_threads = 1; // max threads per blocks
+
+    if (! PyArg_ParseTuple(args, "O|OOOi", &indices_obj, &axis_obj,
+                           &out_obj, &clipmode_obj, &max_threads))
         return NULL;
 
     //Check argument indices
@@ -937,13 +939,16 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     }
 
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
+
     switch (self->nd) {
         case 1:
             {
                 dim3 n_threads(1, 1, 1);
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           self->nd, cudaGetLastError(),
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0],
@@ -964,11 +969,15 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 2:
             {
-                dim3 n_threads(std::min(CudaNdarray_HOST_DIMS(out)[1], 512), 1, 1);
+                dim3 n_threads(std::min(CudaNdarray_HOST_DIMS(out)[1], max_threads), 1, 1);
+
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           cudaGetLastError(), self->nd,
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
+
                 k3<<<n_blocks, n_threads>>>(
                         dims[0], //dimensions
                         dims[1],
@@ -988,12 +997,14 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 3:
             {
-                int ty = std::min(CudaNdarray_HOST_DIMS(out)[2], 512);
-                int tx = std::min(CudaNdarray_HOST_DIMS(out)[1], 512 / ty);
+                int ty = std::min(CudaNdarray_HOST_DIMS(out)[2], max_threads);
+                int tx = std::min(CudaNdarray_HOST_DIMS(out)[1], max_threads / ty);
                 dim3 n_threads(tx, ty, 1);
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           self->nd, cudaGetLastError(),
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0], //dimensions
