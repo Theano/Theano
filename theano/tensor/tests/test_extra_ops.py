@@ -145,11 +145,10 @@ class TestDiffOp(utt.InferShapeTester):
 class SqueezeTester(utt.InferShapeTester):
     shape_list = [(1, 3),
                   (1, 2, 3),
-                  (1, 5, 1 , 1, 6)]
+                  (1, 5, 1, 1, 6)]
     broadcast_list = [[True, False],
                       [True, False, False],
                       [True, False, True, True, False]]
-
 
     def setUp(self):
         super(SqueezeTester, self).setUp()
@@ -165,6 +164,7 @@ class SqueezeTester(utt.InferShapeTester):
             expected = numpy.squeeze(data)
             tested = f(data)
 
+            assert tested.shape == expected.shape
             assert numpy.allclose(tested, expected)
 
     def test_infer_shape(self):
