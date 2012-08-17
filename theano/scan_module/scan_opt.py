@@ -297,8 +297,11 @@ class PushOutNonSeqScan(gof.Optimizer):
                                                    *shape)
 
             # We need to add one extra dimension to the outputs
-            fgraph.replace_all_validate(replace_with.items(),
-                                     reason='scan_push_computation_out')
+            if len(replace_with.items()) > 0:
+                fgraph.replace_all_validate_remove(
+                    replace_with.items(),
+                    remove=[node],
+                    reason='scan_push_computation_out')
 
         else:
             return False
