@@ -37,7 +37,7 @@ compiledir_format_dict = {"platform": platform.platform(),
                           "python_version": platform.python_version(),
                           "theano_version": theano.__version__,
                           "numpy_version": numpy.__version__,
-                          "g++": gcc_version_str.replace(" ", "_"),
+                          "gxx_version": gcc_version_str.replace(" ", "_"),
                          }
 compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
 default_compiledir_format =\
