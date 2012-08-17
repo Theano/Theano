@@ -55,3 +55,5 @@ from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian
 
 from theano.tensor.sort import sort
+from extra_ops import (DiffOp, bincount, squeeze,
+                       repeat, bartlett, fill_diagonal)
