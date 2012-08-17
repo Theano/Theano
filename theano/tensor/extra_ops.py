@@ -3,8 +3,8 @@ import numpy
 
 import theano
 import basic
-from theano import gof, tensor, scalar
-from theano.sandbox.linalg.ops import diag
+from theano import gof, scalar
+import basic as tensor
 
 
 class DiffOp(theano.Op):
@@ -497,7 +497,9 @@ class FillDiagonal(gof.Op):
             raise NotImplementedError('%s: gradient is currently implemented'
                             ' for matrices only' % self.__class__.__name__)
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
-        wr_val = diag(grad).sum()  # diag is only valid for matrices
+        # diag is only valid for matrices
+        import theano.sandbox.linalg
+        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
         return [wr_a, wr_val]
 
 
