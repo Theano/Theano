@@ -901,7 +901,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             free(dims);
             return NULL;
         }
-        Py_DECREF(clipmode_obj);
     }
     void (*k3)(const int, const int, const int,
                const npy_int64*,
