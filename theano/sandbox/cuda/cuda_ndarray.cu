@@ -839,14 +839,14 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     PyObject * axis_iobj = PyNumber_Long(axis_obj);
     if (!axis_iobj) {
         PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertable to a long");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
     long axis = PyInt_AsLong(axis_iobj);
     Py_DECREF(axis_iobj); axis_iobj=NULL;
     if (axis != 0) {
         PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only axis=0 is currently supported");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
 
@@ -869,13 +869,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (!out) {
         out = (CudaNdarray*)CudaNdarray_New();
         if (!out){
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             free(dims);
             return NULL;
         }
         if (CudaNdarray_alloc_contiguous(out, self->nd, dims)) {
             Py_DECREF(out);
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             free(dims);
             return NULL;
         }
@@ -887,14 +887,16 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (clipmode_obj) {
         char * clipmode = PyString_AsString(clipmode_obj);
         if (! clipmode){
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
         }
         if (strcmp(clipmode, "raise") != 0) {
-            PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only the raise mode is currently supported");
-            Py_DECREF(indices_obj);
+            PyErr_Format(PyExc_NotImplementedError,
+                         "CudaNdarray_TakeFrom: only the raise mode is currently supported. Got '%s'",
+                         clipmode);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
@@ -913,7 +915,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (err_var == NULL) {
         err_var = (int*)device_malloc(sizeof(int));
         if (!err_var) { // PyErr set by device_malloc
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
@@ -928,7 +930,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             PyErr_Format(PyExc_RuntimeError,
                          "Error setting device error code to 0. %s",
                          cudaGetErrorString(err));
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
@@ -1025,7 +1027,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                      "Cuda error: %s: %s.\n",
                      "CudaNdarray_TakeFrom",
                      cudaGetErrorString(err));
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
     }
@@ -1040,7 +1042,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             "Cuda error: %s: %s when trying to get the error value.\n",
             "CudaNdarray_TakeFrom",
             cudaGetErrorString(err));
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
     }
@@ -1055,17 +1057,17 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         err = cudaMemset((void*)err_var, 0, sizeof(int));
         if (cudaSuccess != err) {
             PyErr_Format(PyExc_MemoryError, "Error setting device error code to 0 after having an index error. %s", cudaGetErrorString(err));
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             return NULL;
         }
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
   
     }
     
-    Py_DECREF(indices_obj);
+    Py_DECREF(indices);
         
     if (verbose) printf("TAKE SUCCEDED\n");
     return (PyObject *)out;
