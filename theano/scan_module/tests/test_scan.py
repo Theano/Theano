@@ -591,8 +591,8 @@ class T_Scan(unittest.TestCase):
             v_y[i] = numpy.dot(v_x[i - 1], vWout)
 
         (theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
-        assert numpy.allclose(theano_x, v_x)
-        assert numpy.allclose(theano_y, v_y)
+        assert numpy.allclose(theano_x, v_x), (theano_x, v_x, theano_x - v_x)
+        assert numpy.allclose(theano_y, v_y), (theano_y, v_y, theano_y - v_y)
 
     def test_multiple_outs_taps(self):
         l = 5
