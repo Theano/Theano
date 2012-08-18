@@ -1744,15 +1744,15 @@ if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
-"""%d
-    ret+=my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
-    ret+=my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;",unroll_bsize*unroll_ksize)
-    ret+="""
+""" % d
+    ret += my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
+    ret += my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;", unroll_bsize * unroll_ksize)
+    ret += """
     for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
-"""%d
-    ret+=my_dup("const %(type)s * __restrict__ in%(unroll_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d,b+%(unroll_iter)s,stack_size));", unroll_bsize)
-    ret+=my_dup("const %(type)s * __restrict__ hvals%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern+%(unroll_iter)s,stack_size));",unroll_ksize)
-    ret+="""
+""" % d
+    ret += my_dup("const %(type)s * __restrict__ in%(unroll_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d,b+%(unroll_iter)s,stack_size));", unroll_bsize)
+    ret += my_dup("const %(type)s * __restrict__ hvals%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern+%(unroll_iter)s,stack_size));", unroll_ksize)
+    ret += """
 
       int new_m;
 
@@ -1764,9 +1764,9 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
 
         for (int iter_n=0; iter_n < Os[1]; iter_n++) {  // loop over columns
           int pos_n=iter_n*%(self_dy)s;
-        """%d
-    ret+=my_dup("%(type)s sum%(unroll_iter)s=0;", unroll_bsize*unroll_ksize)
-    ret+="""
+        """ % d
+    ret += my_dup("%(type)s sum%(unroll_iter)s=0;", unroll_bsize * unroll_ksize)
+    ret += """
 
           // Sum over kernel, if index into image is out of bounds
           // fill with the value
@@ -1774,15 +1774,15 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
             int ind0 = (new_m-j);
 
             if(mode==FULL){
-"""%d
-    ret+=my_dup("const %(type)s * idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];",unroll_ksize)
-    ret+="""
+""" % d
+    ret += my_dup("const %(type)s * idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];", unroll_ksize)
+    ret += """
               if(ind0 < 0 || ind0 >= dim_im[0]){
                 if(fill_value!=0)
                   for (int k=0; k < dim_ker1; k++) {
-"""%d
-    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
-    ret+="""
+""" % d
+    ret += my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret += """
                   }
               }else{
                 //do the part where kernel is to the right of the img
@@ -1791,49 +1791,49 @@ for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
                 if(fill_value!=0){
 
                   for(k=0;k<max_k;k++){
-"""%d
-    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
-    ret+="""
+""" % d
+    ret += my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret += """
                   }
                 }else {k=max_k;}
 
                 //do the part where the kernel is on the img
                 max_k=min(pos_n+1,(int)dim_ker1);
-"""%d
-    ret+=my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
-    ret+="""
+""" % d
+    ret += my_dup("const %(type)s * idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
+    ret += """
                 for (int ind1=pos_n-k; k<max_k; k++,ind1--) {
 
-"""%d
-    ret+=my_dup2("sum%(unroll_iter)s+= idx_hvals%(unroll_kiter)s[k] * idx_in%(unroll_biter)s[ind1];")
-    ret+="""
+""" % d
+    ret += my_dup2("sum%(unroll_iter)s+= idx_hvals%(unroll_kiter)s[k] * idx_in%(unroll_biter)s[ind1];")
+    ret += """
                 }
                 //do the part to the left of the img
                 if(fill_value!=0)
                   for(;k<dim_ker1;k++){
-"""%d
-    ret+=my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
-    ret+="""
+""" % d
+    ret += my_dup2("sum%(unroll_iter)s += idx_hvals%(unroll_kiter)s[k] * fill_value;")
+    ret += """
                   }
               }
             }else{//valid mode
-"""%d
-    ret+=my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
-    ret+=my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];",unroll_ksize)
-    ret+="""
+""" % d
+    ret += my_dup("const %(type)s* idx_in%(unroll_iter)s=&in%(unroll_iter)s[ind0*dim_im[1]];", unroll_bsize)
+    ret += my_dup("const %(type)s* idx_hvals%(unroll_iter)s=&hvals%(unroll_iter)s[j*dim_ker1];", unroll_ksize)
+    ret += """
               int new_n = (pos_n+dim_ker1-1);
 
               for (int k=0,last=new_n; k < dim_ker1; k++,last--) {
-"""%d
-    ret+=my_dup2("sum%(unroll_iter)s+=idx_hvals%(unroll_kiter)s[k]*idx_in%(unroll_biter)s[last];")
-    ret+="""
+""" % d
+    ret += my_dup2("sum%(unroll_iter)s+=idx_hvals%(unroll_kiter)s[k]*idx_in%(unroll_biter)s[last];")
+    ret += """
               }
             }
 
           }//for j
-"""%d
-    ret+=my_dup("out%(unroll_iter)s[iter_m*dim_zz[1]+iter_n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize*unroll_ksize)
-    ret+="""
+""" % d
+    ret += my_dup("out%(unroll_iter)s[iter_m*dim_zz[1]+iter_n] %(affectation)s sum%(unroll_iter)s;", unroll_bsize * unroll_ksize)
+    ret += """
         }//for n
       }//for m
     }//for stack_size
