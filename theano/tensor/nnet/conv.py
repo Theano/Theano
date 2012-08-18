@@ -55,10 +55,10 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :type subsample: tuple of len 2
     :param subsample: factor by which to subsample the output
 
-    :type image_shape: tuple of len 4 of int or Contant variable
+    :type image_shape: tuple of len 4 of int or Constant variable
     :param image_shape: (batch size, stack size, nb row, nb col)
                         Optional, used for optimization.
-    :type filter_shape: tuple of len 4 of int or Contant variable
+    :type filter_shape: tuple of len 4 of int or Constant variable
     :param filter_shape: (nb filters, stack size, nb row, nb col)
                          Optional, used for optimization.
 
