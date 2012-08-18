@@ -2020,6 +2020,13 @@ class T_max_and_argmax(unittest.TestCase):
             v = eval_outputs(max_and_argmax(n, axis)[0].shape)
             assert tuple(v) == numpy.max(data, np_axis).shape
 
+    def test_arg_grad(self):
+        x = matrix()
+        cost = argmax(x, axis=0).sum()
+        gx = grad(cost, x)
+        cost = argmin(x, axis=0).sum()
+        gx = grad(cost, x)
+
     def test_grad(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
