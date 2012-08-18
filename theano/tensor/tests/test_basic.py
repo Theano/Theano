@@ -2023,9 +2023,13 @@ class T_max_and_argmax(unittest.TestCase):
     def test_arg_grad(self):
         x = matrix()
         cost = argmax(x, axis=0).sum()
-        gx = grad(cost, x)
-        cost = argmin(x, axis=0).sum()
-        gx = grad(cost, x)
+        try:
+            gx = grad(cost, x)
+        except ValueError:
+            # It is the error saying there is no differentiable path to the
+            # input
+            pass
+
 
     def test_grad(self):
         data = rand(2, 3)
