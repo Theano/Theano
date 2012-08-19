@@ -2021,14 +2021,24 @@ class T_max_and_argmax(unittest.TestCase):
             assert tuple(v) == numpy.max(data, np_axis).shape
 
     def test_arg_grad(self):
+        """
+        The test checks if computing the gradient of argmax(x).sum() fails
+        because there is no differentiable path from cost to the input and
+        not because of an error of the grad method of the op
+        """
         x = matrix()
         cost = argmax(x, axis=0).sum()
+        value_error_raised = False
         try:
             gx = grad(cost, x)
         except ValueError:
             # It is the error saying there is no differentiable path to the
             # input
-            pass
+            value_error_raised = True
+        if value_error_raised:
+            raise ValueError(('Test failed because exception saying '
+                              'no differentiable path found was not '
+                              'raised'))
 
 
     def test_grad(self):
