@@ -2035,7 +2035,7 @@ class T_max_and_argmax(unittest.TestCase):
             # It is the error saying there is no differentiable path to the
             # input
             value_error_raised = True
-        if value_error_raised:
+        if not value_error_raised:
             raise ValueError(('Test failed because exception saying '
                               'no differentiable path found was not '
                               'raised'))
