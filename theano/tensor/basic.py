@@ -2300,6 +2300,9 @@ class MaxAndArgmax(Op):
         x, axis = inp
         g_max, g_max_idx = grads
 
+        # Check to see if the gradient on max is None
+        if g_max is None:
+            return None, None
         xmax = max(x, axis)
 
         # Raise the g_max and xmax to the same number of dim as the input.
