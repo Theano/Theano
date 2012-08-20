@@ -333,4 +333,34 @@ Documentation
 -------------
 
 See :ref:`metadocumentation`, for some information on how to generate
-and do documentation.
+the documentation.
+
+Here is an example how to add docstring to an class.
+
+.. code-block:: python
+
+    import theano
+
+    class DoubleOp(theano.Op):
+    """ Double each element of a tensor.
+
+    :param x: input tensor.
+
+    :return: a tensor of the shape shape and dtype as the input with all
+        values doubled.
+
+    :note:
+        this is a test note
+
+    :seealso:
+        You can use the elemwise op to replace this example.
+        Just execute `x * 2` with x being a Theano variable.
+
+    .. versionadded:: 0.6
+    """
+
+This is how it will show up for file that we auto list in the library documentation:
+
+
+.. automodule:: theano.misc.doubleop
+    :members:

@@ -160,7 +160,8 @@ List of Implemented Operations
       The grad implemented is structured.
 
 - Monoid (Element-wise operation with only one sparse input).
-  `They all have a structured grad.`
+    `They all have a structured grad.`
+
     - ``structured_sigmoid``
     - ``structured_exp``
     - ``structured_log``
@@ -217,14 +218,16 @@ List of Implemented Operations
       The grad implemented is regular.
 
 - Probability
-  `There is no grad implemented for these operations.`
+    `There is no grad implemented for these operations.`
+
     - :class:`Poisson <theano.sparse.basic.Poisson>` and ``poisson``
     - :class:`Binomial <theano.sparse.basic.Binomial>` and ``csc_fbinomial``, ``csc_dbinomial``
       ``csr_fbinomial``, ``csr_dbinomial``
     - :class:`Multinomial <theano.sparse.basic.Multinomial>` and ``multinomial``
 
 - Internal Representation
-  `They all have a regular grad implemented.`
+    `They all have a regular grad implemented.`
+
     - :class:`EnsureSortedIndices <theano.sparse.basic.EnsureSortedIndices>` and ``ensure_sorted_indices``
     - :class:`Remove0 <theano.sparse.basic.Remove0>` and ``remove0``
     - :func:`clean <theano.sparse.basic.clean>` to resort indices and remove zeros
