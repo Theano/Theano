@@ -64,7 +64,7 @@ def test_sum():
                            ((5,4,3,10,11),[1,2]),
                            ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
 
-                           #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enought thread/block in each dimensions
+                           #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
                            ((4100,3),[0]),((3,4101),[0]),#10
                            ((1024,33),[0]),((33,1024),[0]),#10
                            ((1025,33),[0]),((33,1025),[0]),#10
@@ -880,7 +880,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                                  ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
                                                  -1, -2, -3, -4], False),
                              ]:
-            # If there is not enought memory on the GPU, skip the test
+            # If there is not enough memory on the GPU, skip the test
             size_needed = numpy.prod(shape) * (4 + 1)
             if isinstance(theano.compile.get_default_mode(),
                           theano.compile.DebugMode):
@@ -905,7 +905,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
-            #DebugMode do a copy of the input, so we loose the strides.
+            #DebugMode does a copy of the input, so we lose the strides.
             if not isinstance(theano.compile.get_default_mode(),
                               theano.compile.DebugMode):
                 t.owner.op.perform_using_take = fast
