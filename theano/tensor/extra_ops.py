@@ -8,20 +8,7 @@ from theano.sandbox.linalg.ops import diag
 
 
 class DiffOp(theano.Op):
-    """Calculate the n-th order discrete difference along given axis.
-
-    The first order difference is given by out[n] = a[n+1] - a[n]
-    along the given axis, higher order differences are calculated by
-    using diff recursively. Wraping of numpy.diff.
-
-    Parameter:
-    x -- Input vector.
-
-    Keywords arguments:
-    n -- The number of times values are differenced, default is 1.
-
-    """
-
+    # See function diff for docstring
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
@@ -82,36 +69,20 @@ def diff(x, n=1, axis=-1):
     along the given axis, higher order differences are calculated by
     using diff recursively. Wraping of numpy.diff.
 
-    Parameter:
-    x -- Input vector.
+    :param x: Input tensor variable.
 
-    Keywords arguments:
-    n -- The number of times values are differenced, default is 1.
+    :param n: The number of times values are differenced, default is 1.
 
+    :param axis: The axis along which the difference is taken,
+        default is the last axis.
+
+    .. versionadded:: 0.6
     """
     return DiffOp(n=n, axis=axis)(x)
 
 
 class BinCountOp(theano.Op):
-    """Count number of occurrences of each value in array of non-negative ints.
-
-    The number of bins (of size 1) is one larger than the largest
-    value in x. If minlength is specified, there will be at least
-    this number of bins in the output array (though it will be longer
-    if necessary, depending on the contents of x). Each bin gives the
-    number of occurrences of its index value in x. If weights is
-    specified the input array is weighted by it, i.e. if a value n
-    is found at position i, out[n] += weight[i] instead of out[n] += 1.
-    Wraping of numpy.bincount
-
-    Parameter:
-    x -- 1 dimension, nonnegative ints
-
-    Keywords arguments:
-    weights -- Weights, array of the same shape as x.
-    minlength -- A minimum number of bins for the output array.
-
-    """
+    # See function bincount for docstring
 
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
@@ -202,13 +173,14 @@ def bincount(x, weights=None, minlength=None):
     is found at position i, out[n] += weight[i] instead of out[n] += 1.
     Wraping of numpy.bincount
 
-    Parameter:
-    x -- 1 dimension, nonnegative ints
+    :param x: 1 dimension, nonnegative ints
 
-    Keywords arguments:
-    weights -- Weights, array of the same shape as x.
-    minlength -- A minimum number of bins for the output array.
+    :param weights: array of the same shape as x with corresponding weights.
+        Optional.
+    :param minlength: A minimum number of bins for the output array.
+        Optional.
 
+    .. versionadded:: 0.6
     """
     return BinCountOp(minlength=minlength)(x, weights)
 
@@ -231,21 +203,7 @@ def squeeze(x):
 
 
 class RepeatOp(theano.Op):
-    """Repeat elements of an array.
-
-    It returns an array which has the same shape as `x`, except
-    along the given axis. The axis is used to speficy along which
-    axis to repeat values. By default, use the flattened input
-    array, and return a flat output array.
-
-    The number of repetitions for each element is `repeat`.
-    `repeats` is broadcasted to fit the length of the given `axis`.
-
-    :param x: Input data, tensor variable.
-    :param repeats: int, scalar or tensor variable.
-
-    :param axis: int, optional.
-    """
+    # See the repeat function for docstring
 
     def __init__(self, axis=None):
         self.axis = axis
@@ -365,21 +323,7 @@ def repeat(x, repeats, axis=None):
 
 
 class Bartlett(gof.Op):
-    """
-    An instance of this class returns the Bartlett spectral window in the
-    time-domain. The Bartlett window is very similar to a triangular window,
-    except that the end points are at zero. It is often used in signal
-    processing for tapering a signal, without generating too much ripple in
-    the frequency domain.
-
-    input : (integer scalar) Number of points in the output window. If zero or
-    less, an empty vector is returned.
-
-    output : (vector of doubles) The triangular window, with the maximum value
-    normalized to one (the value one appears only if the number of samples is
-    odd), with the first and last samples equal to zero.
-    """
-
+    # See function bartlett for docstring
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -414,33 +358,34 @@ class Bartlett(gof.Op):
 
     def grad(self, inputs, output_grads):
         return [None for i in inputs]
+bartlett_ = Bartlett()
 
 
-bartlett = Bartlett()
+#I create a function only to have the doc show well.
+def bartlett(M):
+    """An instance of this class returns the Bartlett spectral window in the
+    time-domain. The Bartlett window is very similar to a triangular window,
+    except that the end points are at zero. It is often used in signal
+    processing for tapering a signal, without generating too much ripple in
+    the frequency domain.
+
+    :param M: (integer scalar) Number of points in the output
+        window. If zero or less, an empty vector is returned.
+
+    :return: (vector of doubles) The triangular window, with the
+        maximum value normalized to one (the value one appears only if
+        the number of samples is odd), with the first and last samples
+        equal to zero.
+
+    .. versionadded:: 0.6
+
+    """
+    return bartlett_(M)
+
 
 
 class FillDiagonal(gof.Op):
-    """
-    An instance of this class returns a copy of an array with all elements of
-    the main diagonal set to a specified scalar value.
-
-    inputs:
-
-    a : Rectangular array of at least two dimensions.
-    val : Scalar value to fill the diagonal whose type must be compatible with
-    that of array 'a' (i.e. 'val' cannot be viewed as an upcast of 'a').
-
-    output:
-
-    An array identical to 'a' except that its main diagonal is filled with
-    scalar 'val'. (For an array 'a' with a.ndim >= 2, the main diagonal is the
-    list of locations a[i, i, ..., i] (i.e. with indices all identical).)
-
-    Support rectangular matrix and tensor with more then 2 dimensions
-    if the later have all dimensions are equals.
-
-    """
-
+    # See function fill_diagonal for docstring
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -499,6 +444,27 @@ class FillDiagonal(gof.Op):
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
         wr_val = diag(grad).sum()  # diag is only valid for matrices
         return [wr_a, wr_val]
+fill_diagonal_ = FillDiagonal()
 
 
-fill_diagonal = FillDiagonal()
+#I create a function only to have the doc show well.
+def fill_diagonal(a, val):
+    """ Returns a copy of an array with all
+    elements of the main diagonal set to a specified scalar value.
+
+    :param a: Rectangular array of at least two dimensions.
+    :param val: Scalar value to fill the diagonal whose type must be
+        compatible with that of array 'a' (i.e. 'val' cannot be viewed
+        as an upcast of 'a').
+
+    :return: An array identical to 'a' except that its main diagonal
+        is filled with scalar 'val'. (For an array 'a' with a.ndim >=
+        2, the main diagonal is the list of locations a[i, i, ..., i]
+        (i.e. with indices all identical).)
+
+    Support rectangular matrix and tensor with more then 2 dimensions
+    if the later have all dimensions are equals.
+
+    .. versionadded:: 0.6
+    """
+    return fill_diagonal_(a, val)
