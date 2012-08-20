@@ -95,7 +95,7 @@ class Images2Neibs(Op):
         if self.mode in ['valid', 'ignore_borders']:
             warnings.warn("The Images2Neibs grad is not implemented."+\
                     "It was in the past but returned the wrong answer!")
-            return None
+            return [ None, None, None ]
 
             #raise BadOldCode("The Images2Neibs grad is not implemented."
             #                " It was in the past, but returned the wrong"
