@@ -410,7 +410,8 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        assert numpy.allclose(theano_values, v_out), (theano_values, v_out,
+                                                      theano_values - v_out)
 
         # TO DEL
         topo = f2.maker.fgraph.toposort()
