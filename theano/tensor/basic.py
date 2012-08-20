@@ -1492,7 +1492,20 @@ class _tensor_py_operators:
 
         :param ndim: the length of the shape.  Passing None here means for
             theano to try and guess the length of `shape`.
+
+        * warning-- this has a different signature than numpy's
+                    ndarray.reshape!
+                    in numpy you do not need to wrap the shape arguments
+                    in a tuple, in theano you do need to
+
         """
+
+        if ndim is not None:
+            if not isinstance(ndim,int):
+                raise ValueError("Expected ndim to be an integer, is "\
+                        +str(type(ndim)))
+
+
         return reshape(self, shape, ndim=ndim)
 
     def dimshuffle(self, *pattern):
