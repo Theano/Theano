@@ -132,6 +132,19 @@ class test_dimshuffle_lift(unittest.TestCase):
             "{x,0,1}(y)), z)]"), str(g))
 
 
+def test_stabilize_log_softmax():
+    mode = theano.compile.mode.get_default_mode()
+    mode = mode.including('local_log_softmax')
+
+    x = matrix()
+    y = theano.tensor.nnet.softmax(x)
+    z = theano.tensor.log(y)
+
+    f = function([x],z)
+
+    for node in f.maker.fgraph.toposort():
+        assert not isinstance(node.op, y.owner.op.__class__)
+
 def test_add_canonizer_problem0():
     n_segments = 10
     label = lscalar('label')
@@ -3781,4 +3794,4 @@ if __name__ == '__main__':
 #    unittest.main()
     test_fusion().tes_memory_leak()
     """
-    
+
