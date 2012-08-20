@@ -1729,3 +1729,19 @@ class Prepend_scalar_to_each_row(gof.Op):
 prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
+
+
+#numerically stabilize log softmax (X)
+# as  X-X.max(axis=1).dimshuffle(0,'x') - log(exp(X-X.max(axis=1).dimshuffle(0,'x')).sum(axis=1)).dimshuffle(0,'x)
+def make_out_pattern(X):
+    stabilized_X = X - X.max(axis=1).dimshuffle(0,'x')
+    return stabilized_X - tensor.log(tensor.exp(stabilized_X).sum(axis=1)).dimshuffle(0,'x')
+
+local_log_softmax = gof.PatternSub( in_pattern = (tensor.log, (softmax, 'x')),
+                                    out_pattern = (make_out_pattern, 'x'),
+                                   allow_multiple_clients=True)
+
+#don't do register_stabilize, this is to make local_log_softmax run
+#only after another more specific optimization that stabilizes cross entropy
+#opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
+opt.register_specialize(local_log_softmax, name = 'local_log_sotmax')
