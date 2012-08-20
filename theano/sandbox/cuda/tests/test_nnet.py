@@ -46,7 +46,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     #we precompute the dot with big shape before to allow the test of
     #GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error
     #(the launch timed out and was terminated) on GPU card not
-    #powerfull enought. We need the big shape to check for corner
+    #powerful enough. We need the big shape to check for corner
     #case.
     dot_result = T.fmatrix('dot_result')
 

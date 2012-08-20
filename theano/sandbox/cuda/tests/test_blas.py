@@ -310,7 +310,7 @@ def test_downsample():
 
                 # The grad is too slow on GT220 GPU
                 # This cause the computer to freeze...
-                # Remove this when it get optimized enought
+                # Remove this when it gets optimized enough
                 # This only bypass the last 2 checks
                 # Those tests where passing in all Mode on a GTX470
                 if shp[0] > 30000 or shp[1] > 30000:
