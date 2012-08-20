@@ -50,10 +50,29 @@ class Images2Neibs(Op):
 
     def make_node(self, ten4, neib_shape, neib_step=None):
         """
-        :param neib_step: (dx,dy) where dx is the number of rows to
-                          skip between patch and dy is the number of
+        :param ten4:     a list of lists of images
+                         ten4 is of shape (list 1 dim, list 2 dim,
+                                           row, col)
+        :param neigb:    (r,c) where r is the height of the neighborhood
+                        in rows and c is the width of the neighborhood
+                        in columns
+        :param neib_step: (dr,dc) where dr is the number of rows to
+                          skip between patch and dc is the number of
                           columns. When None, this is the same as
                           neib_shape(patch are disjoint)
+
+        output:
+            a 2D matrix, written using the following pattern
+
+            idx = 0
+            for i in xrange(list 1 dim)
+                for j in xrange(list 2 dim)
+                    for k in <image column coordinates>
+                        for l in <image row coordinates>
+                            output[idx,:] = flattened version of ten4[i,j,l:l+r,k:k+c]
+                            idx += 1
+            (note: the op isn't necessarily implemented internally with these
+            for loops, they're just the easiest way to describe the output pattern)
         """
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
