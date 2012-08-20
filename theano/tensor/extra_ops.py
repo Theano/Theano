@@ -65,7 +65,7 @@ class DiffOp(theano.Op):
 def diff(x, n=1, axis=-1):
     """Calculate the n-th order discrete difference along given axis.
 
-    The first order difference is given by out[n] = a[n+1] - a[n]
+    The first order difference is given by out[i] = a[i + 1] - a[i]
     along the given axis, higher order differences are calculated by
     using diff recursively. Wraping of numpy.diff.
 
@@ -196,6 +196,8 @@ def squeeze(x):
     :param x: Input data, tensor variable.
 
     :return: `x` without its broadcastable dimensions.
+
+    .. versionadded:: 0.6
     """
     view = x.dimshuffle([i for i in range(x.ndim)
                          if not x.broadcastable[i]])
@@ -318,6 +320,8 @@ def repeat(x, repeats, axis=None):
     :param repeats: int, scalar or tensor variable.
 
     :param axis: int, optional.
+
+    .. versionadded:: 0.6
     """
     return RepeatOp(axis=axis)(x, repeats)
 
