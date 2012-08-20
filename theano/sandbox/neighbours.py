@@ -1,4 +1,5 @@
 import theano
+import warnings
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gof import local_optimizer
@@ -92,12 +93,16 @@ class Images2Neibs(Op):
         x, neib_shape, neib_step = inp
         gz, = grads
         if self.mode in ['valid', 'ignore_borders']:
-            raise BadOldCode("The Images2Neibs grad is not implemented."
-                            " It was in the past, but returned the wrong"
-                            " answer!")
+            warnings.warn("The Images2Neibs grad is not implemented."+\
+                    "It was in the past but returned the wrong answer!")
+            return None
+
+            #raise BadOldCode("The Images2Neibs grad is not implemented."
+            #                " It was in the past, but returned the wrong"
+            #                " answer!")
             # This is the reverse of the op, not the grad!
-            return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
-                    None, None]
+            #return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
+            #        None, None]
         else:
             raise NotImplementedError()
 
