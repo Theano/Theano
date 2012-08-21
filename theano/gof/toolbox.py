@@ -23,12 +23,20 @@ class Feature(object):
     """
     Base class for FunctionGraph extensions.
 
+    A Feature is an object with several callbacks that are triggered
+    by various operations on FunctionGraphs. It can be used to enforce
+    graph properties at all stages of graph optimization.
+
     See toolbox and ext modules for common extensions.
     """
 
     def on_attach(self, function_graph):
         """
-        Called by extend. The feature has great freedom in what
+        Called by FunctionGraph.extend, the method that attaches the feature
+        to the FunctionGraph. Since this is called after the FunctionGraph
+        is initially populated, this is where you should run checks on the
+        initial contents of the FunctionGraph.
+        The feature has great freedom in what
         it can do with the function_graph: it may, for example, add methods
         to it dynamically.
         """
@@ -43,6 +51,9 @@ class Feature(object):
         """
         Called whenever a node is imported into function_graph, which is
         just before the node is actually connected to the graph.
+        Note: on_import is not called when the graph is created. If you
+        want to detect the first nodes to be implemented to the graph,
+        you should do this by implementing on_attach.
         """
 
     def on_prune(self, function_graph, node):

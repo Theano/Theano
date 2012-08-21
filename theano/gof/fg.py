@@ -434,10 +434,9 @@ class FunctionGraph(utils.object2):
     # takes a sequence, and since this is a kind of container you
     # would expect it to do similarly.
     def extend(self, feature):
-        """WRITEME
-        Adds a feature to this function_graph. The feature may define one
-        or more of the following methods:
-
+        """
+        Adds a gof.toolbox.Feature to this function_graph
+        and triggers its on_attach callback
         """
         if feature in self._features:
             return # the feature is already present
