@@ -325,19 +325,22 @@ This small program creates a list with 1,000,000 ints (at 24 bytes each,
 for ~24 million bytes) plus a list of references (at 8 bytes each, for ~8
 million bytes), for about 30MB. It then deep-copies the object (which
 allocates ~50MB, not sure why; a simple copy would allocate only 8MB of
-references). Freeing ``x`` with ``del`` frees the reference list, kills the
-associated objects, but lo!, the amount of memory only goes down by the
-number of references, because the list itself is not in a small objects'
-list, but on the heap, and the dead small objects remain in the free list,
-and not returned to the interpreter's global heap.
+references, plus about 24MB for the objects themselves---so there's a large
+overhead here, maybe Python grew its heap preemptively). Freeing ``x`` with
+``del`` frees the reference list, kills the associated objects, but lo!,
+the amount of memory only goes down by the number of references, because
+the list itself is not in a small objects' list, but on the heap, and the
+dead small objects remain in the free list, and not returned to the
+interpreter's global heap.
 
 In this example, we end up with *twice* the memory allocated, with 82MB,
 while only one list necessitating about 30MB is returned. You can see why
 it is easy to have memory just increase more or less surprisingly if we're
 not careful.
 
-\*
-\* \*
+
+Pickle
+------
 
 On a related note: is ``pickle`` wasteful?
 
@@ -488,6 +491,18 @@ and reading the file back:
 Memory consumption on writing is now much better. It still creates a lot of
 temporary small objects (for 60MB's worth), but it's not doubling memory
 usage. Reading is comparable (using only marginally less memory).
+
+This particular example is trivial but it generalizes to strategies where
+you don't load the whole thing first then process it but rather read a few
+items, process them, and reuse the allocated memory. Loading data to a
+Numpy array, for example, one could first create the Numpy array, then read
+the file line by line to fill the array: this allocates one copy of the
+whole data. Using pickle, you would allocate the whole data (at least)
+twice: once by pickle, and once through Numpy.
+
+Or even better yet: use Numpy (or PyTables) arrays. But that's a different
+topic that is discussed in 'loading and saving' another tutorial in the
+Theano/doc/tutorial directory.
 
 \*
 \* \*
