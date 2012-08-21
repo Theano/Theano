@@ -323,61 +323,72 @@ def speed_neibs_wrap_centered():
     for i in range(1000):
         f()
 
-# Disable the test as the grad is wrongly implemented
-def tes_neibs_grad_verify_grad():
-    shape = (2, 3, 4, 4)
-    images = T.dtensor4()
-    images_val = numpy.arange(numpy.prod(shape),
-                              dtype='float32').reshape(shape)
 
-    def fn(images):
-        return T.sum(T.sqr(images2neibs(images, (2, 2))), axis=[0, 1])
+class T_Images2Neibs(unittest_tools.InferShapeTester):
+    def test_grad_valid(self):
+        shape = (2, 3, 4, 4)
+        images_val = numpy.random.rand(*shape).astype('float32')
 
-    unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
-    if cuda.cuda_available:
-        unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
+        def fn(images):
+            return images2neibs(images, (2, 2))
 
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu,
+                                   eps=0.1)
+        if cuda.cuda_available:
+            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu,
+                                       eps=0.1)
 
-def test_neibs_grad_verify_grad_warp_centered():
-    # It is not implemented for now. So test that we raise an error.
-    shape = (2, 3, 6, 6)
-    images = T.dtensor4()
-    images_val = numpy.arange(numpy.prod(shape),
-                              dtype='float32').reshape(shape)
+        # The grad is not defined when the neib_shape and neib_step
+        # are not the same.
+        def fn(images):
+            return images2neibs(images, (2, 2), (1, 1))
+        self.assertRaises(NotImplementedError,
+                          unittest_tools.verify_grad, fn, [images_val],
+                          mode=mode_without_gpu)
 
-    def fn(images):
-        return T.sum(T.sqr(images2neibs(images, (3, 3), mode='wrap_centered')),
-                     axis=[0, 1])
-    try:
-        unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
-        raise Exception("Expected an error")
-    except NotImplementedError:
-        pass
+    def test_grad_warp_centered(self):
+        # It is not implemented for now. So test that we raise an error.
+        shape = (2, 3, 6, 6)
+        images_val = numpy.random.rand(*shape).astype('float32')
 
-    if cuda.cuda_available:
-        try:
-            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
-            raise Exception("Expected an error")
-        except NotImplementedError:
-            pass
+        def fn(images):
+            return images2neibs(images, (3, 3), mode='wrap_centered')
 
+        self.assertRaises(NotImplementedError, unittest_tools.verify_grad,
+                          fn, [images_val], mode=mode_without_gpu)
 
-def test_neibs_ignore_border():
-    shape = (2, 3, 5, 5)
-    images = T.dtensor4()
-    images_val = numpy.arange(numpy.prod(shape),
-                              dtype='float32').reshape(shape)
+        if cuda.cuda_available:
+            self.assertRaises(NotImplementedError, unittest_tools.verify_grad,
+                              fn, [images_val], mode=mode_with_gpu)
 
-    def fn(images):
-        return T.sum(T.sqr(images2neibs(images, (2, 2),
-                                        mode='ignore_borders')), axis=[0, 1])
+    def test_grad_ignore_border(self):
+        shape = (2, 3, 5, 5)
+        images = T.dtensor4()
+        images_val = numpy.random.rand(*shape).astype('float32')
 
-    # Disable the test as the grad is wrongly implemented
-    #unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu)
+        def fn(images):
+            return images2neibs(images, (2, 2),
+                                mode='ignore_borders')
 
-#    not implemented for gpu
-#    if cuda.cuda_available:
-#        unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu)
+        unittest_tools.verify_grad(fn, [images_val], mode=mode_without_gpu,
+                                   eps=0.1)
+
+        # GPU code not implemented in that case, but is should still
+        # not crash.
+        if cuda.cuda_available:
+            unittest_tools.verify_grad(fn, [images_val], mode=mode_with_gpu,
+                                       eps=0.1)
+
+    def test_neibs2images_crash_on_grad(self):
+        # say we had images of size (2, 3, 20, 20)
+        # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
+        neibs = T.dmatrix()
+        neibs_val = numpy.random.rand(600, 4)
+        to_images = T.sum(neibs2images(neibs, (2, 2), (2, 3, 20, 20)))
+        g = T.grad(to_images, neibs)
+        fn = theano.function([neibs], to_images, mode=mode_without_gpu)
+        #print "Compiled"
+        fn(neibs_val)
 
 
 def test_neibs_valid_with_inconsistent_borders():
@@ -400,18 +411,6 @@ def test_neibs_valid_with_inconsistent_borders():
         # This is expected if the assert is there
         pass
 
-
-# Disable the test as the grad is wrongly implemented
-def tes_neibs2images_crash_on_grad():
-    # say we had images of size (2, 3, 20, 20)
-    # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
-    neibs = T.dmatrix()
-    neibs_val = numpy.random.rand(600, 4)
-    to_images = T.sum(neibs2images(neibs, (2, 2), (2, 3, 20, 20)))
-    g = T.grad(to_images, neibs)
-    fn = theano.function([neibs], to_images, mode=mode_without_gpu)
-    #print "Compiled"
-    fn(neibs_val)
 
 if __name__ == '__main__':
     #test_neibs_gpu()
