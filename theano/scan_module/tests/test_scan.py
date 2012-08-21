@@ -410,7 +410,8 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        assert numpy.allclose(theano_values, v_out), (theano_values, v_out,
+                                                      theano_values - v_out)
 
         # TO DEL
         topo = f2.maker.fgraph.toposort()
@@ -591,8 +592,8 @@ class T_Scan(unittest.TestCase):
             v_y[i] = numpy.dot(v_x[i - 1], vWout)
 
         (theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
-        assert numpy.allclose(theano_x, v_x)
-        assert numpy.allclose(theano_y, v_y)
+        assert numpy.allclose(theano_x, v_x), (theano_x, v_x, theano_x - v_x)
+        assert numpy.allclose(theano_y, v_y), (theano_y, v_y, theano_y - v_y)
 
     def test_multiple_outs_taps(self):
         l = 5
@@ -683,14 +684,13 @@ class T_Scan(unittest.TestCase):
         ny1[4] = (ny1[3] + ny1[1]) * numpy.dot(ny0[3], vWout)
         ny2[4] = numpy.dot(v_u1[4], vW_in1)
 
-
     def test_using_taps_sequence(self):
         # this test refers to a bug reported by Nicolas
         # Boulanger-Lewandowski June 6th
         x = theano.tensor.dvector()
         y, updates = theano.scan(lambda x: [x],
                                  sequences=dict(input=x, taps=[-1]),
-                                 outputs_info = [None])
+                                 outputs_info=[None])
         inp = numpy.arange(5).astype('float64')
         rval = theano.function([x], y, updates=updates)(inp)
         assert numpy.all(rval == inp[:-1])
@@ -840,8 +840,10 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1, theano_x1 - numpy_x1)
+        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0,
+                                                     theano_x0 - numpy_x0)
+        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1,
+                                                     theano_x1 - numpy_x1)
         # assert that it was done in place
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -940,11 +942,11 @@ class T_Scan(unittest.TestCase):
         vx1 = asarrayX(rng.uniform())
         x0 = theano.shared(vx0)
         x1 = theano.shared(vx1)
-        outputs, updates = theano.scan(lambda x,y: (x + asarrayX(1),
-                                                    y + asarrayX(1)),
+        outputs, updates = theano.scan(lambda x, y: (x + asarrayX(1),
+                                                     y + asarrayX(1)),
                                        [],
-                                       [x0,x1],
-                                       n_steps = 3)
+                                       [x0, x1],
+                                       n_steps=3)
         x0 = asarrayX(numpy.zeros((3,)))
         x0[0] = vx0
         x0 = theano.tensor.constant(x0)
@@ -2446,7 +2448,6 @@ class T_Scan(unittest.TestCase):
         v_eu = numpy.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
         v_eW = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
         v_eh0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
-
 
         def rnn_fn(_u, _y, _W):
 

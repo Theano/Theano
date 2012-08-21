@@ -26,6 +26,9 @@ with the option time_profile=True to conduct time-profiling of the tests.
 option will be interpreted as an indication of the number of tests to be run
 between notifications of progress to standard output.
 
+If the '--theano' option is used, it is replaced with the path to theano.
+Useful if you don't know where it was installed.
+
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
 
@@ -39,6 +42,12 @@ import sys
 from nose.plugins import Plugin
 
 def main():
+    # Handle the --theano arguments
+    if "--theano" in sys.argv:
+        i = sys.argv.index("--theano")
+        import theano
+        sys.argv[i] = theano.__path__[0]
+
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
@@ -136,6 +145,11 @@ def help():
             --help, -h: Displays this help.
 
             --without-knownfailure: Do not load the KnownFailure plugin.
+
+            --theano: This parameter is replaced with the path to the theano library.
+                      As theano-nose is a wrapper to nosetests, it expect a path to the tests to run.
+                      If you don't know where theano is installed, use this option
+                      to have it inserted automatically.
 
         The other options will be passed to nosetests, see ``nosetests -h``.
         """

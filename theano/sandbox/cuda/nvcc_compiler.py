@@ -7,6 +7,7 @@ import subprocess
 import sys
 import warnings
 
+import theano
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
@@ -119,6 +120,16 @@ class NVCC_compiler(object):
         cuda_ndarray_cuh_hash = hash_from_file(
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
+
+        # We compile cuda_ndarray.cu during import.
+        # We should not add device properties at that time.
+        # As the device is not selected yet!
+        # TODO: compile cuda_ndarray when we bind to a GPU?
+        import theano.sandbox.cuda
+        if hasattr(theano.sandbox, 'cuda'):
+            n = theano.sandbox.cuda.use.device_number
+            p = theano.sandbox.cuda.device_properties(n)
+            flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
         return flags
 
     @staticmethod
@@ -217,7 +228,9 @@ class NVCC_compiler(object):
         # '--gpu-code=compute_13',
         #nvcc argument
         preargs1 = [pa for pa in preargs
-                    if pa.startswith('-O') or pa.startswith('--maxrregcount=')]
+                    if pa.startswith('-O') or
+                    pa.startswith('--maxrregcount=') or
+                    pa.startswith('-arch=')]
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 
@@ -337,6 +350,7 @@ class NVCC_compiler(object):
                     pass
                 print >> sys.stderr, l
             print nvcc_stdout
+            print cmd
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:

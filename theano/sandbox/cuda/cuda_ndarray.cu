@@ -758,8 +758,10 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     PyObject * axis_obj = Py_None;
     PyObject * out_obj = Py_None;
     PyObject * clipmode_obj = NULL;
-    if (! PyArg_ParseTuple(args, "O|OOO", &indices_obj, &axis_obj,
-                           &out_obj, &clipmode_obj))
+    int max_threads = 1; // max threads per blocks
+
+    if (! PyArg_ParseTuple(args, "O|OOOi", &indices_obj, &axis_obj,
+                           &out_obj, &clipmode_obj, &max_threads))
         return NULL;
 
     //Check argument indices
@@ -839,14 +841,14 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     PyObject * axis_iobj = PyNumber_Long(axis_obj);
     if (!axis_iobj) {
         PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertable to a long");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
     long axis = PyInt_AsLong(axis_iobj);
     Py_DECREF(axis_iobj); axis_iobj=NULL;
     if (axis != 0) {
         PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only axis=0 is currently supported");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
 
@@ -869,13 +871,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (!out) {
         out = (CudaNdarray*)CudaNdarray_New();
         if (!out){
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             free(dims);
             return NULL;
         }
         if (CudaNdarray_alloc_contiguous(out, self->nd, dims)) {
             Py_DECREF(out);
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             free(dims);
             return NULL;
         }
@@ -887,19 +889,20 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (clipmode_obj) {
         char * clipmode = PyString_AsString(clipmode_obj);
         if (! clipmode){
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
         }
         if (strcmp(clipmode, "raise") != 0) {
-            PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only the raise mode is currently supported");
-            Py_DECREF(indices_obj);
+            PyErr_Format(PyExc_NotImplementedError,
+                         "CudaNdarray_TakeFrom: only the raise mode is currently supported. Got '%s'",
+                         clipmode);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
         }
-        Py_DECREF(clipmode_obj);
     }
     void (*k3)(const int, const int, const int,
                const npy_int64*,
@@ -913,7 +916,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (err_var == NULL) {
         err_var = (int*)device_malloc(sizeof(int));
         if (!err_var) { // PyErr set by device_malloc
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
@@ -928,7 +931,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             PyErr_Format(PyExc_RuntimeError,
                          "Error setting device error code to 0. %s",
                          cudaGetErrorString(err));
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             free(dims);
             return NULL;
@@ -936,13 +939,16 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     }
 
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
+
     switch (self->nd) {
         case 1:
             {
                 dim3 n_threads(1, 1, 1);
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           self->nd, cudaGetLastError(),
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0],
@@ -963,11 +969,15 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 2:
             {
-                dim3 n_threads(std::min(CudaNdarray_HOST_DIMS(out)[1], 512), 1, 1);
+                dim3 n_threads(std::min(CudaNdarray_HOST_DIMS(out)[1], max_threads), 1, 1);
+
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           cudaGetLastError(), self->nd,
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
+
                 k3<<<n_blocks, n_threads>>>(
                         dims[0], //dimensions
                         dims[1],
@@ -987,12 +997,14 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             break;
         case 3:
             {
-                int ty = std::min(CudaNdarray_HOST_DIMS(out)[2], 512);
-                int tx = std::min(CudaNdarray_HOST_DIMS(out)[1], 512 / ty);
+                int ty = std::min(CudaNdarray_HOST_DIMS(out)[2], max_threads);
+                int tx = std::min(CudaNdarray_HOST_DIMS(out)[1], max_threads / ty);
                 dim3 n_threads(tx, ty, 1);
                 if (verbose)
-                    printf("kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
+                    printf("cudaGetLastError=%d, nd=%d"
+                           " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
+                           self->nd, cudaGetLastError(),
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0], //dimensions
@@ -1025,7 +1037,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                      "Cuda error: %s: %s.\n",
                      "CudaNdarray_TakeFrom",
                      cudaGetErrorString(err));
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
     }
@@ -1040,7 +1052,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             "Cuda error: %s: %s when trying to get the error value.\n",
             "CudaNdarray_TakeFrom",
             cudaGetErrorString(err));
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
     }
@@ -1055,17 +1067,17 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         err = cudaMemset((void*)err_var, 0, sizeof(int));
         if (cudaSuccess != err) {
             PyErr_Format(PyExc_MemoryError, "Error setting device error code to 0 after having an index error. %s", cudaGetErrorString(err));
-            Py_DECREF(indices_obj);
+            Py_DECREF(indices);
             Py_DECREF(out);
             return NULL;
         }
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
   
     }
     
-    Py_DECREF(indices_obj);
+    Py_DECREF(indices);
         
     if (verbose) printf("TAKE SUCCEDED\n");
     return (PyObject *)out;
