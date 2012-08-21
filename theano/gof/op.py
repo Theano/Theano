@@ -606,6 +606,63 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
+class UncomputableOp(Op):
+    """
+        An Op representing an expression that cannot be computed.
+        theano.function checks that the subgraph it implements
+        does not contain these ops, and that optimization does not
+        introduce any such ops.
+        theano.tensor.grad checks the graphs it returns to ensure
+        they do not contain these ops.
+    """
+
+    def __init__(self, exc, msg=""):
+        """
+        exc: the exception type to raise if a subgraph contains
+             this op.
+        msg: the message to include in the exception.
+        """
+
+        self.exc = exc
+        self.msg = msg
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash((type(self)))
+
+    def __str__(self):
+        return "Uncomputable{%s,%s}"%(self.exc,self.msg)
+
+    def make_node(self,x):
+        return graph.Apply(self, [x], [x.type()] )
+
+    def perform(self, node, inputs, out_storage):
+        """ This should never be called"""
+        raise AssertionError("A BadGradOp should never be compiled, "+\
+                "and certainly not executed.")
+        #Note: essentially, this op should just be NaNs_like(inputs[0])
+        #but 0 * BadGradOp(x) + y optimizes to just y
+        #so until we develop a way of symbolically representing a variable
+        #that is always NaN and implement the logic for 0 * NaN = NaN, etc.
+        #the only way we can guarantee correctness of a theano function
+        #is to guarantee that its initial subgraph contained no BadGradOps
+
+    def raise_exc(self):
+        raise self.exc(self.msg)
+
+def raise_if_uncomputable(node):
+    print 'raise_if_computable called on ',node
+    if node is not None:
+        print 'node is not None'
+        if isinstance(node.op, UncomputableOp):
+            node.op.raise_exc()
+        else:
+            print 'node.op is not an UncomputableOp'
+            print type(node.op)
+    else:
+        print 'node is None'
 
 def get_test_value(v):
     """

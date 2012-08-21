@@ -194,52 +194,8 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     gmap[r] = g_r
     return gmap
 
-class BadGradOp(gof.Op):
-    """
-        An Op representing a gradient that cannot be computed.
-        theano.tensor.grad checks the graphs it returns to ensure
-        they do not contain these ops.
-        theano.function also checks that the subgraph it implements
-        does not contain these ops.
-    """
 
-    def __init__(self, exc, msg=""):
-        """
-        exc: the exception type to raise if a subgraph contains
-             this op.
-        msg: the message to include in the exception.
-        """
-
-        self.exc = exc
-        self.msg = msg
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash((type(self)))
-
-    def __str__(self):
-        return "BadGrad{%s,%s}"%(self.exc,self.msg)
-
-    def make_node(self,x):
-        return gof.Apply(self, [x], [x.type()] )
-
-    def perform(self, node, inputs, out_storage):
-        """ This should never be called"""
-        raise AssertionError("A BadGradOp should never be compiled, "+\
-                "and certainly not executed.")
-        #Note: essentially, this op should just be NaNs_like(inputs[0])
-        #but 0 * BadGradOp(x) + y optimizes to just y
-        #so until we develop a way of symbolically representing a variable
-        #that is always NaN and implement the logic for 0 * NaN = NaN, etc.
-        #the only way we can guarantee correctness of a theano function
-        #is to guarantee that its initial subgraph contained no BadGradOps
-
-    def raise_exc(self):
-        raise self.exc(self.msg)
-
-class GradNotImplementedOp(BadGradOp):
+class GradNotImplementedOp(gof.op.UncomputableOp):
     """ A BadGradOp representing a gradient that hasn't been implemented yet.
     """
 
@@ -261,6 +217,7 @@ class GradNotImplementedOp(BadGradOp):
                 "%s does not implement its gradient with respect to input %d" \
                 % (str(type(op)), x_pos))
 
+
 def grad_not_implemented(op, x_pos, x):
     """
     Return an un-computable symbolic variable of type `x.type`.
@@ -273,79 +230,6 @@ def grad_not_implemented(op, x_pos, x):
     """
 
     return GradNotImplementedOp(op, x_pos)(x)
-
-def check_for_bad_grad( variables ):
-    """
-        variables: A gof.Variable or list thereof
-
-        Raises an exception if any of the variables represents
-        an expression involving a BadGradOp
-    """
-
-    #preprocess variables to make sure it is a list and make
-    #sure everything is really a variable and not a
-    #theano.compile.io.SymbolicOutput
-    if not isinstance(variables, list):
-        variables = [ variables ]
-
-    for i in xrange(len(variables)):
-        if not isinstance(variables[i],gof.Variable):
-            if hasattr(variables[i],'variable') and \
-                    isinstance(variables[i].variable,gof.Variable):
-                variables[i] = variables[i].variable
-
-    for v in gof.graph.ancestors(variables):
-        if v.owner is not None and isinstance(v.owner.op,BadGradOp):
-            v.owner.op.raise_exc()
-
-
-    """
-    #implemented using a deque rather than recursion because python recursion
-    #limit is set low by default
-
-    #handle the case where var is a theano.compile.io.SymbolicOutput
-    if hasattr(variables,'variable'):
-        variables = [ variables.variable ]
-
-    if not (isinstance(variables, list) or \
-            isinstance(variables, gof.Variable)):
-        raise TypeError("Expected gof.Variable or list thereof, got "+\
-                    str(type(variables)))
-
-    if not isinstance(variables,list):
-        variables = [ variables ]
-
-    vars_to_check = deque(variables)
-    already_checked = set([])
-
-    while True:
-        try:
-            var = vars_to_check.pop()
-        except IndexError:
-            break
-
-
-        if var not in already_checked:
-            already_checked.update([var])
-
-            #handle the case where var is a theano.compile.io.SymbolicOutput
-            if hasattr(var, 'variable'):
-                var = var.variable
-
-            if not isinstance(var, gof.Variable):
-                raise TypeError("Expected gof.Variable, got "+str(type(var)))
-
-            node = var.owner
-
-            if node is not None:
-                op = node.op
-                if isinstance(op, BadGradOp):
-                    op.raise_exc()
-                vars_to_check.extendleft(node.inputs)
-            #end if node is not None
-        #end if not already_checked
-    #end while
-    """
 
 
 ########################
@@ -667,7 +551,12 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
                 and ret[-1].name is None:
             ret[-1].name = '(d%s/d%s)' % (cost.name, p.name)
 
-    check_for_bad_grad(ret)
+    # new_vars is meant to be a list of all variables created
+    # by this call to grad(), which will be visible to the caller
+    # after we return.
+    new_vars = gof.graph.ancestors(ret,
+            blockers=gof.graph.ancestors([cost]) + list(wrt))
+    map(gof.op.raise_if_uncomputable, [v.owner for v in new_vars])
 
     return format_as(using_list, using_tuple, ret)
 
