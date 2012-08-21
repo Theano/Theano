@@ -282,6 +282,24 @@ def check_for_bad_grad( variables ):
         an expression involving a BadGradOp
     """
 
+    #preprocess variables to make sure it is a list and make
+    #sure everything is really a variable and not a
+    #theano.compile.io.SymbolicOutput
+    if not isinstance(variables, list):
+        variables = [ variables ]
+
+    for i in xrange(len(variables)):
+        if not isinstance(variables[i],gof.Variable):
+            if hasattr(variables[i],'variable') and \
+                    isinstance(variables[i].variable,gof.Variable):
+                variables[i] = variables[i].variable
+
+    for v in gof.graph.ancestors(variables):
+        if v.owner is not None and isinstance(v.owner.op,BadGradOp):
+            v.owner.op.raise_exc()
+
+
+    """
     #implemented using a deque rather than recursion because python recursion
     #limit is set low by default
 
@@ -327,6 +345,7 @@ def check_for_bad_grad( variables ):
             #end if node is not None
         #end if not already_checked
     #end while
+    """
 
 
 ########################
