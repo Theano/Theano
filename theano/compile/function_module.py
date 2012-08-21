@@ -15,7 +15,6 @@ import numpy
 import theano
 from theano import gof
 from theano.gof.python25 import partial
-from theano.gradient import check_for_bad_grad
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
 
@@ -144,8 +143,13 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    fgraph.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.extend(feature())
     return fgraph, map(SymbolicOutput, updates)
+
+
+std_fgraph.features = [gof.toolbox.PreserveNames]
+
 
 class AliasedMemoryError(Exception):
     """Memory is aliased that should not be"""
@@ -1336,8 +1340,6 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     t1 = time.time()
     mode = mode_module.get_mode(mode)
-
-    check_for_bad_grad(outputs)
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
