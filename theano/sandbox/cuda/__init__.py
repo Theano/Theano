@@ -380,7 +380,16 @@ def use(device,
             if enable_cuda:
                 cuda_enabled = True
             print >> sys.stderr, "Using gpu device %d: %s" % (
-                active_device_number(), active_device_name())
+                use.device_number, active_device_name())
+            if device_properties(use.device_number)['regsPerBlock'] < 16384:
+                # We will try to use too much register per bloc at many places
+                # when there is only 8k register per multi-processor.
+                _logger.warning("You are probably using an old GPU."
+                                " We didn't optimize nor we support those GPU."
+                                " This mean GPU code will be slow AND will"
+                                " crash when we try to use feature/properties"
+                                " that your GPU don't support.")
+
         except (EnvironmentError, ValueError, RuntimeError), e:
             _logger.error(("ERROR: Not using GPU."
                            " Initialisation of device %s failed:\n%s"),
