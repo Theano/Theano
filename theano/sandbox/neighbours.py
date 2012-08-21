@@ -1,3 +1,7 @@
+"""
+TODO: implement Images2Neibs.{perform,infer_shape}() methods
+
+"""
 import theano
 from theano import Op, Apply
 import theano.tensor as T
