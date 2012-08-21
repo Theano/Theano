@@ -283,12 +283,31 @@ def raise_if_bad_grad(node):
         if isinstance(node.op, BadGradOp):
             op.raise_exc()
 
+    #preprocess variables to make sure it is a list and make
+    #sure everything is really a variable and not a
+    #theano.compile.io.SymbolicOutput
+    if not isinstance(variables, list):
+        variables = [ variables ]
+
+    for i in xrange(len(variables)):
+        if not isinstance(variables[i],gof.Variable):
+            if hasattr(variables[i],'variable') and \
+                    isinstance(variables[i].variable,gof.Variable):
+                variables[i] = variables[i].variable
+
+    for v in gof.graph.ancestors(variables):
+        if v.owner is not None and isinstance(v.owner.op,BadGradOp):
+            v.owner.op.raise_exc()
+
+
+    """
 
 class BadGradFeature(gof.Feature):
     def on_import(self, fgraph, node):
         raise_if_bad_grad(node)
 
 theano.compile.function_module.std_fgraph.features.append(BadGradFeature)
+    """
 
 
 ########################
