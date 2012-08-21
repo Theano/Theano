@@ -1744,4 +1744,4 @@ local_log_softmax = gof.PatternSub( in_pattern = (tensor.log, (softmax, 'x')),
 #don't do register_stabilize, this is to make local_log_softmax run
 #only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
-opt.register_specialize(local_log_softmax, name = 'local_log_sotmax')
+opt.register_specialize(local_log_softmax, name = 'local_log_softmax')
