@@ -27,59 +27,6 @@ class MissingInputError(Exception):
     pass
 
 
-class Feature(object):
-    """
-    Base class for FunctionGraph extensions.
-
-    See toolbox and ext modules for common extensions.
-    """
-
-    def on_attach(self, function_graph):
-        """
-        Called by extend. The feature has great freedom in what
-        it can do with the function_graph: it may, for example, add methods
-        to it dynamically.
-        """
-
-    def on_detach(self, function_graph):
-        """
-        Called by remove_feature(feature).  Should remove any dynamically-added
-        functionality that it installed into the function_graph.
-        """
-
-    def on_import(self, function_graph, node):
-        """
-        Called whenever a node is imported into function_graph, which is
-        just before the node is actually connected to the graph.
-        """
-
-    def on_prune(self, function_graph, node):
-        """
-        Called whenever a node is pruned (removed) from the function_graph,
-        after it is disconnected from the graph.
-        """
-
-    def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
-        """
-        Called whenever node.inputs[i] is changed from r to new_r.
-        At the moment the callback is done, the change has already
-        taken place.
-
-        If you raise an exception in this function, the state of the graph
-        might be broken for all intents and purposes.
-        """
-
-    def orderings(self, function_graph):
-        """
-        Called by toposort. It should return a dictionary of
-        {node: predecessors} where predecessors is a list of
-        nodes that should be computed before the key node.
-
-        If you raise an exception in this function, the state of the graph
-        might be broken for all intents and purposes.
-        """
-
-
 class FunctionGraph(utils.object2):
     """ WRITEME
     A FunctionGraph represents a subgraph bound by a set of input variables and a
@@ -100,7 +47,7 @@ class FunctionGraph(utils.object2):
     .inputs field allows the graph to be traversed in both directions.
 
     It can also be "extended" using function_graph.extend(some_object).
-    See Feature above for event types and documentation.
+    See toolbox.Feature for event types and documentation.
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
     while reading out-of-date documentation, e-mail support threads, etc.
