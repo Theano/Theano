@@ -19,12 +19,65 @@ class InconsistencyError(Exception):
     """
     pass
 
+
 class MissingInputError(Exception):
     """
     A symbolic input needed to compute the outputs is missing.
     """
     pass
 
+
+class Feature(object):
+    """
+    Base class for FunctionGraph extensions.
+
+    See toolbox and ext modules for common extensions.
+    """
+
+    def on_attach(self, function_graph):
+        """
+        Called by extend. The feature has great freedom in what
+        it can do with the function_graph: it may, for example, add methods
+        to it dynamically.
+        """
+
+    def on_detach(self, function_graph):
+        """
+        Called by remove_feature(feature).  Should remove any dynamically-added
+        functionality that it installed into the function_graph.
+        """
+
+    def on_import(self, function_graph, node):
+        """
+        Called whenever a node is imported into function_graph, which is
+        just before the node is actually connected to the graph.
+        """
+
+    def on_prune(self, function_graph, node):
+        """
+        Called whenever a node is pruned (removed) from the function_graph,
+        after it is disconnected from the graph.
+        """
+
+    def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
+        """
+        Called whenever node.inputs[i] is changed from r to new_r.
+        At the moment the callback is done, the change has already
+        taken place.
+
+        If you raise an exception in this function, the state of the graph
+        might be broken for all intents and purposes.
+        """
+
+    def orderings(self, function_graph):
+        """
+        Called by toposort. It should return a dictionary of
+        {node: predecessors} where predecessors is a list of
+        nodes that should be computed before the key node.
+
+        If you raise an exception in this function, the state of the graph
+        might be broken for all intents and purposes.
+        """
 
 
 class FunctionGraph(utils.object2):
@@ -46,46 +99,8 @@ class FunctionGraph(utils.object2):
     The .clients field combined with the .owner field and the Apply nodes'
     .inputs field allows the graph to be traversed in both directions.
 
-    It can also be "extended" using function_graph.extend(some_object). See the
-    toolbox and ext modules for common extensions.
-
-    Features added with the`extend` function can handle the following events:
-
-    - feature.on_attach(function_graph)
-        Called by extend. The feature has great freedom in what
-        it can do with the function_graph: it may, for example, add methods
-        to it dynamically.
-
-    - feature.on_detach(function_graph)
-        Called by remove_feature(feature).  Should remove any dynamically-added
-        functionality that it installed into the function_graph.
-
-    - feature.on_import(function_graph, node)*
-        Called whenever a node is imported into function_graph, which is
-        just before the node is actually connected to the graph.
-
-    - feature.on_prune(function_graph, node)*
-        Called whenever a node is pruned (removed) from the function_graph,
-        after it is disconnected from the graph.
-
-    - feature.on_change_input(function_graph, node, i, r, new_r, [reason=None])*
-        Called whenever node.inputs[i] is changed from r to new_r.
-        At the moment the callback is done, the change has already
-        taken place.
-
-    - feature.orderings(function_graph)
-        Called by toposort. It should return a dictionary of
-        {node: predecessors} where predecessors is a list of
-        nodes that should be computed before the key node.
-
-        * If you raise an exception in the functions marked with an
-          asterisk, the state of the graph might be inconsistent.
-
-    - feature.on_setup_node(function_graph, node):
-        WRITEME
-
-    - feature.on_setup_variable(function_graph, variable):
-        WRITEME
+    It can also be "extended" using function_graph.extend(some_object).
+    See Feature above for event types and documentation.
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
     while reading out-of-date documentation, e-mail support threads, etc.
