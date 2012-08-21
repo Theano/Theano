@@ -285,6 +285,10 @@ def check_for_bad_grad( variables ):
     #implemented using a deque rather than recursion because python recursion
     #limit is set low by default
 
+    #handle the case where var is a theano.compile.io.SymbolicOutput
+    if hasattr(variables,'variable'):
+        variables = [ variables.variable ]
+
     if not (isinstance(variables, list) or \
             isinstance(variables, gof.Variable)):
         raise TypeError("Expected gof.Variable or list thereof, got "+\
@@ -306,7 +310,12 @@ def check_for_bad_grad( variables ):
         if var not in already_checked:
             already_checked.update([var])
 
-            assert isinstance(var, gof.Variable)
+            #handle the case where var is a theano.compile.io.SymbolicOutput
+            if hasattr(var, 'variable'):
+                var = var.variable
+
+            if not isinstance(var, gof.Variable):
+                raise TypeError("Expected gof.Variable, got "+str(type(var)))
 
             node = var.owner
 
