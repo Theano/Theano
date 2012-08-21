@@ -84,8 +84,17 @@ class Images2Neibs(Op):
     def grad(self, inp, grads):
         x, neib_shape, neib_step = inp
         gz, = grads
-        return [ grad_not_implemented(self, i, ip) \
-                for i, ip in enumerate(inp) ]
+
+        if self.mode in ['valid', 'ignore_borders']:
+            if (neib_shape is neib_step or
+                neib_shape == neib_step or
+                # Theano Constant == do not compare the data
+                # the equals function do that.
+                (hasattr(neib_shape, "equals") and
+                 neib_shape.equals(neib_step))):
+                return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
+                        None, None]
+        return [grad_not_implemented(self, 0, x), None, None]
 
     def c_code_cache_version(self):
         return (5,)
