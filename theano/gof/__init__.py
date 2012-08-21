@@ -70,6 +70,7 @@ from optdb import \
     EquilibriumDB, SequenceDB, ProxyDB
 
 from toolbox import \
+    Feature, \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
     PrintListener, ReplacementDidntRemovedError
 
