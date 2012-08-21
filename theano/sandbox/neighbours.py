@@ -92,14 +92,22 @@ class Images2Neibs(Op):
         x, neib_shape, neib_step = inp
         gz, = grads
         if self.mode in ['valid', 'ignore_borders']:
-            raise BadOldCode("The Images2Neibs grad is not implemented."
-                            " It was in the past, but returned the wrong"
-                            " answer!")
-            # This is the reverse of the op, not the grad!
-            return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
-                    None, None]
+            if (neib_shape is neib_step or
+                neib_shape == neib_step or
+                # Theano Constant == do not compare the data
+                # the equals function do that.
+                (hasattr(neib_shape, "equals") and
+                 neib_shape.equals(neib_step))):
+                return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
+                        None, None]
+            else:
+                raise NotImplementedError(
+                    "The grad of Images2Neibs is implemented only when the"
+                    " neib_shape and neib_step are equals.")
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "The grad of Images2Neibs is implemented only for mode"
+                " 'valid' and 'ignore_borders'")
 
     def c_code_cache_version(self):
         return (5,)
