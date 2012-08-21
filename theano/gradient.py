@@ -280,10 +280,8 @@ def grad_not_implemented(op, x_pos, x):
 
 def raise_if_bad_grad(node):
     if node is not None:
-        op = node.op
-        if isinstance(op, BadGradOp):
+        if isinstance(node.op, BadGradOp):
             op.raise_exc()
-        vars_to_check.extendleft(node.inputs)
 
 
 class BadGradFeature(gof.Feature):
