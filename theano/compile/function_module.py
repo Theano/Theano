@@ -15,6 +15,7 @@ import numpy
 import theano
 from theano import gof
 from theano.gof.python25 import partial
+from theano.gradient import check_for_bad_grad
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
 
@@ -1335,6 +1336,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     t1 = time.time()
     mode = mode_module.get_mode(mode)
+
+    check_for_bad_grad(outputs)
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
