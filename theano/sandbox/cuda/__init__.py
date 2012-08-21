@@ -359,6 +359,7 @@ def use(device,
                 assert isinstance(device, int)
                 gpu_init(device)
                 use.device_number = device
+                assert active_device_number() == device
             else:
                 # This mean the driver should select the GPU.  As we
                 # need to get the device number now, we force the
