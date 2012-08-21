@@ -3,19 +3,12 @@ from theano import Op, Apply
 import theano.tensor as T
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
+from theano.gradient import grad_not_implemented
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
-
-
-class BadOldCode(Exception):
-    """
-    We create a specific Exception to be sure it does not get caught by
-    mistake.
-    """
-    pass
 
 
 class Images2Neibs(Op):
@@ -91,15 +84,8 @@ class Images2Neibs(Op):
     def grad(self, inp, grads):
         x, neib_shape, neib_step = inp
         gz, = grads
-        if self.mode in ['valid', 'ignore_borders']:
-            raise BadOldCode("The Images2Neibs grad is not implemented."
-                            " It was in the past, but returned the wrong"
-                            " answer!")
-            # This is the reverse of the op, not the grad!
-            return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
-                    None, None]
-        else:
-            raise NotImplementedError()
+        return [ grad_not_implemented(self, i, ip) \
+                for i, ip in enumerate(inp) ]
 
     def c_code_cache_version(self):
         return (5,)
