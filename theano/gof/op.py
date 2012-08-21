@@ -653,16 +653,9 @@ class UncomputableOp(Op):
         raise self.exc(self.msg)
 
 def raise_if_uncomputable(node):
-    print 'raise_if_computable called on ',node
     if node is not None:
-        print 'node is not None'
         if isinstance(node.op, UncomputableOp):
             node.op.raise_exc()
-        else:
-            print 'node.op is not an UncomputableOp'
-            print type(node.op)
-    else:
-        print 'node is None'
 
 def get_test_value(v):
     """
