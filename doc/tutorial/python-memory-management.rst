@@ -31,17 +31,17 @@ if necessary):
 
     import sys
 
-    def show_sizeof(x,level=0):
+    def show_sizeof(x, level=0):
 
-        print "\t"*level,x.__class__, sys.getsizeof(x), x
+        print "\t"*level, x.__class__, sys.getsizeof(x), x
 
-        if hasattr(x,'__iter__'):
-            if hasattr(x,'items'):
+        if hasattr(x, '__iter__'):
+            if hasattr(x, 'items'):
                 for xx in x.items():
-                    show_sizeof(xx,level+1)
+                    show_sizeof(xx, level + 1)
             else:
                 for xx in x:
-                    show_sizeof(xx,level+1)
+                    show_sizeof(xx, level + 1)
 
 We can now use the function to inspect the sizes of the different basic
 data types:
@@ -139,7 +139,7 @@ heterogeneous. Let us look at our sizes:
 ::
 
         show_sizeof([])
-        show_sizeof([4,"toaster",230.1,])
+        show_sizeof([4, "toaster", 230.1])
 
 outputs
 
@@ -162,7 +162,7 @@ about tuples? (and dictionaries?):
 ::
 
         show_sizeof({})
-        show_sizeof({'a':213,'b':2131})
+        show_sizeof({'a':213, 'b':2131})
 
 outputs, on a 32-bits box
 
@@ -288,11 +288,11 @@ program (it makes my point entirely):
 
 ::
 
-    port copy, memory_profiler
+    import copy, memory_profiler
 
     @profile
     def function():
-        x=range(1000000) # allocate a big list
+        x=range(1000000)  # allocate a big list
         y=copy.deepcopy(x)
         del x
         return y
@@ -428,23 +428,23 @@ A naïve implementation would give:
     import memory_profiler, random, pickle
 
     def random_string():
-        return "".join([ chr(64+random.randint(0,25)) for _ in xrange(20) ])
+        return "".join([ chr(64+random.randint(0, 25)) for _ in xrange(20) ])
 
     @profile
     def create_file():
         x=[ (random.random(),
              random_string(),
-             random.randint(0,2**64))
+             random.randint(0, 2**64))
             for _ in xrange(1000000) ]
 
-        f=open('machin.flat','w')
+        f=open('machin.flat', 'w')
         for xx in x:
             print >>f, xx
 
     @profile
     def load_file():
         y=[]
-        f=open('machin.flat','r')
+        f=open('machin.flat', 'r')
         for line in f:
             y.append(eval(line))
         return y
@@ -465,10 +465,10 @@ Creating the file:
          9      9.19 MB      0.00 MB   def create_file():
         10      9.34 MB      0.15 MB       x=[ (random.random(),
         11                                      random_string(),
-        12                                      random.randint(0,2**64))
+        12                                      random.randint(0, 2**64))
         13    246.09 MB    236.75 MB           for _ in xrange(1000000) ]
         14
-        15    246.09 MB      0.00 MB       f=open('machin.flat','w')
+        15    246.09 MB      0.00 MB       f=open('machin.flat', 'w')
         16    308.27 MB     62.18 MB       for xx in x:
         17                                     print >>f, xx
 
@@ -483,7 +483,7 @@ and reading the file back:
         20                             @profile
         21      9.19 MB      0.00 MB   def load_file():
         22      9.34 MB      0.15 MB       y=[]
-        23      9.34 MB      0.00 MB       f=open('machin.flat','r')
+        23      9.34 MB      0.00 MB       f=open('machin.flat', 'r')
         24    300.99 MB    291.66 MB       for line in f:
         25    300.99 MB      0.00 MB           y.append(eval(line))
         26    301.00 MB      0.00 MB       return y
@@ -501,8 +501,9 @@ whole data. Using pickle, you would allocate the whole data (at least)
 twice: once by pickle, and once through Numpy.
 
 Or even better yet: use Numpy (or PyTables) arrays. But that's a different
-topic that is discussed in 'loading and saving' another tutorial in the
-Theano/doc/tutorial directory.
+topic. In the mean time, you can have a look at `loading and saving
+<https://github.com/Theano/Theano/blob/master/doc/tutorial/loading_and_saving.txt>`_
+another tutorial in the Theano/doc/tutorial directory.
 
 \*
 \* \*
