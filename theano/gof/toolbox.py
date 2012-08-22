@@ -317,6 +317,7 @@ class PrintListener(Feature):
 
 
 class PreserveNames(Feature):
+
     def on_change_input(self, fgraph, mode, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name
