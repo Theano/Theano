@@ -24,7 +24,8 @@ from theano.compile.function_module import (FunctionMaker,
         infer_reuse_pattern,
         SymbolicInputKit,
         SymbolicOutput,
-        Supervisor)
+        Supervisor,
+        std_fgraph)
 from theano.compile.mode import Mode, register_mode
 
 AddConfigVar('DebugMode.patience',
@@ -685,7 +686,8 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
                                                    and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    fgraph.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.extend(feature)
 
     return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
