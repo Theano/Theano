@@ -13,7 +13,6 @@ from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any  # to work in python 2.4
 
-
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
@@ -192,6 +191,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                            mode=mode,
                            accept_inplace=accept_inplace, name=name)
     else:
+        #note: pfunc will also call orig_function-- orig_function is a choke point
+        #      that all compilation must pass through
         fn = pfunc(params=inputs,
                 outputs=outputs,
                 mode=mode,

@@ -1,6 +1,6 @@
 """Driver for gradient calculations."""
 
-__authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron"
+__authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
 __copyright__ = "(c) 2011, Universite de Montreal"
 __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
@@ -11,9 +11,9 @@ import __builtin__
 import logging
 import warnings
 _logger = logging.getLogger('theano.gradient')
-import sys
 
 import numpy  # for numeric_grad
+from collections import deque
 
 import theano
 from theano.raise_op import Raise
@@ -195,19 +195,42 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     return gmap
 
 
-def unimplemented_grad(op, x_pos, x):
+class GradNotImplementedOp(gof.op.UncomputableOp):
+    """ A BadGradOp representing a gradient that hasn't been implemented yet.
     """
-    DO NOT USE. Remove this function after all usage of it has been
-    removed from theano.
 
+    def __init__(self, op, x_pos):
+        """
+            op: A theano op  whose grad is not implemented for some input
+            x_pos: An int, giving the index in the op's input list of
+                a variable for which the gradient is not implemented
+                (if op has unimplemented gradients for several inputs,
+                it must still return a separate UnimplementedGradOp for
+                each)
+        """
+
+        assert isinstance(op, gof.Op)
+        assert isinstance(x_pos, int)
+        assert x_pos >= 0
+
+        super(GradNotImplementedOp,self).__init__(NotImplementedError,
+                "%s does not implement its gradient with respect to input %d" \
+                % (str(type(op)), x_pos))
+
+
+def grad_not_implemented(op, x_pos, x):
+    """
     Return an un-computable symbolic variable of type `x.type`.
 
-    If any function tries to compute this un-computable variable, an exception
-    (NotImplementedError) will be raised indicating that the gradient on the
-    `x_pos`'th input of `op` has not been implemented.
+    If any call to tensor.grad results in an expression containing this
+    un-computable variable, an exception (NotImplementedError) will be
+    raised indicating that the gradient on the
+    `x_pos`'th input of `op` has not been implemented. Likewise if
+    any call to theano.function involves this variable.
     """
-    msg = '%s.grad not implemented for input %i' % (op, x_pos)
-    return Raise(msg=msg)(x)
+
+    return GradNotImplementedOp(op, x_pos)(x)
+
 
 ########################
 # R Operator
@@ -527,6 +550,13 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         if cost.name is not None and p.name is not None \
                 and ret[-1].name is None:
             ret[-1].name = '(d%s/d%s)' % (cost.name, p.name)
+
+    # new_vars is meant to be a list of all variables created
+    # by this call to grad(), which will be visible to the caller
+    # after we return.
+    new_vars = gof.graph.ancestors(ret,
+            blockers=gof.graph.ancestors([cost]) + list(wrt))
+    map(gof.op.raise_if_uncomputable, [v.owner for v in new_vars])
 
     return format_as(using_list, using_tuple, ret)
 
