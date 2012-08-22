@@ -1,22 +1,17 @@
 import numpy
+
 import theano
 from theano import shared, function
-import theano.tensor as T
-from neighbours import (images2neibs, neibs2images,
-                        Images2Neibs, GpuImages2Neibs)
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
-import theano.sandbox.cuda as cuda
 from theano.gof.python25 import any
+import theano.tensor as T
+from neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode(
         'FAST_RUN').excluding('gpu')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
@@ -347,14 +342,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         for i in range(1000):
             f()
 
-class T_GpuImages2Neibs(T_Images2Neibs):
-    def __init__(self, name):
-        self.mode = mode_with_gpu
-        self.op = GpuImages2Neibs
-        return super(T_GpuImages2Neibs, self).__init__(name)
 
 if __name__ == '__main__':
-    #test_neibs_gpu()
-    #test_neibs()
-    #test_neibs_grad_verify_grad()
-    test_neibs2images_crash_on_grad()
+    unittest.main()
