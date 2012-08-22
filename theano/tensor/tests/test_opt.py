@@ -142,8 +142,14 @@ def test_stabilize_log_softmax():
 
     f = function([x],z)
 
+    #check that the softmax has been optimized out
     for node in f.maker.fgraph.toposort():
         assert not isinstance(node.op, y.owner.op.__class__)
+
+    #call the function so debug mode can verify the optimized
+    #version matches the unoptimized version
+    rng = numpy.random.RandomState([2012,8,22])
+    f(numpy.cast[config.floatX](rng.randn(2,3)))
 
 def test_add_canonizer_problem0():
     n_segments = 10
