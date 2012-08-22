@@ -686,7 +686,7 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
                                                    and fgraph.destroyers(input)))))
 
     for feature in std_fgraph.features:
-        fgraph.extend(feature)
+        fgraph.extend(feature())
 
     return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
