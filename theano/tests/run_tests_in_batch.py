@@ -115,15 +115,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 
     # Setting aside current working directory for later saving
     sav_dir = os.getcwd()
-    if len(argv) == 1:
-        tests_dir = theano.__path__[0]
-        other_args = []
-    else:
-        # tests_dir should be at the end of argv, there can be other arguments
-        tests_dir = argv[-1]
-        other_args = argv[1:-1]
-        assert os.path.isdir(tests_dir)
-    os.chdir(tests_dir)
+    # The first argument is the called script.
+    argv = argv[1:]
+
     # It seems safer to fully regenerate the list of tests on each call.
     if os.path.isfile('.noseids'):
         os.remove('.noseids')
@@ -142,7 +136,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
     python = sys.executable
     rval = subprocess.call(
         ([python, theano_nose, '--collect-only', '--with-id']
-         + other_args),
+         + argv),
         stdin=dummy_in.fileno(),
         stdout=stdout.fileno(),
         stderr=stderr.fileno())
@@ -172,7 +166,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
             rval = subprocess.call(
                 ([python, theano_nose, '-q', '--with-id']
                  + map(str, test_range)
-                 + other_args),
+                 + argv),
                 stdout=dummy_out.fileno(),
                 stderr=dummy_out.fileno(),
                 stdin=dummy_in.fileno())
@@ -198,7 +192,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
             subprocess.call(
                 ([python, theano_nose, '-v', '--with-id']
                  + failed
-                 + other_args),
+                 + argv),
                 stdin=dummy_in.fileno(),
                 stdout=stdout.fileno(),
                 stderr=stderr.fileno())
@@ -240,7 +234,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                                                  n_tests + 1)):
                 proc = subprocess.Popen(
                     ([python, theano_nose, '-v', '--with-id']
-                    + [str(test_id)] + other_args +
+                    + [str(test_id)] + argv +
                      ['--disabdocstring']),
                     # the previous option calls a custom Nosetests plugin
                     # precluding automatic sustitution of doc. string for
