@@ -148,7 +148,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     return fgraph, map(SymbolicOutput, updates)
 
 
-std_fgraph.features = [gof.toolbox.PreserveNames()]
+std_fgraph.features = [gof.toolbox.PreserveNames]
 
 class UncomputableFeature(gof.Feature):
     """A feature that ensures the graph never contains any
@@ -165,7 +165,7 @@ class UncomputableFeature(gof.Feature):
     def on_import(self, fgraph, node):
         gof.op.raise_if_uncomputable(node)
 
-std_fgraph.features.append(UncomputableFeature())
+std_fgraph.features.append(UncomputableFeature)
 
 
 class AliasedMemoryError(Exception):
