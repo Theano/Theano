@@ -440,6 +440,13 @@ class FunctionGraph(utils.object2):
         """
         if feature in self._features:
             return # the feature is already present
+
+        #it would be nice if we could require a specific class instead of
+        #a "workalike" so we could do actual error checking
+        #if not isinstance(feature, toolbox.Feature):
+        #    raise TypeError("Expected gof.toolbox.Feature instance, got "+\
+        #            str(type(feature)))
+
         attach = getattr(feature, 'on_attach', None)
         if attach is not None:
             try:
