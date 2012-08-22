@@ -319,8 +319,12 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
             pad_shape = list(output_4d.shape)
             pad_shape[d] = original_shape[d] - valid_shape[d]
             output_4d = T.concatenate([output_4d, T.zeros(pad_shape)], axis=d)
-    else:
+    elif mode == 'valid':
+        # TODO: we do not implement all mode with this code.
+        # Add a check for the good cases.
         output_4d = output_2d.reshape(original_shape)
+    else:
+        raise NotImplementedError("neibs2images do not support mode=%s" % mode)
 
     return output_4d
 
