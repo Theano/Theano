@@ -251,13 +251,36 @@ class test_grad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] == 6)
         self.assertTrue(g[a1.inputs[1]] == 11)
 
-def test_unimplemented_grad():
+def test_unimplemented_grad_func():
+    #tests that function compilation catches unimplemented grads in the graph
     a = theano.tensor.vector()
-    b = theano.gradient.unimplemented_grad(theano.tensor.add, 1, a)
-    f = theano.function([a], b)
+    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
     try:
-        f([1,2,3])
+        f = theano.function([a], b)
         assert 0
+        #Note: it's important that the NotImplementedGradOp is caught
+        #at COMPILATION time, not execution time.
+        #If the uncomputable variable is, for example, multiplied by 0,
+        #it could be optimized out of the final graph.
+    except NotImplementedError:
+        pass
+
+def test_unimplemented_grad_grad():
+    #tests that unimplemented grads are caught in the grad method
+
+    class DummyOp(gof.Op):
+        def make_node(self, x):
+            return gof.Apply(self, [x], [x.type()])
+
+        def grad(self, inputs, output_grads):
+            return [ theano.gradient.grad_not_implemented(self, 0, inputs[0]) ]
+
+    a = theano.tensor.scalar()
+    b = DummyOp()(a)
+
+    try:
+        g = theano.gradient.grad(b,a)
+        assert False
     except NotImplementedError:
         pass
 

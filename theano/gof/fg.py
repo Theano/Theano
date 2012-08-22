@@ -19,12 +19,12 @@ class InconsistencyError(Exception):
     """
     pass
 
+
 class MissingInputError(Exception):
     """
     A symbolic input needed to compute the outputs is missing.
     """
     pass
-
 
 
 class FunctionGraph(utils.object2):
@@ -46,46 +46,8 @@ class FunctionGraph(utils.object2):
     The .clients field combined with the .owner field and the Apply nodes'
     .inputs field allows the graph to be traversed in both directions.
 
-    It can also be "extended" using function_graph.extend(some_object). See the
-    toolbox and ext modules for common extensions.
-
-    Features added with the`extend` function can handle the following events:
-
-    - feature.on_attach(function_graph)
-        Called by extend. The feature has great freedom in what
-        it can do with the function_graph: it may, for example, add methods
-        to it dynamically.
-
-    - feature.on_detach(function_graph)
-        Called by remove_feature(feature).  Should remove any dynamically-added
-        functionality that it installed into the function_graph.
-
-    - feature.on_import(function_graph, node)*
-        Called whenever a node is imported into function_graph, which is
-        just before the node is actually connected to the graph.
-
-    - feature.on_prune(function_graph, node)*
-        Called whenever a node is pruned (removed) from the function_graph,
-        after it is disconnected from the graph.
-
-    - feature.on_change_input(function_graph, node, i, r, new_r, [reason=None])*
-        Called whenever node.inputs[i] is changed from r to new_r.
-        At the moment the callback is done, the change has already
-        taken place.
-
-    - feature.orderings(function_graph)
-        Called by toposort. It should return a dictionary of
-        {node: predecessors} where predecessors is a list of
-        nodes that should be computed before the key node.
-
-        * If you raise an exception in the functions marked with an
-          asterisk, the state of the graph might be inconsistent.
-
-    - feature.on_setup_node(function_graph, node):
-        WRITEME
-
-    - feature.on_setup_variable(function_graph, variable):
-        WRITEME
+    It can also be "extended" using function_graph.extend(some_object).
+    See toolbox.Feature for event types and documentation.
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
     while reading out-of-date documentation, e-mail support threads, etc.
@@ -472,13 +434,19 @@ class FunctionGraph(utils.object2):
     # takes a sequence, and since this is a kind of container you
     # would expect it to do similarly.
     def extend(self, feature):
-        """WRITEME
-        Adds a feature to this function_graph. The feature may define one
-        or more of the following methods:
-
+        """
+        Adds a gof.toolbox.Feature to this function_graph
+        and triggers its on_attach callback
         """
         if feature in self._features:
             return # the feature is already present
+
+        #it would be nice if we could require a specific class instead of
+        #a "workalike" so we could do actual error checking
+        #if not isinstance(feature, toolbox.Feature):
+        #    raise TypeError("Expected gof.toolbox.Feature instance, got "+\
+        #            str(type(feature)))
+
         attach = getattr(feature, 'on_attach', None)
         if attach is not None:
             try:

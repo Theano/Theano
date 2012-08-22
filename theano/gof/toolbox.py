@@ -19,7 +19,72 @@ class ReplacementDidntRemovedError(Exception):
     pass
 
 
-class Bookkeeper:
+class Feature(object):
+    """
+    Base class for FunctionGraph extensions.
+
+    A Feature is an object with several callbacks that are triggered
+    by various operations on FunctionGraphs. It can be used to enforce
+    graph properties at all stages of graph optimization.
+
+    See toolbox and ext modules for common extensions.
+    """
+
+    def on_attach(self, function_graph):
+        """
+        Called by FunctionGraph.extend, the method that attaches the feature
+        to the FunctionGraph. Since this is called after the FunctionGraph
+        is initially populated, this is where you should run checks on the
+        initial contents of the FunctionGraph.
+        The feature has great freedom in what
+        it can do with the function_graph: it may, for example, add methods
+        to it dynamically.
+        """
+
+    def on_detach(self, function_graph):
+        """
+        Called by remove_feature(feature).  Should remove any dynamically-added
+        functionality that it installed into the function_graph.
+        """
+
+    def on_import(self, function_graph, node):
+        """
+        Called whenever a node is imported into function_graph, which is
+        just before the node is actually connected to the graph.
+        Note: on_import is not called when the graph is created. If you
+        want to detect the first nodes to be implemented to the graph,
+        you should do this by implementing on_attach.
+        """
+
+    def on_prune(self, function_graph, node):
+        """
+        Called whenever a node is pruned (removed) from the function_graph,
+        after it is disconnected from the graph.
+        """
+
+    def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
+        """
+        Called whenever node.inputs[i] is changed from r to new_r.
+        At the moment the callback is done, the change has already
+        taken place.
+
+        If you raise an exception in this function, the state of the graph
+        might be broken for all intents and purposes.
+        """
+
+    def orderings(self, function_graph):
+        """
+        Called by toposort. It should return a dictionary of
+        {node: predecessors} where predecessors is a list of
+        nodes that should be computed before the key node.
+
+        If you raise an exception in this function, the state of the graph
+        might be broken for all intents and purposes.
+        """
+        return {}
+
+
+class Bookkeeper(Feature):
 
     def on_attach(self, fgraph):
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
@@ -30,7 +95,7 @@ class Bookkeeper:
             self.on_prune(fgraph, node)
 
 
-class History:
+class History(Feature):
 
     def __init__(self):
         self.history = {}
@@ -69,7 +134,7 @@ class History:
         self.history[fgraph] = h
 
 
-class Validator:
+class Validator(Feature):
 
     def on_attach(self, fgraph):
         for attr in ('validate', 'validate_time'):
@@ -224,7 +289,7 @@ class NodeFinder(dict, Bookkeeper):
         return all
 
 
-class PrintListener(object):
+class PrintListener(Feature):
 
     def __init__(self, active=True):
         self.active = active
@@ -251,7 +316,10 @@ class PrintListener(object):
                 node, i, r, new_r)
 
 
-class PreserveNames:
+class PreserveNames(Feature):
+
     def on_change_input(self, fgraph, mode, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name
+
+

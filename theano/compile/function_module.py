@@ -143,8 +143,30 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    fgraph.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.extend(feature())
     return fgraph, map(SymbolicOutput, updates)
+
+
+std_fgraph.features = [gof.toolbox.PreserveNames()]
+
+class UncomputableFeature(gof.Feature):
+    """A feature that ensures the graph never contains any
+    uncomputable nodes. This check must be made at compile time
+    rather than runtime in order to make sure that NaN nodes are
+    not optimized out. It must be done as a Feature so that
+    the fgraph will continually check that optimizations have
+    not introduce any uncomputable nodes."""
+
+    def on_attach(self, fgraph):
+        for node in fgraph.nodes:
+            return self.on_import(fgraph, node)
+
+    def on_import(self, fgraph, node):
+        gof.op.raise_if_uncomputable(node)
+
+std_fgraph.features.append(UncomputableFeature())
+
 
 class AliasedMemoryError(Exception):
     """Memory is aliased that should not be"""
