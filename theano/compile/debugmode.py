@@ -685,7 +685,6 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
                           if not (spec.mutable or (hasattr(fgraph, 'destroyers')
                                                    and fgraph.destroyers(input)))))
 
-    # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
         fgraph.extend(feature)
 
