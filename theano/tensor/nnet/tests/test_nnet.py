@@ -1185,7 +1185,25 @@ class Test_softmax_opt:
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing
     # etc.
 
+
+def test_stabilize_log_softmax():
+    mode = theano.compile.mode.get_default_mode()
+    mode = mode.including('local_log_softmax', 'specialize')
+
+    x = matrix()
+    y = theano.tensor.nnet.softmax(x)
+    z = theano.tensor.log(y)
+
+    f = function([x], z, mode=mode)
+
+    #check that the softmax has been optimized out
+    for node in f.maker.fgraph.toposort():
+        assert not isinstance(node.op, y.owner.op.__class__)
+
+    #call the function so debug mode can verify the optimized
+    #version matches the unoptimized version
+    rng = numpy.random.RandomState([2012, 8, 22])
+    f(numpy.cast[config.floatX](rng.randn(2, 3)))
+
 if __name__ == '__main__':
     unittest.main()
-
-    
