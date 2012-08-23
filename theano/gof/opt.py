@@ -87,8 +87,8 @@ class Optimizer(object):
         """WRITEME
         Add features to the fgraph that are required to apply the optimization.
         For example:
-          fgraph.extend(History())
-          fgraph.extend(MyFeature())
+          fgraph.attach_feature(History())
+          fgraph.attach_feature(MyFeature())
           etc.
         """
         pass
@@ -112,7 +112,7 @@ class FromFunctionOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         # Added by default
-        #fgraph.extend(toolbox.ReplaceValidate())
+        #fgraph.attach_feature(toolbox.ReplaceValidate())
         pass
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
@@ -557,9 +557,9 @@ class MergeOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         # Added by default
-        #fgraph.extend(toolbox.ReplaceValidate())
+        #fgraph.attach_feature(toolbox.ReplaceValidate())
         if not hasattr(fgraph, 'merge_feature'):
-            fgraph.extend(MergeFeature())
+            fgraph.attach_feature(MergeFeature())
 
     def apply(self, fgraph):
         # Constant and non-constant are now applied in the same phase.
@@ -713,7 +713,7 @@ class LocalOptimizer(object):
         This is the place to do it.
         """
         # Added by default
-        #fgraph.extend(toolbox.ReplaceValidate())
+        #fgraph.attach_feature(toolbox.ReplaceValidate())
         pass
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
@@ -1195,7 +1195,7 @@ class NavigatorOptimizer(Optimizer):
                     chin(node, i, r, new_r)
 
         u = Updater()
-        fgraph.extend(u)
+        fgraph.attach_feature(u)
         return u
 
     def detach_updater(self, fgraph, u):
@@ -1269,7 +1269,7 @@ class NavigatorOptimizer(Optimizer):
     def add_requirements(self, fgraph):
         super(NavigatorOptimizer, self).add_requirements(fgraph)
         # Added by default
-        #fgraph.extend(toolbox.ReplaceValidate())
+        #fgraph.attach_feature(toolbox.ReplaceValidate())
         if self.local_opt:
             self.local_opt.add_requirements(fgraph)
 
@@ -1370,7 +1370,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
           - ReplaceValidate(Added by default)
         """
         super(OpKeyOptimizer, self).add_requirements(fgraph)
-        fgraph.extend(toolbox.NodeFinder())
+        fgraph.attach_feature(toolbox.NodeFinder())
 
 
 class ChangeTracker:
@@ -1426,7 +1426,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     def add_requirements(self, fgraph):
         super(EquilibriumOptimizer, self).add_requirements(fgraph)
-        fgraph.extend(ChangeTracker())
+        fgraph.attach_feature(ChangeTracker())
         for opt in self.local_optimizers:
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
@@ -1759,7 +1759,7 @@ class InplaceOptimizer(Optimizer):
         self.inplace(fgraph)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(dh.DestroyHandler())
+        fgraph.attach_feature(dh.DestroyHandler())
 
 
 class PureThenInplaceOptimizer(Optimizer):
@@ -1770,5 +1770,5 @@ class PureThenInplaceOptimizer(Optimizer):
 
     def apply(self, fgraph):
         self.pure(fgraph)
-        fgraph.extend(dh.DestroyHandler())
+        fgraph.attach_feature(dh.DestroyHandler())
         self.inplace(fgraph)

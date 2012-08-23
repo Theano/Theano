@@ -32,7 +32,7 @@ class Feature(object):
 
     def on_attach(self, function_graph):
         """
-        Called by FunctionGraph.extend, the method that attaches the feature
+        Called by FunctionGraph.attach_feature, the method that attaches the feature
         to the FunctionGraph. Since this is called after the FunctionGraph
         is initially populated, this is where you should run checks on the
         initial contents of the FunctionGraph.
