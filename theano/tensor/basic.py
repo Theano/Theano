@@ -24,6 +24,7 @@ from theano.tensor.utils import hash_from_ndarray
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
+from theano.gradient import grad_undefined
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -2094,7 +2095,7 @@ class Shape(Op):
         return [[len(in_shapes[0])]]
 
     def grad(self, inp, grads):
-        return [None]
+        return [grad_undefined(self,0,inp[0])]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -2335,7 +2336,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, None
+        return g_x, grad_undefined(self, 1, axis)
 
     def __str__(self):
         return self.__class__.__name__
@@ -2916,7 +2917,7 @@ class Eye(gof.Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [None, None, None]
+        return [ grad_undefined(self,i,inp[i]) for i in xrange(3) ]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.dtype == other.dtype
@@ -2926,6 +2927,27 @@ class Eye(gof.Op):
 
 
 def eye(n, m=None, k=0, dtype=None):
+    """Return a 2-D array with ones on the diagonal and zeros elsewhere.
+
+    Parameters
+    ----------
+    n : int
+      Number of rows in the output.
+    m : int, optional
+      Number of columns in the output. If None, defaults to `N`.
+    k : int, optional
+      Index of the diagonal: 0 (the default) refers to the main diagonal,
+      a positive value refers to an upper diagonal, and a negative value
+      to a lower diagonal.
+    dtype : data-type, optional
+      Data-type of the returned array.
+
+    Returns
+    -------
+    I : ndarray of shape (N,M)
+      An array where all elements are equal to zero, except for the `k`-th
+      diagonal, whose values are equal to one.
+    """
     if dtype is None:
         dtype = config.floatX
     if m is None:
