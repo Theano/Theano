@@ -1363,6 +1363,8 @@ class RowScaleCSC(gof.op.Op):
 
     # :note: The grad implemented is structured.
 
+    view_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
