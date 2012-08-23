@@ -222,7 +222,8 @@ class Variable(utils.object2):
 
     A `Variable` is a container for four important attributes:
 
-    - :literal:`type` a `Type` instance defining the kind of value this `Variable` can have,
+    - :literal:`type` a `Type` instance defining the kind of value this `Variable` can have
+                (provided that the variable is computable and therefore allowed to have values),
 
     - :literal:`owner` either None (for graph roots) or the `Apply` instance of which `self` is an output,
 
@@ -286,6 +287,15 @@ class Variable(utils.object2):
 
     `compile.function` uses each `Apply` instance's `inputs` attribute
     together with each Variable's `owner` field to determine which inputs are necessary to compute the function's outputs.
+
+    A Variable's type can be trumped by the Variable being uncomputable (if the Variable is
+    the result of an expression containing an UncomputableOp). An uncomputable Variable still
+    has a type so that symbolic operators can be applied to it without causing errors, but
+    in actuality the Variable is defined as not being able to take on any value and thus in
+    some sense having no type (much as a Not a Number is not a real number). This means that
+    no values can be legally assigned to the uncomputable Variable so it cannot be used as
+    an input to a function, cannot have its derivative computed, cannot have derivatives
+    computed with respect to it, etc.
 
     """
     #__slots__ = ['type', 'owner', 'index', 'name']

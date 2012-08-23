@@ -280,6 +280,22 @@ def test_undefined_grad_func():
     except theano.gradient.GradUndefinedError:
         pass
 
+def test_unimplemented_grad_func_input():
+    #tests that unimplemented grads can't be inputs to a function
+    a = theano.tensor.vector()
+    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
+    c = b.sum()
+    try:
+        f = theano.function([b], c)
+        assert 0
+        #Note: it's important that the NotImplementedGradOp is caught
+        #at COMPILATION time, not execution time.
+        #If the uncomputable variable is, for example, multiplied by 0,
+        #it could be optimized out of the final graph.
+    except TypeError:
+        pass
+
+
 def test_unimplemented_grad_grad():
     #tests that unimplemented grads are caught in the grad method
 

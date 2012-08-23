@@ -17,6 +17,7 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
+from theano.gof.op import is_uncomputable
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -1357,6 +1358,14 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     t1 = time.time()
     mode = mode_module.get_mode(mode)
+
+
+    for ipt in inputs:
+        if isinstance(ipt, In):
+            ipt = ipt.variable
+        if is_uncomputable(ipt):
+            raise TypeError(
+                    "Can't assign a value to an uncomputable variable")
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:
