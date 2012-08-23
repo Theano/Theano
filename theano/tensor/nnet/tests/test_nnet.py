@@ -27,7 +27,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 softmax_with_bias, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
-from theano.tensor import dmatrix, dvector, lvector, dscalar
+from theano.tensor import matrix, vector, lvector, scalar
 
 
 class T_sigmoid(unittest.TestCase):
@@ -71,8 +71,8 @@ class T_Softmax(utt.InferShapeTester):
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        admat_val = numpy.random.rand(3, 4)
+        admat = matrix()
+        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat], [Softmax()(admat)],
                             [admat_val], Softmax)
 
@@ -136,10 +136,10 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         #print f.maker.fgraph.toposort()
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        advec = dvector()
-        admat_val = numpy.random.rand(3, 4)
-        advec_val = numpy.random.rand(4)
+        admat = matrix()
+        advec = vector()
+        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
+        advec_val = numpy.random.rand(4).astype(config.floatX)
         self._compile_and_check([admat, advec],
                             [SoftmaxWithBias()(admat, advec)],
                             [admat_val, advec_val], SoftmaxWithBias)
@@ -148,10 +148,10 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
 class T_SoftmaxGrad(utt.InferShapeTester):
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        bdmat = dmatrix()
-        admat_val = numpy.random.rand(3, 4)
-        bdmat_val = numpy.random.rand(3, 4)
+        admat = matrix()
+        bdmat = matrix()
+        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
+        bdmat_val = numpy.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat, bdmat], [SoftmaxGrad()(admat, bdmat)],
                             [admat_val, bdmat_val], SoftmaxGrad)
 
@@ -218,13 +218,13 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
         utt.verify_grad(f, [rng.rand(10)])
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        advec = dvector()
+        admat = matrix()
+        advec = vector()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(10, 5)
+        admat_val = rng.rand(10, 5).astype(config.floatX)
         admat_val /= admat_val.sum(axis=1).reshape(10, 1)
-        advec_val = rng.rand(10)
+        advec_val = rng.rand(10).astype(config.floatX)
         alvec_val = rng.randint(low=0, high=5, size=10)
         self._compile_and_check([advec, admat, alvec],
                     [CrossentropySoftmax1HotWithBiasDx()(advec, admat, alvec)],
@@ -258,12 +258,12 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
                     numpy.random.rand(n_classes)])
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        advec = dvector()
+        admat = matrix()
+        advec = vector()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(3, 5)
-        advec_val = rng.rand(5)
+        admat_val = rng.rand(3, 5).astype(config.floatX)
+        advec_val = rng.rand(5).astype(config.floatX)
         alvec_val = rng.randint(low=0, high=5, size=3)
         self._compile_and_check([admat, advec, alvec],
                 CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec),
@@ -293,11 +293,11 @@ class T_prepend(utt.InferShapeTester):
         self.assertTrue(numpy.all(my[:, 0] == 5.0))
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        adscal = dscalar()
+        admat = matrix()
+        adscal = scalar()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(3, 5)
-        adscal_val = rng.rand()
+        admat_val = rng.rand(3, 5).astype(config.floatX)
+        adscal_val = numpy.asarray(rng.rand(), dtype=config.floatX).item()
         self._compile_and_check([admat],
                    [Prepend_scalar_constant_to_each_row(adscal_val)(admat)],
                     [admat_val],
@@ -312,12 +312,12 @@ class T_prepend(utt.InferShapeTester):
 class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
 
     def test_infer_shape(self):
-        advec = dvector()
-        admat = dmatrix()
+        advec = vector()
+        admat = matrix()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        advec_val = rng.rand(3)
-        admat_val = rng.rand(3, 2)
+        advec_val = rng.rand(3).astype(config.floatX)
+        admat_val = rng.rand(3, 2).astype(config.floatX)
         alvec_val = [0, 1, 0]
         self._compile_and_check([advec, admat, alvec],
                     [CrossentropyCategorical1HotGrad()(advec, admat, alvec)],
@@ -345,10 +345,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # see issue gh-788
     def est_infer_shape(self):
-        admat = dmatrix()
+        admat = matrix()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(3, 2)
+        admat_val = rng.rand(3, 2).astype(config.floatX)
         alvec_val = [0, 1, 0]
         self._compile_and_check([admat, alvec],
                     [CrossentropyCategorical1Hot()(admat, alvec)],
@@ -570,11 +570,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(3, 5)
-        b_val = rng.randn(5)
+        x_val = rng.randn(3, 5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1])
-        x = T.dmatrix('x')
-        b = T.dvector('b')
+        x = T.matrix('x')
+        b = T.vector('b')
         y = T.lvector('y')
 
         ## Basic case
@@ -696,11 +696,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(3, 5)
-        b_val = rng.randn(5)
+        x_val = rng.randn(3, 5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1], dtype='int64')
-        x = T.dmatrix('x')
-        b = T.dvector('b')
+        x = T.matrix('x')
+        b = T.vector('b')
         y = T.lvector('y')
         yi = T.cast(y, 'int32')
         expressions = [
@@ -739,10 +739,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(5)
+        x_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2])
 
-        x = T.dvector('x')
+        x = T.vector('x')
         y = T.lvector('y')
 
         def print_graph(func):
@@ -788,12 +788,12 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(5)
-        b_val = rng.randn(5)
+        x_val = rng.randn(5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2])
 
-        x = T.dvector('x')
-        b = T.dvector('b')
+        x = T.vector('x')
+        b = T.vector('b')
         y = T.lvector('y')
 
         def print_graph(func):
@@ -850,13 +850,13 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
-        x_val = rng.randn(3, 5)
-        b_val = rng.randn(5)
+        x_val = rng.randn(3, 5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1])
-        x = T.dmatrix('x')
-        b = T.dvector('b')
+        x = T.matrix('x')
+        b = T.vector('b')
         y = T.lvector('y')
-        a = T.dscalar('a')
+        a = T.scalar('a')
 
         def print_graph(func):
             for i, node in enumerate(func.maker.fgraph.toposort()):
@@ -951,7 +951,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
 
 def test_argmax_pushdown():
-    x = tensor.dmatrix()
+    x = tensor.matrix()
 
     #test that the max_and_argmax is pushed down if the max is not used
     out = tensor.max_and_argmax(
@@ -969,7 +969,7 @@ def test_argmax_pushdown():
     assert len(fgraph.toposort()) == 2  # an output_guard is second
     assert fgraph.toposort()[0].op == tensor.basic._max_and_argmax
     assert str(fgraph.toposort()[1].op) == 'OutputGuard'
-    x = tensor.dmatrix()
+    x = tensor.matrix()
     #test that the max_and_argmax is not pushed down if the max is used
     out = tensor.max_and_argmax(
             softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
@@ -998,8 +998,8 @@ def test_argmax_pushdown():
 
 
 def test_argmax_pushdown_bias():
-    x = tensor.dmatrix()
-    b = tensor.dvector()
+    x = tensor.matrix()
+    b = tensor.vector()
 
     out = tensor.argmax(softmax_with_bias(x, b), axis=-1)
     fgraph = gof.FunctionGraph(
@@ -1018,8 +1018,8 @@ def test_argmax_pushdown_bias():
     assert isinstance(fgraph.toposort()[2].op, tensor.MaxAndArgmax)
     assert str(fgraph.toposort()[3].op) == 'OutputGuard'
 
-    x = tensor.dmatrix()
-    b = tensor.dvector()
+    x = tensor.matrix()
+    b = tensor.vector()
     out = tensor.max_and_argmax(softmax_with_bias(x, b), axis=-1)[0]
     fgraph = gof.FunctionGraph(
             [x, b],
@@ -1068,8 +1068,8 @@ def test_asymptotic_32():
             for i, n in enumerate(f.maker.fgraph.toposort()):
                 print i, n
 
-        xval = numpy.zeros((5, 5), dtype=dtype)
-        x2val = numpy.zeros(5, dtype=xval.dtype)
+        xval = numpy.zeros((5, 5), dtype=dtype).astype(dtype)
+        x2val = numpy.zeros(5, dtype=xval.dtype).astype(dtype)
         for i in xrange(100):
             cval, gxval = f(xval, numpy.arange(5), x2val)
             xval -= 100.3 * gxval
