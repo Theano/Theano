@@ -4456,6 +4456,7 @@ class T_op_cache(unittest.TestCase):
         a = rand(5,2).astype(config.floatX)
         self.assertTrue(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
+
 class T_reshape(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -4469,10 +4470,10 @@ class T_reshape(unittest.TestCase):
         c = reshape(b, as_tensor_variable(6), ndim=1)
         f = inplace_func([b], c)
 
-        b_val1 = numpy.asarray([[0,1,2],[3,4,5]])
-        c_val1 = numpy.asarray([0,1,2,3,4,5])
+        b_val1 = numpy.asarray([[0, 1, 2], [3, 4, 5]])
+        c_val1 = numpy.asarray([0, 1, 2, 3, 4, 5])
         b_val2 = b_val1.T
-        c_val2 = numpy.asarray([0,3,1,4,2,5])
+        c_val2 = numpy.asarray([0, 3, 1, 4, 2, 5])
 
         f_out1 = f(b_val1)
         f_out2 = f(b_val2)
@@ -4484,78 +4485,88 @@ class T_reshape(unittest.TestCase):
         #basic to 1 dim(with list)
         c = reshape(b, (as_tensor_variable(6),), ndim=1)
         f = inplace_func([b], c)
-        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([0,1,2,3,4,5]))
+        assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
+                         numpy.asarray([0, 1, 2, 3, 4, 5]))
         #print f.maker.fgraph.toposort()
         #check that we remove the useless reshape
 
         #basic to shape object of same ndim
-        c = reshape(b,d.shape)
-        f = inplace_func([b,d], c)
-        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]]),[[0,1],[2,3],[4,5]]) == numpy.asarray([[0,1],[2,3],[4,5]]))
+        c = reshape(b, d.shape)
+        f = inplace_func([b, d], c)
+        assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]]),
+                           [[0, 1], [2, 3], [4, 5]]) ==
+                         numpy.asarray([[0, 1], [2, 3], [4, 5]]))
 
         #basic to 2 dims
-        c = reshape(a, [2,3])
+        c = reshape(a, [2, 3])
         f = inplace_func([a], c)
-        assert numpy.all(f(numpy.asarray([0,1,2,3,4,5])) == numpy.asarray([[0,1,2], [3,4,5]]))
+        assert numpy.all(f(numpy.asarray([0, 1, 2, 3, 4, 5])) ==
+                         numpy.asarray([[0, 1, 2], [3, 4, 5]]))
 
         #test that it works without inplace operations
-        a_val = numpy.asarray([0,1,2,3,4,5])
-        a_val_copy = numpy.asarray([0,1,2,3,4,5])
-        b_val = numpy.asarray([[0,1,2],[3,4,5]])
+        a_val = numpy.asarray([0, 1, 2, 3, 4, 5])
+        a_val_copy = numpy.asarray([0, 1, 2, 3, 4, 5])
+        b_val = numpy.asarray([[0, 1, 2], [3, 4, 5]])
 
-        f_sub = inplace_func([a,b], c-b)
+        f_sub = inplace_func([a, b], c - b)
         assert numpy.all(f_sub(a_val, b_val) == 0.0)
         assert numpy.all(a_val == a_val_copy)
 
         #test that it works with inplace operations
-        a_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
-        a_val_copy = theano._asarray([0,1,2,3,4,5], dtype='float64')
-        b_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
+        a_val = theano._asarray([0, 1, 2, 3, 4, 5], dtype='float64')
+        a_val_copy = theano._asarray([0, 1, 2, 3, 4, 5], dtype='float64')
+        b_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float64')
 
-        f_sub = inplace_func([a,b], c-b)
+        f_sub = inplace_func([a, b], c - b)
         assert numpy.all(f_sub(a_val, b_val) == 0.0)
         assert numpy.all(a_val == a_val_copy)
 
         # verify gradient
         def just_vals(v):
-            return Reshape(2)(v, theano._asarray([2,3], dtype='int32'))
+            return Reshape(2)(v, theano._asarray([2, 3], dtype='int32'))
         utt.verify_grad(just_vals, [a_val])
 
         #test infer_shape
-        f_sub = function([a,b], (c-b).shape)
-        if config.mode=="FAST_COMPILE":
-            assert len(f_sub.maker.fgraph.toposort())==3
+        f_sub = function([a, b], (c - b).shape)
+        if config.mode == "FAST_COMPILE":
+            assert len(f_sub.maker.fgraph.toposort()) == 3
         else:
             topo = f_sub.maker.fgraph.toposort()
-            assert len(topo)==1
+            assert len(topo) == 1
             topo[0].op == theano.compile.function_module.deep_copy_op
             #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
             #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
 
         # test broadcast flag for constant value of 1
-        c = reshape(b, (b.shape[0],b.shape[1],1))
+        c = reshape(b, (b.shape[0], b.shape[1], 1))
         f = inplace_func([b], c)
-        assert numpy.all(f(numpy.asarray([[0,1,2],[3,4,5]])) == numpy.asarray([[[0],[1],[2]],[[3],[4],[5]]]))
-        assert f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable==(False, False, True)
+        assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
+                         numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
+        assert (f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable ==
+                (False, False, True))
 
-        assert numpy.all(f_sub(a_val,b_val)==[2,3])
+        assert numpy.all(f_sub(a_val, b_val) == [2, 3])
 
-    def test_infer_shape(self):
+    def test_bad_shape(self):
         a = matrix('a')
         shapes = ivector('shapes')
         ndim = 2
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        a_val = rng.uniform(size=(3, 4)).astype(config.floatX)
 
+        #Test reshape to 1 dim
+        r = a.reshape(shapes, ndim=1)
+        z = zeros_like(r)
+
+        f = function([a, shapes], z.shape)
+        self.assertRaises(ValueError, f, a_val, [13])
+
+        #Test reshape to 1 dim
         r = a.reshape(shapes, ndim=2)
         z = zeros_like(r)
 
         f = function([a, shapes], z.shape)
 
-        rng = numpy.random.RandomState(seed=utt.fetch_seed())
-        a_val = rng.uniform(size=(3, 4)).astype(config.floatX)
-
-        self.assertTrue((f(a_val, [4, 3]) == [4, 3]).all())
-        self.assertTrue((f(a_val, [-1, 3]) == [4, 3]).all())
-        self.assertTrue((f(a_val, [4, -1]) == [4, 3]).all())
         self.assertRaises(ValueError, f, a_val, [-1, 5])
         self.assertRaises(ValueError, f, a_val, [7, -1])
         self.assertRaises(ValueError, f, a_val, [7, 5])
@@ -4577,8 +4588,8 @@ def test_flatten_outdimNone():
     a = dmatrix()
     c = flatten(a)
     f = inplace_func([a], c)
-    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
-    c_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
+    a_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float64')
+    c_val = theano._asarray([0, 1, 2, 3, 4, 5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -4601,8 +4612,8 @@ def test_flatten_outdim1():
     a = dmatrix()
     c = flatten(a, 1)
     f = inplace_func([a], c)
-    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
-    c_val = theano._asarray([0,1,2,3,4,5], dtype='float64')
+    a_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float64')
+    c_val = theano._asarray([0, 1, 2, 3, 4, 5], dtype='float64')
     assert numpy.all(f(a_val)==c_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==c_val)
@@ -4613,7 +4624,7 @@ def test_flatten_outdim2():
     a = dmatrix()
     c = flatten(a, 2)
     f = inplace_func([a], c)
-    a_val = theano._asarray([[0,1,2],[3,4,5]], dtype='float64')
+    a_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float64')
     assert numpy.all(f(a_val)==a_val)
     f = inplace_func([a], c)
     assert numpy.all(f(a_val)==a_val)
@@ -6679,14 +6690,34 @@ class TestInferShape(utt.InferShapeTester):
         # (non-constant) input shape
         admat = dmatrix()
         aivec = ivector()
-        ndim = 2
+        ndim = 1
         admat_val = rand(3, 4)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [12])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1])],
+                                [admat_val], Reshape)
+
+        ndim = 2
         self._compile_and_check([admat],
                                 [Reshape(ndim)(admat, [4, 3])],
                                 [admat_val], Reshape)
 
         self._compile_and_check([admat],
                                 [Reshape(ndim)(admat, [4, -1])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [3, -1])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1, 3])],
+                                [admat_val], Reshape)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1, 4])],
                                 [admat_val], Reshape)
 
         # enable when infer_shape is generalized:
