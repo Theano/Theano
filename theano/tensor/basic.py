@@ -2927,6 +2927,27 @@ class Eye(gof.Op):
 
 
 def eye(n, m=None, k=0, dtype=None):
+    """Return a 2-D array with ones on the diagonal and zeros elsewhere.
+
+    Parameters
+    ----------
+    n : int
+      Number of rows in the output.
+    m : int, optional
+      Number of columns in the output. If None, defaults to `N`.
+    k : int, optional
+      Index of the diagonal: 0 (the default) refers to the main diagonal,
+      a positive value refers to an upper diagonal, and a negative value
+      to a lower diagonal.
+    dtype : data-type, optional
+      Data-type of the returned array.
+
+    Returns
+    -------
+    I : ndarray of shape (N,M)
+      An array where all elements are equal to zero, except for the `k`-th
+      diagonal, whose values are equal to one.
+    """
     if dtype is None:
         dtype = config.floatX
     if m is None:
