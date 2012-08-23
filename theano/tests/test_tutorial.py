@@ -393,7 +393,7 @@ class T_extending(unittest.TestCase):
 
         class Simplify(gof.Optimizer):
             def add_requirements(self, fgraph):
-                fgraph.extend(toolbox.ReplaceValidate())
+                fgraph.attach_feature(toolbox.ReplaceValidate())
             def apply(self, fgraph):
                 for node in fgraph.toposort():
                     if node.op == div:

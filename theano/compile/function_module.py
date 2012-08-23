@@ -136,15 +136,15 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
             if not accept_inplace:
                 raise TypeError("Graph must not contain inplace operations", node, node.op)
             else:
-                fgraph.extend(gof.DestroyHandler())
+                fgraph.attach_feature(gof.DestroyHandler())
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
-        fgraph.extend(feature())
+        fgraph.attach_feature(feature())
     return fgraph, map(SymbolicOutput, updates)
 
 

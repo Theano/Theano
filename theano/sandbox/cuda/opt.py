@@ -80,8 +80,8 @@ class InputToGpuOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         for input in fgraph.inputs:

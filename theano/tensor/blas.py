@@ -1353,8 +1353,8 @@ class GemmOptimizer(Optimizer):
         self.warned = False
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True

@@ -538,7 +538,7 @@ class MakeVector(T.Op):
 
     def infer_shape(self, node, ishapes):
         return [(len(ishapes),)]
-            
+
     def grad(self, inputs, output_gradients):
         # If the output is of an integer dtype, no gradient shall pass
         if 'int' in self.dtype:
@@ -1036,7 +1036,7 @@ class ShapeOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(ShapeFeature())
+        fgraph.attach_feature(ShapeFeature())
 
     def apply(self, fgraph):
         pass
@@ -4583,8 +4583,8 @@ class FusionOptimizer(Optimizer):
         self.optimizer = local_optimizer
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True
