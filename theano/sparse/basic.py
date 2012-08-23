@@ -1224,6 +1224,7 @@ class Transpose(gof.op.Op):
            matrix.
     :note: The grad is regular, i.e. not structured.
     """
+    view_map = {0: [0]}
 
     format_map = {'csr': 'csc',
                   'csc': 'csr'}
