@@ -13,10 +13,8 @@ import warnings
 _logger = logging.getLogger('theano.gradient')
 
 import numpy  # for numeric_grad
-from collections import deque
 
 import theano
-from theano.raise_op import Raise
 
 from theano import gof
 from theano.gof import Variable
