@@ -963,6 +963,9 @@ class ShapeFeature(object):
         for sh_idx, sh in enumerate(o_shapes):
             if sh is None:
                 continue
+            if not isinstance(sh, (list, tuple)):
+                raise ValueError("infer_shape of %s didn't return a list of"
+                                 " list. It returned '%s'" % (str(node), str(o_shapes)))
             for i, d in enumerate(sh):
                 # Note: we ignore any shape element that is not typed (i.e.,
                 # does not have a 'dtype' attribute). This means there may
