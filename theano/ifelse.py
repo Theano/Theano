@@ -537,7 +537,7 @@ def cond_merge_ifs_false(node):
 class CondMerge(gof.Optimizer):
     """ Graph Optimizer that merges different cond ops """
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.add_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
         nodelist = list(fgraph.toposort())

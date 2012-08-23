@@ -10,6 +10,7 @@ import utils
 import toolbox
 from python25 import all
 from theano import config
+import warnings
 
 
 class InconsistencyError(Exception):
@@ -46,16 +47,17 @@ class FunctionGraph(utils.object2):
     The .clients field combined with the .owner field and the Apply nodes'
     .inputs field allows the graph to be traversed in both directions.
 
-    It can also be "extended" using function_graph.extend(some_object).
+    It can also be extended with new features using
+    FunctionGraph.attach_feature(<toolbox.Feature instance>).
     See toolbox.Feature for event types and documentation.
+    Extra features allow the FunctionGraph to verify new properties of
+    a graph as it is optimized.
+    # TODO: are there other things features can do to the fgraph?
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
     while reading out-of-date documentation, e-mail support threads, etc.
 
     """
-
-    ### Special ###
-    # TODO: document which things that features can do to the fgraph
 
     def __init__(self, inputs, outputs, features=None):
         """
@@ -87,8 +89,8 @@ class FunctionGraph(utils.object2):
         self.outputs = outputs
 
         for f in features:
-            self.extend(f)
-        self.extend(toolbox.ReplaceValidate())
+            self.attach_feature(f)
+        self.attach_feature(toolbox.ReplaceValidate())
 
         for input in self.inputs:
             if input.owner is not None:
@@ -428,12 +430,13 @@ class FunctionGraph(utils.object2):
             self.replace(r, new_r, reason=reason)
 
 
-    ### features ###
 
-    # XXX: This is terribly named. The "extend" method of a list
-    # takes a sequence, and since this is a kind of container you
-    # would expect it to do similarly.
     def extend(self, feature):
+        warnings.warn("FunctionGraph.extend is deprecatd. It has been "
+                "renamed to FunctionGraph.attach_feature")
+        return self.attach_feature(feature)
+
+    def attach_feature(self, feature):
         """
         Adds a gof.toolbox.Feature to this function_graph
         and triggers its on_attach callback
@@ -631,5 +634,5 @@ class FunctionGraph(utils.object2):
                 [equiv[o] for o in self.outputs])
         e.check_integrity()
         for feature in self._features:
-            e.extend(feature)
+            e.attach_feature(feature)
         return e, equiv

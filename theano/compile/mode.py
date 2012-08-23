@@ -208,7 +208,7 @@ class AddDestroyHandler(gof.Optimizer):
 
     def add_requirements(self, fgraph):
         super(AddDestroyHandler, self).add_requirements(fgraph)
-        fgraph.extend(gof.DestroyHandler())
+        fgraph.attach_feature(gof.DestroyHandler())
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):

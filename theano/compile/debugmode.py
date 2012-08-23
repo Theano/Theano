@@ -681,12 +681,12 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
                                 node)
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs)
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs)
                           if not (spec.mutable or (hasattr(fgraph, 'destroyers')
                                                    and fgraph.destroyers(input)))))
 
     for feature in std_fgraph.features:
-        fgraph.extend(feature())
+        fgraph.attach_feature(feature())
 
     return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 

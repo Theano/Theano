@@ -177,7 +177,7 @@ class HintsOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(HintsFeature())
+        fgraph.attach_feature(HintsFeature())
 
     def apply(self, fgraph):
         pass
