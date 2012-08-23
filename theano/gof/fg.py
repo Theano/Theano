@@ -50,8 +50,8 @@ class FunctionGraph(utils.object2):
     It can also be extended with new features using
     FunctionGraph.attach_feature(<toolbox.Feature instance>).
     See toolbox.Feature for event types and documentation.
-    Extra feature allow the FunctionGraph to verify new properties of
-    as a graph is optimized.
+    Extra features allow the FunctionGraph to verify new properties of
+    a graph as it is optimized.
     # TODO: are there other things features can do to the fgraph?
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
@@ -434,6 +434,7 @@ class FunctionGraph(utils.object2):
     def extend(self, feature):
         warnings.warn("FunctionGraph.extend is deprecatd. It has been "
                 "renamed to FunctionGraph.attach_feature")
+        return self.attach_feature(feature)
 
     def attach_feature(self, feature):
         """
