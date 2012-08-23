@@ -2336,7 +2336,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, grad_undefined(self, axis, 1)
+        return g_x, grad_undefined(self, 1, axis)
 
     def __str__(self):
         return self.__class__.__name__
