@@ -376,3 +376,39 @@ AddConfigVar('exception_verbosity',
                 C. log_likelihood_h""",
         EnumStr('low', 'high'),
         in_c_key=False)
+
+#Test if the env variable is set
+var = os.getenv('OMP_NUM_THREADS', None)
+if var:
+    try:
+        int(var)
+    except ValueError:
+        raise TypeError("The environment variable OMP_NUM_THREADS"
+                        " should be a number, got '%s'." % var)
+    else:
+        default_openmp = not int(var) == 1
+else:
+    #Check the number of cores availables.
+    count = cpuCount()
+    if count == -1:
+        _logger.warning("We are not able to detect the number of CPU cores."
+                        " We disable openmp by default. To remove this"
+                        " warning, set the environment variable"
+                        " OMP_NUM_THREADS to the number of threads you"
+                        " want theano to use.")
+    default_openmp = count > 1
+
+AddConfigVar('openmp',
+             "Allow (or not) parallel computation on the CPU with OpenMP. "
+             "This is the default value used when creating an Op that "
+             "supports OpenMP parallelization. It is preferable to define it "
+             "via the Theano configuration file ~/.theanorc or with the "
+             "environment variable THEANO_FLAGS. Parallelization is only "
+             "done for some operations that implement it, and even for "
+             "operations that implement parallelism, each operation is free "
+             "to respect this flag or not. You can control the number of "
+             "threads used with the environment variable OMP_NUM_THREADS."
+             " If it is set to 1, we disable openmp in Theano by default.",
+             BoolParam(default_openmp),
+             in_c_key=False,
+         )

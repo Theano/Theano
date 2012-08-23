@@ -55,7 +55,7 @@ from link import \
     Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany
 
 from op import \
-    Op, PureOp, ops_with_inner_function
+    Op, OpenMPOp, PureOp, ops_with_inner_function
 
 from opt import (Optimizer, optimizer, SeqOptimizer,
     MergeOptimizer, MergeOptMerge,
