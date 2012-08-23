@@ -807,6 +807,7 @@ class OpenMPOp(Op):
     def __init__(self, openmp=None):
         if openmp is None:
             openmp = theano.config.openmp
+        self.openmp = openmp
 
     def c_compile_args(self):
         if self.openmp:
