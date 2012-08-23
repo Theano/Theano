@@ -17,7 +17,7 @@ import numpy
 import theano
 from theano.tensor import (as_tensor_variable, blas, get_constant_value,
                            patternbroadcast)
-from theano import Op, config
+from theano import OpenMPOp, config
 from theano.gof import Apply
 from theano.gof.python25 import any
 
@@ -128,7 +128,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     return op(input, filters)
 
 
-class ConvOp(Op):
+class ConvOp(OpenMPOp):
     """
     This Op serves a dual purpose: it can implement a vanilla 2D convolution
     (as taught in any signal processing class) or implement the
@@ -358,10 +358,10 @@ class ConvOp(Op):
             raise Exception("In ConvOp, when using unroll_batch and"
                             " unroll_nkern, all shape are needed")
 
-        if openmp is None:
-            openmp = theano.config.openmp
+        #Init the openmp attribute
+        super(ConvOp, self).__init__(openmp=openmp)
 
-        if not all_shape or config.openmp:
+        if not all_shape or self.openmp:
             # Only this version is parallelized
             unroll_patch = True
 
@@ -386,9 +386,6 @@ class ConvOp(Op):
         self.dy = dy
         self.verbose = verbose
         self.version = version
-        if openmp is None:
-            openmp = config.openmp
-        self.openmp = openmp
 
         # a triple
         self.imshp_logical = self.imshp
@@ -1010,8 +1007,8 @@ using namespace std;
         if (theano.gof.cmodule.gcc_version() in ['4.3.0'] and
             self.kshp == (1, 1)):
             ret += ['-O2']
-        if self.openmp:
-            ret += ['-fopenmp']
+        #Add the -fopenmp flags
+        ret += super(ConvOp, self).c_compile_args()
 
         return ret
 
