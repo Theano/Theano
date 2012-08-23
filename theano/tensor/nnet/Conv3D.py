@@ -2,10 +2,10 @@ import theano
 from theano.tensor import basic as T
 import numpy as N
 #from util import strutil
-from theano import printing
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags
 from theano.misc import strutil
+from theano.gradient import grad_undefined
 
 
 #Note: not a true convolution because we don't bother with flipping the kernel
@@ -36,7 +36,8 @@ from theano.misc import strutil
 # (partial sum_s sum_u sum_v sum_a W[j,a, s,u,v] V[i,dr*p+s,dc*q+u,dt*r+v,a] ) / partial W[j,k,l,m,z])
 # = partial C / partial W[j,k,l,m,z] = sum_i sum_p sum_q sum_r (partial C /partial H[i,p,q,r,j] ) *  V[i,dr*p+k,dc*q+l,dt*r+m,z]
 
-#derivatives wrt V unimplemented for now. derivatives wrt dr, dc, dt are undefined since dr, dc, dt are natural numbers.
+#derivatives wrt V unimplemented for now. derivatives wrt dr, dc, dt are undefined since
+#the output function is only defined when dr, dc, dt are natural numbers.
 
 class Conv3D(theano.Op):
     """ 3D "convolution" of multiple filters on a minibatch (does not flip the kernel, moves kernel with a user specified stride) """
@@ -89,7 +90,10 @@ class Conv3D(theano.Op):
         dCdW = T.patternbroadcast(dCdW, W.broadcastable)
         dCdb = T.sum(dCdH, axis=(0,1,2,3))
         dCdb = T.patternbroadcast(dCdb, b.broadcastable)
-        dCdd = None #not differentiable, since d is not continuous
+        dCdd = grad_undefined(self,3,inputs[3],
+                "The gradient of Conv3D with respect to the convolution"+\
+                " stride is undefined because Conv3D is only defined for"+\
+                " integer strides.")
 
         if 'name' in dir(dCdH) and dCdH.name is not None:
             dCdH_name = dCdH.name

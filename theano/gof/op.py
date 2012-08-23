@@ -639,6 +639,8 @@ class UncomputableOp(Op):
         return "Uncomputable{%s,%s}"%(self.exc,self.msg)
 
     def make_node(self,x):
+        if x is None:
+            x = graph.Constant(theano.gof.type.generic,None)
         return graph.Apply(self, [x], [x.type()] )
 
     def perform(self, node, inputs, out_storage):
