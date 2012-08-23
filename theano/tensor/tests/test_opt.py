@@ -134,13 +134,13 @@ class test_dimshuffle_lift(unittest.TestCase):
 
 def test_stabilize_log_softmax():
     mode = theano.compile.mode.get_default_mode()
-    mode = mode.including('local_log_softmax')
+    mode = mode.including('local_log_softmax', 'specialize')
 
     x = matrix()
     y = theano.tensor.nnet.softmax(x)
     z = theano.tensor.log(y)
 
-    f = function([x],z)
+    f = function([x], z, mode=mode)
 
     #check that the softmax has been optimized out
     for node in f.maker.fgraph.toposort():
@@ -148,8 +148,9 @@ def test_stabilize_log_softmax():
 
     #call the function so debug mode can verify the optimized
     #version matches the unoptimized version
-    rng = numpy.random.RandomState([2012,8,22])
-    f(numpy.cast[config.floatX](rng.randn(2,3)))
+    rng = numpy.random.RandomState([2012, 8, 22])
+    f(numpy.cast[config.floatX](rng.randn(2, 3)))
+
 
 def test_add_canonizer_problem0():
     n_segments = 10
