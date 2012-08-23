@@ -1194,7 +1194,7 @@ def test_stabilize_log_softmax():
     y = theano.tensor.nnet.softmax(x)
     z = theano.tensor.log(y)
 
-    f = function([x], z, mode=mode)
+    f = theano.function([x], z, mode=mode)
 
     #check that the softmax has been optimized out
     for node in f.maker.fgraph.toposort():
