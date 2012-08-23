@@ -52,7 +52,7 @@ from gof import \
      Container, \
      InconsistencyError, FunctionGraph, \
      Apply, Variable, Constant, \
-     Op, \
+     Op, OpenMPOp,\
      opt, \
      toolbox, \
      Type, Generic, generic, \
@@ -105,9 +105,6 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
-
-
-import configdefaults_late
 
 # Use config.numpy to call numpy.seterr
 import numpy
