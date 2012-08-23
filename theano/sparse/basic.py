@@ -711,6 +711,11 @@ class CSM(gof.Op):
     def __hash__(self):
         return self._hashval
 
+    def __str__(self):
+        if self.kmap is not None:
+            return "%s{%s}" %(self.__class__.__name__, str(self.kmap))
+        return self.__class__.__name__
+
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
 
