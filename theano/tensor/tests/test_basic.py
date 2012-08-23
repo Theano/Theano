@@ -6686,14 +6686,34 @@ class TestInferShape(utt.InferShapeTester):
         # (non-constant) input shape
         admat = dmatrix()
         aivec = ivector()
-        ndim = 2
+        ndim = 1
         admat_val = rand(3, 4)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [12])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1])],
+                                [admat_val], Reshape)
+
+        ndim = 2
         self._compile_and_check([admat],
                                 [Reshape(ndim)(admat, [4, 3])],
                                 [admat_val], Reshape)
 
         self._compile_and_check([admat],
                                 [Reshape(ndim)(admat, [4, -1])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [3, -1])],
+                                [admat_val], Reshape)
+
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1, 3])],
+                                [admat_val], Reshape)
+        self._compile_and_check([admat],
+                                [Reshape(ndim)(admat, [-1, 4])],
                                 [admat_val], Reshape)
 
         # enable when infer_shape is generalized:
