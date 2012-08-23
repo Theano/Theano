@@ -149,7 +149,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         gof.Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
         nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
@@ -322,8 +322,8 @@ class ScanInplaceOptimizer(Optimizer):
         self.gpu_flag = gpu_flag
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
 
@@ -388,7 +388,7 @@ class ScanSaveMem(gof.Optimizer):
         gof.Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def process_node(self, fgraph, node):
 
@@ -857,7 +857,7 @@ scan_seqopt.register('scanOp_save_mem',
 class ScanMerge(gof.Optimizer):
     """ Graph Optimizer that merges different scan ops """
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def merge(self, nodes):
 

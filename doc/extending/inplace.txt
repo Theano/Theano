@@ -210,7 +210,7 @@ if it introduce cycle into the graph.
 
 To allow using DebugMode more often, we can pre-check that our optimization will
 get rejected in many case.(not the cycle reason). For this you can use the 
-theano.gof.destroyhandler.fast_inplace_check() function that will tell you witch 
+theano.gof.destroyhandler.fast_inplace_check() function that will tell you which 
 op can be used.
 
 

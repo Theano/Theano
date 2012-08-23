@@ -93,8 +93,8 @@ def inputs():
 _Env = Env
 def Env(inputs, outputs, validate = True):
     e = _Env(inputs, outputs)
-    e.extend(destroyhandler.DestroyHandler())
-    e.extend(ReplaceValidate())
+    e.attach_feature(destroyhandler.DestroyHandler())
+    e.attach_feature(ReplaceValidate())
     if validate:
         e.validate()
     return e
