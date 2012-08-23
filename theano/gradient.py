@@ -276,38 +276,6 @@ def grad_not_implemented(op, x_pos, x):
     return GradNotImplementedOp(op, x_pos)(x)
 
 
-def raise_if_bad_grad(node):
-    if node is not None:
-        if isinstance(node.op, BadGradOp):
-            op.raise_exc()
-
-    #preprocess variables to make sure it is a list and make
-    #sure everything is really a variable and not a
-    #theano.compile.io.SymbolicOutput
-    if not isinstance(variables, list):
-        variables = [ variables ]
-
-    for i in xrange(len(variables)):
-        if not isinstance(variables[i],gof.Variable):
-            if hasattr(variables[i],'variable') and \
-                    isinstance(variables[i].variable,gof.Variable):
-                variables[i] = variables[i].variable
-
-    for v in gof.graph.ancestors(variables):
-        if v.owner is not None and isinstance(v.owner.op,BadGradOp):
-            v.owner.op.raise_exc()
-
-
-    """
-
-class BadGradFeature(gof.Feature):
-    def on_import(self, fgraph, node):
-        raise_if_bad_grad(node)
-
-theano.compile.function_module.std_fgraph.features.append(BadGradFeature)
-    """
-
-
 ########################
 # R Operator
 ########################
@@ -630,9 +598,9 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     # new_vars is meant to be a list of all variables created
     # by this call to grad(), which will be visible to the caller
     # after we return.
-    new_vars = graph.ancestors(ret,
-            blockers=graph.ancestors(cost) + list(wrt))
-    map(raise_if_bad_grad, [v.owner for v in new_vars])
+    new_vars = gof.graph.ancestors(ret,
+            blockers=gof.graph.ancestors([cost]) + list(wrt))
+    map(gof.op.raise_if_uncomputable, [v.owner for v in new_vars])
 
     return format_as(using_list, using_tuple, ret)
 
