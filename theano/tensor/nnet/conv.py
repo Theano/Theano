@@ -321,9 +321,21 @@ class ConvOp(Op):
         :type version: int
         :param version: passed to GpuConv
 
-        :param imshp_logical: used internally when we generate the gradient when dx!=1 or dy!=1
-        :param kshp_logical: idem
-        :param kshp_logical_top_aligned: idem
+        The 3 following parameters are used internally when we generate
+        the gradient when dx!=1 or dy!=1.
+        :param imshp_logical: Default None. None value is equivalent to imshp
+            value. When imshp_logical != imshp, it tell we need to insert 0 in
+            the image before we do the convolution. For example, when dx==dy==2
+            and the image is [[1, 2], [3, 4]], we should make as if the image
+            was [[1, 0, 2, 0], [0, 0, 0, 0], [3, 0, 4, 0], [0, 0, 0, 0]].
+            Our python code insert the zero, but the c code optimize it.
+            imshp_logical != imshp when taking the grad again the weights or
+            the image when the output_mode is full and `dx != 1` or `dy != 1`.
+        :param kshp_logical: idem but for kshp and used for the grad again the
+            weights when the output_mode is valid and `dx != 1` or `dy != 1`.
+        :param kshp_logical_top_aligned: Used in the same case.Default to True.
+            Set to False in the grad again the weight when the
+            output_mode is full.
         """
         # We must continue to consider None as 1 for backward compatibility.
         if dx is None:
@@ -382,8 +394,8 @@ class ConvOp(Op):
         self.imshp_logical = self.imshp
         if imshp_logical is not None:
             self.imshp_logical = tuple(imshp_logical)
-        assert (self.imshp is None and self.imshp_logical is None) or \
-               (len(self.imshp) == len(self.imshp_logical))
+        assert ((self.imshp is None and self.imshp_logical is None) or
+                (len(self.imshp) == len(self.imshp_logical)))
 
         # a pair
         self.kshp_logical = self.kshp
