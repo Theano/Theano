@@ -679,10 +679,6 @@ class CSM(gof.Op):
            a regular grad.
     """
 
-    # should view the other inputs too, but viewing multiple inputs is not
-    view_map = {0: [0]}
-    #currently supported by the destroyhandler
-
     kmap = None
     """Indexing to speficied what part of the data parameter
     should be use to construct the sparse matrix."""
@@ -700,6 +696,11 @@ class CSM(gof.Op):
             kmap = None
 
         self.kmap = kmap
+
+        if not isinstance(self.kmap, numpy.ndarray):
+            # should view the other inputs too, but viewing multiple
+            # inputs is not currently supported by the destroyhandler
+            self.view_map = {0: [0]}
 
         self._hashval = (hash(type(self)) ^ hash(self.format) ^
                          _kmap_hash(self.kmap))
