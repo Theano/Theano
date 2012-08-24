@@ -817,10 +817,9 @@ class Elemwise(Op):
                             min_informative_str(output) + '\n'
                 errormsg += 'original exception was: ' + '\n'.join(
                         traceback.format_exception_only(*sys.exc_info()[0:2]))
-                raise Exception(errormsg)
-            else:
-                e.args = e.args + (errormsg, )
-                raise
+
+            e.args = e.args + (errormsg, )
+            raise
 
         if nout == 1:
             variables = [variables]
