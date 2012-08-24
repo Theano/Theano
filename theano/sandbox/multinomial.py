@@ -1,3 +1,5 @@
+import numpy
+
 import theano
 from theano import Op, Apply
 import theano.tensor as T
@@ -119,6 +121,33 @@ class MultinomialFromUniform(Op):
         }
         } // END NESTED SCOPE
         """ % locals()
+    def perform(self, node, ins, outs):
+        (pvals, unis) = ins
+        (z,) = outs
+
+        if unis.shape[0] != pvals.shape[0]:
+            raise ValueError("unis.shape[0] != pvals.shape[0]",
+                             unis.shape[0], pvals.shape[0])
+        if not z[0] or z[0].shape != pvals.shape:
+            z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+
+        nb_multi = pvals.shape[0]
+        nb_outcomes = pvals.shape[1]
+
+        # For each multinomial, loop over each possible outcome
+        for n in range(nb_multi):
+            waiting = True
+            cummul = 0
+            unis_n = unis[n]
+
+            for m in range(nb_outcomes):
+                z_nm = z[0][n, m]
+                cummul += pvals[n, m]
+                if (waiting and (cummul > unis_n)):
+                    z[0][n, m] = 1
+                    waiting = False
+                else:
+                    z[0][n, m] = 0
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
