@@ -2386,6 +2386,7 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                         verify_grad_sparse(self.op,
                                            data,
                                            structured=True)
+    Tester.__name__ = op.__name__ + "Tester"
     return Tester
 
 
