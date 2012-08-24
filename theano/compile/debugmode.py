@@ -1547,7 +1547,8 @@ class _VariableEquivalenceTracker(object):
 #List of default version of make thunk.
 #This is needed to know if the user overrided it.
 #The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [theano.gof.Op.make_thunk.im_func]
+default_make_thunk = [theano.gof.Op.make_thunk.im_func,
+                      theano.gof.OpenMPOp.make_thunk.im_func]
 
 
 class _Linker(gof.link.LocalLinker):
