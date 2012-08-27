@@ -443,13 +443,16 @@ class test_Solve(utt.InferShapeTester):
         self.op = Solve()
 
     def test_infer_shape(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the Cholesky op.")
+        rng = numpy.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         self._compile_and_check([A, b],  # theano.function inputs
                                 [self.op(A, b)],  # theano.function outputs
                                 # A must be square
-                                [numpy.asarray(numpy.random.rand(5, 5),
+                                [numpy.asarray(rng.rand(5, 5),
                                                dtype=config.floatX),
-                                 numpy.asarray(numpy.random.rand(5, 1),
+                                 numpy.asarray(rng.rand(5, 1),
                                                dtype=config.floatX)],
                                 self.op_class)
