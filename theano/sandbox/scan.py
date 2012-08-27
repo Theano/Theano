@@ -607,6 +607,7 @@ def scan(fn,
     info['truncate_gradient'] = -1
     info['name'] = name
     info['mode'] = mode
+    info['destroy_map'] = {}
     info['inplace'] = False
     info['gpu'] = False
     info['as_while'] = as_while
