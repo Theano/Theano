@@ -823,7 +823,6 @@ def grad_wrong(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     # after we return.
     new_vars = gof.graph.ancestors(ret,
             blockers=gof.graph.ancestors([cost]) + list(wrt))
-    map(gof.op.raise_if_uncomputable, [v.owner for v in new_vars])
 
     return format_as(using_list, using_tuple, ret)
 
