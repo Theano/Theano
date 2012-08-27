@@ -14,7 +14,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        CholeskyGrad,
                                        matrix_inverse,
                                        pinv,
-                                       #solve,
+                                       Solve,
                                        diag,
                                        ExtractDiag,
                                        extract_diag,
@@ -182,7 +182,6 @@ def test_inverse_grad():
 
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
-
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
@@ -436,3 +435,23 @@ def test_spectral_radius_bound():
     except ValueError:
         ok = True
     assert ok
+
+class test_Solve(utt.InferShapeTester):
+    def setUp(self):
+        super(test_Solve, self).setUp()
+        self.op_class = Solve
+        self.op = Solve()
+
+    def test_infer_shape(self):
+        A = theano.tensor.matrix()
+        b = theano.tensor.matrix()
+        self._compile_and_check([A, b],  # theano.function inputs
+                                [self.op(A, b)],  # theano.function outputs
+                                # Always use not square matrix!
+                                # inputs data
+                                [numpy.asarray(numpy.random.rand(5, 5),
+                                               dtype=config.floatX),
+                                 numpy.asarray(numpy.random.rand(5, 1),
+                                               dtype=config.floatX)],
+                                # Op that should be removed from the graph.
+                                self.op_class)
