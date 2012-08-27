@@ -21,6 +21,7 @@ from theano.gof import Variable
 from theano.gof.python25 import all
 import theano.gof.utils
 tensor = None
+from theano.gof.nan_type import NaNType
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -193,32 +194,6 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     gmap[r] = g_r
     return gmap
 
-
-class GradNotImplementedOp(gof.op.UncomputableOp):
-    """ An UncomputableOp representing a gradient that hasn't been implemented yet.
-    """
-
-    def __init__(self, op, x_pos, comment = ""):
-        """
-            op: A theano op  whose grad is not implemented for some input
-            x_pos: An int, giving the index in the op's input list of
-                a variable for which the gradient is not implemented
-                (if op has unimplemented gradients for several inputs,
-                it must still return a separate UnimplementedGradOp for
-                each)
-            comment: An optional comment explaining why the gradient isn't
-                implemented.
-        """
-
-        assert isinstance(op, gof.Op)
-        assert isinstance(x_pos, int)
-        assert x_pos >= 0
-
-        super(GradNotImplementedOp,self).__init__(NotImplementedError,
-            "%s does not implement its gradient with respect to input %d. %s" \
-            % (str(type(op)), x_pos, comment))
-
-
 def grad_not_implemented(op, x_pos, x, comment = ""):
     """
     Return an un-computable symbolic variable of type `x.type`.
@@ -233,38 +208,9 @@ def grad_not_implemented(op, x_pos, x, comment = ""):
     gradient is not implemented.
     """
 
-    return GradNotImplementedOp(op, x_pos, comment)(x)
-
-class GradUndefinedError(Exception):
-    """ An exception raised upon attempts to use an undefined gradient.
-    """
-
-class GradUndefinedOp(gof.op.UncomputableOp):
-    """ An UncomputableOp representing a gradient that is mathematically
-        undefined.
-    """
-
-    def __init__(self, op, x_pos, comment = ""):
-        """
-            op: A theano op  whose grad is mathematically undefined for
-                some input
-            x_pos: An int, giving the index in the op's input list of
-                a variable for which the gradient is undefined
-                (if op has undefined gradients for several inputs,
-                it must still return a separate GradUndefinedOp for
-                each)
-            comment: An optional comment explaining why the gradient isn't
-                defined.
-        """
-
-        assert isinstance(op, gof.Op)
-        assert isinstance(x_pos, int)
-        assert x_pos >= 0
-
-        super(GradUndefinedOp,self).__init__(GradUndefinedError,
-            "%s does not implement its gradient with respect to input %d. %s" \
-            % (str(type(op)), x_pos, comment))
-
+    return NaNType("This variable is NaN because the grad method for " + \
+            "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
+            "not implemented.")()
 
 def grad_undefined(op, x_pos, x, comment = ""):
     """
@@ -280,7 +226,9 @@ def grad_undefined(op, x_pos, x, comment = ""):
     gradient is not defined.
     """
 
-    return GradUndefinedOp(op, x_pos, comment)(x)
+    return NaNType("This variable is NaN because the gradient for " + \
+            "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
+            "mathematically undefined.")()
 
 
 
@@ -503,6 +451,11 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
     if tensor is None:
         from theano import tensor
 
+
+    if isinstance(cost.type, NaNType):
+        raise ValueError("Can't differentiate a NaN cost. cost is NaN because "+\
+                cost.type.why_nan)
+
     if consider_constant is None:
         consider_constant = []
     else:
@@ -593,6 +546,9 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                 term_dict[node] = node.op.grad(node.inputs,
                         [access_grad_cache(var) for var in node.outputs])
                 for i in xrange(len(term_dict[node])):
+                    if isinstance(term_dict[node][i].type,NaNType):
+                        raise TypeError("tensor.grad encountered a NaN. "+\
+                                term_dict[node][i].type.why_nan)
                     if term_dict[node][i] is None:
                         term_dict[node][i] = tensor.zeros_like(node.inputs[i])
             return term_dict[node]
