@@ -550,11 +550,11 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                 term_dict[node] = node.op.grad(node.inputs,
                         [access_grad_cache(var) for var in node.outputs])
                 for i in xrange(len(term_dict[node])):
+                    if term_dict[node][i] is None:
+                        term_dict[node][i] = tensor.zeros_like(node.inputs[i])
                     if isinstance(term_dict[node][i].type,NaNType):
                         raise TypeError("tensor.grad encountered a NaN. "+\
                                 term_dict[node][i].type.why_nan)
-                    if term_dict[node][i] is None:
-                        term_dict[node][i] = tensor.zeros_like(node.inputs[i])
             return term_dict[node]
 
 
