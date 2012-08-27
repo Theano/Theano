@@ -363,6 +363,21 @@ import theano and print the config variable, as in:
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
 
+.. attribute:: config.cxx
+
+
+    Default: 'g++' if g++ is present. '' Otherwise.
+
+    Tell the c++ compiler to use. If empty, don't compile c++ code.
+    We automatically detect if g++ is present and disable it if not
+    present.
+
+    We print a warning if we detect that g++ is not present. It is
+    recommended to run with c++ compilation as Theano will be much
+    slower otherwise.
+
+    Currently only g++ is supported, but supporting others is easy.
+
 .. attribute:: optimizer_excluding
 
     Default: ""
