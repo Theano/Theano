@@ -2095,7 +2095,17 @@ class Shape(Op):
         return [[len(in_shapes[0])]]
 
     def grad(self, inp, grads):
-        return [grad_undefined(self,0,inp[0])]
+        #the grad returns the gradient with respect to the
+        #elements of a tensor variable
+        #the elements of the tensor variable do not participate
+        #in the computation of the shape, so they are not really
+        #part of the graph
+        #we approximate that by returning 0 for their gradient
+        #if we want to be really strict about the disconnected
+        #input error in tensor.grad we might want to make a way
+        #to report that the elements of a variable do not participate
+        #in computing the op's value
+        return [zeros_like(inp[0])]
 
     def R_op(self, inputs, eval_points):
         return [None]
