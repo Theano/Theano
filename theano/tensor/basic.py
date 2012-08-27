@@ -2336,7 +2336,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, grad_undefined(self, 1, axis)
+        return g_x, None
 
     def __str__(self):
         return self.__class__.__name__
@@ -5645,11 +5645,11 @@ def tile(x, reps, ndim=None):
     TODO: expand this.
     """
 
-    try: 
-        assert python_all([int(i) == i for i in iter(reps)]) 
-    except (TypeError, AssertionError): 
-        raise ValueError("reps argument to tile must be a constant (e.g. " 
-        "tuple, list of integers)") 
+    try:
+        assert python_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+        "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
