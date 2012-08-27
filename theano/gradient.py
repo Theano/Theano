@@ -21,6 +21,7 @@ from theano.gof import Variable
 from theano.gof.python25 import all
 import theano.gof.utils
 tensor = None
+from theano.gof.nan_type import NaNType
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -193,77 +194,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
                     gmap[r] = g_r
     return gmap
 
-
-class BadGradOp(gof.Op):
-    """
-        An Op representing a gradient that cannot be computed.
-        theano.tensor.grad checks the graphs it returns to ensure
-        they do not contain these ops.
-        theano.function also checks that the subgraph it implements
-        does not contain these ops.
-    """
-
-    def __init__(self, exc, msg=""):
-        """
-        exc: the exception type to raise if a subgraph contains
-             this op.
-        msg: the message to include in the exception.
-        """
-
-        self.exc = exc
-        self.msg = msg
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash((type(self)))
-
-    def __str__(self):
-        return "BadGrad{%s,%s}"%(self.exc,self.msg)
-
-    def make_node(self,x):
-        return gof.Apply(self, [x], [x.type()] )
-
-    def perform(self, node, inputs, out_storage):
-        """ This should never be called"""
-        raise AssertionError("A BadGradOp should never be compiled, "+\
-                "and certainly not executed.")
-        #Note: essentially, this op should just be NaNs_like(inputs[0])
-        #but 0 * BadGradOp(x) + y optimizes to just y
-        #so until we develop a way of symbolically representing a variable
-        #that is always NaN and implement the logic for 0 * NaN = NaN, etc.
-        #the only way we can guarantee correctness of a theano function
-        #is to guarantee that its initial subgraph contained no BadGradOps
-
-    def raise_exc(self):
-        raise self.exc(self.msg)
-
-
-class GradNotImplementedOp(BadGradOp):
-    """ A BadGradOp representing a gradient that hasn't been implemented yet.
-    """
-
-    def __init__(self, op, x_pos):
-        """
-            op: A theano op  whose grad is not implemented for some input
-            x_pos: An int, giving the index in the op's input list of
-                a variable for which the gradient is not implemented
-                (if op has unimplemented gradients for several inputs,
-                it must still return a separate UnimplementedGradOp for
-                each)
-        """
-
-        assert isinstance(op, gof.Op)
-        assert isinstance(x_pos, int)
-        assert x_pos >= 0
-
-        super(GradNotImplementedOp,self).__init__(NotImplementedError,
-                "%s does not implement its gradient with respect to input %d" \
-                % (str(type(op)), x_pos))
-
-
-def grad_not_implemented(op, x_pos, x):
+def grad_not_implemented(op, x_pos, x, comment = ""):
     """
     Return an un-computable symbolic variable of type `x.type`.
 
@@ -272,9 +203,34 @@ def grad_not_implemented(op, x_pos, x):
     raised indicating that the gradient on the
     `x_pos`'th input of `op` has not been implemented. Likewise if
     any call to theano.function involves this variable.
+
+    Optionally adds a comment to the exception explaining why this
+    gradient is not implemented.
     """
 
-    return GradNotImplementedOp(op, x_pos)(x)
+    return NaNType("This variable is NaN because the grad method for " + \
+            "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
+            "not implemented.")()
+
+def grad_undefined(op, x_pos, x, comment = ""):
+    """
+    Return an un-computable symbolic variable of type `x.type`.
+
+    If any call to tensor.grad results in an expression containing this
+    un-computable variable, an exception (GradUndefinedError) will be
+    raised indicating that the gradient on the
+    `x_pos`'th input of `op` is mathematically undefined. Likewise if
+    any call to theano.function involves this variable.
+
+    Optionally adds a comment to the exception explaining why this
+    gradient is not defined.
+    """
+
+    return NaNType("This variable is NaN because the gradient for " + \
+            "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
+            "mathematically undefined.")()
+
+
 
 
 ########################
@@ -495,6 +451,11 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
     if tensor is None:
         from theano import tensor
 
+
+    if isinstance(cost.type, NaNType):
+        raise ValueError("Can't differentiate a NaN cost. cost is NaN because "+\
+                cost.type.why_nan)
+
     if consider_constant is None:
         consider_constant = []
     else:
@@ -585,6 +546,9 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                 term_dict[node] = node.op.grad(node.inputs,
                         [access_grad_cache(var) for var in node.outputs])
                 for i in xrange(len(term_dict[node])):
+                    if isinstance(term_dict[node][i].type,NaNType):
+                        raise TypeError("tensor.grad encountered a NaN. "+\
+                                term_dict[node][i].type.why_nan)
                     if term_dict[node][i] is None:
                         term_dict[node][i] = tensor.zeros_like(node.inputs[i])
             return term_dict[node]
