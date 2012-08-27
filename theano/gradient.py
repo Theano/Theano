@@ -776,7 +776,7 @@ def grad_wrong(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         from theano import tensor
         g_cost = tensor.ones_like(cost)
     inputs = gof.graph.inputs([cost])
-    gmap = grad_sources_inputs(
+    gmap = grad_sources_inputs_aside(
         [(cost, g_cost)],
         list(inputs) + list(consider_constant),
         warn_type=warn_type)
