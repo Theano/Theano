@@ -447,11 +447,9 @@ class test_Solve(utt.InferShapeTester):
         b = theano.tensor.matrix()
         self._compile_and_check([A, b],  # theano.function inputs
                                 [self.op(A, b)],  # theano.function outputs
-                                # Always use not square matrix!
-                                # inputs data
+                                # A must be square
                                 [numpy.asarray(numpy.random.rand(5, 5),
                                                dtype=config.floatX),
                                  numpy.asarray(numpy.random.rand(5, 1),
                                                dtype=config.floatX)],
-                                # Op that should be removed from the graph.
                                 self.op_class)
