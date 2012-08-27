@@ -4441,10 +4441,8 @@ class test_grad(unittest.TestCase):
         v = vector()
         m = matrix()
         # grad(v,...) and grad(m,...) should fail
-        self.assertRaises(TypeError, grad, v, s)
-        self.assertRaises(TypeError, grad, v, m)
-        self.assertRaises(TypeError, grad, m, s)
-        self.assertRaises(TypeError, grad, m, v)
+        self.assertRaises(TypeError, grad, v, v)
+        self.assertRaises(TypeError, grad, m, m)
 
 class T_op_cache(unittest.TestCase):
     def setUp(self):
