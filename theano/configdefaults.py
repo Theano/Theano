@@ -87,7 +87,8 @@ AddConfigVar('mode',
                 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
         in_c_key=False)
 
-gxx_avail = True
+enum = EnumStr("g++", "")
+
 # Test whether or not g++ is present: disable C code if it is not.
 # Using the dummy file descriptor below is a workaround for a crash experienced
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
@@ -113,11 +114,19 @@ except OSError:
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded.')
-    gxx_avail = False
+    enum = EnumStr("")
 
 del dummy_stdin
+AddConfigVar('cxx',
+             "The c++ compiler to use. Currently only g++ is"
+             " supported. But supporting more is easy if someone want this."
+             "If it is empty, we don't compile c++ code.",
+             enum,
+             in_c_key=False)
+del enum
 
-#Keep the default optimizer the same as the one for the mode FAST_RUN
+
+#Keep the default value the same as the one for the mode FAST_RUN
 AddConfigVar('allow_gc',
              "Do we default to delete intermediate results during Theano"
              " function calls? Doing so lowers the memory requirement, but"
