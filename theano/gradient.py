@@ -22,6 +22,7 @@ from theano.gof.python25 import all
 import theano.gof.utils
 tensor = None
 from theano.gof.nan_type import NaNType
+from theano.printing import min_informative_str
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -556,6 +557,16 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                         term_dict[node][i] = tensor.zeros_like(node.inputs[i])
             return term_dict[node]
 
+
+        #built-in python sum adds an extraneous TensorConstant(0)
+        #we can exploit the knowledge that iterable always has at
+        #least one element to avoid starting the sum at 0
+        def nonempty_sum( iterable ):
+            rval = iterable[0]
+            for elem in iterable[1:]:
+                rval = rval + elem
+            return rval
+
         #populate grad_dict[var] and return it
         def access_grad_cache(var):
             if var not in grad_dict:
@@ -564,7 +575,7 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                     for child in var._children.keys():
                         idx = var._children[child]
                         terms.append( access_term_cache(child)[idx])
-                    grad_dict[var] = sum(terms)
+                    grad_dict[var] = nonempty_sum(terms)
                     if cost.name is not None and var.name is not None:
                         grad_dict[var].name = '(d%s/d%s)' % (cost.name, var.name)
                 else:
