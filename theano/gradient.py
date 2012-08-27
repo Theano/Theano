@@ -211,7 +211,7 @@ def grad_not_implemented(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the grad method for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            "not implemented.")()
+            " not implemented.")()
 
 def grad_undefined(op, x_pos, x, comment = ""):
     """
@@ -229,7 +229,7 @@ def grad_undefined(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the gradient for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            "mathematically undefined.")()
+            " mathematically undefined.")()
 
 
 
