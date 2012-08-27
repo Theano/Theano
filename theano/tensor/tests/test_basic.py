@@ -2020,6 +2020,10 @@ class T_max_and_argmax(unittest.TestCase):
         because there is no differentiable path from cost to the input and
         not because of an error of the grad method of the op
         """
+
+        raise KnownFailureTest("The desired behavior of the grad method in this case is currently under debate. In any case, the result should be to return NaN or 0, not to report a disconnected input.")
+
+
         x = matrix()
         cost = argmax(x, axis=0).sum()
         value_error_raised = False
