@@ -2223,6 +2223,7 @@ class T_argmin_argmax(unittest.TestCase):
     def test_grad_argmin(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
+        n.name = 'n'
 
         #test grad of argmin
         utt.verify_grad(lambda v: argmin(v, axis=-1), [data])
@@ -2234,7 +2235,11 @@ class T_argmin_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: argmin(v.flatten()), [data])
 
         try:
-            grad(argmin(n, axis=-1), n)
+            cost = argmin(n, axis=-1)
+            cost.name = None
+            g = grad(cost, n)
+            from theano.printing import min_informative_str
+            print min_informative_str(g)
             raise Exception('Expected an error')
         except TypeError:
             pass
