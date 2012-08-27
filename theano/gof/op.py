@@ -606,7 +606,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
-
 def get_test_value(v):
     """
     Extract test value from `v`. Raises AttributeError if there is none.
