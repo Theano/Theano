@@ -56,7 +56,7 @@ def format_as(use_list, use_tuple, outputs):
         return outputs
 
 
-def grad_sources_inputs(sources, graph_inputs, warn_type=True):
+def grad_sources_inputs_aside(sources, graph_inputs, warn_type=True):
     """
     A gradient source is a pair (``v``, ``g_v``), in which ``v`` is
     a `Variable`, and ``g_v`` is a `Variable` that is a gradient wrt
