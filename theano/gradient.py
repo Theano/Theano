@@ -513,14 +513,14 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
 
         #the gradient of the constants is 0
         for const in consider_constant:
-            grad_dict[cost] = tensor.zeros_like(cost)
+            grad_dict[const] = tensor.zeros_like(const)
 
         #variables that do not influence the cost have zero gradient.
         #if wrt is such a varibale, populate the grad_dict with this info
         #so that wrt not having _children won't cause an error below
         #according to the flag, possibly raise an error if wrt is disconnected
         for elem in wrt:
-            if elem not in marked:
+            if elem not in marked and elem is not cost:
                 message = ("grad method was asked to compute the gradient "
                         "with respect to a variable that is not part of "
                         "the computational graph of the cost, or is used "
