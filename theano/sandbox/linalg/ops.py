@@ -655,6 +655,10 @@ class Solve(Op):
         #TODO: use the A_structure to go faster
         output_storage[0][0] = scipy.linalg.solve(A, b)
 
+    def infer_shape(self, node, shapes):
+        (Ar, Ac), (Br, Bc) = shapes
+        return [(Ac, Bc)]
+
 solve = Solve()  # general solve
 
 #TODO : SolveTriangular
