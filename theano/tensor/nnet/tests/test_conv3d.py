@@ -121,33 +121,49 @@ class TestConv3D(utt.InferShapeTester):
         mode.check_py_code = False
 
         self.W = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.W.name = 'W'
         self.b = shared(N.zeros(1, dtype=floatX))
+        self.b.name = 'b'
         self.rb = shared(N.zeros(1, dtype=floatX))
+        self.rb.name = 'rb'
         self.V = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.V.name = 'V'
         self.d = shared(N.ndarray(shape=(3, ), dtype=int))
+        self.d.name = 'd'
 
         self.H = conv3D(self.V, self.W, self.b, self.d)
+        self.H.name = 'H'
         self.H_func = function([], self.H, mode=mode)
         self.H_shape_func = function([], self.H.shape, mode=mode)
 
         self.RShape = T.vector(dtype='int64')
+        self.RShape.name = 'RShape'
 
         self.otherH = T.TensorType(floatX,
                         (False, False, False, False, False))(name='otherH')
         self.transp = convTransp3D(self.W, self.rb, self.d,
                                    self.otherH, self.RShape)
+        self.transp.name = 'transp'
         self.transp_func = function([self.otherH, self.RShape],
                                     self.transp, mode=mode)
 
         self.R = convTransp3D(self.W, self.rb, self.d, self.H, self.RShape)
+        self.R.name = 'R'
         self.R_func = function([self.RShape], self.R, mode=mode)
         self.R_shape_func = function([self.RShape], self.R.shape)
 
-        self.reconsObj = T.sum(T.sqr(self.V - self.R))
+        diff = self.V - self.R
+        diff.name = 'diff'
+        sqr = T.sqr(diff)
+        sqr.name = 'sqr'
+        self.reconsObj = T.sum(sqr)
+        self.reconsObj.name = 'reconsObj'
         self.reconsObjFunc = function([self.RShape], self.reconsObj, mode=mode)
 
+        W_grad = T.grad(self.reconsObj, self.W)
+
         self.gradientsFunc = function([self.RShape],
-                        [T.grad(self.reconsObj, self.W), T.grad(self.reconsObj,
+                        [W_grad, T.grad(self.reconsObj,
                         self.H), T.grad(self.reconsObj, self.V),
                          T.grad(self.reconsObj, self.b)], mode=mode)
 
