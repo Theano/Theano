@@ -6,7 +6,7 @@ class NaNType(Type):
         """
             why_nan: A string explaining why this variable is NaN
         """
-        self.why_nane = why_nan
+        self.why_nan = why_nan
 
     def filter(self, data, strict=False, allow_downcast=None):
        raise
@@ -21,10 +21,4 @@ class NaNType(Type):
 
 class NaNVariable(Variable):
 
-    def __init__(self, why_nan = '(no explanation given)'):
-        """
-            why_nan: A string explaining why this variable is NaN
-        """
-
-        self.type = NaNType(why_nan)
-
+    pass
