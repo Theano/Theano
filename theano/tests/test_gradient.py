@@ -69,22 +69,6 @@ class test_grad_sources_inputs(unittest.TestCase):
             return
         self.fail()
 
-
-    def test_stop_on_all_none(self):
-        """Test that op.grad() is not called when output grads are all None"""
-        class retNone(gof.op.Op):
-            def __init__(self, tst):
-                self.tst = tst
-            def make_node(self, *inputs):
-                outputs = [gof.generic()]
-                return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, grads):
-                self.tst.fail()
-
-        i = gof.generic()
-        a1 = retNone(self).make_node(i)
-        g = _grad_sources_inputs([(a1.out, None)], None)
-
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
         gval = gof.generic()
