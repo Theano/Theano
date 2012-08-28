@@ -197,19 +197,22 @@ wb1 = WeirdBrokenOp('times1')
 
 
 def test_badthunkoutput():
-
+# Check if the c and python code is consistent.
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
     f_good = theano.function([a, b],
             off_by_half(a, b),
-            mode=debugmode.DebugMode(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
     f_inconsistent = theano.function([a, b],
             inconsistent(a, b),
-            mode=debugmode.DebugMode(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
 
     #this should evaluate with no error
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
     except debugmode.BadThunkOutput, e:
@@ -234,7 +237,7 @@ def test_badoptimization():
     b = theano.tensor.dvector()
 
     f = theano.function([a, b], a + b,
-            mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
+            mode=debugmode.DebugMode(optimizer=opt))
 
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
@@ -282,6 +285,8 @@ def test_stochasticoptimization():
 
 
 def test_just_c_code():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2(x),
             mode=debugmode.DebugMode(check_py_code=False))
@@ -312,6 +317,8 @@ def test_baddestroymap():
 
 
 def test_baddestroymap_c():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2i(x),
             mode=debugmode.DebugMode(check_py_code=False))
@@ -378,6 +385,8 @@ class Test_ViewMap(unittest.TestCase):
             assert False  # failed to raise error
 
     def test_badviewmap_c(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         x = theano.tensor.dvector()
         f = theano.function([x], wb1i(x),
                 mode=debugmode.DebugMode(check_py_code=False))
@@ -721,7 +730,12 @@ class Test_preallocated_output(unittest.TestCase):
                 check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+        
+        if theano.config.cxx:
+            self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+        else:
+            # The python code of this op is good.
+            f(a_val, b_val)
 
     def test_output_broadcast_tensor(self):
         v = theano.tensor.fvector('v')
