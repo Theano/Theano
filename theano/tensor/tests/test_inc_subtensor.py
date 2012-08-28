@@ -2,7 +2,7 @@ import numpy
 import unittest
 from theano.tests import unittest_tools as utt
 import theano
-import theano.tensor as T
+import theano.tensor as tt
 
 
 class Test_inc_subtensor(unittest.TestCase):
@@ -27,18 +27,18 @@ class Test_inc_subtensor(unittest.TestCase):
         """Increments or sets part of a tensor by a scalar using full slice and
         a partial slice depending on a scalar.
         """
-        a = T.dmatrix()
-        increment = T.dscalar()
+        a = tt.dmatrix()
+        increment = tt.dscalar()
         sl1 = slice(None)
-        sl2_end = T.lscalar()
+        sl2_end = tt.lscalar()
         sl2 = slice(sl2_end)
 
         for do_set in [False, True]:
 
             if do_set:
-                resut = T.set_subtensor(a[sl1, sl2], increment)
+                resut = tt.set_subtensor(a[sl1, sl2], increment)
             else:
-                resut = T.inc_subtensor(a[sl1, sl2], increment)
+                resut = tt.inc_subtensor(a[sl1, sl2], increment)
 
             f = theano.function([a, increment, sl2_end], resut)
 
@@ -60,10 +60,10 @@ class Test_inc_subtensor(unittest.TestCase):
         """Increments or sets part of a tensor by a scalar using full slice and
         a partial slice depending on a scalar.
         """
-        a = T.dtensor3()
-        increment = T.dscalar()
+        a = tt.dtensor3()
+        increment = tt.dscalar()
         sl1 = slice(None)
-        sl2_end = T.lscalar()
+        sl2_end = tt.lscalar()
         sl2 = slice(sl2_end)
         sl3 = 2
 
@@ -71,9 +71,9 @@ class Test_inc_subtensor(unittest.TestCase):
             print "Set", do_set
 
             if do_set:
-                resut = T.set_subtensor(a[sl1, sl3, sl2], increment)
+                resut = tt.set_subtensor(a[sl1, sl3, sl2], increment)
             else:
-                resut = T.inc_subtensor(a[sl1, sl3, sl2], increment)
+                resut = tt.inc_subtensor(a[sl1, sl3, sl2], increment)
 
             f = theano.function([a, increment, sl2_end], resut)
 
@@ -94,12 +94,12 @@ class Test_inc_subtensor(unittest.TestCase):
     def test_grad_inc_set(self):
         def inc_slice(*s):
             def just_numeric_args(a, b):
-                return T.inc_subtensor(a[s], b)
+                return tt.inc_subtensor(a[s], b)
             return just_numeric_args
 
         def set_slice(*s):
             def just_numeric_args(a, b):
-                return T.set_subtensor(a[s], b)
+                return tt.set_subtensor(a[s], b)
             return just_numeric_args
 
         for f_slice in [inc_slice, set_slice]:
