@@ -527,10 +527,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
         # existing Ops get a _op_use_c_code attribute
         obj = object.__new__(cls)
         if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = True
+            obj._op_use_c_code = theano.config.cxx
         return obj
 
-    def __init__(self, use_c_code=True):
+    def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
