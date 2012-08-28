@@ -38,7 +38,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         self.fail()
 
     def test_wrong_rval_len1(self):
-        """Test that it is not ok to return the wrong number of gradients"""
+        """Test that it is not ok to return the wrong number of gradient terms"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
@@ -54,7 +54,6 @@ class test_grad_sources_inputs(unittest.TestCase):
         try:
             g = _grad_sources_inputs([(a2.out, 1)], None)
         except ValueError, e:
-            self.assertTrue(e[0] is gradient._msg_badlen)
             return
         self.fail()
 
