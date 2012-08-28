@@ -578,6 +578,11 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
                     idx = node_to_idx[node]
                     term = access_term_cache(node)[idx]
 
+                    if not isinstance(term, gof.Variable):
+                        raise TypeError("%s.grad returned %s, expected"
+                                " Variable instance." % (str(node.op),
+                                    type(term)))
+
                     if isinstance(term.type,NaNType):
                         raise TypeError("tensor.grad encountered a NaN. "+\
                                 term.type.why_nan)
@@ -701,6 +706,11 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = 'ignored'):
                 for node in node_to_idx:
                     idx = node_to_idx[node]
                     term = access_term_cache(node)[idx]
+
+                    if not isinstance(term, gof.Variable):
+                        raise TypeError("%s.grad returned %s, expected"
+                                " Variable instance." % (str(node.op),
+                                    type(term)))
 
                     if isinstance(term.type,NaNType):
                         raise TypeError("tensor.grad encountered a NaN. "+\
