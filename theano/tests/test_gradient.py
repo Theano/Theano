@@ -196,38 +196,6 @@ class test_grad_sources_inputs(unittest.TestCase):
         self.assertTrue(a1.inputs[0] not in g)
         self.assertTrue(a1.inputs[1] not in g)
 
-    def test_multiple_sources(self):
-        """Test that passing multiple sources works"""
-        class O(gof.op.Op):
-            def __init__(self, tst, grad_ok):
-                self.tst = tst
-                self.grad_ok = grad_ok
-            def make_node(self, *inputs):
-                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
-                return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, grads):
-                g0, g1 = grads
-                if not self.grad_ok:
-                    self.tst.fail()
-                else:
-                    if g1:
-                        return [g0, g0+g1]
-                    else:
-                        return [g0, g0]
-        i = theano.tensor.matrix()
-        j = theano.tensor.matrix()
-        k = theano.tensor.matrix()
-        a1 = O(self,True).make_node(i,j)
-        a2 = O(self,True).make_node(k,a1.outputs[1])
-        g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
-            (a1.outputs[0], 3), (a1.outputs[0], 3)], None)
-        self.assertTrue(g[a2.inputs[0]] == 1)
-        self.assertTrue(g[a2.inputs[1]] == 5)
-        self.assertTrue(g[a1.outputs[0]] == 6)
-        self.assertTrue(g[a1.outputs[1]] == 5)
-        self.assertTrue(g[a1.inputs[0]] == 6)
-        self.assertTrue(g[a1.inputs[1]] == 11)
-
 def test_unimplemented_grad_func():
     #tests that function compilation catches unimplemented grads in the graph
     a = theano.tensor.vector()
