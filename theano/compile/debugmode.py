@@ -35,7 +35,7 @@ AddConfigVar('DebugMode.patience',
 
 AddConfigVar('DebugMode.check_c',
         "Run C implementations where possible",
-        BoolParam(True),
+        BoolParam(bool(theano.config.cxx)),
         in_c_key=False)
 
 AddConfigVar('DebugMode.check_py',
