@@ -33,8 +33,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         a = retNone().make_node()
         try:
             _grad_sources_inputs([(a.out, one)], None)
-        except ValueError, e:
-            self.assertTrue(e[0] is gradient._msg_retType)
+        except TypeError, e:
             return
         self.fail()
 
@@ -136,38 +135,6 @@ class test_grad_sources_inputs(unittest.TestCase):
         a1 = O(self).make_node(i)
         g = grad_sources_inputs([(a1.outputs[0], one)], None, warn_type=False)
         self.assertTrue(g[i] is one)
-
-    def test_inputs(self):
-        """Test that passing inputs shortens the traversal"""
-        class O(gof.op.Op):
-            def __init__(self, tst, grad_ok):
-                self.tst = tst
-                self.grad_ok = grad_ok
-            def make_node(self, *inputs):
-                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
-                return gof.Apply(self, inputs, outputs)
-            def grad(self, inputs, grads):
-                g0, g1 = grads
-                if not self.grad_ok:
-                    self.tst.fail()
-                else:
-                    if g1:
-                        return [g0, g0+g1]
-                    else:
-                        return [g0, g0]
-        i = theano.tensor.matrix()
-        j = theano.tensor.matrix()
-        k = theano.tensor.matrix()
-        a1 = O(self, True).make_node(i,j)
-        a2 = O(self, True).make_node(k,a1.outputs[1])
-        g = _grad_sources_inputs([(a2.outputs[0], one), (a1.outputs[1],4),
-            (a1.outputs[0], 3), (a1.outputs[0], 3)], a1.outputs)
-        self.assertTrue(g[a2.inputs[0]] == 1)
-        self.assertTrue(g[a2.inputs[1]] == 5)
-        self.assertTrue(g[a1.outputs[0]] == 6)
-        self.assertTrue(g[a1.outputs[1]] == 5)
-        self.assertTrue(a1.inputs[0] not in g)
-        self.assertTrue(a1.inputs[1] not in g)
 
 def test_unimplemented_grad_func():
     #tests that function compilation catches unimplemented grads in the graph

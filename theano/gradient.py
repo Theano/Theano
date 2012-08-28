@@ -545,6 +545,10 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
             output_grads = [ access_grad_cache(var) for var in node.outputs ]
             input_grads = node.op.grad(inputs, output_grads)
 
+            if input_grads is None:
+                raise TypeError("%s.grad returned NoneType, "
+                        "expected iterable." % str(node.op))
+
             if len(input_grads) != len(inputs):
                 raise ValueError(("%s returned the wrong number of gradient"+\
                         "terms.") %  str(node.op))
@@ -674,6 +678,10 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = 'ignored'):
             inputs = node.inputs
             input_grads = node.op.grad(node.inputs,
                     [access_grad_cache(var) for var in node.outputs])
+
+            if input_grads is None:
+                raise TypeError("%s.grad returned NoneType, "
+                        "expected iterable." % str(node.op))
 
             if len(input_grads) != len(inputs):
                 raise ValueError(("%s returned the wrong number of gradient"+\
