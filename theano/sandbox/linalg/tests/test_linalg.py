@@ -456,3 +456,14 @@ class test_Solve(utt.InferShapeTester):
                                  numpy.asarray(rng.rand(5, 1),
                                                dtype=config.floatX)],
                                 self.op_class)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = theano.tensor.matrix()
+        b = theano.tensor.vector()
+        self._compile_and_check([A, b],  # theano.function inputs
+                                [self.op(A, b)],  # theano.function outputs
+                                # A must be square
+                                [numpy.asarray(rng.rand(5, 5),
+                                               dtype=config.floatX),
+                                 numpy.asarray(rng.rand(5),
+                                               dtype=config.floatX)],
+                                self.op_class)
