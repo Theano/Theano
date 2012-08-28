@@ -83,6 +83,14 @@ METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
 
 
+class MissingGXX(Exception):
+    """
+    This error is raised when we try to generate c code,
+    but g++ is not available
+    """
+    pass
+
+
 def debug_counter(name, every=1):
     """Debug counter to know how often we go through some piece of code.
 
@@ -1473,6 +1481,9 @@ class GCC_compiler(object):
         :returns: dynamically-imported python module of the compiled code.
         """
         #TODO: Do not do the dlimport in this function
+        
+        if not theano.config.cxx:
+            raise MissingGXX("g++ not available! We can't compile c code.")
 
         if include_dirs is None:
             include_dirs = []
