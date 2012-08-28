@@ -798,6 +798,8 @@ class Scan(PureOp):
 
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
                          in xrange(self.n_outs + self.n_nit_sot)]
+        if not getattr(self, 'destroy_map', None):
+            self.destroy_map = {}
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
             if idx in self.destroy_map:
