@@ -607,6 +607,11 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = 'ignored'):
 
 
     outputs, output_grads = zip(*sources)
+
+
+    if graph_inputs is None:
+        graph_inputs = gof.graph.inputs(outputs)
+
     wrt = graph_inputs
 
 
