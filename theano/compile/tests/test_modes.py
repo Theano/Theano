@@ -22,7 +22,11 @@ class T_bunch_of_modes(unittest.TestCase):
         predef_modes.append(ProfileMode())
 
         # Linkers to use with regular Mode
-        linkers = ['c|py', 'c|py_nogc', 'vm', 'vm_nogc', 'cvm', 'cvm_nogc']
+        if theano.config.cxx:
+            linkers = ['py', 'c|py', 'c|py_nogc', 'vm', 'vm_nogc',
+                       'cvm', 'cvm_nogc']
+        else:
+            linkers = ['py', 'c|py', 'c|py_nogc', 'vm', 'vm_nogc']
         modes = predef_modes + [Mode(linker, 'fast_run') for linker in linkers]
 
         for mode in modes:
