@@ -4197,9 +4197,13 @@ class t_dot(unittest.TestCase):
                     e[0].split()[1:4] == ['are', 'not', 'aligned'] or
                     # Reported by blas or Theano.
                     e[0].split()[0:2] == ['Shape', 'mismatch:'] or
+                    # Reported by Theano perform
+                    e[0].split()[0:4] == ['Incompatible', 'shapes', 'for', 'gemv'] or
                     # Reported by Theano when 'exception_verbosity' is set
                     # to 'high'.
-                    e[0].split()[0:3] == ['dot', 'product', 'failed.'],
+                    e[0].split()[0:3] == ['dot', 'product', 'failed.']
+
+,
                     e)
         finally:
             _logger.setLevel(oldlevel)
@@ -5906,8 +5910,9 @@ def test_unalign():
     f.maker.fgraph.toposort()
     # FAST_COMPILE use the python code that support unaligned data
     # The DebugMode make a copy of the inputs, so they will be aligned.
-    should_raise = theano.config.mode not in ["FAST_COMPILE", "DebugMode",
-                                              "DEBUG_MODE"]
+    should_raise = (theano.config.mode not in ["FAST_COMPILE", "DebugMode",
+                                              "DEBUG_MODE"] and
+                    theano.config.linker != 'py')
     try:
         out_theano = f(a, b)
         assert not a.flags.aligned
