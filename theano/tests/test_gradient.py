@@ -17,6 +17,7 @@ def _grad_sources_inputs(*args):
     return grad_sources_inputs(warn_type=False, *args)
 
 class test_grad_sources_inputs(unittest.TestCase):
+
     def test_retNone1(self):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
@@ -35,18 +36,6 @@ class test_grad_sources_inputs(unittest.TestCase):
             self.assertTrue(e[0] is gradient._msg_retType)
             return
         self.fail()
-    def test_retNone1_b(self):
-        """Test that it is ok to return [None] from op.grad()"""
-        class retNone(gof.op.Op):
-            def make_node(self, *inputs):
-                outputs = [theano.tensor.matrix()]
-                return gof.Apply(self, inputs, outputs)
-            def grad(self, inp, grads):
-                return [None]
-        i = theano.tensor.matrix()
-        a = retNone().make_node(i)
-        g = _grad_sources_inputs([(a.out, 1)], None)
-        self.assertTrue(not i in g)
 
     def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradients"""
