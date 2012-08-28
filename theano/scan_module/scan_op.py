@@ -1464,6 +1464,7 @@ class Scan(PureOp):
         info['n_nit_sot'] = n_nit_sot
         info['as_while'] = self.as_while
         info['profile'] = self.profile
+        info['destroy_map'] = {}
         if self.name:
             info['name'] = 'grad_of_' + self.name
         else:
@@ -1574,6 +1575,7 @@ class Scan(PureOp):
             info['name'] = None
         info['mode'] = self.mode
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
+        info['destroy_map'] = {}
         new_tap_array = []
         b = 0
         e = self.n_mit_mot
