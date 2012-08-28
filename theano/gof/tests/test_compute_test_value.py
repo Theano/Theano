@@ -1,6 +1,7 @@
 import os, sys, traceback, warnings
 
 import numpy
+from nose.plugins.skip import SkipTest
 import unittest
 
 import theano
@@ -334,6 +335,8 @@ class TestComputeTestValue(unittest.TestCase):
             theano.config.compute_test_value = orig_compute_test_value
 
     def test_no_perform(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         class IncOneC(Op):
             """An Op with only a C (c_code) implementation"""
 
