@@ -798,6 +798,8 @@ class Scan(PureOp):
 
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
                          in xrange(self.n_outs + self.n_nit_sot)]
+        if not getattr(self, 'destroy_map', None):
+            self.destroy_map = {}
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
             if idx in self.destroy_map:
@@ -1464,6 +1466,7 @@ class Scan(PureOp):
         info['n_nit_sot'] = n_nit_sot
         info['as_while'] = self.as_while
         info['profile'] = self.profile
+        info['destroy_map'] = {}
         if self.name:
             info['name'] = 'grad_of_' + self.name
         else:
@@ -1574,6 +1577,7 @@ class Scan(PureOp):
             info['name'] = None
         info['mode'] = self.mode
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
+        info['destroy_map'] = {}
         new_tap_array = []
         b = 0
         e = self.n_mit_mot
