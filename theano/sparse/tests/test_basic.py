@@ -1012,7 +1012,7 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
             self.assertTrue(numpy.allclose(theano_result, scipy_result))
-            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.cxx:
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
 
@@ -1198,7 +1198,8 @@ class UsmmTests(unittest.TestCase):
             fast_compile = theano.config.mode == "FAST_COMPILE"
 
             if (y.type.dtype == up and format1 == 'csc' and format2 == 'dense'
-                and not fast_compile) and up in ('float32', 'float64'):
+                and not fast_compile and theano.config.cxx and
+                up in ('float32', 'float64')):
                 # The op UsmmCscDense should be inserted
                 assert (sum([isinstance(node.op, tensor.Elemwise) and
                              isinstance(node.op.scalar_op,
