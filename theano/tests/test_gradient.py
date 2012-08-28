@@ -21,8 +21,8 @@ class test_grad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self):
-                inputs = [gof.generic()]
-                outputs = [gof.generic()]
+                inputs = [theano.tensor.vector()]
+                outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 x, = inp
@@ -39,11 +39,11 @@ class test_grad_sources_inputs(unittest.TestCase):
         """Test that it is ok to return [None] from op.grad()"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
-                outputs = [gof.generic()]
+                outputs = [theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 return [None]
-        i = gof.generic()
+        i = theano.tensor.matrix()
         a = retNone().make_node(i)
         g = _grad_sources_inputs([(a.out, 1)], None)
         self.assertTrue(not i in g)
@@ -52,13 +52,13 @@ class test_grad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return the wrong number of gradients"""
         class retNone(gof.op.Op):
             def make_node(self, *inputs):
-                outputs = [gof.generic()]
+                outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, grads):
                 return [None]
 
-        i = gof.generic()
-        j = gof.generic()
+        i = theano.tensor.vector()
+        j = theano.tensor.vector()
         a1 = retNone().make_node(i)
         g = _grad_sources_inputs([(a1.out, 1)], None)
         a2 = retNone().make_node(i,j)
@@ -71,11 +71,11 @@ class test_grad_sources_inputs(unittest.TestCase):
 
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
-        gval = gof.generic()
+        gval = theano.tensor.matrix()
         class O(gof.op.Op):
             def make_node(self):
-                inputs = [gof.generic()]
-                outputs = [gof.generic()]
+                inputs = [theano.tensor.matrix()]
+                outputs = [theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 return gval,
@@ -85,11 +85,11 @@ class test_grad_sources_inputs(unittest.TestCase):
 
     def test_1in_Nout(self):
         """Test grad is called correctly for a 1-to-many op"""
-        gval = gof.generic()
+        gval = theano.tensor.matrix()
         class O(gof.op.Op):
             def make_node(self):
-                inputs = [gof.generic()]
-                outputs = [gof.generic(),gof.generic()]
+                inputs = [theano.tensor.matrix()]
+                outputs = [theano.tensor.scalar(),theano.tensor.scalar()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 x, = inp
@@ -101,12 +101,12 @@ class test_grad_sources_inputs(unittest.TestCase):
 
     def test_Nin_1out(self):
         """Test grad is called correctly for a many-to-1 op"""
-        gval0 = gof.generic()
-        gval1 = gof.generic()
+        gval0 = theano.tensor.scalar()
+        gval1 = theano.tensor.scalar()
         class O(gof.op.Op):
             def make_node(self):
-                inputs = [gof.generic(),gof.generic()]
-                outputs = [gof.generic()]
+                inputs = [theano.tensor.scalar(), theano.tensor.scalar()]
+                outputs = [theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 x0, x1 = inp
@@ -119,12 +119,12 @@ class test_grad_sources_inputs(unittest.TestCase):
 
     def test_Nin_Nout(self):
         """Test grad is called correctly for a many-to-many op"""
-        gval0 = gof.generic()
-        gval1 = gof.generic()
+        gval0 = theano.tensor.matrix()
+        gval1 = theano.tensor.matrix()
         class O(gof.op.Op):
             def make_node(self):
-                inputs = [gof.generic(),gof.generic()]
-                outputs = [gof.generic(),gof.generic()]
+                inputs = [theano.tensor.matrix(),theano.tensor.matrix()]
+                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inp, grads):
                 return gval0, gval1
@@ -139,11 +139,11 @@ class test_grad_sources_inputs(unittest.TestCase):
             def __init__(self, tst):
                 self.tst = tst
             def make_node(self, *inputs):
-                outputs = [gof.generic(),gof.generic()]
+                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, g_out):
                 return [1]
-        i = gof.generic()
+        i = theano.tensor.matrix()
         a1 = O(self).make_node(i)
         g = grad_sources_inputs([(a1.outputs[0], 1)], None, warn_type=False)
         self.assertTrue(g[i] is 1)
@@ -155,16 +155,16 @@ class test_grad_sources_inputs(unittest.TestCase):
                 self.tst = tst
                 self.grad_ok = grad_ok
             def make_node(self, *inputs):
-                outputs = [gof.generic(),gof.generic()]
+                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, g_out):
                 if not self.grad_ok:
                     self.tst.fail()
                 else:
                     return [1, None]
-        i = gof.generic()
-        j = gof.generic()
-        k = gof.generic()
+        i = theano.tensor.matrix()
+        j = theano.tensor.matrix()
+        k = theano.tensor.matrix()
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(a1.outputs[1], k)
         g = grad_sources_inputs([(a2.outputs[0], 1)], None, warn_type=False)
@@ -182,7 +182,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 self.tst = tst
                 self.grad_ok = grad_ok
             def make_node(self, *inputs):
-                outputs = [gof.generic(),gof.generic()]
+                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, grads):
                 g0, g1 = grads
@@ -193,9 +193,9 @@ class test_grad_sources_inputs(unittest.TestCase):
                         return [g0, g0+g1]
                     else:
                         return [g0, g0]
-        i = gof.generic()
-        j = gof.generic()
-        k = gof.generic()
+        i = theano.tensor.matrix()
+        j = theano.tensor.matrix()
+        k = theano.tensor.matrix()
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(k,a1.outputs[1])
         g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
@@ -214,7 +214,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 self.tst = tst
                 self.grad_ok = grad_ok
             def make_node(self, *inputs):
-                outputs = [gof.generic(),gof.generic()]
+                outputs = [theano.tensor.matrix(),theano.tensor.matrix()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, grads):
                 g0, g1 = grads
@@ -225,9 +225,9 @@ class test_grad_sources_inputs(unittest.TestCase):
                         return [g0, g0+g1]
                     else:
                         return [g0, g0]
-        i = gof.generic()
-        j = gof.generic()
-        k = gof.generic()
+        i = theano.tensor.matrix()
+        j = theano.tensor.matrix()
+        k = theano.tensor.matrix()
         a1 = O(self,True).make_node(i,j)
         a2 = O(self,True).make_node(k,a1.outputs[1])
         g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
