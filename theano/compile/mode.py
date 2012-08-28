@@ -370,7 +370,10 @@ class Mode(object):
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
 FAST_COMPILE = Mode('py', 'fast_compile')
-FAST_RUN = Mode('cvm', 'fast_run')
+if theano.config.cxx:
+    FAST_RUN = Mode('cvm', 'fast_run')
+else:
+    FAST_RUN = Mode('vm', 'fast_run')
 
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
