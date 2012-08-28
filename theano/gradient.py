@@ -54,145 +54,6 @@ def format_as(use_list, use_tuple, outputs):
     else:
         return outputs
 
-
-def grad_sources_inputs_aside(sources, graph_inputs, warn_type=True):
-    """
-    A gradient source is a pair (``v``, ``g_v``), in which ``v`` is
-    a `Variable`, and ``g_v`` is a `Variable` that is a gradient wrt
-    ``v``. More specifically, ``g_v`` is the gradient of an external
-    scalar cost, ``cost`` (that is not explicitly used), wrt ``v``.
-
-    This function traverses the graph backward from the ``r`` sources,
-    calling ``op.grad(...)`` for all ops with some non-None gradient
-    on an output, to compute gradients of ``cost`` wrt intermediate
-    variables and ``graph_inputs``.
-
-    The ``op.grad(...)`` functions are called like this:
-
-    .. code-block:: python
-
-        op.grad(op.inputs[:], [total_gradient(v) for v in op.outputs])
-
-    This call to ``op.grad`` should return a list or tuple: one symbolic
-    gradient per input. These gradients represent the gradients of
-    the same implicit ``cost`` mentionned above, wrt ``op.inputs``.  Note
-    that this is **not** the same as the gradient of ``op.outputs`` wrt
-    ``op.inputs``.
-
-    If ``op`` has a single input, then ``op.grad`` should return a list
-    or tuple of length 1.
-    For each input wrt to which ``op`` is not differentiable, it should
-    return ``None`` instead of a `Variable` instance.
-
-    If a source ``r`` receives a gradient from another source ``r2``,
-    then the effective gradient on ``r`` is the sum of both gradients.
-
-
-
-    :type sources: list of pairs of Variable: (v, gradient-on-v) to
-                   initialize the total_gradient dictionary
-    :param sources: gradients to back-propagate using chain rule
-    :type graph_inputs: list of Variable
-    :param graph_inputs: variables considered to be constant
-        (do not backpropagate through them)
-    :type warn_type: bool
-    :param warn_type: True will trigger warnings via the logging module when
-       the gradient on an expression has a different type than the original
-       expression
-
-    :rtype: dictionary whose keys and values are of type Variable
-    :return: mapping from each Variable encountered in the backward
-        traversal to the gradient with respect to that Variable.
-
-    It is assumed that there is some objective J shared between all members of
-    sources, so that for each v, gradient-on-v is the gradient of J with
-    respect to v
-
-    """
-    gmap = {}
-    for (r, g_r) in sources:
-        if not hasattr(r, 'type'):
-            raise TypeError('sources must be Variables', r)
-        if g_r is not None:
-            if r in gmap:
-                gmap[r] = gmap[r] + g_r
-            else:
-                gmap[r] = g_r
-
-    graph_outputs = gof.utils.uniq([r for r, g in sources])
-
-    if graph_inputs is None:
-        graph_inputs = gof.graph.inputs(graph_outputs)
-
-    for node in gof.graph.io_toposort(graph_inputs,
-                                      graph_outputs).__reversed__():
-        g_outputs = [gmap.get(o, None) for o in node.outputs]
-
-        #if all output gradients are None, continue
-        if all(map(lambda x: x is None, g_outputs)): continue
-
-        #Disable all grad operation on complex. verify_grad don't
-        #support them and we don't know we want to handle them.
-        for var in node.inputs + node.outputs:
-            if (hasattr(var.type, 'dtype') and "complex" in var.type.dtype):
-                raise Exception("We do not support grad/Rop/Lop/verify_grad"
-                                " on complex.")
-
-        output_arg = g_outputs
-        input_arg = node.inputs
-
-        # Each Op's grad function requires inputs and output_grads
-        # If the Op destroys any input, but the grad expression uses it,
-        # then chances are the resulting graph will have a dependency
-        # cycle.  We avoid this cycle by passing (symbolic) copies of
-        # each destroyed input.
-        try:
-            dinputs = [node.inputs[x[0]] for x in node.op.destroy_map.values()]
-        except AttributeError:
-            dinputs = []
-
-        new_input_arg = []
-        for input in input_arg:
-            if input in dinputs and hasattr(input, 'copy'):
-                new_input_arg.append(input.copy())
-            else:
-                new_input_arg.append(input)
-        input_arg = new_input_arg
-
-        #note that this function is not in a try-except block
-        # the rationale:
-        #  If the op implements grad, then any exception should be passed to
-        #  the caller
-        #  If the op doesn't implement grad, this entire function should fail.
-        #  Other possibilities:
-        #    * return a partial back-prop
-        #
-        op_grad = node.op.grad(input_arg, output_arg)
-        if not isinstance(op_grad, (list, tuple)):
-            raise ValueError(_msg_retType, node.op)
-        g_inputs = op_grad
-        assert isinstance(g_inputs, (list, tuple))
-        if len(g_inputs) != len(node.inputs):
-            raise ValueError(_msg_badlen,
-                    node.op,
-                    len(g_inputs),
-                    len(node.inputs))
-        for ii, (r, g_r) in enumerate(zip(node.inputs, g_inputs)):
-            if warn_type:
-                if g_r and (getattr(r, 'type', 0) != getattr(g_r, 'type', 1)):
-                    r_type = getattr(r, 'type', None)
-                    g_r_type = getattr(g_r, 'type', None)
-                    _logger.warning('%s.grad returned a different type (%s) '
-                            'for input %i of type (%s)',
-                            node.op, g_r_type, ii, r_type)
-            if g_r is not None:
-                assert r is not None
-                if r in gmap:
-                    gmap[r] = gmap[r] + g_r
-                else:
-                    gmap[r] = g_r
-    return gmap
-
 def grad_not_implemented(op, x_pos, x, comment = ""):
     """
     Return an un-computable symbolic variable of type `x.type`.
@@ -228,8 +89,6 @@ def grad_undefined(op, x_pos, x, comment = ""):
     return NaNType("This variable is NaN because the gradient for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
             " mathematically undefined.")()
-
-
 
 
 ########################
@@ -446,6 +305,35 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 
 def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
         disconnected_inputs = 'raise'):
+    """
+    :type cost: Scalar (0-dimensional) Variable.
+    :type wrt: Variable or list of Variables.
+    :type g_cost: Scalar Variable, or None.
+    :param g_cost: an expression for the gradient through cost.  The default is
+        ``ones_like(cost)``.
+    :param consider_constant: a list of expressions not to backpropagate
+        through
+
+    :param warn_type: a value of True will cause warnings to be logged for any
+        Op that emits a gradient that does not match its input type.
+
+    :type disconnected_inputs: string
+    :param disconnected_inputs: Defines the behaviour if some of the variables
+        in ``wrt`` are not part of the computational graph computing ``cost``
+        (or if all links are non-differentiable). The possible values are:
+        - 'ignore': considers that the gradient on these parameters is zero.
+        - 'warn': consider the gradient zero, and print a warning.
+        - 'raise': raise an exception.
+
+    :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
+
+    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
+             If an element of `wrt` is not differentiable with respect
+             to the output, then a zero variable is returned.
+             It returns an object of same type as `wrt`: a list/tuple
+             or Variable in all cases.
+
+    """
     global tensor
     if tensor is None:
         from theano import tensor
@@ -479,27 +367,7 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
     if not using_list and not using_tuple:
         wrt = [ wrt ]
 
-    #var_to_node_to_idx[var][node] = i means node has var as input at position i
-    var_to_node_to_idx = {}
-    #set of variables that have been added to their parents
-    accounted_for = set([])
-
-    #mark the variables in the relevant subgraph with
-    #a dictionary called chidlren
-    #var._children[node] gives the index of var in _children.inputs
-    def account_for(var):
-        if var in accounted_for:
-            return
-        accounted_for.add(var)
-        if var.owner is not None:
-            node = var.owner
-            for i, ipt in enumerate(node.inputs):
-                if ipt not in var_to_node_to_idx:
-                    var_to_node_to_idx[ipt] = {}
-                var_to_node_to_idx[ipt][node] = i
-                account_for(ipt)
-
-    account_for(cost)
+    var_to_node_to_idx = _populate_var_to_node_to_idx([cost])
 
     #build a dict mapping var to the gradient of cost with respect to var
     grad_dict = {}
@@ -544,6 +412,47 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
         rval ,= rval
     return rval
 
+
+def _populate_var_to_node_to_idx(outputs):
+    """
+        Common code shared between grad and grad_sources_inputs
+
+        outputs: a list of nodes we want to take gradients of
+
+        returns:
+            var_to_node_to_idx: a dictionary mapping a variable to
+                a second dictionary.
+                the second dictionary maps apply nodes acting on
+                this variable to the variable's index in the apply
+                node's input list
+
+    """
+
+
+    #var_to_node_to_idx[var][node] = i means node has var as input at position i
+    var_to_node_to_idx = {}
+    #set of variables that have been added to their parents
+    accounted_for = set([])
+
+    #mark the variables in the relevant subgraph with
+    #a dictionary called chidlren
+    #var._children[node] gives the index of var in _children.inputs
+    def account_for(var):
+        if var in accounted_for:
+            return
+        accounted_for.add(var)
+        if var.owner is not None:
+            node = var.owner
+            for i, ipt in enumerate(node.inputs):
+                if ipt not in var_to_node_to_idx:
+                    var_to_node_to_idx[ipt] = {}
+                var_to_node_to_idx[ipt][node] = i
+                account_for(ipt)
+
+    for output in outputs:
+        account_for(output)
+
+    return var_to_node_to_idx
 
 def _populate_grad_dict(var_to_node_to_idx,\
         grad_dict, wrt, warn_type, cost_name = None):
@@ -663,6 +572,63 @@ def _populate_grad_dict(var_to_node_to_idx,\
 
 
 def grad_sources_inputs(sources, graph_inputs, warn_type = True):
+    """
+    Used to compute the gradient of a cost with respect to all the
+    variables between graph_input and cost, but in the special
+    case where you don't know the cost, you only know its gradient
+    on a set of intermediate values.
+
+    A gradient source is a pair (``v``, ``g_v``), in which ``v`` is
+    a `Variable`, and ``g_v`` is a `Variable` that is a gradient wrt
+    ``v``. More specifically, ``g_v`` is the gradient of an external
+    scalar cost, ``cost`` (that is not explicitly used), wrt ``v``.
+
+    This function traverses the graph backward from the ``r`` sources,
+    calling ``op.grad(...)`` for all ops with some non-None gradient
+    on an output, to compute gradients of ``cost`` wrt intermediate
+    variables and ``graph_inputs``.
+
+    The ``op.grad(...)`` functions are called like this:
+
+    .. code-block:: python
+
+        op.grad(op.inputs[:], [total_gradient(v) for v in op.outputs])
+
+    This call to ``op.grad`` should return a list or tuple: one symbolic
+    gradient per input. These gradients represent the gradients of
+    the same implicit ``cost`` mentionned above, wrt ``op.inputs``.  Note
+    that this is **not** the same as the gradient of ``op.outputs`` wrt
+    ``op.inputs``.
+
+    If ``op`` has a single input, then ``op.grad`` should return a list
+    or tuple of length 1.
+    For each input wrt to which ``op`` is not differentiable, it should
+    return ``None`` instead of a `Variable` instance.
+
+    If a source ``r`` receives a gradient from another source ``r2``,
+    then the effective gradient on ``r`` is the sum of both gradients.
+
+
+    :type sources: list of pairs of Variable: (v, gradient-on-v) to
+                   initialize the total_gradient dictionary
+    :param sources: gradients to back-propagate using chain rule
+    :type graph_inputs: list of Variable
+    :param graph_inputs: variables considered to be constant
+        (do not backpropagate through them)
+    :type warn_type: bool
+    :param warn_type: True will trigger warnings via the logging module when
+       the gradient on an expression has a different type than the original
+       expression
+
+    :rtype: dictionary whose keys and values are of type Variable
+    :return: mapping from each Variable encountered in the backward
+        traversal to the gradient with respect to that Variable.
+
+    It is assumed that there is some objective J shared between all members of
+    sources, so that for each v, gradient-on-v is the gradient of J with
+    respect to v
+
+    """
 
     outputs, output_grads = zip(*sources)
 
@@ -677,27 +643,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
 
     wrt = graph_inputs
 
-    #var_to_node_to_idx[var][node] = i means node has var as input at position i
-    var_to_node_to_idx = {}
-    #set of variables that have been added to their parents
-    accounted_for = set([])
-
-    #notify the parents the variables in the relevant subgraph
-    #that they have children
-    def account_for(var):
-        if var in accounted_for:
-            return
-        accounted_for.add(var)
-        if var.owner is not None:
-            node = var.owner
-            for i, ipt in enumerate(node.inputs):
-                if ipt not in var_to_node_to_idx:
-                    var_to_node_to_idx[ipt] = {}
-                var_to_node_to_idx[ipt][node] = i
-                account_for(ipt)
-
-    for output in outputs:
-        account_for(output)
+    var_to_node_to_idx = _populate_var_to_node_to_idx(outputs)
 
     #build a dict mapping var to the gradient of cost with respect to var
     grad_dict = {}
@@ -711,10 +657,6 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
     #according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
         if elem not in var_to_node_to_idx and elem not in outputs:
-            message = ("grad method was asked to compute the gradient "
-                    "with respect to a variable that is not part of "
-                    "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % elem)
             grad_dict[elem] = elem.zeros_like()
 
 
@@ -722,123 +664,6 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
             grad_dict, wrt, warn_type)
 
     return grad_dict
-
-def grad_wrong(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
-         disconnected_inputs='raise'):
-    """
-    :type cost: Scalar (0-dimensional) Variable.
-    :type wrt: Variable or list of Variables.
-    :type g_cost: Scalar Variable, or None.
-    :param g_cost: an expression for the gradient through cost.  The default is
-        ``ones_like(cost)``.
-    :param consider_constant: a list of expressions not to backpropagate
-        through
-
-    :param warn_type: a value of True will cause warnings to be logged for any
-        Op that emits a gradient that does not match its input type.
-
-    :type disconnected_inputs: string
-    :param disconnected_inputs: Defines the behaviour if some of the variables
-        in ``wrt`` are not part of the computational graph computing ``cost``
-        (or if all links are non-differentiable). The possible values are:
-        - 'ignore': considers that the gradient on these parameters is zero.
-        - 'warn': consider the gradient zero, and print a warning.
-        - 'raise': raise an exception.
-
-    :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
-
-    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
-             If an element of `wrt` is not differentiable with respect
-             to the output, then a zero variable is returned.
-             It returns an object of same type as `wrt`: a list/tuple
-             or Variable in all cases.
-
-    This function is a wrapper around the more general function
-    `theano.gradient.grad_sources_inputs``.
-
-    """
-
-    if consider_constant is None:
-        consider_constant = []
-    else:
-        #error checking on consider_constant: verify that it is a collection
-        # of theano variables
-        # this is important, if someone accidentally passes a nested data
-        # structure with theano variables at the leaves, only the root will
-        # be properly considered constant
-        if not hasattr(consider_constant, '__iter__'):
-            raise TypeError('consider_constant must be an iterable collection,'
-                    ' got ' + str(type(consider_constant)))
-        for elem in consider_constant:
-            if not isinstance(elem, gof.Variable):
-                raise TypeError('Elements of consider_constant must be '
-                                'variables, but got ' + str(type(elem)))
-
-    if not isinstance(cost, Variable):
-        raise TypeError(('In grad(), cost argument should be '
-                         'a Variable.'), cost)
-
-    if cost.type.ndim:
-        raise TypeError(
-                'In theano.gradient.grad, "cost" argument should be a scalar,'
-                ' but ndim is %i (should be 0). If you want to compute the'
-                ' gradient of the sum of cost, you should use cost.sum().'
-                % cost.type.ndim)
-
-    if g_cost is None:
-        from theano import tensor
-        g_cost = tensor.ones_like(cost)
-    inputs = gof.graph.inputs([cost])
-    gmap = grad_sources_inputs_aside(
-        [(cost, g_cost)],
-        list(inputs) + list(consider_constant),
-        warn_type=warn_type)
-
-    # Note : If p is not in gmap there can be several reasons, among which
-    # is the fact that p might not be part of the computational graph. A
-    # simple example is that for a+b for e.g. a[0] is not part of the graph,
-    # so Theano does not know how to compute TT.grad(TT.sum(a+b), a[0])
-    # such subtle cases can be fixed by a more careful implementation of the
-    # gradient, but for now Theano needs to throw an exception, and make the
-    # user aware that it does not know how to compute that gradient
-    using_list = isinstance(wrt, list)
-    using_tuple = isinstance(wrt, tuple)
-
-    if not isinstance(wrt, (list, tuple)):
-        wrt = [wrt]
-    ret = []
-    for p in wrt:
-        if p in gmap:
-            ret.append(gmap[p])
-        else:
-            message = ("grad method was asked to compute the gradient "
-                    "with respect to a variable that is not part of "
-                    "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % p)
-            if disconnected_inputs == 'ignore':
-                pass
-            elif disconnected_inputs == 'warn':
-                warnings.warn(message, stacklevel=1)
-            elif disconnected_inputs == 'raise':
-                raise ValueError(message)
-            else:
-                raise ValueError("Invalid value for keyword "
-                        "'disconnected_inputs', valid values are "
-                        "'ignore', 'warn' and 'raise'.")
-            ret.append(p.zeros_like())
-
-        if cost.name is not None and p.name is not None \
-                and ret[-1].name is None:
-            ret[-1].name = '(d%s/d%s)' % (cost.name, p.name)
-
-    # new_vars is meant to be a list of all variables created
-    # by this call to grad(), which will be visible to the caller
-    # after we return.
-    new_vars = gof.graph.ancestors(ret,
-            blockers=gof.graph.ancestors([cost]) + list(wrt))
-
-    return format_as(using_list, using_tuple, ret)
-
 
 class numeric_grad(object):
     """
@@ -1037,7 +862,6 @@ class numeric_grad(object):
         max_arg = numpy.argmax(errs)
         max_pos = pos[max_arg]
         return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
-
 
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 out_type=None, abs_tol=None,
