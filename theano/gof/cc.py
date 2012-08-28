@@ -1453,7 +1453,8 @@ class OpWiseCLinker(link.LocalLinker):
                 # make_thunk
                 old_value = getattr(node.op, '_op_use_c_code', False)
                 try:
-                    node.op._op_use_c_code = True
+                    if theano.config.cxx:
+                        node.op._op_use_c_code = True
                     thunks += [node.op.make_thunk(node,
                                         storage_map,
                                         compute_map,
