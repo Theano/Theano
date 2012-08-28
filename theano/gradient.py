@@ -481,120 +481,116 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
     if not using_list and not using_tuple:
         wrt = [ wrt ]
 
-    #set of variables that has had children added to it
-    marked = set([])
+    #var_to_node_to_idx[var][node] = i means node has var as input at position i
+    var_to_node_to_idx = {}
     #set of variables that have been added to their parents
     accounted_for = set([])
 
-    #use a try/finally to make sure we don't leave any marks
-    #on the variables
-    try:
-        #mark the variables in the relevant subgraph with
-        #a dictionary called chidlren
-        #var._children[node] gives the index of var in _children.inputs
-        def account_for(var):
-            if var in accounted_for:
-                return
-            accounted_for.add(var)
-            if var.owner is not None:
-                node = var.owner
-                for i, ipt in enumerate(node.inputs):
-                    if not hasattr(ipt, '_children'):
-                        marked.add(ipt)
-                        ipt._children = {}
-                    if node not in ipt._children:
-                        ipt._children[node] = i
-                    account_for(ipt)
+    #mark the variables in the relevant subgraph with
+    #a dictionary called chidlren
+    #var._children[node] gives the index of var in _children.inputs
+    def account_for(var):
+        if var in accounted_for:
+            return
+        accounted_for.add(var)
+        if var.owner is not None:
+            node = var.owner
+            for i, ipt in enumerate(node.inputs):
+                if ipt not in var_to_node_to_idx:
+                    var_to_node_to_idx[ipt] = {}
+                var_to_node_to_idx[ipt][node] = i
+                account_for(ipt)
 
-        account_for(cost)
+    account_for(cost)
 
-        #build a dict mapping var to the gradient of cost with respect to var
-        grad_dict = {}
-        #by default, the gradient of the cost is 1
-        if g_cost is None:
-            g_cost = tensor.ones_like(cost)
-        grad_dict[cost] = g_cost
+    #build a dict mapping var to the gradient of cost with respect to var
+    grad_dict = {}
+    #by default, the gradient of the cost is 1
+    if g_cost is None:
+        g_cost = tensor.ones_like(cost)
+    grad_dict[cost] = g_cost
 
-        #the gradient of the constants is 0
-        for const in consider_constant:
-            grad_dict[const] = tensor.zeros_like(const)
+    #the gradient of the constants is 0
+    for const in consider_constant:
+        grad_dict[const] = tensor.zeros_like(const)
 
-        #variables that do not influence the cost have zero gradient.
-        #if wrt is such a varibale, populate the grad_dict with this info
-        #so that wrt not having _children won't cause an error below
-        #according to the flag, possibly raise an error if wrt is disconnected
-        for elem in wrt:
-            if elem not in marked and elem is not cost:
-                message = ("grad method was asked to compute the gradient "
-                        "with respect to a variable that is not part of "
-                        "the computational graph of the cost, or is used "
-                        "only by a non-differentiable operator: %s" % elem)
-                if disconnected_inputs == 'ignore':
-                    pass
-                elif disconnected_inputs == 'warn':
-                    warnings.warn(message, stacklevel=1)
-                elif disconnected_inputs == 'raise':
-                    raise ValueError(message)
-                else:
-                    raise ValueError("Invalid value for keyword "
-                            "'disconnected_inputs', valid values are "
-                            "'ignore', 'warn' and 'raise'.")
-                grad_dict[elem] = elem.zeros_like()
+    #variables that do not influence the cost have zero gradient.
+    #if wrt is such a variable, populate the grad_dict with this info
+    #so that wrt not being in var_to_node_to_idx won't cause an error below
+    #according to the flag, possibly raise an error if wrt is disconnected
+    for elem in wrt:
+        if elem not in var_to_node_to_idx and elem is not cost:
+            message = ("grad method was asked to compute the gradient "
+                    "with respect to a variable that is not part of "
+                    "the computational graph of the cost, or is used "
+                    "only by a non-differentiable operator: %s" % elem)
+            if disconnected_inputs == 'ignore':
+                pass
+            elif disconnected_inputs == 'warn':
+                warnings.warn(message, stacklevel=1)
+            elif disconnected_inputs == 'raise':
+                raise ValueError(message)
+            else:
+                raise ValueError("Invalid value for keyword "
+                        "'disconnected_inputs', valid values are "
+                        "'ignore', 'warn' and 'raise'.")
+            grad_dict[elem] = elem.zeros_like()
 
-        #build a dict mapping node to the terms node contributes to each of its inputs' gradients
-        term_dict = {}
+    #build a dict mapping node to the terms node contributes to each of its inputs' gradients
+    term_dict = {}
 
-        #populate term_dict[node] and return it
-        def access_term_cache(node):
-            if node not in term_dict:
-                #must convert to list in case the op returns a tuple
-                #we won't be able to post-process out the Nones if it does that
-                term_dict[node] = list(node.op.grad(node.inputs,
-                        [access_grad_cache(var) for var in node.outputs]))
-                for i in xrange(len(term_dict[node])):
-                    if term_dict[node][i] is None:
-                        term_dict[node][i] = tensor.zeros_like(node.inputs[i])
-            return term_dict[node]
+    #populate term_dict[node] and return it
+    def access_term_cache(node):
+        if node not in term_dict:
 
+            inputs = node.inputs
+            output_grads = [ access_grad_cache(var) for var in node.outputs ]
+            input_grads = node.op.grad(inputs, output_grads)
 
-        #built-in python sum adds an extraneous TensorConstant(0)
-        #we can exploit the knowledge that iterable always has at
-        #least one element to avoid starting the sum at 0
-        def nonempty_sum( iterable ):
-            rval = iterable[0]
-            for elem in iterable[1:]:
-                rval = rval + elem
-            return rval
-
-        #populate grad_dict[var] and return it
-        def access_grad_cache(var):
-            if var not in grad_dict:
-                if hasattr(var,'_children'):
-                    terms = []
-                    for child in var._children.keys():
-                        idx = var._children[child]
-                        term = access_term_cache(child)[idx]
-
-                        if isinstance(term.type,NaNType):
-                            raise TypeError("tensor.grad encountered a NaN. "+\
-                                    term.type.why_nan)
-
-                        terms.append( term)
-                    grad_dict[var] = nonempty_sum(terms)
-                    if cost.name is not None and var.name is not None:
-                        grad_dict[var].name = '(d%s/d%s)' % (cost.name, var.name)
-                else:
-                    #this variable is not connected to the cost in the computational
-                    #graph so the gradient on it is zero
-                    grad_dict[var] = tensor.zeros_like(var)
-            return grad_dict[var]
+            #must convert to list in case the op returns a tuple
+            #we won't be able to post-process out the Nones if it does that
+            term_dict[node] = list(input_grads)
+            for i in xrange(len(term_dict[node])):
+                if term_dict[node][i] is None:
+                    term_dict[node][i] = tensor.zeros_like(node.inputs[i])
+        return term_dict[node]
 
 
-        rval = [ access_grad_cache(elem) for elem in wrt ]
-    finally:
-        #take the marks out
-        for node in marked:
-            del node._children
+    #built-in python sum adds an extraneous TensorConstant(0)
+    #we can exploit the knowledge that iterable always has at
+    #least one element to avoid starting the sum at 0
+    def nonempty_sum( iterable ):
+        rval = iterable[0]
+        for elem in iterable[1:]:
+            rval = rval + elem
+        return rval
+
+    #populate grad_dict[var] and return it
+    def access_grad_cache(var):
+        if var not in grad_dict:
+            if var in var_to_node_to_idx:
+                terms = []
+                node_to_idx = var_to_node_to_idx[var]
+                for node in node_to_idx:
+                    idx = node_to_idx[node]
+                    term = access_term_cache(node)[idx]
+
+                    if isinstance(term.type,NaNType):
+                        raise TypeError("tensor.grad encountered a NaN. "+\
+                                term.type.why_nan)
+
+                    terms.append( term)
+                grad_dict[var] = nonempty_sum(terms)
+                if cost.name is not None and var.name is not None:
+                    grad_dict[var].name = '(d%s/d%s)' % (cost.name, var.name)
+            else:
+                #this variable is not connected to the cost in the computational
+                #graph so the gradient on it is zero
+                grad_dict[var] = tensor.zeros_like(var)
+        return grad_dict[var]
+
+
+    rval = [ access_grad_cache(elem) for elem in wrt ]
 
     if using_tuple:
         rval = tuple(rval)
@@ -614,105 +610,95 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = 'ignored'):
     wrt = graph_inputs
 
 
-    #set of variables that has had children added to it
-    marked = set([])
+    #var_to_node_to_idx[var][node] = i means node has var as input at position i
+    var_to_node_to_idx = {}
     #set of variables that have been added to their parents
     accounted_for = set([])
 
-    #use a try/finally to make sure we don't leave any marks
-    #on the variables
-    try:
-        #mark the variables in the relevant subgraph with
-        #a dictionary called chidlren
-        #var._children[node] gives the index of var in _children.inputs
-        def account_for(var):
-            if var in accounted_for:
-                return
-            accounted_for.add(var)
-            if var.owner is not None:
-                node = var.owner
-                for i, ipt in enumerate(node.inputs):
-                    if not hasattr(ipt, '_children'):
-                        marked.add(ipt)
-                        ipt._children = {}
-                    if node not in ipt._children:
-                        ipt._children[node] = i
-                    account_for(ipt)
+    #notify the parents the variables in the relevant subgraph
+    #that they have children
+    def account_for(var):
+        if var in accounted_for:
+            return
+        accounted_for.add(var)
+        if var.owner is not None:
+            node = var.owner
+            for i, ipt in enumerate(node.inputs):
+                if ipt not in var_to_node_to_idx:
+                    var_to_node_to_idx[ipt] = {}
+                var_to_node_to_idx[ipt][node] = i
+                account_for(ipt)
 
-        for output in outputs:
-            account_for(output)
+    for output in outputs:
+        account_for(output)
 
-        #build a dict mapping var to the gradient of cost with respect to var
-        grad_dict = {}
-        #by default, the gradient of the cost is 1
-        for output, output_grad in sources:
-            grad_dict[output] = output_grad
+    #build a dict mapping var to the gradient of cost with respect to var
+    grad_dict = {}
+    #by default, the gradient of the cost is 1
+    for output, output_grad in sources:
+        grad_dict[output] = output_grad
 
-        #variables that do not influence the cost have zero gradient.
-        #if wrt is such a varibale, populate the grad_dict with this info
-        #so that wrt not having _children won't cause an error below
-        #according to the flag, possibly raise an error if wrt is disconnected
-        for elem in wrt:
-            if elem not in marked and elem not in outputs:
-                message = ("grad method was asked to compute the gradient "
-                        "with respect to a variable that is not part of "
-                        "the computational graph of the cost, or is used "
-                        "only by a non-differentiable operator: %s" % elem)
-                #raise ValueError(message)
-                grad_dict[elem] = elem.zeros_like()
+    #variables that do not influence the cost have zero gradient.
+    #if wrt is such a variable, populate the grad_dict with this info
+    #so that wrt not being in var_to_node_to_idx won't cause an error below
+    #according to the flag, possibly raise an error if wrt is disconnected
+    for elem in wrt:
+        if elem not in var_to_node_to_idx and elem not in outputs:
+            message = ("grad method was asked to compute the gradient "
+                    "with respect to a variable that is not part of "
+                    "the computational graph of the cost, or is used "
+                    "only by a non-differentiable operator: %s" % elem)
+            grad_dict[elem] = elem.zeros_like()
 
-        #build a dict mapping node to the terms node contributes to each of its inputs' gradients
-        term_dict = {}
+    #build a dict mapping node to the terms node contributes to each of its inputs' gradients
+    term_dict = {}
 
-        #populate term_dict[node] and return it
-        def access_term_cache(node):
-            if node not in term_dict:
-                #must convert to list in case the op returns a tuple
-                #we won't be able to post-process out the Nones if it does that
-                term_dict[node] = list(node.op.grad(node.inputs,
-                        [access_grad_cache(var) for var in node.outputs]))
-                for i in xrange(len(term_dict[node])):
-                    if term_dict[node][i] is None:
-                        term_dict[node][i] = tensor.zeros_like(node.inputs[i])
-            return term_dict[node]
+    #populate term_dict[node] and return it
+    def access_term_cache(node):
+        if node not in term_dict:
+            #must convert to list in case the op returns a tuple
+            #we won't be able to post-process out the Nones if it does that
+            term_dict[node] = list(node.op.grad(node.inputs,
+                    [access_grad_cache(var) for var in node.outputs]))
+            for i in xrange(len(term_dict[node])):
+                if term_dict[node][i] is None:
+                    term_dict[node][i] = tensor.zeros_like(node.inputs[i])
+        return term_dict[node]
 
 
-        #built-in python sum adds an extraneous TensorConstant(0)
-        #we can exploit the knowledge that iterable always has at
-        #least one element to avoid starting the sum at 0
-        def nonempty_sum( iterable ):
-            rval = iterable[0]
-            for elem in iterable[1:]:
-                rval = rval + elem
-            return rval
+    #built-in python sum adds an extraneous TensorConstant(0)
+    #we can exploit the knowledge that iterable always has at
+    #least one element to avoid starting the sum at 0
+    def nonempty_sum( iterable ):
+        rval = iterable[0]
+        for elem in iterable[1:]:
+            rval = rval + elem
+        return rval
 
-        #populate grad_dict[var] and return it
-        def access_grad_cache(var):
-            if var not in grad_dict:
-                if hasattr(var,'_children'):
-                    terms = []
-                    for child in var._children.keys():
-                        idx = var._children[child]
-                        term = access_term_cache(child)[idx]
+    #populate grad_dict[var] and return it
+    def access_grad_cache(var):
+        if var not in grad_dict:
+            if var in var_to_node_to_idx:
+                terms = []
+                node_to_idx = var_to_node_to_idx[var]
+                for node in node_to_idx:
+                    idx = node_to_idx[node]
+                    term = access_term_cache(node)[idx]
 
-                        if isinstance(term.type,NaNType):
-                            raise TypeError("tensor.grad encountered a NaN. "+\
-                                    term.type.why_nan)
+                    if isinstance(term.type,NaNType):
+                        raise TypeError("tensor.grad encountered a NaN. "+\
+                                term.type.why_nan)
 
-                        terms.append( term)
-                    grad_dict[var] = nonempty_sum(terms)
-                else:
-                    #this variable is not connected to the cost in the computational
-                    #graph so the gradient on it is zero
-                    grad_dict[var] = tensor.zeros_like(var)
-            return grad_dict[var]
+                    terms.append( term)
+                grad_dict[var] = nonempty_sum(terms)
+            else:
+                #this variable is not connected to the cost in the computational
+                #graph so the gradient on it is zero
+                grad_dict[var] = tensor.zeros_like(var)
+        return grad_dict[var]
 
 
-        rval = [ access_grad_cache(elem) for elem in wrt ]
-    finally:
-        #take the marks out
-        for node in marked:
-            del node._children
+    rval = [ access_grad_cache(elem) for elem in wrt ]
 
     return grad_dict
 
@@ -1149,6 +1135,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         return plain
 
     t_r = shared(random_projection())
+    t_r.name = 'random_projection'
 
     # random projection of o onto t_r
     # This sum() is defined above, it's not the builtin sum.
@@ -1178,6 +1165,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 num_grad.max_err(analytic_grad, abs_tol, rel_tol)
 
         if max_abs_err > abs_tol and max_rel_err > rel_tol:
+
             raise verify_grad.E_grad(max_arg, max_err_pos,
                     max_abs_err, max_rel_err, abs_tol, rel_tol)
 
