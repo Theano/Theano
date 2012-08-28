@@ -710,12 +710,19 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     def grad(self, inp, grads):
         x, b, y_idx = inp
         g_nll, g_sm, g_am = grads
-        if g_am is not None:
-            raise NotImplementedError()
-        elif g_sm is not None:
+        #argmax is integer valued, so no gradient flows through it, even if there is
+        #incoming gradient
+        g_am = None
+        if g_sm is not None:
             # There is a gradient w.r.t. the softmax's output itself.
-            if g_nll is not None or g_am is not None:
-                raise NotImplementedError()
+            if g_nll is not None:
+                dx, db = softmax_with_bias.grad((x, b,), (g_sm, ))
+                nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
+                dx_nll =  crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
+                dx += dx_nll
+                db += tensor.sum(dx_nll, axis=[0])
+                return dx, db, None
+
             return softmax_with_bias.grad((x, b, ), (g_sm, )) + (None, )
         else:
             # There is a gradient w.r.t. the NLL.

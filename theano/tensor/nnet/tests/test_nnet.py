@@ -28,7 +28,6 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row)
 from theano.tensor import matrix, vector, lvector, scalar
-from numpy.testing.noseclasses import KnownFailureTest
 
 
 class T_sigmoid(unittest.TestCase):
@@ -167,8 +166,6 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
         def f(a, b):
             return crossentropy_softmax_1hot_with_bias(a, b, y_idx)[0]
-        raise KnownFailureTest("A grad op in here depends on the gradient on its output being None, ",
-                "which is no longer supported.")
         utt.verify_grad(f, [numpy.random.rand(3, 4),
             numpy.random.rand(4)])
 
@@ -177,8 +174,6 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
         def f(a):
             return crossentropy_softmax_1hot(a, y_idx)[0]
-        raise KnownFailureTest("A grad op in here depends on the gradient on its output being None, ",
-                "which is no longer supported.")
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test_vector(self):
@@ -186,8 +181,6 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
         def f(a):
             return crossentropy_softmax_1hot(T.shape_padleft(a), y_idx)[0]
-        raise KnownFailureTest("A grad op in here depends on the gradient on its output being None, ",
-                "which is no longer supported.")
         utt.verify_grad(f, [numpy.random.rand(4)])
 
     def test_vectors(self):
@@ -195,8 +188,6 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
         def f(a, b):
             return crossentropy_softmax_1hot(T.shape_padleft(a) + b, y_idx)[0]
-        raise KnownFailureTest("A grad op in here depends on the gradient on its output being None, ",
-                "which is no longer supported.")
         utt.verify_grad(f, [numpy.random.rand(4), numpy.random.rand(4)])
 
 
@@ -255,8 +246,6 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
         def grad_on_nll(x, b):
             return self.op(x, b, y_idx=numpy.random.randint(
                 low=0, high=n_classes, size=n_samples))[0]
-        raise KnownFailureTest("A grad op in here depends on the gradient on its output being None, ",
-                "which is no longer supported.")
         utt.verify_grad(grad_on_nll, [numpy.random.rand(n_samples, n_classes),
             numpy.random.rand(n_classes)])
 
