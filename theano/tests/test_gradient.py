@@ -11,6 +11,7 @@ from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
 
+one = theano.tensor.as_tensor_variable(1.)
 
 def _grad_sources_inputs(*args):
     # warn_type was introduced after this code, it complains throughout for nothing.
@@ -31,7 +32,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 pass
         a = retNone().make_node()
         try:
-            _grad_sources_inputs([(a.out, 1)], None)
+            _grad_sources_inputs([(a.out, one)], None)
         except ValueError, e:
             self.assertTrue(e[0] is gradient._msg_retType)
             return
@@ -49,10 +50,10 @@ class test_grad_sources_inputs(unittest.TestCase):
         i = theano.tensor.vector()
         j = theano.tensor.vector()
         a1 = retNone().make_node(i)
-        g = _grad_sources_inputs([(a1.out, 1)], None)
+        g = _grad_sources_inputs([(a1.out, one)], None)
         a2 = retNone().make_node(i,j)
         try:
-            g = _grad_sources_inputs([(a2.out, 1)], None)
+            g = _grad_sources_inputs([(a2.out, one)], None)
         except ValueError, e:
             return
         self.fail()
@@ -68,7 +69,7 @@ class test_grad_sources_inputs(unittest.TestCase):
             def grad(self, inp, grads):
                 return gval,
         a1 = O().make_node()
-        g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
+        g = _grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_1in_Nout(self):
@@ -84,7 +85,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 gz1, gz2 = grads
                 return gval,
         a1 = O().make_node()
-        g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
+        g = _grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_Nin_1out(self):
@@ -101,7 +102,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 gz, = grads
                 return (gval0, gval1)
         a1 = O().make_node()
-        g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
+        g = _grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval0)
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
@@ -117,7 +118,7 @@ class test_grad_sources_inputs(unittest.TestCase):
             def grad(self, inp, grads):
                 return gval0, gval1
         a1 = O().make_node()
-        g = _grad_sources_inputs([(a1.outputs[0], 1)], None)
+        g = _grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval0)
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
@@ -133,7 +134,7 @@ class test_grad_sources_inputs(unittest.TestCase):
                 return [1]
         i = theano.tensor.matrix()
         a1 = O(self).make_node(i)
-        g = grad_sources_inputs([(a1.outputs[0], 1)], None, warn_type=False)
+        g = grad_sources_inputs([(a1.outputs[0], one)], None, warn_type=False)
         self.assertTrue(g[i] is 1)
 
     def test_some_None_igrads(self):
@@ -155,12 +156,12 @@ class test_grad_sources_inputs(unittest.TestCase):
         k = theano.tensor.matrix()
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(a1.outputs[1], k)
-        g = grad_sources_inputs([(a2.outputs[0], 1)], None, warn_type=False)
+        g = grad_sources_inputs([(a2.outputs[0], one)], None, warn_type=False)
         self.assertTrue(g[i] is 1 and j not in g and k not in g)
 
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(k, a1.outputs[1])
-        g = _grad_sources_inputs([(a2.outputs[0], 1)], None)
+        g = _grad_sources_inputs([(a2.outputs[0], one)], None)
         self.assertTrue(g[k] is 1 and i not in g and j not in g)
 
     def test_inputs(self):
@@ -186,7 +187,7 @@ class test_grad_sources_inputs(unittest.TestCase):
         k = theano.tensor.matrix()
         a1 = O(self, True).make_node(i,j)
         a2 = O(self, True).make_node(k,a1.outputs[1])
-        g = _grad_sources_inputs([(a2.outputs[0], 1), (a1.outputs[1],4),
+        g = _grad_sources_inputs([(a2.outputs[0], one), (a1.outputs[1],4),
             (a1.outputs[0], 3), (a1.outputs[0], 3)], a1.outputs)
         self.assertTrue(g[a2.inputs[0]] == 1)
         self.assertTrue(g[a2.inputs[1]] == 5)

@@ -20,9 +20,9 @@ from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import all
 import theano.gof.utils
-tensor = None
 from theano.gof.nan_type import NaNType
 from theano.printing import min_informative_str
+tensor = None
 
 _msg_retType = 'op.grad(...) returned a non-list'
 
@@ -604,13 +604,14 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = 'ignore
 
 
 def grad_sources_inputs(sources, graph_inputs, warn_type = 'ignored'):
-    global tensor
-    if tensor is None:
-        from theano import tensor
-
 
     outputs, output_grads = zip(*sources)
 
+    for output_grad in output_grads:
+        if not hasattr(output_grad, 'type'):
+            raise TypeError('output grads must be theano variables.'
+                    'Ambiguous whether %s should be made into tensor'
+                    ' or sparse theano variable' % str(type(output_grad)))
 
     if graph_inputs is None:
         graph_inputs = gof.graph.inputs(outputs)
