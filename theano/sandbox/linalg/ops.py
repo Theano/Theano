@@ -655,9 +655,15 @@ class Solve(Op):
         #TODO: use the A_structure to go faster
         output_storage[0][0] = scipy.linalg.solve(A, b)
 
+    # computes shape of x where x = inv(A) * b
     def infer_shape(self, node, shapes):
-        (Ar, Ac), (Br, Bc) = shapes
-        return [(Ac, Bc)]
+        Ashape, Bshape = shapes
+        rows = Ashape[1]
+        if len(Bshape) == 1: # b is a Vector
+            return [(rows,)]
+        else:
+            cols = Bshape[1] # b is a Matrix
+            return [(rows, cols)]
 
 solve = Solve()  # general solve
 
