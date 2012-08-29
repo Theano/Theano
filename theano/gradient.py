@@ -562,6 +562,8 @@ def _populate_grad_dict(var_to_node_to_idx,\
                     #zero. Assuming it is zero prevents us from disconnecting NaNs above.
                     #eventually we should disallow this return type and force all ops
                     #to return the correct thing
+                    #raise AssertionError('%s returned None for a gradient term, '
+                    #        'this is prohibited' % node.op)
                     term_dict[node][i] = node.inputs[i].zeros_like()
 
                 if warn_type:
