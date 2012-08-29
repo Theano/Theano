@@ -10,6 +10,7 @@ from theano.gradient import grad_sources_inputs
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
+import numpy as np
 
 one = theano.tensor.as_tensor_variable(1.)
 
@@ -208,6 +209,98 @@ def test_grad_name():
     f.name = 'f'
     g = theano.tensor.grad(f,x)
     assert g.name == '(df/dx)'
+
+
+
+def test_grad_duplicate_input():
+
+    #test that the grad works when a variable
+    #appears in more than one place in a node's input list
+
+    def output(x):
+        return (x*x)
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+
+    theano.tests.unittest_tools.verify_grad(output,[vx])
+
+def test_grad_quadratic():
+
+    #test the gradient on a tiny graph
+
+    def cost(x,A):
+        return theano.tensor.dot(x,theano.tensor.dot(A,x))
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+    vA = rng.randn(2,2)
+
+    theano.tests.unittest_tools.verify_grad(cost,[vx,vA])
+
+
+def test_grad_quadratic_vector():
+
+    #test the gradient on a small graph
+
+    def output(x,A):
+        return theano.tensor.dot(x*x,A)
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+    vA = rng.randn(2,2)
+
+    theano.tests.unittest_tools.verify_grad(output,[vx,vA])
+
+
+def test_grad_cubic():
+
+    #test the gradient on a bigger graph
+
+    def cost(x,A):
+        return theano.tensor.dot(x*x,theano.tensor.dot(A,x))
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+    vA = rng.randn(2,2)
+
+    theano.tests.unittest_tools.verify_grad(cost,[vx,vA])
+
+def test_grad_grad_quadratic():
+
+    #test the gradient on a graph constructed using the gradient
+
+    def output(x,A):
+        orig_cost = theano.tensor.dot(x,theano.tensor.dot(A,x))
+        return theano.gradient.grad(orig_cost, x)
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+    vA = rng.randn(2,2)
+
+    theano.tests.unittest_tools.verify_grad(output,[vx,vA])
+
+def test_grad_grad_cubic():
+
+    #test the gradient on a bigger graph constructed using the gradient
+
+    def output(x,A):
+        orig_cost = theano.tensor.dot(x*x,theano.tensor.dot(A,x))
+        return theano.gradient.grad(orig_cost, x)
+
+    rng = np.random.RandomState([2012,8,28])
+
+    vx = rng.randn(2)
+    vA = rng.randn(2,2)
+
+    theano.tests.unittest_tools.verify_grad(output,[vx,vA])
+
+
 
 if __name__ == '__main__':
     unittest.main()
