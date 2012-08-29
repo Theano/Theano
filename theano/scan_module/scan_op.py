@@ -29,6 +29,7 @@ from theano import gof
 from theano.tensor import TensorType
 from theano import tensor
 from theano.tensor.opt import Shape_i
+from theano.gradient import grad_undefined
 #from theano.sandbox import cuda
 from theano.compile.profiling import ScanProfileStats
 
@@ -1509,7 +1510,7 @@ class Scan(PureOp):
         if type(outputs) not in (list, tuple):
             outputs = [outputs]
         # Re-order the gradients correctly
-        gradients = [None]
+        gradients = [grad_undefined(self, 0, args[0], 'Number of steps')]
 
         offset = (self.n_mit_mot +
                   self.n_mit_sot +
@@ -1519,8 +1520,16 @@ class Scan(PureOp):
 
         end = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         gradients += [x[::-1] for x in outputs[:end]]
-        gradients += [None for x in xrange(self.n_shared_outs)]
-        gradients += [None for x in xrange(self.n_nit_sot)]
+        start = len(gradients)
+        gradients += [
+                grad_undefined(self, x + start, args[x+start],
+                    'Shared Variable with update')
+                for x in xrange(self.n_shared_outs)]
+        start = len(gradients)
+        gradients += [
+                grad_undefined(self, x + start, args[x+start],
+                    'Dimension of memory buffer for output')
+                for x in xrange(self.n_nit_sot)]
         begin = end
 
         end = begin + n_sitsot_outs
