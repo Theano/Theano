@@ -156,7 +156,7 @@ downcast** of the latter.
         return sum_to_date + arange_val
     seq = T.arange(up_to)
 
-    # An unauthorized implicit downcast from the dtype of 'seq', to that of 
+    # An unauthorized implicit downcast from the dtype of 'seq', to that of
     # 'T.as_tensor_variable(0)' which is of dtype 'int8' by default would occur
     # if this instruction were to be used instead of the next one:
     # outputs_info = T.as_tensor_variable(0)
