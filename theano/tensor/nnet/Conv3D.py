@@ -98,26 +98,26 @@ class Conv3D(theano.Op):
         if 'name' in dir(dCdH) and dCdH.name is not None:
             dCdH_name = dCdH.name
         else:
-            dCdH_name = 'anon'
+            dCdH_name = 'anon_dCdH'
 
         if 'name' in dir(V) and V.name is not None:
             V_name = V.name
         else:
-            V_name = 'anon'
+            V_name = 'anon_V'
 
         if 'name' in dir(W) and W.name is not None:
             W_name = W.name
         else:
-            W_name = 'anon'
+            W_name = 'anon_W'
 
         if 'name' in dir(b) and b.name is not None:
             b_name = b.name
         else:
-            b_name = 'anon'
+            b_name = 'anon_b'
 
-        dCdV.name = 'Conv3D_dCdV.dCdH='+dCdH_name+',V='+V_name
-        dCdW.name = 'Conv3D_dCdW.dCdH='+dCdH_name+',V='+V_name+',W='+W_name
-        dCdb.name = 'Conv3D_dCdb.dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name
+        dCdV.name = 'Conv3D_dCdV(dCdH='+dCdH_name+',V='+V_name+')'
+        dCdW.name = 'Conv3D_dCdW(dCdH='+dCdH_name+',V='+V_name+',W='+W_name+')'
+        dCdb.name = 'Conv3D_dCdb(dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name+')'
 
 
 

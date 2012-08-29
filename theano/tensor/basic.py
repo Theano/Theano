@@ -2094,8 +2094,21 @@ class Shape(Op):
     def infer_shape(self, node, in_shapes):
         return [[len(in_shapes[0])]]
 
+    def connection_pattern(self):
+        #the grad returns the gradient with respect to the
+        #elements of a tensor variable
+        #the elements of the tensor variable do not participate
+        #in the computation of the shape, so they are not really
+        #part of the graph
+        return [False]
+
     def grad(self, inp, grads):
-        return [grad_undefined(self,0,inp[0])]
+        #the grad returns the gradient with respect to the
+        #elements of a tensor variable
+        #the elements of the tensor variable do not participate
+        #in the computation of the shape, so they are not really
+        #part of the graph
+        return [None]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -2336,7 +2349,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, grad_undefined(self, 1, axis)
+        return g_x, None
 
     def __str__(self):
         return self.__class__.__name__
@@ -5645,11 +5658,11 @@ def tile(x, reps, ndim=None):
     TODO: expand this.
     """
 
-    try: 
-        assert python_all([int(i) == i for i in iter(reps)]) 
-    except (TypeError, AssertionError): 
-        raise ValueError("reps argument to tile must be a constant (e.g. " 
-        "tuple, list of integers)") 
+    try:
+        assert python_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+        "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:

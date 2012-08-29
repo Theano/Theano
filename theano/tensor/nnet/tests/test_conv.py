@@ -18,7 +18,9 @@ class TestConv2D(utt.InferShapeTester):
     def setUp(self):
         super (TestConv2D, self).setUp()
         self.input = T.dtensor4('input')
+        self.input.name = 'default_V'
         self.filters = T.dtensor4('filters')
+        self.filters.name = 'default_filters'
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),
@@ -34,7 +36,7 @@ class TestConv2D(utt.InferShapeTester):
             N_filter_shape = [T.get_constant_value(T.
                 as_tensor_variable(x)) for x in filter_shape]
 
-        if not input:
+        if input is None:
             input = self.input
         if not filters:
             filters = self.filters
@@ -44,11 +46,16 @@ class TestConv2D(utt.InferShapeTester):
         # we create a symbolic function so that verify_grad can work
         def sym_conv2d(input, filters):
             # define theano graph and function
-            return conv.conv2d(input, filters, image_shape, filter_shape,
+            input.name = 'input'
+            filters.name = 'filters'
+            rval =  conv.conv2d(input, filters, image_shape, filter_shape,
                           border_mode, subsample, unroll_batch=unroll_batch,
                           unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+            rval.name = 'conv_output'
+            return rval
 
         output = sym_conv2d(input, filters)
+        output.name = 'conv2d(%s,%s)' % (input.name, filters.name)
         theano_conv = theano.function([input, filters], output)
 
         # initialize input and compute result

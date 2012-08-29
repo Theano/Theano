@@ -2026,6 +2026,10 @@ class T_max_and_argmax(unittest.TestCase):
         because there is no differentiable path from cost to the input and
         not because of an error of the grad method of the op
         """
+
+        raise KnownFailureTest("The desired behavior of the grad method in this case is currently under debate. In any case, the result should be to return NaN or 0, not to report a disconnected input.")
+
+
         x = matrix()
         cost = argmax(x, axis=0).sum()
         value_error_raised = False
@@ -2223,6 +2227,7 @@ class T_argmin_argmax(unittest.TestCase):
     def test_grad_argmin(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
+        n.name = 'n'
 
         #test grad of argmin
         utt.verify_grad(lambda v: argmin(v, axis=-1), [data])
@@ -2234,7 +2239,11 @@ class T_argmin_argmax(unittest.TestCase):
         utt.verify_grad(lambda v: argmin(v.flatten()), [data])
 
         try:
-            grad(argmin(n, axis=-1), n)
+            cost = argmin(n, axis=-1)
+            cost.name = None
+            g = grad(cost, n)
+            from theano.printing import min_informative_str
+            print min_informative_str(g)
             raise Exception('Expected an error')
         except TypeError:
             pass
@@ -4376,6 +4385,8 @@ class test_grad(unittest.TestCase):
         o = test_grad.O()
         a1 = o.make_node()
         g0,g1 = grad(a1.outputs[0], a1.inputs)
+        g0.name = None
+        print theano.printing.min_informative_str(g0)
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
 
@@ -4436,10 +4447,8 @@ class test_grad(unittest.TestCase):
         v = vector()
         m = matrix()
         # grad(v,...) and grad(m,...) should fail
-        self.assertRaises(TypeError, grad, v, s)
-        self.assertRaises(TypeError, grad, v, m)
-        self.assertRaises(TypeError, grad, m, s)
-        self.assertRaises(TypeError, grad, m, v)
+        self.assertRaises(TypeError, grad, v, v)
+        self.assertRaises(TypeError, grad, m, m)
 
 class T_op_cache(unittest.TestCase):
     def setUp(self):

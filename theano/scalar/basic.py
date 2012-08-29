@@ -488,6 +488,9 @@ class _scalar_py_operators:
     def __rmod__(self,other): return mod(other,self)
     def __rpow__(self,other): return pow(other,self)
 
+    def zeros_like(self):
+        return ScalarConstant(Scalar(str(self.type.dtype)), 0)
+
 
 class ScalarVariable(_scalar_py_operators, Variable):
     pass
