@@ -70,7 +70,7 @@ def grad_not_implemented(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the grad method for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            " not implemented.")()
+            " not implemented."+comment)()
 
 def grad_undefined(op, x_pos, x, comment = ""):
     """
@@ -88,7 +88,22 @@ def grad_undefined(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the gradient for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            " mathematically undefined.")()
+             " mathematically undefined."+comment)()
+
+class ZeroType(theano.gof.type.Type):
+
+    def filter(self, data, strict=False, allow_downcast=None):
+        raise
+
+    def fiter_variable(self, other):
+        raise
+
+    def may_share_memory(a, b):
+        return False
+
+    def value_eq(a, b, force_same_dtype=True):
+        raise
+
 
 
 ########################
