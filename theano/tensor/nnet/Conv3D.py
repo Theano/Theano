@@ -549,6 +549,20 @@ class Conv3D(theano.Op):
 
 global conv3D
 conv3D = Conv3D()
+"""
+3D "convolution" of multiple filters on a minibatch
+(does not flip the kernel, moves kernel with a user specified stride)
+
+:param V: Visible unit, input.
+    dimensions: (batch, row, column, time, in channel)
+:param W: Weights, filter.
+    dimensions: (out channel, row, column, time ,in channel)
+:param b: bias, shape == (W.shape[0],)
+:param d: strides when moving the filter over the input(dx, dy, dt)
+
+:note: The order of dimensions do not correspond with the one in `conv2d`.
+       This is for optimization.
+"""
 
 def computeH(V,W,b,d):
     assert len(W.shape) == 5

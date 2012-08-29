@@ -62,7 +62,7 @@ optdb.register('gpu_after_fusion',
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        gpu_optimizer.register(name, local_opt, 'fast_run', 'inplace', *tags)
+        gpu_optimizer.register(name, local_opt, 'fast_run', *tags)
         return local_opt
     return f
 
