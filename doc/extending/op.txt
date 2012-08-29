@@ -137,7 +137,7 @@ following methods:
 
   If the output is not differentiable with respect to an input
   then this method should be defined to return a variable of type
-  NaNType for that input.
+  NullType for that input.
 
   If the grad method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
