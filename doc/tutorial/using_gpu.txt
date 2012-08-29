@@ -389,8 +389,6 @@ What can be done to further increase the speed of the GPU version? Put your idea
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
      * Notice that a new casting mechanism is being developed.
 
-.. TODO: repair this link
-
 :download:`Solution<using_gpu_solution_1.py>`
 
 -------------------------------------------

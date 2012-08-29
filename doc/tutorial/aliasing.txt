@@ -231,7 +231,7 @@ that control how ``theano.function`` handles its argument[s] and return value[s]
     import theano, theano.tensor
 
     x = theano.tensor.matrix()
-    y = 2*x
+    y = 2 * x
     f = theano.function([theano.In(x, borrow=True)], theano.Out(y, borrow=True))
 
 Borrowing an input means that Theano will treat the argument you provide as if

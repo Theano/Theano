@@ -25,7 +25,7 @@ Here is the code to compute this gradient:
 
 >>> from theano import pp
 >>> x = T.dscalar('x')
->>> y = x**2
+>>> y = x ** 2
 >>> gy = T.grad(y, x)
 >>> pp(gy)  # print out the gradient prior to optimization
 '((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
@@ -118,10 +118,10 @@ do is to loop over the entries in *y* and compute the gradient of
     shall return to :ref:`scan<tutloop>` later in this tutorial.
 
 >>> x = T.dvector('x')
->>> y = x**2
->>> J, updates = theano.scan(lambda i, y,x : T.grad(y[i], x), sequences = T.arange(y.shape[0]), non_sequences = [y,x])
->>> f = function([x], J, updates = updates)
->>> f([4,4])
+>>> y = x ** 2
+>>> J, updates = theano.scan(lambda i, y,x : T.grad(y[i], x), sequences=T.arange(y.shape[0]), non_sequences=[y,x])
+>>> f = function([x], J, updates=updates)
+>>> f([4, 4])
 array([[ 8.,  0.],
        [ 0.,  8.]])
     
@@ -156,12 +156,12 @@ scalar.
 
 
 >>> x = T.dvector('x')
->>> y = x**2
+>>> y = x ** 2
 >>> cost = y.sum()
 >>> gy = T.grad(cost, x)
->>> H, updates = theano.scan(lambda i, gy,x : T.grad(gy[i], x), sequences = T.arange(gy.shape[0]), non_sequences = [gy,x])
->>> f = function([x], H, updates = updates)
->>> f([4,4])
+>>> H, updates = theano.scan(lambda i, gy,x : T.grad(gy[i], x), sequences=T.arange(gy.shape[0]), non_sequences=[gy, x])
+>>> f = function([x], H, updates=updates)
+>>> f([4, 4])
 array([[ 2.,  0.],
        [ 0.,  2.]])
 
@@ -200,10 +200,10 @@ you need to do something similar to this:
 >>> W = T.dmatrix('W')
 >>> V = T.dmatrix('V')
 >>> x = T.dvector('x')
->>> y = T.dot(x,W)
+>>> y = T.dot(x, W)
 >>> JV = T.Rop(y, W, V)
->>> f = theano.function([W,V,x], JV)
->>> f([[1,1],[1,1]], [[2,2,],[2,2]], [0,1])
+>>> f = theano.function([W, V, x], JV)
+>>> f([[1, 1], [1, 1]], [[2, 2], [2, 2]], [0,1])
 array([ 2.,  2.])
 
 :ref:`List <R_op_list>` of Op that implement Rop.
@@ -219,10 +219,10 @@ f(x)}{\partial x}`. The *L-operator* is also supported for generic tensors
 >>> W = T.dmatrix('W')
 >>> v = T.dvector('v')
 >>> x = T.dvector('x')
->>> y = T.dot(x,W)
+>>> y = T.dot(x, W)
 >>> VJ = T.Lop(y, W, v)
 >>> f = theano.function([W,v,x], JV)
->>> f([[1,1],[1,1]], [2,2,], [0,1])
+>>> f([[1, 1], [1, 1]], [2, 2], [0, 1])
 array([[ 0.,  0.],
        [ 2.,  2.]])
 
@@ -250,11 +250,11 @@ Hence, we suggest profiling the methods before using either one of the two:
 
 >>> x = T.dvector('x')
 >>> v = T.dvector('v')
->>> y = T.sum(x**2)
+>>> y = T.sum(x ** 2)
 >>> gy = T.grad(y, x)
->>> vH = T.grad( T.sum(gy*v), x)
->>> f = theano.function([x,v], vH)
->>> f([4,4],[2,2])
+>>> vH = T.grad(T.sum(gy * v), x)
+>>> f = theano.function([x, v], vH)
+>>> f([4, 4], [2, 2])
 array([ 4.,  4.])
 
 
@@ -262,11 +262,11 @@ or, making use of the *R-operator*:
 
 >>> x = T.dvector('x')
 >>> v = T.dvector('v')
->>> y = T.sum(x**2)
+>>> y = T.sum(x ** 2)
 >>> gy = T.grad(y, x)
->>> Hv = T.Rop(gy,x,v)
->>> f = theano.function([x,v], Hv)
->>> f([4,4],[2,2])
+>>> Hv = T.Rop(gy, x, v)
+>>> f = theano.function([x, v], Hv)
+>>> f([4, 4], [2, 2])
 array([ 4.,  4.])
 
 

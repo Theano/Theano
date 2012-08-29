@@ -100,9 +100,9 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
         def make_thunk(self, node, storage_map, _, _2):
             mod = SourceModule("""
         __global__ void my_fct(float * i0, float * o0, int size) {
-        int i = blockIdx.x*blockDim.x + threadIdx.x;
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
         if(i<size){
-            o0[i] = i0[i]*2;
+            o0[i] = i0[i] * 2;
         }
       }""")
             pycuda_fct = mod.get_function("my_fct")
@@ -114,7 +114,7 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
                     z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
                 grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
                 pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
-                           block=(512,1,1), grid=grid)
+                           block=(512, 1, 1), grid=grid)
             return thunk
     
 CUDAMat
