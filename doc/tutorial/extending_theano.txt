@@ -304,18 +304,19 @@ GPU.
 
 
 Running Your Tests
-------------------
+==================
 
 To perform your tests, you may select either one of the three following methods:
 
-**theano-nose**
+theano-nose
+-----------
 
 The method of choice to conduct tests is to run the file ``theano-nose``. In a regular
 Theano installation, the latter will be on the operating system's path and directly accessible
 from any folder. Otherwise, it can be accessed in the ``Theano/bin`` folder. The following command
 lines may be used for the corresponding purposes:
 
-* ``theano-nose``: Run every test found in Theano's path.
+* ``theano-nose --theano``: Run every test found in Theano's path.
 
 * ``theano-nose folder_name``: Run every test found in the folder *folder_name*.
 
@@ -358,9 +359,13 @@ file containing a specific test of interest and run the file. In this example, t
        t.setUp()
        t.test_double_rop()
 
+We recommand that when we execute a file, we run all tests in that
+file. This can be done by adding this at the end of your test files:
 
+.. code-block:: python
 
--------------------------------------------
+    if __name__ == '__main__':
+        unittest.main()
 
 
 Exercise
