@@ -554,15 +554,28 @@ def _populate_grad_dict(var_to_node_to_idx,\
             inputs = [try_to_copy(ipt) for ipt in inputs ]
 
             output_grads = [ access_grad_cache(var) for var in node.outputs ]
-            input_grads = node.op.grad(inputs, output_grads)
 
-            if input_grads is None:
-                raise TypeError("%s.grad returned NoneType, "
-                        "expected iterable." % str(node.op))
+            if False in [ isinstance(g.type, DisconnectedType)
+                    for g in output_grads ]:
+                #Some outputs of this op are connected to the cost so we must
+                #call the ops grad method
 
-            if len(input_grads) != len(inputs):
-                raise ValueError(("%s returned the wrong number of gradient"+\
-                        "terms.") %  str(node.op))
+                input_grads = node.op.grad(inputs, output_grads)
+
+                if input_grads is None:
+                    raise TypeError("%s.grad returned NoneType, "
+                            "expected iterable." % str(node.op))
+
+                if len(input_grads) != len(inputs):
+                    raise ValueError(("%s returned the wrong number of gradient"+\
+                            "terms.") %  str(node.op))
+            else:
+                #All outputs of this op are disconnected so we can skip
+                #Calling the op's grad method and report that the inputs
+                #are disconnected
+                #(The op's grad method could do this too, but this saves the
+                #implementer the trouble of worrying about this case)
+                input_grads = [ DisconnectedType()() for ipt in inputs ]
 
             #must convert to list in case the op returns a tuple
             #we won't be able to post-process out the Nones if it does that
