@@ -459,11 +459,6 @@ def test_elemwise_composite_support_code():
     NLL = -T.mean(T.log(P + epsilon))  # SupportCodeError
     G = theano.gradient.grad(NLL, wrt=[W])
 
-    #If you call theano.printing.min_informative_str on G[0],
-    #then the node called L in the printout is the problem.
-    #L is an add node, adding M and something that works out to be 0
-    #with the old tensor.grad, there was no such add node, just M
-
     backup = theano.config.warn.identify_1pexp_bug
     theano.config.warn.identify_1pexp_bug = False
     try:
@@ -474,11 +469,7 @@ def test_elemwise_composite_support_code():
 
     topo = f_grad.maker.fgraph.toposort()
     assert sum([isinstance(node.op, T.Elemwise) for node in topo]) == 1
-    if sum([isinstance(node.op, tcn.GpuElemwise) for node in topo]) != 1:
-        raise KnownFailureTest("This condition depended on the gradient "
-                "taking a very specific form. The new update to T.grad "
-                "still returns a correct gradient but it doesn't get "
-                "optimized as well so this test fails.")
+    assert sum([isinstance(node.op, tcn.GpuElemwise) for node in topo]) == 1
 
 
 def speed_elemwise_collapse():
