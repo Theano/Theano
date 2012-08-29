@@ -728,7 +728,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
     #according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
         if elem not in var_to_node_to_idx and elem not in outputs:
-            grad_dict[elem] = DisconnectedType()
+            grad_dict[elem] = DisconnectedType()()
 
 
     _populate_grad_dict(var_to_node_to_idx,
