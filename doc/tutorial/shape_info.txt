@@ -102,7 +102,7 @@ You can detect those problems by running the code without this
 optimization, using the Theano flag
 ``optimizer_excluding=local_shape_to_shape_i``. You can also obtain the
 same effect by running in the modes ``FAST_COMPILE`` (it will not apply this
-optimization, nor most other optimizations) or ``DEBUG_MODE`` (it will test
+optimization, nor most other optimizations) or ``DebugMode`` (it will test
 before and after all optimizations (much slower)).
 
 

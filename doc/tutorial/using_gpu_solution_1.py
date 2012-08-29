@@ -91,15 +91,15 @@ print predict(D[0])
 # 2. Profiling
 #
 # same code as above but run with following command lines:
-# THEANO_FLAGS=mode=PROFILE_MODE,device=gpu python program_name.py
-# THEANO_FLAGS=mode=PROFILE_MODE,device=cpu python program_name.py
+# THEANO_FLAGS=mode=ProfileMode,device=gpu python program_name.py
+# THEANO_FLAGS=mode=ProfileMode,device=cpu python program_name.py
 # for GPU and CPU
 
 
 # 2.1 Profiling output for CPU computations
 
 
-$ THEANO_FLAGS=mode=PROFILE_MODE,device=cpu python program_name.py
+$ THEANO_FLAGS=mode=ProfileMode,device=cpu python program_name.py
 Used the cpu
 target values for D
 prediction on D
@@ -192,7 +192,7 @@ Test them first, as they are not guaranteed to always provide a speedup.
 
 # 2.2 Profiling output for GPU computations
 
-$ THEANO_FLAGS=mode=PROFILE_MODE,device=gpu python program_name.py 
+$ THEANO_FLAGS=mode=ProfileMode,device=gpu python program_name.py
 Using gpu device 0: GeForce GTX 580
 Used the gpu
 target values for D
