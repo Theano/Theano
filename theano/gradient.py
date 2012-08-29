@@ -93,8 +93,11 @@ def grad_undefined(op, x_pos, x, comment = ""):
 class ZeroType(theano.gof.type.Type):
 
     """ A type indicating that the only value a variable can take
-        on is 0. Used primarily to represent that a variable with
-        whose type doesn't support zeros_like has 0 gradient. """
+        on is 0. Used primarily to represent that a variable
+        x has 0 gradient when x.type doesn't support zeros_like.
+        (When x.type does support zeros_like, we can represent the
+        gradient being zero with x.zeros_like() )
+    """
 
     def filter(self, data, strict=False, allow_downcast=None):
         raise
