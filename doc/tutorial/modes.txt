@@ -129,7 +129,7 @@ as it will be useful later on.
 
 .. TODO: repair this link
 
-:download:`Solution<../modes_solution_1.py>`
+:download:`Solution<modes_solution_1.py>`
 
 -------------------------------------------
 

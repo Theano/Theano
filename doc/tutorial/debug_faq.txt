@@ -145,7 +145,7 @@ The ``compute_test_value`` mechanism works as follows:
 
 
 "How do I Print an Intermediate Value in a Function/Method?"
-----------------------------------------------------------
+------------------------------------------------------------
 
 Theano provides a 'Print' op to do this.
 

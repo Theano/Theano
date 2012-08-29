@@ -186,6 +186,4 @@ Modify and execute this code to compute this expression: a**2 + b**2 + 2*a*b.
 
 .. TODO: repair this link
 
-:download:`Solution<../adding_solution_1.py>`
-
--------------------------------------------
+:download:`Solution<adding_solution_1.py>`

@@ -530,7 +530,7 @@ def pydotprint(fct, outfile=None,
     blue boxes are outputs variables of the graph
     grey boxes are variables that are not outputs and are not used
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-       HostFromGpu)
+    HostFromGpu)
 
     """
     if colorCodes is None:
