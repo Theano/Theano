@@ -20,7 +20,7 @@ from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import all
 import theano.gof.utils
-from theano.gof.nan_type import NaNType
+from theano.gof.null_type import NullType
 from theano.printing import min_informative_str
 tensor = None
 
@@ -68,7 +68,7 @@ def grad_not_implemented(op, x_pos, x, comment = ""):
     gradient is not implemented.
     """
 
-    return NaNType("This variable is NaN because the grad method for " + \
+    return NullType("This variable is NaN because the grad method for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
             " not implemented."+comment)()
 
@@ -86,7 +86,7 @@ def grad_undefined(op, x_pos, x, comment = ""):
     gradient is not defined.
     """
 
-    return NaNType("This variable is NaN because the gradient for " + \
+    return NullType("This variable is NaN because the gradient for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
              " mathematically undefined."+comment)()
 
@@ -375,9 +375,9 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
         raise TypeError("cost must be a scalar.")
 
 
-    if isinstance(cost.type, NaNType):
+    if isinstance(cost.type, NullType):
         raise ValueError("Can't differentiate a NaN cost. cost is NaN because "+\
-                cost.type.why_nan)
+                cost.type.why_null)
 
     if consider_constant is None:
         consider_constant = []
@@ -609,9 +609,9 @@ def _populate_grad_dict(var_to_node_to_idx,\
                                     " Variable instance." % (str(node.op),
                                         type(term)))
 
-                        if isinstance(term.type,NaNType):
+                        if isinstance(term.type,NullType):
                             raise TypeError("tensor.grad encountered a NaN. "+\
-                                    term.type.why_nan)
+                                    term.type.why_null)
 
                         terms.append( term)
                 grad_dict[var] = nonempty_sum(terms)
