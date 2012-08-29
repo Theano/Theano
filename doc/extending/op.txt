@@ -98,6 +98,31 @@ following methods:
   lifetime of self.  Op instances should be immutable in this
   sense.
 
+.. function:: connection_pattern():
+
+  Optional (but in extremely rare cases needed to have it work with
+   {tensor,sparse}.grad).
+
+  Returns a list of bools the same length as the op's inputs list.
+
+  True signifies that the elements of an input have an effect on its
+  output.
+
+  False signifies that they do not--in other words, the op acts only
+  one the input's metadata such as its shape.
+
+  If no connection_pattern is implemented, tensor.grad will assume
+  it is a list containing only True.
+
+  Failing to implement this function for an op that needs it can
+  result in tensor.grad erroneously reporting that a gradient is
+  undefined. Returning 0 for this input in the grad method is not
+  the same as specifying that the elements of this input are not
+  connected to the output. If the gradient with respect to the
+  op's output is NaN but the elements of the input are not connected
+  to it, then the NaN never enters into the expression for the
+  gradient.
+
 .. function:: grad(inputs, output_gradients)
 
   Optional (but needed to have it work with {tensor,sparse}.grad()).
@@ -106,31 +131,57 @@ following methods:
   symbolically in this method. Both ``inputs`` and ``output_gradients``
   are lists of symbolic Theano Variables and those must be operated on using 
   Theano's symbolic language. The grad method must return a list containing 
-  one Variable (or ``None``) for each input. Each returned Variable represents 
+  one Variable for each input. Each returned Variable represents 
   the gradient with respect to that input computed based on the symbolic gradients with
   respect to each output.
 
-  If the output is not differentiable with respect to any inputs,
-  then this method should be defined to return ``[None for i in
-  inputs]``. If this method is not defined, then Theano assumes it has been
+  If the output is not differentiable with respect to an input
+  then this method should be defined to return a variable of type
+  NaNType for that input.
+
+  If the grad method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
   includes this Op.
 
-  It must be understood that the grad method is not meant to return the
-  gradient of the Op's output but rather the gradient of some other scalar 
-  criterion C with respect to the Op's input.
+  It must be understood that the Op's grad method is not meant to return the
+  gradient of the Op's output. theano.tensor.grad computes gradients; Op.grad
+  is a helper function that computes terms that appear in gradients.
+  
+  If an Op has a single vector-valued output y and a single vector-valued input x,
+  then the grad method will be passed x and a second vector z. Define J to be
+  the Jacobian of y with respect to x. The Op's grad method should return
+  dot(J.T,z). When theano.tensor.grad calls the grad method, it will set z to
+  be the gradient of the cost C with respect to y. If this op is the only op
+  that acts on x, then dot(J.T,z) is the gradient of C with respect to x.
+  If there are other ops that act on x, theano.tensor.grad will have to add up
+  the terms of x's gradient contributed by the other op's grad method.
+
+  In practice, an op's input and output are rarely implemented as single vectors.
+  Even if an op's output consists of a list containing a scalar, a sparse matrix,
+  and a 4D tensor, you can think of these objects as being formed by rearranging
+  a vector. Likewise for the input. In this view, the values computed by the grad
+  method still represent a Jacobian-vector product.
+
+  In practice, it is probably not a good idea to explicitly construct the Jacobian,
+  which might be very large and very sparse. However, the returned value should
+  be equal to the Jacobian-vector product.
+
+  So long as you implement this product correctly, you need not understand what
+  theano.tensor.grad is doing, but for the curious the mathematical justification
+  is as follows:
 
   In essence, the grad method must simply implement through symbolic Variables
   and operations the chain rule of differential calculus. The chain rule
-  is the mathematical procedure that allows to calculate the total derivative
+  is the mathematical procedure that allows one to calculate the total derivative
   :math:`\frac{d C}{d x}` of the final scalar symbolic Variable C with respect to a
-  primitive symbolic Variable x found in the list ``inputs``,
-  based on the knowledge of the total derivative :math:`\frac{d C}{d f}` of
-  C with respect to a symbolic Variable that is returned by the Op (this is provided
+  primitive symbolic Variable x found in the list ``inputs``.
+  The grad method does this using ``output_gradients`` which provides the total
+  derivative :math:`\frac{d C}{d f}` of C with respect to a symbolic Variable
+  that is returned by the Op (this is provided
   in ``output_gradients``), as well as the knowledge of the total derivative :math:`\frac{d f}{d x}` of the
   latter with respect to the primitive Variable (this has to be computed).
 
-  In Mathematics, the total derivative of a scalar variable (C) with respect to a vector of
+  In mathematics, the total derivative of a scalar variable (C) with respect to a vector of
   scalar variables (x), i.e. the gradient, is customarily represented as the
   row vector of the partial derivatives, whereas the total derivative of a vector of
   scalar variables (f) with respect to another (x), is customarily represented by the matrix of
