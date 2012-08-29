@@ -217,27 +217,6 @@ be costly.  Here are a few tips to ensure fast and efficient use of GPU memory a
 here: :ref:`libdoc_cuda_var`)
 
 
-Retrieving and Assigning via the ``.value`` Property
-------------------------------------------------
-
-``Shared`` variables have a ``.value`` property that is connected to ``get_value``
-and ``set_value``.  The borrowing behaviour of the property is controlled by a
-boolean configuration variable ``config.shared.value_borrows``, which currently
-defaults to *True*.  If that variable is *True* then an assignment like ``s.value=v``
-is equivalent to ``s.set_value(v, borrow=True)``, and a retrieval like ``print
-s.value`` is equivalent to ``print s.get_value(borrow=True)``.  Likewise, 
-if ``config.shared.value_borrows`` is *False*, then the borrow parameter that the ``.value`` property 
-passes to ``set_value`` and ``get_value`` is *False*.
-
-The *True* default value of ``config.shared.value_borrows`` means that
-aliasing can sometimes happen and sometimes not, which can be confusing. 
-Be aware that the default value may be changed to *False* sometime in the
-not-to-distant future. This change will create more copies, and potentially slow
-down code that accesses ``.value`` attributes inside tight loops.  To avoid this
-potential impact on your code, use the ``.get_value`` and ``.set_value`` methods
-directly with appropriate flags.
-
-
 Borrowing when Constructing Function Objects
 ============================================
 
