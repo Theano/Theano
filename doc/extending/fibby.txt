@@ -168,7 +168,7 @@ not modify any of the inputs.
 TODO: EXPLAIN DESTROYMAP and VIEWMAP BETTER AND GIVE EXAMPLE.
 
 When developing an Op, you should run computations in DebugMode, by using
-argument ``mode='DEBUG_MODE'`` to ``theano.function``. DebugMode is
+argument ``mode='DebugMode'`` to ``theano.function``. DebugMode is
 slow, but it can catch many common violations of the Op contract.
 
 TODO: Like what? How? Talk about Python vs. C too.
