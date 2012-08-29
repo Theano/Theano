@@ -100,7 +100,9 @@ class ZeroType(theano.gof.type.Type):
     """
 
     def filter(self, data, strict=False, allow_downcast=None):
-        raise
+        raise AssertionError("If you're assigning to a ZeroType you're"
+                " doing something wrong. It should only be used as "
+                "symbolic placeholder.")
 
     def fiter_variable(self, other):
         raise
