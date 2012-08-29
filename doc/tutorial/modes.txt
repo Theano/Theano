@@ -114,9 +114,6 @@ as it will be useful later on.
 
 .. You will need to use: ``theano.config.floatX`` and ``ndarray.astype("str")``
 
-.. Why the latter portion?
-
-
 .. Note::
 
    * Apply the Theano flag ``floatX=float32`` through (``theano.config.floatX``) in your code.
@@ -145,10 +142,10 @@ Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
-- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and Python 
+- ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'PROFILE_MODE'``: Same optimization then FAST_RUN, put print some profiling information
+- ``'ProfileMode'``: Same optimization then FAST_RUN, put print some profiling information
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,
@@ -159,17 +156,17 @@ which can be overridden by passing the keyword argument to
 short name        Full constructor                                                What does it do?
 ================= =============================================================== ===============================================================================
 ``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations
-``FAST_RUN``      ``compile.mode.Mode(linker='c|py', optimizer='fast_run')``      C implementations where available, all available graph transformations.
-``DEBUG_MODE``    ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
-``PROFILE_MODE``  ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
+``FAST_RUN``      ``compile.mode.Mode(linker='cvm', optimizer='fast_run')``       C implementations where available, all available graph transformations.
+``DebugMode``    ``compile.debugmode.DebugMode()``                                Both implementations where available, all available graph transformations.
+``ProfileMode``  ``compile.profilemode.ProfileMode()``                            C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
 Linkers
 =======
 
 A mode is composed of 2 things: an optimizer and a linker. Some modes,
-like ``PROFILE_MODE`` and ``DEBUG_MODE``, add logic around the optimizer and
-linker. ``PROFILE_MODE`` and ``DEBUG_MODE`` use their own linker.
+like ``ProfileMode`` and ``DebugMode``, add logic around the optimizer and
+linker. ``ProfileMode`` and ``DebugMode`` use their own linker.
 
 You can select witch linker to use with the Theano flag :attr:`config.linker`.
 Here is a table to compare the different linkers.
@@ -177,6 +174,8 @@ Here is a table to compare the different linkers.
 =============  =========  =================  =========  ===
 linker         gc [#gc]_  Raise error by op  Overhead   Definition
 =============  =========  =================  =========  ===
+cvm            yes        yes                "++"       As c|py, but the runtime algo to execute the code is in c
+cvm_nogc       no         yes                "+"        As cvm, but without gc
 c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exists for an op, use Python
 c|py_nogc      no         yes                "++"       As c|py, but without gc
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
@@ -206,10 +205,10 @@ Using DebugMode
 While normally you should use the ``FAST_RUN`` or ``FAST_COMPILE`` mode,
 it is useful at first (especially when you are defining new kinds of
 expressions or new optimizations) to run your code using the DebugMode
-(available via ``mode='DEBUG_MODE'``). The DebugMode is designed to
+(available via ``mode='DebugMode``). The DebugMode is designed to
 run several self-checks and assertions that can help diagnose
 possible programming errors leading to incorrect output. Note that
-``DEBUG_MODE`` is much slower than ``FAST_RUN`` or ``FAST_COMPILE`` so
+``DebugMode`` is much slower than ``FAST_RUN`` or ``FAST_COMPILE`` so
 use it only during development (not when you launch 1000 processes on a
 cluster!).
 
@@ -223,7 +222,7 @@ DebugMode is used as follows:
 
     x = T.dvector('x')
 
-    f = theano.function([x], 10*x, mode='DEBUG_MODE')
+    f = theano.function([x], 10 * x, mode='DebugMode')
 
     f([5])
     f([0])
@@ -232,7 +231,7 @@ DebugMode is used as follows:
 
 If any problem is detected, DebugMode will raise an exception according to
 what went wrong, either at call time (*f(5)*) or compile time (
-``f = theano.function(x, 10*x, mode='DEBUG_MODE')``). These exceptions
+``f = theano.function(x, 10 * x, mode='DebugMode')``). These exceptions
 should *not* be ignored; talk to your local Theano guru or email the
 users list if you cannot make the exception go away.
 
@@ -243,11 +242,11 @@ In the example above, there is no way to guarantee that a future call to, say
 .. TODO: repair the following link
 
 If you instantiate DebugMode using the constructor (see :class:`DebugMode`)
-rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
-constructor arguments. The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE'``)
+rather than the keyword ``DebugMode`` you can configure its behaviour via
+constructor arguments. The keyword version of DebugMode (which you get by using ``mode='DebugMode'``)
 is quite strict.
 
-For more detail, see :ref:`DebugMode<libdoc_compile_mode>` in the library.
+For more detail, see :ref:`DebugMode<debugmode>` in the library.
 
 .. _using_profilemode:
 
@@ -269,6 +268,8 @@ Using the ProfileMode is a three-step process.
 
     The memory profile of the output of each ``apply`` node can be enabled with the 
     Theano flag :attr:`config.ProfileMode.profile_memory`.
+
+For more detail, see :ref:`ProfileMode <profilemode>` in the library.
 
 Creating a ProfileMode Instance
 -------------------------------
