@@ -690,8 +690,8 @@ class ConvOp(OpenMPOp):
             fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical[
                 1:], kshp_logical, (1, 1), self.out_mode))
 
-        if z[0] is None or z[0].shape != (bsize,) + (nkern,) + fulloutshp:
-            z[0] = numpy.zeros((bsize,) + (nkern,) + fulloutshp,
+        if z[0] is None or z[0].shape != (bsize, nkern,) + fulloutshp:
+            z[0] = numpy.zeros((bsize, nkern,) + fulloutshp,
                                dtype=img2d.dtype)
         zz = z[0]
 

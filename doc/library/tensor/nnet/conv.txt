@@ -21,5 +21,11 @@
 
 TODO: Give examples for how to use these things! They are pretty complicated.
 
-.. autofunction:: theano.tensor.nnet.conv.conv2d
+- Conv implemented
+    - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
+    - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
 
+.. autofunction:: theano.tensor.signal.conv.conv2d
+.. autofunction:: theano.tensor.nnet.conv.conv2d
+.. autofunction:: theano.tensor.nnet.Conv3D.conv3D

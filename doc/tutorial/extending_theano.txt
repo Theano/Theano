@@ -319,6 +319,56 @@ Exercises 8
 
   - Our current element-wise fusion generates computation with only 1 output.
 
+SciPy
+-----
+
+We can wrap SciPy function in Theano. But Scipy is an optional dependency.
+Here is some code that allow to make the op Optional:
+
+.. code-block:: python
+
+    try:
+        import scipy.linalg
+        imported_scipy = True
+    except ImportError:
+        # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
+        imported_scipy = False
+
+    class SomeOp(Op):
+        ...
+        def make_node(self, x):
+            assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the SomeOp op.")
+
+    from nose.plugins.skip import SkipTest
+    class test_Solve(utt.InferShapeTester):
+        ...
+        def test_infer_shape(self):
+            if not imported_scipy:
+                raise SkipTest("Scipy needed for the Cholesky op.")
+
+Random number in tests
+----------------------
+
+Making test errors more reproducable is a good practice. To make your
+tests more reproducable, you need a way to get the same random
+number. You can do this by seeding NumPy's randon number
+generator. There is the Theano flag unittest.rseed that specify the
+seed that should be used to init random number generators. There is 2
+ways to do this it numpy, here is one:
+
+.. code-block:: python
+
+    # You can set NumPy's internal random number generator state with
+    numpy.random.seed(utt.fetch_seed())
+    # All following call to numpy.random.*() function will get affected.
+
+    # Or you can create a new RandomState separate from the others
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    # You can call all numpy's random number generator function's on rng
+    rng.rand(5, 5)
+
+
 GPU Op
 ------
 

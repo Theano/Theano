@@ -679,10 +679,6 @@ class CSM(gof.Op):
            a regular grad.
     """
 
-    # should view the other inputs too, but viewing multiple inputs is not
-    view_map = {0: [0]}
-    #currently supported by the destroyhandler
-
     kmap = None
     """Indexing to speficied what part of the data parameter
     should be use to construct the sparse matrix."""
@@ -701,6 +697,11 @@ class CSM(gof.Op):
 
         self.kmap = kmap
 
+        if not isinstance(self.kmap, numpy.ndarray):
+            # should view the other inputs too, but viewing multiple
+            # inputs is not currently supported by the destroyhandler
+            self.view_map = {0: [0]}
+
         self._hashval = (hash(type(self)) ^ hash(self.format) ^
                          _kmap_hash(self.kmap))
 
@@ -710,6 +711,11 @@ class CSM(gof.Op):
 
     def __hash__(self):
         return self._hashval
+
+    def __str__(self):
+        if self.kmap is not None:
+            return "%s{%s}" %(self.__class__.__name__, str(self.kmap))
+        return self.__class__.__name__
 
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
@@ -802,8 +808,10 @@ class CSMGrad(gof.op.Op):
 
     def __init__(self, kmap=None):
         self.kmap = kmap
-        if self.kmap is None:
-            self.view_map = {0: [1]}
+        #This class always allocate a new output.
+        #I keep this here to help GD understand what this kmap think is.
+        #if self.kmap is None:
+        #    self.view_map = {0: [1]}
 
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
@@ -1224,6 +1232,7 @@ class Transpose(gof.op.Op):
            matrix.
     :note: The grad is regular, i.e. not structured.
     """
+    view_map = {0: [0]}
 
     format_map = {'csr': 'csc',
                   'csc': 'csr'}
@@ -1354,6 +1363,8 @@ class RowScaleCSC(gof.op.Op):
     #          element of `s`.
 
     # :note: The grad implemented is structured.
+
+    view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other)
