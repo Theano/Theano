@@ -288,10 +288,23 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     if not isinstance(f, (list, tuple)):
         f = [f]
 
-    inputs = gof.graph.inputs(f)
+    f = [ elem for elem in f ]
+    grads = [ elem for elem in eval_points ]
+
+    for elem in consider_constant:
+        assert elem not in f
+        f.append(elem)
+        grads.append(elem.zeros_like())
+
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [wrt]
+
+    arg1 = zip(f, eval_points)
+    arg2 = list(wrt)
+
     gmap = grad_sources_inputs(
-        zip(f, eval_points),
-        list(inputs) + list(consider_constant),
+        arg1,
+        arg2,
         warn_type=warn_type)
 
     # Note : If p is not in gmap there can be several reasons, among which
@@ -301,8 +314,6 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     # such subtle cases can be fixed by a more careful implementation of the
     # gradient, but for now Theano needs to throw an exception, and make the
     # user aware that it does not know how to compute that gradient
-    if not isinstance(wrt, (list, tuple)):
-        wrt = [wrt]
     ret = []
     for p in wrt:
         if p in gmap:
@@ -399,6 +410,7 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
     using_tuple = isinstance(wrt,tuple)
     if not using_list and not using_tuple:
         wrt = [ wrt ]
+
 
     var_to_node_to_idx = _populate_var_to_node_to_idx([cost])
 
