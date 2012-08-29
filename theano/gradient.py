@@ -734,6 +734,12 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
     _populate_grad_dict(var_to_node_to_idx,
             grad_dict, wrt, warn_type)
 
+    #post-process out the DisconnectedTypes
+    for key in grad_dict:
+        if isinstance(grad_dict[key].type,DisconnectedType):
+            if hasattr(key,'zeros_like'):
+                grad_dict[key] = key.zeros_like()
+
     return grad_dict
 
 class numeric_grad(object):
