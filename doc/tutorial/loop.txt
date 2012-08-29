@@ -96,7 +96,4 @@ Modify and execute the polynomial example to have the reduction done by ``scan``
 
 .. TODO: repair this link as well as the code in the target file
 
-:download:`Solution<../loop_solution_1.py>`
-
-
--------------------------------------------
+:download:`Solution<loop_solution_1.py>`

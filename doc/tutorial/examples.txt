@@ -314,7 +314,7 @@ Here's a brief example.  The setup code is:
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
 distribution.  Likewise,  'rv_n' represents a random stream of 2x2 matrices of
 draws from a normal distribution.  The distributions that are implemented are
-defined in :class:`RandomStreams` and, at a lower level, in :ref:`raw_random<_libdoc_tensor_raw_random>`.
+defined in :class:`RandomStreams` and, at a lower level, in :ref:`raw_random<libdoc_tensor_raw_random>`.
 
   .. TODO: repair the latter reference on RandomStreams
 

@@ -74,7 +74,7 @@ CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_t
 
 
 Theano Op using a PyCUDA function
--------------------------------
+---------------------------------
 
 You can use a GPU function compiled with PyCUDA in a Theano op:
 
