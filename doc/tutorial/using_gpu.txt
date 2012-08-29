@@ -48,9 +48,9 @@ file and run it.
     t0 = time.time()
     for i in xrange(iters):
         r = f()
-    print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+    print 'Looping %d times took' % iters, time.time() - t0, 'seconds'
     print 'Result is', r
-    print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
+    print 'Used the','cpu' if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
 
 The program just computes the ``exp()`` of a bunch of random numbers.
 Note that we use the ``shared`` function to
@@ -116,7 +116,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
     print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
     print 'Result is', r
     print 'Numpy result is', numpy.asarray(r)
-    print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
+    print 'Used the','cpu' if numpy.any([isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
 
 The output from this program is
 
@@ -179,10 +179,10 @@ example was so simple that it had the unwanted side-effect of really slowing thi
     t0 = time.time()
     for i in xrange(iters):
         r = f()
-    print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+    print 'Looping %d times took' % iters, time.time() - t0, 'seconds'
     print 'Result is', r
     print 'Numpy result is', numpy.asarray(r)
-    print 'Used the','cpu' if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
+    print 'Used the','cpu' if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]) else 'gpu'
 
 Running this version of the code takes just over 0.05 seconds, that is 60x faster than
 the CPU implementation!
@@ -376,8 +376,6 @@ What can be done to further increase the speed of the GPU version? Put your idea
      * Insert manual cast in your code or use *[u]int{8,16}*.
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
      * Notice that a new casting mechanism is being developed.
-
-.. TODO: repair this link
 
 :download:`Solution<using_gpu_solution_1.py>`
 

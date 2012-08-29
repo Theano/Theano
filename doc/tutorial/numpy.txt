@@ -37,7 +37,7 @@ This is a 3x2 matrix, i.e. there are 3 rows and 2 columns.
 
 To access the entry in the 3rd row (row #2) and the 1st column (column #0):
 
->>> numpy.asarray([[1., 2], [3, 4], [5, 6]])[2,0]
+>>> numpy.asarray([[1., 2], [3, 4], [5, 6]])[2, 0]
 5.0
 
 

@@ -24,7 +24,7 @@ Currently, information regarding shape is used in two ways in Theano:
 
      import theano
      x = theano.tensor.matrix('x')
-     f = theano.function([x], (x**2).shape)
+     f = theano.function([x], (x ** 2).shape)
      theano.printing.debugprint(f)
      #MakeVector [@43860304] ''   2
      # |Shape_i{0} [@43424912] ''   1
@@ -48,9 +48,9 @@ can lead to errors. Consider this example:
    import theano
    x = theano.tensor.matrix('x')
    y = theano.tensor.matrix('y')
-   z = theano.tensor.join(0,x,y)
-   xv = numpy.random.rand(5,4)
-   yv = numpy.random.rand(3,3)
+   z = theano.tensor.join(0, x, y)
+   xv = numpy.random.rand(5, 4)
+   yv = numpy.random.rand(3, 3)
 
    f = theano.function([x,y], z.shape)
    theano.printing.debugprint(f)
@@ -119,7 +119,7 @@ upgrade.  Here is the current state of what can be done:
 
 .. code-block:: python
 
-    theano.tensor.nnet.conv2d(..., image_shape=(7,3,5,5), filter_shape=(2,3,4,4))
+    theano.tensor.nnet.conv2d(..., image_shape=(7, 3, 5, 5), filter_shape=(2, 3, 4, 4))
 
 - You can use the ``SpecifyShape`` op to add shape information anywhere in the
   graph. This allows to perform some optimizations. In the following example,
@@ -129,8 +129,8 @@ upgrade.  Here is the current state of what can be done:
 
    import theano
    x = theano.tensor.matrix()
-   x_specify_shape = theano.tensor.specify_shape(x, (2,2))
-   f = theano.function([x], (x_specify_shape**2).shape)
+   x_specify_shape = theano.tensor.specify_shape(x, (2, 2))
+   f = theano.function([x], (x_specify_shape ** 2).shape)
    theano.printing.debugprint(f)
    # [2 2] [@72791376]
 

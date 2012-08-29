@@ -121,13 +121,13 @@ class TestOp(utt.InferShapeTester):
         y = tensor.dmatrix()
 
         # adapt the choice of the next instruction to the op under test
-       
+
         self._compile_and_check([x, y], [self.op_class()(x, y)],  # case 1
                                 [numpy.random.rand(5, 6),
                                  numpy.random.rand(5, 6)],
                                 self.op_class)
         """
-        
+
         self._compile_and_check([x, y], self.op_class()(x, y),  # case 2
                                 [numpy.random.rand(5, 6),
                                  numpy.random.rand(5, 6)],
@@ -141,5 +141,5 @@ if __name__ == "__main__":
     t.test_perform()
     # comment out next instruction in case 2 since autotesting of
     # gradient of multiple output functions is not implemented yet
-    t.test_gradient() # enable in case 1, disable in case 2
+    t.test_gradient()  # enable in case 1, disable in case 2
     t.test_infer_shape()

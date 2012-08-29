@@ -63,4 +63,3 @@ print D[1]
 
 print "prediction on D"
 print predict(D[0])
-

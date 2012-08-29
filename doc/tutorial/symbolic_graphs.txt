@@ -67,7 +67,7 @@ Take for example the following code:
 .. code-block:: python
 
     x = T.dmatrix('x')
-    y = x*2.
+    y = x * 2.
 
 If you enter ``type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
 which is the apply node that connects the op and the inputs to get this
@@ -156,9 +156,9 @@ as we apply it. Consider the following example of optimization:
 
 >>> import theano
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
->>> b = a + a**10                      # build symbolic expression
+>>> b = a + a ** 10                    # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
->>> print f([0,1,2])                   # prints `array([0,2,1026])`
+>>> print f([0, 1, 2])                 # prints `array([0,2,1026])`
 
 
 ======================================================  =====================================================
