@@ -466,7 +466,7 @@ def _populate_var_to_node_to_idx(outputs):
     """
 
 
-    #var_to_node_to_idx[var][node] = i means node has var as input at position i
+    #var_to_node_to_idx[var][node] = [i,j] means node has var as input at positions i and j
     var_to_node_to_idx = {}
     #set of variables that have been added to their parents
     accounted_for = set([])
@@ -480,11 +480,18 @@ def _populate_var_to_node_to_idx(outputs):
         accounted_for.add(var)
         if var.owner is not None:
             node = var.owner
-            for i, ipt in enumerate(node.inputs):
-                if ipt not in var_to_node_to_idx:
-                    var_to_node_to_idx[ipt] = {}
-                var_to_node_to_idx[ipt][node] = i
-                account_for(ipt)
+            if node not in accounted_for:
+                accounted_for.add(node)
+                for i, ipt in enumerate(node.inputs):
+                    if ipt not in var_to_node_to_idx:
+                        var_to_node_to_idx[ipt] = {}
+                    node_to_idx = var_to_node_to_idx[ipt]
+                    if node not in node_to_idx:
+                        node_to_idx[node] = []
+                    idx = node_to_idx[node]
+                    assert i not in idx
+                    idx.append(i)
+                    account_for(ipt)
 
     for output in outputs:
         account_for(output)
@@ -584,19 +591,25 @@ def _populate_grad_dict(var_to_node_to_idx,\
                 terms = []
                 node_to_idx = var_to_node_to_idx[var]
                 for node in node_to_idx:
-                    idx = node_to_idx[node]
-                    term = access_term_cache(node)[idx]
+                    for idx in node_to_idx[node]:
 
-                    if not isinstance(term, gof.Variable):
-                        raise TypeError("%s.grad returned %s, expected"
-                                " Variable instance." % (str(node.op),
-                                    type(term)))
+                        if hasattr(node.op, 'connection_pattern'):
+                            pattern = node.op.connection_pattern()
+                            if not pattern[idx]:
+                                continue
 
-                    if isinstance(term.type,NaNType):
-                        raise TypeError("tensor.grad encountered a NaN. "+\
-                                term.type.why_nan)
+                        term = access_term_cache(node)[idx]
 
-                    terms.append( term)
+                        if not isinstance(term, gof.Variable):
+                            raise TypeError("%s.grad returned %s, expected"
+                                    " Variable instance." % (str(node.op),
+                                        type(term)))
+
+                        if isinstance(term.type,NaNType):
+                            raise TypeError("tensor.grad encountered a NaN. "+\
+                                    term.type.why_nan)
+
+                        terms.append( term)
                 grad_dict[var] = nonempty_sum(terms)
                 if cost_name is not None and var.name is not None:
                     grad_dict[var].name = '(d%s/d%s)' % (cost_name, var.name)
