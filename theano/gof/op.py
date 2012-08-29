@@ -658,9 +658,38 @@ class UncomputableOp(Op):
         raise self.exc(self.msg)
 
 def raise_if_uncomputable(node):
+    """
+        node: an Apply instance
+
+        If this Apply node is uncomputable, raises an exception
+        explaining why. The exception type will depend on the
+        reason for this node being uncomputable (examples:
+            NotImplementedError if the perform of the op
+            is not implemented or the op is a stand-in for
+            an expression that hasn't been defined yet,
+            GradUndefinedError if the op is a stand-in for
+            a gradient that isn't mathematically defined)
+    """
+
     if node is not None:
         if isinstance(node.op, UncomputableOp):
             node.op.raise_exc()
+
+def is_uncomputable(var):
+    """ var: A Variable
+
+        returns True if var is uncomputable and False
+            otherwise
+    """
+
+    assert isinstance(var, graph.Variable)
+
+    vars_to_check = graph.ancestors([var])
+    for elem in vars_to_check:
+        if elem.owner is not None and \
+            isinstance(elem.owner.op,UncomputableOp):
+                return True
+    return False
 
 def get_test_value(v):
     """

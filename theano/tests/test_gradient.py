@@ -280,6 +280,22 @@ def test_undefined_grad_func():
     except theano.gradient.GradUndefinedError:
         pass
 
+def test_unimplemented_grad_func_input():
+    #tests that unimplemented grads can't be inputs to a function
+    a = theano.tensor.vector()
+    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
+    c = b.sum()
+    try:
+        f = theano.function([b], c)
+        assert 0
+        #Note: it's important that the NotImplementedGradOp is caught
+        #at COMPILATION time, not execution time.
+        #If the uncomputable variable is, for example, multiplied by 0,
+        #it could be optimized out of the final graph.
+    except TypeError:
+        pass
+
+
 def test_unimplemented_grad_grad():
     #tests that unimplemented grads are caught in the grad method
 
@@ -316,6 +332,40 @@ def test_undefined_grad_grad():
         assert False
     except theano.gradient.GradUndefinedError:
         pass
+
+
+def test_unimplemented_grad_cost():
+    #tests that an unimplemented grad is not differentiable
+
+    a = theano.tensor.vector()
+    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
+    cost = theano.tensor.dot(b,a)
+
+    try:
+        g = theano.tensor.grad(cost,a)
+        raise AssertionError(
+            "Returned an expression for the derivative of an "
+            "uncomputable expression")
+    except TypeError:
+        pass
+
+
+def test_unimplemented_grad_wrt():
+    #tests that the gradient with respect to an uncomputable expression
+    #is undefined
+
+    a = theano.tensor.vector()
+    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
+    cost = a.sum()
+
+    try:
+        g = theano.tensor.grad(cost,b)
+        raise AssertionError(
+            "Returned an expression for the derivative wrt an"
+            "uncomputable expression")
+    except TypeError:
+        pass
+
 
 def test_grad_name():
     A = theano.tensor.matrix('A')

@@ -20,6 +20,7 @@ from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import all
 import theano.gof.utils
+from theano.gof.op import is_uncomputable
 
 _msg_retType = 'op.grad(...) returned a non-list'
 _msg_badlen = 'op.grad(...) returned wrong number of gradients'
@@ -557,6 +558,11 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
                 ' gradient of the sum of cost, you should use cost.sum().'
                 % cost.type.ndim)
 
+    if is_uncomputable(cost):
+        raise TypeError(
+                "Cannot take the derivative of an uncomputable expression")
+
+
     if g_cost is None:
         from theano import tensor
         g_cost = tensor.ones_like(cost)
@@ -578,6 +584,13 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
 
     if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
+
+
+    for elem in wrt:
+        if is_uncomputable(elem):
+            raise TypeError("Cannot take a derivative with "
+                    "respect to an uncomputable expression")
+
     ret = []
     for p in wrt:
         if p in gmap:

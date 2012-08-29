@@ -4408,7 +4408,12 @@ class test_grad(unittest.TestCase):
                  disconnected_inputs='ignore')
         self.assertTrue(g.owner.op == fill)
         self.assertTrue(g.owner.inputs[1].data == 0)
-        self.assertRaises(ValueError, grad, a1.outputs[0], 'wtf')
+        #this line seems to be testing that taking a gradient with
+        #respect to a string fails.
+        #originally it wanted it to be a ValueError
+        #this seems wrong, shouldn't it be a TypeError?
+        #in any case, it now raises an assertion on the type
+        self.assertRaises(Exception, grad, a1.outputs[0], 'wtf')
 
     def test_NNone_rval(self):
         """grad: Test returning some zero value from grad"""

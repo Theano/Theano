@@ -2,11 +2,9 @@
 
 __docformat__ = "restructuredtext en"
 
-import copy
 import utils
 from utils import MethodNotDefined, object2
 import graph
-from theano import config
 
 ########
 # Type #
@@ -384,6 +382,15 @@ class Type(object2, PureType, CLinkerType):
 
     Many `Op` instances will raise an exception if they are applied to inputs with incorrect
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
+
+    A Variable's type can be trumped by the Variable being uncomputable (if the Variable is
+    the result of an expression containing an UncomputableOp). An uncomputable Variable still
+    has a type so that symbolic operators can be applied to it without causing errors, but
+    in actuality the Variable is defined as not being able to take on any value and thus in
+    some sense having no type (much as a Not a Number is not a real number). This means that
+    no values can be legally assigned to the uncomputable Variable so it cannot be used as
+    an input to a function, cannot have its derivative computed, cannot have derivatives
+    computed with respect to it, etc.
 
     """
 
