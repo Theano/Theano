@@ -20,12 +20,12 @@ FunctionGraph
 .. _libdoc_gof_fgraphfeature:
 
 FunctionGraph Features
--------------
+----------------------
 
 .. _libdoc_gof_fgraphfeaturelist:
 
 FunctionGraph Feature List
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 * ReplaceValidate
 * DestroyHandler
 

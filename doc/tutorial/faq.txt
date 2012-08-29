@@ -34,7 +34,7 @@ Also the ``-march=native`` flag must be used with care if you have NFS. In that 
 
 
 "What are Theano's Limitations?"
--------------------------------
+--------------------------------
 
 Theano offers a good amount of flexibility, but has some limitations too.
 You must answer for yourself the following question: How can my algorithm be cleverly written 
