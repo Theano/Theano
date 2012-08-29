@@ -40,7 +40,6 @@ you out.
     gpu_data_convert
     aliasing
     shape_info
-    remarks
     debug_faq
     extending_theano
     faq
