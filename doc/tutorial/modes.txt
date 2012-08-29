@@ -108,12 +108,6 @@ Modify and execute this example to run on CPU (the default) with floatX=float32 
 time the execution using the command line ``time python file.py``.  Save your code 
 as it will be useful later on. 
 
-.. TODO: To be resolved:
- 
-.. Solution said:
-
-.. You will need to use: ``theano.config.floatX`` and ``ndarray.astype("str")``
-
 .. Note::
 
    * Apply the Theano flag ``floatX=float32`` through (``theano.config.floatX``) in your code.
@@ -123,8 +117,6 @@ as it will be useful later on.
      * Insert manual cast in your code or use *[u]int{8,16}*.
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
      * Notice that a new casting mechanism is being developed.
-
-.. TODO: repair this link
 
 :download:`Solution<modes_solution_1.py>`
 

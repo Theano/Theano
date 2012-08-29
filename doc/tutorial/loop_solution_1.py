@@ -23,7 +23,7 @@ result, updates = theano.scan(fn=inner_fct,
                             outputs_info=T.ones_like(A),
                             non_sequences=A, n_steps=k)
 
-# Scan has provided us with A**1 through A**k.  Keep only the last
+# Scan has provided us with A ** 1 through A ** k.  Keep only the last
 # value. Scan notices this and does not waste memory saving them.
 final_result = result[-1]
 
@@ -83,10 +83,10 @@ outputs_info = T.as_tensor_variable(numpy.asarray(0, 'float64'))
 
 components, updates = theano.scan(fn=lambda prior_value, coeff, power, free_var:
                                  prior_value + (coeff * (free_var ** power)),
-                                outputs_info=outputs_info,
-                                sequences=[coefficients, full_range],
-                                non_sequences=x)
-                                
+                                 outputs_info=outputs_info,
+                                 sequences=[coefficients, full_range],
+                                 non_sequences=x)
+
 polynomial = components[-1]
 calculate_polynomial = theano.function(inputs=[coefficients, x],
                                      outputs=polynomial, updates=updates)
@@ -94,4 +94,3 @@ calculate_polynomial = theano.function(inputs=[coefficients, x],
 test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
 print calculate_polynomial(test_coeff, 3)
 # 19.0
-

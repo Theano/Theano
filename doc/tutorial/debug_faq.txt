@@ -35,27 +35,27 @@ following example.
     theano.config.compute_test_value = 'off'
 
     # configure shared variables
-    W1val = numpy.random.rand(2,10,10).astype(theano.config.floatX)
+    W1val = numpy.random.rand(2, 10, 10).astype(theano.config.floatX)
     W1 = theano.shared(W1val, 'W1')
-    W2val = numpy.random.rand(15,20).astype(theano.config.floatX)
+    W2val = numpy.random.rand(15, 20).astype(theano.config.floatX)
     W2 = theano.shared(W2val, 'W2')
 
     # input which will be of shape (5,10)
     x  = T.matrix('x')
 
     # transform the shared variable in some way. Theano does not
-    # know off hand that the matrix func_of_W1 has shape (20,10)
-    func_of_W1 = W1.dimshuffle(2,0,1).flatten(2).T
+    # know off hand that the matrix func_of_W1 has shape (20, 10)
+    func_of_W1 = W1.dimshuffle(2, 0, 1).flatten(2).T
 
     # source of error: dot product of 5x10 with 20x10
-    h1 = T.dot(x,func_of_W1)  
+    h1 = T.dot(x, func_of_W1)
 
     # do more stuff
-    h2 = T.dot(h1,W2.T)  
+    h2 = T.dot(h1, W2.T)
 
     # compile and call the actual function
     f = theano.function([x], h2)
-    f(numpy.random.rand(5,10))
+    f(numpy.random.rand(5, 10))
    
 Running the above code generates the following error message:
 
@@ -98,10 +98,10 @@ can get Theano to reveal the exact source of the error.
 
     ...
 
-    # input which will be of shape (5,10)
+    # input which will be of shape (5, 10)
     x  = T.matrix('x')
     # provide Theano with a default test-value
-    x.tag.test_value = numpy.random.rand(5,10)
+    x.tag.test_value = numpy.random.rand(5, 10)
 
 In the above, we are tagging the symbolic matrix *x* with a special test
 value. This allows Theano to evaluate symbolic expressions on-the-fly (by
@@ -159,10 +159,10 @@ Theano provides a 'Print' op to do this.
     f_with_print = theano.function([x], x_printed * 5)
 
     #this runs the graph without any printing
-    assert numpy.all( f([1,2,3]) == [5, 10, 15])
+    assert numpy.all( f([1, 2, 3]) == [5, 10, 15])
 
     #this runs the graph with the message, and value printed
-    assert numpy.all( f_with_print([1,2,3]) == [5, 10, 15])
+    assert numpy.all( f_with_print([1, 2, 3]) == [5, 10, 15])
 
 
 Since Theano runs your program in a topological order, you won't have precise
@@ -242,7 +242,7 @@ along with its position in the graph, the arguments to the functions ``perform``
 ``c_code`` and the output it computed.  
 
 >>> x = T.dscalar('x')
->>> f = function([x], [5*x], mode=PrintEverythingMode())
+>>> f = function([x], [5 * x], mode=PrintEverythingMode())
 >>> f(3)
 >>> # print: 0 Elemwise{mul,no_inplace}(5, x) [array(5, dtype=int8), array(3.0)] [array(15.0)]
 >>> # print: [array(15.0)]
@@ -280,11 +280,11 @@ Consider this example script ("ex.py"):
         a = T.dmatrix('a')
         b = T.dmatrix('b')
 
-        f = theano.function([a,b], [a*b])
+        f = theano.function([a, b], [a * b])
 
         # matrices chosen so dimensions are unsuitable for multiplication
-        mat1 = numpy.arange(12).reshape((3,4))
-        mat2 = numpy.arange(25).reshape((5,5))
+        mat1 = numpy.arange(12).reshape((3, 4))
+        mat2 = numpy.arange(25).reshape((5, 5))
 
         f(mat1, mat2)
 

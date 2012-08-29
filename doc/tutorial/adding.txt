@@ -178,13 +178,11 @@ with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creatio
 
   import theano
   a = theano.tensor.vector() # declare variable
-  out = a + a**10               # build symbolic expression
+  out = a + a ** 10               # build symbolic expression
   f = theano.function([a], out)   # compile function
-  print f([0,1,2])  # prints `array([0,2,1026])`
+  print f([0, 1, 2])  # prints `array([0, 2, 1026])`
   
-Modify and execute this code to compute this expression: a**2 + b**2 + 2*a*b.
+Modify and execute this code to compute this expression: a ** 2 + b ** 2 + 2 * a * b.
 
-
-.. TODO: repair this link
 
 :download:`Solution<adding_solution_1.py>`
