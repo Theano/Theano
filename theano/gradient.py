@@ -554,7 +554,7 @@ def _populate_grad_dict(var_to_node_to_idx,
                         gradient for the cost variable to g_cost, etc.
 
                         both should set the gradient for disconnected
-                        inputs to DisconnectedType()
+                        inputs to a variable with type DisconnectedType()
 
         wrt: the minimal set of variables that must be included in grad_dict
 
