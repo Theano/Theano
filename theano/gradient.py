@@ -305,7 +305,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     if not isinstance(f, (list, tuple)):
         f = [f]
 
-    #make copies of f and grads so we don't modify the client's copy
+    # make copies of f and grads so we don't modify the client's copy
     f = list(f)
     grads = list(eval_points)
 
@@ -413,7 +413,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     if consider_constant is None:
         consider_constant = []
     else:
-        #error checking on consider_constant: verify that it is a collection
+        # error checking on consider_constant: verify that it is a collection
         # of theano variables
         # this is important, if someone accidentally passes a nested data
         # structure with theano variables at the leaves, only the root will
@@ -433,21 +433,21 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
 
     var_to_node_to_idx = _populate_var_to_node_to_idx([cost])
 
-    #build a dict mapping var to the gradient of cost with respect to var
+    # build a dict mapping var to the gradient of cost with respect to var
     grad_dict = {}
-    #by default, the gradient of the cost is 1
+    # by default, the gradient of the cost is 1
     if g_cost is None:
         g_cost = tensor.ones_like(cost)
     grad_dict[cost] = g_cost
 
-    #the gradient of the constants is 0
+    # the gradient of the constants is 0
     for const in consider_constant:
         grad_dict[const] = DisconnectedType()()
 
-    #variables that do not influence the cost have zero gradient.
-    #if wrt is such a variable, populate the grad_dict with this info
-    #so that wrt not being in var_to_node_to_idx won't cause an error below
-    #according to the flag, possibly raise an error if wrt is disconnected
+    # variables that do not influence the cost have zero gradient.
+    # if wrt is such a variable, populate the grad_dict with this info
+    # so that wrt not being in var_to_node_to_idx won't cause an error below
+    # according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
         if elem not in var_to_node_to_idx and elem is not cost:
             message = ("grad method was asked to compute the gradient "
@@ -500,10 +500,10 @@ def _populate_var_to_node_to_idx(outputs):
 
     """
 
-    #var_to_node_to_idx[var][node] = [i,j] means node has
-    #var as input at positions i and j
+    # var_to_node_to_idx[var][node] = [i,j] means node has
+    # var as input at positions i and j
     var_to_node_to_idx = {}
-    #set of variables or nodes that have been added to their parents
+    # set of variables or nodes that have been added to their parents
     accounted_for = set([])
 
     def account_for(var):
@@ -564,11 +564,11 @@ def _populate_grad_dict(var_to_node_to_idx,
         returns: a list of gradients corresponding to wrt
 
     """
-    #build a dict mapping node to the terms node contributes to each of
-    #its inputs' gradients
+    # build a dict mapping node to the terms node contributes to each of
+    # its inputs' gradients
     term_dict = {}
 
-    #populate term_dict[node] and return it
+    # populate term_dict[node] and return it
     def access_term_cache(node):
         if node not in term_dict:
 
@@ -596,8 +596,8 @@ def _populate_grad_dict(var_to_node_to_idx,
 
             if False in [isinstance(g.type, DisconnectedType)
                     for g in output_grads]:
-                #Some outputs of this op are connected to the cost so we must
-                #call the ops grad method
+                # Some outputs of this op are connected to the cost so we must
+                # call the ops grad method
 
                 input_grads = node.op.grad(inputs, output_grads)
 
@@ -609,30 +609,30 @@ def _populate_grad_dict(var_to_node_to_idx,
                     raise ValueError(("%s returned the wrong number of" +\
                             " gradient terms.") % str(node.op))
             else:
-                #All outputs of this op are disconnected so we can skip
-                #Calling the op's grad method and report that the inputs
-                #are disconnected
-                #(The op's grad method could do this too, but this saves the
-                #implementer the trouble of worrying about this case)
+                # All outputs of this op are disconnected so we can skip
+                # Calling the op's grad method and report that the inputs
+                # are disconnected
+                # (The op's grad method could do this too, but this saves the
+                # implementer the trouble of worrying about this case)
                 input_grads = [DisconnectedType()() for ipt in inputs]
 
-            #must convert to list in case the op returns a tuple
-            #we won't be able to post-process out the Nones if it does that
+            # must convert to list in case the op returns a tuple
+            # we won't be able to post-process out the Nones if it does that
             term_dict[node] = list(input_grads)
 
             for i in xrange(len(term_dict[node])):
 
                 if term_dict[node][i] is None:
-                    #we don't know what None means. in the past it has been
-                    #used to
-                    #mean undefined, zero, or disconnected. So for now we
-                    #assume it is
-                    #zero. Assuming it is zero prevents
-                    #us from disconnecting NaNs above.
-                    #eventually we should disallow this
-                    #return type and force all ops
-                    #to return the correct thing
-                    #raise AssertionError('%s returned None for' +\
+                    # we don't know what None means. in the past it has been
+                    # used to
+                    # mean undefined, zero, or disconnected. So for now we
+                    # assume it is
+                    # zero. Assuming it is zero prevents
+                    # us from disconnecting NaNs above.
+                    # eventually we should disallow this
+                    # return type and force all ops
+                    # to return the correct thing
+                    # raise AssertionError('%s returned None for' +\
                     # ' a gradient term, '
                     #        'this is prohibited' % node.op)
                     term_dict[node][i] = node.inputs[i].zeros_like()
@@ -648,16 +648,16 @@ def _populate_grad_dict(var_to_node_to_idx,
 
         return term_dict[node]
 
-    #built-in python sum adds an extraneous TensorConstant(0)
-    #we can exploit the knowledge that iterable always has at
-    #least one element to avoid starting the sum at 0
+    # built-in python sum adds an extraneous TensorConstant(0)
+    # we can exploit the knowledge that iterable always has at
+    # least one element to avoid starting the sum at 0
     def nonempty_sum(iterable):
         rval = iterable[0]
         for elem in iterable[1:]:
             rval = rval + elem
         return rval
 
-    #populate grad_dict[var] and return it
+    # populate grad_dict[var] and return it
     def access_grad_cache(var):
         if var not in grad_dict:
             if var in var_to_node_to_idx:
@@ -688,8 +688,8 @@ def _populate_grad_dict(var_to_node_to_idx,
                 if cost_name is not None and var.name is not None:
                     grad_dict[var].name = '(d%s/d%s)' % (cost_name, var.name)
             else:
-                #this variable isn't connected to the cost in the computational
-                #graph
+                # this variable isn't connected to the cost in the computational
+                # graph
                 grad_dict[var] = DisconnectedType()()
         return grad_dict[var]
 
@@ -772,16 +772,16 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
 
     var_to_node_to_idx = _populate_var_to_node_to_idx(outputs)
 
-    #build a dict mapping var to the gradient of cost with respect to var
+    # build a dict mapping var to the gradient of cost with respect to var
     grad_dict = {}
-    #by default, the gradient of the cost is 1
+    # by default, the gradient of the cost is 1
     for output, output_grad in sources:
         grad_dict[output] = output_grad
 
-    #variables that do not influence the cost have zero gradient.
-    #if wrt is such a variable, populate the grad_dict with this info
-    #so that wrt not being in var_to_node_to_idx won't cause an error below
-    #according to the flag, possibly raise an error if wrt is disconnected
+    # variables that do not influence the cost have zero gradient.
+    # if wrt is such a variable, populate the grad_dict with this info
+    # so that wrt not being in var_to_node_to_idx won't cause an error below
+    # according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
         if elem not in var_to_node_to_idx and elem not in outputs:
             grad_dict[elem] = DisconnectedType()()
@@ -789,7 +789,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type=True):
     _populate_grad_dict(var_to_node_to_idx,
             grad_dict, wrt, warn_type)
 
-    #post-process out the DisconnectedTypes
+    # post-process out the DisconnectedTypes
     for key in grad_dict:
         if isinstance(grad_dict[key].type, DisconnectedType):
             if hasattr(key, 'zeros_like'):
@@ -1087,7 +1087,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             as_tensor_variable(p).broadcastable)(name='input %i' % i)
         for i, p in enumerate(pt)]
 
-    #fun can be either a function or an actual Op instance
+    # fun can be either a function or an actual Op instance
     o_output = fun(*tensor_pt)
 
     if isinstance(o_output, list):
@@ -1122,7 +1122,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     cost_fn = function(tensor_pt, cost)
 
-    #todo-- determine if this is actually needed
+    # todo-- determine if this is actually needed
     g_cost = as_tensor_variable(1.0, name='g_cost')
     if cast_to_output_type:
         g_cost = cast(g_cost, o_output.dtype)
@@ -1148,7 +1148,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             raise verify_grad.E_grad(max_arg, max_err_pos,
                     max_abs_err, max_rel_err, abs_tol, rel_tol)
 
-        #get new random projection for next test
+        # get new random projection for next test
         if test_num < n_tests - 1:
             t_r.set_value(random_projection(), borrow=True)
 
