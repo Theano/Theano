@@ -138,16 +138,12 @@ class test_grad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[i] is one)
 
 def test_unimplemented_grad_func():
-    #tests that function compilation catches unimplemented grads in the graph
+    # tests that function compilation catches unimplemented grads in the graph
     a = theano.tensor.vector()
     b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
     try:
         f = theano.function([a], b, on_unused_input = 'ignore')
         assert 0
-        #Note: it's important that the NotImplementedGradOp is caught
-        #at COMPILATION time, not execution time.
-        #If the uncomputable variable is, for example, multiplied by 0,
-        #it could be optimized out of the final graph.
     except TypeError:
         pass
 
@@ -158,10 +154,6 @@ def test_undefined_grad_func():
     try:
         f = theano.function([a],b, on_unused_input = 'ignore')
         assert 0
-        #Note: it's important that the GradUndefinedOp is caught at
-        #COMPILATION time, not execution time.
-        #If the uncomputable variable is, for example, multiplied by0,
-        #it could be optimized out of the final graph
     except TypeError:
         pass
 
