@@ -1,7 +1,7 @@
-
+#!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Extending Theano'
-
+import unittest
 
 import theano
 
@@ -164,11 +164,4 @@ class TestSumDiffOp(utt.InferShapeTester):
                                 self.op_class)
 
 if __name__ == "__main__":
-
-    t = TestOp('setUp')
-    t.setUp()
-    t.test_perform()
-    # comment out next instruction in case 2 since autotesting of
-    # gradient of multiple output functions is not implemented yet
-    t.test_gradient()  # enable in case 1, disable in case 2
-    t.test_infer_shape()
+    unittest.main()
