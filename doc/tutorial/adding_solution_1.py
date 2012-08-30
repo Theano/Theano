@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Baby Steps - Algebra'
 
@@ -8,4 +8,3 @@ b = theano.tensor.vector()  # declare variable
 out = a ** 2 + b ** 2 + 2 * a * b  # build symbolic expression
 f = theano.function([a, b], out)   # compile function
 print f([1, 2], [4, 5])  # prints [ 25.  49.]
-

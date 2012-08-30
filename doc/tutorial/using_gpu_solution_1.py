@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Using the GPU'
 
