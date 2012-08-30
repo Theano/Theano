@@ -33,7 +33,7 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import logging
 _logger = logging.getLogger("theano.tensor.basic")
 
-#This is needed as we will hide it later
+# This is needed as we will hide it later
 python_complex = complex
 python_any = any
 python_all = all
@@ -1967,7 +1967,7 @@ class ScalarFromTensor(Op):
 scalar_from_tensor = ScalarFromTensor()
 
 
-#to be removed as we get the epydoc routine-documenting thing going
+# to be removed as we get the epydoc routine-documenting thing going
 #-JB 20080924
 def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
@@ -2735,7 +2735,7 @@ def sqr(a):
     """square of a"""
 
 
-#alias to sqr, included to maintain similarity with numpy interface
+# alias to sqr, included to maintain similarity with numpy interface
 square = sqr
 
 
@@ -2878,7 +2878,7 @@ def complex_from_polar(abs, angle):
 ##########################
 
 
-#fill, _fill_inplace = _elemwise(scal.second, 'fill',
+# fill, _fill_inplace = _elemwise(scal.second, 'fill',
     #"""fill WRITEME (elemwise)""")
 @_scal_elemwise
 def second(a, b):
@@ -3314,7 +3314,7 @@ class Mean(elemwise.CAReduce):
   *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
   """ % (onames[0], inames[0])
 
-#TODO: implement the grad. When done and tested, you can make this the default
+# TODO: implement the grad. When done and tested, you can make this the default
 # version.
 #    def grad(self, (x,), (gout,)):
 #      import pdb;pdb.set_trace()
@@ -6777,7 +6777,7 @@ def tensordot(x, y=None, axes=2):
 
     return tensordot.op[axes](x, y)
 
-#TODO: tensordot should be function as described in rst docs.
+# TODO: tensordot should be function as described in rst docs.
 
 
 def outer(x, y):
