@@ -73,8 +73,12 @@ class SumDiffOp(theano.Op):
         return [i0_shapes[0], i0_shapes[0]]
 
     def grad(self, inputs, output_grads):
-        return [output_grads[0] + output_grads[1],
-                output_grads[0] - output_grads[1]]
+        og1, og2 = output_grads
+        if og1 is None:
+            og1 = theano.tensor.zeros_like(og2)
+        if og2 is None:
+            og2 = theano.tensor.zeros_like(og1)
+        return [og1 + og2, og1 - og2]
 
 
 # 3. Testing apparatus
@@ -85,54 +89,79 @@ from theano import tensor, function, printing
 from theano.tests import unittest_tools as utt
 
 
-class TestOp(utt.InferShapeTester):
+class TestProdOp(utt.InferShapeTester):
 
     rng = numpy.random.RandomState(43)
 
     def setUp(self):
-
-        super(TestOp, self).setUp()
-        # adapt the choice of the next instruction to the op under test
+        super(TestProdOp, self).setUp()
         self.op_class = ProdOp  # case 1
-        #self.op_class = SumDiffOp  # case 2
 
     def test_perform(self):
-
         x = theano.tensor.matrix()
         y = theano.tensor.matrix()
         f = theano.function([x, y], self.op_class()(x, y))
-        import numpy
         x_val = numpy.random.rand(5, 4)
         y_val = numpy.random.rand(5, 4)
         out = f(x_val, y_val)
-        # adapt the choice of the next instruction to the op under test
-        assert numpy.allclose(x_val * y_val, out)  # case 1
-        #assert numpy.allclose([x_val + y_val, x_val - y_val], out)  # case 2
+        assert numpy.allclose(x_val * y_val, out)
 
     def test_gradient(self):
-
         utt.verify_grad(self.op_class(), [numpy.random.rand(5, 4),
                                 numpy.random.rand(5, 4)],
-                        n_tests=1, rng=TestOp.rng)
+                        n_tests=1, rng=TestProdOp.rng)
 
     def test_infer_shape(self):
+        x = tensor.dmatrix()
+        y = tensor.dmatrix()
 
+        self._compile_and_check([x, y], [self.op_class()(x, y)],
+                                [numpy.random.rand(5, 6),
+                                 numpy.random.rand(5, 6)],
+                                self.op_class)
+
+
+class TestSumDiffOp(utt.InferShapeTester):
+
+    rng = numpy.random.RandomState(43)
+
+    def setUp(self):
+        super(TestSumDiffOp, self).setUp()
+        self.op_class = SumDiffOp
+
+    def test_perform(self):
+        x = theano.tensor.matrix()
+        y = theano.tensor.matrix()
+        f = theano.function([x, y], self.op_class()(x, y))
+        x_val = numpy.random.rand(5, 4)
+        y_val = numpy.random.rand(5, 4)
+        out = f(x_val, y_val)
+        assert numpy.allclose([x_val + y_val, x_val - y_val], out)
+
+    def test_gradient(self):
+        def output_0(x, y):
+            return self.op_class()(x, y)[0]
+
+        def output_1(x, y):
+            return self.op_class()(x, y)[1]
+
+        utt.verify_grad(output_0, [numpy.random.rand(5, 4),
+                                numpy.random.rand(5, 4)],
+                        n_tests=1, rng=TestSumDiffOp.rng)
+        utt.verify_grad(output_1, [numpy.random.rand(5, 4),
+                                numpy.random.rand(5, 4)],
+                        n_tests=1, rng=TestSumDiffOp.rng)
+
+    def test_infer_shape(self):
         x = tensor.dmatrix()
         y = tensor.dmatrix()
 
         # adapt the choice of the next instruction to the op under test
 
-        self._compile_and_check([x, y], [self.op_class()(x, y)],  # case 1
+        self._compile_and_check([x, y], self.op_class()(x, y),
                                 [numpy.random.rand(5, 6),
                                  numpy.random.rand(5, 6)],
                                 self.op_class)
-        """
-
-        self._compile_and_check([x, y], self.op_class()(x, y),  # case 2
-                                [numpy.random.rand(5, 6),
-                                 numpy.random.rand(5, 6)],
-                                self.op_class)
-        """
 
 if __name__ == "__main__":
 
