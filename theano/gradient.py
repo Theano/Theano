@@ -121,13 +121,23 @@ class DisconnectedType(theano.gof.type.Type):
             ))
 
     def fiter_variable(self, other):
-        raise
+        raise AssertionError(
+            (
+                "If you're assigning to a DisconnectedType you're"
+                " doing something wrong. It should only be used as"
+                " a symbolic placeholder."
+            ))
 
     def may_share_memory(a, b):
         return False
 
     def value_eq(a, b, force_same_dtype=True):
-        raise
+        raise AssertionError(
+            (
+                "If you're assigning to a DisconnectedType you're"
+                " doing something wrong. It should only be used as"
+                " a symbolic placeholder."
+            ))
 
 
 ########################
