@@ -1397,7 +1397,7 @@ _good_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
     empty=(numpy.asarray([]),),)
 _grad_broadcast_unary_gammaln = dict(
-    # smaler range as our grad method don't estimate it good enough.
+    # smaller range as our grad method don't estimate it good enough.
     normal=(rand_ranged(1e-8, 8, (2, 3)),),)
 
 GammaTester = makeBroadcastTester(
