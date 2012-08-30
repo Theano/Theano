@@ -507,7 +507,7 @@ def _populate_var_to_node_to_idx(outputs):
     #var_to_node_to_idx[var][node] = [i,j] means node has
     #var as input at positions i and j
     var_to_node_to_idx = {}
-    #set of variables that have been added to their parents
+    #set of variables or nodes that have been added to their parents
     accounted_for = set([])
 
     def account_for(var):
