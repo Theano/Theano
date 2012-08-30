@@ -2236,8 +2236,6 @@ class T_argmin_argmax(unittest.TestCase):
             cost = argmin(n, axis=-1)
             cost.name = None
             g = grad(cost, n)
-            from theano.printing import min_informative_str
-            print min_informative_str(g)
             raise Exception('Expected an error')
         except TypeError:
             pass
@@ -4382,7 +4380,6 @@ class test_grad(unittest.TestCase):
         a1 = o.make_node()
         g0,g1 = grad(a1.outputs[0], a1.inputs)
         g0.name = None
-        print theano.printing.min_informative_str(g0)
         self.assertTrue(o.gval0 is g0)
         self.assertTrue(o.gval1 is g1)
 
