@@ -15,8 +15,8 @@ w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
 b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
 x.tag.test_value = D[0]
 y.tag.test_value = D[1]
-#print "Initial model:"
-#print w.get_value(), b.get_value()
+# print "Initial model:"
+# print w.get_value(), b.get_value()
 
 
 # Construct Theano expression graph
@@ -47,8 +47,8 @@ else:
 
 for i in range(training_steps):
     pred, err = train(D[0], D[1])
-#print "Final model:"
-#print w.get_value(), b.get_value()
+# print "Final model:"
+# print w.get_value(), b.get_value()
 
 print "target values for D"
 print D[1]

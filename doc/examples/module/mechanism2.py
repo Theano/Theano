@@ -4,7 +4,7 @@ import theano.tensor as T
 class AccumulatorInstance(ModuleInstance):
 
     def print_state(self):
-        #self.component points to the Module from which this was compiled.
+        # self.component points to the Module from which this was compiled.
         print '%s is: %s' % (self.component.state, self.state)
 
 class Accumulator(Module):
