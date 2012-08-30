@@ -1163,9 +1163,9 @@ class Scan(PureOp):
     def grad(self, args, g_outs):
 
 
-        #This discards information about whether incoming gradients are 0
-        #or disconnected from the cost
-        #TODO: upgrade scan op to report disconnection correctly
+        # This discards information about whether incoming gradients are 0
+        # or disconnected from the cost
+        # TODO: upgrade scan op to report disconnection correctly
         def strip_disconnected( g ):
             if isinstance(g.type, DisconnectedType):
                 return None
@@ -1671,7 +1671,7 @@ class Scan(PureOp):
         scan_sit_sot = inputs[b:e] + clean_eval_points
         inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #Shared outs ...
+        # Shared outs ...
         b = e
         e = e + self.n_shared_outs
         ib = ie
