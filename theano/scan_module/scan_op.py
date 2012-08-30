@@ -571,7 +571,7 @@ class Scan(PureOp):
                         args,
                         outs,
                         self)
-        except ImportError:
+        except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
 

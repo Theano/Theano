@@ -138,6 +138,10 @@ class Query(object):
         self.exclude = exclude or set()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        if isinstance(self.require, (list, tuple)):
+            self.require = set(self.require)
+        if isinstance(self.exclude, (list, tuple)):
+            self.exclude = set(self.exclude)
 
     #add all opt with this tag
     def including(self, *tags):

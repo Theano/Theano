@@ -184,12 +184,15 @@ class TestMakeThunk(unittest.TestCase):
 
         thunk = o.owner.op.make_thunk(o.owner, storage_map, compute_map,
                 no_recycling=[])
-
-        required = thunk()
-        # Check everything went OK
-        assert not required # We provided all inputs
-        assert compute_map[o][0]
-        assert storage_map[o][0] == 4
+        if theano.config.cxx:
+            required = thunk()
+            # Check everything went OK
+            assert not required # We provided all inputs
+            assert compute_map[o][0]
+            assert storage_map[o][0] == 4
+        else:
+            self.assertRaises((NotImplementedError, utils.MethodNotDefined),
+                              thunk)
 
 
 def test_test_value_python_objects():

@@ -1,6 +1,8 @@
 
 import unittest
 
+from nose.plugins.skip import SkipTest
+
 from theano.gof.link import PerformLinker
 from theano.gof.cc import *
 from theano.gof.type import Type
@@ -129,7 +131,7 @@ class Add(Binary):
 add = Add()
 
 
-class Sub(Binary):
+class BadSub(Binary):
     def c_code(self, node, name, inp, out, sub):
         x, y = inp
         z, = out
@@ -137,7 +139,7 @@ class Sub(Binary):
 
     def impl(self, x, y):
         return -10  # erroneous (most of the time)
-sub = Sub()
+bad_sub = BadSub()
 
 
 class Mul(Binary):
@@ -179,17 +181,21 @@ def Env(inputs, outputs):
 ################
 
 def test_clinker_straightforward():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
-    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))
     lnk = CLinker().accept(Env([x, y, z], [e]))
     fn = lnk.make_function()
     assert fn(2.0, 2.0, 2.0) == 2.0
 
 
 def test_clinker_literal_inlining():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     z = Constant(tdouble, 4.12345678)
-    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))
     lnk = CLinker().accept(Env([x, y], [e]))
     fn = lnk.make_function()
     assert abs(fn(2.0, 2.0) + 0.12345678) < 1e-9
@@ -200,6 +206,8 @@ def test_clinker_literal_inlining():
 
 
 def test_clinker_single_node():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     node = add.make_node(x, y)
     lnk = CLinker().accept(Env(node.inputs, node.outputs))
@@ -208,6 +216,8 @@ def test_clinker_single_node():
 
 
 def test_clinker_dups():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     # Testing that duplicate inputs are allowed.
     x, y, z = inputs()
     e = add(x, x)
@@ -218,6 +228,8 @@ def test_clinker_dups():
 
 
 def test_clinker_dups_inner():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     # Testing that duplicates are allowed inside the graph
     x, y, z = inputs()
     e = add(mul(y, y), add(x, z))
@@ -232,11 +244,14 @@ def test_clinker_dups_inner():
 
 def test_opwiseclinker_straightforward():
     x, y, z = inputs()
-    e = add(mul(add(x, y), div(x, y)), sub(sub(x, y), z))
+    e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))
     lnk = OpWiseCLinker().accept(Env([x, y, z], [e]))
     fn = lnk.make_function()
-    assert fn(2.0, 2.0, 2.0) == 2.0
-
+    if theano.config.cxx:
+        assert fn(2.0, 2.0, 2.0) == 2.0
+    else:
+        # The python version of bad_sub always return -10.
+        assert fn(2.0, 2.0, 2.0) == -6
 
 def test_opwiseclinker_constant():
     x, y, z = inputs()
@@ -272,9 +287,11 @@ def test_duallinker_straightforward():
 
 
 def test_duallinker_mismatch():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
-    # sub is correct in C but erroneous in Python
-    e = sub(mul(x, y), mul(y, z))
+    # bad_sub is correct in C but erroneous in Python
+    e = bad_sub(mul(x, y), mul(y, z))
     g = Env([x, y, z], [e])
     lnk = DualLinker(checker=_my_checker).accept(g)
     fn = lnk.make_function()
@@ -283,6 +300,7 @@ def test_duallinker_mismatch():
     assert CLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0
     # good
     assert OpWiseCLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -4.0
+
     # (purposely) wrong
     assert PerformLinker().accept(g).make_function()(1.0, 2.0, 3.0) == -10.0
 
@@ -314,7 +332,9 @@ class AddFail(Binary):
 add_fail = AddFail()
 
 
-def test_fail_error():
+def test_c_fail_error():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     x = Constant(tdouble, 7.2, name='x')
     e = add_fail(mul(x, y), mul(y, z))

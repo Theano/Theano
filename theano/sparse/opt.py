@@ -686,7 +686,7 @@ register_specialize(local_usmm, name="local_usmm")
 def local_usmm_csc_dense_inplace(node):
     if node.op == usmm_csc_dense:
         return [usmm_csc_dense_inplace(*node.inputs)]
-register_specialize(local_usmm_csc_dense_inplace, 'inplace')
+register_specialize(local_usmm_csc_dense_inplace, 'cxx_only', 'inplace')
 
 
 # This is tested in tests/test_basic.py:UsmmTests
@@ -714,7 +714,7 @@ def local_usmm_csx(node):
                 return [usmm_csc_dense(alpha, x_val, x_ind, x_ptr,
                                        x_nsparse, y, z)]
     return False
-sparse.register_specialize(local_usmm_csx)
+sparse.register_specialize(local_usmm_csx, 'cxx_only')
 
 
 class CSMGradC(gof.Op):
@@ -850,7 +850,7 @@ def local_csm_grad_c(node):
     if node.op == csm_grad(None):
         return [csm_grad_c(*node.inputs)]
     return False
-register_specialize(local_csm_grad_c)
+register_specialize(local_csm_grad_c, 'cxx_only')
 
 
 class MulSDCSC(gof.Op):
@@ -1117,7 +1117,7 @@ def local_mul_s_d(node):
                     sparse.csm_shape(svar))]
 
     return False
-sparse.register_specialize(local_mul_s_d)
+sparse.register_specialize(local_mul_s_d, 'cxx_only')
 
 
 class MulSVCSR(gof.Op):
@@ -1259,7 +1259,7 @@ def local_mul_s_v(node):
         return [CSx(c_data, s_ind, s_ptr, s_shape)]
 
     return False
-sparse.register_specialize(local_mul_s_v)
+sparse.register_specialize(local_mul_s_v, 'cxx_only')
 
 
 class StructuredAddSVCSR(gof.Op):
@@ -1416,7 +1416,7 @@ def local_structured_add_s_v(node):
         return [CSx(c_data, s_ind, s_ptr, s_shape)]
 
     return False
-sparse.register_specialize(local_structured_add_s_v)
+sparse.register_specialize(local_structured_add_s_v, 'cxx_only')
 
 
 class SamplingDotCSR(gof.Op):
@@ -1656,4 +1656,5 @@ def local_sampling_dot_csr(node):
             return [sparse.CSR(z_data, z_ind, z_ptr, p_shape)]
     return False
 sparse.register_specialize(local_sampling_dot_csr,
+                           'cxx_only',
                            name='local_sampling_dot_csr')
