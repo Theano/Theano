@@ -535,7 +535,7 @@ def _populate_var_to_node_to_idx(outputs):
     return var_to_node_to_idx
 
 
-def _populate_grad_dict(var_to_node_to_idx,\
+def _populate_grad_dict(var_to_node_to_idx,
         grad_dict, wrt, warn_type, cost_name=None):
     """
         Common code shared between grad_sources_inputs and grad
