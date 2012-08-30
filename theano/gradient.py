@@ -495,9 +495,6 @@ def _populate_var_to_node_to_idx(outputs):
     #set of variables that have been added to their parents
     accounted_for = set([])
 
-    #mark the variables in the relevant subgraph with
-    #a dictionary called chidlren
-    #var._children[node] gives the index of var in _children.inputs
     def account_for(var):
         if var in accounted_for:
             return
