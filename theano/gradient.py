@@ -305,8 +305,9 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
     if not isinstance(f, (list, tuple)):
         f = [f]
 
-    f = [elem for elem in f]
-    grads = [elem for elem in eval_points]
+    #make copies of f and grads so we don't modify the client's copy
+    f = list(f)
+    grads = list(eval_points)
 
     for elem in consider_constant:
         assert elem not in f
