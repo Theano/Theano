@@ -6,6 +6,7 @@ import unittest
 
 import cPickle
 import numpy
+from nose.plugins.skip import SkipTest
 from numpy.testing import dec
 
 import theano
@@ -360,7 +361,6 @@ class T_Scan(unittest.TestCase):
     # as test_one_sequence_one_output_weights, but on the gpu
     # This first version test the first case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu1(self):
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -442,7 +442,6 @@ class T_Scan(unittest.TestCase):
 
     # This second version test the second case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu2(self):
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -1114,8 +1113,6 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_v, numpy_v[5:, :])
 
     def test_cuda_gibbs_chain(self):
-        import theano
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -3142,6 +3139,9 @@ def test_speed():
     # The computation being tested here is a recurrent addition.
     #
     #
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
 
     r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
 
@@ -3219,6 +3219,10 @@ def test_speed_rnn():
     #
     import theano.scalar.sharedvar
 
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+
     L = 10000
     N = 50
 
@@ -3295,6 +3299,9 @@ def test_speed_batchrnn():
     #
     import theano.scalar.sharedvar
 
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     L = 100
     B = 50
     N = 400

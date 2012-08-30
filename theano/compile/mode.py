@@ -83,10 +83,13 @@ def register_linker(name, linker):
 # If a string is passed as the optimizer argument in the constructor
 # for Mode, it will be used as the key to retrieve the real optimizer
 # in this dictionary
-OPT_FAST_RUN = gof.Query(include=['fast_run'])
+exclude=[]
+if not theano.config.cxx:
+    exclude = ['cxx_only']
+OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
-OPT_FAST_COMPILE = gof.Query(include=['fast_compile'])
-OPT_STABILIZE = gof.Query(include=['fast_run'])
+OPT_FAST_COMPILE = gof.Query(include=['fast_compile'], exclude=exclude)
+OPT_STABILIZE = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_STABILIZE.position_cutoff = 1.5000001
 OPT_FAST_RUN.name = 'OPT_FAST_RUN'
 OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
@@ -367,7 +370,10 @@ class Mode(object):
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
 FAST_COMPILE = Mode('py', 'fast_compile')
-FAST_RUN = Mode('cvm', 'fast_run')
+if theano.config.cxx:
+    FAST_RUN = Mode('cvm', 'fast_run')
+else:
+    FAST_RUN = Mode('vm', 'fast_run')
 
 predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,

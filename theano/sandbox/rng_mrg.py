@@ -24,31 +24,28 @@ if cuda_available:
                                      float32_shared_constructor)
 
 
-def mulmod(a, b, c, m):
-    r = numpy.int32((numpy.int64(a)*b + c) % m)
-    if r >= 0:
-        return r
-    else:
-        return r+m
-
 def matVecModM(A, s, m):
     # return (A * s) % m
-    err_orig = numpy.seterr(over='ignore')
-    try:
-        x = numpy.zeros_like(s)
-        for i in xrange(len(x)):
-            for j in xrange(len(s)):
-                x[i] = mulmod(A[i][j], s[j], x[i], m)
-        return x
-    finally:
-        numpy.seterr(**err_orig)
+    x = numpy.zeros_like(s)
+    for i in xrange(len(x)):
+        for j in xrange(len(s)):
+            r = numpy.int32((numpy.int64(A[i][j]) * s[j] + x[i]) % m)
+            if r >= 0:
+                x[i] = r
+            else:
+                x[i] = r + m
+    return x
 
 def multMatVect(v, A, m1, B, m2):
     #multiply the first half of v by A with a modulo of m1
     #and the second half by B with a modulo of m2
-    r = numpy.zeros_like(v)
-    r[:3] = matVecModM(A, v[:3], m1)
-    r[3:] = matVecModM(B, v[3:], m2)
+    err_orig = numpy.seterr(over='ignore')
+    try:
+        r = numpy.zeros_like(v)
+        r[:3] = matVecModM(A, v[:3], m1)
+        r[3:] = matVecModM(B, v[3:], m2)
+    finally:
+        numpy.seterr(**err_orig)
     return r
 
 
@@ -80,6 +77,7 @@ A2p134 = numpy.asarray(
   [[796789021, 1464208080, 607337906],
    [1241679051, 1431130166, 1464208080],
    [1401213391, 1178684362, 1431130166]])
+np_int32_vals = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
 
 def ff_2p134(rstate):
     return multMatVect(rstate, A1p134, M1, A2p134, M2)
@@ -87,59 +85,55 @@ def ff_2p134(rstate):
 def ff_2p72(rstate):
     return multMatVect(rstate, A1p72, M1, A2p72, M2)
 
+
 def mrg_next_value(rstate, new_rstate):
-    err_orig = numpy.seterr(over='ignore')
-    try:
-        x11, x12, x13, x21, x22, x23 = rstate
-        assert type(x11) == numpy.int32
+    x11, x12, x13, x21, x22, x23 = rstate
+    assert type(x11) == numpy.int32
 
-        i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i)
-                for i in (0,7, 9, 15, 16, 22, 24)]
+    #i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
+    i0, i7, i9, i15, i16, i22, i24 = np_int32_vals
+    #first component
+    y1 = (((x12 & MASK12) << i22) + (x12 >> i9)
+        + ((x13 & MASK13) << i7) + (x13 >> i24))
 
-        #first component
-        y1 = (((x12 & MASK12) << i22) + (x12 >> i9)
-            + ((x13 & MASK13) << i7) + (x13 >> i24))
+    assert type(y1) == numpy.int32
+    if (y1 < 0 or y1 >= M1):     #must also check overflow
+        y1 -= M1;
+    y1 += x13;
+    if (y1 < 0 or y1 >= M1):
+        y1 -= M1;
 
-        assert type(y1) == numpy.int32
-        if (y1 < 0 or y1 >= M1):     #must also check overflow
-            y1 -= M1;
-        y1 += x13;
-        if (y1 < 0 or y1 >= M1):
-            y1 -= M1;
+    x13 = x12;
+    x12 = x11;
+    x11 = y1;
 
-        x13 = x12;
-        x12 = x11;
-        x11 = y1;
+    #second component
+    y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
+    assert type(y1) == numpy.int32
+    if (y1 < 0 or y1 >= M2):
+        y1 -= M2;
+    y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
+    assert type(y2) == numpy.int32
+    if (y2 < 0 or y2 >= M2):
+        y2 -= M2;
+    y2 += x23;
+    if (y2 < 0 or y2 >= M2):
+        y2 -= M2;
+    y2 += y1;
+    if (y2 < 0 or y2 >= M2):
+        y2 -= M2;
 
-        #second component
-        y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
-        assert type(y1) == numpy.int32
-        if (y1 < 0 or y1 >= M2):
-            y1 -= M2;
-        y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
-        assert type(y2) == numpy.int32
-        if (y2 < 0 or y2 >= M2):
-            y2 -= M2;
-        y2 += x23;
-        if (y2 < 0 or y2 >= M2):
-            y2 -= M2;
-        y2 += y1;
-        if (y2 < 0 or y2 >= M2):
-            y2 -= M2;
+    x23 = x22;
+    x22 = x21;
+    x21 = y2;
 
-        x23 = x22;
-        x22 = x21;
-        x21 = y2;
-
-        # Must never return either 0 or M1+1
-        new_rstate[...] = [x11, x12, x13, x21, x22, x23]
-        assert new_rstate.dtype == numpy.int32
-        if (x11 <= x21):
-            return (x11 - x21 + M1) * NORM
-        else:
-            return (x11 - x21) * NORM
-    finally:
-        numpy.seterr(**err_orig)
+    # Must never return either 0 or M1+1
+    new_rstate[...] = [x11, x12, x13, x21, x22, x23]
+    assert new_rstate.dtype == numpy.int32
+    if (x11 <= x21):
+        return (x11 - x21 + M1) * NORM
+    else:
+        return (x11 - x21) * NORM
 
 class mrg_uniform_base(Op):
     def __init__(self, output_type, inplace=False):
@@ -211,9 +205,13 @@ class mrg_uniform(mrg_uniform_base):
 
         rval = numpy.zeros(n_elements, dtype=self.output_type.dtype)
 
-        for i in xrange(n_elements):
-            sample = mrg_next_value(rstate[i%n_streams], rstate[i%n_streams])
-            rval[i] = sample
+        err_orig = numpy.seterr(over='ignore')
+        try:
+            for i in xrange(n_elements):
+                sample = mrg_next_value(rstate[i%n_streams], rstate[i%n_streams])
+                rval[i] = sample
+        finally:
+            numpy.seterr(**err_orig)
 
         o_rstate[0] = node.outputs[0].type.filter(rstate) # send to GPU if necessary
         o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))# send to GPU if necessary

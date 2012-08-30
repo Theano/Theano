@@ -19,7 +19,11 @@ In this section we will define a couple optimizations on doubles.
    Later, the rest is more useful for when that decorator syntax type thing
    doesn't work. (There are optimizations that don't fit that model).
 
+.. note::
 
+   There is the optimization tag `cxx_only` that tell this
+   optimization will insert Op that only have c code. So we should not
+   run them when we don't have a c++ compiler.
 
 Global and local optimizations
 ==============================

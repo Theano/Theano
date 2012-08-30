@@ -359,7 +359,8 @@ def test_uniform():
 #TODO: test ndim!=size.ndim
 #TODO: test bad seed
 #TODO: test size=Var, with shape that change from call to call
-    if mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE']:
+    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+        mode == 'Mode' and config.linker in ['py']):
         sample_size = (10, 100)
         steps = 50
     else:
@@ -440,7 +441,8 @@ def test_binomial():
 #we test size in a tuple of int and a tensor.shape.
 #we test the param p with int.
 
-    if mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE']:
+    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+        mode == 'Mode' and config.linker in ['py']):
         sample_size = (10, 50)
         steps = 50
         rtol = 0.02
@@ -510,7 +512,8 @@ def test_normal0():
 
     steps = 50
     std = 2.
-    if mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE']:
+    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+        mode == 'Mode' and config.linker in ['py']):
         sample_size = (25, 30)
         default_rtol = .02
     else:
@@ -617,7 +620,8 @@ def test_multinomial():
     if mode == 'FAST_COMPILE':
         mode_ = 'FAST_RUN'
 
-    if mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE']:
+    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+        mode == 'Mode' and config.linker in ['py']):
         sample_size = (49, 5)
     else:
         sample_size = (450, 6)

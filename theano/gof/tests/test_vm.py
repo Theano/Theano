@@ -6,6 +6,8 @@ try:
     import line_profiler
 except ImportError:
     pass
+
+from nose.plugins.skip import SkipTest
 import numpy
 
 from theano import function
@@ -55,6 +57,8 @@ class TestCallbacks(unittest.TestCase):
 
 
 def test_speed():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
 
     def build_graph(x, depth=5):
         z = x
@@ -124,8 +128,9 @@ def test_speed():
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
-    time_linker('vmLinker_CLOOP', lambda : vm.VM_Linker(allow_gc=False,
-        use_cloop=True))
+    if theano.config.cxx:
+        time_linker('vmLinker_CLOOP', lambda : vm.VM_Linker(allow_gc=False,
+                                                            use_cloop=True))
     time_numpy()
 
 def test_speed_lazy():
@@ -175,8 +180,9 @@ def test_speed_lazy():
 
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
-    time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
-        use_cloop=True))
+    if theano.config.cxx:
+        time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
+                                                        use_cloop=True))
 
 run_memory_usage_tests = False
 if run_memory_usage_tests:

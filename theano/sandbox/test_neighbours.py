@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
@@ -14,6 +15,8 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
+if not theano.config.cxx:
+    raise SkipTest("G++ not available, so we need to skip this test.")
 
 class T_Images2Neibs(unittest_tools.InferShapeTester):
     def __init__(self, name):
