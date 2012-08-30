@@ -323,13 +323,3 @@ class PreserveNames(Feature):
             new_r.name = r.name
 
 
-def assert_no_cycles(var):
-    """ Raises an assertion if there are any cycles in the graph producing var """
-    if var.owner is not None:
-        inputs = var.owner.inputs
-        ancestors = graph.ancestors(inputs)
-        if var in ancestors:
-            raise AssertionError('%s has itself as an ancestor')
-        for ipt in inputs:
-            assert_no_cycles(ipt)
-
