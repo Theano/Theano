@@ -58,6 +58,7 @@ class RopLop_checker(unittest.TestCase):
     Rop to class that inherit from it."""
 
     def setUp(self):
+        utt.seed_rng()
         # Using vectors make things a lot simpler for generating the same
         # computations using scan
         self.x = tensor.vector('x')
