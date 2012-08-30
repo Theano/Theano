@@ -70,11 +70,11 @@ def grad_not_implemented(op, x_pos, x, comment=""):
     gradient is not implemented.
     """
 
-    return NullType(
+    return (NullType(
         (
             "This variable is Null because the grad method for "
             "input %s (%s) of the %s op is not implemented. %s"
-        ) % (x_pos, x, op, comment))
+        ) % (x_pos, x, op, comment)))()
 
 
 def grad_undefined(op, x_pos, x, comment=""):
@@ -91,11 +91,11 @@ def grad_undefined(op, x_pos, x, comment=""):
     gradient is not defined.
     """
 
-    return NullType(
+    return (NullType(
         (
             "This variable is Null because the grad method for "
             "input %s (%s) of the %s op is mathematically undefined. %s"
-        ) % (x_pos, x, op, comment))
+        ) % (x_pos, x, op, comment)))()
 
 
 class DisconnectedType(theano.gof.type.Type):
