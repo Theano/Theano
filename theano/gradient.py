@@ -30,7 +30,7 @@ _msg_retType = 'op.grad(...) returned a non-list'
 def format_as(use_list, use_tuple, outputs):
     """
     Formats the outputs according to the flags `use_list` and `use_tuple`.
-"    If `use_list` is True, `outputs` is returned as a list (if `outputs`
+    If `use_list` is True, `outputs` is returned as a list (if `outputs`
     is not a list or a tuple then it is converted in a one element list).
     If `use_tuple` is True, `outputs` is returned as a tuple (if `outputs`
     is not a list or a tuple then it is converted into a one element tuple).
