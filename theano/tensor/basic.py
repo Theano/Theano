@@ -25,6 +25,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -32,7 +33,7 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import logging
 _logger = logging.getLogger("theano.tensor.basic")
 
-#This is needed as we will hide it later
+# This is needed as we will hide it later
 python_complex = complex
 python_any = any
 python_all = all
@@ -46,6 +47,7 @@ complex_dtypes = map(str, scal.complex_types)
 continuous_dtypes = map(str, scal.continuous_types)
 discrete_dtypes = map(str, scal.discrete_types)
 all_dtypes = map(str, scal.all_types)
+
 
 class ShapeError(Exception):
     """Raised when the shape cannot be computed."""
@@ -394,6 +396,7 @@ def constant(x, name=None, ndim=None, dtype=None):
     return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
 
+
 def _obj_is_wrappable_as_tensor(x):
     try:
         constant(x)
@@ -405,7 +408,7 @@ def _obj_is_wrappable_as_tensor(x):
 def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor,
-                                _wrap_tensor_into_member, no_warn = True)
+                                _wrap_tensor_into_member, no_warn=True)
 
 
 if int(config.tensor.cmp_sloppy) > 1:
@@ -1502,10 +1505,9 @@ class _tensor_py_operators:
         """
 
         if ndim is not None:
-            if not isinstance(ndim,int):
+            if not isinstance(ndim, int):
                 raise ValueError("Expected ndim to be an integer, is "\
-                        +str(type(ndim)))
-
+                        + str(type(ndim)))
 
         return reshape(self, shape, ndim=ndim)
 
@@ -1802,7 +1804,6 @@ class TensorConstant(_tensor_py_operators, Constant):
 TensorType.Constant = TensorConstant
 
 
-
 Tensor = TensorType
 
 
@@ -1815,6 +1816,7 @@ elemwise.TensorConstant = TensorConstant
 #########################
 # Utilities
 #########################
+
 
 def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
@@ -1965,7 +1967,7 @@ class ScalarFromTensor(Op):
 scalar_from_tensor = ScalarFromTensor()
 
 
-#to be removed as we get the epydoc routine-documenting thing going
+# to be removed as we get the epydoc routine-documenting thing going
 #-JB 20080924
 def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
@@ -2061,6 +2063,7 @@ def cast(x, dtype):
 # Unary Operations
 ##########################
 
+
 class Shape(Op):
     """
     L{Op} to return the shape of a matrix.
@@ -2094,8 +2097,21 @@ class Shape(Op):
     def infer_shape(self, node, in_shapes):
         return [[len(in_shapes[0])]]
 
+    def connection_pattern(self):
+        #the grad returns the gradient with respect to the
+        #elements of a tensor variable
+        #the elements of the tensor variable do not participate
+        #in the computation of the shape, so they are not really
+        #part of the graph
+        return [False]
+
     def grad(self, inp, grads):
-        return [grad_undefined(self,0,inp[0])]
+        #the grad returns the gradient with respect to the
+        #elements of a tensor variable
+        #the elements of the tensor variable do not participate
+        #in the computation of the shape, so they are not really
+        #part of the graph
+        return [None]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -2314,9 +2330,21 @@ class MaxAndArgmax(Op):
         x, axis = inp
         g_max, g_max_idx = grads
 
-        # Check to see if the gradient on max is None
-        if g_max is None:
-            return None, None
+        g_max_disconnected = isinstance(g_max.type, DisconnectedType)
+        g_max_idx_disconnected = isinstance(g_max_idx.type, DisconnectedType)
+
+        #if the op is totally disconnected, so are its inputs
+        if g_max_disconnected and g_max_idx_disconnected:
+            return [DisconnectedType()(), DisconnectedType()()]
+
+        axis_grad = grad_undefined(self, 1, axis,
+                "argmax is not defined for non-integer axes so"
+                " argmax(x, axis+eps) is undefined")
+
+        #if the max is disconnected but the argmax is not,
+        #the gradient on its inputs is zero
+        if g_max_disconnected:
+            return [x.zeros_like(), axis_grad]
         xmax = max(x, axis)
 
         # Raise the g_max and xmax to the same number of dim as the input.
@@ -2336,7 +2364,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, grad_undefined(self, 1, axis)
+        return g_x, axis_grad
 
     def __str__(self):
         return self.__class__.__name__
@@ -2707,7 +2735,7 @@ def sqr(a):
     """square of a"""
 
 
-#alias to sqr, included to maintain similarity with numpy interface
+# alias to sqr, included to maintain similarity with numpy interface
 square = sqr
 
 
@@ -2849,7 +2877,8 @@ def complex_from_polar(abs, angle):
 # Misc
 ##########################
 
-#fill, _fill_inplace = _elemwise(scal.second, 'fill',
+
+# fill, _fill_inplace = _elemwise(scal.second, 'fill',
     #"""fill WRITEME (elemwise)""")
 @_scal_elemwise
 def second(a, b):
@@ -2917,7 +2946,7 @@ class Eye(gof.Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [ grad_undefined(self,i,inp[i]) for i in xrange(3) ]
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.dtype == other.dtype
@@ -3285,7 +3314,7 @@ class Mean(elemwise.CAReduce):
   *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
   """ % (onames[0], inames[0])
 
-#TODO: implement the grad. When done and tested, you can make this the default
+# TODO: implement the grad. When done and tested, you can make this the default
 # version.
 #    def grad(self, (x,), (gout,)):
 #      import pdb;pdb.set_trace()
@@ -3392,15 +3421,20 @@ def var(input, axis=None, keepdims=False):
 @constructor
 def std(input, axis=None, keepdims=False):
     """
-    Computes the standard deviation along the given axis(es) of a tensor `input`.
+    Computes the standard deviation along the given axis(es)
+    of a tensor `input`.
 
-    :param axis: Compute the standard deviation along this axis of the tensor.
+    :param axis: Compute the standard deviation along this
+                axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
-    :param keepdims: If this is set to True, the axes which are reduced are
-        left in the result as dimensions with size one. With this option,
-        the result will broadcast correctly against the original tensor.
+    :param keepdims: If this is set to True, the axes
+        which are reduced are
+        left in the result as dimensions with size one.
+        With this option,
+        the result will broadcast correctly against the
+        original tensor.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
@@ -5376,7 +5410,6 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
 
-
     def grad(self, inp, grads):
         x, shp = inp
         g_out, = grads
@@ -5462,7 +5495,8 @@ class Reshape(Op):
                         %(shp)s->data + ii * %(shp)s->strides[0]))[0];
             }
             Py_XDECREF(%(z)s);
-            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, PyArray_CORDER);
+            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
+                PyArray_CORDER);
             if (!%(z)s)
             {
                 PyErr_Format(PyExc_ValueError,
@@ -5645,11 +5679,11 @@ def tile(x, reps, ndim=None):
     TODO: expand this.
     """
 
-    try: 
-        assert python_all([int(i) == i for i in iter(reps)]) 
-    except (TypeError, AssertionError): 
-        raise ValueError("reps argument to tile must be a constant (e.g. " 
-        "tuple, list of integers)") 
+    try:
+        assert python_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+        "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
@@ -6325,6 +6359,7 @@ advanced_inc_subtensor = AdvancedIncSubtensor()
 #
 # TODO: Dotinv should go here, Eigs, Svd, etc.
 
+
 class Dot(Op):
     """Compute matrix-matrix, matrix-vector products and vector inner-products.
 
@@ -6712,7 +6747,7 @@ def tensordot(x, y=None, axes=2):
 
     return tensordot.op[axes](x, y)
 
-#TODO: tensordot should be function as described in rst docs.
+# TODO: tensordot should be function as described in rst docs.
 
 
 def outer(x, y):
