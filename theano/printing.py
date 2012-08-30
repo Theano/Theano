@@ -403,7 +403,7 @@ class PPrinter:
                         name = 'out[%i]' % outputs.index(output)
                     else:
                         name = output.name
-                    #backport
+                    # backport
                     #name = 'out[%i]' % outputs.index(output) if output.name
                     #  is None else output.name
                     current = output
@@ -463,7 +463,7 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target')
 pp = pprint
 
 
-# colors not used: orange, amber#FFBF00, purple, pink,
+# colors not used: orange, amber# FFBF00, purple, pink,
 # used by default: green, blue, grey, red
 default_colorCodes = {'GpuFromHost': 'red',
               'HostFromGpu': 'red',
@@ -618,7 +618,7 @@ def pydotprint(fct, outfile=None,
                           + str(var.type))
         else:
             #a var id is needed as otherwise var with the same type will be
-            #merged in the graph.
+            # merged in the graph.
             varstr = str(var.type)
         if (varstr in all_strings) or with_ids:
             idx = ' id=' + str(len(var_str))
@@ -648,7 +648,7 @@ def pydotprint(fct, outfile=None,
         prof_str = ''
         if mode:
             time = mode.profile_stats[fct].apply_time.get(node, 0)
-            #second, % total time in profiler, %fct time in profiler
+            # second, % total time in profiler, %fct time in profiler
             if mode.local_time == 0:
                 pt = 0
             else:
@@ -734,7 +734,7 @@ def pydotprint(fct, outfile=None,
             elif var.name or not compact:
                 g.add_edge(pd.Edge(varstr, astr, label=label))
             else:
-                #no name, so we don't make a var ellipse
+                # no name, so we don't make a var ellipse
                 g.add_edge(pd.Edge(apply_name(var.owner), astr, label=label))
 
         for id, var in enumerate(node.outputs):
@@ -762,7 +762,7 @@ def pydotprint(fct, outfile=None,
             elif var.name or not compact:
                 g.add_edge(pd.Edge(astr, varstr, label=label))
 #            else:
-            #don't add egde here as it is already added from the inputs.
+            # don't add egde here as it is already added from the inputs.
 
     if cond_highlight:
         g.add_subgraph(c1)
@@ -842,8 +842,8 @@ def pydotprint_variables(vars,
                 dstr = dstr[:dstr.index('\n')]
             varstr = '%s %s' % (dstr, str(var.type))
         else:
-            #a var id is needed as otherwise var with the same type will be
-            #merged in the graph.
+            # a var id is needed as otherwise var with the same type will be
+            # merged in the graph.
             varstr = str(var.type)
 
         varstr += ' ' + str(len(var_str))

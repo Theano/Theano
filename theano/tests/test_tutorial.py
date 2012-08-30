@@ -619,12 +619,12 @@ class T_examples(unittest.TestCase):
         rv_u = srng.uniform((2,2))
         rv_n = srng.normal((2,2))
         f = function([], rv_u)
-        g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
+        g = function([], rv_n, no_default_updates=True)    # Not updating rv_n.rng
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
 
 
         f_val0 = f()
-        f_val1 = f()  #different numbers from f_val0
+        f_val1 = f()  # different numbers from f_val0
         assert numpy.all(f_val0 != f_val1)
 
         g_val0 = g()  # different numbers from f_val0 and f_val1
@@ -791,7 +791,7 @@ class T_using_gpu(unittest.TestCase):
         import numpy
         import time
 
-        vlen = 10 * 30 * 70  # 10 x #cores x # threads per core
+        vlen = 10 * 30 * 70  # 10 x # cores x # threads per core
         iters = 10
 
         rng = numpy.random.RandomState(22)
@@ -823,7 +823,7 @@ class T_using_gpu(unittest.TestCase):
             import numpy
             import time
 
-            vlen = 10 * 30 * 70  # 10 x #cores x # threads per core
+            vlen = 10 * 30 * 70  # 10 x # cores x # threads per core
             iters = 10
 
             rng = numpy.random.RandomState(22)
@@ -856,7 +856,7 @@ class T_using_gpu(unittest.TestCase):
             import numpy
             import time
 
-            vlen = 10 * 30 * 70  # 10 x #cores x # threads per core
+            vlen = 10 * 30 * 70  # 10 x # cores x # threads per core
             iters = 10
 
             rng = numpy.random.RandomState(22)
