@@ -110,9 +110,16 @@ following methods:
   the gradient with respect to that input computed based on the symbolic gradients with
   respect to each output.
 
-  If the output is not differentiable with respect to any inputs,
-  then this method should be defined to return ``[None for i in
-  inputs]``. If this method is not defined, then Theano assumes it has been
+  If the output is not differentiable with respect to an input
+  then this method should be defined to return a variable of type
+  NullType for that input.
+
+  If an element of output_gradient is of type theano.gradient.DisconnectedType,
+  it means that the cost is not a function of this output. If any of the
+  op's inputs participate in the computation of only disconnected outputs,
+  then Op.grad should return DisconnectedType variables for those inputs.
+
+  If the grad method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
   includes this Op.
 

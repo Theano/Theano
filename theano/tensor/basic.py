@@ -25,6 +25,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -2324,9 +2325,21 @@ class MaxAndArgmax(Op):
         x, axis = inp
         g_max, g_max_idx = grads
 
-        # Check to see if the gradient on max is None
-        if g_max is None:
-            return None, None
+        g_max_disconnected = isinstance(g_max.type, DisconnectedType)
+        g_max_idx_disconnected = isinstance(g_max_idx.type, DisconnectedType)
+
+        #if the op is totally disconnected, so are its inputs
+        if g_max_disconnected and g_max_idx_disconnected:
+            return [ DisconnectedType()(), DisconnectedType()() ]
+
+        axis_grad = grad_undefined(self, 1, axis,
+                "argmax is not defined for non-integer axes so"
+                " argmax(x, axis+eps) is undefined" )
+
+        #if the max is disconnected but the argmax is not,
+        #the gradient on its inputs is zero
+        if g_max_disconnected:
+            return [ x.zeros_like(), axis_grad ]
         xmax = max(x, axis)
 
         # Raise the g_max and xmax to the same number of dim as the input.
@@ -2346,7 +2359,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, None
+        return g_x, axis_grad
 
     def __str__(self):
         return self.__class__.__name__
