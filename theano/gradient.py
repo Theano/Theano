@@ -70,7 +70,7 @@ def grad_not_implemented(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the grad method for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            " not implemented.")()
+            " not implemented."+comment)()
 
 def grad_undefined(op, x_pos, x, comment = ""):
     """
@@ -88,7 +88,31 @@ def grad_undefined(op, x_pos, x, comment = ""):
 
     return NaNType("This variable is NaN because the gradient for " + \
             "input "+str(x_pos)+" ("+str(x)+") of the "+str(op)+" op is" + \
-            " mathematically undefined.")()
+             " mathematically undefined."+comment)()
+
+class DisconnectedType(theano.gof.type.Type):
+
+    """ A type indicating that a variable is a result
+        of taking the gradient of c with respect to x
+        when c is not a function of x.
+        A symbolic placeholder for 0, but to convey
+        the extra information that this gradient is 0
+        because it is disconnected.
+    """
+
+    def filter(self, data, strict=False, allow_downcast=None):
+        raise AssertionError("If you're assigning to a DisconnectedType you're"
+                " doing something wrong. It should only be used as "
+                "symbolic placeholder.")
+
+    def fiter_variable(self, other):
+        raise
+
+    def may_share_memory(a, b):
+        return False
+
+    def value_eq(a, b, force_same_dtype=True):
+        raise
 
 
 ########################
@@ -378,7 +402,7 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
 
     #the gradient of the constants is 0
     for const in consider_constant:
-        grad_dict[const] = const.zeros_like()
+        grad_dict[const] = DisconnectedType()()
 
     #variables that do not influence the cost have zero gradient.
     #if wrt is such a variable, populate the grad_dict with this info
@@ -400,11 +424,15 @@ def grad(cost, wrt, g_cost = None, consider_constant = None, warn_type = False,
                 raise ValueError("Invalid value for keyword "
                         "'disconnected_inputs', valid values are "
                         "'ignore', 'warn' and 'raise'.")
-            grad_dict[elem] = elem.zeros_like()
+            grad_dict[elem] = DisconnectedType()()
 
     rval = _populate_grad_dict(var_to_node_to_idx,
             grad_dict, wrt, warn_type,
             cost.name)
+
+    for i in xrange(len(rval)):
+        if isinstance(rval[i].type, DisconnectedType):
+            rval[i] = wrt[i].zeros_like()
 
     if using_tuple:
         rval = tuple(rval)
@@ -468,12 +496,12 @@ def _populate_grad_dict(var_to_node_to_idx,\
         grad_dict: a dictionary mapping variables to their gradients
                    should be populated by grad or grad_sources_inputs
 
-                        grad should set gradients to zeros_like for
+                        grad should set gradients to DisconnectedType()() for
                         variables to be considered constant, set the
                         gradient for the cost variable to g_cost, etc.
 
                         both should set the gradient for disconnected
-                        inputs to zeros_like
+                        inputs to DisconnectedType()
 
         wrt: the minimal set of variables that must be included in grad_dict
 
@@ -513,6 +541,11 @@ def _populate_grad_dict(var_to_node_to_idx,\
             for i in xrange(len(term_dict[node])):
 
                 if term_dict[node][i] is None:
+                    #we don't know what None means. in the past it has been used to
+                    #mean undefined, zero, or disconnected. So for now we assume it is
+                    #zero. Assuming it is zero prevents us from disconnecting NaNs above.
+                    #eventually we should disallow this return type and force all ops
+                    #to return the correct thing
                     term_dict[node][i] = node.inputs[i].zeros_like()
 
                 if warn_type:
@@ -560,8 +593,8 @@ def _populate_grad_dict(var_to_node_to_idx,\
                     grad_dict[var].name = '(d%s/d%s)' % (cost_name, var.name)
             else:
                 #this variable is not connected to the cost in the computational
-                #graph so the gradient on it is zero
-                grad_dict[var] = var.zeros_like()
+                #graph
+                grad_dict[var] = DisconnectedType()()
         return grad_dict[var]
 
 
@@ -657,7 +690,7 @@ def grad_sources_inputs(sources, graph_inputs, warn_type = True):
     #according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
         if elem not in var_to_node_to_idx and elem not in outputs:
-            grad_dict[elem] = elem.zeros_like()
+            grad_dict[elem] = DisconnectedType()
 
 
     _populate_grad_dict(var_to_node_to_idx,
