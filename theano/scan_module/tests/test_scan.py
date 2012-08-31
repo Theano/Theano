@@ -15,6 +15,7 @@ from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
 from theano.gof.python25 import any
 from theano.tests  import unittest_tools as utt
+import theano.scalar.sharedvar
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -1121,7 +1122,6 @@ class T_Scan(unittest.TestCase):
         v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
-        import theano.sandbox.rng_mrg
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
                                 utt.fetch_seed())
 
@@ -3221,7 +3221,6 @@ def test_speed_rnn():
     # The computation being tested here is a repeated tanh of a matrix-vector
     # multiplication - the heart of an ESN or RNN.
     #
-    import theano.scalar.sharedvar
 
     #We need the CVM for this speed test
     if not theano.config.cxx:
@@ -3301,7 +3300,6 @@ def test_speed_batchrnn():
     # The computation being tested here is a repeated tanh of a matrix-vector
     # multiplication - the heart of an ESN or RNN.
     #
-    import theano.scalar.sharedvar
 
     #We need the CVM for this speed test
     if not theano.config.cxx:
