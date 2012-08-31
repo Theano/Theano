@@ -4,7 +4,7 @@
 
 import numpy
 import theano
-import theano.tensor as T
+import theano.tensor as tt
 
 theano.config.floatX = 'float32'
 
@@ -17,8 +17,8 @@ rng.randint(size=N, low=0, high=2).astype(theano.config.floatX))
 training_steps = 10000
 
 # Declare Theano symbolic variables
-x = T.matrix("x")
-y = T.vector("y")
+x = tt.matrix("x")
+y = tt.vector("y")
 w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
 b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
 x.tag.test_value = D[0]
@@ -27,12 +27,12 @@ y.tag.test_value = D[1]
 #print w.get_value(), b.get_value()
 
 # Construct Theano expression graph
-p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))  # Probabily of having a one
+p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))  # Probabily of having a one
 prediction = p_1 > 0.5  # The prediction that is done: 0 or 1
-xent = -y * T.log(p_1) - (1 - y) * T.log(1 - p_1)  # Cross-entropy
-cost = T.cast(xent.mean(), 'float32') + \
+xent = -y * tt.log(p_1) - (1 - y) * tt.log(1 - p_1)  # Cross-entropy
+cost = tt.cast(xent.mean(), 'float32') + \
        0.01 * (w ** 2).sum()  # The cost to optimize
-gw, gb = T.grad(cost, [w, b])
+gw, gb = tt.grad(cost, [w, b])
 
 # Compile expressions to functions
 train = theano.function(

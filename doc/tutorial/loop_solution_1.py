@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Loop'
+import numpy
+
+import theano
+import theano.tensor as tt
 
 # 1. First example
 
-import theano
-import theano.tensor as tensor
-
 theano.config.warn.subtensor_merge_bug = False
 
-k = tensor.iscalar("k")
-A = tensor.vector("A")
+k = tt.iscalar("k")
+A = tt.vector("A")
 
 
 def inner_fct(prior_result, A):
@@ -18,7 +19,7 @@ def inner_fct(prior_result, A):
 
 # Symbolic description of the result
 result, updates = theano.scan(fn=inner_fct,
-                              outputs_info=tensor.ones_like(A),
+                              outputs_info=tt.ones_like(A),
                               non_sequences=A, n_steps=k)
 
 # Scan has provided us with A ** 1 through A ** k.  Keep only the last
@@ -34,16 +35,12 @@ print power(range(10), 2)
 
 # 2. Second example
 
-import numpy
-import theano
-import theano.tensor as tensor
-
-coefficients = theano.tensor.vector("coefficients")
-x = tensor.scalar("x")
+coefficients = tt.vector("coefficients")
+x = tt.scalar("x")
 max_coefficients_supported = 10000
 
 # Generate the components of the polynomial
-full_range = theano.tensor.arange(max_coefficients_supported)
+full_range = tt.arange(max_coefficients_supported)
 components, updates = theano.scan(fn=lambda coeff, power, free_var:
                                   coeff * (free_var ** power),
                                   sequences=[coefficients, full_range],
@@ -59,21 +56,17 @@ print calculate_polynomial1(test_coeff, 3)
 
 # 3. Reduction performed inside scan
 
-import numpy
-import theano
-import theano.tensor as tensor
-
 theano.config.warn.subtensor_merge_bug = False
 
-coefficients = theano.tensor.vector("coefficients")
-x = tensor.scalar("x")
+coefficients = tt.vector("coefficients")
+x = tt.scalar("x")
 max_coefficients_supported = 10000
 
 # Generate the components of the polynomial
-full_range = theano.tensor.arange(max_coefficients_supported)
+full_range = tt.arange(max_coefficients_supported)
 
 
-outputs_info = tensor.as_tensor_variable(numpy.asarray(0, 'float64'))
+outputs_info = tt.as_tensor_variable(numpy.asarray(0, 'float64'))
 
 components, updates = theano.scan(fn=lambda coeff, power, prior_value, free_var:
                                   prior_value + (coeff * (free_var ** power)),
