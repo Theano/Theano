@@ -350,24 +350,16 @@ Here is some code that allow to make the op Optional:
 Random number in tests
 ----------------------
 
-Making test errors more reproducable is a good practice. To make your
+Making tests errors more reproducable is a good practice. To make your
 tests more reproducable, you need a way to get the same random
 number. You can do this by seeding NumPy's randon number
-generator. There is the Theano flag unittest.rseed that specify the
-seed that should be used to init random number generators. There is 2
-ways to do this it numpy, here is one:
+generator.
 
-.. code-block:: python
+For conveniance, the classes InferShapeTester and RopLop_checker
+already do this for you. If you implement your own ``setUp`` function,
+don't forget to call the parent ``setUp`` function.
 
-    # You can set NumPy's internal random number generator state with
-    numpy.random.seed(utt.fetch_seed())
-    # All following call to numpy.random.*() function will get affected.
-
-    # Or you can create a new RandomState separate from the others
-    rng = numpy.random.RandomState(utt.fetch_seed())
-    # You can call all numpy's random number generator function's on rng
-    rng.rand(5, 5)
-
+For more details see :ref:`random_value_in_tests`.
 
 GPU Op
 ------
