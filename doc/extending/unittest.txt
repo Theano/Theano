@@ -308,6 +308,8 @@ type this:
     THEANO_FLAGS='mode=FAST_RUN' nosetests
     THEANO_FLAGS='mode=DEBUG_MODE' nosetests
 
+.. _random_value_in_tests:
+
 Using Random Values in Test Cases
 ---------------------------------
 
