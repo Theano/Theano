@@ -19,10 +19,8 @@ if not theano.config.cxx:
     raise SkipTest("G++ not available, so we need to skip this test.")
 
 class T_Images2Neibs(unittest_tools.InferShapeTester):
-    def __init__(self, name):
-        self.mode = mode_without_gpu
-        self.op = Images2Neibs
-        return super(T_Images2Neibs, self).__init__(name)
+    mode = mode_without_gpu
+    op = Images2Neibs
 
     def test_neibs(self):
         for shape, pshape in [((100, 40, 18, 18), (2, 2)),
