@@ -18,10 +18,8 @@ else:
 
 
 class T_GpuImages2Neibs(theano.sandbox.test_neighbours.T_Images2Neibs):
-    def __init__(self, name):
-        self.mode = mode_with_gpu
-        self.op = GpuImages2Neibs
-        return super(T_GpuImages2Neibs, self).__init__(name)
+    mode = mode_with_gpu
+    op = GpuImages2Neibs
 
 if __name__ == '__main__':
     unittest.main()
