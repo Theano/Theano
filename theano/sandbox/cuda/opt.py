@@ -21,7 +21,7 @@ from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import *
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, gpu_outer, GpuConv)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -576,26 +576,6 @@ def local_gpu_gemm(node):
                                                  gpu_from_host(x),
                                                  gpu_from_host(y),
                                                  b))]
-    return False
-
-
-@register_opt()
-@local_optimizer([])
-def local_gpu_outer(node):
-    """
-    gpu_dot22(col, row) -> gpu_outer
-    """
-    if node.op == gpu_dot22:
-        l, r = node.inputs
-        if l.type.broadcastable[1] and r.type.broadcastable[0]:
-            # TODO: we would like to remove the double-dimshuffle when
-            # l or r is already the output of a GpuDimshuffle. To do
-            # this, refactor the logic in tensor/opt.py that collapses
-            # dimshuffle chains so that we can call it from here.
-            lvec = GpuDimShuffle(l.broadcastable, [0])(l)
-            rvec = GpuDimShuffle(r.broadcastable, [1])(r)
-            return [gpu_outer(lvec, rvec)]
-
     return False
 
 
