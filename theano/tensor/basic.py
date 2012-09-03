@@ -5447,7 +5447,7 @@ class Reshape(Op):
             requ_part = [ele for ele in requ if ele != -1]
             crit = len(requ) - len(requ_part)
             if crit == 1 and len(requ_part) > 0:
-                missing = mul(*ishapes[0]) / mul(*requ_part)
+                missing = mul(*ishapes[0]) // mul(*requ_part)
                 for i, ele in enumerate(requ):
                     if ele == -1:
                         requ[i] = missing
