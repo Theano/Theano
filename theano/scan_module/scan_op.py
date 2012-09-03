@@ -65,9 +65,10 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
+        tensorConstructor = lambda broadcastable, dtype: TensorType(
+            broadcastable=broadcastable, dtype=dtype)
         if typeConstructor is None:
-            typeConstructor = lambda broadcastable, dtype: TensorType(
-                broadcastable=broadcastable, dtype=dtype)
+            typeConstructor = tensorConstructor
 
         while idx < self.n_mit_mot_outs:
             # Not that for mit_mot there are several output slices per
