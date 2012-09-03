@@ -13,22 +13,6 @@ It is also used to load the KnownFailure plugin, in order to hide
 KnownFailureTests error messages. Use --without-knownfailure to
 disable that plugin.
 
-There are two additional local options: '--batch[=n]' and '--time-profile'.
-
-If '--batch[=n]' is used without '--time-profile', this script will call
-run_tests_in_batch.py` in order to run the tests by batches, not all at the
-same time. The batches will comprise 100 elements each by default and
-'n' elements if the option '=n' is specified.
-
-If the '--time-profile' option is used, it will call `run_tests_in_batch.py`
-with the option time_profile=True to conduct time-profiling of the tests.
-(See 'help' function below for details.) If also specified, '--batch[=n]'
-option will be interpreted as an indication of the number of tests to be run
-between notifications of progress to standard output.
-
-If the '--theano' option is used, it is replaced with the path to theano.
-Useful if you don't know where it was installed.
-
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
 
@@ -47,6 +31,12 @@ def main():
         i = sys.argv.index("--theano")
         import theano
         sys.argv[i] = theano.__path__[0]
+
+    # Handle the --verbose argument.
+    display_batch_output = False
+    if '--verbose' in sys.argv:
+        sys.argv += ['--nocapture', '--detailed-errors']
+        display_batch_output = True
 
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
@@ -70,10 +60,12 @@ def main():
         sys.argv.remove(arg)
             
     # Time-profiling and batch modes
-    if len(time_prof_args) or len(batch_args):
+    if time_prof_args or batch_args:
         from theano.tests import run_tests_in_batch
-        return run_tests_in_batch.main(batch_size=batch_size,
-                            time_profile=len(time_prof_args) > 0)
+        return run_tests_in_batch.main(
+                batch_size=batch_size,
+                time_profile=bool(time_prof_args),
+                display_batch_output=display_batch_output)
 
     # Non-batch mode.
     addplugins = []
@@ -110,6 +102,8 @@ def help():
 
         Local options:
 
+            --help, -h: Displays this help.
+
             --batch[=n]:
                 If specified without option '--time-profile', do not run all
                 the tests in one run, but split the execution in batches of
@@ -142,14 +136,20 @@ def help():
                 latter may be used to identify duration patterns among the tests
                 numbers. A full log is also saved as 'timeprof_rawlog'.
     
-            --help, -h: Displays this help.
-
             --without-knownfailure: Do not load the KnownFailure plugin.
 
-            --theano: This parameter is replaced with the path to the theano library.
-                      As theano-nose is a wrapper to nosetests, it expect a path to the tests to run.
-                      If you don't know where theano is installed, use this option
-                      to have it inserted automatically.
+            --theano: This parameter is replaced with the path to the theano
+                      library. As theano-nose is a wrapper to nosetests, it
+                      expects a path to the tests to run.
+                      If you do not know where theano is installed, use this
+                      option to have it inserted automatically.
+
+            --verbose: Use this parameter to run nosetests with options
+                       '--verbose', '--nocapture' and '--detailed-errors' and
+                       show the output of nosetests during batch execution.
+                       This can be useful to debug situations where re-running
+                       only the failed tests after batch execution is not
+                       working properly.
 
         The other options will be passed to nosetests, see ``nosetests -h``.
         """
