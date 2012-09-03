@@ -972,7 +972,7 @@ class Scan(PureOp):
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
                         outs[j][0].dtype != dtype):
-                        if self.gpu:
+                        if self.gpu and dtype in ['float32']:
                             _cuda = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray
                             outs[j][0] = _cuda.zeros(shape)
                         else:
