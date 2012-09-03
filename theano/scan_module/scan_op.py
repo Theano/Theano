@@ -51,8 +51,26 @@ class Scan(PureOp):
         """
         :param inputs: inputs of the inner function of scan
         :param outputs: outputs of the inner function of scan
-        :param properties: dictionary containing different properties of
-                        the scan op.
+        :param info: dictionary containing different properties of
+            the scan op (like number of different type of
+            arguments, name, mode, if it should run on GPU or
+            not, etc.)
+        :param typeConstructor: function that constructs a Theano TensorType
+            able to represent a float32 ndarray.
+
+        Note: ``typeConstructor`` had been added to refractor how Theano
+        deals with the GPU. If it runs on the GPU, scan needs to construct
+        certain outputs (those who reside in the GPU memory) as CudaNdarray.
+        However we can not import cuda in this file (as it is in sandbox,
+        and not available on each machine) so the workaround is that the GPU
+        optimization (which is aware of cuda types) passes to the
+        constructor of this class a function that is able to construct
+        CudaNdarray. This way the class Scan does not need to be aware of
+        CudaNdarray, it just construct any float32 tensor using this
+        function (which by default constructs normal tensors). Note that the
+        second assumption in this code is that any float32 output or input
+        will be moved on the GPU if the optimization gets applied (following
+        Theano's philosophy of moving as much as possible on gpu).
         """
         # adding properties into self
         self.inputs = inputs
@@ -76,9 +94,13 @@ class Scan(PureOp):
             # Not that for mit_mot there are several output slices per
             # output sequence
             o = outputs[idx]
-            # typeConstructor constructs only CudaNdarray when code is
-            # runnnig on gpu, but for outputs of a dtype different than
-            # float32 this results into an error
+            # Scan assumes that only variables of dtype float32 might need a
+            # special constructor (i.e. CudaNdarray constructor) when the
+            # code is running on GPU, as it is the only type supported by
+            # Theano yet. Therefore only for dtype float32 we use the passed
+            # type constructor ``typeConstructor``. For anything else we
+            # know that even if we run it on the GPU we still construct
+            # normal Theano tensors.
             if o.type.dtype in ['float32']:
                 self.output_types.append(
                     typeConstructor(
@@ -97,9 +119,13 @@ class Scan(PureOp):
         end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
 
         for o in outputs[idx:end]:
-            # typeConstructor constructs only CudaNdarray when code is
-            # runnnig on gpu, but for outputs of a dtype different than
-            # float32 this results into an error
+            # Scan assumes that only variables of dtype float32 might need a
+            # special constructor (i.e. CudaNdarray constructor) when the
+            # code is running on GPU, as it is the only type supported by
+            # Theano yet. Therefore only for dtype float32 we use the passed
+            # type constructor ``typeConstructor``. For anything else we
+            # know that even if we run it on the GPU we still construct
+            # normal Theano tensors.
             if o.type.dtype in ['float32']:
                 self.output_types.append(
                     typeConstructor(
