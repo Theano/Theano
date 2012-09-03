@@ -383,7 +383,7 @@ def perform(
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
                         outs[j][0].dtype != dtype ):
-                    if self.gpu:
+                    if self.gpu and dtype in ['float32']:
                         outs[j][0] = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
                     else:
                         outs[j][0] = numpy.zeros(shape, dtype)
