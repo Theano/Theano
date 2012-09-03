@@ -32,7 +32,7 @@ If 'time_profile=True', this script conducts time-profiling of the tests:
        - test name
        - name of class to which test belongs (if any), otherwise full
          information is contained in test name
-       - test outcome ('OK', 'SKIPPED TESTS', 'FAILED TEST' or 'FAILED PARSING')
+       - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or 'FAILED PARSING')
        In 'timeprof_sort', test records are sorted according to run-time
        whereas in 'timeprof_nosort' records are reported according to
        sequential number. The former classification is the main information
@@ -169,9 +169,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             stdout.flush()
             stderr.flush()
             test_range = range(test_id, min(test_id + batch_size, n_tests + 1))
-            cmd =([python, theano_nose, '--with-id'] +
-                  map(str, test_range) +
-                  argv)
+            cmd = ([python, theano_nose, '--with-id'] +
+                   map(str, test_range) +
+                   argv)
             subprocess_extra_args = dict(stdin=dummy_in.fileno())
             if not display_batch_output:
                 # Use quiet mode in nosetests.
@@ -335,5 +335,3 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
 
 if __name__ == '__main__':
     sys.exit(main())
-
-    
