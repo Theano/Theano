@@ -2688,6 +2688,10 @@ def rint(x):
     """
     # see decorator for function body
 
+# Give it a simple name instead of the complex one that would automatically
+# be derived from `tensor.round_half_to_even`.
+rint.__name__ = 'rint'
+
 
 @structured_monoid(tensor.sgn)
 def sgn(x):

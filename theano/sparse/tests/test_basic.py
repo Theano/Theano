@@ -2241,7 +2241,7 @@ class MultinomialTester(utt.InferShapeTester):
 
 
 def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
-                     grad_test=True):
+                     grad_test=True, name=None):
     """Return the appropriate test class for the elemwise on sparse.
 
     :param op: Op to test.
@@ -2268,13 +2268,14 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
         test_dtypes = sparse.all_dtypes
 
     class Tester(unittest.TestCase):
-        __name__ = op.__name__.capitalize() + 'Tester'
 
         def setUp(self):
             super(Tester, self).setUp()
             self.op = op
             self.expected_f = expected_f
             self.gap = gap
+            # Ensure the test's name is correct.
+            assert eval(self.__class__.__name__) is self.__class__
 
         def test_op(self):
             for format in sparse.sparse_formats:
@@ -2387,7 +2388,15 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                         verify_grad_sparse(self.op,
                                            data,
                                            structured=True)
-    Tester.__name__ = op.__name__ + "Tester"
+
+    # Set proper class name to uniquely identify tests.
+    # Note that it is important to run this code *outside* of the `Tester`
+    # class itself, otherwise it will not work properly for some reason.
+    if name is None:
+        name = op.__name__.capitalize() + 'Tester'
+    Tester.__name__ = name
+    assert 'Roundhalftoeven' not in Tester.__name__
+
     return Tester
 
 
@@ -2420,32 +2429,39 @@ StructuredSigmoidTester = elemwise_checker(
     test_dtypes=[m for m in sparse.all_dtypes
                  if (not m in sparse.complex_dtypes and
                      not m.startswith('uint'))],
-    gap=(-5, 5))
+    gap=(-5, 5),
+    name='StructuredSigmoidTester')
 
 StructuredExpTester = elemwise_checker(
     sparse.structured_exp,
-    structure_function(numpy.exp))
+    structure_function(numpy.exp),
+    name='StructuredExpTester')
 
 StructuredLogTester = elemwise_checker(
     sparse.structured_log,
     structure_function(numpy.log),
-    gap=(0.5, 10))
+    gap=(0.5, 10),
+    name='StructuredLogTester')
 
 StructuredPowTester = elemwise_checker(
     lambda x: sparse.structured_pow(x, 2),
-    structure_function(lambda x: numpy.power(x, 2)))
+    structure_function(lambda x: numpy.power(x, 2)),
+    name='StructuredPowTester')
 
 StructuredMinimumTester = elemwise_checker(
     lambda x: structured_minimum(x, 2),
-    structure_function(lambda x: numpy.minimum(x, 2)))
+    structure_function(lambda x: numpy.minimum(x, 2)),
+    name='StructuredMinimumTester')
 
 StructuredMaximumTester = elemwise_checker(
     lambda x: structured_maximum(x, 2),
-    structure_function(lambda x: numpy.maximum(x, 2)))
+    structure_function(lambda x: numpy.maximum(x, 2)),
+    name='StructuredMaximumTester')
 
 StructuredAddTester = elemwise_checker(
     lambda x: structured_add(x, 2),
-    structure_function(lambda x: numpy.add(x, 2)))
+    structure_function(lambda x: numpy.add(x, 2)),
+    name='StructuredAddTester')
 
 SinTester = elemwise_checker(
     sparse.sin,
@@ -2456,12 +2472,12 @@ TanTester = elemwise_checker(
     numpy.tan,
     gap=(-1, 1))
 
-ArcSinTester = elemwise_checker(
+ArcsinTester = elemwise_checker(
     sparse.arcsin,
     numpy.arcsin,
     gap=(-1, 1))
 
-ArcTanTester = elemwise_checker(
+ArctanTester = elemwise_checker(
     sparse.arctan,
     numpy.arctan)
 
@@ -2469,7 +2485,7 @@ SinhTester = elemwise_checker(
     sparse.sinh,
     numpy.sinh)
 
-ArcSinhTester = elemwise_checker(
+ArcsinhTester = elemwise_checker(
     sparse.arcsinh,
     numpy.arcsinh,
     gap=(-1, 1))
@@ -2479,7 +2495,7 @@ TanhTester = elemwise_checker(
     numpy.tanh,
     gap=(-1, 1))
 
-ArcTanhTester = elemwise_checker(
+ArctanhTester = elemwise_checker(
     sparse.arctanh,
     numpy.arctanh,
     gap=(-0.9, 1))
@@ -2521,13 +2537,13 @@ Expm1Tester = elemwise_checker(
     sparse.expm1,
     numpy.expm1)
 
-Deg2RadTester = elemwise_checker(
+Deg2radTester = elemwise_checker(
     sparse.deg2rad,
     numpy.deg2rad,
     test_dtypes=[m for m in sparse.all_dtypes
                  if not  m in sparse.complex_dtypes])
 
-Rad2DegTester = elemwise_checker(
+Rad2degTester = elemwise_checker(
     sparse.rad2deg,
     numpy.rad2deg,
     test_dtypes=[m for m in sparse.all_dtypes
