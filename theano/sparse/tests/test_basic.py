@@ -721,8 +721,9 @@ class test_csm(unittest.TestCase):
                 a = as_sparse_variable(sp_types[format](random_lil((4, 3),
                     dtype, 1)))
 
-                f = theano.function([x, y, z, s], tensor.grad(dense_from_sparse(
-                    a * CSM(format)(x, y, z, s)).sum(), x))
+                f = theano.function([x, y, z, s],
+                                    tensor.grad(dense_from_sparse(
+                                        a * CSM(format)(x, y, z, s)).sum(), x))
 
                 spmat = sp_types[format](random_lil((4, 3), dtype, 3))
 
@@ -1012,9 +1013,10 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
             self.assertTrue(numpy.allclose(theano_result, scipy_result))
-            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.cxx:
-                self.assertFalse(theano_time > overhead_rtol * scipy_time +
-                                 overhead_tol)
+            if (not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and
+                theano.config.cxx):
+                    self.assertFalse(theano_time > overhead_rtol * scipy_time +
+                                     overhead_tol)
 
 
 class DotTests(unittest.TestCase):
@@ -1954,7 +1956,8 @@ class CastTester(utt.InferShapeTester):
 
                     func = theano.function([variable], cast(variable, o_dtype))
                     cls = theano.function([variable], Cast(o_dtype)(variable))
-                    prop = theano.function([variable], variable.astype(o_dtype))
+                    prop = theano.function([variable],
+                                           variable.astype(o_dtype))
 
                     t_func, t_cls, t_prop = func(data), cls(data), prop(data)
 
