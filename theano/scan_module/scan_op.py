@@ -50,13 +50,13 @@ class Scan(PureOp):
         :param inputs: inputs of the inner function of scan
         :param outputs: outputs of the inner function of scan
         :param info: dictionary containing different properties of
-            the scan op (like number of different type of
+            the scan op (like number of different types of
             arguments, name, mode, if it should run on GPU or
             not, etc.)
         :param typeConstructor: function that constructs a Theano TensorType
             able to represent a float32 ndarray.
 
-        Note: ``typeConstructor`` had been added to refractor how Theano
+        Note: ``typeConstructor`` had been added to refactor how Theano
         deals with the GPU. If it runs on the GPU, scan needs to construct
         certain outputs (those who reside in the GPU memory) as CudaNdarray.
         However we can not import cuda in this file (as it is in sandbox,
@@ -64,7 +64,7 @@ class Scan(PureOp):
         optimization (which is aware of cuda types) passes to the
         constructor of this class a function that is able to construct
         CudaNdarray. This way the class Scan does not need to be aware of
-        CudaNdarray, it just construct any float32 tensor using this
+        CudaNdarray, it just constructs any float32 tensor using this
         function (which by default constructs normal tensors). Note that the
         second assumption in this code is that any float32 output or input
         will be moved on the GPU if the optimization gets applied (following
