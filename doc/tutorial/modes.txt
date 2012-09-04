@@ -137,7 +137,7 @@ Theano defines the following modes by name:
 - ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'ProfileMode'``: Same optimization then FAST_RUN, put print some profiling information
+- ``'ProfileMode'``: Same optimizations as FAST_RUN, but print some profiling information
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,
@@ -147,7 +147,7 @@ which can be overridden by passing the keyword argument to
 ================= =============================================================== ===============================================================================
 short name        Full constructor                                                What does it do?
 ================= =============================================================== ===============================================================================
-``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations
+``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations.
 ``FAST_RUN``      ``compile.mode.Mode(linker='cvm', optimizer='fast_run')``       C implementations where available, all available graph transformations.
 ``DebugMode``    ``compile.debugmode.DebugMode()``                                Both implementations where available, all available graph transformations.
 ``ProfileMode``  ``compile.profilemode.ProfileMode()``                            C implementations where available, all available graph transformations, print profile information.
@@ -166,10 +166,10 @@ Here is a table to compare the different linkers.
 =============  =========  =================  =========  ===
 linker         gc [#gc]_  Raise error by op  Overhead   Definition
 =============  =========  =================  =========  ===
-cvm            yes        yes                "++"       As c|py, but the runtime algo to execute the code is in c
-cvm_nogc       no         yes                "+"        As cvm, but without gc
+cvm            yes        yes                "++"       As c|py, but the runtime algo to execute the code is in C
+cvm_nogc       no         yes                "+"        As cvm, but without garbage collection
 c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exists for an op, use Python
-c|py_nogc      no         yes                "++"       As c|py, but without gc
+c|py_nogc      no         yes                "++"       As c|py, but without garbage collection
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only Python code
 c&py [#cpy2]_  no         yes                "+++++"    Use C and Python code

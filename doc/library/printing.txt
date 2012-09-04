@@ -81,23 +81,23 @@ Elemwise{mul,no_inplace} [@A] ''
  |x [@C]
 
 Each line printed represents a Variable in the graph.
-The line ``|x [@C`` means the variable named ``x`` with debugprint identifier
+The line ``|x [@C]`` means the variable named ``x`` with debugprint identifier
 [@C] is an input of the Elemwise.  If you accidentally have two variables called ``x`` in
 your graph, their different debugprint identifier will be your clue.
 
 The line ``|TensorConstant{2.0} [@B]`` means that there is a constant 2.0
-wit this debugprint identifier.
+with this debugprint identifier.
 
 The line ``Elemwise{mul,no_inplace} [@A] ''`` is indented less than
 the other ones, because it means there is a variable computed by multiplying
 the other (more indented) ones together.
 
-The ``|`` symbol are just there to help read big graph. The group
+The ``|`` symbol are just there to help read big graphs. They group
 together inputs to a node.
 
 Sometimes, you'll see a Variable but not the inputs underneath.  That can
 happen when that Variable has already been printed.  Where else has it been
-printed?  Look for debugprint identifier using the Find feature of your text
+printed?  Look for its debugprint identifier using the Find feature of your text
 editor.
 
 >>> theano.printing.debugprint(gy)

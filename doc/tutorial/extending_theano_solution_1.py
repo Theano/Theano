@@ -74,6 +74,11 @@ class SumDiffOp(theano.Op):
 
     def grad(self, inputs, output_grads):
         og1, og2 = output_grads
+        # Currently, multi-output Ops can be provided `None` as gradient w.r.t.
+        # some of their outputs instead of a zero gradient. This can only
+        # happen if at least one of the gradient w.r.t. the outputs is not
+        # None, so here we can assume that when `og1` is None, `og2` is not,
+        # and vice-versa.
         if og1 is None:
             og1 = theano.tensor.zeros_like(og2)
         if og2 is None:
