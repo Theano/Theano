@@ -749,7 +749,16 @@ class Test_preallocated_output(unittest.TestCase):
         from theano.sandbox import cuda
         if not cuda.cuda_available:
             raise SkipTest("Optional package Cuda disabled")
-
+        if cuda.use.device_number is None:
+            # We should normally set VecAsRowAndCol as a GPUOp But we
+            # don't want to do this here as this will disable others
+            # tests in this file.  So we manually init the GPU if
+            # needed to remove warning.
+            cuda.use("gpu",
+                     force=True,
+                     default_to_move_computation_to_gpu=False,
+                     move_shared_float32_to_gpu=False,
+                     enable_cuda=False)
         v = cuda.fvector('v')
         c, r = VecAsRowAndCol()(v)
         f = theano.function([v], [c, r])
