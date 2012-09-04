@@ -128,6 +128,18 @@ class NVCC_compiler(object):
         import theano.sandbox.cuda
         if hasattr(theano.sandbox, 'cuda'):
             n = theano.sandbox.cuda.use.device_number
+            if n is None:
+                _logger.warn("We try to get compilation arguments for CUDA"
+                             " code, but the GPU device is not initialized."
+                             " This is probably caused by an Op that work on"
+                             " the GPU that don't inherit from GpuOp."
+                             " We Initialize the GPU now.")
+                theano.sandbox.cuda.use("gpu",
+                                        force=True,
+                                        default_to_move_computation_to_gpu=False,
+                                        move_shared_float32_to_gpu=False,
+                                        enable_cuda=False)
+
             p = theano.sandbox.cuda.device_properties(n)
             flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
         return flags
