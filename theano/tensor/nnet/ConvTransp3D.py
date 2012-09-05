@@ -126,9 +126,9 @@ class ConvTransp3D(theano.Op):
                     }
 
                     //Read and check stride arguments
-                    if (%(d)s->dimensions[0] != 3)
+                    if (PyArray_DIMS(%(d)s)[0] != 3)
                     {
-                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", (long)%(d)s->dimensions[0] );
+                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", (long)PyArray_DIMS(%(d)s)[0] );
                          %(fail)s
                     }
 
@@ -147,33 +147,33 @@ class ConvTransp3D(theano.Op):
                          //Read and check sizes of inputs
 
                         { // for fail 2
-                            const int batchSize = %(H)s->dimensions[0];
-                            const int outputChannels =  %(W)s->dimensions[0];
+                            const int batchSize = PyArray_DIMS(%(H)s)[0];
+                            const int outputChannels =  PyArray_DIMS(%(W)s)[0];
 
-                            if (%(H)s->dimensions[4] != outputChannels)
+                            if (PyArray_DIMS(%(H)s)[4] != outputChannels)
                             {
-                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li, %%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)", outputChannels, (long)%(H)s->dimensions[4], (long)%(W)s->dimensions[0], (long)%(W)s->dimensions[1], (long)%(W)s->dimensions[2], (long)%(W)s->dimensions[3], (long)%(W)s->dimensions[4], (long)%(H)s->dimensions[0], (long)%(H)s->dimensions[1], (long)%(H)s->dimensions[2], (long)%(H)s->dimensions[3], (long)%(H)s->dimensions[4]);
+                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li, %%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)", outputChannels, (long)PyArray_DIMS(%(H)s)[4], (long)PyArray_DIMS(%(W)s)[0], (long)PyArray_DIMS(%(W)s)[1], (long)PyArray_DIMS(%(W)s)[2], (long)PyArray_DIMS(%(W)s)[3], (long)PyArray_DIMS(%(W)s)[4], (long)PyArray_DIMS(%(H)s)[0], (long)PyArray_DIMS(%(H)s)[1], (long)PyArray_DIMS(%(H)s)[2], (long)PyArray_DIMS(%(H)s)[3], (long)PyArray_DIMS(%(H)s)[4]);
                                 %(fail)s
                             }
 
                             { // for fail 3
 
-                                const int inputChannels = %(W)s->dimensions[4];
+                                const int inputChannels = PyArray_DIMS(%(W)s)[4];
 
-                                if (%(b)s->dimensions[0] != inputChannels)
+                                if (PyArray_DIMS(%(b)s)[0] != inputChannels)
                                 {
-                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", (long)%(b)s->dimensions[0], inputChannels );
+                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", (long)PyArray_DIMS(%(b)s)[0], inputChannels );
                                     %(fail)s
                                 }
 
                                 { // for fail 4
 
-                                const int filterHeight = %(W)s->dimensions[1];
-                                const int filterWidth = %(W)s->dimensions[2];
-                                const int filterDur = %(W)s->dimensions[3];
-                                const int outputHeight = %(H)s->dimensions[1];
-                                const int outputWidth = %(H)s->dimensions[2];
-                                const int outputDur = %(H)s->dimensions[3];
+                                const int filterHeight = PyArray_DIMS(%(W)s)[1];
+                                const int filterWidth = PyArray_DIMS(%(W)s)[2];
+                                const int filterDur = PyArray_DIMS(%(W)s)[3];
+                                const int outputHeight = PyArray_DIMS(%(H)s)[1];
+                                const int outputWidth = PyArray_DIMS(%(H)s)[2];
+                                const int outputDur = PyArray_DIMS(%(H)s)[3];
 
                                 int videoHeight = (outputHeight-1) * dr + filterHeight;
                                 int videoWidth = (outputWidth-1) * dc + filterWidth;
@@ -187,7 +187,7 @@ class ConvTransp3D(theano.Op):
                                         %(fail)s
                                     }
 
-                                    if (%(RShape)s->dimensions[0] != 3)
+                                    if (PyArray_DIMS(%(RShape)s)[0] != 3)
                                     {
                                         PyErr_Format(PyExc_ValueError, "RShape must specify a 3D shape ( [height,width,duration] )");
                                         %(fail)s
@@ -221,11 +221,11 @@ class ConvTransp3D(theano.Op):
                                    dims[2] = videoWidth;
                                    dims[3] = videoDur;
 
-                                   if(!(%(R)s) || %(R)s->dimensions[0]!=dims[0] ||
-                                    %(R)s->dimensions[1]!=dims[1] ||
-                                    %(R)s->dimensions[2]!=dims[2] ||
-                                    %(R)s->dimensions[3]!=dims[3] ||
-                                    %(R)s->dimensions[4]!=dims[4])
+                                   if(!(%(R)s) || PyArray_DIMS(%(R)s)[0]!=dims[0] ||
+                                    PyArray_DIMS(%(R)s)[1]!=dims[1] ||
+                                    PyArray_DIMS(%(R)s)[2]!=dims[2] ||
+                                    PyArray_DIMS(%(R)s)[3]!=dims[3] ||
+                                    PyArray_DIMS(%(R)s)[4]!=dims[4])
                                    {
                                        Py_XDECREF(%(R)s);
                                        %(R)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(H)s->descr->type_num);

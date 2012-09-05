@@ -67,7 +67,7 @@ def make_checks(loop_orders, dtypes, sub):
                 # jump = stride - adjust
                 jump = "(%s) - (%s)" % ("%(var)s_stride%(index)s" % locals(), adjust)
                 init += """
-                %(var)s_n%(index)s = %(var)s->dimensions[%(index)s];
+                %(var)s_n%(index)s = PyArray_DIMS(%(var)s)[%(index)s];
                 %(var)s_stride%(index)s = %(var)s->strides[%(index)s] / sizeof(%(dtype)s);
                 %(var)s_jump%(index)s_%(j)s = %(jump)s;
                 //printf("%(var)s_jump%(index)s_%(j)s is:");

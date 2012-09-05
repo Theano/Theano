@@ -288,7 +288,7 @@ class DimShuffle(Op):
         for i, o in enumerate(self.new_order):
             if o != 'x':
                 shape_statements += [('dimensions[' + str(
-                    i) + '] = %(basename)s->dimensions[' + str(o) + ']')]
+                    i) + '] = PyArray_DIMS(%(basename)s)[' + str(o) + ']')]
             else:
                 shape_statements += [('dimensions[' + str(i) + '] = 1')]
 
