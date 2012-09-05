@@ -293,6 +293,28 @@ def test_grad_grad_cubic():
     theano.tests.unittest_tools.verify_grad(output,[vx,vA])
 
 
+def test_grad_disconnected():
+
+    #tests corner cases of gradient for shape and alloc
+
+    x = theano.tensor.vector(name = 'x')
+    total = x.sum()
+    total.name = 'total'
+    num_elements = x.shape[0]
+    num_elements.name = 'num_elements'
+    silly_vector = theano.tensor.alloc( total / num_elements, num_elements)
+    silly_vector.name = 'silly_vector'
+    cost = silly_vector.sum()
+    cost.name = 'cost'
+    #note that cost simplifies to be the same as "total"
+    g = gradient.grad(cost, x, add_names = False)
+    #we still need to pass in x because it determines the shape of the output
+    f = theano.function([x],g)
+    rng = np.random.RandomState([2012,9,5])
+    x = np.cast[x.dtype](rng.randn(3))
+    g = f(x)
+    assert np.allclose(g,np.ones(x.shape,dtype=x.dtype))
+
 
 if __name__ == '__main__':
     unittest.main()
