@@ -618,6 +618,14 @@ class Elemwise(Op):
 
         return rval
 
+
+    def connection_pattern(self, node):
+
+        if hasattr(self.scalar_op, 'connection_pattern'):
+            return self.scalar_op.connection_pattern(node)
+
+        return [[True for output in node.outputs] for ipt in node.inputs]
+
     def grad(self, inputs, ograds):
 
         #compute grad with respect to broadcasted input

@@ -1548,7 +1548,7 @@ class Second(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(y)s;" % locals()
 
-    def connection_pattern(self):
+    def connection_pattern(self, node):
 
         # x is never connected because its elements are never used
         # y is connected because its elements are copied over
