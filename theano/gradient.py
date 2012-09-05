@@ -681,6 +681,10 @@ def _populate_grad_dict(var_to_node_to_idx,
                                 "encountered a NaN. " +\
                                     term.type.why_null)
 
+                        #Don't try to sum up DisconnectedType placeholders
+                        if isinstance(term.type, DisconnectedType):
+                            continue
+
                         terms.append(term)
                 #the next line is like sum(terms) but doesn't add an
                 #extraneous TensorConstant(0)
