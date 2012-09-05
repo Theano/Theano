@@ -29,8 +29,3 @@ class NullType(Type):
 
     def values_eq(a, b, force_same_dtype=True):
         raise ValueError("NullType has no values to compare")
-
-
-class NullVariable(Variable):
-
-    pass
