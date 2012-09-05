@@ -100,32 +100,50 @@ following methods:
 
 .. function:: connection_pattern():
 
-  Optional (but in extremely rare cases needed to have it work with
-   {tensor,sparse}.grad).
+  Optional method; sometimes needed for gradient.grad to
+  work correctly.
 
-  Returns a list of bools the same length as the op's inputs list.
+  Returns a list of list of bools.
 
-  True signifies that the elements of an input have an effect on its
-  output.
+  Op.connection_pattern[input_idx][output_idx] is true if the
+  elements of inputs[input_idx] have an effect on the elements of
+  outputs[output_idx].
 
-  False signifies that they do not--in other words, the op acts only
-  one the input's metadata such as its shape.
+  If no connection_pattern is specified, gradient.grad will
+  assume that all inputs have some elements connected to some
+  elements of all outputs.
 
-  If no connection_pattern is implemented, tensor.grad will assume
-  it is a list containing only True.
+  This method conveys two pieces of information that are otherwise
+  not part of the theano graph:
+
+  1) Which of the op's inputs are truly ancestors of each of the
+     op's outputs. Suppose an op has two inputs, x and y, and
+     outputs f(x) and g(y). y is not really an ancestor of f, but
+     it appears to be so in the theano graph.
+  2) Whether the actual elements of each input/output are relevant
+     to a computation.
+     For example, the shape op does not read its input's elements,
+     only its shape metadata. d shape(x) / dx should thus raise
+     a disconnected input exception (if these exceptions are
+     enabled).
+     As another example, the elements of the Alloc op's outputs
+     are not affected by the shape arguments to the Alloc op.
 
   Failing to implement this function for an op that needs it can
-  result in tensor.grad erroneously reporting that a gradient is
-  undefined. Returning 0 for this input in the grad method is not
-  the same as specifying that the elements of this input are not
-  connected to the output. If the gradient with respect to the
-  op's output is NaN but the elements of the input are not connected
-  to it, then the NaN never enters into the expression for the
-  gradient.
+  result in two types of incorrect behavior:
+  
+  1) gradient.grad erroneously raising a TypeError reporting that
+     a gradient is undefined.
+  2) gradient.grad failing to raise a ValueError reporting that
+     an input is disconnected.
+
+  Even if connection_pattern is not implemented correctly,
+  if gradient.grad returns an expression, that expression will
+  be numerically correct.
 
 .. function:: grad(inputs, output_gradients)
 
-  Optional (but needed to have it work with {tensor,sparse}.grad()).
+  Optional (but needed to have it work with gradient.grad()).
 
   If the Op being defined is differentiable, its gradient may be specified 
   symbolically in this method. Both ``inputs`` and ``output_gradients``
