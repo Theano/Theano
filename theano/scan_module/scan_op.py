@@ -616,7 +616,7 @@ class Scan(PureOp):
                         cython_destroy_map,
                         args,
                         outs,
-                        self)
+                        self, node)
         except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`

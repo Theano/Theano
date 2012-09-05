@@ -88,7 +88,8 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
             args,
             outs,
-            self):
+            self,
+            node):
     """
     Parameters
     ----------
