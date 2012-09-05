@@ -329,7 +329,7 @@ def test_disconnected_nan():
             return theano.Apply(self, inputs=[x],
                     outputs = [ x.type(), theano.tensor.scalar() ])
 
-        def connection_pattern(self):
+        def connection_pattern(self, node):
             return [[True, False]]
 
         def grad(self, inputs, output_grads):
@@ -358,6 +358,8 @@ def test_disconnected_nan():
 
     # If we made it to here without an exception, then the
     # connection_pattern functionality worked correctly
+
+
 
 
 if __name__ == '__main__':
