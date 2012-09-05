@@ -30,13 +30,20 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if x > 30.0:
             return 1.0
         return 1.0 / (1.0 + numpy.exp(-x))
+
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         y = scalar_sigmoid(x)
-        return [gz * y * (1.0 - y)]
+        rval = gz * y * (1.0 - y)
+
+        assert rval.type.dtype.find('float') != -1
+
+        return [ rval ]
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -50,6 +57,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
             return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
         else:
             raise NotImplementedError('only floatingpoint is implemented')
+
     def c_code_cache_version(self):
         v = super(ScalarSigmoid, self).c_code_cache_version()
         if v:
