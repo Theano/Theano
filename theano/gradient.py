@@ -676,9 +676,24 @@ def _populate_grad_dict(var_to_node_to_idx,
 
             output_grads = [access_grad_cache(var) for var in node.outputs]
 
-            if False in [isinstance(g.type, DisconnectedType)
-                    for g in output_grads]:
-                # Some outputs of this op are connected to the cost so we must
+            # list of bools indicating if each output is connected to the cost
+            outputs_connected = [ not isinstance(g.type, DisconnectedType)
+                    for g in output_grads ]
+
+            connection_pattern = _node_to_pattern(node)
+
+            # list of bools indicating if each input is connected to the cost
+            inputs_connected = [
+                    [ input_to_output and output_to_cost for
+                        input_to_output, output_to_cost in
+                        zip(input_to_outputs, outputs_connected) ] for
+                        input_to_outputs in connection_pattern
+                    ]
+
+            all_inputs_disconnected = not ( True in inputs_connected )
+
+            if all_inputs_disconnected:
+                # At least one input of this op is connected to the cost so we must
                 # call the op's grad method
 
                 # Each Op's grad function requires inputs and output_grads
