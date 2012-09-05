@@ -2204,8 +2204,8 @@ class SpecifyShape(Op):
         # to remove that op from the graph to don't block other optimization
         # Should I do an optimizer that will remove the SpecifyShape?
         # I think Yes
-        return [gz, None]
-        return [specify_shape(gz, s), None]
+        return [gz, DisconnectedType()()]
+        return [specify_shape(gz, s), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
