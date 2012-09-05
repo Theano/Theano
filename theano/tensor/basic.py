@@ -3175,7 +3175,11 @@ class Alloc(gof.Op):
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
         gx = gz.sum(axis=range(n_axes_to_sum))
-        return [gx] + [None for i in inputs[1:]]
+        #The *elements* of the output are not connected to
+        #the inputs that specify the shape. If you grow the
+        #shape by epsilon, the existing elements do not
+        #change.
+        return [gx] + [DisconnectedType()() for i in inputs[1:]]
 
     def __call__(self, val, *shapes):
         """
