@@ -2103,7 +2103,7 @@ class Shape(Op):
         # the elements of the tensor variable do not participate
         # in the computation of the shape, so they are not really
         # part of the graph
-        return [False]
+        return [[False]]
 
     def grad(self, inp, grads):
         # the grad returns the gradient with respect to the

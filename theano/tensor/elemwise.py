@@ -14,6 +14,7 @@ from theano.scalar import Scalar
 from theano.printing import min_informative_str, pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
+from theano.gradient import DisconnectedType
 
 config = theano.config
 
@@ -680,6 +681,8 @@ class Elemwise(Op):
 
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
+            if isinstance(r.type, DisconnectedType):
+                return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]
             if r in scalar_ograds:
