@@ -142,7 +142,7 @@ class ConvGrad3D(theano.Op):
             }
 
 { //extra scope so that fail will not jump over declarations
-            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) %(WShape)s->data;
+            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) PyArray_DATA(%(WShape)s);
             const int outputChannels =  WShape[0];
             const int inputChannels = PyArray_DIMS(%(V)s)[4];
             if (WShape[4] != inputChannels)
@@ -226,9 +226,9 @@ class ConvGrad3D(theano.Op):
             }
 { //extra scope so fail works
 
-            #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
+            #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( PyArray_DATA(x) + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
 
-            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
+            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i) )
 
             const int dhs3 = PyArray_STRIDES(%(dCdH)s)[3];
             const int dtvs3 = dt * PyArray_STRIDES(%(V)s)[3];

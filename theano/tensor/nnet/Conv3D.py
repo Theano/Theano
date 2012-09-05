@@ -305,7 +305,7 @@ class Conv3D(theano.Op):
 { // extra scope so fail works
 
 
-            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
+            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i) )
 
 
             const int ws0 = PyArray_STRIDES(%(W)s)[0];

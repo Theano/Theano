@@ -921,10 +921,10 @@ class Gemm(GemmRelated):
 
         if (%(_zout)s->descr->type_num == NPY_FLOAT)
         {
-            float * zoutdata = (float*)%(_zout)s->data;
+            float * zoutdata = (float*)PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(float);
             int zoj = Sz[1] / sizeof(float);
-            const float * zdata = (float*)%(_z)s->data;
+            const float * zdata = (float*)PyArray_DATA(%(_z)s);
             int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(float);
             int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(float);
             for (int i = 0; i < Nz[0]; ++i)
@@ -937,10 +937,10 @@ class Gemm(GemmRelated):
         }
         else if (%(_zout)s->descr->type_num == NPY_DOUBLE)
         {
-            double * zoutdata = (double*) %(_zout)s->data;
+            double * zoutdata = (double*) PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(double);
             int zoj = Sz[1] / sizeof(double);
-            const double * zdata = (double*)%(_z)s->data;
+            const double * zdata = (double*)PyArray_DATA(%(_z)s);
             int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(double);
             int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(double);
             for (int i = 0; i < Nz[0]; ++i)
@@ -962,21 +962,21 @@ class Gemm(GemmRelated):
     case_float_ab_constants = """
         #define REAL float
         float a = (%(_a)s->descr->type_num == NPY_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         float b = (%(_b)s->descr->type_num == NPY_FLOAT) ?
-        (REAL)(((float*)%(_b)s->data)[0])
-        : (REAL)(((double*)%(_b)s->data)[0]);
+        (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
         """
     case_double_ab_constants = """
         #define REAL double
         double a = (%(_a)s->descr->type_num == NPY_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         double b = (%(_b)s->descr->type_num == NPY_FLOAT) ?
-        (REAL)(((float*)%(_b)s->data)[0])
-        : (REAL)(((double*)%(_b)s->data)[0]);
+        (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
         """
 
@@ -1762,8 +1762,8 @@ class Dot22Scalar(GemmRelated):
     case_float_ab_constants = """
         #define REAL float
         float a = (%(_a)s->descr->type_num == NPY_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL
         float b = 0.0;
         """
@@ -1771,8 +1771,8 @@ class Dot22Scalar(GemmRelated):
     case_double_ab_constants = """
         #define REAL double
         double a = (%(_a)s->descr->type_num == NPY_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL
         double b = 0.0;
         """
