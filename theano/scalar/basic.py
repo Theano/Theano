@@ -1305,22 +1305,28 @@ class TrueDiv(BinaryScalarOp):
         return "%(z)s = %(x)s / %(y)s;" % locals()
 
     def grad(self, (x, y), (gz, )):
+
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            first_part = cast(gz / y, x.type.dtype)
-        else:
-            assert x.type in discrete_types
-            first_part = None
+
+        # If the output of this op is discrete, then it
+        # it is locally flat everywhere, so the gradient
+        # through it is 0.
+        # This is different from it not being connected
+        # to the output; x/y is still a function of x
+        # and y; it's just a step function.
+        if (x/y).type in discrete_types:
+            return [ x.zeros_like(), y.zeros_like() ]
+
+        first_part = gz / y
 
         if y.type in complex_types:
             raise NotImplementedError()
-        if y.type in float_types:
-            second_part = cast(-(gz * x) / (y * y), y.type.dtype)
-        else:
-            assert y.type in discrete_types
-            second_part = None
+
+        second_part = cast(-(gz * x) / (y * y), y.type.dtype)
+
         return first_part, second_part
+
 true_div = TrueDiv(upcast_out, name='true_div')
 
 
