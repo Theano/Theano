@@ -282,7 +282,7 @@ class DimShuffle(Op):
                 '{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
         else:
             get_base = [('{ PyArrayObject * %(basename)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
-                    '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
+                    '0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY, NULL)')]
 
         shape_statements = ['npy_intp dimensions[%i]' % nd_out]
         for i, o in enumerate(self.new_order):
@@ -329,9 +329,9 @@ class DimShuffle(Op):
                             'PyArray_DATA(%(basename)s), PyArray_ITEMSIZE(%(basename)s), '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
-                            '(NPY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
+                            '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
-                'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
+                'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
                 'PyArray_BASE(%(res)s) = (PyObject*)%(basename)s',
                 '}']

@@ -4504,7 +4504,7 @@ class IncSubtensor(Op):
         {
             if (%(z)s) Py_DECREF(%(z)s);
             %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
-                                                    NPY_ENSURECOPY, NULL);
+                                                    NPY_ARRAY_ENSURECOPY, NULL);
         }
         """ % locals()
 

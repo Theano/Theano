@@ -1453,6 +1453,12 @@ class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+        cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        # numpy 1.7b1 replaced NPY_ENSURECOPY to NPY_ARRAY_ENSURECOPY
+        # that didn't existed
+        if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
         return cxxflags
 
     @staticmethod

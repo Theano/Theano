@@ -220,9 +220,9 @@ class mrg_uniform(mrg_uniform_base):
         rstate, size = inp
         o_rstate, o_sample = out
         if self.inplace:
-            o_rstate_requirement = 'NPY_C_CONTIGUOUS|NPY_ALIGNED'
+            o_rstate_requirement = 'NPY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
         else:
-            o_rstate_requirement = 'NPY_ENSURECOPY|NPY_C_CONTIGUOUS|NPY_ALIGNED'
+            o_rstate_requirement = 'NPY_ARRAY_ENSURECOPY|NPY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
