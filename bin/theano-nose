@@ -32,12 +32,6 @@ def main():
         import theano
         sys.argv[i] = theano.__path__[0]
 
-    # Handle the --verbose argument.
-    display_batch_output = False
-    if '--verbose' in sys.argv:
-        sys.argv += ['--nocapture', '--detailed-errors']
-        display_batch_output = True
-
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
@@ -53,6 +47,18 @@ def main():
         elems = batch_arg.split('=', 1)
         if len(elems) == 2:
             batch_size = int(elems[1])
+
+    # Handle the --debug-batch argument.
+    display_batch_output = False
+    if '--debug-batch' in sys.argv:
+        if not batch_args:
+            raise AssertionError(
+                'You can only use the --debug-batch argument with the '
+                '--batch[=n] option')
+        while '--debug-batch' in sys.argv:
+            sys.argv.remove('--debug-batch')
+        sys.argv += ['--verbose', '--nocapture', '--detailed-errors']
+        display_batch_output = True
 
     # Handle --time_prof arguments
     time_prof_args = [arg for arg in sys.argv if arg=='--time-profile']
@@ -144,12 +150,13 @@ def help():
                       If you do not know where theano is installed, use this
                       option to have it inserted automatically.
 
-            --verbose: Use this parameter to run nosetests with options
-                       '--verbose', '--nocapture' and '--detailed-errors' and
-                       show the output of nosetests during batch execution.
-                       This can be useful to debug situations where re-running
-                       only the failed tests after batch execution is not
-                       working properly.
+            --debug-batch:
+                Use this parameter to run nosetests with options '--verbose',
+                '--nocapture' and '--detailed-errors' and show the output of
+                nosetests during batch execution.  This can be useful to debug
+                situations where re-running only the failed tests after batch
+                execution is not working properly. This option can only be used
+                in conjunction with the '--batch=[n]' argument.
 
         The other options will be passed to nosetests, see ``nosetests -h``.
         """
