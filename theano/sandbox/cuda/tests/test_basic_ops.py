@@ -456,7 +456,7 @@ def test_elemwise_composite_support_code():
     P = T.exp(-(Y - U) ** 2)
     epsilon = numpy.asarray(0.001, dtype="float32")
     NLL = -T.mean(T.log(P + epsilon))  # SupportCodeError
-    G = T.grad(NLL, wrt=[W])
+    G = theano.gradient.grad(NLL, wrt=[W])
 
     backup = theano.config.warn.identify_1pexp_bug
     theano.config.warn.identify_1pexp_bug = False
@@ -468,6 +468,7 @@ def test_elemwise_composite_support_code():
 
     topo = f_grad.maker.fgraph.toposort()
     assert sum([isinstance(node.op, T.Elemwise) for node in topo]) == 1
+    #I suspect this was failing in the original branch too
     assert sum([isinstance(node.op, tcn.GpuElemwise) for node in topo]) == 1
 
 

@@ -780,9 +780,19 @@ class ConvOp(OpenMPOp):
 
             # build a "node", that should be equivalent to the one given by
             # self.make_node, but using conv3D instead of self.
+            shuffled_inputs = inputs.dimshuffle(0, 2, 3, 'x', 1)
+            if inputs.name is not None:
+                shuffled_inputs.name = 'shuffle_for_conv3D(%s)' % inputs.name
+            flipped_kerns = kerns[:, :, ::-1, ::-1]
+            if kerns.name is not None:
+                flipped_kerns.name = 'flipped(%s)' % kerns.name
+            shuffled_kerns = flipped_kerns.dimshuffle(0, 2, 3, 'x', 1)
+            if flipped_kerns.name is not None:
+                shuffled_kerns.name = 'shuffled_for_conv3D(%s)' % flipped_kerns.name
+
             tmp_node = theano.tensor.nnet.conv3D(
-                V=inputs.dimshuffle(0, 2, 3, 'x', 1),
-                W=kerns[:, :, ::-1, ::-1].dimshuffle(0, 2, 3, 'x', 1),
+                V = shuffled_inputs,
+                W= shuffled_kerns,
                 b=theano.tensor.alloc(numpy.asarray(0, dtype=kerns.dtype),
                                       kerns.shape[0]),
                 d=(self.dx, self.dy, 1))

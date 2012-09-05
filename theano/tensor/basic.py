@@ -25,6 +25,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
 
 ### set up the external interface
 from elemwise import Elemwise, DimShuffle, CAReduce, Sum
@@ -32,7 +33,7 @@ from elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import logging
 _logger = logging.getLogger("theano.tensor.basic")
 
-#This is needed as we will hide it later
+# This is needed as we will hide it later
 python_complex = complex
 python_any = any
 python_all = all
@@ -46,6 +47,7 @@ complex_dtypes = map(str, scal.complex_types)
 continuous_dtypes = map(str, scal.continuous_types)
 discrete_dtypes = map(str, scal.discrete_types)
 all_dtypes = map(str, scal.all_types)
+
 
 class ShapeError(Exception):
     """Raised when the shape cannot be computed."""
@@ -108,7 +110,7 @@ if 0:
         transfert the value on the gpu
         """
         if hasattr(x, '_as_CudaNdarrayVariable'):
-            #TODO: pass name and ndim arguments
+            # TODO: pass name and ndim arguments
             return x._as_CudaNdarrayVariable()
         return as_tensor_variable(x, name, ndim)
 
@@ -142,7 +144,7 @@ def as_tensor_variable(x, name=None, ndim=None):
         return x._as_TensorVariable()  # TODO: pass name and ndim arguments
 
     if isinstance(x, gof.Apply):
-        #TODO: use Apply's default output mechanism
+        # TODO: use Apply's default output mechanism
         if len(x.outputs) != 1:
             raise ValueError(
                 "It is ambiguous which output of a multi-output Op has"
@@ -161,7 +163,7 @@ def as_tensor_variable(x, name=None, ndim=None):
             return x
         else:
             if (x.type.ndim > ndim):
-                #TODO: strip off leading broadcastable dimensions
+                # TODO: strip off leading broadcastable dimensions
                 raise ValueError(
                     'TensorType could not be cast to have %i dimensions' %
                     ndim, x.type)
@@ -369,7 +371,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         if len(bcastable) < ndim:
             bcastable = [True] * (ndim - len(bcastable)) + bcastable
         elif len(bcastable) > ndim:
-            #TODO: strip off dimensions of size 1
+            # TODO: strip off dimensions of size 1
             raise ValueError(
                 'ndarray could not be cast to constant with %i dimensions' %
                 ndim)
@@ -394,6 +396,7 @@ def constant(x, name=None, ndim=None, dtype=None):
     return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
 
+
 def _obj_is_wrappable_as_tensor(x):
     try:
         constant(x)
@@ -405,7 +408,7 @@ def _obj_is_wrappable_as_tensor(x):
 def _wrap_tensor_into_member(x):
     return compile.module.Member(constant(x))
 compile.module.register_wrapper(_obj_is_wrappable_as_tensor,
-                                _wrap_tensor_into_member, no_warn = True)
+                                _wrap_tensor_into_member, no_warn=True)
 
 
 if int(config.tensor.cmp_sloppy) > 1:
@@ -427,15 +430,15 @@ elif int(config.tensor.cmp_sloppy):
     float64_rtol = 1e-4
     float64_atol = 1e-3
 else:
-    #If you change those value in test don't forget to put them back
-    #when the test end.  Don't forget the case when the test fail.
+    # If you change those value in test don't forget to put them back
+    # when the test end.  Don't forget the case when the test fail.
     float32_atol = 1e-5
     float32_rtol = 1e-5
 
     # defaults in numpy.allclose
     float64_rtol = 1.0000000000000001e-05
     float64_atol = 1e-8
-    #more strict. Atleast float32 precision.
+    # more strict. Atleast float32 precision.
     float64_rtol = 1.0000000000000001e-06
 
 
@@ -494,9 +497,9 @@ def get_constant_value(v):
             shape, val = v.owner.inputs
             # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
-        #Don't act as the constant_folding optimization here as this
-        #fct is used too early in the optimization phase.  This would
-        #mess with the stabilization optimization.
+        # Don't act as the constant_folding optimization here as this
+        # fct is used too early in the optimization phase.  This would
+        # mess with the stabilization optimization.
         if isinstance(v.owner.op, Elemwise) and isinstance(
             v.owner.op.scalar_op, scal.Cast):
             const = get_constant_value(v.owner.inputs[0])
@@ -529,7 +532,7 @@ def get_constant_value(v):
                 ret = v.owner.inputs[0].owner.inputs[
                     v.owner.op.idx_list[0] + 1]
                 ret = get_constant_value(ret)
-                #join can cast implicitly its input in some case.
+                # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
             if (v.owner.inputs[0].owner and
                 isinstance(v.owner.inputs[0].owner.op,
@@ -542,7 +545,7 @@ def get_constant_value(v):
 
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
                 ret = get_constant_value(ret)
-                #MakeVector can cast implicitly its input in some case.
+                # MakeVector can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
 
             # This is needed when we take the grad as the Shape op
@@ -747,8 +750,8 @@ class TensorType(Type):
 
         This function is used internally as part of C code generation.
         """
-        #TODO: add more type correspondances for e.g. int32, int64, float32,
-        #complex64, etc.
+        # TODO: add more type correspondances for e.g. int32, int64, float32,
+        # complex64, etc.
         try:
             return {
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
@@ -786,7 +789,7 @@ class TensorType(Type):
 
     @staticmethod
     def values_eq(a, b, force_same_dtype=True):
-        #TODO: check to see if the shapes must match
+        # TODO: check to see if the shapes must match
         #      for now, we err on safe side...
         if a.shape != b.shape:
             return False
@@ -863,14 +866,14 @@ class TensorType(Type):
                 # Find places where both a and b have inf of the same sign.
                 both_inf = a_inf * numpy.isinf(b)
 
-                #cmp_elemwise is weird when we have inf and -inf.
-                #set it to False
+                # cmp_elemwise is weird when we have inf and -inf.
+                # set it to False
                 cmp_elemwise = numpy.where(
                         both_inf & cmp_elemwise,
                         a == b,
                         cmp_elemwise)
 
-                #check the sign of the inf
+                # check the sign of the inf
                 both_inf = numpy.where(both_inf, (a == b), both_inf)
 
                 if allow_remove_inf:
@@ -1244,21 +1247,21 @@ tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(
 
 
 class _tensor_py_operators:
-    #UNARY
+    # UNARY
     def __abs__(self):
         return abs_(self)
 
     def __neg__(self):
         return neg(self)
 
-    #CASTS
+    # CASTS
     #### REMOVED THESE BECAUSE PYTHON appears to require __int__ to return
     #### an int. -JB 20081112
     #def __int__(self): return convert_to_int32(self)
     #def __float__(self): return convert_to_float64(self)
     #def __complex__(self): return convert_to_complex128(self)
 
-    #COMPARISONS
+    # COMPARISONS
     _is_nonzero = True
 
     def __lt__(self, other):
@@ -1294,7 +1297,7 @@ class _tensor_py_operators:
         else:
             raise TypeError("Variable does not support boolean operations.")
 
-    #BITWISE
+    # BITWISE
     def __invert__(self):
         return invert(self)
 
@@ -1316,16 +1319,16 @@ class _tensor_py_operators:
     def __rxor__(self, other):
         return xor(other, self)
 
-    #def __iand__(self, other):
+    # def __iand__(self, other):
     #    return _and_inplace(self, other)
     #
-    #def __ior__(self, other):
+    # def __ior__(self, other):
     #    return _or_inplace(self, other)
     #
     #def __ixor__(self, other):
     #    return _xor_inplace(self, other)
 
-    #ARITHMETIC - NORMAL
+    # ARITHMETIC - NORMAL
     def __add__(self, other):
         try:
             return add(self, other)
@@ -1439,7 +1442,7 @@ class _tensor_py_operators:
     def __rpow__(self, other):
         return pow(other, self)
 
-    #TRANSPOSE
+    # TRANSPOSE
     T = property(lambda self: transpose(self))
 
     def transpose(self, *axes):
@@ -1502,10 +1505,9 @@ class _tensor_py_operators:
         """
 
         if ndim is not None:
-            if not isinstance(ndim,int):
+            if not isinstance(ndim, int):
                 raise ValueError("Expected ndim to be an integer, is "\
-                        +str(type(ndim)))
-
+                        + str(type(ndim)))
 
         return reshape(self, shape, ndim=ndim)
 
@@ -1542,7 +1544,7 @@ class _tensor_py_operators:
     def astype(self, dtype):
         return cast(self, dtype)
 
-    #SLICING
+    # SLICING
     # Do not define __getslice__ here:
     # When calling t[1:], for instance, the arguments passed to __getslice__
     # are (1, sys.maxsize), which is a pain to deal with, and can even not be
@@ -1602,7 +1604,7 @@ class _tensor_py_operators:
                 return Subtensor(args)(self, *Subtensor.collapse(args,
                     lambda entry: isinstance(entry, Variable)))
 
-    #COPYING
+    # COPYING
     def copy(self):
         return tensor_copy(self)
 
@@ -1629,7 +1631,7 @@ class _tensor_py_operators:
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this tensor.  """
 
-    #extra pseudo-operator symbols
+    # extra pseudo-operator symbols
     def __dot__(left, right):
         return dot(left, right)
 
@@ -1649,7 +1651,7 @@ class _tensor_py_operators:
             raise NotImplementedError()
         if numpy.isinf(L):
             raise NotImplementedError()
-        #optimizations will/should catch cases like L=1, L=2
+        # optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0 / L)
 
     def mean(self, axis=None, dtype=None, keepdims=False):
@@ -1668,7 +1670,7 @@ class _tensor_py_operators:
         """See `theano.tensor.max`"""
         return max(self, axis, keepdims=keepdims)
 
-    #TO TRUMP NUMPY OPERATORS
+    # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
 
     def get_constant_value(self):
@@ -1697,7 +1699,7 @@ class TensorConstantSignature(tuple):
         except Exception:
             return False
 
-        #N.B. compare shape to ensure no broadcasting in ==
+        # N.B. compare shape to ensure no broadcasting in ==
         if t0 != t1 or d0.shape != d1.shape:
             return False
 
@@ -1802,7 +1804,6 @@ class TensorConstant(_tensor_py_operators, Constant):
 TensorType.Constant = TensorConstant
 
 
-
 Tensor = TensorType
 
 
@@ -1815,6 +1816,7 @@ elemwise.TensorConstant = TensorConstant
 #########################
 # Utilities
 #########################
+
 
 def _redefine(real_symbol_value, module='tensor'):
     """Replace the value associated with a function symbol.
@@ -1872,7 +1874,7 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
         if getattr(symbol, '__doc__', False):
             rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
 
-        #for the meaning of this see the ./epydoc script
+        # for the meaning of this see the ./epydoc script
         # it makes epydoc display rval as if it were a function, not an object
         rval.__epydoc_asRoutine = symbol
         rval.__module__ = 'tensor'
@@ -1965,7 +1967,7 @@ class ScalarFromTensor(Op):
 scalar_from_tensor = ScalarFromTensor()
 
 
-#to be removed as we get the epydoc routine-documenting thing going
+# to be removed as we get the epydoc routine-documenting thing going
 #-JB 20080924
 def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
@@ -2061,6 +2063,7 @@ def cast(x, dtype):
 # Unary Operations
 ##########################
 
+
 class Shape(Op):
     """
     L{Op} to return the shape of a matrix.
@@ -2077,13 +2080,13 @@ class Shape(Op):
         return self.__class__.__name__
 
     def make_node(self, x):
-        #Must work for all type that have a shape attribute.
-        #This will fail at execution time.
+        # Must work for all type that have a shape attribute.
+        # This will fail at execution time.
         x = as_tensor_variable(x)
-        #Each type variable should implement their .shape attribute
-        #and have the fct infer_shape() implemented in the op that convert
-        #the type to TensorVariable to have the optimization working
-        #correctly.
+        # Each type variable should implement their .shape attribute
+        # and have the fct infer_shape() implemented in the op that convert
+        # the type to TensorVariable to have the optimization working
+        # correctly.
         return Apply(self, [x], [lvector()])
 
     def perform(self, node, inp, out_):
@@ -2094,8 +2097,21 @@ class Shape(Op):
     def infer_shape(self, node, in_shapes):
         return [[len(in_shapes[0])]]
 
+    def connection_pattern(self):
+        # the grad returns the gradient with respect to the
+        # elements of a tensor variable
+        # the elements of the tensor variable do not participate
+        # in the computation of the shape, so they are not really
+        # part of the graph
+        return [False]
+
     def grad(self, inp, grads):
-        return [grad_undefined(self,0,inp[0])]
+        # the grad returns the gradient with respect to the
+        # elements of a tensor variable
+        # the elements of the tensor variable do not participate
+        # in the computation of the shape, so they are not really
+        # part of the graph
+        return [None]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -2113,7 +2129,7 @@ def old_shape(a):
     shape at graph-execution time.
     """
     va = as_tensor_variable(a)
-    #print 'HERE', va, va.type
+    # print 'HERE', va, va.type
     if None in va.type.shape:
         # Some shape components are unknown at this time
         return _shape(va)
@@ -2314,9 +2330,21 @@ class MaxAndArgmax(Op):
         x, axis = inp
         g_max, g_max_idx = grads
 
-        # Check to see if the gradient on max is None
-        if g_max is None:
-            return None, None
+        g_max_disconnected = isinstance(g_max.type, DisconnectedType)
+        g_max_idx_disconnected = isinstance(g_max_idx.type, DisconnectedType)
+
+        # if the op is totally disconnected, so are its inputs
+        if g_max_disconnected and g_max_idx_disconnected:
+            return [DisconnectedType()(), DisconnectedType()()]
+
+        axis_grad = grad_undefined(self, 1, axis,
+                "argmax is not defined for non-integer axes so"
+                " argmax(x, axis+eps) is undefined")
+
+        # if the max is disconnected but the argmax is not,
+        # the gradient on its inputs is zero
+        if g_max_disconnected:
+            return [x.zeros_like(), axis_grad]
         xmax = max(x, axis)
 
         # Raise the g_max and xmax to the same number of dim as the input.
@@ -2336,7 +2364,7 @@ class MaxAndArgmax(Op):
 
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
-        return g_x, grad_undefined(self, 1, axis)
+        return g_x, axis_grad
 
     def __str__(self):
         return self.__class__.__name__
@@ -2458,7 +2486,7 @@ def min(x, axis=None, keepdims=False):
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return -max(-x, axis=axis, keepdims=keepdims)
     else:
-        #Be careful about unsigned integers, complex
+        # Be careful about unsigned integers, complex
         raise NotImplementedError()
 
 
@@ -2479,7 +2507,7 @@ def argmin(x, axis=None, keepdims=False):
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return argmax(-x, axis=axis, keepdims=keepdims)
     else:
-        #Be careful about unsigned integers, complex
+        # Be careful about unsigned integers, complex
         raise NotImplementedError()
 
 
@@ -2707,7 +2735,7 @@ def sqr(a):
     """square of a"""
 
 
-#alias to sqr, included to maintain similarity with numpy interface
+# alias to sqr, included to maintain similarity with numpy interface
 square = sqr
 
 
@@ -2849,7 +2877,8 @@ def complex_from_polar(abs, angle):
 # Misc
 ##########################
 
-#fill, _fill_inplace = _elemwise(scal.second, 'fill',
+
+# fill, _fill_inplace = _elemwise(scal.second, 'fill',
     #"""fill WRITEME (elemwise)""")
 @_scal_elemwise
 def second(a, b):
@@ -2917,7 +2946,7 @@ class Eye(gof.Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [ grad_undefined(self,i,inp[i]) for i in xrange(3) ]
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.dtype == other.dtype
@@ -3092,7 +3121,7 @@ class Alloc(gof.Op):
                 out[0] = numpy.empty(sh, dtype=v.dtype)
                 out[0][...] = v  # broadcast v to fill us up
         else:
-            #reuse the allocated memory.
+            # reuse the allocated memory.
             out[0][...] = v  # broadcast v to fill us up
 
     def c_code(self, node, name, inp, out, sub):
@@ -3280,12 +3309,12 @@ class Mean(elemwise.CAReduce):
         if self.axis is not None:
             return super(Op, self).c_code(node, name, inames, onames, sub)
         ret = elemwise.CAReduce.c_code(self, node, name, inames, onames, sub)
-        #TODO: c_code perform support only axis is None
+        # TODO: c_code perform support only axis is None
         return ret + """
   *((double *)PyArray_DATA(%s)) /= PyArray_SIZE(%s);
   """ % (onames[0], inames[0])
 
-#TODO: implement the grad. When done and tested, you can make this the default
+# TODO: implement the grad. When done and tested, you can make this the default
 # version.
 #    def grad(self, (x,), (gout,)):
 #      import pdb;pdb.set_trace()
@@ -3379,28 +3408,33 @@ def var(input, axis=None, keepdims=False):
     if isinstance(axis, int):
         axis = [axis]
 
-    #compute the axis-wise mean
+    # compute the axis-wise mean
     mean_input = mean(input, axis, keepdims=True)
 
-    #center the input
+    # center the input
     centered_input = input - mean_input
 
-    #return the mean sqr
+    # return the mean sqr
     return mean((centered_input ** 2), axis, keepdims=keepdims)
 
 
 @constructor
 def std(input, axis=None, keepdims=False):
     """
-    Computes the standard deviation along the given axis(es) of a tensor `input`.
+    Computes the standard deviation along the given axis(es)
+    of a tensor `input`.
 
-    :param axis: Compute the standard deviation along this axis of the tensor.
+    :param axis: Compute the standard deviation along this
+                axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
 
-    :param keepdims: If this is set to True, the axes which are reduced are
-        left in the result as dimensions with size one. With this option,
-        the result will broadcast correctly against the original tensor.
+    :param keepdims: If this is set to True, the axes
+        which are reduced are
+        left in the result as dimensions with size one.
+        With this option,
+        the result will broadcast correctly against the
+        original tensor.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
@@ -3423,8 +3457,8 @@ if 0:
 
             type = TensorType(dtype=input.type.dtype,
                               broadcastable=broadcastable)
-            #backport
-            #type = TensorType(dtype=input.type.dtype,
+            # backport
+            # type = TensorType(dtype=input.type.dtype,
             #                  broadcastable=[
             #                      False if i==axis else x
             #                      for i, x in enumerate(input.broadcastable)])
@@ -3859,7 +3893,7 @@ class Subtensor(Op):
             exception.subtensor_invalid = True
             raise exception
 
-        #infer the broadcasting pattern
+        # infer the broadcasting pattern
         padded = (idx_list
                 + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
         broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
@@ -3942,7 +3976,7 @@ class Subtensor(Op):
         return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
-        #TODO: optimize by cache this hash value
+        # TODO: optimize by cache this hash value
         msg = []
         for entry in self.idx_list:
             if isinstance(entry, slice):
@@ -3951,8 +3985,8 @@ class Subtensor(Op):
                 msg += [entry]
 
         idx_list = tuple(msg)
-        #backport
-        #idx_list = tuple((entry.start, entry.stop, entry.step)
+        # backport
+        # idx_list = tuple((entry.start, entry.stop, entry.step)
         #                 if isinstance(entry, slice)
         #                 else entry
         #                 for entry in self.idx_list)
@@ -3989,7 +4023,7 @@ class Subtensor(Op):
         fail = sub['fail']
         init_cmds = []  # initialization for subtensor_spec
         is_slice = []
-        #TODO: change that, it might lead to unexpected results,
+        # TODO: change that, it might lead to unexpected results,
         # see assembla-#767
         NONE_CODE = maxsize - 1
 
@@ -4040,7 +4074,7 @@ class Subtensor(Op):
 
         for entry in idx_list:
             init_entry(entry)
-        #make sure we used all inputs
+        # make sure we used all inputs
         assert input_pos() == len(inputs), input_pos()
         assert len(is_slice) <= node.inputs[0].ndim, node.inputs[0].ndim
 
@@ -4213,7 +4247,7 @@ class Subtensor(Op):
         }
         PyArray_UpdateFlags(xview, NPY_C_CONTIGUOUS|NPY_F_CONTIGUOUS);
         """ % locals()
-        #print rval
+        # print rval
         return rval
 
     @staticmethod
@@ -4398,7 +4432,7 @@ class IncSubtensor(Op):
                 msg += [entry]
 
         idx_list = tuple(msg)
-        #backport
+        # backport
         #idx_list = tuple((entry.start, entry.stop, entry.step)
         #                 if isinstance(entry, slice)
         #                 else entry
@@ -4675,7 +4709,7 @@ class Split(Op):
     def perform(self, node, inputs, outputs):
         """WRITEME"""
         x, axis, splits = inputs
-        #in python 2.4, x.shape[numpy.asarray(1)] don't work.
+        # in python 2.4, x.shape[numpy.asarray(1)] don't work.
         if sys.version_info[0:2] == (2, 4) and axis.size == 1:
             axis = int(axis)
 
@@ -5376,7 +5410,6 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
 
-
     def grad(self, inp, grads):
         x, shp = inp
         g_out, = grads
@@ -5399,7 +5432,7 @@ class Reshape(Op):
         # The following expression leads to cycles in feature_shape,
         # because it tries to replace the Shape_i node by the switch
         # statement, which depends on Shape_i.
-        #return [tuple([switch(eq(node.inputs[1][i], -1),
+        # return [tuple([switch(eq(node.inputs[1][i], -1),
         #                      theano.tensor.opt.Shape_i(i)(node.outputs[0]),
         #                      node.inputs[1][i])
         #                    for i in xrange(self.ndim)]
@@ -5462,7 +5495,8 @@ class Reshape(Op):
                         %(shp)s->data + ii * %(shp)s->strides[0]))[0];
             }
             Py_XDECREF(%(z)s);
-            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, PyArray_CORDER);
+            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
+                PyArray_CORDER);
             if (!%(z)s)
             {
                 PyErr_Format(PyExc_ValueError,
@@ -5557,7 +5591,7 @@ def flatten(x, outdim=1):
 #     """
 #     Calculates the gradient of the Tile Op.
 #     """
-#     #this is so weird, I can't think of how to make this a general thing.
+#     # this is so weird, I can't think of how to make this a general thing.
 #     def make_node(self, x, reps, g_out):
 #         return gof.Apply(self, [x, reps, g_out], [x.type()])
 #
@@ -5645,11 +5679,11 @@ def tile(x, reps, ndim=None):
     TODO: expand this.
     """
 
-    try: 
-        assert python_all([int(i) == i for i in iter(reps)]) 
-    except (TypeError, AssertionError): 
-        raise ValueError("reps argument to tile must be a constant (e.g. " 
-        "tuple, list of integers)") 
+    try:
+        assert python_all([int(i) == i for i in iter(reps)])
+    except (TypeError, AssertionError):
+        raise ValueError("reps argument to tile must be a constant (e.g. "
+        "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
@@ -5663,7 +5697,7 @@ def tile(x, reps, ndim=None):
         ndim = len(reps)
 
     # backport
-    # ndim = len(reps) if ndim is None else ndim #not sure if len(shp) is going
+    # ndim = len(reps) if ndim is None else ndim # not sure if len(shp) is going
     # to work.
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
@@ -6146,7 +6180,7 @@ class AdvancedSubtensor(Op):
 
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
-        #FIXME
+        # FIXME
         # Note (9 Jul 2012): what does this 'FIXME' mean? Possibly that the
         # current implementation must be generalized? Please specify.
         if x.ndim == 2 and len(inputs) == 2:
@@ -6209,7 +6243,7 @@ class AdvancedSubtensor(Op):
                     'are too big (>= 2^32 elements). It is possible that '
                     'out[0] (%s), with shape %s, is not correctly filled.'
                     % (out[0], out[0].shape))
-        #return
+        # return
         #raise NotImplementedError()
 
     def grad(self, inputs, grads):
@@ -6232,8 +6266,8 @@ class AdvancedIncSubtensor(Op):
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
         self.set_instead_of_inc = set_instead_of_inc
-        #The assert is needed as in the pass the first argument was
-        #something else that was not used.
+        # The assert is needed as in the pass the first argument was
+        # something else that was not used.
         assert isinstance(inplace, bool)
         if self.inplace:
             raise NotImplementedError('In place computation is not'
@@ -6325,6 +6359,7 @@ advanced_inc_subtensor = AdvancedIncSubtensor()
 #
 # TODO: Dotinv should go here, Eigs, Svd, etc.
 
+
 class Dot(Op):
     """Compute matrix-matrix, matrix-vector products and vector inner-products.
 
@@ -6351,7 +6386,7 @@ class Dot(Op):
 
         numpy_semantics = 0
         if numpy_semantics:
-            #numpy defines dot for tensor pairs with any rank
+            # numpy defines dot for tensor pairs with any rank
             if len(inputs) != 2:
                 raise TypeError(
                     "Wrong number of inputs for %s (got %i, expected 2)" %
@@ -6712,7 +6747,7 @@ def tensordot(x, y=None, axes=2):
 
     return tensordot.op[axes](x, y)
 
-#TODO: tensordot should be function as described in rst docs.
+# TODO: tensordot should be function as described in rst docs.
 
 
 def outer(x, y):

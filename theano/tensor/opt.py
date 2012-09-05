@@ -2832,16 +2832,16 @@ class Canonizer(gof.LocalOptimizer):
         # this canonized graph...  if so, we do nothing and wait for
         # them to be transformed.
         def _bypass_dimshuffle(n):
-            if isinstance(n.op, DimShuffle) and len(n.outputs[0].clients) <= 1:
-                return _bypass_dimshuffle(n.outputs[0].clients.__iter__(
-                        ).next()[0])
+            if (isinstance(getattr(n, 'op', None), DimShuffle) and
+                len(n.outputs[0].clients) <= 1):
+                return _bypass_dimshuffle(n.outputs[0].clients[0][0])
             else:
                 return n
         for c, c_idx in out.clients:
             if c == 'output':
                 continue
-            if _bypass_dimshuffle(c).op in [self.main, self.inverse,
-                                            self.reciprocal]:
+            if getattr(_bypass_dimshuffle(c), 'op', '') in [
+                self.main, self.inverse, self.reciprocal]:
                 return False
 
         # Here we make the canonical version of the graph around this node

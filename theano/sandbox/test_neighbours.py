@@ -258,7 +258,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         def fn(images):
             return images2neibs(images, (3, 3), mode='wrap_centered')
 
-        self.assertRaises(NotImplementedError, unittest_tools.verify_grad,
+        self.assertRaises(TypeError, unittest_tools.verify_grad,
                           fn, [images_val], mode=self.mode)
 
 
@@ -276,7 +276,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         # are not the same.
         def fn(images):
             return images2neibs(images, (2, 2), (1, 1))
-        self.assertRaises(NotImplementedError,
+        self.assertRaises(TypeError,
                           unittest_tools.verify_grad, fn, [images_val],
                           mode=self.mode)
 
