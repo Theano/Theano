@@ -3978,7 +3978,7 @@ class Subtensor(Op):
         x = inputs[0]
         rest = inputs[1:]
         return ([IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)]
-                + [None] * len(rest))
+                + [DisconnectedType()()] * len(rest))
 
     def __eq__(self, other):
         return type(self) == type(other) and self.idx_list == other.idx_list
@@ -4631,6 +4631,15 @@ class IncSubtensor(Op):
         # not differentiable wrt to those
         return self.make_node(eval_points[0], eval_points[1],
                             *inputs[2:]).outputs
+
+    def connection_pattern(self, node):
+
+        rval = [ [True] ]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
 
     def grad(self, inputs, grads):
         g_output, = grads
