@@ -2111,7 +2111,7 @@ class Shape(Op):
         # the elements of the tensor variable do not participate
         # in the computation of the shape, so they are not really
         # part of the graph
-        return [None]
+        return [ DisconnectedType()() ]
 
     def R_op(self, inputs, eval_points):
         return [None]
