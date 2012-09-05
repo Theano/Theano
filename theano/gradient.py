@@ -749,14 +749,14 @@ def _populate_grad_dict(var_to_node_to_idx,
 
                 if not isinstance(term.type,
                         (NullType,DisconnectedType)):
-                    if not hasattr(term,'dtype'):
+                    if not hasattr(term.type,'dtype'):
                         print term
                         assert False
-                    if term.dtype.find('float') == -1:
+                    if term.type.dtype.find('float') == -1:
                         raise TypeError(str(node.op)+'.grad illegally '
                                 ' returned an integer-valued variable.'
-                                ' (Input index %d, dtype %s' % (i,
-                                    term.dtype))
+                                ' (Input index %d, dtype %s)' % (i,
+                                    term.type.dtype))
 
             #Check that op.connection_pattern matches the connectivity
             #logic driving the op.grad method
