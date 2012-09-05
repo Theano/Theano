@@ -68,7 +68,7 @@ def make_checks(loop_orders, dtypes, sub):
                 jump = "(%s) - (%s)" % ("%(var)s_stride%(index)s" % locals(), adjust)
                 init += """
                 %(var)s_n%(index)s = PyArray_DIMS(%(var)s)[%(index)s];
-                %(var)s_stride%(index)s = %(var)s->strides[%(index)s] / sizeof(%(dtype)s);
+                %(var)s_stride%(index)s = PyArray_STRIDES(%(var)s)[%(index)s] / sizeof(%(dtype)s);
                 %(var)s_jump%(index)s_%(j)s = %(jump)s;
                 //printf("%(var)s_jump%(index)s_%(j)s is:");
                 //std::cout << %(var)s_jump%(index)s_%(j)s << std::endl;
@@ -263,7 +263,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
     for i, index in enumerate(init_loop_orders[olv_index]):
         if index != 'x':
             order_loops += """
-            %(ovar)s_loops_it->first = abs(%(ovar)s->strides[%(index)i]);
+            %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
             """  % locals()
         else:
             # Stride is 0 when dimension is broadcastable

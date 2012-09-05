@@ -970,7 +970,7 @@ class ConvOp(OpenMPOp):
 
     def c_support_code(self):
         return """
-#define STRIDES(arr) ((arr)->strides)
+#define STRIDES(arr) (PyArray_STRIDES(arr))
 #define FULL  2
 #define SAME  1
 #define VALID 0
@@ -1242,7 +1242,7 @@ _conv_op_code_a = """
 const int mode=%(mode)s;
 int typenum=0, typenum_f=0;
 PyArrayObject *ain1=NULL, *ain2=NULL;
-PyArrayObject *filtersflipped_arr=NULL, *img2d_arr=NULL;
+PyArrayObject *filtersflipped_arr=NULL, *img2d_arr=NULL, *z_arr=NULL;
 const %(type)s fill_value = 0;
 
 int type_im=PyArray_TYPE(%(img2d)s);
@@ -1305,12 +1305,12 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
+if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
+     || (PyArray_STRIDES(img2d_arr)[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
-    if (!PyArray_ISCONTIGUOUS(img2d)){
+    if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
@@ -1319,17 +1319,17 @@ img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
-if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
+if ((PyArray_STRIDES(filtersflipped_arr)[3] != (npy_intp)sizeof(%(type)s))
+     || (PyArray_STRIDES(filtersflipped_arr)[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
-    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+    filtersflipped_arr = (PyArrayObject*)filtersflipped;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped_arr)){
         PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
         %(fail)s;
     }
 }
-filtersflipped_arr = (PyArrayObject*)filtersflipped;
 
 if(mode != VALID && mode != FULL){
   PyErr_SetString(PyExc_ValueError,
@@ -1364,36 +1364,37 @@ if ((!%(z)s)
 }else{
   //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
+z_arr = (PyArrayObject*) %(z)s;
 
 int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
 //assertions
-if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *
+if (PyArray_STRIDES(%(z)s)[0] != PyArray_DIMS(%(z)s)[1] *
                          PyArray_DIMS(%(z)s)[2] *
                          PyArray_DIMS(%(z)s)[3] *
                          (npy_intp)sizeof(%(type)s))
     %(fail)s;
-if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] *
+if (PyArray_STRIDES(%(z)s)[1] != PyArray_DIMS(%(z)s)[2] *
                          PyArray_DIMS(%(z)s)[3] *
                          (npy_intp)sizeof(%(type)s))
     %(fail)s;
-if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s))
+if (PyArray_STRIDES(%(z)s)[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s))
     %(fail)s;
-if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s))
+if (PyArray_STRIDES(%(z)s)[3] != (npy_intp)sizeof(%(type)s))
     %(fail)s;
 
 for(int b=0;b< %(self_bsize)s;b++){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern++){
 
-    %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
+    %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(z_arr,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
 
     for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
 
-      const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d,b,stack_size));
-      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern,stack_size));
+      const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d_arr,b,stack_size));
+      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped_arr,n_kern,stack_size));
 
 
       for (int iter_m=0; iter_m < Os[0]; iter_m++) {
@@ -1514,7 +1515,7 @@ Py_XDECREF(filtersflipped);
 
 _conv_op_code_valid_gemm = """
 int typenum=0, typenum_f=0;
-PyArrayObject *ain1=NULL, *ain2=NULL, *img2d_arr=NULL;
+PyArrayObject *ain1=NULL, *ain2=NULL, *img2d_arr=NULL, *z_arr=NULL;
 const int NKERN = %(self_nkern)s;
 
 int type_im=PyArray_TYPE(%(img2d)s);
@@ -1578,12 +1579,12 @@ if (NKERN != kerns_dim[0])
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
+if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
+     || (PyArray_STRIDES(img2d_arr)[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
-    if (!PyArray_ISCONTIGUOUS(img2d)){
+    if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
@@ -1617,6 +1618,7 @@ if ((!%(z)s)
 }else{
   PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
+z_arr = (PyArrayObject*) %(z)s;
 
 %(assert_size)s
 
@@ -1672,7 +1674,7 @@ for(int b=0;b< %(self_bsize)s;b++){
                 int imgview_stride = dim_im[1];
                 int filter_rows_stride =kerns_dim[1]*kerns_dim[2]*kerns_dim[3];
                 //remember, Fortran wants a column-major interpretation
-                assert(img2d->strides[3] == (npy_intp)sizeof(%(type)s));
+                assert(PyArray_STRIDES(img2d)[3] == (npy_intp)sizeof(%(type)s));
 
                 if (0){
                     std::cerr << "b " << b << " img_col " << img_col << " filterrow " << filter_row << " stackidx " <<stackidx << "\\n";
@@ -1766,7 +1768,7 @@ def gen_conv_code_unroll_batch_kern(d, unroll_bsize=1, unroll_ksize=1):
     ret = """
 const int mode=%(mode)s;
 int typenum=0, typenum_f=0;
-PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
+PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL, *z_arr=NULL;;
 const %(type)s fill_value = 0;
 
 int type_im=PyArray_TYPE(%(img2d)s);
@@ -1827,12 +1829,12 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
+if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
+     || (PyArray_STRIDES(img2d_arr)[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
-    if (!PyArray_ISCONTIGUOUS(img2d)){
+    if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
@@ -1841,17 +1843,17 @@ img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
-if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
+if ((PyArray_STRIDES(filtersflipped_arr)[3] != (npy_intp)sizeof(%(type)s))
+     || (PyArray_STRIDES(filtersflipped_arr)[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
-    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+    filtersflipped_arr = (PyArrayObject*)filtersflipped;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped_arr)){
         PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
         %(fail)s;
     }
 }
-filtersflipped_arr = (PyArrayObject*)filtersflipped;
 
 if(mode != VALID && mode != FULL){
   PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
@@ -1881,28 +1883,29 @@ if ((!%(z)s)
 }else{
   //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
+z_arr = (PyArrayObject*) %(z)s;
 
 int Os[2];
 Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
 //assertions
-if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
   for(int n_kern=0;n_kern<%(self_nkern)s;n_kern+=%(unroll_ksize)s){
 
 """ % d
-    ret += my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(%(z)s,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
+    ret += my_dup2("%(type)s * __restrict__ out%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(z_arr,b+%(unroll_biter)s,n_kern+%(unroll_kiter)s));")
     ret += my_dup("for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out%(unroll_iter)s[i] = 0;", unroll_bsize * unroll_ksize)
     ret += """
     for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
 """ % d
-    ret += my_dup("const %(type)s * __restrict__ in%(unroll_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d,b+%(unroll_iter)s,stack_size));", unroll_bsize)
-    ret += my_dup("const %(type)s * __restrict__ hvals%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern+%(unroll_iter)s,stack_size));", unroll_ksize)
+    ret += my_dup("const %(type)s * __restrict__ in%(unroll_iter)d=(%(type)s *)(PyArray_GETPTR2(img2d_arr,b+%(unroll_iter)s,stack_size));", unroll_bsize)
+    ret += my_dup("const %(type)s * __restrict__ hvals%(unroll_iter)s=(%(type)s *)(PyArray_GETPTR2(filtersflipped_arr,n_kern+%(unroll_iter)s,stack_size));", unroll_ksize)
     ret += """
 
       int new_m;
@@ -1999,7 +2002,7 @@ Py_XDECREF(filtersflipped);
 _conv_op_code_unroll_patch = """
 const int mode=%(mode)s;
 int typenum=0, typenum_f=0;
-PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL;
+PyArrayObject *ain1=NULL, *ain2=NULL, *filtersflipped_arr=NULL, *img2d_arr=NULL, *z_arr=NULL;
 const %(type)s fill_value = 0;//only value of 0 are currently tested and correctly implemented
 
 int type_im=PyArray_TYPE(%(img2d)s);
@@ -2062,12 +2065,12 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
-if ((img2d_arr->strides[3] != sizeof(%(type)s))
-     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*sizeof(%(type)s))){
+if ((PyArray_STRIDES(img2d_arr)[3] != sizeof(%(type)s))
+     || (PyArray_STRIDES(img2d_arr)[2] != PyArray_DIMS(img2d_arr)[3]*sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
-    if (!PyArray_ISCONTIGUOUS(img2d)){
+    if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
@@ -2076,17 +2079,17 @@ img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
-if ((filtersflipped_arr->strides[3] != sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*sizeof(%(type)s))){
+if ((PyArray_STRIDES(filtersflipped_arr)[3] != sizeof(%(type)s))
+     || (PyArray_STRIDES(filtersflipped_arr)[2] != PyArray_DIMS(filtersflipped_arr)[3]*sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
-    if (!PyArray_ISCONTIGUOUS(filtersflipped)){
+    filtersflipped_arr = (PyArrayObject*)filtersflipped;
+    if (!PyArray_ISCONTIGUOUS(filtersflipped_arr)){
         PyErr_SetString(PyExc_ValueError, "filtersflipped isn't contiguous");
         %(fail)s;
     }
 }
-filtersflipped_arr = (PyArrayObject*)filtersflipped;
 
 if(mode != VALID && mode != FULL){
   PyErr_SetString(PyExc_ValueError, "invalid mode, only full and valid are supported"); %(fail)s;
@@ -2124,12 +2127,13 @@ if ((!%(z)s)
 }else{
   //PyArray_FILLWBYTE((PyObject*)%(z)s,0);
 }
+z_arr = (PyArrayObject*) %(z)s;
 
 //assertions
-if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[2] != PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
+if (PyArray_STRIDES(%(z)s)[3] != sizeof(%(type)s)) %(fail)s;
 
 //The if on the number of loop make a speed up for small array.
 //with g++ 4.5.1. The compiler should be smart enough to do this himself!
@@ -2144,13 +2148,13 @@ for(int batch_kern_idx=0;
     int b = batch_kern_idx / %(self_nkern)s;
     int n_kern = batch_kern_idx %% %(self_nkern)s;
 
-    %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(%(z)s,b,n_kern));
+    %(type)s * __restrict__ out=(%(type)s *)(PyArray_GETPTR2(z_arr,b,n_kern));
     for (int i = 0; i < dim_zz[0]*dim_zz[1]; ++i) out[i] = 0;
 
     for(int stack_size=0;stack_size<%(self_imshp0)s;stack_size++){
 
-      const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d,b,stack_size));
-      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped,n_kern,stack_size));
+      const %(type)s * __restrict__ in=(%(type)s *)(PyArray_GETPTR2(img2d_arr,b,stack_size));
+      const %(type)s * __restrict__ hvals=(%(type)s *)(PyArray_GETPTR2(filtersflipped_arr,n_kern,stack_size));
 
       int new_m;
 

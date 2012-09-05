@@ -500,9 +500,9 @@ class GemmRelated(Op):
         npy_intp* Ny = PyArray_DIMS(%(_y)s);
         npy_intp* Nz = 0; //PyArray_DIMS(%(_zout)s);
 
-        npy_intp* Sx = %(_x)s->strides;
-        npy_intp* Sy = %(_y)s->strides;
-        npy_intp* Sz = 0; //%(_zout)s->strides;
+        npy_intp* Sx = PyArray_STRIDES(%(_x)s);
+        npy_intp* Sy = PyArray_STRIDES(%(_y)s);
+        npy_intp* Sz = 0; //PyArray_STRIDES(%(_zout)s);
 
         //strides for x, y, z in dimensions 0, 1
         int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
@@ -597,7 +597,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_x)s);
             %(_x)s = _x_copy;
-            Sx = %(_x)s->strides;
+            Sx = PyArray_STRIDES(%(_x)s);
         }
 
         if ((Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
@@ -608,7 +608,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_y)s);
             %(_y)s = _y_copy;
-            Sy = %(_y)s->strides;
+            Sy = PyArray_STRIDES(%(_y)s);
         }
 
         if ((Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size)
@@ -619,7 +619,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_zout)s);
             %(_zout)s = _z_copy;
-            Sz = %(_zout)s->strides;
+            Sz = PyArray_STRIDES(%(_zout)s);
         }
         """
 
@@ -889,19 +889,19 @@ class Gemm(GemmRelated):
             Py_INCREF(%(_zout)s);
         }
         Nz = PyArray_DIMS(%(_z)s);
-        Sz = %(_z)s->strides;
+        Sz = PyArray_STRIDES(%(_z)s);
         """
 
     setup_z_Nz_Sz_outplace = """
         if ((NULL == %(_zout)s)
             || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_z)s)[0])
             || (PyArray_DIMS(%(_zout)s)[1] != PyArray_DIMS(%(_z)s)[1])
-            || (%(_zout)s->strides[0] <= 0)
-            || (%(_zout)s->strides[1] <= 0)
-            || (%(_zout)s->strides[0] MOD type_size)
-            || (%(_zout)s->strides[1] MOD type_size)
-            || ((%(_zout)s->strides[0] != type_size)
-                && (%(_zout)s->strides[1] != type_size)))
+            || (PyArray_STRIDES(%(_zout)s)[0] <= 0)
+            || (PyArray_STRIDES(%(_zout)s)[1] <= 0)
+            || (PyArray_STRIDES(%(_zout)s)[0] MOD type_size)
+            || (PyArray_STRIDES(%(_zout)s)[1] MOD type_size)
+            || ((PyArray_STRIDES(%(_zout)s)[0] != type_size)
+                && (PyArray_STRIDES(%(_zout)s)[1] != type_size)))
         {
             Py_XDECREF(%(_zout)s);
             npy_intp dims[2];
@@ -917,7 +917,7 @@ class Gemm(GemmRelated):
             }
         }
         Nz = PyArray_DIMS(%(_zout)s);
-        Sz = %(_zout)s->strides;
+        Sz = PyArray_STRIDES(%(_zout)s);
 
         if (%(_zout)s->descr->type_num == NPY_FLOAT)
         {
@@ -925,8 +925,8 @@ class Gemm(GemmRelated):
             int zoi = Sz[0] / sizeof(float);
             int zoj = Sz[1] / sizeof(float);
             const float * zdata = (float*)%(_z)s->data;
-            int zi = %(_z)s->strides[0]/sizeof(float);
-            int zj = %(_z)s->strides[1]/sizeof(float);
+            int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(float);
+            int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(float);
             for (int i = 0; i < Nz[0]; ++i)
             {
                 for (int j = 0; j < Nz[1]; ++j)
@@ -941,8 +941,8 @@ class Gemm(GemmRelated):
             int zoi = Sz[0] / sizeof(double);
             int zoj = Sz[1] / sizeof(double);
             const double * zdata = (double*)%(_z)s->data;
-            int zi = %(_z)s->strides[0]/sizeof(double);
-            int zj = %(_z)s->strides[1]/sizeof(double);
+            int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(double);
+            int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(double);
             for (int i = 0; i < Nz[0]; ++i)
             {
                 for (int j = 0; j < Nz[1]; ++j)
@@ -1496,7 +1496,7 @@ class Dot22(GemmRelated):
             }
         }
         Nz = PyArray_DIMS(%(_zout)s);
-        Sz = %(_zout)s->strides;
+        Sz = PyArray_STRIDES(%(_zout)s);
 
         """
     check_ab_double_or_float = ""

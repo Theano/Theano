@@ -237,17 +237,17 @@ class ConvTransp3D(theano.Op):
 
                                    { // for fail 6
 
-                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*x->strides[0]+(j)*x->strides[1]+(k)*x->strides[2]+(l)*x->strides[3]+(m)*x->strides[4] )
+                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
                                        #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
 
 
 
                                        dtype_%(b)s * b = (dtype_%(b)s *) %(b)s->data;
 
-                                       int rs4 = %(R)s->strides[4];
-                                       int ws0 = %(W)s->strides[0];
-                                       int ws4 = %(W)s->strides[4];
-                                       int hs4 = %(H)s->strides[4];
+                                       int rs4 = PyArray_STRIDES(%(R)s)[4];
+                                       int ws0 = PyArray_STRIDES(%(W)s)[0];
+                                       int ws4 = PyArray_STRIDES(%(W)s)[4];
+                                       int hs4 = PyArray_STRIDES(%(H)s)[4];
 
                                        // Compute R
                                        // R[i,r,c,t,j] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, rk, ck, tk,j] * H[i,rc,cc,tc,k]
@@ -260,7 +260,7 @@ class ConvTransp3D(theano.Op):
                                           for (int t = 0; t < videoDur; t++) {
                                            const int ftc = (int)std::max(0.0f, ceilf(float(t-filterDur +1)  /float(dt)));
 
-                                           long long Rpost = i * %(R)s->strides[0] + r * %(R)s->strides[1] + c * %(R)s->strides[2] + t * %(R)s->strides[3];
+                                           long long Rpost = i * PyArray_STRIDES(%(R)s)[0] + r * PyArray_STRIDES(%(R)s)[1] + c * PyArray_STRIDES(%(R)s)[2] + t * PyArray_STRIDES(%(R)s)[3];
 
                                            long long Rpos = Rpost;
                                            for (int j = 0; j < inputChannels; j++)
@@ -284,8 +284,8 @@ class ConvTransp3D(theano.Op):
                                               const int tk = t - tc * dt;
                                               if (tk < 0) break;
 
-                                              int Wpos = rk * %(W)s->strides[1] +  ck * %(W)s->strides[2] + tk * %(W)s->strides[3];
-                                              int Hpostc = i * %(H)s->strides[0] +      rc * %(H)s->strides[1] +  cc * %(H)s->strides[2] + tc * %(H)s->strides[3];
+                                              int Wpos = rk * PyArray_STRIDES(%(W)s)[1] +  ck * PyArray_STRIDES(%(W)s)[2] + tk * PyArray_STRIDES(%(W)s)[3];
+                                              int Hpostc = i * PyArray_STRIDES(%(H)s)[0] +      rc * PyArray_STRIDES(%(H)s)[1] +  cc * PyArray_STRIDES(%(H)s)[2] + tc * PyArray_STRIDES(%(H)s)[3];
                                               Rpos = Rpost;
                                               for (int j = 0; j < inputChannels; j++)
                                               {

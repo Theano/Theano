@@ -308,17 +308,17 @@ class Conv3D(theano.Op):
             #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
 
 
-            const int ws0 = %(W)s->strides[0];
-            const int ws1 = %(W)s->strides[1];
-            const int ws2 = %(W)s->strides[2];
-            const int vs1 = %(V)s->strides[1];
-            const int ws4 = %(W)s->strides[4];
-            const int vs4 = %(V)s->strides[4];
-            const int ws3 = %(W)s->strides[3];
-            const int vs3 = %(V)s->strides[3];
-            const int vs2 = %(V)s->strides[2];
-            const int bs  = %(b)s->strides[0];
-            const int hs4 = %(H)s->strides[4];
+            const int ws0 = PyArray_STRIDES(%(W)s)[0];
+            const int ws1 = PyArray_STRIDES(%(W)s)[1];
+            const int ws2 = PyArray_STRIDES(%(W)s)[2];
+            const int vs1 = PyArray_STRIDES(%(V)s)[1];
+            const int ws4 = PyArray_STRIDES(%(W)s)[4];
+            const int vs4 = PyArray_STRIDES(%(V)s)[4];
+            const int ws3 = PyArray_STRIDES(%(W)s)[3];
+            const int vs3 = PyArray_STRIDES(%(V)s)[3];
+            const int vs2 = PyArray_STRIDES(%(V)s)[2];
+            const int bs  = PyArray_STRIDES(%(b)s)[0];
+            const int hs4 = PyArray_STRIDES(%(H)s)[4];
 
 
 
@@ -424,20 +424,20 @@ class Conv3D(theano.Op):
                                     Wpos = Wposl + ws2;
                                     Vpos = Vposl + vs2;
                                   } //close l
-                                  Wpos = Wposk + %(W)s->strides[1];
-                                  Vpos = Vposk + %(V)s->strides[1];
+                                  Wpos = Wposk + PyArray_STRIDES(%(W)s)[1];
+                                  Vpos = Vposk + PyArray_STRIDES(%(V)s)[1];
                                 } //close k
-                             Hpos = Hpost + %(H)s->strides[3];
+                             Hpos = Hpost + PyArray_STRIDES(%(H)s)[3];
                              Vpos = Vpost + vs3 * dt;
                          } //close t
-                         Hpos = Hposc + %(H)s->strides[2];
+                         Hpos = Hposc + PyArray_STRIDES(%(H)s)[2];
                          Vpos = Vposc + vs2 * dc;
                        } //close c
-                       Hpos = Hposr + %(H)s->strides[1];
-                       Vpos = Vposr + %(V)s->strides[1] * dr;
+                       Hpos = Hposr + PyArray_STRIDES(%(H)s)[1];
+                       Vpos = Vposr + PyArray_STRIDES(%(V)s)[1] * dr;
                    } //closes r
-                   Hpos = Hposi + %(H)s->strides[0];
-                   Vpos = Vposi + %(V)s->strides[0];
+                   Hpos = Hposi + PyArray_STRIDES(%(H)s)[0];
+                   Vpos = Vposi + PyArray_STRIDES(%(V)s)[0];
               } //closes i
 
 
@@ -515,8 +515,8 @@ class Conv3D(theano.Op):
                                     Wpos = Wposl + ws2;
                                     Vpos = Vposl + vs2;
                                   } //close l
-                                  Wpos = Wposk + %(W)s->strides[1];
-                                  Vpos = Vposk + %(V)s->strides[1];
+                                  Wpos = Wposk + PyArray_STRIDES(%(W)s)[1];
+                                  Vpos = Vposk + PyArray_STRIDES(%(V)s)[1];
                                 } //close k
 
 
@@ -527,17 +527,17 @@ class Conv3D(theano.Op):
                               //std::cout << "incremented Wpos by " << ws0 << std::endl;
                               //std::cout << "incremented Hpos by " << hs4 << std::endl;
                              } //close j
-                             Hpos = Hpost + %(H)s->strides[3];
+                             Hpos = Hpost + PyArray_STRIDES(%(H)s)[3];
                              Vpos = Vpost + vs3 * dt;
                          } //close t
-                         Hpos = Hposc + %(H)s->strides[2];
+                         Hpos = Hposc + PyArray_STRIDES(%(H)s)[2];
                          Vpos = Vposc + vs2 * dc;
                        } //close c
-                       Hpos = Hposr + %(H)s->strides[1];
-                       Vpos = Vposr + %(V)s->strides[1] * dr;
+                       Hpos = Hposr + PyArray_STRIDES(%(H)s)[1];
+                       Vpos = Vposr + PyArray_STRIDES(%(V)s)[1] * dr;
                    } //closes r
-                   Hpos = Hposi + %(H)s->strides[0];
-                   Vpos = Vposi + %(V)s->strides[0];
+                   Hpos = Hposi + PyArray_STRIDES(%(H)s)[0];
+                   Vpos = Vposi + PyArray_STRIDES(%(V)s)[0];
               } //closes i
             } //closes general case code
 }}}}}}} //extra scope so error handler jumps don't cross declarations

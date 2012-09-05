@@ -159,15 +159,15 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
+            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + PyArray_STRIDES(%(x)s)[0] * i);
             const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(%(b)s->data);
-            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + PyArray_STRIDES(%(sm)s)[0] * i);
         """
 
         inside_row_loop = """
-            npy_intp Sx = %(x)s->strides[1]/sizeof(dtype_%(x)s);
-            npy_intp Sb = %(b)s->strides[0]/sizeof(dtype_%(b)s);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            npy_intp Sx = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+            npy_intp Sb = PyArray_STRIDES(%(b)s)[0]/sizeof(dtype_%(b)s);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
             size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0] + b_i[0];
@@ -306,12 +306,12 @@ class SoftmaxGrad(gof.Op):
 
         for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
-            npy_intp Sdy = %(dy)s->strides[1]/sizeof(dtype_%(dy)s);
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + PyArray_STRIDES(%(dy)s)[0] * i);
+            npy_intp Sdy = PyArray_STRIDES(%(dy)s)[1]/sizeof(dtype_%(dy)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
             double sum_dy_times_sm = 0.;
             for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
@@ -825,9 +825,9 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 """,
                 begin_row_loop,
                 """
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
-            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(%(nll)s->data + %(nll)s->strides[0] * i);
-            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + %(am)s->strides[0] * i);
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
+            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(%(nll)s->data + PyArray_STRIDES(%(nll)s)[0] * i);
+            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + PyArray_STRIDES(%(am)s)[0] * i);
                 """,
                 inside_row_loop,
                 """
@@ -977,15 +977,15 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
 
         for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
+            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(%(dnll)s->data + PyArray_STRIDES(%(dnll)s)[0] * i))[0];
 
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
 
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(%(dx)s->data + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
             for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {

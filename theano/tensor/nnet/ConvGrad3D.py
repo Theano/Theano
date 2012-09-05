@@ -226,12 +226,12 @@ class ConvGrad3D(theano.Op):
             }
 { //extra scope so fail works
 
-            #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*x->strides[0]+(j)*x->strides[1]+(k)*x->strides[2]+(l)*x->strides[3]+(m)*x->strides[4] )
+            #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
 
             #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
 
-            const int dhs3 = %(dCdH)s->strides[3];
-            const int dtvs3 = dt * %(V)s->strides[3];
+            const int dhs3 = PyArray_STRIDES(%(dCdH)s)[3];
+            const int dtvs3 = dt * PyArray_STRIDES(%(V)s)[3];
 
             // Compute dCdW
             //TODO-- see if this can be made faster by using ELEM_AT instead of ELEM5
@@ -249,8 +249,8 @@ class ConvGrad3D(theano.Op):
                                 for (int i = 0; i < batchSize; i++) {
                                     for (int p = 0; p < outputHeight; p++) {
                                         for (int q = 0; q < outputWidth; q++) {
-                                            int Hpos = i * %(dCdH)s->strides[0] + j * %(dCdH)s->strides[4] + p * %(dCdH)s->strides[1] + q * %(dCdH)s->strides[2] ;
-                                            int Vpos = i * %(V)s->strides[0] + z * %(V)s->strides[4] +  (dr * p+k) * %(V)s->strides[1] +  (dc*q+l) * %(V)s->strides[2] + m * %(V)s->strides[3];
+                                            int Hpos = i * PyArray_STRIDES(%(dCdH)s)[0] + j * PyArray_STRIDES(%(dCdH)s)[4] + p * PyArray_STRIDES(%(dCdH)s)[1] + q * PyArray_STRIDES(%(dCdH)s)[2] ;
+                                            int Vpos = i * PyArray_STRIDES(%(V)s)[0] + z * PyArray_STRIDES(%(V)s)[4] +  (dr * p+k) * PyArray_STRIDES(%(V)s)[1] +  (dc*q+l) * PyArray_STRIDES(%(V)s)[2] + m * PyArray_STRIDES(%(V)s)[3];
 
                                             for (int r = 0; r < outputDur; r++) {
                                                 writePos += ELEM5(%(dCdH)s,i,p,q,r,j) * ELEM5(%(V)s,i,dr*p+k,dc*q+l,dt*r+m,z);
