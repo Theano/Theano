@@ -332,7 +332,7 @@ class Scalar(Type):
                 return '''
                 template <> %(mytype)s & %(mytype)s::operator=<%(othertype)s>(const %(othertype)s & y)
                 { this->real=y; this->imag=0; return *this; }
-                ''' % dict(mytype = mytype, othertype = othertype)
+                ''' % dict(mytype=mytype, othertype=othertype)
 
             def operator_eq_cplx(mytype, othertype):
                 return '''
