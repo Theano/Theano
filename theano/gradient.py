@@ -409,13 +409,13 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
     if tensor is None:
         from theano import tensor
 
-    if cost.ndim != 0:
-        raise TypeError("cost must be a scalar.")
-
     if isinstance(cost.type, NullType):
         raise ValueError("Can't differentiate a NaN cost."
             "cost is NaN because " + \
                 cost.type.why_null)
+
+    if cost.ndim != 0:
+        raise TypeError("cost must be a scalar.")
 
     if consider_constant is None:
         consider_constant = []
