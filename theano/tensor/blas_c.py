@@ -70,10 +70,10 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
 
     // copy A if !self.destructive or A is fully strided
     if (!%(destructive)s
-        || (%(A)s->strides[0] < 0)
-        || (%(A)s->strides[1] < 0)
-        || ((%(A)s->strides[0] != elemsize)
-            && (%(A)s->strides[1] != elemsize)))
+        || (PyArray_STRIDES(%(A)s)[0] < 0)
+        || (PyArray_STRIDES(%(A)s)[1] < 0)
+        || ((PyArray_STRIDES(%(A)s)[0] != elemsize)
+            && (PyArray_STRIDES(%(A)s)[1] != elemsize)))
     {
         npy_intp dims[2];
         dims[0] = PyArray_DIMS(%(A)s)[0];
@@ -82,10 +82,10 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         if ((NULL == %(Z)s)
             || (PyArray_DIMS(%(Z)s)[0] != PyArray_DIMS(%(A)s)[0])
             || (PyArray_DIMS(%(Z)s)[1] != PyArray_DIMS(%(A)s)[1])
-            || (%(Z)s->strides[0] < 0)
-            || (%(Z)s->strides[1] < 0)
-            || ((%(Z)s->strides[0] != elemsize)
-                && (%(Z)s->strides[1] != elemsize)))
+            || (PyArray_STRIDES(%(Z)s)[0] < 0)
+            || (PyArray_STRIDES(%(Z)s)[1] < 0)
+            || ((PyArray_STRIDES(%(Z)s)[0] != elemsize)
+                && (PyArray_STRIDES(%(Z)s)[1] != elemsize)))
         {
             if (%(Z)s) Py_XDECREF(%(Z)s);
             %(Z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims,
@@ -105,10 +105,10 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         {
             float * zoutdata = (float*)%(Z)s->data;
             const float * zdata = (float*)%(A)s->data;
-            int Ai = %(A)s->strides[0]/sizeof(float);
-            int Aj = %(A)s->strides[1]/sizeof(float);
-            int Zi = %(Z)s->strides[0]/sizeof(float);
-            int Zj = %(Z)s->strides[1]/sizeof(float);
+            int Ai = PyArray_STRIDES(%(A)s)[0]/sizeof(float);
+            int Aj = PyArray_STRIDES(%(A)s)[1]/sizeof(float);
+            int Zi = PyArray_STRIDES(%(Z)s)[0]/sizeof(float);
+            int Zj = PyArray_STRIDES(%(Z)s)[1]/sizeof(float);
             for (int i = 0; i < dims[0]; ++i)
             {
                 for (int j = 0; j < dims[1]; ++j)
@@ -121,10 +121,10 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         {
             double * zoutdata = (double*) %(Z)s->data;
             const double * zdata = (double*)%(A)s->data;
-            int Ai = %(A)s->strides[0]/sizeof(double);
-            int Aj = %(A)s->strides[1]/sizeof(double);
-            int Zi = %(Z)s->strides[0]/sizeof(double);
-            int Zj = %(Z)s->strides[1]/sizeof(double);
+            int Ai = PyArray_STRIDES(%(A)s)[0]/sizeof(double);
+            int Aj = PyArray_STRIDES(%(A)s)[1]/sizeof(double);
+            int Zi = PyArray_STRIDES(%(Z)s)[0]/sizeof(double);
+            int Zj = PyArray_STRIDES(%(Z)s)[1]/sizeof(double);
             for (int i = 0; i < dims[0]; ++i)
             {
                 for (int j = 0; j < dims[1]; ++j)
@@ -154,8 +154,8 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     {
         int Nz0 = PyArray_DIMS(%(Z)s)[0];
         int Nz1 = PyArray_DIMS(%(Z)s)[1];
-        int Sx = %(x)s->strides[0] / elemsize;
-        int Sy = %(y)s->strides[0] / elemsize;
+        int Sx = PyArray_STRIDES(%(x)s)[0] / elemsize;
+        int Sy = PyArray_STRIDES(%(y)s)[0] / elemsize;
 
         /* create appropriate strides for Z, if it is a row or column matrix.
          * In that case, the value of the stride does not really matter, but
@@ -163,8 +163,8 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
          *  - they are not smaller than the number of elements in the array,
          *  - they are not 0.
          */
-        int Sz0 = (Nz0 > 1) ? (%(Z)s->strides[0] / elemsize) : (Nz1 + 1);
-        int Sz1 = (Nz1 > 1) ? (%(Z)s->strides[1] / elemsize) : (Nz0 + 1);
+        int Sz0 = (Nz0 > 1) ? (PyArray_STRIDES(%(Z)s)[0] / elemsize) : (Nz1 + 1);
+        int Sz1 = (Nz1 > 1) ? (PyArray_STRIDES(%(Z)s)[1] / elemsize) : (Nz0 + 1);
 
         dtype_%(x)s* x_data = (dtype_%(x)s*) %(x)s->data;
         dtype_%(y)s* y_data = (dtype_%(y)s*) %(y)s->data;
@@ -176,7 +176,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         if (Sy < 0)
             y_data += (Nz1 - 1) * Sy;
 
-        if (%(Z)s->strides[0] == elemsize)
+        if (PyArray_STRIDES(%(Z)s)[0] == elemsize)
         {
             if (%(Z)s->descr->type_num == NPY_FLOAT)
             {
@@ -201,7 +201,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 %(fail)s
             }
         }
-        else if (%(Z)s->strides[1] == elemsize)
+        else if (PyArray_STRIDES(%(Z)s)[1] == elemsize)
         {
             if (%(Z)s->descr->type_num == NPY_FLOAT)
             {
@@ -369,8 +369,8 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             {
                 float * zoutdata = (float*)%(zz)s->data;
                 const float * zdata = (float*)%(aa)s->data;
-                int Ai = %(aa)s->strides[0]/sizeof(float);
-                int Zi = %(zz)s->strides[0]/sizeof(float);
+                int Ai = PyArray_STRIDES(%(aa)s)[0]/sizeof(float);
+                int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(float);
                 for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = fbeta * zdata[Ai*i];
@@ -380,8 +380,8 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             {
                 double * zoutdata = (double*) %(zz)s->data;
                 const double * zdata = (double*)%(aa)s->data;
-                int Ai = %(aa)s->strides[0]/sizeof(double);
-                int Zi = %(zz)s->strides[0]/sizeof(double);
+                int Ai = PyArray_STRIDES(%(aa)s)[0]/sizeof(double);
+                int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(double);
                 for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = dbeta * zdata[Ai*i];
@@ -416,10 +416,10 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
          *  - are not smaller than the number of elements in the array
          *  - are not 0.
          */
-        int Sx0 = (Nx0 > 1) ? (%(xx)s->strides[0] / elemsize) : (Nx1 + 1);
-        int Sx1 = (Nx1 > 1) ? (%(xx)s->strides[1] / elemsize) : (Nx0 + 1);
-        int Sz = %(zz)s->strides[0] / elemsize;
-        int Sy = %(yy)s->strides[0] / elemsize;
+        int Sx0 = (Nx0 > 1) ? (PyArray_STRIDES(%(xx)s)[0] / elemsize) : (Nx1 + 1);
+        int Sx1 = (Nx1 > 1) ? (PyArray_STRIDES(%(xx)s)[1] / elemsize) : (Nx0 + 1);
+        int Sz = PyArray_STRIDES(%(zz)s)[0] / elemsize;
+        int Sy = PyArray_STRIDES(%(yy)s)[0] / elemsize;
 
         dtype_%(yy)s* yy_data = (dtype_%(yy)s*) %(yy)s->data;
         dtype_%(zz)s* zz_data = (dtype_%(zz)s*) %(zz)s->data;
@@ -439,10 +439,10 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             //   gemv on reversed matrix and vectors
             // - if the copy is too long, maybe call vector/vector dot on
             //   each row instead
-            if ((%(xx)s->strides[0] < 0)
-                || (%(xx)s->strides[1] < 0)
-                || ((%(xx)s->strides[0] != elemsize)
-                    && (%(xx)s->strides[1] != elemsize)))
+            if ((PyArray_STRIDES(%(xx)s)[0] < 0)
+                || (PyArray_STRIDES(%(xx)s)[1] < 0)
+                || ((PyArray_STRIDES(%(xx)s)[0] != elemsize)
+                    && (PyArray_STRIDES(%(xx)s)[1] != elemsize)))
             {
                 npy_intp dims[2];
                 dims[0] = Nx0;
@@ -454,11 +454,11 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     %(fail)s
                 Py_XDECREF(%(xx)s);
                 %(xx)s = xx_copy;
-                Sx0 = (Nx0 > 1) ? (%(xx)s->strides[0] / elemsize) : (Nx1 + 1);
-                Sx1 = (Nx1 > 1) ? (%(xx)s->strides[1] / elemsize) : (Nx0 + 1);
+                Sx0 = (Nx0 > 1) ? (PyArray_STRIDES(%(xx)s)[0] / elemsize) : (Nx1 + 1);
+                Sx1 = (Nx1 > 1) ? (PyArray_STRIDES(%(xx)s)[1] / elemsize) : (Nx0 + 1);
             }
 
-            if (%(xx)s->strides[0] == elemsize)
+            if (PyArray_STRIDES(%(xx)s)[0] == elemsize)
             {
                 if (%(xx)s->descr->type_num == NPY_FLOAT)
                 {
@@ -488,7 +488,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     %(fail)s
                 }
             }
-            else if (%(xx)s->strides[1] == elemsize)
+            else if (PyArray_STRIDES(%(xx)s)[1] == elemsize)
             {
                 if (%(xx)s->descr->type_num == NPY_FLOAT)
                 {

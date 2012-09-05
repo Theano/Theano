@@ -4048,7 +4048,7 @@ class Subtensor(Op):
                 %(x)s->descr,
                 %(view_ndim)s,
                 PyArray_DIMS(%(x)s),
-                %(x)s->strides,
+                PyArray_STRIDES(%(x)s),
                 %(x)s->data,
                 %(x)s->flags,
                 NULL);
@@ -4066,13 +4066,13 @@ class Subtensor(Op):
                          PyArray_NDIM(%(x)s), PyArray_DIMS(xview), PyArray_DIMS(%(x)s));
             %(fail)s;
         }
-        if (xview->strides == %(x)s->strides
+        if (PyArray_STRIDES(xview) == PyArray_STRIDES(%(x)s)
             && (PyArray_DIMS(%(x)s) != NULL))
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same strides"
                          " pointers: %%p and %%p",
-                         PyArray_NDIM(%(x)s), xview->strides, %(x)s->strides);
+                         PyArray_NDIM(%(x)s), PyArray_STRIDES(xview), PyArray_STRIDES(%(x)s));
             %(fail)s;
         }
 
@@ -4144,9 +4144,9 @@ class Subtensor(Op):
                 }
 
                 assert (slicelength <= length);
-                xview->data += %(x)s->strides[outer_ii] * start;
+                xview->data += PyArray_STRIDES(%(x)s)[outer_ii] * start;
                 PyArray_DIMS(xview)[inner_ii] = slicelength;
-                xview->strides[inner_ii] = %(x)s->strides[outer_ii] * step;
+                PyArray_STRIDES(xview)[inner_ii] = PyArray_STRIDES(%(x)s)[outer_ii] * step;
 
                 inner_ii += 1;
                 spec_pos += 3;
@@ -4159,7 +4159,7 @@ class Subtensor(Op):
                 {
                     if (idx < PyArray_DIMS(%(x)s)[outer_ii])
                     {
-                        xview->data += %(x)s->strides[outer_ii] * idx;
+                        xview->data += PyArray_STRIDES(%(x)s)[outer_ii] * idx;
                     }
                     else
                     {
@@ -4181,7 +4181,7 @@ class Subtensor(Op):
         {
             assert (outer_ii < PyArray_NDIM(%(x)s));
             PyArray_DIMS(xview)[inner_ii] = PyArray_DIMS(%(x)s)[outer_ii];
-            xview->strides[inner_ii] = %(x)s->strides[outer_ii];
+            PyArray_STRIDES(xview)[inner_ii] = PyArray_STRIDES(%(x)s)[outer_ii];
             inner_ii += 1;
             outer_ii += 1;
         }
@@ -5385,7 +5385,7 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        %(shp)s->data + ii * %(shp)s->strides[0]))[0];
+                        %(shp)s->data + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,

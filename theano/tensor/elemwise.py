@@ -298,7 +298,7 @@ class DimShuffle(Op):
         for i, o in enumerate(self.new_order):
             if o != 'x':
                 strides_statements += [('strides[' + str(i)
-                     + '] = %(basename)s->strides[' + str(o) + ']')]
+                     + '] = PyArray_STRIDES(%(basename)s)[' + str(o) + ']')]
             else:
                 strides_statements += [('strides[' + str(i) + '] = 0')]
 

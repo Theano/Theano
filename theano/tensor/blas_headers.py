@@ -801,9 +801,9 @@ def ____gemm_code(check_ab, a_init, b_init):
         npy_intp* Ny = PyArray_DIMS(_y);
         npy_intp* Nz = PyArray_DIMS(_z);
 
-        npy_intp* Sx = _x->strides;
-        npy_intp* Sy = _y->strides;
-        npy_intp* Sz = _z->strides;
+        npy_intp* Sx = PyArray_STRIDES(_x);
+        npy_intp* Sy = PyArray_STRIDES(_y);
+        npy_intp* Sz = PyArray_STRIDES(_z);
 
         size_t sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
 
