@@ -2991,73 +2991,6 @@ def eye(n, m=None, k=0, dtype=None):
 def identity_like(x):
     return eye(x.shape[0], x.shape[1], k=0, dtype=x.dtype)
 
-if 0:
-    ## COMMENTED OUT FEB 17 2010
-    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
-    class Filler(gof.Op):
-        """WRITEME"""
-        def __init__(self, value, ndim, dtype='float64'):
-            self.value = value
-            self.ndim = ndim
-            self.dtype = dtype
-            self.type = TensorType(dtype=dtype,
-                                   broadcastable=(False,) * ndim)
-
-        def make_node(self, dims):
-            dims = as_tensor_variable(dims)
-            return gof.Apply(self, [dims], [self.type()])
-
-        def perform(self, node, inp, out_):
-            dims, = inp
-            out, = out_
-            if out[0] is not None:
-                out[0].resize(dims, refcheck=0)
-                out[0].fill(self.value)
-            else:
-                if self.value == 0:
-                    out[0] = numpy.zeros(dims, dtype=self.dtype)
-                elif self.value == 1:
-                    out[0] = numpy.ones(dims, dtype=self.dtype)
-                else:
-                    out[0] = numpy.ones(dims, dtype=self.dtype) * self.value
-
-        def grad(self, inp, grads):
-            return None,
-
-        def __eq__(self, other):
-            return (type(self) == type(other) and self.ndim == other.ndim and
-                    self.dtype == other.dtype)
-
-        def __hash__(self):
-            return hash(self.ndim) ^ hash(self.dtype)
-
-    Zeros = partial(Filler, 0)
-    """WRITEME"""
-
-    Ones = partial(Filler, 1)
-    """WRITEME"""
-
-    @constructor
-    def zero():
-        """
-        Return a scalar zero, e.g. for initializing sums.
-        """
-        return Zeros(0)([])
-
-    @constructor
-    def one():
-        """WRITEME"""
-        return Ones(0)([])
-
-    pprint.assign(lambda pstate, r: r.owner and
-                                    isinstance(r.owner.op, Filler) and
-                                    r.owner.op.value == 0,
-                  printing.FunctionPrinter('zeros'))
-    pprint.assign(lambda pstate, r: r.owner and
-                                    isinstance(r.owner.op, Filler) and
-                                    r.owner.op.value == 1,
-                  printing.FunctionPrinter('ones'))
-
 
 class Alloc(gof.Op):
     """Create a Tensor from an initial value and a desired shape
@@ -3445,43 +3378,6 @@ def std(input, axis=None, keepdims=False):
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
-
-if 0:
-    ## COMMENTED OUT FEB 17 2010
-    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
-    class Repeat(gof.Op):
-
-        def make_node(self, input, repeats, axis):
-            assert isinstance(input.type, TensorType)
-            assert repeats.type == iscalar
-            assert axis.type == iscalar
-            broadcastable = []
-            for i, x in enumerate(input.broadcastable):
-                if i == axis:
-                    broadcastable += [False]
-                else:
-                    broadcastable += [x]
-
-            type = TensorType(dtype=input.type.dtype,
-                              broadcastable=broadcastable)
-            # backport
-            # type = TensorType(dtype=input.type.dtype,
-            #                  broadcastable=[
-            #                      False if i==axis else x
-            #                      for i, x in enumerate(input.broadcastable)])
-            return gof.Apply(self, [inputs, repeats, axis], [type()])
-
-        def perform(self, node, inp, out_):
-            input, repeats, axis = inp
-            out, = out_
-            out[0] = numpy.repeat(input, repeats, axis)
-
-        def grad(self, inp, grads):
-            input, repeats, axis = inp
-            gout, = grads
-            return add.grad((input, gout), (gout,))[:1]
-
-    repeat = Repeat()
 
 
 class Default(gof.Op):
@@ -5312,61 +5208,6 @@ def vertical_stack(*args):
     for arg in args:
         assert arg.type.ndim == 2
     return concatenate(args, axis=0)
-
-
-# Vertical and horizontal stacking are deprecated. Better to use stack() and
-# join().
-if 0:
-    class VerticalStack(Op):
-        """
-        Vertically stack two L{TensorType}s.
-        Stack two L{TensorType}s along the first axis (row wise). These
-        L{TensorType}s must have the same shape along all dimensions but the
-        first.
-
-        @attention: Because we use vstack as the implementation, if the
-        inputs have 1-dimension, the output will have 2-dimensions.
-        """
-        def make_node(self, x, y):
-            x = as_tensor_variable(x)
-            y = as_tensor_variable(y)
-            assert x.type.dtype == y.type.dtype
-            if x.type.broadcastable[1:] != y.type.broadcastable[1:]:
-                raise NotImplementedError
-            inputs = [x, y]
-            bcastable = (False, ) + x.type.broadcastable[1:]
-            outputs = [tensor(dtype=x.type.dtype,
-                              broadcastable=bcastable)]
-            return Apply(self, inputs, outputs)
-
-        def perform(self, node, inp, out_):
-            x, y = inp
-            out, = out_
-            assert x.ndim == y.ndim
-            # Make sure every dimension (save the first) is the same
-            for i in xrange(x.ndim):
-                assert i == 0 or x.shape[i] == y.shape[i]
-            out[0] = numpy.vstack([x, y])
-
-        def grad(self, inp, grads):
-            """
-            @todo: Make VSplit (or this grad implementation) its own L{Op},
-            that way we can do more sanity-checking::
-                assert x.ndim == y.ndim
-                # Make sure every dimension (save the first) is the same
-                for i in xrange(x.data.ndim):
-                    assert i == 0 or x.data.shape[i] == y.shape[i]
-                etc...
-            """
-            x, y = inp
-            gz, = grads
-            xs = shape(x)
-            return gz[:xs[0]], gz[xs[0]:]
-    vertical_stack = VerticalStack()
-
-else:
-    pass
-
 
 class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
