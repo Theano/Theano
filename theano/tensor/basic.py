@@ -2097,7 +2097,7 @@ class Shape(Op):
     def infer_shape(self, node, in_shapes):
         return [[len(in_shapes[0])]]
 
-    def connection_pattern(self):
+    def connection_pattern(self, node):
         # the grad returns the gradient with respect to the
         # elements of a tensor variable
         # the elements of the tensor variable do not participate
@@ -2192,6 +2192,9 @@ class SpecifyShape(Op):
 
         assert len(new_shape) == len(xshape)
         return [new_shape]
+
+    def connection_pattern(self, node):
+        return [[True],[False]]
 
     def grad(self, inp, grads):
         x, s = inp
@@ -3885,6 +3888,7 @@ class Subtensor(Op):
             return scalar_from_tensor(a)
         else:
             return scal.as_scalar(a)
+
 
     def make_node(self, x, *inputs):
         x = as_tensor_variable(x)
@@ -6461,6 +6465,7 @@ class Dot(Op):
             raise
 
     def grad(self, inp, grads):
+
         x, y = inp
         gz, = grads
         if gz.type.ndim == 0:
