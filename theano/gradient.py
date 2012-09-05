@@ -22,6 +22,13 @@ from theano.gof.python25 import all
 import theano.gof.utils
 from theano.gof.null_type import NullType
 from theano.printing import min_informative_str
+# we can't do "import theano.tensor"
+# tensor depends on theano.compile
+# theano.compile depends on theano.gradient (this file)
+# the reason theano.compile depends on theano.gradient
+# is that theano.compile.builders contains the op from graph
+# functionality and it uses theano.gradient to implement
+# the new op's grad method
 tensor = None
 
 _msg_retType = 'op.grad(...) returned a non-list'
