@@ -1,5 +1,4 @@
-from type import Type
-from graph import Variable
+from theano.gof.type import Type
 
 
 class NullType(Type):
