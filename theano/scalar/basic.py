@@ -26,6 +26,8 @@ from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
+from theano.gradient import DisconnectedType
+
 builtin_complex = complex
 builtin_int = int
 builtin_float = float
