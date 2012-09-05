@@ -59,11 +59,10 @@ cimport numpy
 from theano import gof
 import time
 import copy
-from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.276
+    return 0.278
 
 @cython.boundscheck(False)
 def perform(
@@ -88,7 +87,8 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
             args,
             outs,
-            self):
+            self,
+            node):
     """
     Parameters
     ----------
@@ -383,10 +383,7 @@ def perform(
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
                         outs[j][0].dtype != dtype ):
-                    if self.gpu:
-                        outs[j][0] = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                    else:
-                        outs[j][0] = numpy.zeros(shape, dtype)
+                    outs[j][0] = node.outputs[j].type.value_zeros(shape)
                 elif outs[j][0].shape[0] != store_steps[j]:
                     outs[j][0] = outs[j][0][:store_steps[j]]
                 outs[j][0][pos[j]] = output_storage[jout].storage[0]
@@ -426,22 +423,13 @@ def perform(
                 # before it is read (as it used to happen).
                 shape = (pdx,)+ outs[idx][0].shape[1:]
 
-                if cuda.cuda_available and isinstance( outs[idx][0],
-                                                      cuda.CudaNdarray):
-                    tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                else:
-                    tmp = numpy.empty(shape, outs[idx][0].dtype)
+                tmp = node.outputs[idx].type.value_zeros(shape)
                 tmp[:] = outs[idx][0][:pdx]
                 outs[idx][0][:store_steps[idx]-pdx] = outs[idx][0][pdx:]
                 outs[idx][0][store_steps[idx]-pdx:] = tmp
             else:
                 shape = (store_steps[idx]-pdx,) + outs[idx][0].shape[1:]
-
-                if cuda.cuda_available and isinstance( outs[idx][0],
-                                                      cuda.CudaNdarray):
-                    tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                else:
-                    tmp = numpy.empty(shape, outs[idx][0].dtype)
+                tmp = node.outputs[idx].type.value_zeros(shape)
                 tmp[:] = outs[idx][0][pdx:]
                 outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
                 outs[idx][0][:store_steps[idx]-pdx] = tmp
