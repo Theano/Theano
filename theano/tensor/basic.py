@@ -1910,6 +1910,7 @@ class TensorFromScalar(Op):
     def grad(self, inp, grads):
         s, = inp
         dt, = grads
+        assert dt.type.dtype.find('float') != -1
         return [scalar_from_tensor(dt)]
 
     def __str__(self):
