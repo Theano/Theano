@@ -1325,7 +1325,7 @@ class TrueDiv(BinaryScalarOp):
         if y.type in complex_types:
             raise NotImplementedError()
 
-        second_part = cast(-(gz * x) / (y * y), y.type.dtype)
+        second_part = -(gz * x) / (y * y)
 
         return first_part, second_part
 
