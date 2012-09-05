@@ -294,6 +294,43 @@ def test_grad_grad_cubic():
 
     theano.tests.unittest_tools.verify_grad(output,[vx,vA])
 
+def test_grad_int():
+
+    # tests that the gradient with respect to an integer
+    # is the same as the gradient with respect to a float
+
+    W = theano.tensor.matrix()
+    b = theano.tensor.vector()
+
+    def make_grad_func(X):
+        Z = theano.tensor.dot(X,W) + b
+        H = theano.tensor.nnet.sigmoid(Z)
+        cost = H.sum()
+        g = gradient.grad(cost,X)
+        return theano.function([X,W,b],g, on_unused_input = 'ignore')
+
+    int_func = make_grad_func(theano.tensor.imatrix())
+    #we have to use float64 as the float type to get the results to match
+    #using an integer for the input makes all the later functions use float64
+    float_func = make_grad_func(theano.tensor.matrix(dtype='float64'))
+
+    m = 5
+    d = 3
+    n = 4
+    rng = np.random.RandomState([2012,9,5])
+
+    int_type = theano.tensor.imatrix().dtype
+    float_type = 'float64'
+
+    X = np.cast[int_type](rng.randn(m,d) * 127.)
+    W = np.cast[W.dtype](rng.randn(d,n))
+    b = np.cast[b.dtype](rng.randn(n))
+
+    int_result = int_func(X,W,b)
+    float_result = float_func(np.cast[float_type](X),W,b)
+
+    assert np.allclose(int_result, float_result)
+
 
 def test_grad_disconnected():
 
