@@ -85,10 +85,6 @@ class ConvGrad3D(theano.Op):
 
         output_storage[0][0] = dCdW
 
-    def c_compile_args(self):
-        flags = ['-Werror']
-        return flags
-
     def c_code(self, node, nodename, inputs, outputs, sub):
         V, d, WShape, dCdH = inputs
         fail = sub['fail']

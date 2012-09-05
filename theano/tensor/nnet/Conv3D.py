@@ -161,7 +161,6 @@ class Conv3D(theano.Op):
 
     def c_compile_args(self):
         flags =  ldflags(libs=False, flags=True)
-        flags.append('-Werror')
         return flags
 
     def c_lib_dirs(self):

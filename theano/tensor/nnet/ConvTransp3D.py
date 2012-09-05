@@ -35,10 +35,6 @@ class ConvTransp3D(theano.Op):
 
         return theano.Apply(self, inputs=[W_,b_,d_,H_, RShape_], outputs = [ T.TensorType(H_.dtype, (False,False,False,False,False))() ] )
 
-    def c_compile_args(self):
-        flags = ['-Werror']
-        return flags
-
     def infer_shape(self, node, input_shapes):
         W, b, d, H, RShape = node.inputs
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
