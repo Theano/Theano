@@ -5427,10 +5427,14 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
 
+    def connection_pattern(self, node):
+        return [[True], [False]]
+
     def grad(self, inp, grads):
         x, shp = inp
         g_out, = grads
-        return [reshape(g_out, shape(x), ndim=x.ndim), None]
+        return [reshape(g_out, shape(x), ndim=x.ndim),
+                DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
