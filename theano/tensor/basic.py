@@ -3094,7 +3094,7 @@ class Alloc(gof.Op):
             int need_new_out = (NULL == %(zz)s);
             for (int i = 0; i < %(ndim)s; i++)
                 need_new_out = (need_new_out
-                                || (%(zz)s->dimensions[i] != shape[i]));
+                                || (PyArray_DIMS(%(zz)s)[i] != shape[i]));
 
             if (need_new_out)
             {
@@ -4047,7 +4047,7 @@ class Subtensor(Op):
                 &PyArray_Type,
                 %(x)s->descr,
                 %(view_ndim)s,
-                %(x)s->dimensions,
+                PyArray_DIMS(%(x)s),
                 %(x)s->strides,
                 %(x)s->data,
                 %(x)s->flags,
@@ -4057,17 +4057,17 @@ class Subtensor(Op):
             %(fail)s;
         }
 
-        if ((xview->dimensions == %(x)s->dimensions)
-            && (%(x)s->dimensions != NULL))
+        if ((PyArray_DIMS(xview) == PyArray_DIMS(%(x)s))
+            && (PyArray_DIMS(%(x)s) != NULL))
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same dimensions"
                          " pointers: %%p and %%p",
-                         PyArray_NDIM(%(x)s), xview->dimensions, %(x)s->dimensions);
+                         PyArray_NDIM(%(x)s), PyArray_DIMS(xview), PyArray_DIMS(%(x)s));
             %(fail)s;
         }
         if (xview->strides == %(x)s->strides
-            && (%(x)s->dimensions != NULL))
+            && (PyArray_DIMS(%(x)s) != NULL))
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same strides"
@@ -4080,7 +4080,7 @@ class Subtensor(Op):
         {
             if (is_slice[outer_ii])
             {
-                npy_intp length = %(x)s->dimensions[outer_ii];
+                npy_intp length = PyArray_DIMS(%(x)s)[outer_ii];
                 npy_intp slicelength;
                 npy_intp start = subtensor_spec[spec_pos+0];
                 npy_intp stop  = subtensor_spec[spec_pos+1];
@@ -4145,7 +4145,7 @@ class Subtensor(Op):
 
                 assert (slicelength <= length);
                 xview->data += %(x)s->strides[outer_ii] * start;
-                xview->dimensions[inner_ii] = slicelength;
+                PyArray_DIMS(xview)[inner_ii] = slicelength;
                 xview->strides[inner_ii] = %(x)s->strides[outer_ii] * step;
 
                 inner_ii += 1;
@@ -4154,10 +4154,10 @@ class Subtensor(Op):
             else // tuple coord `outer_ii` is an int
             {
                 int idx = subtensor_spec[spec_pos];
-                if (idx < 0) idx += %(x)s->dimensions[outer_ii];
+                if (idx < 0) idx += PyArray_DIMS(%(x)s)[outer_ii];
                 if (idx >= 0)
                 {
-                    if (idx < %(x)s->dimensions[outer_ii])
+                    if (idx < PyArray_DIMS(%(x)s)[outer_ii])
                     {
                         xview->data += %(x)s->strides[outer_ii] * idx;
                     }
@@ -4180,7 +4180,7 @@ class Subtensor(Op):
         while (inner_ii < PyArray_NDIM(xview))
         {
             assert (outer_ii < PyArray_NDIM(%(x)s));
-            xview->dimensions[inner_ii] = %(x)s->dimensions[outer_ii];
+            PyArray_DIMS(xview)[inner_ii] = PyArray_DIMS(%(x)s)[outer_ii];
             xview->strides[inner_ii] = %(x)s->strides[outer_ii];
             inner_ii += 1;
             outer_ii += 1;

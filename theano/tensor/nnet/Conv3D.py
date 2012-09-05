@@ -207,37 +207,37 @@ class Conv3D(theano.Op):
                 %(fail)s
             }
 
-            if (%(d)s->dimensions[0] != 3)
+            if (PyArray_DIMS(%(d)s)[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)%(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)PyArray_DIMS(%(d)s)[0]);
                 %(fail)s
             }
 
             //Read and check sizes of inputs
 { // exta scope so error handler jumps don't cause errors
-            const int batchSize = %(V)s->dimensions[0];
-            const int outputChannels =  %(W)s->dimensions[0];
-            const int inputChannels = %(V)s->dimensions[4];
+            const int batchSize = PyArray_DIMS(%(V)s)[0];
+            const int outputChannels =  PyArray_DIMS(%(W)s)[0];
+            const int inputChannels = PyArray_DIMS(%(V)s)[4];
 
-            if (%(W)s->dimensions[4] != inputChannels)
+            if (PyArray_DIMS(%(W)s)[4] != inputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)", (long)%(W)s->dimensions[4], inputChannels, (long)%(V)s->dimensions[0], (long)%(V)s->dimensions[1], (long)%(V)s->dimensions[2], (long)%(V)s->dimensions[3], (long)%(V)s->dimensions[4]);
+                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)", (long)PyArray_DIMS(%(W)s)[4], inputChannels, (long)PyArray_DIMS(%(V)s)[0], (long)PyArray_DIMS(%(V)s)[1], (long)PyArray_DIMS(%(V)s)[2], (long)PyArray_DIMS(%(V)s)[3], (long)PyArray_DIMS(%(V)s)[4]);
                 %(fail)s
             }
 
-            if (%(b)s->dimensions[0] != outputChannels)
+            if (PyArray_DIMS(%(b)s)[0] != outputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels", (long)%(b)s->dimensions[0], outputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels", (long)PyArray_DIMS(%(b)s)[0], outputChannels);
                 %(fail)s
             }
 
 {  //extra scope so error handler jumps don't cause errors
-            const int filterHeight = %(W)s->dimensions[1];
-            const int filterWidth = %(W)s->dimensions[2];
-            const int filterDur = %(W)s->dimensions[3];
-            const int vidHeight = %(V)s->dimensions[1];
-            const int vidWidth = %(V)s->dimensions[2];
-            const int vidDur = %(V)s->dimensions[3];\
+            const int filterHeight = PyArray_DIMS(%(W)s)[1];
+            const int filterWidth = PyArray_DIMS(%(W)s)[2];
+            const int filterDur = PyArray_DIMS(%(W)s)[3];
+            const int vidHeight = PyArray_DIMS(%(V)s)[1];
+            const int vidWidth = PyArray_DIMS(%(V)s)[2];
+            const int vidDur = PyArray_DIMS(%(V)s)[3];\
 
             if (vidHeight < filterHeight)
             {
@@ -290,11 +290,11 @@ class Conv3D(theano.Op):
 
 
 
-            if(!(%(H)s) || %(H)s->dimensions[0]!=dims[0] ||
-            %(H)s->dimensions[1]!=dims[1] ||
-            %(H)s->dimensions[2]!=dims[2] ||
-            %(H)s->dimensions[3]!=dims[3] ||
-            %(H)s->dimensions[4]!=dims[4]){
+            if(!(%(H)s) || PyArray_DIMS(%(H)s)[0]!=dims[0] ||
+            PyArray_DIMS(%(H)s)[1]!=dims[1] ||
+            PyArray_DIMS(%(H)s)[2]!=dims[2] ||
+            PyArray_DIMS(%(H)s)[3]!=dims[3] ||
+            PyArray_DIMS(%(H)s)[4]!=dims[4]){
                 Py_XDECREF(%(H)s);
                 %(H)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(V)s->descr->type_num);
                 if (!(%(H)s)) {

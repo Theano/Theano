@@ -1159,15 +1159,15 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
 
 """ % (locals())
         else:
-            d["self_bsize"] = "%(img2d)s->dimensions[0]" % d
-            d["self_nkern"] = "%(filtersflipped)s->dimensions[0]" % d
+            d["self_bsize"] = "PyArray_DIMS(%(img2d)s)[0]" % d
+            d["self_nkern"] = "PyArray_DIMS(%(filtersflipped)s)[0]" % d
             d["self_outshp0"] = "-1"
             d["self_outshp1"] = "-1"
-            d["self_imshp0"] = "%(img2d)s->dimensions[1]" % d
-            d["self_imshp1"] = "%(img2d)s->dimensions[2]" % d
-            d["self_imshp2"] = "%(img2d)s->dimensions[3]" % d
-            d["self_kshp0"] = "%(filtersflipped)s->dimensions[2]" % d
-            d["self_kshp1"] = "%(filtersflipped)s->dimensions[3]" % d
+            d["self_imshp0"] = "PyArray_DIMS(%(img2d)s)[1]" % d
+            d["self_imshp1"] = "PyArray_DIMS(%(img2d)s)[2]" % d
+            d["self_imshp2"] = "PyArray_DIMS(%(img2d)s)[3]" % d
+            d["self_kshp0"] = "PyArray_DIMS(%(filtersflipped)s)[2]" % d
+            d["self_kshp1"] = "PyArray_DIMS(%(filtersflipped)s)[3]" % d
             d["affectation"] = "+="
             d["all_shape"] = "0"
             d["dim_zz_const"] = ""
@@ -1267,31 +1267,31 @@ PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
 
 if(PyArray_NDIM(%(img2d)s)==2){
-  img2d_dim[3]=%(img2d)s->dimensions[1];
-  img2d_dim[2]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==3){
-  img2d_dim[3]=%(img2d)s->dimensions[2];
-  img2d_dim[2]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==4){
-  img2d_dim[3]=%(img2d)s->dimensions[3];
-  img2d_dim[2]=%(img2d)s->dimensions[2];
-  img2d_dim[1]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[3];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[1]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else {
     PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
     %(fail)s;
 }
 
 if(PyArray_NDIM(%(filtersflipped)s)==3){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else if(PyArray_NDIM(%(filtersflipped)s)==4){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[3];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[1]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else{
     std::stringstream temp;
     temp << "nddim="<<PyArray_NDIM(%(filtersflipped)s);
@@ -1306,7 +1306,7 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
+     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -1320,7 +1320,7 @@ img2d_arr = (PyArrayObject*)img2d;
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
+     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
@@ -1348,10 +1348,10 @@ if (!img2d) %(fail)s;
 if (!filtersflipped) %(fail)s;
 if ((!%(z)s)
   || *PyArray_DIMS(%(z)s)!=4
-  ||(%(z)s->dimensions[0] != %(self_bsize)s)
-  ||(%(z)s->dimensions[1] != %(self_nkern)s)
-  ||(%(z)s->dimensions[2] != dim_zz[0])
-  || (%(z)s->dimensions[3] != dim_zz[1])
+  ||(PyArray_DIMS(%(z)s)[0] != %(self_bsize)s)
+  ||(PyArray_DIMS(%(z)s)[1] != %(self_nkern)s)
+  ||(PyArray_DIMS(%(z)s)[2] != dim_zz[0])
+  || (PyArray_DIMS(%(z)s)[3] != dim_zz[1])
   )
 {
   {Py_XDECREF(%(z)s);}
@@ -1370,16 +1370,16 @@ Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
 //assertions
-if (%(z)s->strides[0] != %(z)s->dimensions[1] *
-                         %(z)s->dimensions[2] *
-                         %(z)s->dimensions[3] *
+if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *
+                         PyArray_DIMS(%(z)s)[2] *
+                         PyArray_DIMS(%(z)s)[3] *
                          (npy_intp)sizeof(%(type)s))
     %(fail)s;
-if (%(z)s->strides[1] != %(z)s->dimensions[2] *
-                         %(z)s->dimensions[3] *
+if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] *
+                         PyArray_DIMS(%(z)s)[3] *
                          (npy_intp)sizeof(%(type)s))
     %(fail)s;
-if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s))
+if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s))
     %(fail)s;
 if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s))
     %(fail)s;
@@ -1537,31 +1537,31 @@ kerns_shape.len=4;
 PyObject *img2d=NULL, *contig;
 
 if(PyArray_NDIM(%(img2d)s)==2){
-  img2d_dim[3]=%(img2d)s->dimensions[1];
-  img2d_dim[2]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==3){
-  img2d_dim[3]=%(img2d)s->dimensions[2];
-  img2d_dim[2]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==4){
-  img2d_dim[3]=%(img2d)s->dimensions[3];
-  img2d_dim[2]=%(img2d)s->dimensions[2];
-  img2d_dim[1]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[3];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[1]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else {
     PyErr_SetString(PyExc_ValueError, "img don't have a good shape");
     %(fail)s;
 }
 
 if(PyArray_NDIM(%(filtersflipped)s)==3){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else if(PyArray_NDIM(%(filtersflipped)s)==4){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[3];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[1]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else{
     std::stringstream temp;
     temp << "nddim="<<PyArray_NDIM(%(filtersflipped)s);
@@ -1579,7 +1579,7 @@ if (NKERN != kerns_dim[0])
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
+     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -1601,10 +1601,10 @@ if (!img2d) {
 }
 if ((!%(z)s)
   || *PyArray_DIMS(%(z)s)!=4
-  ||(%(z)s->dimensions[0] != %(self_bsize)s)
-  ||(%(z)s->dimensions[1] != %(self_nkern)s)
-  ||(%(z)s->dimensions[2] != dim_zz[0])
-  || (%(z)s->dimensions[3] != dim_zz[1])
+  ||(PyArray_DIMS(%(z)s)[0] != %(self_bsize)s)
+  ||(PyArray_DIMS(%(z)s)[1] != %(self_nkern)s)
+  ||(PyArray_DIMS(%(z)s)[2] != dim_zz[0])
+  || (PyArray_DIMS(%(z)s)[3] != dim_zz[1])
   )
 {
   {Py_XDECREF(%(z)s);}
@@ -1717,10 +1717,10 @@ for(int b=0;b< %(self_bsize)s;b++){
                     %(type)s * z_p =  (%(type)s *)PyArray_GETPTR4(%(z)s, b, kernel_idx, img_row, img_col);
                     if (0)
                     {
-                        if (b >= %(z)s->dimensions[0]) %(fail)s;
-                        if (kernel_idx >= %(z)s->dimensions[1]) %(fail)s;
-                        if (img_row >= %(z)s->dimensions[2]) %(fail)s;
-                        if (img_col >= %(z)s->dimensions[3]) %(fail)s;
+                        if (b >= PyArray_DIMS(%(z)s)[0]) %(fail)s;
+                        if (kernel_idx >= PyArray_DIMS(%(z)s)[1]) %(fail)s;
+                        if (img_row >= PyArray_DIMS(%(z)s)[2]) %(fail)s;
+                        if (img_col >= PyArray_DIMS(%(z)s)[3]) %(fail)s;
                     }
                     z_p[0] += kbuf[img_row * kbufstride + kernel_idx];
                 }
@@ -1789,17 +1789,17 @@ kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
 if(PyArray_NDIM(%(img2d)s)==2){
-  img2d_dim[3]=%(img2d)s->dimensions[1];
-  img2d_dim[2]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==3){
-  img2d_dim[3]=%(img2d)s->dimensions[2];
-  img2d_dim[2]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==4){
-  img2d_dim[3]=%(img2d)s->dimensions[3];
-  img2d_dim[2]=%(img2d)s->dimensions[2];
-  img2d_dim[1]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[3];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[1]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else {
     std::stringstream temp;
     temp << "nddim="<<PyArray_NDIM(%(img2d)s);
@@ -1810,14 +1810,14 @@ if(PyArray_NDIM(%(img2d)s)==2){
 }
 
 if(PyArray_NDIM(%(filtersflipped)s)==3){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else if(PyArray_NDIM(%(filtersflipped)s)==4){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[3];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[1]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else{
     PyErr_SetString(PyExc_ValueError, "kernel don't have a good shape");
     %(fail)s;
@@ -1828,7 +1828,7 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
+     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -1842,7 +1842,7 @@ img2d_arr = (PyArrayObject*)img2d;
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
+     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*(npy_intp)sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
@@ -1865,10 +1865,10 @@ if (!img2d) %(fail)s;
 if (!filtersflipped) %(fail)s;
 if ((!%(z)s)
   || *PyArray_DIMS(%(z)s)!=4
-  ||(%(z)s->dimensions[0] != %(self_bsize)s)
-  ||(%(z)s->dimensions[1] != %(self_nkern)s)
-  ||(%(z)s->dimensions[2] != dim_zz[0])
-  || (%(z)s->dimensions[3] != dim_zz[1])
+  ||(PyArray_DIMS(%(z)s)[0] != %(self_bsize)s)
+  ||(PyArray_DIMS(%(z)s)[1] != %(self_nkern)s)
+  ||(PyArray_DIMS(%(z)s)[2] != dim_zz[0])
+  || (PyArray_DIMS(%(z)s)[3] != dim_zz[1])
   )
 {
   {Py_XDECREF(%(z)s);}
@@ -1887,9 +1887,9 @@ Os[0]=%(self_outshp0)s;
 Os[1]=%(self_outshp1)s;
 
 //assertions
-if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[2] != %(z)s->dimensions[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * (npy_intp)sizeof(%(type)s)) %(fail)s;
 if (%(z)s->strides[3] != (npy_intp)sizeof(%(type)s)) %(fail)s;
 
 for(int b=0;b< %(self_bsize)s ;b+=%(unroll_bsize)s){
@@ -2026,17 +2026,17 @@ kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
 if(PyArray_NDIM(%(img2d)s)==2){
-  img2d_dim[3]=%(img2d)s->dimensions[1];
-  img2d_dim[2]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==3){
-  img2d_dim[3]=%(img2d)s->dimensions[2];
-  img2d_dim[2]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else if(PyArray_NDIM(%(img2d)s)==4){
-  img2d_dim[3]=%(img2d)s->dimensions[3];
-  img2d_dim[2]=%(img2d)s->dimensions[2];
-  img2d_dim[1]=%(img2d)s->dimensions[1];
-  img2d_dim[0]=%(img2d)s->dimensions[0];
+  img2d_dim[3]=PyArray_DIMS(%(img2d)s)[3];
+  img2d_dim[2]=PyArray_DIMS(%(img2d)s)[2];
+  img2d_dim[1]=PyArray_DIMS(%(img2d)s)[1];
+  img2d_dim[0]=PyArray_DIMS(%(img2d)s)[0];
 }else {
     PyErr_Format(PyExc_ValueError,
       "image don't have a good number of dimensions %%d. ", PyArray_NDIM(%(filtersflipped)s));
@@ -2044,14 +2044,14 @@ if(PyArray_NDIM(%(img2d)s)==2){
 }
 
 if(PyArray_NDIM(%(filtersflipped)s)==3){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else if(PyArray_NDIM(%(filtersflipped)s)==4){
-  kerns_dim[3]=%(filtersflipped)s->dimensions[3];
-  kerns_dim[2]=%(filtersflipped)s->dimensions[2];
-  kerns_dim[1]=%(filtersflipped)s->dimensions[1];
-  kerns_dim[0]=%(filtersflipped)s->dimensions[0];
+  kerns_dim[3]=PyArray_DIMS(%(filtersflipped)s)[3];
+  kerns_dim[2]=PyArray_DIMS(%(filtersflipped)s)[2];
+  kerns_dim[1]=PyArray_DIMS(%(filtersflipped)s)[1];
+  kerns_dim[0]=PyArray_DIMS(%(filtersflipped)s)[0];
 }else{
     PyErr_Format(PyExc_ValueError,
       "kernel don't have a good number of dimensions %%d. ", PyArray_NDIM(%(filtersflipped)s));
@@ -2063,7 +2063,7 @@ if(PyArray_NDIM(%(filtersflipped)s)==3){
 img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != sizeof(%(type)s))
-     || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
+     || (img2d_arr->strides[2] != PyArray_DIMS(img2d_arr)[3]*sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
@@ -2077,7 +2077,7 @@ img2d_arr = (PyArrayObject*)img2d;
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != sizeof(%(type)s))
-     || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
+     || (filtersflipped_arr->strides[2] != PyArray_DIMS(filtersflipped_arr)[3]*sizeof(%(type)s))){
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)filtersflipped));
     Py_DECREF(filtersflipped);
     filtersflipped = contig;
@@ -2107,10 +2107,10 @@ if (!img2d) %(fail)s;
 if (!filtersflipped) %(fail)s;
 if ((!%(z)s)
   || *PyArray_DIMS(%(z)s)!=4
-  ||(%(z)s->dimensions[0] != %(self_bsize)s)
-  ||(%(z)s->dimensions[1] != %(self_nkern)s)
-  ||(%(z)s->dimensions[2] != dim_zz[0])
-  || (%(z)s->dimensions[3] != dim_zz[1])
+  ||(PyArray_DIMS(%(z)s)[0] != %(self_bsize)s)
+  ||(PyArray_DIMS(%(z)s)[1] != %(self_nkern)s)
+  ||(PyArray_DIMS(%(z)s)[2] != dim_zz[0])
+  || (PyArray_DIMS(%(z)s)[3] != dim_zz[1])
   )
 {
   if (%(z)s) Py_DECREF(%(z)s);
@@ -2126,9 +2126,9 @@ if ((!%(z)s)
 }
 
 //assertions
-if (%(z)s->strides[0] != %(z)s->dimensions[1] *%(z)s->dimensions[2] *%(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[1] != %(z)s->dimensions[2] * %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
-if (%(z)s->strides[2] != %(z)s->dimensions[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[0] != PyArray_DIMS(%(z)s)[1] *PyArray_DIMS(%(z)s)[2] *PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[1] != PyArray_DIMS(%(z)s)[2] * PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
+if (%(z)s->strides[2] != PyArray_DIMS(%(z)s)[3] * sizeof(%(type)s)) %(fail)s;
 if (%(z)s->strides[3] != sizeof(%(type)s)) %(fail)s;
 
 //The if on the number of loop make a speed up for small array.

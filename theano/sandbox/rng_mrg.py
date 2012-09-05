@@ -266,10 +266,10 @@ class mrg_uniform(mrg_uniform_base):
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (%(size)s->dimensions[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, int(%(size)s->dimensions[0]));
+                %(ndim)s, int(PyArray_DIMS(%(size)s)[0]));
             %(fail)s
         }
         if (%(size)s->descr->type_num != NPY_INT32)
@@ -281,7 +281,7 @@ class mrg_uniform(mrg_uniform_base):
         {
             odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
             n_elements *= odims[i];
-            must_alloc_sample = must_alloc_sample || (%(o_sample)s->dimensions[i] != odims[i]);
+            must_alloc_sample = must_alloc_sample || (PyArray_DIMS(%(o_sample)s)[i] != odims[i]);
             //fprintf(stderr, "size %%i %%i\\n", i, (int)odims[i]);
         }
         if (must_alloc_sample)
@@ -301,7 +301,7 @@ class mrg_uniform(mrg_uniform_base):
             PyErr_SetString(PyExc_ValueError, "rstate must be matrix");
             %(fail)s
         }
-        if (%(o_rstate)s->dimensions[1] != 6)
+        if (PyArray_DIMS(%(o_rstate)s)[1] != 6)
         {
             PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
             %(fail)s
@@ -311,7 +311,7 @@ class mrg_uniform(mrg_uniform_base):
             PyErr_SetString(PyExc_ValueError, "rstate must be int32");
             %(fail)s
         }
-        n_streams = %(o_rstate)s->dimensions[0];
+        n_streams = PyArray_DIMS(%(o_rstate)s)[0];
 
         sample_data = (%(otype)s *) %(o_sample)s->data;
         state_data = (npy_int32 *) %(o_rstate)s->data;
@@ -508,10 +508,10 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (%(size)s->dimensions[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, %(size)s->dimensions[0]);
+                %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
         if (%(size)s->descr->type_num != NPY_INT32)

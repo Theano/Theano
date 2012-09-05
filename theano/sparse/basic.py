@@ -3017,19 +3017,19 @@ class StructuredDotGradCSC(gof.Op):
         if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
+        if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
 
         if (!%(_zout)s
-            || (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]))
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, %(_indices)s->dimensions, %(_g)s->descr->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), %(_g)s->descr->type_num);
         }
 
         {   //makes it compile even though labels jump over variable definitions.
-            npy_intp nnz = %(_indices)s->dimensions[0];
-            npy_intp N =  %(_indptr)s->dimensions[0]-1; //TODO: error checking with this
+            npy_intp nnz = PyArray_DIMS(%(_indices)s)[0];
+            npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
             npy_intp Sindices = %(_indices)s->strides[0]/%(_indices)s->descr->elsize;
             npy_intp Sindptr = %(_indptr)s->strides[0]/%(_indptr)s->descr->elsize;
@@ -3037,7 +3037,7 @@ class StructuredDotGradCSC(gof.Op):
             const npy_intp Sd1 = %(_d)s->strides[1]/%(_d)s->descr->elsize;
             const npy_intp Sg1 = %(_g)s->strides[1]/%(_g)s->descr->elsize;
 
-            const npy_intp K = %(_d)s->dimensions[1];
+            const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 
             const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
             const npy_int32 * __restrict__ indices = (npy_int32 *)%(_indices)s->data;
@@ -3047,7 +3047,7 @@ class StructuredDotGradCSC(gof.Op):
             {
                 // extract j-th row of dense matrix
                 const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
-                if(j >= %(_d)s->dimensions[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
+                if(j >= PyArray_DIMS(%(_d)s)[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                 // for each non-null value in the sparse column
                 for (npy_int32 i_idx = indptr[j * Sindptr]; i_idx < indptr[(j+1) * Sindptr]; ++i_idx)
@@ -3062,7 +3062,7 @@ class StructuredDotGradCSC(gof.Op):
                     // make sure that row index is not bigger than actual number of rows
                     // Note: wouldn't the above operation fail if that were the case ?
                     //       when would this ever be true anyway ?
-                    if (i >= %(_g)s->dimensions[0])
+                    if (i >= PyArray_DIMS(%(_g)s)[0])
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows
@@ -3153,20 +3153,20 @@ class StructuredDotGradCSR(gof.Op):
         if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
+        if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
 
         if (!%(_zout)s
-            || (%(_zout)s->dimensions[0] != %(_indices)s->dimensions[0]))
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, %(_indices)s->dimensions, %(_g)s->descr->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), %(_g)s->descr->type_num);
         }
 
         {   //makes it compile even though labels jump over variable definitions.
-            npy_intp nnz = %(_indices)s->dimensions[0];
+            npy_intp nnz = PyArray_DIMS(%(_indices)s)[0];
             // extract number of rows
-            npy_intp N =  %(_indptr)s->dimensions[0]-1; //TODO: error checking with this
+            npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
             npy_intp Sindices = %(_indices)s->strides[0]/%(_indices)s->descr->elsize;
             npy_intp Sindptr = %(_indptr)s->strides[0]/%(_indptr)s->descr->elsize;
@@ -3174,7 +3174,7 @@ class StructuredDotGradCSR(gof.Op):
             const npy_intp Sd1 = %(_d)s->strides[1]/%(_d)s->descr->elsize;
             const npy_intp Sg1 = %(_g)s->strides[1]/%(_g)s->descr->elsize;
 
-            const npy_intp K = %(_d)s->dimensions[1];
+            const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 
             const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
             const npy_int32 * __restrict__ indices = (npy_int32 *)%(_indices)s->data;
@@ -3190,7 +3190,7 @@ class StructuredDotGradCSR(gof.Op):
 
                     // extract j-th row of dense matrix
                     const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
-                    if(j >= %(_d)s->dimensions[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
+                    if(j >= PyArray_DIMS(%(_d)s)[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                     // extract corresponding row in gradient
                     const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
@@ -3199,7 +3199,7 @@ class StructuredDotGradCSR(gof.Op):
                     // make sure that row index is not bigger than actual number of rows
                     // Note: wouldn't the above operation fail if that were the case ?
                     //       when would this ever be true anyway ?
-                    if (i >= %(_g)s->dimensions[0])
+                    if (i >= PyArray_DIMS(%(_g)s)[0])
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows

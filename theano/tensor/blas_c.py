@@ -47,13 +47,13 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     if (%(A)s->descr->type_num != %(y)s->descr->type_num)
     { PyErr_SetString(PyExc_TypeError, "A vs. y"); %(fail)s; }
 
-    if (%(A)s->dimensions[0] != %(x)s->dimensions[0])
+    if (PyArray_DIMS(%(A)s)[0] != PyArray_DIMS(%(x)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[0] != x.shape[0]");
         %(fail)s;
     }
-    if (%(A)s->dimensions[1] != %(y)s->dimensions[0])
+    if (PyArray_DIMS(%(A)s)[1] != PyArray_DIMS(%(y)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[1] != y.shape[0]");
@@ -76,12 +76,12 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             && (%(A)s->strides[1] != elemsize)))
     {
         npy_intp dims[2];
-        dims[0] = %(A)s->dimensions[0];
-        dims[1] = %(A)s->dimensions[1];
+        dims[0] = PyArray_DIMS(%(A)s)[0];
+        dims[1] = PyArray_DIMS(%(A)s)[1];
 
         if ((NULL == %(Z)s)
-            || (%(Z)s->dimensions[0] != %(A)s->dimensions[0])
-            || (%(Z)s->dimensions[1] != %(A)s->dimensions[1])
+            || (PyArray_DIMS(%(Z)s)[0] != PyArray_DIMS(%(A)s)[0])
+            || (PyArray_DIMS(%(Z)s)[1] != PyArray_DIMS(%(A)s)[1])
             || (%(Z)s->strides[0] < 0)
             || (%(Z)s->strides[1] < 0)
             || ((%(Z)s->strides[0] != elemsize)
@@ -152,8 +152,8 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     }
 
     {
-        int Nz0 = %(Z)s->dimensions[0];
-        int Nz1 = %(Z)s->dimensions[1];
+        int Nz0 = PyArray_DIMS(%(Z)s)[0];
+        int Nz1 = PyArray_DIMS(%(Z)s)[1];
         int Sx = %(x)s->strides[0] / elemsize;
         int Sy = %(y)s->strides[0] / elemsize;
 
@@ -321,13 +321,13 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     if (%(aa)s->descr->type_num != %(yy)s->descr->type_num)
     { PyErr_SetString(PyExc_TypeError, "Gemv: aa vs. yy"); %(fail)s; }
 
-    if (%(xx)s->dimensions[0] != %(aa)s->dimensions[0])
+    if (PyArray_DIMS(%(xx)s)[0] != PyArray_DIMS(%(aa)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[0] != x.shape[0]");
         %(fail)s;
     }
-    if (%(xx)s->dimensions[1] != %(yy)s->dimensions[0])
+    if (PyArray_DIMS(%(xx)s)[1] != PyArray_DIMS(%(yy)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[1] != y.shape[0]");
@@ -347,11 +347,11 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     if (!%(destructive)s)
     {
         if ((NULL == %(zz)s)
-            || (%(zz)s->dimensions[0] != %(aa)s->dimensions[0]))
+            || (PyArray_DIMS(%(zz)s)[0] != PyArray_DIMS(%(aa)s)[0]))
         {
             if (%(zz)s) Py_XDECREF(%(zz)s);
             %(zz)s = (PyArrayObject*)PyArray_SimpleNew(1,
-                %(aa)s->dimensions, type_num_%(aa)s);
+                PyArray_DIMS(%(aa)s), type_num_%(aa)s);
             if(!%(zz)s) {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc gemv output");
@@ -371,7 +371,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                 const float * zdata = (float*)%(aa)s->data;
                 int Ai = %(aa)s->strides[0]/sizeof(float);
                 int Zi = %(zz)s->strides[0]/sizeof(float);
-                for (int i = 0; i < %(aa)s->dimensions[0]; ++i)
+                for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = fbeta * zdata[Ai*i];
                 }
@@ -382,7 +382,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                 const double * zdata = (double*)%(aa)s->data;
                 int Ai = %(aa)s->strides[0]/sizeof(double);
                 int Zi = %(zz)s->strides[0]/sizeof(double);
-                for (int i = 0; i < %(aa)s->dimensions[0]; ++i)
+                for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = dbeta * zdata[Ai*i];
                 }
@@ -409,8 +409,8 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     {
         char TRANS = 'T';
         char NOTRANS = 'N';
-        int Nx0 = %(xx)s->dimensions[0];
-        int Nx1 = %(xx)s->dimensions[1];
+        int Nx0 = PyArray_DIMS(%(xx)s)[0];
+        int Nx1 = PyArray_DIMS(%(xx)s)[1];
         /* This formula is needed in the case where xx is actually a row or
          * column matrix, because BLAS sometimes insists that the strides:
          *  - are not smaller than the number of elements in the array

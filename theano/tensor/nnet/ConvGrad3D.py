@@ -121,16 +121,16 @@ class ConvGrad3D(theano.Op):
                 %(fail)s
             }
 
-            if (%(d)s->dimensions[0] != 3)
+            if (PyArray_DIMS(%(d)s)[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"ConvGrad3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)%(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"ConvGrad3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)PyArray_DIMS(%(d)s)[0]);
                 %(fail)s
             }
 { //extra scope so that fail will not jump over declarations
 
             //Read and check sizes of inputs
-            const int batchSize = %(V)s->dimensions[0];
-            if (%(WShape)s->dimensions[0] != 5)
+            const int batchSize = PyArray_DIMS(%(V)s)[0];
+            if (PyArray_DIMS(%(WShape)s)[0] != 5)
             {
                 PyErr_Format(PyExc_ValueError,"ConvGrad3D: WShape must specify a 5D shape");
                 %(fail)s
@@ -144,7 +144,7 @@ class ConvGrad3D(theano.Op):
 { //extra scope so that fail will not jump over declarations
             dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) %(WShape)s->data;
             const int outputChannels =  WShape[0];
-            const int inputChannels = %(V)s->dimensions[4];
+            const int inputChannels = PyArray_DIMS(%(V)s)[4];
             if (WShape[4] != inputChannels)
             {
                 PyErr_Format(PyExc_ValueError, "ConvGrad3D: W operates on a %%i channel image but the image has %%i channels",(int) WShape[1],inputChannels);
@@ -155,9 +155,9 @@ class ConvGrad3D(theano.Op):
             const int filterHeight = WShape[1];
             const int filterWidth = WShape[2];
             const int filterDur = WShape[3];
-            const int vidHeight = %(V)s->dimensions[1];
-            const int vidWidth = %(V)s->dimensions[2];
-            const int vidDur = %(V)s->dimensions[3];
+            const int vidHeight = PyArray_DIMS(%(V)s)[1];
+            const int vidWidth = PyArray_DIMS(%(V)s)[2];
+            const int vidDur = PyArray_DIMS(%(V)s)[3];
             if (vidHeight < filterHeight)
             {
                 PyErr_Format(PyExc_ValueError, "ConvGrad3D: W has a height of %%i but V is only %%i pixels tall", filterHeight, vidHeight);
@@ -193,13 +193,13 @@ class ConvGrad3D(theano.Op):
 
 
 
-            if (%(dCdH)s->dimensions[0] != batchSize ||
-                %(dCdH)s->dimensions[4] != outputChannels ||
-                %(dCdH)s->dimensions[1] != outputHeight ||
-                %(dCdH)s->dimensions[2] != outputWidth ||
-                %(dCdH)s->dimensions[3] != outputDur)
+            if (PyArray_DIMS(%(dCdH)s)[0] != batchSize ||
+                PyArray_DIMS(%(dCdH)s)[4] != outputChannels ||
+                PyArray_DIMS(%(dCdH)s)[1] != outputHeight ||
+                PyArray_DIMS(%(dCdH)s)[2] != outputWidth ||
+                PyArray_DIMS(%(dCdH)s)[3] != outputDur)
             {
-                PyErr_Format(PyExc_ValueError, "dCdH is the wrong size, expected (%%i,%%i,%%i,%%i,%%i), got (%%li,%%li,%%li,%%li,%%li)", batchSize,  outputHeight, outputWidth, outputDur, outputChannels, (long)%(dCdH)s->dimensions[0], (long)%(dCdH)s->dimensions[1], (long)%(dCdH)s->dimensions[2], (long)%(dCdH)s->dimensions[3], (long)%(dCdH)s->dimensions[4]);
+                PyErr_Format(PyExc_ValueError, "dCdH is the wrong size, expected (%%i,%%i,%%i,%%i,%%i), got (%%li,%%li,%%li,%%li,%%li)", batchSize,  outputHeight, outputWidth, outputDur, outputChannels, (long)PyArray_DIMS(%(dCdH)s)[0], (long)PyArray_DIMS(%(dCdH)s)[1], (long)PyArray_DIMS(%(dCdH)s)[2], (long)PyArray_DIMS(%(dCdH)s)[3], (long)PyArray_DIMS(%(dCdH)s)[4]);
                 %(fail)s
             }
 { // extra scope for fail
@@ -211,11 +211,11 @@ class ConvGrad3D(theano.Op):
             dims[2] = filterWidth;
             dims[3] = filterDur;
 
-            if(!(%(dCdW)s)  || %(dCdW)s->dimensions[0]!=dims[0] ||
-                  %(dCdW)s->dimensions[1]!=dims[1] ||
-                  %(dCdW)s->dimensions[2]!=dims[2] ||
-                  %(dCdW)s->dimensions[3]!=dims[3] ||
-                  %(dCdW)s->dimensions[4]!=dims[4] ){
+            if(!(%(dCdW)s)  || PyArray_DIMS(%(dCdW)s)[0]!=dims[0] ||
+                  PyArray_DIMS(%(dCdW)s)[1]!=dims[1] ||
+                  PyArray_DIMS(%(dCdW)s)[2]!=dims[2] ||
+                  PyArray_DIMS(%(dCdW)s)[3]!=dims[3] ||
+                  PyArray_DIMS(%(dCdW)s)[4]!=dims[4] ){
                Py_XDECREF(%(dCdW)s);
                %(dCdW)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(V)s->descr->type_num);
 

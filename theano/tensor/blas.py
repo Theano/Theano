@@ -496,9 +496,9 @@ class GemmRelated(Op):
         int type_num = %(_x)s->descr->type_num;
         int type_size = %(_x)s->descr->elsize; // in bytes
 
-        npy_intp* Nx = %(_x)s->dimensions;
-        npy_intp* Ny = %(_y)s->dimensions;
-        npy_intp* Nz = 0; //%(_zout)s->dimensions;
+        npy_intp* Nx = PyArray_DIMS(%(_x)s);
+        npy_intp* Ny = PyArray_DIMS(%(_y)s);
+        npy_intp* Nz = 0; //PyArray_DIMS(%(_zout)s);
 
         npy_intp* Sx = %(_x)s->strides;
         npy_intp* Sy = %(_y)s->strides;
@@ -888,14 +888,14 @@ class Gemm(GemmRelated):
             %(_zout)s = %(_z)s;
             Py_INCREF(%(_zout)s);
         }
-        Nz = %(_z)s->dimensions;
+        Nz = PyArray_DIMS(%(_z)s);
         Sz = %(_z)s->strides;
         """
 
     setup_z_Nz_Sz_outplace = """
         if ((NULL == %(_zout)s)
-            || (%(_zout)s->dimensions[0] != %(_z)s->dimensions[0])
-            || (%(_zout)s->dimensions[1] != %(_z)s->dimensions[1])
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_z)s)[0])
+            || (PyArray_DIMS(%(_zout)s)[1] != PyArray_DIMS(%(_z)s)[1])
             || (%(_zout)s->strides[0] <= 0)
             || (%(_zout)s->strides[1] <= 0)
             || (%(_zout)s->strides[0] MOD type_size)
@@ -905,8 +905,8 @@ class Gemm(GemmRelated):
         {
             Py_XDECREF(%(_zout)s);
             npy_intp dims[2];
-            dims[0] = %(_z)s->dimensions[0];
-            dims[1] = %(_z)s->dimensions[1];
+            dims[0] = PyArray_DIMS(%(_z)s)[0];
+            dims[1] = PyArray_DIMS(%(_z)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
                                                           type_num_%(_z)s);
             //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
@@ -916,7 +916,7 @@ class Gemm(GemmRelated):
                 %(fail)s
             }
         }
-        Nz = %(_zout)s->dimensions;
+        Nz = PyArray_DIMS(%(_zout)s);
         Sz = %(_zout)s->strides;
 
         if (%(_zout)s->descr->type_num == NPY_FLOAT)
@@ -1479,13 +1479,13 @@ class Dot22(GemmRelated):
 
     setup_z_Nz_Sz = """
         if ((NULL == %(_zout)s)
-            || (%(_zout)s->dimensions[0] != %(_x)s->dimensions[0])
-            || (%(_zout)s->dimensions[1] != %(_y)s->dimensions[1]))
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_x)s)[0])
+            || (PyArray_DIMS(%(_zout)s)[1] != PyArray_DIMS(%(_y)s)[1]))
         {
             if (NULL != %(_zout)s) Py_XDECREF(%(_zout)s);
             npy_intp dims[2];
-            dims[0] = %(_x)s->dimensions[0];
-            dims[1] = %(_y)s->dimensions[1];
+            dims[0] = PyArray_DIMS(%(_x)s)[0];
+            dims[1] = PyArray_DIMS(%(_y)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
                             type_num_%(_x)s);
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
@@ -1495,7 +1495,7 @@ class Dot22(GemmRelated):
                 %(fail)s
             }
         }
-        Nz = %(_zout)s->dimensions;
+        Nz = PyArray_DIMS(%(_zout)s);
         Sz = %(_zout)s->strides;
 
         """

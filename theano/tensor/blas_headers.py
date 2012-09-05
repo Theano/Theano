@@ -797,9 +797,9 @@ def ____gemm_code(check_ab, a_init, b_init):
         int type_num = _x->descr->type_num;
         int type_size = _x->descr->elsize; // in bytes
 
-        npy_intp* Nx = _x->dimensions;
-        npy_intp* Ny = _y->dimensions;
-        npy_intp* Nz = _z->dimensions;
+        npy_intp* Nx = PyArray_DIMS(_x);
+        npy_intp* Ny = PyArray_DIMS(_y);
+        npy_intp* Nz = PyArray_DIMS(_z);
 
         npy_intp* Sx = _x->strides;
         npy_intp* Sy = _y->strides;
