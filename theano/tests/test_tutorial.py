@@ -918,7 +918,7 @@ class T_fibby(unittest.TestCase):
                 return """
                     Py_XDECREF(%(y)s);
                     %(y)s = (PyArrayObject*)PyArray_FromArray(
-                            %(x)s, 0, NPY_ENSURECOPY);
+                            %(x)s, 0, NPY_ARRAY_ENSURECOPY);
                     if (!(%y)s) %(fail)s;
                     dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
                     dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
