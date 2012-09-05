@@ -4549,7 +4549,7 @@ class IncSubtensor(Op):
 
     def connection_pattern(self, node):
 
-        rval = [ [True] ]
+        rval = [ [True, True] ]
 
         for ipt in node.inputs[2:]:
             rval.append([False])
@@ -6064,7 +6064,7 @@ class AdvancedIncSubtensor1(Op):
 
     def connection_pattern(self, node):
 
-        rval = [ [True] ]
+        rval = [ [True, True] ]
 
         for ipt in node.inputs[2:]:
             rval.append([False])
@@ -6270,7 +6270,7 @@ class AdvancedIncSubtensor(Op):
 
     def connection_pattern(self, node):
 
-        rval = [ [True] ]
+        rval = [ [True, True] ]
 
         for ipt in node.inputs[2:]:
             rval.append([False])
