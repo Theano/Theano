@@ -716,11 +716,12 @@ def _populate_grad_dict(var_to_node_to_idx,
 
             # must convert to list in case the op returns a tuple
             # we won't be able to post-process out the Nones if it does that
-            term_dict[node] = list(input_grads)
+            input_grads = list(input_grads)
 
-            for i in xrange(len(term_dict[node])):
+            #Do type checking on the result
+            for i, term in enumerate(input_grads):
 
-                if term_dict[node][i] is None:
+                if term is None:
                     # we don't know what None means. in the past it has been
                     # used to
                     # mean undefined, zero, or disconnected. So for now we
@@ -730,10 +731,10 @@ def _populate_grad_dict(var_to_node_to_idx,
                     # eventually we should disallow this
                     # return type and force all ops
                     # to return the correct thing
-                    # raise AssertionError('%s returned None for' +\
-                    # ' a gradient term, '
-                    #        'this is prohibited' % node.op)
-                    term_dict[node][i] = node.inputs[i].zeros_like()
+                    #raise AssertionError(('%s returned None for' +\
+                            # ' a gradient term, '
+                    #        'this is prohibited') % node.op)
+                    input_grads[i] = node.inputs[i].zeros_like()
 
                 if warn_type:
                     g_r_type = term_dict[node][i].type
@@ -743,6 +744,9 @@ def _populate_grad_dict(var_to_node_to_idx,
                             '%s.grad returned a different type (%s) '
                             'for input %i of type (%s)',
                             node.op, g_r_type, i, r_type)
+
+            #cache the result
+            term_dict[node] = list(input_grads)
 
         return term_dict[node]
 
