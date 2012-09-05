@@ -526,7 +526,7 @@ def _populate_var_to_node_to_idx(outputs, wrt):
         # that does type checking and supplies the default value
         # if the method is not implemented
         if hasattr(node.op,'connection_pattern'):
-            connection_pattern = node.op.connection_pattern()
+            connection_pattern = node.op.connection_pattern(node)
 
             if not isinstance(connection_pattern, list):
                 raise TypeError("Op.connection_pattern should return " + \

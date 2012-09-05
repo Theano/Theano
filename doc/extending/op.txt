@@ -98,7 +98,7 @@ following methods:
   lifetime of self.  Op instances should be immutable in this
   sense.
 
-.. function:: connection_pattern():
+.. function:: connection_pattern( node ):
 
   Optional method; sometimes needed for gradient.grad to
   work correctly.
@@ -108,6 +108,10 @@ following methods:
   Op.connection_pattern[input_idx][output_idx] is true if the
   elements of inputs[input_idx] have an effect on the elements of
   outputs[output_idx].
+
+  The ``node'' parameter is needed to determine the number of
+  inputs. Some ops such as Subtensor take a variable number of
+  inputs.
 
   If no connection_pattern is specified, gradient.grad will
   assume that all inputs have some elements connected to some
