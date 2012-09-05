@@ -714,7 +714,7 @@ class CSM(gof.Op):
 
     def __str__(self):
         if self.kmap is not None:
-            return "%s{%s}" %(self.__class__.__name__, str(self.kmap))
+            return "%s{%s}" % (self.__class__.__name__, str(self.kmap))
         return self.__class__.__name__
 
     def make_node(self, data, indices, indptr, shape):
@@ -2687,6 +2687,10 @@ def rint(x):
     """Elemwise round half to even of `x`.
     """
     # see decorator for function body
+
+# Give it a simple name instead of the complex one that would automatically
+# be derived from `tensor.round_half_to_even`.
+rint.__name__ = 'rint'
 
 
 @structured_monoid(tensor.sgn)

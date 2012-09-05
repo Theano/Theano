@@ -32,7 +32,7 @@ If 'time_profile=True', this script conducts time-profiling of the tests:
        - test name
        - name of class to which test belongs (if any), otherwise full
          information is contained in test name
-       - test outcome ('OK', 'SKIPPED TESTS', 'FAILED TEST' or 'FAILED PARSING')
+       - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or 'FAILED PARSING')
        In 'timeprof_sort', test records are sorted according to run-time
        whereas in 'timeprof_nosort' records are reported according to
        sequential number. The former classification is the main information
@@ -63,7 +63,7 @@ import theano
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
-         batch_size=None, time_profile=False):
+         batch_size=None, time_profile=False, display_batch_output=False):
     """
     Run tests with optional output redirection.
 
@@ -77,6 +77,9 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     Theano/bin to call nosetests. Otherwise we call the provided script.
 
     If batch_size is None, we use a default value of 100.
+
+    If display_batch_output is False, then the output of nosetests during batch
+    execution is hidden.
     """
 
     if stdout is None:
@@ -105,13 +108,15 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     try:
         sys.stdout = stdout
         sys.stderr = stderr
-        run(stdout, stderr, argv, theano_nose, batch_size, time_profile)
+        run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
+            display_batch_output)
     finally:
         sys.stdout = stdout_backup
         sys.stderr = stderr_backup
 
 
-def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
+def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
+        display_batch_output):
 
     # Setting aside current working directory for later saving
     sav_dir = os.getcwd()
@@ -156,20 +161,26 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 ###################################
 # RUNNING TESTS IN BATCHES OF %s #
 ###################################""" % batch_size
-        # We suppress all output because we want the user to focus only on
-        # the failed tests, which are re-run (with output) below.
+        # When `display_batch_output` is False, we suppress all output because
+        # we want the user to focus only on the failed tests, which are re-run
+        # (with output) below.
         dummy_out = open(os.devnull, 'w')
         for test_id in xrange(1, n_tests + 1, batch_size):
             stdout.flush()
             stderr.flush()
             test_range = range(test_id, min(test_id + batch_size, n_tests + 1))
-            rval = subprocess.call(
-                ([python, theano_nose, '-q', '--with-id']
-                 + map(str, test_range)
-                 + argv),
-                stdout=dummy_out.fileno(),
-                stderr=dummy_out.fileno(),
-                stdin=dummy_in.fileno())
+            cmd = ([python, theano_nose, '--with-id'] +
+                   map(str, test_range) +
+                   argv)
+            subprocess_extra_args = dict(stdin=dummy_in.fileno())
+            if not display_batch_output:
+                # Use quiet mode in nosetests.
+                cmd.append('-q')
+                # Suppress all output.
+                subprocess_extra_args.update(dict(
+                    stdout=dummy_out.fileno(),
+                    stderr=dummy_out.fileno()))
+            subprocess.call(cmd, **subprocess_extra_args)
             # Recover failed test indices from the 'failed' field of the
             # '.noseids' file. We need to do it after each batch because
             # otherwise this field may get erased. We use a set because it
@@ -324,5 +335,3 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 
 if __name__ == '__main__':
     sys.exit(main())
-
-    
