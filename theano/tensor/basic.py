@@ -6504,7 +6504,11 @@ class Dot(Op):
             rval = outer(gz, y.T), dot(x.T, gz)
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
-        return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
+        for elem in rval:
+            assert elem.dtype.find('float') != -1
+
+        return rval
 
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is
