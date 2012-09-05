@@ -228,7 +228,7 @@ class ConvTransp3D(theano.Op):
                                     PyArray_DIMS(%(R)s)[4]!=dims[4])
                                    {
                                        Py_XDECREF(%(R)s);
-                                       %(R)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(H)s->descr->type_num);
+                                       %(R)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, PyArray_DESCR(%(H)s)->type_num);
                                        if (!(%(R)s)) {
                                            PyErr_Format(PyExc_MemoryError, "ConvTransp3D: could not allocate R");
                                            %(fail)s

@@ -42,9 +42,9 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     if (PyArray_NDIM(%(a)s) != 0)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 0"); %(fail)s;}
 
-    if (%(A)s->descr->type_num != %(x)s->descr->type_num)
+    if (PyArray_DESCR(%(A)s)->type_num != PyArray_DESCR(%(x)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "A vs. x"); %(fail)s; }
-    if (%(A)s->descr->type_num != %(y)s->descr->type_num)
+    if (PyArray_DESCR(%(A)s)->type_num != PyArray_DESCR(%(y)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "A vs. y"); %(fail)s; }
 
     if (PyArray_DIMS(%(A)s)[0] != PyArray_DIMS(%(x)s)[0])
@@ -60,8 +60,8 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         %(fail)s;
     }
 
-    if  (%(A)s->descr->type_num == NPY_DOUBLE) { elemsize = 8; }
-    else if (%(A)s->descr->type_num == NPY_FLOAT) { elemsize = 4;}
+    if  (PyArray_DESCR(%(A)s)->type_num == NPY_DOUBLE) { elemsize = 8; }
+    else if (PyArray_DESCR(%(A)s)->type_num == NPY_FLOAT) { elemsize = 4;}
     else
     {
         PyErr_SetString(PyExc_NotImplementedError, "complex CGer");
@@ -101,7 +101,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             PyErr_SetString(PyExc_AssertionError, "%(Z)s != %(A)s");
             %(fail)s
         }
-        if (%(Z)s->descr->type_num == NPY_FLOAT)
+        if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
         {
             float * zoutdata = (float*)PyArray_DATA(%(Z)s);
             const float * zdata = (float*)PyArray_DATA(%(A)s);
@@ -117,7 +117,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 }
             }
         }
-        else if (%(Z)s->descr->type_num == NPY_DOUBLE)
+        else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
         {
             double * zoutdata = (double*) PyArray_DATA(%(Z)s);
             const double * zdata = (double*)PyArray_DATA(%(A)s);
@@ -178,7 +178,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
 
         if (PyArray_STRIDES(%(Z)s)[0] == elemsize)
         {
-            if (%(Z)s->descr->type_num == NPY_FLOAT)
+            if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
             {
                 //fprintf(stderr, "A\\n");
                 float alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
@@ -187,7 +187,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                     (float*)y_data, &Sy,
                     (float*)(PyArray_DATA(%(Z)s)), &Sz1);
             }
-            else if (%(Z)s->descr->type_num == NPY_DOUBLE)
+            else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
             {
                 double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                 dger_(&Nz0, &Nz1, &alpha,
@@ -203,7 +203,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         }
         else if (PyArray_STRIDES(%(Z)s)[1] == elemsize)
         {
-            if (%(Z)s->descr->type_num == NPY_FLOAT)
+            if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
             {
                 //fprintf(stderr, "B %%i %%i %%i %%i\\n", Nz0, Nz1, Sz0, Sz1);
                 float alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
@@ -214,7 +214,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                     (float*)x_data, &Sx,
                     (float*)(PyArray_DATA(%(Z)s)), &Sz0);
             }
-            else if (%(Z)s->descr->type_num == NPY_DOUBLE)
+            else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
             {
                 double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                 dger_(&Nz1, &Nz0, &alpha,
@@ -316,9 +316,9 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         %(fail)s;
     }
 
-    if (%(aa)s->descr->type_num != %(xx)s->descr->type_num)
+    if (PyArray_DESCR(%(aa)s)->type_num != PyArray_DESCR(%(xx)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "Gemv: aa vs. xx"); %(fail)s; }
-    if (%(aa)s->descr->type_num != %(yy)s->descr->type_num)
+    if (PyArray_DESCR(%(aa)s)->type_num != PyArray_DESCR(%(yy)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "Gemv: aa vs. yy"); %(fail)s; }
 
     if (PyArray_DIMS(%(xx)s)[0] != PyArray_DIMS(%(aa)s)[0])
@@ -334,8 +334,8 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         %(fail)s;
     }
 
-    if  (%(aa)s->descr->type_num == NPY_DOUBLE) { elemsize = 8; }
-    else if (%(aa)s->descr->type_num == NPY_FLOAT) { elemsize = 4;}
+    if  (PyArray_DESCR(%(aa)s)->type_num == NPY_DOUBLE) { elemsize = 8; }
+    else if (PyArray_DESCR(%(aa)s)->type_num == NPY_FLOAT) { elemsize = 4;}
     else {
         PyErr_SetString(PyExc_NotImplementedError, "complex Gemv");
         %(fail)s;
@@ -365,7 +365,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         }
         if (dbeta != 0)
         {
-            if (%(zz)s->descr->type_num == NPY_FLOAT)
+            if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
             {
                 float * zoutdata = (float*)PyArray_DATA(%(zz)s);
                 const float * zdata = (float*)PyArray_DATA(%(aa)s);
@@ -376,7 +376,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     zoutdata[Zi*i] = fbeta * zdata[Ai*i];
                 }
             }
-            else if (%(xx)s->descr->type_num == NPY_DOUBLE)
+            else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
             {
                 double * zoutdata = (double*) PyArray_DATA(%(zz)s);
                 const double * zdata = (double*)PyArray_DATA(%(aa)s);
@@ -460,7 +460,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
 
             if (PyArray_STRIDES(%(xx)s)[0] == elemsize)
             {
-                if (%(xx)s->descr->type_num == NPY_FLOAT)
+                if (PyArray_DESCR(%(xx)s)->type_num == NPY_FLOAT)
                 {
                     //fprintf(stderr, "A\\n");
                     float alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
@@ -471,7 +471,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                         &fbeta,
                         (float*)zz_data, &Sz);
                 }
-                else if (%(xx)s->descr->type_num == NPY_DOUBLE)
+                else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
                 {
                     double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
                     dgemv_(&NOTRANS, &Nx0, &Nx1,
@@ -490,7 +490,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             }
             else if (PyArray_STRIDES(%(xx)s)[1] == elemsize)
             {
-                if (%(xx)s->descr->type_num == NPY_FLOAT)
+                if (PyArray_DESCR(%(xx)s)->type_num == NPY_FLOAT)
                 {
                     //fprintf(stderr, "B %%i %%i %%i %%i\\n",
                     //        Nz0, Nz1, Sz0, Sz1);
@@ -504,7 +504,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                         &fbeta,
                         (float*)zz_data, &Sz);
                 }
-                else if (%(xx)s->descr->type_num == NPY_DOUBLE)
+                else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
                 {
                     double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
                     dgemv_(&TRANS, &Nx1, &Nx0,

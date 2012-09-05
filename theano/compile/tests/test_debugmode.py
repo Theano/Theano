@@ -59,10 +59,10 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         if (PyArray_NDIM(%(a)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
         if (PyArray_NDIM(%(b)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != NPY_DOUBLE)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != NPY_DOUBLE)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
 
         if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(b)s)[0])
@@ -75,7 +75,7 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
             {Py_XDECREF(%(z)s);}
             npy_intp dims[] = {0};
             dims[0] = PyArray_DIMS(%(b)s)[0];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, %(b)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         {
@@ -150,13 +150,13 @@ class WeirdBrokenOp(gof.Op):
         else:
             z_code = """
             {Py_XDECREF(%(z)s);}
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(a)s), %(a)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(a)s), PyArray_DESCR(%(a)s)->type_num);
             """
         prep_vars = """
             //the output array has size M x N
             npy_intp M = PyArray_DIMS(%(a)s)[0];
-            npy_intp Sa = %(a)s->strides[0] / %(a)s->descr->elsize;
-            npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
+            npy_intp Sa = %(a)s->strides[0] / PyArray_DESCR(%(a)s)->elsize;
+            npy_intp Sz = %(z)s->strides[0] / PyArray_DESCR(%(z)s)->elsize;
 
             npy_double * Da = (npy_double*)%(a)s->data;
             npy_double * Dz = (npy_double*)%(z)s->data;
@@ -606,10 +606,10 @@ class BrokenCImplementationAdd(gof.Op):
         if (PyArray_NDIM(%(a)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
         if (PyArray_NDIM(%(b)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != NPY_FLOAT)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != NPY_FLOAT)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_FLOAT"); %(fail)s;}
 
         if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(a)s)[1])
@@ -643,7 +643,7 @@ class BrokenCImplementationAdd(gof.Op):
             npy_intp dims[] = {0, 0};
             dims[0] = PyArray_DIMS(%(b)s)[0];
             dims[1] = PyArray_DIMS(%(b)s)[1];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         // Let us assume that %(z)s is c_contiguous

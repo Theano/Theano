@@ -117,14 +117,14 @@ class SoftmaxWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if ((%(x)s->descr->type_num != NPY_DOUBLE) &&
-            (%(x)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(x)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(x)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if ((%(b)s->descr->type_num != NPY_DOUBLE) &&
-            (%(b)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
@@ -263,15 +263,15 @@ class SoftmaxGrad(gof.Op):
         dy, sm = inp
         dx, = out
         return '''
-        if ((%(dy)s->descr->type_num != NPY_DOUBLE) &&
-            (%(dy)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(dy)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dy)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != NPY_DOUBLE) &&
-            (%(sm)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
@@ -778,10 +778,10 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != NPY_INT64)
-            && (%(y_idx)s->descr->type_num != NPY_INT32)
-            && (%(y_idx)s->descr->type_num != NPY_INT16)
-            && (%(y_idx)s->descr->type_num != NPY_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");
@@ -914,24 +914,24 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
 
-        if ((%(dnll)s->descr->type_num != NPY_DOUBLE) &&
-            (%(dnll)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(dnll)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dnll)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "dnll type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != NPY_DOUBLE) &&
-            (%(sm)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "sm type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != NPY_INT64)
-            && (%(y_idx)s->descr->type_num != NPY_INT32)
-            && (%(y_idx)s->descr->type_num != NPY_INT16)
-            && (%(y_idx)s->descr->type_num != NPY_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");

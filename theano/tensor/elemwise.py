@@ -311,7 +311,7 @@ class DimShuffle(Op):
                 str(nd_out) +
                 '-1] == 0) strides[' +
                 str(nd_out) +
-                '-1] = %(basename)s->descr->elsize'
+                '-1] = PyArray_DESCR(%(basename)s)->elsize'
             )
         for i in xrange(nd_out - 2, -1, -1):
             strides_statements.append(
@@ -333,7 +333,13 @@ class DimShuffle(Op):
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
-                'PyArray_BASE(%(res)s) = (PyObject*)%(basename)s',
+"""
+#if NPY_VERSION < 0x01000009
+PyArray_BASE(%(res)s) = (PyObject*)%(basename)s;
+#else
+PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
+#endif
+"""
                 '}']
 
         full_code = statements(check_input_nd
