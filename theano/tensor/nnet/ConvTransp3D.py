@@ -237,12 +237,12 @@ class ConvTransp3D(theano.Op):
 
                                    { // for fail 6
 
-                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
-                                       #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
+                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( PyArray_DATA(x) + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
+                                       #define ELEM_AT(x, i) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i) )
 
 
 
-                                       dtype_%(b)s * b = (dtype_%(b)s *) %(b)s->data;
+                                       dtype_%(b)s * b = (dtype_%(b)s *) PyArray_DATA(%(b)s);
 
                                        int rs4 = PyArray_STRIDES(%(R)s)[4];
                                        int ws0 = PyArray_STRIDES(%(W)s)[0];

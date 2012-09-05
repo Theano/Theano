@@ -215,11 +215,11 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub):
         for j, index in enumerate(loop_order):
             if index != 'x':
                 preloops.setdefault(j, "")
-                preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(%%(lv%(i)s)s->data);\n" % locals()) % sub
+                preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
                 break
         else: # all broadcastable
             preloops.setdefault(0, "")
-            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(%%(lv%(i)s)s->data);\n" % locals()) % sub
+            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 
     if len(loop_tasks) == 1:
         s = preloops.get(0, "")
@@ -375,7 +375,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
     declare_iter = ""
     for i, dtype in enumerate(dtypes):
         var = sub["lv%i" % i]
-        declare_iter += "%(var)s_iter = (%(dtype)s*)(%(var)s->data);\n" % locals()
+        declare_iter += "%(var)s_iter = (%(dtype)s*)(PyArray_DATA(%(var)s));\n" % locals()
 
     loop = inner_task
     for i in reversed(range(nnested)):

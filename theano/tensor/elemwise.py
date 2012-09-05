@@ -326,14 +326,14 @@ class DimShuffle(Op):
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
                             'PyArray_TYPE(%(basename)s), strides, '
-                            '%(basename)s->data, PyArray_ITEMSIZE(%(basename)s), '
+                            'PyArray_DATA(%(basename)s), PyArray_ITEMSIZE(%(basename)s), '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
                             '(NPY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
-                '%(res)s->base = (PyObject*)%(basename)s',
+                'PyArray_BASE(%(res)s) = (PyObject*)%(basename)s',
                 '}']
 
         full_code = statements(check_input_nd

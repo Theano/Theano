@@ -1972,7 +1972,7 @@ class ScalarFromTensor(Op):
         z, = outputs
         fail = sub['fail']
         return """
-        %(z)s = ((dtype_%(x)s*)(%(x)s->data))[0];
+        %(z)s = ((dtype_%(x)s*)(PyArray_DATA(%(x)s)))[0];
         """ % locals()
 
     def c_code_cache_version(self):
@@ -3087,7 +3087,7 @@ class Alloc(gof.Op):
         # Initialize shape
         for i, shp_i in enumerate(inp[1:]):
             code += """
-                shape[%(i)s] = ((dtype_%(shp_i)s*) %(shp_i)s->data)[0];
+                shape[%(i)s] = ((dtype_%(shp_i)s*) PyArray_DATA(%(shp_i)s))[0];
                 """ % dict(i=i, shp_i=shp_i)
 
         code += """
@@ -4049,7 +4049,7 @@ class Subtensor(Op):
                 %(view_ndim)s,
                 PyArray_DIMS(%(x)s),
                 PyArray_STRIDES(%(x)s),
-                %(x)s->data,
+                PyArray_DATA(%(x)s),
                 %(x)s->flags,
                 NULL);
         if (!xview)
@@ -4203,7 +4203,7 @@ class Subtensor(Op):
         part1 = """
         if (%(z)s) Py_DECREF(%(z)s);
         Py_INCREF(py_%(x)s);
-        xview->base = py_%(x)s;
+        PyArray_BASE(xview) = py_%(x)s;
         assert(py_%(x)s == (PyObject*)%(x)s);
         %(z)s = xview;
         """ % locals()
@@ -4529,7 +4529,7 @@ class IncSubtensor(Op):
             if (add_rval)
             {
                 assert (PyArray_Check((PyObject*)add_rval));
-                assert (add_rval->data == xview->data);
+                assert (PyArray_DATA(add_rval) == PyArray_DATA(xview));
                 Py_DECREF(add_rval);
             }
             else
@@ -5385,7 +5385,7 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        %(shp)s->data + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
+                        PyArray_DATA(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
