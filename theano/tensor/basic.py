@@ -1912,6 +1912,8 @@ class TensorFromScalar(Op):
         s, = inp
         dt, = grads
         assert dt.type.dtype.find('float') != -1
+        if s.type.dtype.find('int') != -1:
+            return [s.zeros_like().astype(theano.config.floatX)]
         return [scalar_from_tensor(dt)]
 
     def __str__(self):
