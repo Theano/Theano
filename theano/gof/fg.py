@@ -11,7 +11,7 @@ import toolbox
 from python25 import all
 from theano import config
 import warnings
-
+NullType = None
 
 class InconsistencyError(Exception):
     """
@@ -211,6 +211,9 @@ class FunctionGraph(utils.object2):
     ### import ###
 
     def __import_r__(self, variables):
+        global NullType
+        if NullType is None:
+            from null_type import NullType
         # Imports the owners of the variables
         r_owner_done = set(self.nodes)
         for node in [r.owner for r in variables if r.owner is not None]:
@@ -219,6 +222,8 @@ class FunctionGraph(utils.object2):
                 self.__import__(node)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
+                if isinstance(r.type,NullType):
+                    raise TypeError("Computation graph contains a NaN. "+r.type.why_null)
                 raise MissingInputError("Undeclared input", r)
             if not getattr(r, 'fgraph', None) is self:
                 self.__setup_r__(r)

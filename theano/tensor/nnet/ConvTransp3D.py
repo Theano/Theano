@@ -56,22 +56,22 @@ class ConvTransp3D(theano.Op):
         if 'name' in dir(dCdR) and dCdR.name is not None:
             dCdR_name = dCdR.name
         else:
-            dCdR_name = 'anon'
+            dCdR_name = 'anon_dCdR'
 
         if 'name' in dir(H) and H.name is not None:
             H_name = H.name
         else:
-            H_name = 'anon'
+            H_name = 'anon_H'
 
         if 'name' in dir(W) and W.name is not None:
             W_name = W.name
         else:
-            W_name = 'anon'
+            W_name = 'anon_W'
 
         if 'name' in dir(b) and b.name is not None:
             b_name = b.name
         else:
-            b_name = 'anon'
+            b_name = 'anon_b'
 
 
         dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name

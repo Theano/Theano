@@ -7,7 +7,6 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 # TODO
 # Automatic methods for determining best sparse format?
 
-from itertools import izip
 import sys
 
 import numpy
@@ -16,14 +15,14 @@ import scipy.sparse
 
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
-from theano.tensor import blas
+from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt
 
 sparse_formats = ['csc', 'csr']
 
 
-#TODO: move this decorator to the compile submodule
+# TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
                                          lopt.__name__, lopt, 'fast_run',
@@ -256,7 +255,7 @@ def sp_zeros_like(x):
     :return: The same as `x` with zero entries
              for all element.
     """
-    #TODO: don't restrict to CSM formats
+    # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
                                 numpy.array([]), tensor.zeros_like(indptr),
@@ -291,7 +290,7 @@ class _sparse_py_operators:
     def __rmul__(left, right):
         return mul(left, right)
 
-    #extra pseudo-operator symbols
+    # extra pseudo-operator symbols
 
     def __dot__(left, right):
         return structured_dot(left, right)
@@ -299,12 +298,12 @@ class _sparse_py_operators:
     def __rdot__(right, left):
         return structured_dot(left, right)
 
-    #N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
+    # N.B. THIS IS COMMENTED OUT ON PURPOSE!!!
     #     Discussion with Fred & James (at least, and maybe others before)
     #     we decided that casting from a sparse to dense should be explicit
     #     because it's usually something you just want to be pretty careful
     #     about, and not to do by accident.
-    #def _as_TensorVariable(self):
+    # def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
 
     shape = property(lambda self: tensor.shape(dense_from_sparse(self)))
@@ -441,7 +440,7 @@ class SparseType(gof.Type):
         if strict:
             raise TypeError("%s is not sparse, or not the right dtype (is %s, "
                             "expected %s)" % (value, value.dtype, self.dtype))
-        #The input format could be converted here
+        # The input format could be converted here
         if allow_downcast:
             sp = self.format_cls[self.format](value, dtype=self.dtype)
         else:
@@ -488,7 +487,7 @@ class SparseType(gof.Type):
         return "Sparse[%s, %s]" % (str(self.dtype), str(self.format))
 
     def values_eq_approx(self, a, b, eps=1e-6):
-        #WARNING: equality comparison of sparse matrices is not fast or easy
+        # WARNING: equality comparison of sparse matrices is not fast or easy
         # we definitely do not want to be doing this un-necessarily during
         # a FAST_RUN computation..
         if not scipy.sparse.issparse(a) or not scipy.sparse.issparse(b):
@@ -504,7 +503,7 @@ class SparseType(gof.Type):
         return max(diff.data) < eps
 
     def values_eq(self, a, b):
-        #WARNING: equality comparison of sparse matrices is not fast or easy
+        # WARNING: equality comparison of sparse matrices is not fast or easy
         # we definitely do not want to be doing this un-necessarily during
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
@@ -619,14 +618,25 @@ class CSMProperties(gof.Op):
             out[0][0] = csm.data[self.kmap]
         if str(csm.data.dtype) == 'int32':
             out[0][0] = theano._asarray(out[0][0], dtype='int32')
-        #backport
-        #out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
+        # backport
+        # out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
         out[1][0] = theano._asarray(csm.indices, dtype='int32')
         out[2][0] = theano._asarray(csm.indptr, dtype='int32')
         out[3][0] = theano._asarray(csm.shape, dtype='int32')
 
     def grad(self, (csm,), g):
-        assert [gg is None for gg in g[1:]]
+
+        # g[1:] is all integers, so their Jacobian in this op
+        # is 0. We thus don't need to worry about what their values
+        # are.
+
+        # if g[0] is disconnected, then this op doesn't contribute
+        # any gradient anywhere. but we know that at least one of
+        # g[1:] is connected, or this grad method wouldn't have been
+        # called, so we should report zeros
+        if isinstance(g[0].type, DisconnectedType):
+            return [csm.zeros_like()]
+
         data, indices, indptr, shape = csm_properties(csm)
         return [CSM(csm.format)(g[0], indices, indptr, shape)]
 # don't make this a function or it breaks some optimizations below
@@ -662,10 +672,10 @@ class CSM(gof.Op):
 
     :param data: One dimensionnal tensor representing
                  the data of the sparse to construct.
-    :param indices: One dimensionnal tensor of integers
+    :param indices: One dimensional tensor of integers
                     representing the indices of the sparse
                     matrix to construct.
-    :param indptr: One dimensionnal tensor of integers
+    :param indptr: One dimensional tensor of integers
                    representing the indice pointer for
                    the sparse matrix to construct.
     :param shape: One dimensionnal tensor of integers
@@ -673,9 +683,9 @@ class CSM(gof.Op):
                   matrix to construct.
 
     :return: A sparse matrix having the properties
-             speficied by the inputs.
+             specified by the inputs.
 
-    :note: The grad method returns a dense vector, so it provide
+    :note: The grad method returns a dense vector, so it provides
            a regular grad.
     """
 
@@ -774,10 +784,10 @@ class CSM(gof.Op):
 
     def grad(self, (x_data, x_indices, x_indptr, x_shape), (g_out,)):
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
-        #unpack the data vector and wrap it as a 1d TensorType
+        # unpack the data vector and wrap it as a 1d TensorType
         g_data = csm_grad(self.kmap)(x_data, x_indices, x_indptr, x_shape,
             g_data, g_indices, g_indptr, g_shape)
-        return [g_data, None, None, None]
+        return [g_data, DisconnectedType()(), DisconnectedType()(), DisconnectedType()()]
 
     def infer_shape(self, node, shapes):
         if self.kmap is None:
@@ -1195,7 +1205,7 @@ class GetItemScalar(gof.op.Op):
             if isinstance(ind, slice):
                 raise Exception("GetItemScalar called with a slice as index!")
 
-            #in case of indexing using int instead of theano variable
+            # in case of indexing using int instead of theano variable
             elif isinstance(ind, int):
                 ind = theano.tensor.constant(ind)
                 input_op += [ind]
@@ -2026,7 +2036,7 @@ class MulSD(gof.op.Op):
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
-        #upcast the tensor. Is the cast of sparse done implemented?
+        # upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if y.type.dtype != dtype:
             y = tensor.cast(y, dtype)
@@ -2049,7 +2059,7 @@ class MulSD(gof.op.Op):
         elif len(y.shape) == 2:
             # if we have enough memory to fit y, maybe we can fit x.asarray()
             # too?
-            #TODO: change runtime from O(M*N) to O(nonzeros)
+            # TODO: change runtime from O(M*N) to O(nonzeros)
             M, N = x.shape
             assert x.shape == y.shape
 
@@ -2810,7 +2820,7 @@ class StructuredDot(gof.Op):
             raise ValueError('shape mismatch in StructuredDot.perform',
                              (a.shape, b.shape))
 
-        #variable = a.dot(b)  # deprecated
+        # variable = a.dot(b)  # deprecated
         variable = a * b
         if isinstance(node.outputs[0].type, SparseType):
             assert _is_sparse(variable)
@@ -2843,8 +2853,8 @@ class StructuredDot(gof.Op):
                 raise Exception("a.shape=%s, b.shape=%s, variable.shape=%s "
                                 " ??? I have no idea why")
 
-        #The cast is needed as otherwise we hit the bug mentioned into
-        #theano._asarray function documentation.
+        # The cast is needed as otherwise we hit the bug mentioned into
+        # theano._asarray function documentation.
         out[0] = theano._asarray(variable, str(variable.dtype))
 
     def grad(self, (a, b), (g_out,)):
@@ -3229,7 +3239,7 @@ class SamplingDot(gof.op.Op):
         if not _is_sparse_variable(p):
             raise TypeError(p)
 
-        #TODO: use it.
+        # TODO: use it.
         dtype_out = scalar.upcast(x.type.dtype, y.type.dtype, p.type.dtype)
 
         return gof.Apply(self, [x, y, p], [p.type()])

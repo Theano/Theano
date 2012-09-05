@@ -14,6 +14,7 @@ from theano.compile import optdb
 from theano.gof import Apply
 
 from theano.tensor.nnet.sigm import sigmoid, softplus
+from theano.gradient import DisconnectedType
 
 
 ############
@@ -76,6 +77,10 @@ class SoftmaxWithBias(gof.Op):
     def grad(self, inp, grads):
         x, b = inp
         g_sm, = grads
+
+        if isinstance(g_sm.type, DisconnectedType):
+            return [ DisconnectedType()(), DisconnectedType()() ]
+
         sm = softmax_with_bias(x, b)
         dx = softmax_grad(g_sm, sm)
         db = tensor.sum(dx, axis=0)
@@ -710,21 +715,40 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     def grad(self, inp, grads):
         x, b, y_idx = inp
         g_nll, g_sm, g_am = grads
-        if g_am is not None:
-            raise NotImplementedError()
-        elif g_sm is not None:
-            # There is a gradient w.r.t. the softmax's output itself.
-            if g_nll is not None or g_am is not None:
-                raise NotImplementedError()
-            return softmax_with_bias.grad((x, b, ), (g_sm, )) + (None, )
-        else:
-            # There is a gradient w.r.t. the NLL.
-            assert g_nll is not None
+
+
+        dx_terms = []
+        db_terms = []
+        d_idx_terms = []
+
+
+        if not isinstance(g_nll.type, DisconnectedType):
             nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
-            #dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
             dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
             db = tensor.sum(dx, axis=[0])
-            return dx, db, None
+            dx_terms.append(dx)
+            db_terms.append(db)
+
+        if not isinstance(g_sm.type, DisconnectedType):
+            dx, db = softmax_with_bias.grad((x, b), (g_sm, ))
+            dx_terms.append(dx)
+            db_terms.append(db)
+
+        if not isinstance(g_am.type, DisconnectedType):
+            dx_terms.append(x.zeros_like())
+            db_terms.append(b.zeros_like())
+            d_idx_terms.append(y_idx.zeros_like())
+
+        def fancy_sum( terms ):
+            if len(terms) == 0:
+                return DisconnectedType()()
+            rval = terms[0]
+            for term in terms[1:]:
+                rval = rval + term
+            return rval
+
+        return [ fancy_sum(terms) for terms in
+                [dx_terms, db_terms, d_idx_terms ] ]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']

@@ -1816,10 +1816,12 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5)
-        fc2 = theano.shared(0.9)
+        fc1 = theano.shared(0.5, name = 'fc1')
+        fc2 = theano.shared(0.9, name = 'fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
+        y.name = 'y'
         gy = theano.tensor.grad(y, x)
+        gy.name = 'gy'
         hy, updates = theano.scan(
             lambda i, gy, x: theano.tensor.grad(gy[i] * fc2, x),
             sequences=theano.tensor.arange(gy.shape[0]),
@@ -1829,7 +1831,9 @@ class T_Scan(unittest.TestCase):
         vx = numpy.array([1., 1.], dtype=theano.config.floatX)
         vA = numpy.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
         vR = numpy.array([[3.6, 1.8], [1.8, 0.9]], dtype=theano.config.floatX)
-        assert numpy.allclose(f(vx, vA), vR)
+        out = f(vx, vA)
+
+        assert numpy.allclose(out, vR)
 
     def test_cloning_no_replace_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
@@ -3479,14 +3483,15 @@ def test_compute_test_value():
     backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'raise'
     try:
-        x = tensor.vector()
+        x = tensor.vector('x')
         xv = numpy.ones(3, dtype=theano.config.floatX)
         x.tag.test_value = xv
-        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX))
+        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX), name='y')
         z, _ = theano.scan(
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
+        z.name='z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
