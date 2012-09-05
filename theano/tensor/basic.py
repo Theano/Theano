@@ -5072,21 +5072,6 @@ class Join(Op):
 
         return rval
 
-    def _native_grad(self, axis_and_tensors, grads):
-        """WRITEME"""
-        gz, = grads
-        axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        sizes_along_axis = [shape(x)[axis] for x in tensors]
-        n_dims = len(shape(tensors[0]))
-        idx = [0]
-        for s in sizes_along_axis:
-            idx.append(idx[-1] + s)
-        # The gradient w.r.t. the k-th tensor is a slice of gz along the
-        # 'axis' dimension.
-        return [gz[[slice(None)] * axis + [slice(idx[k], idx[k + 1])] + \
-                [slice(None)] * (n_dims - axis - 1)] \
-                for k in xrange(len(sizes_along_axis))]
-
     def infer_shape(self, node, ishapes):
         # ishapes[0] contains the size of the axis on which we join
         # Join op should get at least one input to join
