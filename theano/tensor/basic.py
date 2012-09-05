@@ -6004,7 +6004,22 @@ class PermuteRowElements(Op):
 
         gx = DimShuffle(gx.type.broadcastable, newdims)(gx)
         assert gx.type.broadcastable == x.type.broadcastable
-        return [gx, None, None]
+
+        # if x is an integer type, then so is the output.
+        # this means f(x+eps) = f(x) so the gradient with respect
+        # to x is zero
+        if x.type.dtype.find('int') != -1:
+            gx = x.zeros_like()
+
+        # The elements of y and of inverse both affect the output,
+        # so they are connected to the output,
+        # and the transformation isn't defined if their values
+        # are non-integer, so the gradient with respect to them is
+        # undefined
+
+        return [gx, grad_undefined(self,1,y),
+                grad_undefined(self,1,inverse)]
+
 _permute_row_elements = PermuteRowElements()
 
 
