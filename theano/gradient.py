@@ -507,7 +507,7 @@ def _node_to_pattern(node):
                         type(connection_pattern)))
         if len(connection_pattern) != len(node.inputs):
             raise ValueError('%s.connection_pattern should have %d' %
-                    (node.op, len(node.inputs)) + 'rows but has %d.' %
+                    (node.op, len(node.inputs)) + ' rows but has %d.' %
                     len(connection_pattern))
         for ii, output_pattern in enumerate(connection_pattern):
             if not isinstance(output_pattern, list):
