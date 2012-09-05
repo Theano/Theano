@@ -735,6 +735,29 @@ def _populate_grad_dict(var_to_node_to_idx,
 
             # Do type checking on the result
 
+            for i, term in enumerate(input_grads):
+
+                # Disallow Nones
+                if term is None:
+                    # We don't know what None means. in the past it has been
+                    # used to mean undefined, zero, or disconnected.
+                    # We therefore don't allow it because its usage has become
+                    # so muddied.
+                    raise TypeError(('%s returned None for' +\
+                             ' a gradient term, '
+                            'this is prohibited') % node.op)
+
+                if not isinstance(term.type,
+                        (NullType,DisconnectedType)):
+                    if not hasattr(term,'dtype'):
+                        print term
+                        assert False
+                    if term.dtype.find('float') == -1:
+                        raise TypeError(str(node.op)+'.grad illegally '
+                                ' returned an integer-valued variable.'
+                                ' (Input index %d, dtype %s' % (i,
+                                    term.dtype))
+
             #Check that op.connection_pattern matches the connectivity
             #logic driving the op.grad method
             for i, packed in \
@@ -763,29 +786,6 @@ def _populate_grad_dict(var_to_node_to_idx,
                         msg += ' You may want to implement a '
                         msg += ' connection_pattern method for it.'
                         warnings.warn(msg)
-
-            for i, term in enumerate(input_grads):
-
-                # Disallow Nones
-                if term is None:
-                    # We don't know what None means. in the past it has been
-                    # used to mean undefined, zero, or disconnected.
-                    # We therefore don't allow it because its usage has become
-                    # so muddied.
-                    raise TypeError(('%s returned None for' +\
-                             ' a gradient term, '
-                            'this is prohibited') % node.op)
-
-                if not isinstance(term.type,
-                        (NullType,DisconnectedType)):
-                    assert hasattr(term,'dtype')
-                    if term.dtype.find('float') == -1:
-                        raise TypeError(str(node.op)+'.grad illegally '
-                                ' returned an integer-valued variable.'
-                                ' (Input index %d, dtype %s' % (i,
-                                    term.dtype))
-
-
 
             #cache the result
             term_dict[node] = input_grads
