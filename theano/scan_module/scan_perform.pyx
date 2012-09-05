@@ -59,7 +59,6 @@ cimport numpy
 from theano import gof
 import time
 import copy
-from theano.sandbox import cuda
 
 
 def get_version():
