@@ -493,6 +493,9 @@ class _scalar_py_operators:
     def zeros_like(self):
         return ScalarConstant(Scalar(str(self.type.dtype)), 0)
 
+    def astype(self, dtype):
+        return cast(self, dtype)
+
 
 class ScalarVariable(_scalar_py_operators, Variable):
     pass
