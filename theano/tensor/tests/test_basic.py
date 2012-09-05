@@ -4328,7 +4328,24 @@ class T_tensorfromscalar(unittest.TestCase):
         self.assertTrue(v.shape == (), v.shape)
 
         g = grad(t, s)
-        self.assertTrue(eval_outputs([g])==1)
+        self.assertTrue(eval_outputs([g])==0.)
+
+    def test2(self):
+        s = scal.constant(56.)
+        t = as_tensor_variable(s)
+        self.assertTrue(t.owner.op is tensor_from_scalar)
+        self.assertTrue(t.type.broadcastable == (), t.type.broadcastable)
+        self.assertTrue(t.type.ndim == 0, t.type.ndim)
+        self.assertTrue(t.type.dtype == s.type.dtype)
+
+        v = eval_outputs([t])
+
+        self.assertTrue(v == 56., v)
+        self.assertTrue(isinstance(v, numpy.ndarray))
+        self.assertTrue(v.shape == (), v.shape)
+
+        g = grad(t, s)
+        self.assertTrue(eval_outputs([g])==1.)
 
 class T_scalarfromtensor(unittest.TestCase):
     def test0(self):
