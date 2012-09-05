@@ -40,18 +40,18 @@ class test_grad_sources_inputs(unittest.TestCase):
 
     def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradient terms"""
-        class retNone(gof.op.Op):
+        class retOne(gof.op.Op):
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
             def grad(self, inputs, grads):
-                return [None]
+                return [ inputs[0].zeros_like() ]
 
         i = theano.tensor.vector()
         j = theano.tensor.vector()
-        a1 = retNone().make_node(i)
+        a1 = retOne().make_node(i)
         g = _grad_sources_inputs([(a1.out, one)], None)
-        a2 = retNone().make_node(i,j)
+        a2 = retOne().make_node(i,j)
         try:
             g = _grad_sources_inputs([(a2.out, one)], None)
         except ValueError, e:
