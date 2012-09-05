@@ -3106,6 +3106,16 @@ class Alloc(gof.Op):
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
+
+    def connection_pattern(self, node):
+
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
         x = inputs[0]
         gz = grads[0]
