@@ -1547,11 +1547,25 @@ class Second(BinaryScalarOp):
     def c_code(self, node, name, (x, y), (z, ), sub):
         return "%(z)s = %(y)s;" % locals()
 
+    def connection_pattern(self):
+
+        # x is never connected because its elements are never used
+        # y is connected because its elements are copied over
+
+        return [[False],[True]]
+
     def grad(self, (x, y), (gz, )):
+
         if y.type in continuous_types:
-            return None, gz
+            # x is disconnected because the elements of x are not used
+            return DisconnectedType()(), gz
         else:
-            return None, None
+            #when y is discrete, we assume the function can be extended
+            #to deal with real-valued inputs by rounding them to the
+            #nearest integer. f(x+eps) thus equals f(x) so the gradient
+            #is zero, not disconnected or undefined
+            return DisconnectedType()(), y.zeros_like()
+
 second = Second(transfer_type(1), name='second')
 
 
