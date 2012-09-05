@@ -493,8 +493,8 @@ class GemmRelated(Op):
     declare_NS = """
         int unit = 0;
 
-        int type_num = %(_x)s->descr->type_num;
-        int type_size = %(_x)s->descr->elsize; // in bytes
+        int type_num = PyArray_DESCR(%(_x)s)->type_num;
+        int type_size = PyArray_DESCR(%(_x)s)->elsize; // in bytes
 
         npy_intp* Nx = PyArray_DIMS(%(_x)s);
         npy_intp* Ny = PyArray_DIMS(%(_y)s);
@@ -529,31 +529,31 @@ class GemmRelated(Op):
         }
         """
     check_xyz_double_or_float = """
-        if ((%(_x)s->descr->type_num != NPY_DOUBLE)
-            && (%(_x)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_x)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_x)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
 
-        if ((%(_y)s->descr->type_num != NPY_DOUBLE)
-            && (%(_y)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_y)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_y)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
 
-        if ((%(_zout)s->descr->type_num != NPY_DOUBLE)
-            && (%(_zout)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_zout)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_zout)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
 
-        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
-            ||(%(_x)s->descr->type_num != %(_zout)s->descr->type_num))
+        if ((PyArray_DESCR(%(_x)s)->type_num != PyArray_DESCR(%(_y)s)->type_num)
+            ||(PyArray_DESCR(%(_x)s)->type_num != PyArray_DESCR(%(_zout)s)->type_num))
         { PyErr_SetString(PyExc_NotImplementedError, "type(x), type(y), type(z) are not all the same"); %(fail)s; }
         """
 
     #it is not necessary that a or b have the same type as x,y,z
     check_ab_double_or_float = """
-        if ((%(_a)s->descr->type_num != NPY_DOUBLE)
-            && (%(_a)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_a)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_a)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
 
-        if ((%(_b)s->descr->type_num != NPY_DOUBLE)
-            && (%(_b)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_b)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_b)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
         """
 
@@ -919,7 +919,7 @@ class Gemm(GemmRelated):
         Nz = PyArray_DIMS(%(_zout)s);
         Sz = PyArray_STRIDES(%(_zout)s);
 
-        if (%(_zout)s->descr->type_num == NPY_FLOAT)
+        if (PyArray_DESCR(%(_zout)s)->type_num == NPY_FLOAT)
         {
             float * zoutdata = (float*)PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(float);
@@ -935,7 +935,7 @@ class Gemm(GemmRelated):
                 }
             }
         }
-        else if (%(_zout)s->descr->type_num == NPY_DOUBLE)
+        else if (PyArray_DESCR(%(_zout)s)->type_num == NPY_DOUBLE)
         {
             double * zoutdata = (double*) PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(double);
@@ -961,20 +961,20 @@ class Gemm(GemmRelated):
 
     case_float_ab_constants = """
         #define REAL float
-        float a = (%(_a)s->descr->type_num == NPY_FLOAT)
+        float a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
         ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
-        float b = (%(_b)s->descr->type_num == NPY_FLOAT) ?
+        float b = (PyArray_DESCR(%(_b)s)->type_num == NPY_FLOAT) ?
         (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
         """
     case_double_ab_constants = """
         #define REAL double
-        double a = (%(_a)s->descr->type_num == NPY_FLOAT)
+        double a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
         ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
-        double b = (%(_b)s->descr->type_num == NPY_FLOAT) ?
+        double b = (PyArray_DESCR(%(_b)s)->type_num == NPY_FLOAT) ?
         (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
@@ -1753,15 +1753,15 @@ class Dot22Scalar(GemmRelated):
     setup_z_Nz_Sz = Dot22.setup_z_Nz_Sz
 
     check_ab_double_or_float = """
-        if ((%(_a)s->descr->type_num != NPY_DOUBLE)
-            && (%(_a)s->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(%(_a)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_a)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError,
                          "type(a) is not double or float"); %(fail)s;}
 
         """
     case_float_ab_constants = """
         #define REAL float
-        float a = (%(_a)s->descr->type_num == NPY_FLOAT)
+        float a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
         ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL
@@ -1770,7 +1770,7 @@ class Dot22Scalar(GemmRelated):
 
     case_double_ab_constants = """
         #define REAL double
-        double a = (%(_a)s->descr->type_num == NPY_FLOAT)
+        double a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
         ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
         : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL

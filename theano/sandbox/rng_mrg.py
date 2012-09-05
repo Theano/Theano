@@ -272,7 +272,7 @@ class mrg_uniform(mrg_uniform_base):
                 %(ndim)s, int(PyArray_DIMS(%(size)s)[0]));
             %(fail)s
         }
-        if (%(size)s->descr->type_num != NPY_INT32)
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s
@@ -306,7 +306,7 @@ class mrg_uniform(mrg_uniform_base):
             PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
             %(fail)s
         }
-        if (%(o_rstate)s->descr->type_num != NPY_INT32)
+        if (PyArray_DESCR(%(o_rstate)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be int32");
             %(fail)s
@@ -514,7 +514,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
                 %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
-        if (%(size)s->descr->type_num != NPY_INT32)
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s

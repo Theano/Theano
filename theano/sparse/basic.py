@@ -3011,10 +3011,10 @@ class StructuredDotGradCSC(gof.Op):
         if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != NPY_INT32) {
+        if( PyArray_DESCR(%(_indices)s)->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != NPY_INT32)
+        if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
@@ -3024,18 +3024,18 @@ class StructuredDotGradCSC(gof.Op):
             || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), %(_g)s->descr->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_g)s)->type_num);
         }
 
         {   //makes it compile even though labels jump over variable definitions.
             npy_intp nnz = PyArray_DIMS(%(_indices)s)[0];
             npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
-            npy_intp Sindices = %(_indices)s->strides[0]/%(_indices)s->descr->elsize;
-            npy_intp Sindptr = %(_indptr)s->strides[0]/%(_indptr)s->descr->elsize;
+            npy_intp Sindices = %(_indices)s->strides[0]/PyArray_DESCR(%(_indices)s)->elsize;
+            npy_intp Sindptr = %(_indptr)s->strides[0]/PyArray_DESCR(%(_indptr)s)->elsize;
 
-            const npy_intp Sd1 = %(_d)s->strides[1]/%(_d)s->descr->elsize;
-            const npy_intp Sg1 = %(_g)s->strides[1]/%(_g)s->descr->elsize;
+            const npy_intp Sd1 = %(_d)s->strides[1]/PyArray_DESCR(%(_d)s)->elsize;
+            const npy_intp Sg1 = %(_g)s->strides[1]/PyArray_DESCR(%(_g)s)->elsize;
 
             const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 
@@ -3147,10 +3147,10 @@ class StructuredDotGradCSR(gof.Op):
         if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != NPY_INT32) {
+        if( PyArray_DESCR(%(_indices)s)->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != NPY_INT32)
+        if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
@@ -3160,7 +3160,7 @@ class StructuredDotGradCSR(gof.Op):
             || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), %(_g)s->descr->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_g)s)->type_num);
         }
 
         {   //makes it compile even though labels jump over variable definitions.
@@ -3168,11 +3168,11 @@ class StructuredDotGradCSR(gof.Op):
             // extract number of rows
             npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
-            npy_intp Sindices = %(_indices)s->strides[0]/%(_indices)s->descr->elsize;
-            npy_intp Sindptr = %(_indptr)s->strides[0]/%(_indptr)s->descr->elsize;
+            npy_intp Sindices = %(_indices)s->strides[0]/PyArray_DESCR(%(_indices)s)->elsize;
+            npy_intp Sindptr = %(_indptr)s->strides[0]/PyArray_DESCR(%(_indptr)s)->elsize;
 
-            const npy_intp Sd1 = %(_d)s->strides[1]/%(_d)s->descr->elsize;
-            const npy_intp Sg1 = %(_g)s->strides[1]/%(_g)s->descr->elsize;
+            const npy_intp Sd1 = %(_d)s->strides[1]/PyArray_DESCR(%(_d)s)->elsize;
+            const npy_intp Sg1 = %(_g)s->strides[1]/PyArray_DESCR(%(_g)s)->elsize;
 
             const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 

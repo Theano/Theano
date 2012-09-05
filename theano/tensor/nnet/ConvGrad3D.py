@@ -217,7 +217,7 @@ class ConvGrad3D(theano.Op):
                   PyArray_DIMS(%(dCdW)s)[3]!=dims[3] ||
                   PyArray_DIMS(%(dCdW)s)[4]!=dims[4] ){
                Py_XDECREF(%(dCdW)s);
-               %(dCdW)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(V)s->descr->type_num);
+               %(dCdW)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, PyArray_DESCR(%(V)s)->type_num);
 
                if (!(%(dCdW)s)) {
                   PyErr_Format(PyExc_MemoryError,"ConvGrad3D: Could not allocate dCdW");

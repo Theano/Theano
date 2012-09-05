@@ -794,8 +794,8 @@ def ____gemm_code(check_ab, a_init, b_init):
     return """
         const char * error_string = NULL;
 
-        int type_num = _x->descr->type_num;
-        int type_size = _x->descr->elsize; // in bytes
+        int type_num = PyArray_DESCR(_x)->type_num;
+        int type_size = PyArray_DESCR(_x)->elsize; // in bytes
 
         npy_intp* Nx = PyArray_DIMS(_x);
         npy_intp* Ny = PyArray_DIMS(_y);
@@ -815,20 +815,20 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         %(check_ab)s
 
-        if ((_x->descr->type_num != NPY_DOUBLE) 
-            && (_x->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(_x)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_x)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != NPY_DOUBLE) 
-            && (_y->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(_y)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_y)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != NPY_DOUBLE) 
-            && (_y->descr->type_num != NPY_FLOAT))
+        if ((PyArray_DESCR(_y)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_y)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_x->descr->type_num != _y->descr->type_num)
-            ||(_x->descr->type_num != _z->descr->type_num))
+        if ((PyArray_DESCR(_x)->type_num != PyArray_DESCR(_y)->type_num)
+            ||(PyArray_DESCR(_x)->type_num != PyArray_DESCR(_z)->type_num))
             goto _dot_execute_fallback;
 
 

@@ -296,7 +296,7 @@ class Conv3D(theano.Op):
             PyArray_DIMS(%(H)s)[3]!=dims[3] ||
             PyArray_DIMS(%(H)s)[4]!=dims[4]){
                 Py_XDECREF(%(H)s);
-                %(H)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(V)s->descr->type_num);
+                %(H)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, PyArray_DESCR(%(V)s)->type_num);
                 if (!(%(H)s)) {
                     PyErr_Format(PyExc_MemoryError,"Conv3D: Could not allocate output.");
                     %(fail)s

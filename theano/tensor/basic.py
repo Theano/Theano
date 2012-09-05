@@ -4042,10 +4042,10 @@ class Subtensor(Op):
 
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
-        Py_INCREF(%(x)s->descr);
+        Py_INCREF(PyArray_DESCR(%(x)s));
         PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
                 &PyArray_Type,
-                %(x)s->descr,
+                PyArray_DESCR(%(x)s),
                 %(view_ndim)s,
                 PyArray_DIMS(%(x)s),
                 PyArray_STRIDES(%(x)s),
