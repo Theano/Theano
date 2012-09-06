@@ -2,6 +2,8 @@ import theano
 from theano.tensor import basic as T
 from theano.misc import strutil
 import numpy as N
+from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
 
 
 #TODO: speed up by reordering loops. Should pass through the videos once, incrementing all weight gradients, rather
@@ -30,14 +32,20 @@ class ConvGrad3D(theano.Op):
         V,d,W_shape, dCdH = node.inputs
         return [ ( W_shape[0], W_shape[1], W_shape[2], W_shape[3], W_shape[4] ) ]
 
+    def connection_pattern(self, node):
+
+        return [[True], [True], [False], [True]]
+
     def grad(self,inputs, output_gradients):
         C,d, WShape, B = inputs
         dLdA ,= output_gradients
 
         z = T.zeros_like(C[0,0,0,0,:])
         dLdC = convTransp3D( dLdA, z, d, B, C.shape[1:4])
-        dLdd = None #not differentiable, since d is not continuous
-        dLdWShape = None #not differentiable, since d is not continuous
+        # d actually does affect the outputs, so it's not disconnected
+        dLdd = grad_undefined(self, 1, d)
+        # The shape of the weights doesn't affect the output elements
+        dLdWShape = DisconnectedType()()
         dLdB = conv3D( C, dLdA, T.zeros_like(B[0,0,0,0,:]), d)
 
         return [ dLdC, dLdd, dLdWShape, dLdB ]
