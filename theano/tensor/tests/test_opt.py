@@ -3493,7 +3493,11 @@ class TestMakeVector(utt.InferShapeTester):
                 for var, grval in zip((b, i, d), g_val):
                     float_inputs = []
                     if var.dtype.startswith('int'):
-                        assert grval == 0
+                        pass
+                        # Currently we don't do any checks on these variables
+                        # verify_grad doesn't support integer inputs yet
+                        # however, the gradient on them is *not* defined to
+                        # be 0
                     elif var not in inputs:
                         assert grval == 0
                     else:
