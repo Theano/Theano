@@ -606,7 +606,8 @@ class Elemwise(Op):
                 # the right thing to do .. have to talk to Ian and James
                 # about it
 
-                if bgrads[jdx] is None:
+                if bgrads[jdx] is None or \
+                        isinstance(bgrads[jdx].type, DisconnectedType):
                     pass
                 elif eval_point is not None:
                     if rop_out is None:
