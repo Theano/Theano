@@ -166,9 +166,11 @@ class T_OpContractMixin(object):
 class InferShapeTester(unittest.TestCase):
     def setUp(self):
         seed_rng()
+        # Take into account any mode that may be defined in a child class
+        mode = getattr(self, 'mode', theano.compile.get_default_mode())
         # This mode seems to be the minimal one including the shape_i
         # optimizations, if we don't want to enumerate them explicitly.
-        self.mode = theano.compile.get_default_mode().including("canonicalize")
+        self.mode = mode.including("canonicalize")
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
                            excluding=None):
