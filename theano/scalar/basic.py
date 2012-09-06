@@ -1771,7 +1771,7 @@ class Trunc(UnaryScalarOp):
         return numpy.trunc(x)
 
     def grad(self, (x,), (gz,)):
-        return x.zeros_like().astype(theano.config.floatX)
+        return [ x.zeros_like().astype(theano.config.floatX) ]
 
     def c_code(self, node, name, (x,), (z,), sub):
         return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()
