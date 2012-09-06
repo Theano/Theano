@@ -2199,6 +2199,11 @@ def mul(x, y):
     if x_is_sparse_variable and y_is_sparse_variable:
         return mul_s_s(x, y)
     elif x_is_sparse_variable and not y_is_sparse_variable:
+
+        # mul is unimplemented if the dtypes differ
+        if y.dtype == 'float64' and x.dtype == 'float32':
+            x = x.astype('float64')
+
         return mul_s_d(x, y)
     elif y_is_sparse_variable and not x_is_sparse_variable:
         return mul_s_d(y, x)
