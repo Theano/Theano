@@ -19,6 +19,7 @@ import theano
 from theano import tensor
 import numpy
 from theano.gof import Op, Apply
+from theano.gradient import grad_undefined
 
 '''
 Special Op created to test what happens when you have one op that is not
@@ -45,7 +46,7 @@ class BreakRop(Op):
         out[0] = x
 
     def grad(self, inp, grads):
-        return [None]
+        return [ grad_undefined(self, 0, inp[0]) ]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -71,7 +72,7 @@ class RopLop_checker(unittest.TestCase):
                              5 + self.rng.randint(30))
 
     def check_nondiff_rop(self, y):
-        """ If you op is not differentiable(so you can't define Rop)
+        """ If your op is not differentiable(so you can't define Rop)
         test that an error is raised."""
         raised = False
         try:
@@ -80,7 +81,7 @@ class RopLop_checker(unittest.TestCase):
             raised = True
         if not raised:
             self.fail((
-                'Op did not raised an error even though the function'
+                'Op did not raise an error even though the function'
                 ' is not differentiable'))
 
     def check_mat_rop_lop(self, y, out_shape):
@@ -136,7 +137,7 @@ class RopLop_checker(unittest.TestCase):
 
     def check_rop_lop(self, y, out_shape):
         """
-        As check_mat_rop_lop, except the input is self.x witch is a
+        As check_mat_rop_lop, except the input is self.x which is a
         vector. The output is still a vector.
 
         """
@@ -342,3 +343,4 @@ class test_RopLop(RopLop_checker):
             all_outs.extend(o)
         f = theano.function([m, v, m_, v_], all_outs)
         f(mval, vval, m_val, v_val)
+
