@@ -672,7 +672,7 @@ class CSM(gof.Op):
     the sparse matrix. Fancy indexing with numpy.ndarray
     should be used for this purpose.
 
-    :param data: One dimensionnal tensor representing
+    :param data: One dimensional tensor representing
                  the data of the sparse to construct.
     :param indices: One dimensional tensor of integers
                     representing the indices of the sparse
@@ -680,7 +680,7 @@ class CSM(gof.Op):
     :param indptr: One dimensional tensor of integers
                    representing the indice pointer for
                    the sparse matrix to construct.
-    :param shape: One dimensionnal tensor of integers
+    :param shape: One dimensional tensor of integers
                   representing the shape of the sparse
                   matrix to construct.
 
