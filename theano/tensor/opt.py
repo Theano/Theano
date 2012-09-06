@@ -542,15 +542,12 @@ class MakeVector(T.Op):
     def grad(self, inputs, output_gradients):
         # If the output is of an integer dtype, no gradient shall pass
         if 'int' in self.dtype:
-            return [None] * len(inputs)
+            return [ipt.zeros_like().astype(theano.config.floatX)
+                    for ipt in inputs]
 
         grads = []
         for i, inp in enumerate(inputs):
-            if 'int' in inp.dtype:
-                # No gradient wrt integer inputs
-                grads.append(None)
-            else:
-                grads.append(output_gradients[0][i])
+            grads.append(output_gradients[0][i])
         return grads
 
     def R_op(self, inputs, eval_points):
