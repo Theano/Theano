@@ -15,6 +15,7 @@ from theano.gof import Apply
 
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
+from theano.gradient import grad_not_implemented
 
 
 ############
@@ -903,7 +904,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
                     sm, tensor.fill(dy, -1), y_idx_range, y_idx),
                 axis=1)
         g_sm = dy.dimshuffle(0, 'x') * g_dx
-        g_y_idx = None
+        g_y_idx = grad_not_implemented(self, 2, y_idx)
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
@@ -1142,7 +1143,7 @@ class CrossentropyCategorical1Hot(gof.Op):
         coding, one_of_n = inp
         g_y, = grads
         return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n),
-                None]
+                grad_not_implemented(self, 1, one_of_n)]
 
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 
