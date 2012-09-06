@@ -1202,7 +1202,7 @@ class Mul(ScalarOp):
                         str(gz.type))
 
         if output_type in discrete_types:
-            return [ipt.zeros_like.astype(theano.config.floatX)
+            return [ipt.zeros_like().astype(theano.config.floatX)
                     for ipt in inputs]
 
         for input in inputs:
