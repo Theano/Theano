@@ -1911,6 +1911,8 @@ def local_subtensor_of_alloc(node):
 
     nw_val = val[tuple(val_slices)]
     nw_dims += dims[len(slices):]
+    if nw_val.ndim > len(nw_dims):
+        return False
     rval = T.alloc(nw_val, *nw_dims)
     if type(rval) not in (list, tuple):
         rval = [rval]
