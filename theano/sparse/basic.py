@@ -255,11 +255,13 @@ def sp_zeros_like(x):
     :return: The same as `x` with zero entries
              for all element.
     """
+
     # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
-    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
-                                numpy.array([]), tensor.zeros_like(indptr),
-                                shape)
+    return CSM(format=x.format)(data=numpy.array([], dtype=x.type.dtype),
+                                indices=numpy.array([]),
+                                indptr=tensor.zeros_like(indptr),
+                                shape=shape)
 
 
 class _sparse_py_operators:
