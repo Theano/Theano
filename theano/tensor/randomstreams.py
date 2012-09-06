@@ -164,7 +164,6 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
     def build(self, mode, memo):
         """override `Component.build` """
         if self not in memo:
-            print 'creating RandomStreamsInstance'
             memo[self] = RandomStreamsInstance(self, memo,
                                                self.default_instance_seed)
         return memo[self]
