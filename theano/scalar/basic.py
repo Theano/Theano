@@ -27,6 +27,7 @@ from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType
+from theano.gradient import grad_undefined
 
 builtin_complex = complex
 builtin_int = int
@@ -1159,8 +1160,13 @@ class Add(ScalarOp):
             raise NotImplementedError()
         if self(*inputs).type in discrete_types:
             assert gz is not None
-            retval = [ inp.zeros_like.astype(theano.config.floatX)
-                        for inp in inputs]
+            retval = []
+            for ii, inp in enumerate(inputs):
+                if hasattr(inp, 'zeros_like'):
+                    retval.append(
+                            inp.zeros_like.astype(theano.config.floatX))
+                else:
+                    retval.append(grad_undefined(self, ii, inp))
         else:
             retval = []
             for i in inputs:
