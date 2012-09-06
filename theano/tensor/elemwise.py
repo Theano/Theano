@@ -1657,7 +1657,7 @@ class Prod(CAReduceDtype):
 
     def grad(self, inp, grads):
         '''
-        The grad of this Op could be very easy, it is was not for the case
+        The grad of this Op could be very easy, if it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
         together to form the product).
 
@@ -1703,8 +1703,11 @@ class Prod(CAReduceDtype):
         '''
         prod_in, = inp
         gz, = grads
-        if prod_in.dtype[0:3] in ('int', 'uin'):
-            return [None]
+
+        out = self(*inp)
+
+        if out.dtype[0:3] in ('int', 'uin'):
+            return [ prod_in.zeros_like().astype(theano.config.floatX) ]
 
         # Prepare the broadcasting that is used everywhere to broadcast
         # over the original groups (ie. broadcast over the elements of a given
