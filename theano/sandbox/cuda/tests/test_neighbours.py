@@ -20,6 +20,7 @@ else:
 class T_GpuImages2Neibs(theano.sandbox.test_neighbours.T_Images2Neibs):
     mode = mode_with_gpu
     op = GpuImages2Neibs
+    dtypes = ['float32']
 
 if __name__ == '__main__':
     unittest.main()
