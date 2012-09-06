@@ -989,7 +989,19 @@ class DenseFromSparse(gof.op.Op):
 
     def grad(self, (x, ), (gz, )):
         if self.sparse_grad:
-            return [sp_ones_like(x) * gz]
+            left = sp_ones_like(x)
+            right = gz
+
+            # Do upcasting if necessary to avoid an unimplemented case
+            # of mul
+
+            if right.dtype == 'float64' and left.dtype == 'float32':
+                left = left.astype('float64')
+
+            if right.dtype == 'float32' and left.dtype == 'float64':
+                right = right.astype('float64')
+
+            return [left * right]
         else:
             return [SparseFromDense(x.type.format)(gz)]
 
