@@ -1260,7 +1260,7 @@ class Scan(PureOp):
         # the gradients with respect to all outputs)
         def compute_gradient(y, g_y):
             gmp = gradient.grad_sources_inputs(
-                        [(y, g_y)], diff_inputs, False)
+                        [(y, g_y)], diff_inputs)
             return [gmp.get(p, None) for p in diff_inputs]
 
         # 6. clean the outputs (i.e. remove update rules)
