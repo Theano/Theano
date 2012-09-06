@@ -250,7 +250,23 @@ def Rop(f, wrt, eval_points):
                         x = as_tensor_variable(x)
                     if not isinstance(y, gof.Variable):
                         y = as_tensor_variable(y)
-                    y = x.type.filter_variable(y)
+                    try:
+                        y = x.type.filter_variable(y)
+                    except TypeError:
+                        # This is a hack
+                        # Originally both grad and Rop were written
+                        # with the assumption that a variable and the
+                        # gradient wrt that variable would have the same
+                        # dtype. This was a bad assumption because the
+                        # gradient wrt an integer can take on non-integer
+                        # values.
+                        # grad is now fixed, but Rop is not, so when grad
+                        # does the right thing and violates this assumption
+                        # we have to make it be wrong for Rop to keep working
+                        # Rop should eventually be upgraded to handle integers
+                        # correctly, the same as grad
+                        y = theano.tensor.cast(y,x.type.dtype)
+                        y = x.type.filter_variable(y)
                     assert x.type == y.type
                     same_type_eval_points.append(y)
                 else:
