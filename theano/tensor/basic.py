@@ -480,6 +480,11 @@ def get_constant_value(v):
             data = v.tag.unique_value
         else:
             data = v.data
+        # handle case where data is numpy.array([])
+        if hasattr(data, 'shape') and len(data.shape) == 0 or \
+            __builtins__['max'](data.shape) == 0:
+            assert numpy.all(numpy.array([])==data)
+            return data
         try:
             numpy.complex(data)  # works for all numeric scalars
             return data
