@@ -148,7 +148,13 @@ class BinCountOp(theano.Op):
         z[0] = np.bincount(x, weights=weights, minlength=self.minlength)
 
     def grad(self, inputs, outputs_gradients):
-        return [None for i in inputs]
+        output = self(*inputs)
+
+        if output.dtype.find('int') != -1:
+            return [ inp.zeros_like().astype(theano.config.floatX)
+                    for inp in inputs ]
+
+        raise NotImplementedError()
 
     def infer_shape(self, node, ins_shapes):
         x = node.inputs[0]
