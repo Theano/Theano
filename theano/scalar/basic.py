@@ -1124,11 +1124,13 @@ class Minimum(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         assert gz.type not in complex_types
         # max is not defined for complex_types
-        gx, gy = None, None
-        if x.type in float_types:
-            gx = cast(eq(minimum(x, y), x) * gz, x.type.dtype)
-        if y.type in float_types:
-            gy = cast(eq(minimum(x, y), y) * gz, y.type.dtype)
+
+        output = minimum(x,y)
+        if output.type in discrete_types:
+            return [x.zeros_like().astype(theano.config.floatX),
+                    y.zeros_like().astype(theano.config.floatX)]
+        gx = eq(output, x) * gz
+        gy = eq(output, y) * gz
         return (gx, gy)
 
 minimum = Minimum(upcast_out, name='minimum')
@@ -1225,15 +1227,13 @@ class Sub(BinaryScalarOp):
         if gz.type in complex_types:
             raise NotImplementedError()
 
-        if x.type in float_types:
-            first_part = cast(gz, x.type.dtype)
-        else:
-            first_part = None
+        if (x-y).type in discrete_types:
+            return [x.zeros_like().astype(theano.config.floatX),
+                    y.zeros_like().astype(theano.config.floatX)]
 
-        if y.type in float_types:
-            second_part = cast(-gz, y.type.dtype)
-        else:
-            second_part = None
+        first_part = gz
+        second_part = -gz
+
         return first_part, second_part
 sub = Sub(upcast_out, name='sub')
 
@@ -1767,7 +1767,7 @@ class Trunc(UnaryScalarOp):
         return numpy.trunc(x)
 
     def grad(self, (x,), (gz,)):
-        return None,
+        return x.zeros_like().astype(theano.config.floatX)
 
     def c_code(self, node, name, (x,), (z,), sub):
         return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()

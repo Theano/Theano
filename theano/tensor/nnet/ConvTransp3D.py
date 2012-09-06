@@ -2,6 +2,8 @@ import numpy as N
 from theano.tensor import basic as T
 from theano.misc import strutil
 import theano
+from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
 
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
@@ -42,6 +44,9 @@ class ConvTransp3D(theano.Op):
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
         return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[4])]
 
+    def connection_pattern(self, node):
+        return [[True], [True], [True], [True], [False]]
+
     def grad(self,inputs, output_gradients):
         W,b,d,H, RShape = inputs
         dCdR ,= output_gradients
@@ -49,8 +54,10 @@ class ConvTransp3D(theano.Op):
         WShape = W.shape
         dCdW = convGrad3D(dCdR,d,WShape,H)
         dCdb = T.sum(dCdR,axis=(0,1,2,3))
-        dCdd = None #not differentiable, since d is not continuous
-        dCdRShape = None #not differentiable, since RShape is not continuous
+        # not differentiable, since d affects the output elements
+        dCdd = grad_undefined(self,2,d)
+        # disconnected, since RShape just determines the output shape
+        dCdRShape = DisconnectedType()()
 
 
         if 'name' in dir(dCdR) and dCdR.name is not None:

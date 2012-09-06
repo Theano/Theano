@@ -1612,7 +1612,7 @@ class Sum(CAReduceDtype):
                 new_dims.append(i)
                 i += 1
         ds_op = DimShuffle(gz.type.broadcastable, new_dims)
-        gx = Elemwise(scalar.second)(x, ds_op(gz).astype(x.dtype))
+        gx = Elemwise(scalar.second)(x, ds_op(gz))
         return [gx]
 
     def R_op(self, inputs, eval_points):
