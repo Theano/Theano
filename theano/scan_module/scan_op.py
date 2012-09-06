@@ -31,7 +31,6 @@ from theano import tensor
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
-#from theano.sandbox import cuda
 from theano.compile.profiling import ScanProfileStats
 
 import scan_utils
@@ -51,8 +50,26 @@ class Scan(PureOp):
         """
         :param inputs: inputs of the inner function of scan
         :param outputs: outputs of the inner function of scan
-        :param properties: dictionary containing different properties of
-                        the scan op.
+        :param info: dictionary containing different properties of
+            the scan op (like number of different types of
+            arguments, name, mode, if it should run on GPU or
+            not, etc.)
+        :param typeConstructor: function that constructs a Theano TensorType
+            able to represent a float32 ndarray.
+
+        Note: ``typeConstructor`` had been added to refactor how Theano
+        deals with the GPU. If it runs on the GPU, scan needs to construct
+        certain outputs (those who reside in the GPU memory) as CudaNdarray.
+        However we can not import cuda in this file (as it is in sandbox,
+        and not available on each machine) so the workaround is that the GPU
+        optimization (which is aware of cuda types) passes to the
+        constructor of this class a function that is able to construct
+        CudaNdarray. This way the class Scan does not need to be aware of
+        CudaNdarray, it just constructs any float32 tensor using this
+        function (which by default constructs normal tensors). Note that the
+        second assumption in this code is that any float32 output or input
+        will be moved on the GPU if the optimization gets applied (following
+        Theano's philosophy of moving as much as possible on gpu).
         """
         # adding properties into self
         self.inputs = inputs
@@ -67,29 +84,57 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
+        tensorConstructor = lambda broadcastable, dtype: TensorType(
+            broadcastable=broadcastable, dtype=dtype)
         if typeConstructor is None:
-            typeConstructor = lambda broadcastable, dtype: TensorType(
-                broadcastable=broadcastable, dtype=dtype)
+            typeConstructor = tensorConstructor
 
         while idx < self.n_mit_mot_outs:
             # Not that for mit_mot there are several output slices per
             # output sequence
             o = outputs[idx]
-            self.output_types.append(
-                typeConstructor(
-                    broadcastable=(False,) + o.type.broadcastable,
-                    dtype=o.type.dtype)
-                        )
+            # Scan assumes that only variables of dtype float32 might need a
+            # special constructor (i.e. CudaNdarray constructor) when the
+            # code is running on GPU, as it is the only type supported by
+            # Theano yet. Therefore only for dtype float32 we use the passed
+            # type constructor ``typeConstructor``. For anything else we
+            # know that even if we run it on the GPU we still construct
+            # normal Theano tensors.
+            if o.type.dtype in ['float32']:
+                self.output_types.append(
+                    typeConstructor(
+                        broadcastable=(False,) + o.type.broadcastable,
+                        dtype=o.type.dtype))
+            else:
+                self.output_types.append(
+                    tensorConstructor(
+                        broadcastable=(False,) + o.type.broadcastable,
+                        dtype=o.type.dtype))
+
             idx += len(self.mit_mot_out_slices[jdx])
             jdx += 1
 
         # mit_sot / sit_sot / nit_sot
         end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
+
         for o in outputs[idx:end]:
-            self.output_types.append(
-                typeConstructor(
-                    broadcastable=(False,) + o.type.broadcastable,
-                    dtype=o.type.dtype))
+            # Scan assumes that only variables of dtype float32 might need a
+            # special constructor (i.e. CudaNdarray constructor) when the
+            # code is running on GPU, as it is the only type supported by
+            # Theano yet. Therefore only for dtype float32 we use the passed
+            # type constructor ``typeConstructor``. For anything else we
+            # know that even if we run it on the GPU we still construct
+            # normal Theano tensors.
+            if o.type.dtype in ['float32']:
+                self.output_types.append(
+                    typeConstructor(
+                        broadcastable=(False,) + o.type.broadcastable,
+                        dtype=o.type.dtype))
+            else:
+                self.output_types.append(
+                    tensorConstructor(
+                        broadcastable=(False,) + o.type.broadcastable,
+                        dtype=o.type.dtype))
         # shared outputs + possibly the ending condition
         for o in outputs[end:]:
             self.output_types.append(o.type)
@@ -572,7 +617,7 @@ class Scan(PureOp):
                         cython_destroy_map,
                         args,
                         outs,
-                        self)
+                        self, node)
         except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
@@ -757,8 +802,6 @@ class Scan(PureOp):
             Y sequence outputs y_1, y_2, ... y_<self.n_outs>
 
         """
-        # In order to be able to allocate cuda ndarrays if needed
-        from theano.sandbox import cuda
         # 1. Unzip the number of steps and sequences. If number of steps is
         # negative flip sequences around, and make n_steps positive
         t0_call = time.time()
@@ -949,14 +992,10 @@ class Scan(PureOp):
                         self.vector_outs[j] = True
                     dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
-                        outs[j][0].shape[0] < store_steps[j] or
-                        outs[j][0].shape[1:] != shape[1:] or
-                        outs[j][0].dtype != dtype):
-                        if self.gpu:
-                            _cuda = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray
-                            outs[j][0] = _cuda.zeros(shape)
-                        else:
-                            outs[j][0] = numpy.zeros(shape, dtype)
+                            outs[j][0].shape[0] < store_steps[j] or
+                            outs[j][0].shape[1:] != shape[1:] or
+                            outs[j][0].dtype != dtype):
+                        outs[j][0] = node.outputs[j].type.value_zeros(shape)
                     elif outs[j][0].shape[0] != store_steps[j]:
                         outs[j][0] = outs[j][0][:store_steps[j]]
                     outs[j][0][pos[j]] = output_storage[jout].storage[0]
@@ -994,24 +1033,14 @@ class Scan(PureOp):
                     # This way, there will be no information overwritten
                     # before it is read (as it used to happen).
                     shape = (pdx,) + outs[idx][0].shape[1:]
-                    if cuda.cuda_available and isinstance(outs[idx][0],
-                                                          cuda.CudaNdarray):
-                        _cuda = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray
-                        tmp = _cuda.zeros(shape)
-                    else:
-                        tmp = numpy.empty(shape)
+                    tmp = node.outputs[idx].type.value_zeros(shape)
                     tmp[:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx] - pdx] = outs[idx][0][pdx:]
                     outs[idx][0][store_steps[idx] - pdx:] = tmp
                     del tmp
                 else:
                     shape = (store_steps[idx] - pdx,) + outs[idx][0].shape[1:]
-                    if cuda.cuda_available and isinstance(outs[idx][0],
-                                                          cuda.CudaNdarray):
-                        _cuda = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray
-                        tmp = _cuda.zeros(shape)
-                    else:
-                        tmp = numpy.empty(shape)
+                    tmp = node.outputs[idx].type.value_zeros(shape)
                     tmp[:] = outs[idx][0][pdx:]
                     outs[idx][0][store_steps[idx] - pdx:] = outs[idx][0][:pdx]
                     outs[idx][0][:store_steps[idx] - pdx] = tmp
