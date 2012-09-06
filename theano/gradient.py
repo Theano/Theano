@@ -792,7 +792,8 @@ def _populate_grad_dict(var_to_node_to_idx,
                             constant_value = tensor.get_constant_value(term)
                         except:
                             msg = "%s.grad returned %s of type %s for input"
-                            msg += " %d. This input is only connected to "
+                            msg += " %d. This input's only connections to "
+                            msg += "the cost through this op are via "
                             msg += "integer-valued outputs so it should be "
                             msg += "NullType, DisconnectedType, or some form "
                             msg += "of zeros. It is not NullType or "
