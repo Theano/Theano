@@ -3898,7 +3898,12 @@ class Subtensor(Op):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
-        return ([IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)]
+        output = self(*inputs)
+        if output.dtype.find('int') != -1:
+            first = x.zeros_like().astype(theano.config.floatX)
+        else:
+            first = IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)
+        return ([first]
                 + [DisconnectedType()()] * len(rest))
 
     def connection_pattern(self, node):
