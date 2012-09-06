@@ -2061,7 +2061,9 @@ class MulSD(gof.op.Op):
             y = tensor.cast(y, dtype)
 
         if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "MulSD not implemented for different input dtypes. "
+                "Got %s and %s." % (x.type.dtype, y.type.dtype))
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         # Broadcasting of the sparse matrix is not supported.
