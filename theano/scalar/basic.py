@@ -1149,15 +1149,16 @@ class Add(ScalarOp):
             return z + " = " + " + ".join(inputs) + ";"
 
     def grad(self, inputs, (gz, )):
-        retval = []
         if gz.type in complex_types:
             raise NotImplementedError()
-        elif gz.type in float_types:
-            for i in inputs:
-                retval += [gz]
-        else:
+        if self(*inputs).type in discrete_types:
+            assert gz is not None
             retval = [ inp.zeros_like.astype(theano.config.floatX)
-                    for inp in inputs]
+                        for inp in inputs]
+        else:
+            retval = []
+            for i in inputs:
+                    retval += [gz]
         return retval
 add = Add(upcast_out, name='add')
 
