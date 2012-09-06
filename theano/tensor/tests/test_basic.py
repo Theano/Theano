@@ -2019,27 +2019,16 @@ class T_max_and_argmax(unittest.TestCase):
 
     def test_arg_grad(self):
         """
-        The test checks if computing the gradient of argmax(x).sum() fails
-        because there is no differentiable path from cost to the input and
-        not because of an error of the grad method of the op
+        The test checks that the gradient of argmax(x).sum() is 0
         """
-
-        raise KnownFailureTest("The desired behavior of the grad method in this case is currently under debate. In any case, the result should be to return NaN or 0, not to report a disconnected input.")
 
 
         x = matrix()
         cost = argmax(x, axis=0).sum()
         value_error_raised = False
-        try:
-            gx = grad(cost, x)
-        except ValueError:
-            # It is the error saying there is no differentiable path to the
-            # input
-            value_error_raised = True
-        if not value_error_raised:
-            raise ValueError(('Test failed because exception saying '
-                              'no differentiable path found was not '
-                              'raised'))
+        gx = grad(cost, x)
+        val = tensor.get_constant_value(gx)
+        assert val == 0.0
 
 
     def test_grad(self):
