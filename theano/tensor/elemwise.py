@@ -685,6 +685,10 @@ class Elemwise(Op):
 
             theano.config.compute_test_value = prev_setting
 
+        if not isinstance(scalar_igrads,(list,tuple)):
+            raise TypeError('%s.grad returned %s instead of list or tuple' %
+                    (str(self.scalar_op), str(type(scalar_igrads))))
+
         nd = len(inputs[0].type.broadcastable)  # this is the same for everyone
 
         def transform(r):
