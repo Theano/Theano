@@ -782,6 +782,9 @@ class CSM(gof.Op):
                                               indptr.copy()), shape.copy(),
                                              copy=False)
 
+    def connection_pattern(self, node):
+        return [[True],[False],[False],[False]]
+
     def grad(self, (x_data, x_indices, x_indptr, x_shape), (g_out,)):
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
         # unpack the data vector and wrap it as a 1d TensorType

@@ -712,6 +712,12 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         am_shp = idx_shp
         return [nll_shp, sm_shp, am_shp]
 
+    def connection_pattern(self, node):
+
+        return [[True,True,True],#x
+                [True,True,True],#b
+                [True,True,False]]#y_idx
+
     def grad(self, inp, grads):
         x, b, y_idx = inp
         g_nll, g_sm, g_am = grads
