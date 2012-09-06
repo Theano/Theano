@@ -75,6 +75,11 @@ AddConfigVar('force_device',
         BoolParam(False, allow_override=False),
         in_c_key=False)
 
+AddConfigVar('print_active_device',
+        "Print active device at startup",
+        BoolParam(True, allow_override=False),
+        in_c_key=False)
+
 # Do not add FAST_RUN_NOGC to this list (nor any other ALL CAPS shortcut).
 # The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'.
 # The old all capital letter way of working is deprecated as it is not
