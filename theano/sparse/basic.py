@@ -2010,7 +2010,9 @@ class MulSS(gof.op.Op):
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
         if x.type != y.type:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                    "MulSS not supported for differing types. "
+                    "Got %s and %s." % (str(x.type), str(y.type)))
         return gof.Apply(self, [x, y], [x.type()])
 
     def perform(self, node, (x, y), (out, )):
