@@ -1098,11 +1098,15 @@ class Maximum(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         assert gz.type not in complex_types
         # max is not defined for complex_types
-        gx, gy = None, None
-        if x.type in float_types:
-            gx = cast(eq(maximum(x, y), x) * gz, x.type.dtype)
-        if y.type in float_types:
-            gy = cast(eq(maximum(x, y), y) * gz, y.type.dtype)
+
+        output = self(x,y)
+
+        if output.type in discrete_types:
+            return [x.zeros_like().astype(theano.config.floatX),
+                    y.zeros_like().astype(theano.config.floatX)]
+
+        gx = eq(output, x) * gz
+        gy = eq(output, y) * gz
         return (gx, gy)
 maximum = Maximum(upcast_out, name='maximum')
 
