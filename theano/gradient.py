@@ -292,7 +292,7 @@ def Rop(f, wrt, eval_points):
     return format_as(using_list, using_tuple, rval)
 
 
-def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
+def Lop(f, wrt, eval_points, consider_constant=None,
         disconnected_inputs='raise'):
     """
     Computes the L operation on `f` wrt to `wrt` evaluated at points given
@@ -345,8 +345,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 
     gmap = grad_sources_inputs(
         arg1,
-        arg2,
-        warn_type=warn_type)
+        arg2)
 
     # Note : If p is not in gmap there can be several reasons, among which
     # is the fact that p might not be part of the computational graph. A
@@ -385,7 +384,7 @@ def Lop(f, wrt, eval_points, consider_constant=None, warn_type=False,
 # Gradient
 #########################
 
-def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
+def grad(cost, wrt, g_cost=None, consider_constant=None,
         disconnected_inputs='raise', add_names=True):
     """
     :type cost: Scalar (0-dimensional) Variable.
@@ -395,9 +394,6 @@ def grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False,
         ``ones_like(cost)``.
     :param consider_constant: a list of expressions not to backpropagate
         through
-
-    :param warn_type: a value of True will cause warnings to be logged for any
-        Op that emits a gradient that does not match its input type.
 
     :type disconnected_inputs: string
     :param disconnected_inputs: Defines the behaviour if some of the variables
@@ -675,9 +671,6 @@ def _populate_grad_dict(var_to_node_to_idx,
 
         wrt: the minimal set of variables that must be included in grad_dict
 
-        warn_type: if True, log a warning when a gradient term for a variable
-                    has a different type from that variable
-
         cost_name: The name of the cost being differentiated, optional.
                     used to name the grad with respect to x as
                     (d<cost_name>/dx)
@@ -839,7 +832,7 @@ def _populate_grad_dict(var_to_node_to_idx,
                         raise TypeError(msg)
                     else:
                         msg += ' You may want to implement a '
-                        msg += ' connection_pattern method for it.'
+                        msg += 'connection_pattern method for it.'
                         warnings.warn(msg)
 
             #cache the result
@@ -1393,7 +1386,7 @@ Exception args: %s""" % (self.err_pos, self.arg,
 verify_grad.E_grad = GradientError
 
 
-def jacobian(expression, wrt, consider_constant=None, warn_type=False,
+def jacobian(expression, wrt, consider_constant=None,
              disconnected_inputs='raise'):
     """
     :type expression: Vector (1-dimensional) Variable
@@ -1401,9 +1394,6 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
 
     :param consider_constant: a list of expressions not to backpropagate
         through
-
-    :param warn_type: a value of True will cause warnings to be logged for any
-        Op that emits a gradient that does not match its input type.
 
     :type disconnected_inputs: string
     :param disconnected_inputs: Defines the behaviour if some of the variables
@@ -1448,7 +1438,6 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
             rval = grad(expr[idx],
                      inp,
                      consider_constant=consider_constant,
-                     warn_type=warn_type,
                      disconnected_inputs=disconnected_inputs)
             rvals.append(rval)
         return rvals
@@ -1466,7 +1455,7 @@ def jacobian(expression, wrt, consider_constant=None, warn_type=False,
     return format_as(using_list, using_tuple, jacobs)
 
 
-def hessian(cost, wrt, consider_constant=None, warn_type=False,
+def hessian(cost, wrt, consider_constant=None,
              disconnected_inputs='raise'):
     """
     :type cost: Scalar (0-dimensional) Variable.
@@ -1475,9 +1464,6 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
 
     :param consider_constant: a list of expressions not to backpropagate
         through
-
-    :param warn_type: a value of True will cause warnings to be logged for any
-        Op that emits a gradient that does not match its input type.
 
     :type disconnected_inputs: string
     :param disconnected_inputs: Defines the behaviour if some of the variables
@@ -1521,7 +1507,6 @@ def hessian(cost, wrt, consider_constant=None, warn_type=False,
                             y[i],
                             x,
                             consider_constant=consider_constant,
-                            warn_type=warn_type,
                             disconnected_inputs=disconnected_inputs),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
