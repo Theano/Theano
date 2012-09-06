@@ -260,12 +260,16 @@ class Scan(PureOp):
                                     zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs))):
             if inner_seq.type.dtype != outer_seq[idx].type.dtype:
+                assert isinstance(idx,int)
+
                 raise ValueError(err_msg1 % ('sequence',
                                              str(outer_seq),
                                              idx,
                                              outer_seq.type.dtype,
+                                             outer_seq.ndim,
                                              str(inner_seq),
-                                             inner_seq.type.dtype))
+                                             inner_seq.type.dtype,
+                                             inner_seq.ndim))
         argoffset += len(self.outer_seqs(inputs))
         # Check that this 3 things have the same dtype for mit_mot:
         #   - initial state of the output
