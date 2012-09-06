@@ -378,7 +378,7 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     #print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
-    gparams = tensor.grad(loss, params, warn_type=True)
+    gparams = tensor.grad(loss, params)
 
     mode = get_mode(use_gpu, check_isfinite)
 
