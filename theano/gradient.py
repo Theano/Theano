@@ -789,22 +789,30 @@ def _populate_grad_dict(var_to_node_to_idx,
 
                         is_zero = False
                         try:
-                            if tensor.get_constant_value(term) == 0:
-                                is_zero = True
+                            constant_value = tensor.get_constant_value(term)
                         except:
-                            pass
-
-                        if not is_zero:
                             msg = "%s.grad returned %s of type %s for input"
                             msg += " %d. This input is only connected to "
                             msg += "integer-valued outputs so it should be "
                             msg += "NullType, DisconnectedType, or some form "
-                            msg += "of zeros."
+                            msg += "of zeros. It is not NullType or "
+                            msg += "DisconnectedType and theano can't "
+                            msg += "simplify it to a constant, so it's not "
+                            msg += "verifiably zeros."
 
                             msg = msg % (str(node.op), str(term),
                                     str(type(term)), i)
 
                             raise ValueError(msg)
+                        if constant_value != 0:
+                            msg = "%s.grad returned %s of type %s for input"
+                            msg += " %d. Since this input is only connected "
+                            msg += "to integer-valued outputs, it should "
+                            msg += "evaluate to zeros, but it evaluates to"
+                            msg += "%s."
+
+                            msg % (str(node.op), str(term), str(type(term)),
+                                    i, str(constant_value))
 
 
             #Check that op.connection_pattern matches the connectivity
