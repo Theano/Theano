@@ -2,11 +2,10 @@
 TODO: implement Images2Neibs.{perform,infer_shape}() methods
 
 """
-import theano
 from theano import Op, Apply
 import theano.tensor as T
-from theano.gof import local_optimizer
 from theano.gradient import grad_not_implemented
+from theano.gradient import grad_undefined
 
 
 class Images2Neibs(Op):
@@ -91,8 +90,11 @@ class Images2Neibs(Op):
                 (hasattr(neib_shape, "equals") and
                  neib_shape.equals(neib_step))):
                 return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
-                        None, None]
-        return [grad_not_implemented(self, 0, x), None, None]
+                        grad_undefined(self, 1, neib_shape),
+                        grad_undefined(self, 2, neib_step)]
+        return [grad_not_implemented(self, 0, x),
+                grad_undefined(self, 1, neib_shape),
+                grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
         return (5,)
