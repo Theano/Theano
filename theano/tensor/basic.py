@@ -988,6 +988,8 @@ class TensorType(Type):
                          %(type_num)s, type_num_%(name)s);
             %(fail)s
         }
+        // This is a TypeError to be consistent with DEBUG_MODE
+        // Note: DEBUG_MODE also tells the name of the container
         if (type_num_%(name)s != %(type_num)s) {
             PyErr_Format(PyExc_TypeError,
                          "expected type_num %%d (%(type_num)s) got %%d",
