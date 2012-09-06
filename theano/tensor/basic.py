@@ -474,6 +474,7 @@ def get_constant_value(v):
         code, but I'm not sure where it is.
     """
 
+
     if isinstance(v, Constant):
         if getattr(v.tag, 'unique_value', None) is not None:
             data = v.tag.unique_value
@@ -497,6 +498,9 @@ def get_constant_value(v):
             shape, val = v.owner.inputs
             # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
+        if isinstance(v.owner.op, scal.Second):
+            x, y = v.owner.inputs
+            return get_constant_value(y)
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
         # mess with the stabilization optimization.
