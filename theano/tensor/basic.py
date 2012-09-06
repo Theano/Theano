@@ -494,9 +494,9 @@ def get_constant_value(v):
             return get_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Rebroadcast):
             return get_constant_value(v.owner.inputs[0])
-        if v.owner.op == fill:
+        if isinstance(v.owner.op, Elemwise) and \
+                isinstance(v.owner.op.scalar_op, scal.Second):
             shape, val = v.owner.inputs
-            # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
         if isinstance(v.owner.op, scal.Second):
             x, y = v.owner.inputs
