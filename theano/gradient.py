@@ -845,6 +845,8 @@ def _populate_grad_dict(var_to_node_to_idx,
                             msg % (str(node.op), str(term), str(type(term)),
                                     i, str(constant_value))
 
+                            raise ValueError(msg)
+
 
             #Check that op.connection_pattern matches the connectivity
             #logic driving the op.grad method
