@@ -1164,7 +1164,7 @@ class Add(ScalarOp):
             for ii, inp in enumerate(inputs):
                 if hasattr(inp, 'zeros_like'):
                     retval.append(
-                            inp.zeros_like.astype(theano.config.floatX))
+                            inp.zeros_like().astype(theano.config.floatX))
                 else:
                     retval.append(grad_undefined(self, ii, inp))
         else:
