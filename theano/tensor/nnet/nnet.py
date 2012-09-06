@@ -716,7 +716,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
         return [[True,True,True],#x
                 [True,True,True],#b
-                [True,True,False]]#y_idx
+                [False,False,True]]#y_idx
 
     def grad(self, inp, grads):
         x, b, y_idx = inp
