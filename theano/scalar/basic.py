@@ -1604,10 +1604,10 @@ class Cast(UnaryScalarOp):
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
 
     def grad(self, (x, ), (gz, )):
-        if x.type in continuous_types and self.o_type in continuous_types:
-            return [cast(gz, x.type.dtype)]
+        if self.o_type in continuous_types:
+            return [ gz ]
         else:
-            return None,
+            return [ x.zeros_like().astype(theano.config.floatX) ]
 
     def c_code_cache_version(self):
         s = super(Cast, self).c_code_cache_version()
