@@ -671,6 +671,7 @@ class T_mean_dtype(unittest.TestCase):
                 assert x.dtype == dtype, (x, x.dtype, dtype)
 
     def test_mean_custom_dtype(self):
+
         """
         Test the ability to provide your own output dtype for a mean.
         """

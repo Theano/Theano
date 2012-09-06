@@ -1596,6 +1596,12 @@ class Sum(CAReduceDtype):
 
     def grad(self, inp, grads):
         x, = inp
+
+        out = self(*inp)
+
+        if out.dtype.find('int') != -1:
+            return [x.zeros_like().astype(theano.config.floatX)]
+
         gz, = grads
         gz = as_tensor_variable(gz)
         axis = self.axis
