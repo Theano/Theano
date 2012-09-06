@@ -1501,15 +1501,14 @@ class Pow(BinaryScalarOp):
     def grad(self, (x, y), (gz, )):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            first_part = gz * y * x ** (y - 1)
-        else:
-            first_part = None
 
-        if y.type in float_types:
-            second_part = gz * log(x) * x ** y
-        else:
-            second_part = None
+        if self(x,y).type in discrete_types:
+            return [x.zeros_like().astype(theano.config.floatX),
+                    y.zeros_like().astype(theano.config.floatX)]
+
+        first_part = gz * y * x ** (y - 1)
+
+        second_part = gz * log(x) * x ** y
 
         return (first_part, second_part)
 
