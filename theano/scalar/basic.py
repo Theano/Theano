@@ -491,7 +491,8 @@ class _scalar_py_operators:
     def __rpow__(self,other): return pow(other,self)
 
     def zeros_like(self):
-        return ScalarConstant(Scalar(str(self.type.dtype)), 0)
+        # The second is needed for Elemwise ops to work right
+        return second(self, ScalarConstant(Scalar(str(self.type.dtype)), 0))
 
     def astype(self, dtype):
         return cast(self, dtype)
