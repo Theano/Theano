@@ -5,7 +5,6 @@ TODO: implement Images2Neibs.{perform,infer_shape}() methods
 import theano
 from theano import Op, Apply
 import theano.tensor as T
-from theano.gof import local_optimizer
 from theano.gradient import grad_not_implemented
 
 
