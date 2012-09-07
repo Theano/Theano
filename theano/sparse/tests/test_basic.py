@@ -1374,7 +1374,7 @@ def test_sparse_shared_memory():
                          theano.In(y, mutable=True)], z, mode='FAST_RUN')
 
     def f_(x, y, m1=m1, m2=m2):
-        return numpy.dot(x * 3, m1) + numpy.dot(y * 2, m2)
+        return ((x * 3) * m1) + ((y * 2) * m2)
 
     assert SparseType.may_share_memory(a, a)  # This is trivial
     result = f(a, a)
