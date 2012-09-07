@@ -395,6 +395,16 @@ def test_disconnected_nan():
 
 
 
+def test_sum_disconnected():
+
+    # Tests that we can add DisconnectedType to other terms correctly
+    x = theano.tensor.scalar()
+    y = x * 2.
+    z = x + 1.
+    cost = y + z
+    theano.tensor.grad(cost, x, consider_constant=[y,z])
+    # In an earlier version of theano, the above line would have failed
+    # while trying to add two DisconnectedTypes
 
 if __name__ == '__main__':
     unittest.main()
