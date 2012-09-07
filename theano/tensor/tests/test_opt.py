@@ -3740,7 +3740,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
 
 def test_local_upcast_elemwise_constant_inputs():
     s = dvector("s")
-    x = tensor.sum(tensor.log(10**s))
+    x = tensor.sum(tensor.log(10 ** s))
     f = function([s], [tensor.grad(x, s)])
     f([-42, -2.1, -1, -0.5, 0, 0.2, 1, 2, 12])
 
@@ -3752,22 +3752,22 @@ class TestShape_i(utt.InferShapeTester):
 
     def test_perform(self):
 
-        advec = dvector()
-        advec_val = numpy.random.rand(3)
+        advec = vector()
+        advec_val = numpy.random.rand(3).astype(config.floatX)
         f = function([advec], Shape_i(0)(advec))
         out = f(advec_val)
         assert numpy.allclose(out, advec_val.shape[0])
 
-        admat = dmatrix()
-        admat_val = numpy.random.rand(4, 3)
+        admat = matrix()
+        admat_val = numpy.random.rand(4, 3).astype(config.floatX)
         for i in xrange(2):
             f = function([admat], Shape_i(i)(admat))
             out = f(admat_val)
             assert numpy.allclose(out, admat_val.shape[i])
 
     def test_infer_shape(self):
-        admat = dmatrix()
-        admat_val = numpy.random.rand(3, 4)
+        admat = matrix()
+        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat], [Shape_i(0)(admat)],
                         [admat_val], Shape_i)
 
