@@ -86,8 +86,9 @@ class HostFromGpu(GpuOp):
         fail = sub['fail']
         return """
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
-        if(!%(out)s)
+        if(!%(out)s){
             %(fail)s;
+        }
         """ % locals()
 
     def c_code_cache_version(self):
@@ -133,6 +134,27 @@ class GpuFromHost(GpuOp):
 
     def infer_shape(self, node, xshp):
         return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp = inputs[0]
+        out = outputs[0]
+        fail = sub['fail']
+        return """
+        int err = 0;
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*) CudaNdarray_New();
+        if(!%(out)s){
+            %(fail)s;
+        }
+        err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
+        if(err){
+            %(fail)s;
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
 gpu_from_host = GpuFromHost()
 
 
