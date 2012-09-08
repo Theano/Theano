@@ -1920,16 +1920,19 @@ class GpuSubtensor(tensor.Subtensor, GpuOp):
         assert isinstance(x.type, CudaNdarrayType)
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = CudaNdarrayType(rval.outputs[0].type.broadcastable)
-        return Apply(self, [x] + rval.inputs[1:], [otype()])
+        #We reverse the index here as a speed optimization
+        #this opt was saving 0.40e-05s of 3.49e05s
+        return Apply(self, [x] + list(reversed(rval.inputs[1:])), [otype()])
 
     def perform(self, node, inputs, out_):
         out, = out_
         x = inputs[0]
-        indices = list(reversed(inputs[1:]))
+        indices = inputs[1:]
 
         def convert(entry):
             if isinstance(entry, Type):
                 rval = indices.pop()
+                #the if take about .25e-05s
                 if sys.version_info < (2, 5):
                     # Before Python 2.5, PySlice_GetIndicesEx requires
                     # Python int to be passed.
