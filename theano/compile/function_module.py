@@ -280,6 +280,13 @@ class Function(object):
     A Function instance may be serialized using the `pickle` or `cPickle` modules.
     This will save all default inputs, the graph, and *** to the pickle file (WRITEME).
 
+    A Function instance have a ``trust_input`` field that default to
+    False. When True, we don't do extra check of the input to give
+    better error message. In some case, python code will still return
+    the good results if you pass a python or numpy scalar instead of a
+    numpy tensor.  C code should raise an error if you pass an object
+    of the wrong type.
+
     """
 
     pickle_aliased_memory_strategy = 'warn'
@@ -367,6 +374,7 @@ class Function(object):
         self.return_none = return_none
         self.maker = maker
         self.profile = None  # reassigned in FunctionMaker.create
+        self.trust_input = False  # If True, we don't check the input parameter
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -549,47 +557,55 @@ class Function(object):
         t0 = time.time()
 
         # Reinitialize each container's 'provided' counter
-        for c in self.input_storage:
-            c.provided = 0
-
-        if len(args) + len(kwargs) > len(self.input_storage):
-            raise TypeError("Too many parameter passed to theano function")
-
-        # Set positional arguments
-        i = 0
-        for arg in args:
-            #TODO: provide a Param option for skipping the filter if we
-            #      really want speed.
-            s = self.input_storage[i]
-            # see this emails for a discuation about None as input
-            # https://groups.google.com/group/theano-dev/browse_thread/thread/920a5e904e8a8525/4f1b311a28fc27e5
-            if arg is None:
+        if self.trust_input:
+            i = 0
+            for arg in args:
+                s = self.input_storage[i]
                 s.storage[0] = arg
-            else:
-                try:
-                    s.storage[0] = s.type.filter(arg, strict=s.strict,
-                            allow_downcast=s.allow_downcast)
+                i += 1
+        else:
+            for c in self.input_storage:
+                c.provided = 0
 
-                except Exception, e:
-                    function_name = "theano function"
-                    if self.name:
-                        function_name += 'with name "' + self.name + '" '
-                    #end if
-                    e.args = tuple(["Bad input argument to " + function_name +
-                                    " at index %d(0-based)" % i] +
-                                   list(e.args))
-                    raise
-                #end except
-            #end if
-            s.provided += 1
-            i += 1
+            if len(args) + len(kwargs) > len(self.input_storage):
+                raise TypeError("Too many parameter passed to theano function")
+
+            # Set positional arguments
+            i = 0
+            for arg in args:
+                #TODO: provide a Param option for skipping the filter if we
+                #      really want speed.
+                s = self.input_storage[i]
+                # see this emails for a discuation about None as input
+                # https://groups.google.com/group/theano-dev/browse_thread/thread/920a5e904e8a8525/4f1b311a28fc27e5
+                if arg is None:
+                    s.storage[0] = arg
+                else:
+                    try:
+                        s.storage[0] = s.type.filter(arg, strict=s.strict,
+                                allow_downcast=s.allow_downcast)
+
+                    except Exception, e:
+                        function_name = "theano function"
+                        if self.name:
+                            function_name += 'with name "' + self.name + '" '
+                        #end if
+                        e.args = tuple(["Bad input argument to " + function_name +
+                                        " at index %d(0-based)" % i] +
+                                       list(e.args))
+                        raise
+                    #end except
+                #end if
+                s.provided += 1
+                i += 1
 
         # Set keyword arguments
         if kwargs:  # for speed, skip the iteritems for empty kwargs
             for k, arg in kwargs.iteritems():
                 self[k] = arg
 
-        if (not hasattr(self, '_check_for_aliased_inputs') or
+        if not self.trust_input and (
+            not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
             ## Collect aliased inputs among the storage space
             args_share_memory = []
@@ -629,20 +645,22 @@ class Function(object):
                                 self.input_storage[i].storage[0])
 
         # Check if inputs are missing, or if inputs were set more than once, or
-        # if we tried to provide inputs that are supposed to be implicit.
-        for c in self.input_storage:
-            if c.required and not c.provided:
-                raise TypeError("Missing required input: %s" %
-                                getattr(self.inv_finder[c], 'variable',
-                                        self.inv_finder[c]))
-            if c.provided > 1:
-                raise TypeError("Multiple values for input: %s" %
-                                getattr(self.inv_finder[c], 'variable',
-                                        self.inv_finder[c]))
-            if c.implicit and c.provided > 0:
-                raise TypeError('Tried to provide value for implicit input: %s'
+        # if we tried to provide inputs that are supposed to be 
+        if not self.trust_input:
+            for c in self.input_storage:
+                if c.required and not c.provided:
+                    raise TypeError("Missing required input: %s" %
+                                    getattr(self.inv_finder[c], 'variable',
+                                            self.inv_finder[c]))
+                if c.provided > 1:
+                    raise TypeError("Multiple values for input: %s" %
+                                    getattr(self.inv_finder[c], 'variable',
+                                            self.inv_finder[c]))
+                if c.implicit and c.provided > 0:
+                    raise TypeError(
+                        'Tried to provide value for implicit input: %s'
                         % getattr(self.inv_finder[c], 'variable',
-                            self.inv_finder[c]))
+                                  self.inv_finder[c]))
 
         # Do the actual work
         t0_fn = time.time()
