@@ -51,6 +51,7 @@ installation and configuration, see :ref:`installing Theano <install>`.
 Master Tests Status:
 
 .. image:: https://secure.travis-ci.org/Theano/Theano.png
+    :target: http://travis-ci.org/Theano/Theano/builds
 
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
 .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
