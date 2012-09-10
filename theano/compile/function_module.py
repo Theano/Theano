@@ -645,7 +645,7 @@ class Function(object):
                                 self.input_storage[i].storage[0])
 
         # Check if inputs are missing, or if inputs were set more than once, or
-        # if we tried to provide inputs that are supposed to be 
+        # if we tried to provide inputs that are supposed to be implicit.
         if not self.trust_input:
             for c in self.input_storage:
                 if c.required and not c.provided:
