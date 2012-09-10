@@ -266,23 +266,41 @@ following methods:
   Finally, many times in theano, integer valued inputs don't actually affect the elements of
   the output, only its shape.
 
+  If your function f has both an integer-valued input and an
+  integer-valued output, then both rules have to be combined:
+
+  - If f is defined at (x+epsilon), then the input gradient is
+    defined. Since f(x+epsilon) would be equal to f(x) almost
+    everywhere, the gradient should be 0 (first rule).
+
+  - If f is only defined where x is an integer, then the gradient
+    is undefined, regardless of what the gradient with respect to the
+    output is.
+
   Examples:
 
   1) f(x,y) = dot product between x and y. x and y are integers.
-	Since the output is also an integer, f is a step function.
-	Its gradient is zero almost everywhere, so Op.grad should return
-	zeros in the shape of x and y.
+        Since the output is also an integer, f is a step function.
+        Its gradient is zero almost everywhere, so Op.grad should return
+        zeros in the shape of x and y.
   2) f(x,y) = dot product between x and y. x is floating point and y is an integer.
         In this case the output is floating point. It doesn't matter that y is an integer.
-	We consider f to still be defined at f(x,y+epsilon). The gradient is exactly the
-	same as if y were floating point.
+        We consider f to still be defined at f(x,y+epsilon). The gradient is exactly the
+        same as if y were floating point.
   3) f(x,y) = argmax of x along axis y.
         The gradient with respect to y is undefined, because f(x,y) is not defined for
-	 floating point y. How could you take an argmax along a fractional axis?
+        floating point y. How could you take an argmax along a fraActional axis?
+        The gradient with respect to x is 0, because f(x+epsilon, y) = f(x) almost
+        everywhere.
   4) f(x,y) = a vector with y elements, each of which taking on the value x
         The grad method should return DisconnectedType()() for y, because the elements of
-	f don't depend on y. Only the shape of f depends on y. You probably also want to
-	implement a connection_pattern method to encode this.
+        f don't depend on y. Only the shape of f depends on y. You probably also want to
+        implement a connection_pattern method to encode this.
+  5) f(x) = int(x) converts float x into an int. g(y) = float(y) converts an integer y into a float.
+        If the final cost C = 0.5 * g(y) = 0.5 g(f(x)), then the
+        gradient with respect to y will be 0.5, even if y is an
+        integer. However, the gradient with respect to x will be 0,
+        because the output of f is integer-valued.
 
 
 .. function:: infer_shape(node, shapes)
