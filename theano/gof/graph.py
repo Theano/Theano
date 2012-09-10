@@ -1009,3 +1009,28 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+
+def list_of_nodes(inputs, outputs):
+    """ Return the apply nodes of the graph between inputs and outputs """
+    return stack_search(
+            deque([o.owner for o in outputs]),
+            lambda o: [inp.owner for inp in o.inputs
+                           if inp.owner
+                           and not any(i in inp.owner.outputs for i in inputs)])
+
+def dependence(a, b):
+    """ A cmp function for nodes in a graph - does a depend on b?
+
+    Returns positive number if a depends on b
+    Returns negative number if b depends on a
+    Returns 0 otherwise
+    """
+    if b in {var.owner for var in ancestors(a.inputs)}:
+        return 1
+    if a in {var.owner for var in ancestors(b.inputs)}:
+        return -1
+    return 0
+
+def new_io_toposort(inputs, outputs, cmp=dependence):
+    """ Same as io_toposort """
+    return sorted(list_of_nodes(inputs, outputs), cmp=cmp)
