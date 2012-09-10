@@ -1305,7 +1305,13 @@ class Scan(PureOp):
 
         # 7.3. compute gradients of the inputs given one output
         for dx, out in enumerate(clean_outputs):
-            inner_g_out = safe_new(g_outs[dx][0])
+            if g_outs[dx] != None:
+                inner_g_out = safe_new(g_outs[dx][0])
+            else:
+                # We do not have a gradient on this output so we need a
+                # placeholder, which for now has the same dtype as the
+                # output
+                inner_g_out = safe_new(out)
             ###
             #### I need to clip the gradient HERE !!
 
