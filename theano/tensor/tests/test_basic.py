@@ -1409,6 +1409,7 @@ GammaTester = makeBroadcastTester(
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
+    eps=1e-5,
     skip=skip_scipy)
 GammaInplaceTester = makeBroadcastTester(
     op=inplace.gamma_inplace,
@@ -1416,6 +1417,7 @@ GammaInplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_gammaln,
     grad=_grad_broadcast_unary_gammaln,
     mode=mode_no_scipy,
+    eps=1e-5,
     inplace=True,
     skip=skip_scipy)
 
