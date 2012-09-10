@@ -161,6 +161,14 @@ import theano and print the config variable, as in:
     Theano initialize the GPU device.  Newer version of PyCUDA
     (currently only in the trunk) don't have this restriction.
 
+.. attribute:: config.print_active_device
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    Print active device at when the GPU device is initialized.
+
 .. attribute:: floatX
 
     String value: either 'float64' or 'float32'

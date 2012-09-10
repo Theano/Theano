@@ -246,7 +246,8 @@ class Gemv(Op):
 
 gemv_no_inplace = Gemv(inplace=False)
 gemv_inplace = Gemv(inplace=True)
-
+# For the user interface. Opt will make them inplace later
+gemv = gemv_no_inplace
 
 class Ger(Op):
     """
@@ -991,6 +992,8 @@ class Gemm(GemmRelated):
 
 gemm_inplace = Gemm(inplace=True)
 gemm_no_inplace = Gemm(inplace=False)
+# For the user interface. Theano optimization will make them inplace
+gemm = gemm_no_inplace
 pprint.assign(gemm_inplace, FunctionPrinter('gemm_inplace'))
 pprint.assign(gemm_no_inplace, FunctionPrinter('gemm_no_inplace'))
 

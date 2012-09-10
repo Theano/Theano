@@ -1362,7 +1362,8 @@ class _CThunk(object):
                 # this can be used to retrieve the location the Op was declared
                 exc_value.__thunk_trace__ = trace
             except Exception:
-                print >> sys.stderr, 'ERROR retrieving error_storage',
+                print >> sys.stderr, ('ERROR retrieving error_storage.'
+                                      ' Was the error set in the c code?'),
                 print >> sys.stderr, self.error_storage
                 raise
 

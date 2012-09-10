@@ -53,8 +53,8 @@ if [ "$RELEASE" ]; then
     ls ${COMPILEDIR}|wc -l
 fi
 
-echo "Executing nosetests with mode=FAST_COMPILE"
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
+echo "Executing nosetests with mode=FAST_COMPILE with --batch=1000"
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
