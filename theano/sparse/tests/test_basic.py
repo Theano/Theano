@@ -1193,7 +1193,7 @@ class UsmmTests(unittest.TestCase):
                     theano.tensor.basic.float64_atol = orig_atol
                     theano.tensor.basic.float64_rtol = orig_rtol
 
-            assert _allclose(f_a_out, f_b_out, rtol=1e-5)
+            assert _allclose(f_a_out, f_b_out, rtol=1e-5), (f_a_out, f_b_out)
             topo = f_a.maker.fgraph.toposort()
             up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
 
