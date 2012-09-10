@@ -1278,6 +1278,18 @@ class Scan(PureOp):
         # 7.1. empty lists to hold gradients
         # List of slices from outputs (used to compute the gradients)
         inner_g_outs = []
+        # Note: most gradients of outputs contain the output itself in the
+        # computation of the graidnet. For e.g. grad of sigmoid(x) is
+        # sigmoid(x)*(1-sigmoid(x)). To avoid re-computing sigmoid(x) it is
+        # useful to provide the new scan Op representing the gradients the
+        # outputs of the previous scan as sequences, and replace these
+        # computational graphs in the computational graph of the grad, i.e.
+        # transform the grad of the sigmoid in out*(1-out).
+        #
+        # We do however only consider mitsot, sitsot and nitsot kind of
+        # outputs, because mitmot outputs are more complicated and rarely
+        # usde in practive ..
+        precomputed_outs = []
         g_out_slices = []
         # List of outputs of the gradient function
         inner_gfn_outs = []
@@ -1321,11 +1333,21 @@ class Scan(PureOp):
                 g_out_slices.append(None)
             if getattr(out, 'name', None) is not None:
                 inner_g_out.name = 'g_' + out.name
+                if dx >= self.n_mit_mot_outs:
+                    precomputed_out.name = 'p_' + out.name
             else:
                 inner_g_out.name = 'g_' + str(dx)
+                if dx >= self.n_mit_mot_outs:
+                    precomputed_out.name = 'p_' + str(dx)
             inner_g_outs.append(inner_g_out)
+            if dx >= self.n_mit_mot_outs:
+                precomputed_outs.append(precomputed_out)
             _g_out = inner_g_out
-            grad_outs = compute_gradient(out, _g_out)
+            if dx >= self.n_mit_mot_outs:
+                grad_outs = [forced_replace(x, out, precomputed_out) for
+                         x in compute_gradient(out, _g_out)]
+            else:
+                grad_outs = compute_gradient(out, _g_out)
             if not inner_gfn_outs:
                 for idx, gfn_out in enumerate(grad_outs):
                     if idx >= self.n_seqs:
@@ -1375,7 +1397,8 @@ class Scan(PureOp):
                       outs_mit_mot +
                       outs_mit_sot +
                       outs_sit_sot +
-                      inner_g_outs[offset:offset + self.n_nit_sot])
+                      inner_g_outs[offset:offset + self.n_nit_sot] +
+                      precomputed_outs)
 
         scan_seqs = [x[::-1] for x in args[1:self.n_seqs + 1]]
         offset = 0
@@ -1411,6 +1434,16 @@ class Scan(PureOp):
                   self.n_sit_sot)
         scan_seqs += [x[::-1] for x in
                       g_outs[offset:offset + self.n_nit_sot]]
+        # We ignore the mitmot outputs because it is a bit more complicated
+        # to consider them. That is not to say they can not be considered,
+        # but the effort of implementing this special case is large
+        # comparable with the minimum benefit that we get.
+        offset = self.n_mit_mot
+        end = offset + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
+        for _out in scan_outputs[offset: end]:
+            scan_seqs += [_out[::-1]]
+
+        n_seqs = len(scan_seqs)
 
         scan_mit_mot = []
         inner_mit_mot = []
