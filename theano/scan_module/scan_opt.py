@@ -868,12 +868,17 @@ class ScanSaveMem(gof.Optimizer):
                         #   b) it is not, and we simply take a slice of it.
 
                         #TODO: commit change below with Razvan
+                        # constructed variable to solve line too long PEP8
+                        # constraint
+                        if nw_inputs[offset + idx].owner:
+                            _tmp = nw_inputs[offset + idx].owner.op
+                        else:
+                            _tmp = None
                         if (nw_inputs[offset + idx].owner and
-                            isinstance(nw_inputs[offset + idx].owner.op,
-                                       tensor.IncSubtensor) and
-                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+                            isinstance(_tmp, tensor.IncSubtensor) and
+                            isinstance(_tmp.idx_list[0], slice)):
 
-                            _nw_input = nw_inputs[offset + idx].owner.inputs[1]
+                            _nw_input = _tmp.inputs[1]
                             val = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
                             tmp = pre_greedy_local_optimizer(list_opt_slice,
@@ -1243,7 +1248,6 @@ def scan_merge_inouts(node):
                   node.op.inputs, node.op.outputs, node.op.info)
 
     inp_equiv = {}
-
     if has_duplicates(a.outer_in_seqs):
         new_outer_seqs = []
         new_inner_seqs = []

@@ -1728,7 +1728,7 @@ class Scan(PureOp):
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #SIT_SOT sequences ...
+        # SIT_SOT sequences ...
         b = e
         e = e + self.n_sit_sot
         ib = ie
@@ -1743,7 +1743,7 @@ class Scan(PureOp):
         scan_sit_sot = inputs[b:e] + clean_eval_points
         inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #Shared outs ...
+        # Shared outs ...
         b = e
         e = e + self.n_shared_outs
         ib = ie
