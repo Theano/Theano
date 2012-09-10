@@ -85,13 +85,13 @@ class MPIRecv(Op):
     @note: Non-differentiable.
     """
 
-    def __init__(self, rank, tag, dtype, shape):
-        self.rank = rank
+    def __init__(self, source, tag, shape, dtype):
+        self.source = source
         self.tag  = tag
         self.shape = shape
         self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
         self.broadcastable = (False,)*len(shape)
-        self._info = (rank, tag, dtype, shape)
+        self._info = (source, tag, shape, dtype)
 
     def __eq__(self, other):
         return (type(self) == type(other) and self._info == other._info)
@@ -100,19 +100,22 @@ class MPIRecv(Op):
         return hash(self._info)
 
     def make_node(self):
-        return gof.Apply(self, [], [theano.Generic(),
+        return gof.Apply(self, [], [theano.Variable(Generic()),
                                     tensor(self.dtype,
                                            broadcastable=self.broadcastable)])
     def perform(self, node, inp, out):
 
         data = numpy.empty(self.shape, dtype=self.dtype)
-        request = comm.Irecv(data, self.rank, self.tag)
+        request = comm.Irecv(data, self.source, self.tag)
 
         out[0][0] = request
-        out[0][1] = data
+        out[1][0] = data
 
     def __str__(self):
-        return "MPIRecv{source: %d, tag: %d, dtype:%s, shape:%s, :%s}"%self._info
+        return "MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}"%self._info
+
+    #def infer_shape(self, node, shapes):
+    #    return [self.shape]
 
 class MPIRecvWait(Op):
     """
@@ -131,18 +134,16 @@ class MPIRecvWait(Op):
         return type(self) == type(other)
 
     def __hash__(self):
-        return hash(self.type)
+        return hash(type(self))
 
-    def make_node(self):
-        return gof.Apply(self, [theano.Generic(),
-                                tensor(self.dtype,
-                                       broadcastable=self.broadcastable)],
-                               [tensor(self.dtype,
-                                       broadcastable=self.broadcastable)])
+    def make_node(self, request, data):
+        return gof.Apply(self, [request, data],
+                               [tensor(data.dtype,
+                                       broadcastable=data.broadcastable)])
     def perform(self, node, inp, out):
 
-        request = inp[0][0]
-        data    = inp[0][1]
+        request = inp[0]
+        data    = inp[1]
 
         request.wait()
 
@@ -150,6 +151,9 @@ class MPIRecvWait(Op):
 
     def __str__(self):
         return "MPIRecvWait"
+
+#    def infer_shape(self, node, shapes):
+#        return shapes
 
 class MPISend(Op):
     """
@@ -162,10 +166,10 @@ class MPISend(Op):
     @note: Non-differentiable.
     """
 
-    def __init__(self, rank, tag):
-        self.rank = rank
+    def __init__(self, dest, tag):
+        self.dest = dest
         self.tag  = tag
-        self._info = (rank, tag)
+        self._info = (dest, tag)
 
     def __eq__(self, other):
         return (type(self) == type(other) and self._info == other._info)
@@ -173,15 +177,15 @@ class MPISend(Op):
     def __hash__(self):
         return hash(self._info)
 
-    def make_node(self):
-        return gof.Apply(self, [tensor(self.dtype, broadcastable=self.broadcastable)],
-                               [theano.Generic()])
+    def make_node(self, data):
+        return gof.Apply(self, [data],
+                               [theano.Variable(Generic())])
 
     def perform(self, node, inp, out):
 
-        data = inp[0][0]
+        data = inp[0]
 
-        request = comm.Isend(data, self.rank, self.tag)
+        request = comm.Isend(data, self.dest, self.tag)
 
         out[0][0] = request
 
@@ -205,15 +209,26 @@ class MPISendWait(Op):
         return type(self) == type(other)
 
     def __hash__(self):
-        return hash(self.type)
+        return hash(type(self))
 
-    def make_node(self):
-        return gof.Apply(self, [theano.Generic()], [theano.Generic()])
+    def make_node(self, request):
+        return gof.Apply(self, [request],
+                               [theano.Variable(Generic())])
 
     def perform(self, node, inp, out):
-        request = inp[0][0]
+        request = inp[0]
         request.wait()
         out[0][0] = True
 
     def __str__(self):
         return "MPISendWait"
+
+def isend(var, dest, tag):
+    return MPISend(dest, tag)(var)
+def send(var, dest, tag):
+    return MPISendWait()(isend(var, dest, tag))
+
+def irecv(shape, dtype, source, tag):
+    return MPIRecv(source, tag, shape, dtype)()
+def recv(shape, dtype, source, tag):
+    return MPIRecvWait()(*irecv(shape, dtype, source, tag))
