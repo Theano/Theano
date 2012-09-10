@@ -1385,11 +1385,6 @@ class Scan(PureOp):
                         numpy.array(0, theano.config.floatX))
 
         ## 10. Get your sequence in order for the scan:
-        n_seqs = (self.n_seqs +
-                  n_ins_mit_mot +
-                  n_ins_mit_sot +
-                  self.n_sit_sot +
-                  self.n_nit_sot)
         offset = (self.n_mit_mot_outs +
                   self.n_mit_sot +
                   self.n_sit_sot)
