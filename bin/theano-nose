@@ -32,6 +32,17 @@ def main():
         import theano
         sys.argv[i] = theano.__path__[0]
 
+    # Many Theano tests suppose device=cpu.
+    # I don't know how to do this tests only if we use theano-nose on Theano tests.
+    # So I make the try..except in case the script get reused elsewhere.
+    try:
+        import theano
+        if theano.config.device != "cpu":
+            raise ValueError("Theano tests must be run with device=cpu."
+                             " This will also run GPU tests when possible.")
+    except ImportError:
+        pass
+
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
