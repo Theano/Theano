@@ -290,7 +290,18 @@ class PushOutNonSeqScan(gof.Optimizer):
             replace_with = {}
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
-                    x = node.outputs[local_fgraph.outputs.index(out)]
+                    _x = node.outputs[local_fgraph.outputs.index(out)]
+                    if (_x not in node.op.outer_nitsot_outs(node.outputs)
+                        and len(_x.clients) > 0):
+
+                        assert len(_x.clients) < 2
+                        # We need to go to the subtensor which is the only
+                        # client of this output
+                        assert isinstance(_x.clients[0][0].op,
+                                          tensor.Subtensor)
+                        x = _x.clients[0][0].outputs[0]
+                    else:
+                        x = _x
                     y = replace_with_out[idx]
                     shape = [y.shape[idx] for idx in xrange(y.ndim)]
                     replace_with[x] = tensor.alloc(y,
