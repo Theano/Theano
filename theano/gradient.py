@@ -771,9 +771,13 @@ def _populate_grad_dict(var_to_node_to_idx,
                     # used to mean undefined, zero, or disconnected.
                     # We therefore don't allow it because its usage has become
                     # so muddied.
-                    raise TypeError(('%s returned None for' +\
+                    raise TypeError(('%s.grad returned None for' +\
                              ' a gradient term, '
-                            'this is prohibited') % node.op)
+                            'this is prohibited. Instead of None,'
+                            'return zeros_like(input), DisconnectedType()(),'
+                            ' or a NullType variable such as those made with '
+                            'the grad_undefined or grad_unimplemented helper '
+                            'functions.') % node.op)
 
                 if not isinstance(term.type,
                         (NullType,DisconnectedType)):
