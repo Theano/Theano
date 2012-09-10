@@ -577,7 +577,8 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
                 known_fail = True
             except TypeError:
                 known_fail = True
-            raise KnownFailureTest("Deprecated compile.module fails to "
+            if known_fail:
+                raise KnownFailureTest("Deprecated compile.module fails to "
                     "give a sensible warning when updates to a variable "
                     "have the wrong type")
         s0, s1 = [str(j) for j in m.pretraining_update(*inputs)]
