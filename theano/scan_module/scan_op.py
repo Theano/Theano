@@ -1635,8 +1635,9 @@ class Scan(PureOp):
             rop_self_outputs = self_outputs
         if self.info['n_shared_outs'] > 0:
             rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
-        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs,
-             inner_eval_points)
+        rop_outs = tensor.Rop(rop_self_outputs,
+                              rop_of_inputs,
+                              inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
         # Step 2. Figure out what corresponds to what in the scan
@@ -1742,7 +1743,7 @@ class Scan(PureOp):
         scan_sit_sot = inputs[b:e] + clean_eval_points
         inner_sit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        # Shared outs ...
+        #Shared outs ...
         b = e
         e = e + self.n_shared_outs
         ib = ie
