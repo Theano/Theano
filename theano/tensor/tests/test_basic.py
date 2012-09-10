@@ -5846,11 +5846,12 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
+                                numpy_version =numpy.__version__.split('.')[:2]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     b_type == 'float32' and
                                     combo == ('scalar', 'array') and
-                                    numpy.__version__.startswith('1.6.') and
+                                    bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtypes == ['complex64',
                                                      'complex64']):
@@ -5860,7 +5861,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                     # in progress), so in the meantime we just
                                     # mark this test as a known failure.
                                     raise KnownFailureTest('Known issue with '
-                                            'numpy 1.6.x, see #761')
+                                            'numpy >= 1.6.x see #761')
 
                                 # In any other situation: something wrong is
                                 # going on!
