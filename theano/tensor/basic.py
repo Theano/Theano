@@ -4185,7 +4185,7 @@ class Subtensor(Op):
             inner_ii += 1;
             outer_ii += 1;
         }
-        PyArray_UpdateFlags(xview, NPY_C_CONTIGUOUS|NPY_F_CONTIGUOUS);
+        PyArray_UpdateFlags(xview, NPY_ARRAY_C_CONTIGUOUS|NPY_F_CONTIGUOUS);
         """ % locals()
         # print rval
         return rval
