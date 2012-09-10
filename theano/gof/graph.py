@@ -1031,6 +1031,14 @@ def dependence(a, b):
         return -1
     return 0
 
-def new_io_toposort(inputs, outputs, cmp=dependence):
+def new_io_toposort(inputs, outputs, cmps=[]):
     """ Same as io_toposort """
+    cmps = [dependence] + cmps # enforce that dependence is the strongest cmp fn
+
+    # An aggregate comparator - looks at each cmp in order
+    def cmp(a,b, fns=cmps):
+        if not fns:  return 0
+        head, tail = fns[0], fns[1:]
+        return head(a, b) or cmp(a, b, tail)
+
     return sorted(list_of_nodes(inputs, outputs), cmp=cmp)

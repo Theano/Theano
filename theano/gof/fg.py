@@ -553,8 +553,15 @@ class FunctionGraph(utils.object2):
             # 1-element graphs.
             return list(self.apply_nodes)
         fg = self
+
+        # TODO - This is a hack.
+        #        Should change deeper in to just move around functions
         ords = self.orderings()
-        order = graph.io_toposort(fg.inputs, fg.outputs, ords)
+        ords = [lambda a,b: (1 if b in d.get(a, ())
+                       else -1 if a in d.get(b, ())
+                       else  0)                      for d in ords]
+
+        order = graph.new_io_toposort(fg.inputs, fg.outputs, ords)
         return order
 
     def orderings(self):
