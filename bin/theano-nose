@@ -20,6 +20,7 @@ import logging
 _logger = logging.getLogger('theano.bin.theano-nose')
 _logger.setLevel(logging.WARN)
 
+import os
 import nose
 import textwrap
 import sys
@@ -31,6 +32,23 @@ def main():
         i = sys.argv.index("--theano")
         import theano
         sys.argv[i] = theano.__path__[0]
+
+    # Many Theano tests suppose device=cpu, so we need to raise an
+    # error if device==gpu.
+    # I don't know how to do this check only if we use theano-nose on
+    # Theano tests.  So I make an try..except in case the script get
+    # reused elsewhere.
+    # We should not import theano before call nose.main()
+    # As this cause import problem with nosetests.
+    # Should we find a way to don't modify sys.path?
+    if not os.path.exists('theano/__init__.py'):
+        try:
+            from theano import config
+            if config.device != "cpu":
+                raise ValueError("Theano tests must be run with device=cpu."
+                                 " This will also run GPU tests when possible.")
+        except ImportError:
+            pass
 
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]

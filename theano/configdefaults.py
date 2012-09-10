@@ -76,7 +76,7 @@ AddConfigVar('force_device',
         in_c_key=False)
 
 AddConfigVar('print_active_device',
-        "Print active device at startup",
+        "Print active device at when the GPU device is initialized.",
         BoolParam(True, allow_override=False),
         in_c_key=False)
 

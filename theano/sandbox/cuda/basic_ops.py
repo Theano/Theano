@@ -86,8 +86,9 @@ class HostFromGpu(GpuOp):
         fail = sub['fail']
         return """
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
-        if(!%(out)s)
+        if(!%(out)s){
             %(fail)s;
+        }
         """ % locals()
 
     def c_code_cache_version(self):
@@ -133,6 +134,27 @@ class GpuFromHost(GpuOp):
 
     def infer_shape(self, node, xshp):
         return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp = inputs[0]
+        out = outputs[0]
+        fail = sub['fail']
+        return """
+        int err = 0;
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*) CudaNdarray_New();
+        if(!%(out)s){
+            %(fail)s;
+        }
+        err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
+        if(err){
+            %(fail)s;
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
 gpu_from_host = GpuFromHost()
 
 
@@ -1898,16 +1920,19 @@ class GpuSubtensor(tensor.Subtensor, GpuOp):
         assert isinstance(x.type, CudaNdarrayType)
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = CudaNdarrayType(rval.outputs[0].type.broadcastable)
-        return Apply(self, [x] + rval.inputs[1:], [otype()])
+        #We reverse the index here as a speed optimization
+        #this opt was saving 0.40e-05s of 3.49e05s
+        return Apply(self, [x] + list(reversed(rval.inputs[1:])), [otype()])
 
     def perform(self, node, inputs, out_):
         out, = out_
         x = inputs[0]
-        indices = list(reversed(inputs[1:]))
+        indices = inputs[1:]
 
         def convert(entry):
             if isinstance(entry, Type):
                 rval = indices.pop()
+                #the if take about .25e-05s
                 if sys.version_info < (2, 5):
                     # Before Python 2.5, PySlice_GetIndicesEx requires
                     # Python int to be passed.
