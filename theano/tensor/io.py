@@ -208,11 +208,12 @@ class MPISendWait(Op):
         return hash(self.type)
 
     def make_node(self):
-        return gof.Apply(self, [theano.Generic()], [])
+        return gof.Apply(self, [theano.Generic()], [theano.Generic()])
 
     def perform(self, node, inp, out):
         request = inp[0][0]
         request.wait()
+        out[0][0] = True
 
     def __str__(self):
         return "MPISendWait"
