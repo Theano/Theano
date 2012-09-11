@@ -1594,18 +1594,18 @@ scan_seqopt1.register('scan_pushout_dot1',
                       'scan')
 
 
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
-                      opt.in2out(remove_constants_and_unused_inputs_scan,
+scan_seqopt2.register('constant_folding_for_scan2',
+                      opt.in2out(tensor.opt.constant_folding,
                                  ignore_newtrees=True),
                       1,
                       'fast_run',
                       'scan')
 
 
-scan_seqopt2.register('constant_folding_for_scan2',
-                      opt.in2out(tensor.opt.constant_folding,
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
-                      5,
+                      2,
                       'fast_run',
                       'scan')
 
@@ -1614,7 +1614,7 @@ scan_seqopt2.register('constant_folding_for_scan2',
 scan_seqopt2.register('scanop_remove_constants_and_unused_inputs1',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
-                      6,
+                      3,
                       'fast_run',
                       'scan')
 
@@ -1623,7 +1623,7 @@ scan_seqopt2.register('scanop_remove_constants_and_unused_inputs1',
 # of the scan later.
 scan_seqopt2.register('scanOp_merge',
                       ScanMerge(),
-                      7,
+                      4,
                       'fast_run',
                       'scan')
 
@@ -1631,13 +1631,13 @@ scan_seqopt2.register('scanOp_merge',
 scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
-                      8,
+                      5,
                       'fast_run',
                       'scan')
 
 scan_seqopt2.register('scanOp_merge_inouts',
                       opt.in2out(scan_merge_inouts, ignore_newtrees=True),
-                      9,
+                      6,
                       'fast_run',
                       'scan')
 
@@ -1646,7 +1646,7 @@ scan_seqopt2.register('scanOp_merge_inouts',
 # This don't introduce inplace.
 scan_seqopt2.register('scanOp_save_mem',
                       ScanSaveMem(),
-                      10,
+                      7,
                       'fast_run',
                       'scan')
 
@@ -1654,6 +1654,6 @@ scan_seqopt2.register('scanOp_save_mem',
 scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
-                      11,
+                      8,
                       'fast_run',
                       'scan')
