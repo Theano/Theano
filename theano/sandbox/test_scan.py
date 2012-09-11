@@ -10,7 +10,7 @@ def test_001():
     out, _ = scan.scan(lambda x:x+numpy.float32(1),
                            states = state,
                            n_steps = 5)
-    fn = theano.function([x0], out[0])
+    fn = theano.function([x0], out[-1])
     val_x0 = numpy.float32([1,2,3])
     assert numpy.all(fn(val_x0) == val_x0 +5)
 
