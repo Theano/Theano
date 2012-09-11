@@ -1593,12 +1593,6 @@ scan_seqopt1.register('scan_pushout_dot1',
                       'more_mem',
                       'scan')
 
-scan_seqopt1.register('constant_folding_for_scan1',
-                      opt.in2out(tensor.opt.constant_folding,
-                                 ignore_newtrees=True),
-                      5,
-                      'fast_run',
-                      'scan')
 
 scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
