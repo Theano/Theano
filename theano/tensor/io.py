@@ -90,7 +90,7 @@ class MPIRecv(Op):
         self.tag  = tag
         self.shape = shape
         self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
-        self.broadcastable = (False,)*len(shape)
+        self.broadcastable = (False,) * len(shape)
         self._info = (source, tag, shape, dtype)
 
     def __eq__(self, other):
