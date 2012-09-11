@@ -822,7 +822,7 @@ class Elemwise(Op):
             errormsg = ('While computing ' + str(node.outputs) +
                         ': Failed calling ufunc for op ' +
                         str(self.scalar_op) +
-                        'for params of shape ' +
+                        ' for params of shape ' +
                         str([arg.shape for arg in ufunc_args]))
 
             if config.exception_verbosity == 'high':
