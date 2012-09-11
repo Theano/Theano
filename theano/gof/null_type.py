@@ -29,3 +29,9 @@ class NullType(Type):
 
     def values_eq(a, b, force_same_dtype=True):
         raise ValueError("NullType has no values to compare")
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self, other):
+        return hash(type(self))

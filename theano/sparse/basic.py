@@ -18,6 +18,7 @@ from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt
+from theano.gradient import grad_not_implemented
 
 sparse_formats = ['csc', 'csr']
 
@@ -255,11 +256,13 @@ def sp_zeros_like(x):
     :return: The same as `x` with zero entries
              for all element.
     """
+
     # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
-    return CSM(format=x.format)(numpy.array([], dtype=x.type.dtype),
-                                numpy.array([]), tensor.zeros_like(indptr),
-                                shape)
+    return CSM(format=x.format)(data=numpy.array([], dtype=x.type.dtype),
+                                indices=numpy.array([]),
+                                indptr=tensor.zeros_like(indptr),
+                                shape=shape)
 
 
 class _sparse_py_operators:
@@ -670,7 +673,7 @@ class CSM(gof.Op):
     the sparse matrix. Fancy indexing with numpy.ndarray
     should be used for this purpose.
 
-    :param data: One dimensionnal tensor representing
+    :param data: One dimensional tensor representing
                  the data of the sparse to construct.
     :param indices: One dimensional tensor of integers
                     representing the indices of the sparse
@@ -678,7 +681,7 @@ class CSM(gof.Op):
     :param indptr: One dimensional tensor of integers
                    representing the indice pointer for
                    the sparse matrix to construct.
-    :param shape: One dimensionnal tensor of integers
+    :param shape: One dimensional tensor of integers
                   representing the shape of the sparse
                   matrix to construct.
 
@@ -781,6 +784,9 @@ class CSM(gof.Op):
             out[0] = scipy.sparse.csr_matrix((data, indices.copy(),
                                               indptr.copy()), shape.copy(),
                                              copy=False)
+
+    def connection_pattern(self, node):
+        return [[True], [False], [False], [False]]
 
     def grad(self, (x_data, x_indices, x_indptr, x_shape), (g_out,)):
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
@@ -984,7 +990,19 @@ class DenseFromSparse(gof.op.Op):
 
     def grad(self, (x, ), (gz, )):
         if self.sparse_grad:
-            return [sp_ones_like(x) * gz]
+            left = sp_ones_like(x)
+            right = gz
+
+            # Do upcasting if necessary to avoid an unimplemented case
+            # of mul
+
+            if right.dtype == 'float64' and left.dtype == 'float32':
+                left = left.astype('float64')
+
+            if right.dtype == 'float32' and left.dtype == 'float64':
+                right = right.astype('float64')
+
+            return [left * right]
         else:
             return [SparseFromDense(x.type.format)(gz)]
 
@@ -1993,7 +2011,9 @@ class MulSS(gof.op.Op):
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
         if x.type != y.type:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                    "MulSS not supported for differing types. "
+                    "Got %s and %s." % (str(x.type), str(y.type)))
         return gof.Apply(self, [x, y], [x.type()])
 
     def perform(self, node, (x, y), (out, )):
@@ -2042,7 +2062,9 @@ class MulSD(gof.op.Op):
             y = tensor.cast(y, dtype)
 
         if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "MulSD not implemented for different input dtypes. "
+                "Got %s and %s." % (x.type.dtype, y.type.dtype))
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         # Broadcasting of the sparse matrix is not supported.
@@ -2128,7 +2150,9 @@ class MulSV(gof.op.Op):
         assert y.type.ndim == 1
 
         if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                    "MulSV not implemented for differing dtypes."
+                    "Got %s and %s." % (str(x.type.dtype), str(y.type.dtype)))
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=x.type.dtype,
@@ -2142,6 +2166,15 @@ class MulSV(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
+
+        # mul_s_v is not implemented if the types vary
+
+        if gz.dtype == 'float64' and y.dtype == 'float32':
+            y = y.astype('float64')
+
+        if gz.dtype == 'float32' and y.dtype == 'float64':
+            gz = gz.astype('float64')
+
         return mul_s_v(gz, y), sp_sum(x * gz, axis=0, sparse_grad=True)
 
     def infer_shape(self, node, ins_shapes):
@@ -2176,8 +2209,18 @@ def mul(x, y):
 
     assert x_is_sparse_variable or y_is_sparse_variable
     if x_is_sparse_variable and y_is_sparse_variable:
+
+        # mul_s_s is not implemented if the types differ
+        if y.dtype == 'float64' and x.dtype == 'float32':
+            x = x.astype('float64')
+
         return mul_s_s(x, y)
     elif x_is_sparse_variable and not y_is_sparse_variable:
+
+        # mul is unimplemented if the dtypes differ
+        if y.dtype == 'float64' and x.dtype == 'float32':
+            x = x.astype('float64')
+
         return mul_s_d(x, y)
     elif y_is_sparse_variable and not x_is_sparse_variable:
         return mul_s_d(y, x)
@@ -3260,7 +3303,7 @@ class SamplingDot(gof.op.Op):
         rval = [
             dot(p * gz, y),
             dot((p * gz).T, x),
-            None
+            grad_not_implemented(self, 2, p)
         ]
 
         return rval

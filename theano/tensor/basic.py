@@ -479,6 +479,11 @@ def get_constant_value(v):
             data = v.tag.unique_value
         else:
             data = v.data
+        # handle case where data is numpy.array([])
+        if hasattr(data, 'shape') and len(data.shape) == 0 or \
+            __builtins__['max'](data.shape) == 0:
+            assert numpy.all(numpy.array([]) == data)
+            return data
         try:
             numpy.complex(data)  # works for all numeric scalars
             return data
@@ -493,15 +498,19 @@ def get_constant_value(v):
             return get_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Rebroadcast):
             return get_constant_value(v.owner.inputs[0])
-        if v.owner.op == fill:
+        if isinstance(v.owner.op, Elemwise) and \
+                isinstance(v.owner.op.scalar_op, scal.Second):
             shape, val = v.owner.inputs
-            # fill(a,b) fills the shape of 'a' filled with 'b'
             return get_constant_value(val)
+        if isinstance(v.owner.op, scal.Second):
+            x, y = v.owner.inputs
+            return get_constant_value(y)
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
         # mess with the stabilization optimization.
-        if isinstance(v.owner.op, Elemwise) and isinstance(
-            v.owner.op.scalar_op, scal.Cast):
+        if (isinstance(v.owner.op, Elemwise) and isinstance(
+            v.owner.op.scalar_op, scal.Cast)) or \
+            isinstance(v.owner.op, scal.Cast):
             const = get_constant_value(v.owner.inputs[0])
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
@@ -983,8 +992,10 @@ class TensorType(Type):
                          %(type_num)s, type_num_%(name)s);
             %(fail)s
         }
+        // This is a TypeError to be consistent with DEBUG_MODE
+        // Note: DEBUG_MODE also tells the name of the container
         if (type_num_%(name)s != %(type_num)s) {
-            PyErr_Format(PyExc_ValueError,
+            PyErr_Format(PyExc_TypeError,
                          "expected type_num %%d (%(type_num)s) got %%d",
                          %(type_num)s, type_num_%(name)s);
             %(fail)s
@@ -1910,6 +1921,9 @@ class TensorFromScalar(Op):
     def grad(self, inp, grads):
         s, = inp
         dt, = grads
+        assert dt.type.dtype.find('float') != -1
+        if s.type.dtype.find('int') != -1:
+            return [s.zeros_like().astype(theano.config.floatX)]
         return [scalar_from_tensor(dt)]
 
     def __str__(self):
@@ -2097,13 +2111,13 @@ class Shape(Op):
     def infer_shape(self, node, in_shapes):
         return [[len(in_shapes[0])]]
 
-    def connection_pattern(self):
+    def connection_pattern(self, node):
         # the grad returns the gradient with respect to the
         # elements of a tensor variable
         # the elements of the tensor variable do not participate
         # in the computation of the shape, so they are not really
         # part of the graph
-        return [False]
+        return [[False]]
 
     def grad(self, inp, grads):
         # the grad returns the gradient with respect to the
@@ -2111,7 +2125,7 @@ class Shape(Op):
         # the elements of the tensor variable do not participate
         # in the computation of the shape, so they are not really
         # part of the graph
-        return [None]
+        return [DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -2193,6 +2207,9 @@ class SpecifyShape(Op):
         assert len(new_shape) == len(xshape)
         return [new_shape]
 
+    def connection_pattern(self, node):
+        return [[True], [False]]
+
     def grad(self, inp, grads):
         x, s = inp
         gz, = grads
@@ -2201,8 +2218,8 @@ class SpecifyShape(Op):
         # to remove that op from the graph to don't block other optimization
         # Should I do an optimizer that will remove the SpecifyShape?
         # I think Yes
-        return [gz, None]
-        return [specify_shape(gz, s), None]
+        return [gz, DisconnectedType()()]
+        return [specify_shape(gz, s), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -2988,73 +3005,6 @@ def eye(n, m=None, k=0, dtype=None):
 def identity_like(x):
     return eye(x.shape[0], x.shape[1], k=0, dtype=x.dtype)
 
-if 0:
-    ## COMMENTED OUT FEB 17 2010
-    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
-    class Filler(gof.Op):
-        """WRITEME"""
-        def __init__(self, value, ndim, dtype='float64'):
-            self.value = value
-            self.ndim = ndim
-            self.dtype = dtype
-            self.type = TensorType(dtype=dtype,
-                                   broadcastable=(False,) * ndim)
-
-        def make_node(self, dims):
-            dims = as_tensor_variable(dims)
-            return gof.Apply(self, [dims], [self.type()])
-
-        def perform(self, node, inp, out_):
-            dims, = inp
-            out, = out_
-            if out[0] is not None:
-                out[0].resize(dims, refcheck=0)
-                out[0].fill(self.value)
-            else:
-                if self.value == 0:
-                    out[0] = numpy.zeros(dims, dtype=self.dtype)
-                elif self.value == 1:
-                    out[0] = numpy.ones(dims, dtype=self.dtype)
-                else:
-                    out[0] = numpy.ones(dims, dtype=self.dtype) * self.value
-
-        def grad(self, inp, grads):
-            return None,
-
-        def __eq__(self, other):
-            return (type(self) == type(other) and self.ndim == other.ndim and
-                    self.dtype == other.dtype)
-
-        def __hash__(self):
-            return hash(self.ndim) ^ hash(self.dtype)
-
-    Zeros = partial(Filler, 0)
-    """WRITEME"""
-
-    Ones = partial(Filler, 1)
-    """WRITEME"""
-
-    @constructor
-    def zero():
-        """
-        Return a scalar zero, e.g. for initializing sums.
-        """
-        return Zeros(0)([])
-
-    @constructor
-    def one():
-        """WRITEME"""
-        return Ones(0)([])
-
-    pprint.assign(lambda pstate, r: r.owner and
-                                    isinstance(r.owner.op, Filler) and
-                                    r.owner.op.value == 0,
-                  printing.FunctionPrinter('zeros'))
-    pprint.assign(lambda pstate, r: r.owner and
-                                    isinstance(r.owner.op, Filler) and
-                                    r.owner.op.value == 1,
-                  printing.FunctionPrinter('ones'))
-
 
 class Alloc(gof.Op):
     """Create a Tensor from an initial value and a desired shape
@@ -3170,12 +3120,25 @@ class Alloc(gof.Op):
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
 
+    def connection_pattern(self, node):
+
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
         x = inputs[0]
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
         gx = gz.sum(axis=range(n_axes_to_sum))
-        return [gx] + [None for i in inputs[1:]]
+        #The *elements* of the output are not connected to
+        #the inputs that specify the shape. If you grow the
+        #shape by epsilon, the existing elements do not
+        #change.
+        return [gx] + [DisconnectedType()() for i in inputs[1:]]
 
     def __call__(self, val, *shapes):
         """
@@ -3438,43 +3401,6 @@ def std(input, axis=None, keepdims=False):
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
-
-if 0:
-    ## COMMENTED OUT FEB 17 2010
-    ## TODO (DOCUMENT AND WRITE TESTS) OR DELETE
-    class Repeat(gof.Op):
-
-        def make_node(self, input, repeats, axis):
-            assert isinstance(input.type, TensorType)
-            assert repeats.type == iscalar
-            assert axis.type == iscalar
-            broadcastable = []
-            for i, x in enumerate(input.broadcastable):
-                if i == axis:
-                    broadcastable += [False]
-                else:
-                    broadcastable += [x]
-
-            type = TensorType(dtype=input.type.dtype,
-                              broadcastable=broadcastable)
-            # backport
-            # type = TensorType(dtype=input.type.dtype,
-            #                  broadcastable=[
-            #                      False if i==axis else x
-            #                      for i, x in enumerate(input.broadcastable)])
-            return gof.Apply(self, [inputs, repeats, axis], [type()])
-
-        def perform(self, node, inp, out_):
-            input, repeats, axis = inp
-            out, = out_
-            out[0] = numpy.repeat(input, repeats, axis)
-
-        def grad(self, inp, grads):
-            input, repeats, axis = inp
-            gout, = grads
-            return add.grad((input, gout), (gout,))[:1]
-
-    repeat = Repeat()
 
 
 class Default(gof.Op):
@@ -3969,8 +3895,22 @@ class Subtensor(Op):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
-        return ([IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)]
-                + [None] * len(rest))
+        output = self(*inputs)
+        if output.dtype.find('int') != -1:
+            first = x.zeros_like().astype(theano.config.floatX)
+        else:
+            first = IncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)
+        return ([first]
+                + [DisconnectedType()()] * len(rest))
+
+    def connection_pattern(self, node):
+
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
 
     def __eq__(self, other):
         return type(self) == type(other) and self.idx_list == other.idx_list
@@ -4624,6 +4564,15 @@ class IncSubtensor(Op):
         return self.make_node(eval_points[0], eval_points[1],
                             *inputs[2:]).outputs
 
+    def connection_pattern(self, node):
+
+        rval = [[True], [True]]
+
+        for ipt in node.inputs[2:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
@@ -4637,7 +4586,7 @@ class IncSubtensor(Op):
             gx = g_output
         gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
 
-        return [gx, gy] + [None] * len(idx_list)
+        return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 
 def split(x, splits_size, n_splits, axis=0):
@@ -4755,8 +4704,10 @@ class Split(Op):
 
     def grad(self, inputs, g_outputs):
         """Join the gradients along the axis that was used to split x."""
-        _, axis, _ = inputs
-        return [join(axis, *g_outputs), None, None]
+        _, axis, n = inputs
+        return [join(axis, *g_outputs),
+                grad_undefined(self, 1, axis),
+                grad_undefined(self, 2, n)]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0]  is None:
@@ -5024,6 +4975,9 @@ class Join(Op):
         """
         gz, = grads
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
+
+        rval = [grad_undefined(self, 0, axis)]
+
         if 'float' in tensors[0].dtype or 'complex' in tensors[0].dtype:
             # assume that this is differentiable
             split = Split(len(tensors))
@@ -5032,25 +4986,14 @@ class Join(Op):
             # If there is only one split, it might not be in a list.
             if not isinstance(split_gz, list):
                 split_gz = [split_gz]
-            return [None] + split_gz
-        else:
-            # assume that this isn't differentiable
-            return [None] * (1 + len(tensors))
 
-    def _native_grad(self, axis_and_tensors, grads):
-        """WRITEME"""
-        gz, = grads
-        axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        sizes_along_axis = [shape(x)[axis] for x in tensors]
-        n_dims = len(shape(tensors[0]))
-        idx = [0]
-        for s in sizes_along_axis:
-            idx.append(idx[-1] + s)
-        # The gradient w.r.t. the k-th tensor is a slice of gz along the
-        # 'axis' dimension.
-        return [gz[[slice(None)] * axis + [slice(idx[k], idx[k + 1])] + \
-                [slice(None)] * (n_dims - axis - 1)] \
-                for k in xrange(len(sizes_along_axis))]
+            rval = rval + split_gz
+        else:
+            # the output has integer type, so the gradient through it
+            # is 0
+            rval = rval + [tensor.zeros_like() for tensor in tensors]
+
+        return rval
 
     def infer_shape(self, node, ishapes):
         # ishapes[0] contains the size of the axis on which we join
@@ -5294,60 +5237,6 @@ def vertical_stack(*args):
     return concatenate(args, axis=0)
 
 
-# Vertical and horizontal stacking are deprecated. Better to use stack() and
-# join().
-if 0:
-    class VerticalStack(Op):
-        """
-        Vertically stack two L{TensorType}s.
-        Stack two L{TensorType}s along the first axis (row wise). These
-        L{TensorType}s must have the same shape along all dimensions but the
-        first.
-
-        @attention: Because we use vstack as the implementation, if the
-        inputs have 1-dimension, the output will have 2-dimensions.
-        """
-        def make_node(self, x, y):
-            x = as_tensor_variable(x)
-            y = as_tensor_variable(y)
-            assert x.type.dtype == y.type.dtype
-            if x.type.broadcastable[1:] != y.type.broadcastable[1:]:
-                raise NotImplementedError
-            inputs = [x, y]
-            bcastable = (False, ) + x.type.broadcastable[1:]
-            outputs = [tensor(dtype=x.type.dtype,
-                              broadcastable=bcastable)]
-            return Apply(self, inputs, outputs)
-
-        def perform(self, node, inp, out_):
-            x, y = inp
-            out, = out_
-            assert x.ndim == y.ndim
-            # Make sure every dimension (save the first) is the same
-            for i in xrange(x.ndim):
-                assert i == 0 or x.shape[i] == y.shape[i]
-            out[0] = numpy.vstack([x, y])
-
-        def grad(self, inp, grads):
-            """
-            @todo: Make VSplit (or this grad implementation) its own L{Op},
-            that way we can do more sanity-checking::
-                assert x.ndim == y.ndim
-                # Make sure every dimension (save the first) is the same
-                for i in xrange(x.data.ndim):
-                    assert i == 0 or x.data.shape[i] == y.shape[i]
-                etc...
-            """
-            x, y = inp
-            gz, = grads
-            xs = shape(x)
-            return gz[:xs[0]], gz[xs[0]:]
-    vertical_stack = VerticalStack()
-
-else:
-    pass
-
-
 class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
 
@@ -5410,10 +5299,14 @@ class Reshape(Op):
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
 
+    def connection_pattern(self, node):
+        return [[True], [False]]
+
     def grad(self, inp, grads):
         x, shp = inp
         g_out, = grads
-        return [reshape(g_out, shape(x), ndim=x.ndim), None]
+        return [reshape(g_out, shape(x), ndim=x.ndim),
+                DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -5760,9 +5653,21 @@ class ARange(Op):
         step = step.item()
         out[0] = numpy.arange(start, stop, step, dtype=self.dtype)
 
+    def connection_pattern(self, node):
+
+        return [[True], [False], [True]]
+
     def grad(self, inputs, grads):
+        start, stop, step = inputs
         gz, = grads
-        return [None] * len(inputs)
+        # start and step affect the output values
+        # but the outputs are integers so there's
+        # no gradient through them
+        # stop does not affect the output values,
+        # just the output shape, so it is disconnected
+        return [start.zeros_like(),
+                DisconnectedType()(),
+                step.zeros_like()]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -5983,7 +5888,22 @@ class PermuteRowElements(Op):
 
         gx = DimShuffle(gx.type.broadcastable, newdims)(gx)
         assert gx.type.broadcastable == x.type.broadcastable
-        return [gx, None, None]
+
+        # if x is an integer type, then so is the output.
+        # this means f(x+eps) = f(x) so the gradient with respect
+        # to x is zero
+        if x.type.dtype.find('int') != -1:
+            gx = x.zeros_like()
+
+        # The elements of y and of inverse both affect the output,
+        # so they are connected to the output,
+        # and the transformation isn't defined if their values
+        # are non-integer, so the gradient with respect to them is
+        # undefined
+
+        return [gx, grad_undefined(self, 1, y),
+                grad_undefined(self, 1, inverse)]
+
 _permute_row_elements = PermuteRowElements()
 
 
@@ -6046,11 +5966,21 @@ class AdvancedSubtensor1(Op):
 
         out[0] = x.take(i, axis=0, out=o)
 
+    def connection_pattern(self, node):
+
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
+
         gz, = grads
         assert len(inputs) == 2
         rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
-        return rval1 + [None] * (len(inputs) - 1)
+        return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -6149,6 +6079,15 @@ class AdvancedIncSubtensor1(Op):
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
 
+    def connection_pattern(self, node):
+
+        rval = [[True], [True]]
+
+        for ipt in node.inputs[2:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]
@@ -6157,7 +6096,7 @@ class AdvancedIncSubtensor1(Op):
         gx = g_output
         gy = advanced_subtensor1(g_output, *idx_list)
 
-        return [gx, gy] + [None] * len(idx_list)
+        return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
@@ -6246,12 +6185,22 @@ class AdvancedSubtensor(Op):
         # return
         #raise NotImplementedError()
 
+    def connection_pattern(self, node):
+
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inputs, grads):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
         return [advanced_inc_subtensor(zeros_like(x), gz,
-                                       *rest)] + [None] * len(rest)
+                                       *rest)] + \
+            [DisconnectedType()()] * len(rest)
 
 
 class AdvancedIncSubtensor(Op):
@@ -6336,13 +6285,23 @@ class AdvancedIncSubtensor(Op):
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]
 
+    def connection_pattern(self, node):
+
+        rval = [[True], [True]]
+
+        for ipt in node.inputs[2:]:
+            rval.append([False])
+
+        return rval
+
     def grad(self, inpt, output_gradients):
         x, y = inpt[:2]
         idxs = inpt[2:]
         outgrad, = output_gradients
         d_x_wrt_C = outgrad
         d_y_wrt_C = AdvancedSubtensor()(outgrad, *idxs)
-        return [d_x_wrt_C, d_y_wrt_C] + [None for _ in idxs]
+        return [d_x_wrt_C, d_y_wrt_C] + \
+            [DisconnectedType()() for _ in idxs]
 
     def R_op(self, inputs, eval_points):
         if None in eval_points[:2]:
@@ -6457,6 +6416,7 @@ class Dot(Op):
             raise
 
     def grad(self, inp, grads):
+
         x, y = inp
         gz, = grads
         if gz.type.ndim == 0:
@@ -6467,7 +6427,11 @@ class Dot(Op):
             rval = outer(gz, y.T), dot(x.T, gz)
         else:
             rval = dot(gz, y.T), dot(x.T, gz)
-        return cast(rval[0], x.dtype), cast(rval[1], y.dtype)
+
+        for elem in rval:
+            assert elem.dtype.find('float') != -1
+
+        return rval
 
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is

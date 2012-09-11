@@ -260,12 +260,16 @@ class Scan(PureOp):
                                     zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs))):
             if inner_seq.type.dtype != outer_seq[idx].type.dtype:
+                assert isinstance(idx, int)
+
                 raise ValueError(err_msg1 % ('sequence',
                                              str(outer_seq),
                                              idx,
                                              outer_seq.type.dtype,
+                                             outer_seq.ndim,
                                              str(inner_seq),
-                                             inner_seq.type.dtype))
+                                             inner_seq.type.dtype,
+                                             inner_seq.ndim))
         argoffset += len(self.outer_seqs(inputs))
         # Check that this 3 things have the same dtype for mit_mot:
         #   - initial state of the output
@@ -1260,7 +1264,7 @@ class Scan(PureOp):
         # the gradients with respect to all outputs)
         def compute_gradient(y, g_y):
             gmp = gradient.grad_sources_inputs(
-                        [(y, g_y)], diff_inputs, False)
+                        [(y, g_y)], diff_inputs)
             return [gmp.get(p, None) for p in diff_inputs]
 
         # 6. clean the outputs (i.e. remove update rules)
@@ -1301,7 +1305,13 @@ class Scan(PureOp):
 
         # 7.3. compute gradients of the inputs given one output
         for dx, out in enumerate(clean_outputs):
-            inner_g_out = safe_new(out)
+            if g_outs[dx] != None:
+                inner_g_out = safe_new(g_outs[dx][0])
+            else:
+                # We do not have a gradient on this output so we need a
+                # placeholder, which for now has the same dtype as the
+                # output
+                inner_g_out = safe_new(out)
             ###
             #### I need to clip the gradient HERE !!
 
