@@ -1,5 +1,7 @@
 from theano.tensor.io import send, recv
 import theano
+import subprocess
+import os
 
 def test_recv():
     x = recv((10,10), 'float64', 0, 11)
@@ -21,3 +23,14 @@ def test_can_make_function():
     x = recv((5,5), 'float32', 0, 11)
     y = x+1
     assert theano.function([], [y])
+
+def test_mpi_roundtrip():
+#    p = subprocess.Popen(executable="mpiexec",
+#                         args = ("-np", "2",
+#                                 "python",
+#                                 "theano/tensor/tests/_test_mpi_roundtrip.py"),
+#                         stdout=subprocess.PIPE)
+#    assert p.stdout.read() == "True"
+    result = os.popen("mpiexec -np 2 python "
+                      "theano/tensor/tests/_test_mpi_roundtrip.py").read()
+    assert result == "True"
