@@ -290,23 +290,27 @@ class PushOutNonSeqScan(gof.Optimizer):
             replace_with = {}
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
-                    _x = node.outputs[local_fgraph.outputs.index(out)]
-                    if (_x not in node.op.outer_nitsot_outs(node.outputs)
-                        and len(_x.clients) > 0):
+                    x = node.outputs[local_fgraph.outputs.index(out)]
+                    _y_slice = replace_with_out[idx]
+                    shape = [_y_slice.shape[idx]
+                             for idx in xrange(_y_slice.ndim)]
+                    _y = tensor.alloc(_y_slice, node.inputs[0], *shape)
 
-                        assert len(_x.clients) < 2
-                        # We need to go to the subtensor which is the only
-                        # client of this output
-                        assert isinstance(_x.clients[0][0].op,
-                                          tensor.Subtensor)
-                        x = _x.clients[0][0].outputs[0]
+                    ls = local_fgraph.outputs
+                    if out in op.inner_mitsot_outs(ls):
+                        odx = op.inner_mitsot_outs(ls).index(out)
+                        inp = op.outer_mitsot(node)[odx]
+                        st = abs(numpy.min(op.mitsot_taps()))
+                        y = tensor.set_subtensor(inp[st:], _y)
+                    elif out in op.inner_sitsot_outs(ls):
+                        odx = op.inner_sitsot_outs(ls).index(out)
+                        inp = op.outer_sitsot(node)[odx]
+                        y = tensor.set_subtensor(inp[1:], _y)
+                    elif out in op.inner_nitsot_outs(ls):
+                        y = _y
                     else:
-                        x = _x
-                    y = replace_with_out[idx]
-                    shape = [y.shape[idx] for idx in xrange(y.ndim)]
-                    replace_with[x] = tensor.alloc(y,
-                                                   node.inputs[0],
-                                                   *shape)
+                        y = _y_slice
+                    replace_with[x] = y
 
             # We need to add one extra dimension to the outputs
             if replace_with:
@@ -479,25 +483,29 @@ class PushOutSeqScan(gof.Optimizer):
                 remove=[node],
                 reason='scan_push_computation_out')
             return True
-        elif to_keep == [] and not op.as_while:
+        elif (to_keep == [] and
+              not op.as_while and
+              not op.outer_mitmot(node)):
             # Nothing in the inner graph should be kept
             replace_with = {}
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
-                    _x = node.outputs[local_fgraph.outputs.index(out)]
-
-                    if (_x not in node.op.outer_nitsot_outs(node.outputs)
-                        and len(_x.clients) > 0):
-
-                        assert len(_x.clients) < 2
-                        # We need to go to the subtensor which is the only
-                        # client of this output
-                        assert isinstance(_x.clients[0][0].op,
-                                          tensor.Subtensor)
-                        x = _x.clients[0][0].outputs[0]
+                    x = node.outputs[local_fgraph.outputs.index(out)]
+                    _y = replace_with_out[idx]
+                    ls = local_fgraph.outputs
+                    if out in op.inner_mitsot_outs(ls):
+                        odx = op.inner_mitsot_outs(ls).index(out)
+                        inp = op.outer_mitsot(node)[odx]
+                        st = abs(numpy.min(op.mitsot_taps()))
+                        y = tensor.set_subtensor(inp[st:], _y)
+                    elif out in op.inner_sitsot_outs(ls):
+                        odx = op.inner_sitsot_outs(ls).index(out)
+                        inp = op.outer_sitsot(node)[odx]
+                        y = tensor.set_subtensor(inp[1:], _y)
+                    elif out in op.inner_nitsot_outs(ls):
+                        y = _y
                     else:
-                        x = _x
-                    y = replace_with_out[idx]
+                        y = _y[-1]
                     replace_with[x] = y
 
             # We need to add one extra dimension to the outputs
