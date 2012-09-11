@@ -3191,6 +3191,38 @@ class T_Scan(unittest.TestCase):
         p = tensor.dvector()
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
+    def test_eliminate_seqs(self):
+        U = tensor.vector('U')
+        sh = theano.shared(asarrayX(2.))
+        x1 = tensor.vector('x1')
+        x2 = tensor.scalar('x2')
+
+        def rec_fn(*args):
+            u_t = args[0]
+            return [(u_t + 1,  # mitsot
+                     u_t + 2,  # sitsot
+                     u_t + 3),  # nitsot
+                    {sh: u_t + 4}]  # shared
+
+        [X1, X2, X3], updates = theano.scan(
+            rec_fn,
+            U,
+            [dict(initial=x1, taps=[-1, -3]), x2, None],
+            n_steps=None,
+            truncate_gradient=-1,
+            go_backwards=False)
+        f = theano.function([U, x1, x2], [X1, X2, X3],
+                            updates=updates,
+                            mode=theano.Mode(linker='py'),
+                            allow_input_downcast=True)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = asarrayX(rng.uniform(size=(5,)))
+        outs = f(v_u, [0, 0, 0], 0)
+        assert numpy.allclose(outs[0], v_u + 1)
+        assert numpy.allclose(outs[1], v_u + 2)
+        assert numpy.allclose(outs[2], v_u + 3)
+        assert numpy.allclose(sh.get_value(), v_u[-1] + 4)
+
 
 def test_speed():
     #
