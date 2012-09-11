@@ -152,8 +152,8 @@ class BinCountOp(theano.Op):
         output = self(*inputs)
 
         if output.dtype.find('int') != -1:
-            return [ inp.zeros_like().astype(theano.config.floatX)
-                    for inp in inputs ]
+            return [inp.zeros_like().astype(theano.config.floatX)
+                    for inp in inputs]
 
         raise NotImplementedError()
 
@@ -261,7 +261,7 @@ class RepeatOp(theano.Op):
 
     def connection_pattern(self, node):
 
-        return [ [True], [False] ]
+        return [[True], [False]]
 
     def grad(self, (x, repeats), (gz, )):
         if repeats.ndim == 0:
@@ -277,7 +277,7 @@ class RepeatOp(theano.Op):
             shape.insert(axis, repeats)
 
             return [gz.reshape(shape, x.ndim + 1).sum(axis=axis),
-                    DisconnectedType()() ]
+                    DisconnectedType()()]
         elif repeats.ndim == 1:
             # For this implementation, we would need to specify the length
             # of repeats in order to split gz in the right way to sum
@@ -397,7 +397,6 @@ def bartlett(M):
 
     """
     return bartlett_(M)
-
 
 
 class FillDiagonal(gof.Op):
