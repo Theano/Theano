@@ -47,7 +47,7 @@ class BreakRop(Op):
         out[0] = x
 
     def grad(self, inp, grads):
-        return [ grad_undefined(self, 0, inp[0]) ]
+        return [grad_undefined(self, 0, inp[0])]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -330,21 +330,21 @@ class test_RopLop(RopLop_checker):
         m_ = tensor.matrix('m_')
         v_ = tensor.vector('v_')
 
-        mval = self.rng.uniform(size=(3,7)).astype(theano.config.floatX)
+        mval = self.rng.uniform(size=(3, 7)).astype(theano.config.floatX)
         vval = self.rng.uniform(size=(7,)).astype(theano.config.floatX)
-        m_val = self.rng.uniform(size=(3,7)).astype(theano.config.floatX)
+        m_val = self.rng.uniform(size=(3, 7)).astype(theano.config.floatX)
         v_val = self.rng.uniform(size=(7,)).astype(theano.config.floatX)
 
-        rop_out1 = tensor.Rop([m, v, m+v], [m, v], [m_, v_])
+        rop_out1 = tensor.Rop([m, v, m + v], [m, v], [m_, v_])
         assert isinstance(rop_out1, list)
         assert len(rop_out1) == 3
-        rop_out2 = tensor.Rop((m, v, m+v), [m, v], [m_, v_])
+        rop_out2 = tensor.Rop((m, v, m + v), [m, v], [m_, v_])
         assert isinstance(rop_out2, tuple)
         assert len(rop_out2) == 3
-        lop_out1 = tensor.Lop([m, v, m+v], (m, v), [m_, v_])
+        lop_out1 = tensor.Lop([m, v, m + v], (m, v), [m_, v_])
         assert isinstance(lop_out1, tuple)
         assert len(lop_out1) == 2
-        lop_out2 = tensor.Lop((m, v, m+v), [m, v], [m_, v_])
+        lop_out2 = tensor.Lop((m, v, m + v), [m, v], [m_, v_])
         assert isinstance(lop_out2, list)
         assert len(lop_out2) == 2
 
@@ -353,4 +353,3 @@ class test_RopLop(RopLop_checker):
             all_outs.extend(o)
         f = theano.function([m, v, m_, v_], all_outs)
         f(mval, vval, m_val, v_val)
-

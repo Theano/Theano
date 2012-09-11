@@ -47,7 +47,8 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             #test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-            f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
+            f = copy(linker).accept(FunctionGraph([x], [e.
+                shape])).make_function()
             assert all(f(numpy.ones(xsh))) == all(zsh)
 
         # Test when we drop a axis that is not broadcastable
@@ -125,7 +126,8 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.add)(x, y)
-                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x,
+                     y], [e.shape])).make_function()
                 assert tuple(f(xv, yv)) == tuple(zv.shape)
 
     def with_linker_inplace(self, linker):
@@ -154,7 +156,8 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
-                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x,
+                     y], [e.shape])).make_function()
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
                 zv = xv + yv
@@ -349,7 +352,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     e = tensor_op(x, axis=tosum)
                 if tosum is None:
                     tosum = range(len(xsh))
-                f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x],
+                     [e.shape])).make_function()
                 if not(scalar_op in [scalar.maximum, scalar.minimum] and
                        ((xsh == () or numpy.prod(xsh) == 0))):
                     assert all(f(xv) == zv.shape)
@@ -459,7 +463,8 @@ class test_Prod(unittest.TestCase):
 
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
-        x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
+        x_val = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+             dtype='float32')
         x = theano.tensor.dmatrix()
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
@@ -471,26 +476,28 @@ class test_Prod(unittest.TestCase):
 
         unittest_tools.verify_grad(fn, [x_val], mode=self.mode)
 
-
     def test_verify_grad_with_zeros(self):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
-        x_val = numpy.asarray([[1.,2.,3.],[0.,5.,6.],[0.,0.,9.]], dtype='float32')
+        x_val = numpy.asarray([[1., 2., 3.], [0., 5., 6.], [0., 0., 9.]],
+             dtype='float32')
         x = theano.tensor.dmatrix()
 
         # sanity check
         x2 = theano.tensor.dmatrix()
         p = Prod(axis=1)(x)
         p2 = Prod(axis=1)(x2)
-        fn = theano.function([x,x2],[p-p2], mode=self.mode)
+        fn = theano.function([x, x2], [p - p2], mode=self.mode)
         #print "hand computed diff for each row"
-        x2_val = numpy.asarray([[1., 2., 3.003], [0.003,5.,6], [0.,0.,9.01]])
+        x2_val = numpy.asarray([[1., 2., 3.003], [0.003, 5., 6], [
+            0., 0., 9.01]])
         #print fn(x_val, x2_val)
-        fn2 = theano.function([x],[theano.tensor.grad(p.sum(),x)], mode=self.mode)
+        fn2 = theano.function([x], [theano.tensor.grad(p.sum(), x)],
+             mode=self.mode)
         #print "real grad"
         #print fn2(x_val)
-        fn3 = theano.function([x],[p], mode=self.mode)
-        assert numpy.allclose(fn3(x_val), [6.,0.,0.])
+        fn3 = theano.function([x], [p], mode=self.mode)
+        assert numpy.allclose(fn3(x_val), [6., 0., 0.])
 
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
@@ -511,10 +518,10 @@ class test_Prod(unittest.TestCase):
 
     def test_prod_without_zeros(self):
         x = theano.tensor.dmatrix()
-        x_val = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
+        x_val = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]], dtype='float32')
         pwz = ProdWithoutZeros(axis=1)(x)
         fn = theano.function([x], pwz, mode=self.mode)
-        assert numpy.allclose(fn(x_val), [6,30,9])
+        assert numpy.allclose(fn(x_val), [6, 30, 9])
 
         pwz_a0 = ProdWithoutZeros(axis=0)(x)
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
@@ -522,25 +529,30 @@ class test_Prod(unittest.TestCase):
 
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
-        x_val1 = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
-        x_val2 = numpy.array([[1,2,0],[0,5,6],[7,8,9],[9,10,0]], dtype='float32')
+        x_val1 = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]],
+             dtype='float32')
+        x_val2 = numpy.array([[1, 2, 0], [0, 5, 6], [7, 8, 9], [9, 10, 0]],
+             dtype='float32')
         rng = rng = numpy.random.RandomState(43)
 
         p = Prod(axis=1)
         grad_p = theano.tensor.grad(p(x).sum(), x)
         grad_fn = theano.function([x], grad_p, mode=self.mode)
-        assert numpy.allclose(grad_fn(x_val1), [[6.,3.,2.],[30.,0.,0.],[0.,0.,0.]])
-        assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30., 0., 0.], [72., 63., 56.], [0., 0., 90.]])
+        assert numpy.allclose(grad_fn(x_val1), [[6., 3., 2.], [30., 0.,
+            0.], [0., 0., 0.]])
+        assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30.,
+             0., 0.], [72., 63., 56.], [0., 0., 90.]])
 
         p_axis0 = Prod(axis=0)
         grad_p_axis0 = theano.tensor.grad(p_axis0(x).sum(), x)
         grad_fn_axis0 = theano.function([x], grad_p_axis0, mode=self.mode)
-        assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400., 0.],[63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
+        assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400.,
+             0.], [63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
 
         tensor.verify_grad(p, [x_val1], rng=rng, mode=self.mode)
 
     def test_mul_without_zeros_zeros(self):
-        a = numpy.zeros((3,3))
+        a = numpy.zeros((3, 3))
 
         x = theano.tensor.dmatrix()
 
@@ -655,6 +667,7 @@ class T_sum_dtype(unittest.TestCase):
 
                 idx += 1
 
+
 class T_mean_dtype(unittest.TestCase):
     def test_mean_default_dtype(self):
         """
@@ -710,6 +723,7 @@ class T_mean_dtype(unittest.TestCase):
 
                 idx += 1
 
+
 class T_prod_dtype(unittest.TestCase):
     def test_prod_default_dtype(self):
         """
@@ -760,6 +774,7 @@ class T_prod_dtype(unittest.TestCase):
                             x.prod, dtype=output_dtype, axis=axis)
 
                 idx += 1
+
 
 class T_prod_without_zeros_dtype(unittest.TestCase):
     def test_prod_without_zeros_default_dtype(self):
@@ -844,11 +859,8 @@ if __name__ == '__main__':
 """
 
 
-
 if __name__ == '__main__':
 
     t = TestElemwise('setUp')
     t.setUp()
     t.test_infer_shape()
-
-
