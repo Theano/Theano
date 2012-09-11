@@ -662,7 +662,7 @@ class Scan(PureOp):
 
     def outer_mitmot_outs(self, list_outputs):
         if isinstance(list_outputs, Apply):
-            list_outputs = list_outputs.ouputs
+            list_outputs = list_outputs.outputs
         return list_outputs[:self.n_mit_mot]
 
     def mitmot_taps(self):
