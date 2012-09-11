@@ -114,8 +114,8 @@ class MPIRecv(Op):
     def __str__(self):
         return "MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}"%self._info
 
-    #def infer_shape(self, node, shapes):
-    #    return [self.shape]
+    def infer_shape(self, node, shapes):
+        return [None, self.shape]
 
 class MPIRecvWait(Op):
     """
@@ -152,8 +152,8 @@ class MPIRecvWait(Op):
     def __str__(self):
         return "MPIRecvWait"
 
-#    def infer_shape(self, node, shapes):
-#        return shapes
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
 
 class MPISend(Op):
     """
