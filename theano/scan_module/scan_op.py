@@ -259,9 +259,7 @@ class Scan(PureOp):
         for idx, (inner_seq, outer_seq) in enumerate(
                                     zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs))):
-            if inner_seq.type.dtype != outer_seq[idx].type.dtype:
-                assert isinstance(idx, int)
-
+            if inner_seq.type.dtype != outer_seq[0].type.dtype:
                 raise ValueError(err_msg1 % ('sequence',
                                              str(outer_seq),
                                              idx,
