@@ -16,4 +16,3 @@ def test_send():
     sendnode = y.owner.inputs[0].owner
     assert sendnode.op.dest == 1
     assert sendnode.op.tag  == 11
-
