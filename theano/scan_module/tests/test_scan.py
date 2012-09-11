@@ -2803,7 +2803,7 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(out2 == vx + 2)
         lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
-        assert len(lssc) == 2
+        assert len(lssc) == 1
 
     @dec.knownfailureif(True,
                         ("This test fails because not typed outputs_info "
