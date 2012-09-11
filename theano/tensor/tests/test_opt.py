@@ -631,11 +631,11 @@ class test_canonize(unittest.TestCase):
         a = T.abs_(x)
 
         if theano.config.mode == 'FAST_COMPILE':
-            mode = theano.compile.mode.get_mode('FAST_RUN')
-                .excluding("local_elemwise_fusion")
+            mode = theano.compile.mode.get_mode('FAST_RUN').excluding(
+                    "local_elemwise_fusion")
         else:
-            mode = theano.compile.mode.get_default_mode()
-                .excluding("local_elemwise_fusion")
+            mode = theano.compile.mode.get_default_mode().excluding(
+                    "local_elemwise_fusion")
 
         f = theano.function([x], [(4 * x) / abs(2 * x)], mode=mode)
         print f.maker.fgraph.toposort()
@@ -1106,11 +1106,11 @@ class test_fusion(unittest.TestCase):
         shp = (5, 5)
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
-            mode = theano.compile.mode.get_mode("FAST_RUN")
-                .including('local_elemwise_fusion', 'canonicalize', 'gpu')
+            mode = theano.compile.mode.get_mode("FAST_RUN").including(
+                    'local_elemwise_fusion', 'canonicalize', 'gpu')
         else:
-            mode = theano.compile.mode.get_default_mode()
-                .including('local_elemwise_fusion', 'canonicalize', 'gpu')
+            mode = theano.compile.mode.get_default_mode().including(
+                    'local_elemwise_fusion', 'canonicalize', 'gpu')
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
@@ -1120,11 +1120,11 @@ class test_fusion(unittest.TestCase):
     def test_gpu_fusion_Xd(self):
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
-            mode = theano.compile.mode.get_mode("FAST_RUN")
-                .including('local_elemwise_fusion', 'canonicalize', 'gpu')
+            mode = theano.compile.mode.get_mode("FAST_RUN").including(
+                    'local_elemwise_fusion', 'canonicalize', 'gpu')
         else:
-            mode = theano.compile.mode.get_default_mode()
-                .including('local_elemwise_fusion', 'canonicalize', 'gpu')
+            mode = theano.compile.mode.get_default_mode().including(
+                    'local_elemwise_fusion', 'canonicalize', 'gpu')
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
@@ -1166,7 +1166,7 @@ class test_fusion(unittest.TestCase):
 
         print "times2/times1"
         print d
-        print "min", d.min(), "argmin", d.argmin(), "max", d.max(),
+        print "min", d.min(), "argmin", d.argmin(), "max", d.max(), \
             "mean", d.mean(), "std", d.std()
 
     def test_fusion_inplace(self):
@@ -1272,8 +1272,8 @@ class test_fusion(unittest.TestCase):
                         for x in ndl:
                             cmp = not isinstance(x, list)
                             if not cmp and x:
-                                cmp = x[0]
-                                    .__class__.__name__ != 'array_converter'
+                                cmp = x[0].__class__.__name__ != \
+                                        'array_converter'
                                 if cmp:
                                     cmp = x[0] != 'Option'
                                 if cmp:
@@ -2946,8 +2946,8 @@ def test_constant_get_stabilized():
     f2 = theano.function([x2], y2)
     try:
         assert len(f2.maker.fgraph.toposort()) == 1
-        assert f2.maker.fgraph.toposort()[0]
-            .op == theano.tensor.nnet.sigm.softplus
+        assert f2.maker.fgraph.toposort()[0].op == \
+                theano.tensor.nnet.sigm.softplus
         assert f2(800) == 800
 
         x = T.as_tensor_variable(800)
@@ -2985,8 +2985,8 @@ class T_local_switch_sink(unittest.TestCase):
                     [[numpy.asarray(1.0),numpy.asarray(
                         0.0),numpy.asarray(1.0),numpy.asarray(0.0)]]
 
-        self.mode = theano.compile.mode.get_default_mode()
-            .including('canonicalize', 'fast_run').excluding('gpu', 'fusion')
+        self.mode = theano.compile.mode.get_default_mode().including(
+                'canonicalize', 'fast_run').excluding('gpu', 'fusion')
         self.mode = copy.copy(self.mode)
         self.mode.check_isfinite = False
 
@@ -3033,8 +3033,8 @@ class T_local_switch_sink(unittest.TestCase):
 
 class T_local_erf(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.mode.get_default_mode()
-            .including('canonicalize', 'fast_run').excluding('gpu', 'fusion')
+        self.mode = theano.compile.mode.get_default_mode().including(
+                'canonicalize', 'fast_run').excluding('gpu', 'fusion')
         self.mode._optimizer.position_cutoff = 1.50001
 
     def test_local_one_plus_erf(self):
@@ -3070,19 +3070,19 @@ class T_local_erf(unittest.TestCase):
 
         f = theano.function([x], 1 - T.erf(x), mode=self.mode)
         print f.maker.fgraph.toposort()
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]\
             , f.maker.fgraph.toposort()
         print f(val)
 
         f = theano.function([x], 1 + (-T.erf(x)), mode=self.mode)
         print f.maker.fgraph.toposort()
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]\
             , f.maker.fgraph.toposort()
         print f(val)
 
         f = theano.function([x], (-T.erf(x)) + 1, mode=self.mode)
         print f.maker.fgraph.toposort()
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erfc]\
             , f.maker.fgraph.toposort()
         print f(val)
 
@@ -3092,7 +3092,7 @@ class T_local_erf(unittest.TestCase):
         assert len(topo) == 2, f.maker.fgraph.toposort()
         assert topo[0].op == T.erf, f.maker.fgraph.toposort()
         assert isinstance(topo[1].op, T.Elemwise), f.maker.fgraph.toposort()
-        assert isinstance(topo[1].op.scalar_op, scal.Add)
+        assert isinstance(topo[1].op.scalar_op, scal.Add)\
             or isinstance(topo[1].op.scalar_op,scal.Sub), f.maker.fgraph.toposort()
         print f(val)
 
@@ -3122,15 +3122,15 @@ class T_local_erf(unittest.TestCase):
         assert len(topo) == 2
         assert topo[0].op == T.erf
         assert isinstance(topo[1].op, T.Elemwise)
-        assert isinstance(topo[1].op.scalar_op, scal.Add)
+        assert isinstance(topo[1].op.scalar_op, scal.Add)\
             or isinstance(topo[1].op.scalar_op, scal.Sub)
         print f(val)
 
 
 class T_local_erfc(unittest.TestCase):
     def setUp(self):
-        self.mode_fusion = theano.compile.mode.get_default_mode()
-            .including('canonicalize').including('fast_run').excluding('gpu')
+        self.mode_fusion = theano.compile.mode.get_default_mode().including(
+                'canonicalize').including('fast_run').excluding('gpu')
         self.mode = self.mode_fusion.excluding('fusion')
         self.mode._optimizer.position_cutoff = 1.50001
 
@@ -3143,13 +3143,13 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x], 1 - T.erfc(x), mode=self.mode)
         theano.printing.debugprint(f)
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]\
             , f.maker.fgraph.toposort()
         print f(val)
 
         f = theano.function([x], (-T.erfc(x)) + 1, mode=self.mode)
         theano.printing.debugprint(f)
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]\
             , f.maker.fgraph.toposort()
         print f(val)
 
@@ -3159,7 +3159,7 @@ class T_local_erfc(unittest.TestCase):
         assert len(topo) == 2, f.maker.fgraph.toposort()
         assert topo[0].op == T.erfc, f.maker.fgraph.toposort()
         assert isinstance(topo[1].op, T.Elemwise), f.maker.fgraph.toposort()
-        assert isinstance(topo[1].op.scalar_op, scal.Sub)
+        assert isinstance(topo[1].op.scalar_op, scal.Sub)\
             , f.maker.fgraph.toposort()
         print f(val)
 
@@ -3171,19 +3171,19 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x], -1 + T.erfc(-x), mode=self.mode)
         theano.printing.debugprint(f)
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]\
             , f.maker.fgraph.toposort()
         print f(val)
 
         f = theano.function([x], T.erfc(-x) - 1, mode=self.mode)
         theano.printing.debugprint(f)
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]\
             , f.maker.fgraph.toposort()
         print f(val)
 
         f = theano.function([x], T.erfc(-x) + (-1), mode=self.mode)
         theano.printing.debugprint(f)
-        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]
+        assert [n.op for n in f.maker.fgraph.toposort()] == [T.erf]\
             , f.maker.fgraph.toposort()
         print f(val)
 
