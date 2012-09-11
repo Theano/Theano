@@ -117,6 +117,9 @@ class MPIRecv(Op):
     def infer_shape(self, node, shapes):
         return [None, self.shape]
 
+    def do_constant_folding(self, node):
+        return False
+
 class MPIRecvWait(Op):
     """
     An operation to wait on a previously received array using MPI
