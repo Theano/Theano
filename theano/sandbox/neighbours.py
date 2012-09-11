@@ -59,7 +59,8 @@ class Images2Neibs(Op):
                 for j in xrange(list 2 dim)
                     for k in <image column coordinates>
                         for l in <image row coordinates>
-                            output[idx,:] = flattened version of ten4[i,j,l:l+r,k:k+c]
+                            output[idx,:]
+                                 = flattened version of ten4[i,j,l:l+r,k:k+c]
                             idx += 1
             (note: the op isn't necessarily implemented internally with these
             for loops, they're just the easiest way to describe the output pattern)
@@ -310,5 +311,3 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
         raise NotImplementedError("neibs2images do not support mode=%s" % mode)
 
     return output_4d
-
-
