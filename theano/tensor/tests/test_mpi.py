@@ -16,3 +16,8 @@ def test_send():
     sendnode = y.owner.inputs[0].owner
     assert sendnode.op.dest == 1
     assert sendnode.op.tag  == 11
+
+def test_can_make_function():
+    x = recv((5,5), 'float32', 0, 11)
+    y = x+1
+    assert theano.function([], [y])
