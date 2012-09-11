@@ -1018,6 +1018,23 @@ def list_of_nodes(inputs, outputs):
                            if inp.owner
                            and not any(i in inp.owner.outputs for i in inputs)])
 
+## {{{ http://code.activestate.com/recipes/578231/ (r1)
+def memodict(f):
+    """ Memoization decorator for a function taking a single argument """
+    class memodict(dict):
+        def __missing__(self, key):
+            ret = self[key] = f(key)
+            return ret
+    return memodict().__getitem__
+## end of http://code.activestate.com/recipes/578231/ }}}
+
+
+@memodict
+def depends((a, b)):
+    return (not set(a.inputs).isdisjoint(set(b.outputs))
+             or any(depends((ainp.owner, b)) for ainp in a.inputs
+                                            if ainp.owner))
+
 def dependence(a, b):
     """ A cmp function for nodes in a graph - does a depend on b?
 
@@ -1025,10 +1042,8 @@ def dependence(a, b):
     Returns negative number if b depends on a
     Returns 0 otherwise
     """
-    if b in {var.owner for var in ancestors(a.inputs)}:
-        return 1
-    if a in {var.owner for var in ancestors(b.inputs)}:
-        return -1
+    if depends((a, b)): return  1
+    if depends((b, a)): return -1
     return 0
 
 def new_io_toposort(inputs, outputs, cmps=[]):
