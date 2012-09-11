@@ -263,8 +263,8 @@ class SigmoidXEQuadraticDenoisingAA(QuadraticDenoisingAA):
     def _instance_initialize(self, obj, input_size, hidden_size, noise_level, seed, lr, qfilter_relscale):
 #        obj.l2_coef = 0.0
         obj.noise_level = N.asarray(noise_level, dtype=config.floatX)
-        super(SigmoidXEQuadraticDenoisingAA, self)
-            ._instance_initialize(obj, input_size, hidden_size, seed, lr, qfilter_relscale)
+        super(SigmoidXEQuadraticDenoisingAA, self)._instance_initialize(
+                obj, input_size, hidden_size, seed, lr, qfilter_relscale)
 
 QDAA = SigmoidXEQuadraticDenoisingAA
 
@@ -399,8 +399,8 @@ class ConvolutionalMLP(module.FancyModule):
                                 _qfilters = self.input_representations[0].qfilters
                             )
             )
-            assert self.input_representations[-1]
-                .w1 is self.input_representations[0].w1
+            assert self.input_representations[-1].w1 is \
+                    self.input_representations[0].w1
 
         self.input_representation = T.concatenate([i.
             hidden for i in self.input_representations], axis=1)
@@ -468,10 +468,10 @@ class ConvolutionalMLP(module.FancyModule):
 #        for layer in obj.layers:
 #            if layer.lr is None:
 #                layer.lr = lr
-        assert self.input_representations[-1]
+        assert self.input_representations[-1] \
             is not self.input_representations[0]
-        assert self.input_representations[-1]
-            .w1 is self.input_representations[0].w1
+        assert self.input_representations[-1].w1 is\
+                self.input_representations[0].w1
 
         for i in self.input_representations:
 #            i.initialize(input_size=self.input_size, hidden_size=self.input_representation_size, seed=R.random_integers(2**30), noise_level=noise_level, qfilter_relscale=qfilter_relscale)
