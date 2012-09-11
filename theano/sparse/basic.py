@@ -786,7 +786,7 @@ class CSM(gof.Op):
                                              copy=False)
 
     def connection_pattern(self, node):
-        return [[True],[False],[False],[False]]
+        return [[True], [False], [False], [False]]
 
     def grad(self, (x_data, x_indices, x_indptr, x_shape), (g_out,)):
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
@@ -2152,7 +2152,7 @@ class MulSV(gof.op.Op):
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError(
                     "MulSV not implemented for differing dtypes."
-                    "Got %s and %s." % (str(x.type.dtype),str(y.type.dtype)))
+                    "Got %s and %s." % (str(x.type.dtype), str(y.type.dtype)))
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=x.type.dtype,
