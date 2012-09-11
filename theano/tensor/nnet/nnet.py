@@ -1485,7 +1485,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
             if adv_subtensor is not None:
                 try:
-                    maybe_sm, maybe_rows,
+                    maybe_sm, maybe_rows, \
                         maybe_labels = adv_subtensor.owner.inputs
                 except Exception:
                     return

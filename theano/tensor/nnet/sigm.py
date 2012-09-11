@@ -305,7 +305,7 @@ def local_exp_over_1_plus_exp(node):
         #find all the exp() terms in the numerator
         num, denom = node.inputs
         num_exp_x, num_rest, num_neg = partition_num_or_denom(num, is_exp)
-        denom_1pexp, denom_rest,
+        denom_1pexp, denom_rest, \
             denom_neg = partition_num_or_denom(denom, is_1pexp)
 
         sigmoids = []

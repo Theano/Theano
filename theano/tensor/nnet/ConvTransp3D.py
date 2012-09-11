@@ -340,9 +340,9 @@ def computeR(W, b, d, H, Rshape=None):
     assert len(b.shape) == 1
     assert len(d) == 3
 
-    outputChannels,  filterHeight, filterWidth, filterDur,
+    outputChannels,  filterHeight, filterWidth, filterDur, \
         inputChannels = W.shape
-    batchSize, outputHeight, outputWidth, outputDur,
+    batchSize, outputHeight, outputWidth, outputDur, \
         outputChannelsAgain = H.shape
     assert outputChannelsAgain == outputChannels
     assert b.shape[0] == inputChannels
