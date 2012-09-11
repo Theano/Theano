@@ -808,9 +808,14 @@ class MRG_RandomStreams(object):
         probably result in [[1,0,0],[0,1,0]].
 
         .. note::
-            `size` and `ndim` are only there keep the same signature as other
+            -`size` and `ndim` are only there keep the same signature as other
             uniform, binomial, normal, etc.
             todo : adapt multinomial to take that into account
+
+            -Does not do any value checking on pvals, i.e. there is no
+             check that the elements are non-negative, less than 1, or
+             sum to 1. passing pvals = [[-2., 2.]] will result in
+             sampling [[0, 0]]
         """
         if pvals is None:
             raise TypeError("You have to specify pvals")
@@ -822,6 +827,14 @@ class MRG_RandomStreams(object):
                     size)
 
         if n == 1 and pvals.ndim == 2:
+            if size is not None:
+                raise ValueError("Provided a size argument to "
+                        "MRG_RandomStreams.multinomial, which does not use "
+                        "the size argument.")
+            if ndim is not None:
+                raise ValueError("Provided an ndim argument to "
+                        "MRG_RandomStreams.multinomial, which does not use "
+                        "the ndim argument.")
             ndim, size, bcast = raw_random._infer_ndim_bcast(
                     ndim, size, pvals[:,0])
             assert ndim==1
