@@ -4960,8 +4960,8 @@ class TestARange(unittest.TestCase):
             assert arange(iscalar(), dscalar()).dtype == dscalar().dtype
             assert arange(fscalar(), dscalar()).dtype == dscalar().dtype
 
-            assert arange(iscalar(), fscalar(), dscalar())
-                .dtype == dscalar().dtype
+            assert arange(iscalar(), fscalar(), dscalar()).dtype == \
+                dscalar().dtype
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             for dtype in get_numeric_types():
                 # Test with a single argument.
@@ -5612,10 +5612,10 @@ def _test_autocast_custom():
         ac.__enter__()
         assert (dvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.1).dtype == 'float32'
-        assert (fvector() + theano._asarray(1.1, dtype='float64'))
-            .dtype == 'float64'
-        assert (fvector() + theano._asarray(1.1, dtype='float32'))
-            .dtype == 'float32'
+        assert (fvector() + theano._asarray(1.1, dtype='float64')).dtype == \
+                'float64'
+        assert (fvector() + theano._asarray(1.1, dtype='float32')).dtype == \
+                'float32'
 
         assert (dvector() + 1).dtype == 'float64'
         assert (fvector() + 1).dtype == 'float32'
@@ -5629,10 +5629,10 @@ def _test_autocast_custom():
         assert (dvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.0).dtype == 'float64'
-        assert (fvector() + theano._asarray(1.1, dtype='float64'))
-            .dtype == 'float64'
-        assert (fvector() + theano._asarray(1.1, dtype='float32'))
-            .dtype == 'float32'
+        assert (fvector() + theano._asarray(1.1, dtype='float64')).dtype == \
+                'float64'
+        assert (fvector() + theano._asarray(1.1, dtype='float32')).dtype == \
+                'float32'
 
         assert (dvector() + 1).dtype == 'float64'
         assert (fvector() + 1).dtype == 'float32'
@@ -5981,8 +5981,8 @@ def test_mod():
     as Python. That is what we want.
     """
     x, y = fscalars('xy')
-    fn = gof.DualLinker().accept(gof.FunctionGraph([x, y], [x % y]))
-        .make_function()
+    fn = gof.DualLinker().accept(
+            gof.FunctionGraph([x, y], [x % y])).make_function()
     for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
                 (1, 2), (-1, 2), (1, -2), (-1, -2),
                 (5, 3), (-5, 3), (5, -3), (-5, -3)
