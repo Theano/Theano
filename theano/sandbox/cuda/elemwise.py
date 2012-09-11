@@ -919,7 +919,7 @@ nd_collapse_[i]=0;
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
                 PyErr_Format(PyExc_ValueError,
                              "GpuElemwise. Input dimension mis-match. Input"
-                             " %(id)d (index start at 0 has shape[%%i] == %%i"
+                             " %(id)d (indices start at 0) has shape[%%i] == %%i"
                              ", but the output's size on that axis is %%i.",
                              i,
                              CudaNdarray_HOST_DIMS(%(iname)s)[i],
