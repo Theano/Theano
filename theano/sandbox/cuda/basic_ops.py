@@ -159,6 +159,173 @@ class GpuFromHost(GpuOp):
 
 gpu_from_host = GpuFromHost()
 
+##################################
+# Asynchronous GPU Communication #
+##################################
+
+class HostFromGpuSend(GpuOp):
+    """
+    Start the transfer from gpu to the cpu.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return 'HostFromGpuSend'
+
+    def make_node(self, x):
+        if not isinstance(x.type, CudaNdarrayType):
+            raise TypeError(x)
+        return Apply(self, [x], [tensor.TensorType(dtype=x.dtype,
+                                    broadcastable=x.broadcastable)(),
+                                 theano.Variable(Generic())])
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp = inputs[0]
+        out, event = outputs
+        fail = sub['fail']
+        eventName = "%s_event"%out
+        return """
+        cudaEvent_t %(eventName)s;
+        cudaEventCreate(&%(eventName)s);
+        %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
+        cudaEventRecord(%(eventName)s, 0);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(&%(eventName)), NULL);
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
+class HostFromGpuWait(GpuOp):
+    """
+    Implement the transfer from gpu to the cpu.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return 'HostFromGpuWait'
+
+    def make_node(self, x, event):
+        if not isinstance(x.type, tensor.TensorType):
+            raise TypeError(x)
+        return Apply(self, [x, event], [tensor.TensorType(dtype=x.dtype,
+                                         broadcastable=x.broadcastable)()])
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp, event = inputs
+        out = outputs[0]
+        fail = sub['fail']
+        # eventName = "%s_event"%event
+        return """
+        cudaEventSynchronize(*PyCObject_AsVoidPtr(%(event)s));
+
+        %(out)s = %(inp)s;
+        if(!%(out)s){
+            %(fail)s;
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
+class GpuFromHostSend(GpuOp):
+    """
+    Start the transfer from cpu to the gpu.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return 'GpuFromHost'
+
+    def make_node(self, x):
+        if not isinstance(x.type, tensor.TensorType):
+            raise TypeError(x)
+        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
+                                                 dtype=x.dtype)(),
+                                 theano.Variable(Generic())])
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp = inputs[0]
+        out, event = outputs
+        fail = sub['fail']
+        eventName = "%s_event"%out
+        return """
+        int err = 0;
+        cudaEvent_t %(eventName)s;
+        cudaEventCreate(&%(eventName)s);
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*) CudaNdarray_New();
+        if(!%(out)s){
+            %(fail)s;
+        }
+        err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
+        cudaEventRecord(%(eventName)s);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(&%(eventName)), NULL);
+
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
+class GpuFromHostWait(GpuOp):
+    """
+    Wait for completion of the transfer from cpu to the gpu.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return 'GpuFromHostWait'
+
+    def make_node(self, x, event):
+        if not isinstance(x.type, CudaNdarrayType):
+            raise TypeError(x)
+        return Apply(self, [x, event],
+                    [CudaNdarrayType(broadcastable=x.broadcastable,
+                                     dtype=x.dtype)()])
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp, event = inputs[0]
+        out = outputs[0]
+        fail = sub['fail']
+        # eventName = "GpuFromHost_%s_event"%inp
+
+        return """
+        cudaEventSynchronize(*PyCObject_AsVoidPtr(%(event)s));
+        %(out)s = %(inp)s;
+        if(err){
+            %(fail)s;
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 class GpuElemwise(GpuOp):
     """
