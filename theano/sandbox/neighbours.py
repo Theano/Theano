@@ -2,10 +2,10 @@
 TODO: implement Images2Neibs.{perform,infer_shape}() methods
 
 """
-import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gradient import grad_not_implemented
+from theano.gradient import grad_undefined
 
 
 class Images2Neibs(Op):
@@ -59,7 +59,8 @@ class Images2Neibs(Op):
                 for j in xrange(list 2 dim)
                     for k in <image column coordinates>
                         for l in <image row coordinates>
-                            output[idx,:] = flattened version of ten4[i,j,l:l+r,k:k+c]
+                            output[idx,:]
+                                 = flattened version of ten4[i,j,l:l+r,k:k+c]
                             idx += 1
             (note: the op isn't necessarily implemented internally with these
             for loops, they're just the easiest way to describe the output pattern)
@@ -90,8 +91,11 @@ class Images2Neibs(Op):
                 (hasattr(neib_shape, "equals") and
                  neib_shape.equals(neib_step))):
                 return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
-                        None, None]
-        return [grad_not_implemented(self, 0, x), None, None]
+                        grad_undefined(self, 1, neib_shape),
+                        grad_undefined(self, 2, neib_step)]
+        return [grad_not_implemented(self, 0, x),
+                grad_undefined(self, 1, neib_shape),
+                grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
         return (5,)
@@ -307,5 +311,3 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
         raise NotImplementedError("neibs2images do not support mode=%s" % mode)
 
     return output_4d
-
-

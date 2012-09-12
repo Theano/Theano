@@ -14,6 +14,7 @@ from theano.scalar import Scalar
 from theano.printing import min_informative_str, pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
+from theano.gradient import DisconnectedType
 
 config = theano.config
 
@@ -277,7 +278,8 @@ class DimShuffle(Op):
         #get the copy / view of the input depending on whether we're doingi
         # things inplace or not.
         if self.inplace:
-            get_base = ['{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
+            get_base = [
+                '{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
         else:
             get_base = [('{ PyArrayObject * %(basename)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
                     '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
@@ -285,7 +287,8 @@ class DimShuffle(Op):
         shape_statements = ['npy_intp dimensions[%i]' % nd_out]
         for i, o in enumerate(self.new_order):
             if o != 'x':
-                shape_statements += [('dimensions[' + str(i) + '] = %(basename)s->dimensions[' + str(o) + ']')]
+                shape_statements += [('dimensions[' + str(
+                    i) + '] = %(basename)s->dimensions[' + str(o) + ']')]
             else:
                 shape_statements += [('dimensions[' + str(i) + '] = 1')]
 
@@ -294,7 +297,8 @@ class DimShuffle(Op):
         #set the strides of the non-broadcasted dimensions
         for i, o in enumerate(self.new_order):
             if o != 'x':
-                strides_statements += [('strides[' + str(i) + '] = %(basename)s->strides[' + str(o) + ']')]
+                strides_statements += [('strides[' + str(i)
+                     + '] = %(basename)s->strides[' + str(o) + ']')]
             else:
                 strides_statements += [('strides[' + str(i) + '] = 0')]
 
@@ -310,7 +314,8 @@ class DimShuffle(Op):
                 '-1] = %(basename)s->descr->elsize'
             )
         for i in xrange(nd_out - 2, -1, -1):
-            strides_statements.append("if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]" % dict(i=str(i)))
+            strides_statements.append(
+                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]" % dict(i=str(i)))
 
         #
         # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims, int type_num,
@@ -605,7 +610,8 @@ class Elemwise(Op):
                 # the right thing to do .. have to talk to Ian and James
                 # about it
 
-                if bgrads[jdx] is None:
+                if bgrads[jdx] is None or \
+                        isinstance(bgrads[jdx].type, DisconnectedType):
                     pass
                 elif eval_point is not None:
                     if rop_out is None:
@@ -616,6 +622,13 @@ class Elemwise(Op):
             rval[idx] = rop_out
 
         return rval
+
+    def connection_pattern(self, node):
+
+        if hasattr(self.scalar_op, 'connection_pattern'):
+            return self.scalar_op.connection_pattern(node)
+
+        return [[True for output in node.outputs] for ipt in node.inputs]
 
     def grad(self, inputs, ograds):
 
@@ -676,10 +689,16 @@ class Elemwise(Op):
 
             theano.config.compute_test_value = prev_setting
 
+        if not isinstance(scalar_igrads, (list, tuple)):
+            raise TypeError('%s.grad returned %s instead of list or tuple' %
+                    (str(self.scalar_op), str(type(scalar_igrads))))
+
         nd = len(inputs[0].type.broadcastable)  # this is the same for everyone
 
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
+            if isinstance(r.type, DisconnectedType):
+                return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]
             if r in scalar_ograds:
@@ -803,7 +822,7 @@ class Elemwise(Op):
             errormsg = ('While computing ' + str(node.outputs) +
                         ': Failed calling ufunc for op ' +
                         str(self.scalar_op) +
-                        'for params of shape ' +
+                        ' for params of shape ' +
                         str([arg.shape for arg in ufunc_args]))
 
             if config.exception_verbosity == 'high':
@@ -1324,7 +1343,8 @@ class CAReduce(Op):
             alloc += """
 for(int i=0;i<%(iname)s->nd;i++){
   if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
-    PyErr_Format(PyExc_ValueError, "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);
+    PyErr_Format(PyExc_ValueError,
+         "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);
     %(fail)s;
   }
 }
@@ -1585,6 +1605,12 @@ class Sum(CAReduceDtype):
 
     def grad(self, inp, grads):
         x, = inp
+
+        out = self(*inp)
+
+        if out.dtype.find('int') != -1:
+            return [x.zeros_like().astype(theano.config.floatX)]
+
         gz, = grads
         gz = as_tensor_variable(gz)
         axis = self.axis
@@ -1601,7 +1627,7 @@ class Sum(CAReduceDtype):
                 new_dims.append(i)
                 i += 1
         ds_op = DimShuffle(gz.type.broadcastable, new_dims)
-        gx = Elemwise(scalar.second)(x, ds_op(gz).astype(x.dtype))
+        gx = Elemwise(scalar.second)(x, ds_op(gz))
         return [gx]
 
     def R_op(self, inputs, eval_points):
@@ -1646,7 +1672,7 @@ class Prod(CAReduceDtype):
 
     def grad(self, inp, grads):
         '''
-        The grad of this Op could be very easy, it is was not for the case
+        The grad of this Op could be very easy, if it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
         together to form the product).
 
@@ -1692,8 +1718,11 @@ class Prod(CAReduceDtype):
         '''
         prod_in, = inp
         gz, = grads
-        if prod_in.dtype[0:3] in ('int', 'uin'):
-            return [None]
+
+        out = self(*inp)
+
+        if out.dtype[0:3] in ('int', 'uin'):
+            return [prod_in.zeros_like().astype(theano.config.floatX)]
 
         # Prepare the broadcasting that is used everywhere to broadcast
         # over the original groups (ie. broadcast over the elements of a given

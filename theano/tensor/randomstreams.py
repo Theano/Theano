@@ -136,7 +136,7 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
 
     """
 
-    def __init__(self, seed=None, no_warn = False):
+    def __init__(self, seed=None, no_warn=False):
         """:type seed: None or int
 
         :param seed: a default seed to initialize the RandomState
@@ -146,7 +146,7 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
         """
         if not no_warn:
             deprecation_warning()
-        super(RandomStreams, self).__init__(no_warn = True)
+        super(RandomStreams, self).__init__(no_warn=True)
         self.random_state_variables = []
         self.default_instance_seed = seed
 
@@ -164,7 +164,6 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
     def build(self, mode, memo):
         """override `Component.build` """
         if self not in memo:
-            print 'creating RandomStreamsInstance'
             memo[self] = RandomStreamsInstance(self, memo,
                                                self.default_instance_seed)
         return memo[self]

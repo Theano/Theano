@@ -1,8 +1,5 @@
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-import numpy
-
-import theano
 
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
