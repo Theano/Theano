@@ -49,9 +49,6 @@ class HostFromGpuSend(GpuOp):
                                     broadcastable=x.broadcastable)(),
                                  theano.Variable(Generic())])
 
-    def infer_shape(self, node, xshp):
-        return xshp
-
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
         out, event = outputs
@@ -86,9 +83,6 @@ class HostFromGpuWait(GpuOp):
             raise TypeError(x)
         return Apply(self, [x, event], [tensor.TensorType(dtype=x.dtype,
                                          broadcastable=x.broadcastable)()])
-
-    def infer_shape(self, node, xshp):
-        return [xshp[0]]
 
     def c_code(self, node, name, inputs, outputs, sub):
         print inputs
@@ -128,9 +122,6 @@ class GpuFromHostSend(GpuOp):
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
                                                  dtype=x.dtype)(),
                                  theano.Variable(Generic())])
-
-    def infer_shape(self, node, xshp):
-        return xshp
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
@@ -179,9 +170,6 @@ class GpuFromHostWait(GpuOp):
                     [CudaNdarrayType(broadcastable=x.broadcastable,
                                      dtype=x.dtype)()])
 
-    def infer_shape(self, node, xshp):
-        return [xshp[0]]
-
     def c_code(self, node, name, inputs, outputs, sub):
         inp, event = inputs
         out = outputs[0]
@@ -212,5 +200,5 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 #gpu_seqopt.register('local_async_gpu',
 #                    theano.tensor.opt.in2out(local_async_gpu), 3,
 #                    'fast_run', 'gpu')
-gpu_seqopt.register('local_async_gpu', async_optimizer, 3,
-        'fast_run', 'gpu')
+#gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
+
