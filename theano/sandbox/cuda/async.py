@@ -204,6 +204,8 @@ def local_async_gpu(node):
     if isinstance(node.op, GpuFromHost):
         return [GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))]
     return False
+async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
+
 
 # gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
 
