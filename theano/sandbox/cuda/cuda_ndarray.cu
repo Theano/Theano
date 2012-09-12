@@ -4521,6 +4521,11 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     fprintf(fd, "\n");
 }
 
+void free_cudaEvent(void *_event)
+{
+    free(_event);
+}
+
 /*
   Local Variables:
   mode:c++
