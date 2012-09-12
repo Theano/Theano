@@ -439,6 +439,8 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
 static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
+void free_cudaEvent(void *_event);
+
 #endif
 /*
   Local Variables:
