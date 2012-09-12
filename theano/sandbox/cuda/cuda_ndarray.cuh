@@ -27,7 +27,7 @@ typedef float real;
 #define NUM_VECTOR_OP_THREADS_PER_BLOCK     256  //Should be read from device properties. (#10)
 #endif
 
-#if 0
+#if 1
 // Do not wait after every kernel & transfer.
 #define CNDA_THREAD_SYNC
 #else
