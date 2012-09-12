@@ -114,7 +114,7 @@ class GpuFromHostSend(GpuOp):
         return hash(type(self))
 
     def __str__(self):
-        return 'GpuFromHost'
+        return 'GpuFromHostSend'
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
