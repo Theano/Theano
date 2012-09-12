@@ -97,25 +97,25 @@ class ConvGrad3D(theano.Op):
             //printf("\t\t\t\tConvGradW3D c code\\n");
 
             //Check dimensionality of inputs
-            if (%(dCdH)s->nd != 5)
+            if (PyArray_NDIM(%(dCdH)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "ConvGrad3D: dCdH must be a 5 dimensional tensor");
                             %(fail)s
             }
 
-            if (%(V)s->nd != 5)
+            if (PyArray_NDIM(%(V)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "ConvGrad3D: V must be a 5 dimensional tensor");
                 %(fail)s
             }
 
-            if (%(WShape)s->nd != 1)
+            if (PyArray_NDIM(%(WShape)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"ConvGrad3D: WShape must be a vector.");
                 %(fail)s
             }
 
-            if (%(d)s->nd != 1)
+            if (PyArray_NDIM(%(d)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"ConvGrad3D: d must be a vector.");
                 %(fail)s

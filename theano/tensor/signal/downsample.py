@@ -176,7 +176,7 @@ class DownsampleFactorMax(Op):
         int x_shp0_usable;
         int x_shp1_usable;
         int z_shp0, z_shp1;
-        if(%(x)s->nd!=4)
+        if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
@@ -306,17 +306,17 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "input types must all match");
             %(fail)s;
         }
-        if(%(x)s->nd!=4)
+        if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(z)s->nd!=4)
+        if(PyArray_NDIM(%(z)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "z must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(gz)s->nd!=4)
+        if(PyArray_NDIM(%(gz)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;

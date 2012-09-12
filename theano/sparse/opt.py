@@ -112,11 +112,11 @@ class StructuredDotCSC(gof.Op):
 
         rval = """
 
-        if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
-        if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
-        if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
-        if (%(a_nrows)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(nrows) != 0"); %(fail)s;}
-        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(a_val)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ind)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_nrows)s) != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(nrows) != 0"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
         if (%(a_val)s->descr->type_num != %(typenum_a_val)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for a_val"); %(fail)s;}
@@ -301,10 +301,10 @@ class StructuredDotCSR(gof.Op):
             raise NotImplementedError('Complex types are not supported for b')
 
         return """
-        if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
-        if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
-        if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
-        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(a_val)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ind)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
         if (%(a_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
@@ -535,11 +535,12 @@ class UsmmCscDense(gof.Op):
         inplace = int(self.inplace)
 
         rval = """
-        if (%(x_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_val) != 1"); %(fail)s;}
-        if (%(x_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ind) != 1"); %(fail)s;}
-        if (%(x_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ptr) != 1"); %(fail)s;}
-        if (%(x_nrows)s->nd != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_nrows) != 0"); %(fail)s;}
-        if (%(y)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
+
+        if (PyArray_NDIM(%(x_val)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_val) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(x_ind)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ind) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(x_ptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(x_ptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(x_nrows)s) != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(nrows) != 0"); %(fail)s;}
+        if (PyArray_NDIM(%(y)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
 
         if (%(x_val)s->descr->type_num != %(typenum_x_val)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for x_val"); %(fail)s;}
@@ -574,16 +575,16 @@ class UsmmCscDense(gof.Op):
         if (PyArray_SIZE(%(alpha)s) != 1)
         {PyErr_SetString(PyExc_NotImplementedError, "The number of element in alpha must be 1"); %(fail)s;}
 
-        if (%(alpha)s->nd != 2)
+        if (PyArray_NDIM(%(alpha)s) != 2)
         {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of alpha must be 2"); %(fail)s;}
 
-        if (%(x_val)s->nd != 1)
+        if (PyArray_NDIM(%(x_val)s) != 1)
         {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of x_val must be 1"); %(fail)s;}
 
-        if (%(y)s->nd != 2)
+        if (PyArray_NDIM(%(y)s) != 2)
         {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of y must be 2"); %(fail)s;}
 
-        if (%(z)s->nd != 2)
+        if (PyArray_NDIM(%(z)s) != 2)
         {PyErr_SetString(PyExc_NotImplementedError, "The number dimension of z must be 2"); %(fail)s;}
 
         if (%(inplace)s)
@@ -742,12 +743,12 @@ class CSMGradC(gof.Op):
             raise NotImplementedError('Complex types are not supported for b_val')
 
         return """
-        if (%(a_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
-        if (%(a_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
-        if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
-        if (%(b_val)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_val) != 1"); %(fail)s;}
-        if (%(b_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ind) != 1"); %(fail)s;}
-        if (%(b_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_val)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_val) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ind)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ind) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a_ptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b_val)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_val) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b_ind)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ind) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b_ptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ptr) != 1"); %(fail)s;}
 
         if (%(a_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
@@ -897,16 +898,16 @@ class MulSDCSC(gof.Op):
             raise NotImplementedError('Complex types are not supported for b')
 
         return """
-        if (%(_b)s->nd != 2) {
+        if (PyArray_NDIM(%(_b)s) != 2) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2");
             %(fail)s;}
-        if (%(_data)s->nd != 1) {
+        if (PyArray_NDIM(%(_data)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
             %(fail)s;}
-        if (%(_indices)s->nd != 1) {
+        if (PyArray_NDIM(%(_indices)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
             %(fail)s;}
-        if (%(_indptr)s->nd != 1) {
+        if (PyArray_NDIM(%(_indptr)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;}
 
@@ -1011,16 +1012,16 @@ class MulSDCSR(gof.Op):
             raise NotImplementedError('Complex types are not supported for b')
 
         return """
-        if (%(_b)s->nd != 2) {
+        if (PyArray_NDIM(%(_b)s) != 2) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2");
             %(fail)s;}
-        if (%(_data)s->nd != 1) {
+        if (PyArray_NDIM(%(_data)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
             %(fail)s;}
-        if (%(_indices)s->nd != 1) {
+        if (PyArray_NDIM(%(_indices)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
             %(fail)s;}
-        if (%(_indptr)s->nd != 1) {
+        if (PyArray_NDIM(%(_indptr)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;}
 
@@ -1161,19 +1162,19 @@ class MulSVCSR(gof.Op):
             raise NotImplementedError('Complex types are not supported for b')
 
         return """
-        if (%(_b)s->nd != 1) {
+        if (PyArray_NDIM(%(_b)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1");
             %(fail)s;
         }
-        if (%(_data)s->nd != 1) {
+        if (PyArray_NDIM(%(_data)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
             %(fail)s;
         }
-        if (%(_indices)s->nd != 1) {
+        if (PyArray_NDIM(%(_indices)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
             %(fail)s;
         }
-        if (%(_indptr)s->nd != 1) {
+        if (PyArray_NDIM(%(_indptr)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;
         }
@@ -1311,19 +1312,19 @@ class StructuredAddSVCSR(gof.Op):
             raise NotImplementedError('Complex types are not supported for b')
 
         return """
-        if (%(_b)s->nd != 1) {
+        if (PyArray_NDIM(%(_b)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1");
             %(fail)s;
         }
-        if (%(_data)s->nd != 1) {
+        if (PyArray_NDIM(%(_data)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(data) != 1");
             %(fail)s;
         }
-        if (%(_indices)s->nd != 1) {
+        if (PyArray_NDIM(%(_indices)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1");
             %(fail)s;
         }
-        if (%(_indptr)s->nd != 1) {
+        if (PyArray_NDIM(%(_indptr)s) != 1) {
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;
         }
@@ -1537,9 +1538,9 @@ class SamplingDotCSR(gof.Op):
                                        []).dtype_specs()[-1]
 
         rval = """
-        if (%(x)s->nd != 2) {
+        if (PyArray_NDIM(%(x)s) != 2) {
 PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 2"); %(fail)s;}
-        if (%(y)s->nd != 2) {
+        if (PyArray_NDIM(%(y)s) != 2) {
 PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
 
         if (%(x)s->descr->type_num != %(typenum_x)s) {

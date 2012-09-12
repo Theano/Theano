@@ -114,12 +114,12 @@ class Images2Neibs(Op):
         int grid_c = -1; //number of patch in height
         int grid_d = -1; //number of patch in width
         {
-        if (%(ten4)s->nd != 4)
+        if (PyArray_NDIM(%(ten4)s) != 4)
         {
             PyErr_Format(PyExc_TypeError, "ten4 wrong rank");
             %(fail)s;
         }
-        if (%(neib_shape)s->nd != 1)
+        if (PyArray_NDIM(%(neib_shape)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "neib_shape wrong rank");
             %(fail)s;
@@ -130,7 +130,7 @@ class Images2Neibs(Op):
                                           " contain 2 elements");
             %(fail)s;
         }
-        if (%(neib_step)s->nd != 1)
+        if (PyArray_NDIM(%(neib_step)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "neib_step wrong rank");
             %(fail)s;

@@ -47,7 +47,7 @@ def make_checks(loop_orders, dtypes, sub):
             # tensor is as expected.
             min_nd = max(nonx) + 1
             init += """
-            if (%(var)s->nd < %(min_nd)s) {
+            if (PyArray_NDIM(%(var)s) < %(min_nd)s) {
                 PyErr_SetString(PyExc_ValueError, "Not enough dimensions on input.");
                 %%(fail)s
             }

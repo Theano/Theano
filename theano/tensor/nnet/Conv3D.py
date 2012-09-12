@@ -182,26 +182,26 @@ class Conv3D(theano.Op):
             //printf("\t\t\t\tConv3D c code\\n");
 
             //Check dimensionality of inputs
-            if (%(W)s->nd != 5)
+            if (PyArray_NDIM(%(W)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "Conv3D: W must be a 5 dimensional tensor");
                             %(fail)s
 
             }
 
-            if (%(V)s->nd != 5)
+            if (PyArray_NDIM(%(V)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "Conv3D: V must be a 5 dimensional tensor");
                             %(fail)s
             }
 
-            if (%(b)s->nd != 1)
+            if (PyArray_NDIM(%(b)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"Conv3D: b must be a vector.");
                 %(fail)s
             }
 
-            if (%(d)s->nd != 1)
+            if (PyArray_NDIM(%(d)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"Conv3D: d must be a vector.");
                 %(fail)s

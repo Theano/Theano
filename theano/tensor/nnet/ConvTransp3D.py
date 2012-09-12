@@ -99,25 +99,27 @@ class ConvTransp3D(theano.Op):
                     //printf("\t\t\t\tConvTransp3D c code\\n");
 
                     //Check dimensionality of inputs
-                    if (%(H)s->nd != 5)
+                    if (PyArray_NDIM(%(H)s) != 5)
                     {
-                        PyErr_Format(PyExc_ValueError, "H must be a 5-D tensor but it is %%i-D",%(H)s->nd);
+                        PyErr_Format(PyExc_ValueError,
+                                     "H must be a 5-D tensor but it is %%i-D",
+                                     PyArray_NDIM(%(H)s));
                         %(fail)s
                     }
 
-                    if (%(W)s->nd != 5)
+                    if (PyArray_NDIM(%(W)s) != 5)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: W must be a 5-D tensor");
                 %(fail)s
                     }
 
-                    if (%(b)s->nd != 1)
+                    if (PyArray_NDIM(%(b)s) != 1)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: b must be a vector");
                          %(fail)s
                     }
 
-                    if (%(d)s->nd != 1)
+                    if (PyArray_NDIM(%(d)s) != 1)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: d must be a vector");
                          %(fail)s
@@ -179,7 +181,7 @@ class ConvTransp3D(theano.Op):
 
                                 if (%(RShape)s)
                                 {
-                                    if (%(RShape)s->nd != 1)
+                                    if (PyArray_NDIM(%(RShape)s) != 1)
                                     {
                                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: RShape must be a vector");
                                         %(fail)s

@@ -511,12 +511,22 @@ class GemmRelated(Op):
     #setup_z_Nz_Sz = None
 
     check_xyz_rank2 = """
-        if (%(_x)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(x) != 2. rank(x) is %%d.", %(_x)s->nd); %(fail)s;}
-        if (%(_y)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(y) != 2. rank(y) is %%d.", %(_y)s->nd); %(fail)s;}
-        if (%(_zout)s && %(_zout)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(z) != 2. rank(z) is %%d.", %(_zout)s->nd); %(fail)s;}
+        if (PyArray_NDIM(%(_x)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(x) != 2. rank(x) is %%d.",
+                         PyArray_NDIM(%(_x)s));
+            %(fail)s;
+        }
+        if (PyArray_NDIM(%(_y)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(y) != 2. rank(y) is %%d.", PyArray_NDIM(%(_y)s));
+            %(fail)s;
+        }
+        if (%(_zout)s && PyArray_NDIM(%(_zout)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(z) != 2. rank(z) is %%d.", PyArray_NDIM(%(_zout)s));
+            %(fail)s;
+        }
         """
     check_xyz_double_or_float = """
         if ((%(_x)s->descr->type_num != NPY_DOUBLE)
