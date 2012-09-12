@@ -88,6 +88,11 @@ int device_free(void *ptr)
     if(!g_gpu_context_active) {
         return 0;
     }
+
+    // We need sync as the Theano's GC could remove intermediate variable that
+    // are still needed as the gpu kernel are running or in the queue.
+    cudaThreadSynchronize();
+
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
