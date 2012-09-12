@@ -1,4 +1,4 @@
-from theano.tensor.io import send, recv
+from theano.tensor.io import send, recv, mpi_enabled
 import theano
 import subprocess
 import os
@@ -25,6 +25,8 @@ def test_can_make_function():
     assert theano.function([], [y])
 
 def test_mpi_roundtrip():
+    if not mpi_enabled:
+        return
 #    p = subprocess.Popen(executable="mpiexec",
 #                         args = ("-np", "2",
 #                                 "python",
