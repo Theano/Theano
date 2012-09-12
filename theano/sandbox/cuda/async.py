@@ -88,7 +88,7 @@ class HostFromGpuWait(GpuOp):
                                          broadcastable=x.broadcastable)()])
 
     def infer_shape(self, node, xshp):
-        return xshp
+        return [xshp[0]]
 
     def c_code(self, node, name, inputs, outputs, sub):
         print inputs
@@ -180,7 +180,7 @@ class GpuFromHostWait(GpuOp):
                                      dtype=x.dtype)()])
 
     def infer_shape(self, node, xshp):
-        return xshp
+        return [xshp[0]]
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp, event = inputs
@@ -200,9 +200,9 @@ class GpuFromHostWait(GpuOp):
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
 def local_async_gpu(node):
     if isinstance(node.op, HostFromGpu):
-        return HostFromGpuWait()(*HostFromGpuSend()(node.inputs[0]))
+        return [HostFromGpuWait()(*HostFromGpuSend()(node.inputs[0]))]
     if isinstance(node.op, GpuFromHost):
-        return GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))
+        return [GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))]
     return False
 
 # gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
