@@ -52,13 +52,6 @@ class HostFromGpuSend(GpuOp):
     def infer_shape(self, node, xshp):
         return xshp
 
-    def c_support_code(self):
-        return """
-        void free_cudaEvent(void *_event)
-        {
-            free(_event);
-        }
-        """
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
         out, event = outputs
@@ -139,14 +132,6 @@ class GpuFromHostSend(GpuOp):
     def infer_shape(self, node, xshp):
         return xshp
 
-    def c_support_code(self):
-        return """
-        void free_cudaEvent(void *_event)
-        {
-            free(_event);
-        }
-        """
-
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
         out, event = outputs
@@ -222,6 +207,8 @@ def local_async_gpu(node):
 
 # gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
 
-gpu_seqopt.register('local_async_gpu',
-                    theano.tensor.opt.in2out(local_async_gpu), 3,
-                    'fast_run', 'gpu')
+#gpu_seqopt.register('local_async_gpu',
+#                    theano.tensor.opt.in2out(local_async_gpu), 3,
+#                    'fast_run', 'gpu')
+gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out([local_async_gpu]), 3,
+        'fast_run', 'gpu')
