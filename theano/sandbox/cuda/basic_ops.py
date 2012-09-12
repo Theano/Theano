@@ -327,6 +327,15 @@ class GpuFromHostWait(GpuOp):
     def c_code_cache_version(self):
         return (1,)
 
+# TODO Register
+@theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
+def async_gpu(node):
+    if isinstance(node.op, HostFromGpu):
+        return HostFromGpuWait()(*HostFromGpuStart()(node.inputs[0]))
+    if isinstance(node.op, GpuFromHost):
+        return GpuFromHostWait()(*GpuFromHostStart()(node.inputs[0]))
+    return False
+
 class GpuElemwise(GpuOp):
     """
     Implement a generic elemwise on the gpu.
