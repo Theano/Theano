@@ -69,7 +69,7 @@ class HostFromGpuSend(GpuOp):
         cudaEventCreate(%(eventName)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
         cudaEventRecord(*%(eventName)s, 0);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)), &free_cudaEvent);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
@@ -161,7 +161,7 @@ class GpuFromHostSend(GpuOp):
         }
         err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
         cudaEventRecord(*%(eventName)s, 0);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)), &free_cudaEvent);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
