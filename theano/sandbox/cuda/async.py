@@ -66,10 +66,10 @@ class HostFromGpuSend(GpuOp):
         eventName = "%s_event"%out
         return """
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         cudaEventCreate(%(eventName)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
         cudaEventRecord(*%(eventName)s, 0);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
@@ -98,12 +98,14 @@ class HostFromGpuWait(GpuOp):
         return xshp
 
     def c_code(self, node, name, inputs, outputs, sub):
+        print inputs
+        print type(inputs)
         inp, event = inputs
         out = outputs[0]
         fail = sub['fail']
         # eventName = "%s_event"%event
         return """
-        cudaEventSynchronize(*PyCObject_AsVoidPtr(%(event)s));
+        cudaEventSynchronize(*(cudaEvent_t)(PyCObject_AsVoidPtr(%(event)s)));
 
         %(out)s = %(inp)s;
         if(!%(out)s){
@@ -153,6 +155,7 @@ class GpuFromHostSend(GpuOp):
         return """
         int err = 0;
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         cudaEventCreate(%(eventName)s);
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*) CudaNdarray_New();
@@ -160,8 +163,12 @@ class GpuFromHostSend(GpuOp):
             %(fail)s;
         }
         err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
+
+        // This should probably happen after synchronization
+        if(err){
+            %(fail)s;
+        }
         cudaEventRecord(*%(eventName)s, 0);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
@@ -191,17 +198,14 @@ class GpuFromHostWait(GpuOp):
         return xshp
 
     def c_code(self, node, name, inputs, outputs, sub):
-        inp, event = inputs[0]
+        inp, event = inputs
         out = outputs[0]
         fail = sub['fail']
         # eventName = "GpuFromHost_%s_event"%inp
 
         return """
-        cudaEventSynchronize(*PyCObject_AsVoidPtr(%(event)s));
+        cudaEventSynchronize(*(cudaEvent_t*)(PyCObject_AsVoidPtr(%(event)s)));
         %(out)s = %(inp)s;
-        if(err){
-            %(fail)s;
-        }
         """ % locals()
 
     def c_code_cache_version(self):
@@ -215,4 +219,9 @@ def local_async_gpu(node):
     if isinstance(node.op, GpuFromHost):
         return GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))
     return False
+
 gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
+
+#gpu_seqopt.register('local_async_gpu',
+#                    theano.tensor.opt.in2out(local_async_gpu), 3,
+#                    'fast_run', 'gpu')
