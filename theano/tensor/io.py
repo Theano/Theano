@@ -78,9 +78,10 @@ class MPIRecv(Op):
     """
     An operation to asynchronously receive an array to a remote host using MPI
 
-    See Also
-       MPIRecv
-       MPIWait
+    See Also:
+        recv
+        send
+        MPIRecvWait
 
     @note: Non-differentiable.
     """
@@ -124,8 +125,10 @@ class MPIRecvWait(Op):
     """
     An operation to wait on a previously received array using MPI
 
-    See Also
-       MPIRecv
+    See Also:
+        recv
+        send
+        MPIRecv
 
     @note: Non-differentiable.
     """
@@ -160,11 +163,12 @@ class MPIRecvWait(Op):
 
 class MPISend(Op):
     """
-    An operation to asynchronously Send an array to a remote host using MPI
+    An operation to asynchronously send an array to a remote host using MPI
 
-    See Also
-       MPIRecv
-       MPISendWait
+    See Also:
+        send
+        recv
+        MPISendWait
 
     @note: Non-differentiable.
     """
@@ -200,7 +204,9 @@ class MPISendWait(Op):
     An operation to wait on a previously sent array using MPI
 
     See Also:
-       MPISend
+        send
+        recv
+        MPISend
 
     @note: Non-differentiable.
     """
@@ -227,11 +233,60 @@ class MPISendWait(Op):
         return "MPISendWait"
 
 def isend(var, dest, tag):
+    """ Asynchronous version of send
+
+    See Also:
+        send
+        irecv
+    """
     return MPISend(dest, tag)(var)
+
 def send(var, dest, tag):
+    """Send a variable to a remote host using MPI
+
+    inputs:
+        var  - variable to send                   :: A Theano Tensor
+        dest - rank of the destination host       :: int
+        tag  - unique identifier of this transfer :: int
+
+    outputs  - a boolean value True that the send succeeded
+             - You must include this value in the outputs of your function
+
+    >>> x = theano.tensor.matrix('x')
+    >>> finished = send(x, 1, 123) # send x to machine with rank 1
+    >>> f = theano.function([x], finished)
+
+    See Also:
+        recv
+    """
     return MPISendWait()(isend(var, dest, tag))
 
 def irecv(shape, dtype, source, tag):
+    """ Asynchronous version of recv
+
+    See Also:
+        recv
+        isend
+    """
     return MPIRecv(source, tag, shape, dtype)()
+
 def recv(shape, dtype, source, tag):
+    """Receive a variable from a remote host using MPI
+
+    You must know the shape and dtype of the incoming variable
+
+    inputs:
+        shape   - shape of the received variable        :: (int, int)
+        dtype   - dtype of the received variable        :: dtype
+        source  - rank of the source host               :: int
+        tag     - unique identifier of this transfer    :: int
+
+    outputs  - a theano Tensor received from the remote host
+
+    >>> x = recv((10, 10), 'float32', 0, 123)
+    >>> f = theano.function([], x)
+
+    See Also:
+        send
+    """
     return MPIRecvWait()(*irecv(shape, dtype, source, tag))
