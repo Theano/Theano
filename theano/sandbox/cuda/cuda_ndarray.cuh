@@ -468,6 +468,8 @@ PyObject * CudaNdarray_View(const CudaNdarray * self);
 PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 
 
+void free_cudaEvent(void *_event);
+
 #endif
 /*
   Local Variables:
