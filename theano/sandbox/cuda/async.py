@@ -212,5 +212,5 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 #gpu_seqopt.register('local_async_gpu',
 #                    theano.tensor.opt.in2out(local_async_gpu), 3,
 #                    'fast_run', 'gpu')
-gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out([local_async_gpu]), 3,
+gpu_seqopt.register('local_async_gpu', async_optimizer, 3,
         'fast_run', 'gpu')
