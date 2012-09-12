@@ -1,4 +1,5 @@
-from theano.sandbox.cuda.async import local_async_gpu, GpuFromHostWait, HostFromGpuWait
+from theano.sandbox.cuda.async import (local_async_gpu, GpuFromHostWait, HostFromGpuWait,
+        async_optimizer)
 from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
 import theano
 import numpy as np
@@ -39,3 +40,9 @@ def test_execute():
 
     xx = np.ones((5,5), dtype=x.dtype)
     f(xx)
+
+def test_optimizer():
+    x = theano.tensor.matrix('x')
+    gx = theano.sandbox.cuda.gpu_from_host(x)
+    fgraph = theano.FunctionGraph([x], [gx])
+    async_optimizer.optimize(fgraph)
