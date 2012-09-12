@@ -186,17 +186,24 @@ class HostFromGpuSend(GpuOp):
     def infer_shape(self, node, xshp):
         return xshp
 
+    def c_support_code(self):
+        return """
+        void free_cudaEvent(void *_event)
+        {
+            free(_event);
+        }
+        """
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
         out, event = outputs
         fail = sub['fail']
         eventName = "%s_event"%out
         return """
-        cudaEvent_t %(eventName)s;
-        cudaEventCreate(&%(eventName)s);
+        cudaEvent_t *%(eventName)s = malloc(sizeof(cudaEvent_t));
+        cudaEventCreate(%(eventName)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
-        cudaEventRecord(%(eventName)s, 0);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(&%(eventName)), NULL);
+        cudaEventRecord(*%(eventName)s, 0);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
@@ -264,6 +271,14 @@ class GpuFromHostSend(GpuOp):
     def infer_shape(self, node, xshp):
         return xshp
 
+    def c_support_code(self):
+        return """
+        void free_cudaEvent(void *_event)
+        {
+            free(_event);
+        }
+        """
+
     def c_code(self, node, name, inputs, outputs, sub):
         inp = inputs[0]
         out, event = outputs
@@ -271,17 +286,16 @@ class GpuFromHostSend(GpuOp):
         eventName = "%s_event"%out
         return """
         int err = 0;
-        cudaEvent_t %(eventName)s;
-        cudaEventCreate(&%(eventName)s);
+        cudaEvent_t *%(eventName)s = malloc(sizeof(cudaEvent_t));
+        cudaEventCreate(%(eventName)s);
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*) CudaNdarray_New();
         if(!%(out)s){
             %(fail)s;
         }
         err = CudaNdarray_CopyFromArray(%(out)s, %(inp)s);
-        cudaEventRecord(%(eventName)s);
-        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(&%(eventName)), NULL);
-
+        cudaEventRecord(*%(eventName)s, 0);
+        PyObject *%(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)), &free_cudaEvent);
         """ % locals()
 
     def c_code_cache_version(self):
