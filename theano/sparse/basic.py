@@ -3011,10 +3011,10 @@ class StructuredDotGradCSC(gof.Op):
         if (%(_indices)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (%(_indptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])
@@ -3147,10 +3147,10 @@ class StructuredDotGradCSR(gof.Op):
         if (%(_indices)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (%(_indptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( %(_d)s->dimensions[1] != %(_g)s->dimensions[1])

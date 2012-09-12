@@ -59,10 +59,10 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         if (%(a)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
         if (%(b)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_DOUBLE)
+        if (%(a)s->descr->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
+        if (%(b)s->descr->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
 
         if (%(a)s->dimensions[0] != %(b)s->dimensions[0])
@@ -606,10 +606,10 @@ class BrokenCImplementationAdd(gof.Op):
         if (%(a)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
         if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_FLOAT)
+        if (%(a)s->descr->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_FLOAT)
+        if (%(b)s->descr->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_FLOAT"); %(fail)s;}
 
         if (%(a)s->dimensions[0] != %(a)s->dimensions[1])

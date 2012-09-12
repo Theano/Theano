@@ -1303,7 +1303,7 @@ if(%(filtersflipped)s->nd==3){
 
 %(assert_size)s
 
-img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
      || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
@@ -1317,7 +1317,7 @@ if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
 }
 img2d_arr = (PyArrayObject*)img2d;
 
-filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
      || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
@@ -1576,7 +1576,7 @@ if (NKERN != kerns_dim[0])
     %(fail)s;
 }
 
-img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
      || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
@@ -1825,7 +1825,7 @@ if(%(filtersflipped)s->nd==3){
 
 %(assert_size)s
 
-img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
      || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
@@ -1839,7 +1839,7 @@ if ((img2d_arr->strides[3] != (npy_intp)sizeof(%(type)s))
 }
 img2d_arr = (PyArrayObject*)img2d;
 
-filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != (npy_intp)sizeof(%(type)s))
      || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*(npy_intp)sizeof(%(type)s))){
@@ -2060,7 +2060,7 @@ if(%(filtersflipped)s->nd==3){
 
 %(assert_size)s
 
-img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, PyArray_CORDER);
+img2d = PyArray_Newshape(%(img2d)s,&img2d_shape, NPY_CORDER);
 img2d_arr = (PyArrayObject*)img2d;
 if ((img2d_arr->strides[3] != sizeof(%(type)s))
      || (img2d_arr->strides[2] != img2d_arr->dimensions[3]*sizeof(%(type)s))){
@@ -2074,7 +2074,7 @@ if ((img2d_arr->strides[3] != sizeof(%(type)s))
 }
 img2d_arr = (PyArrayObject*)img2d;
 
-filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, PyArray_CORDER);
+filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
 if ((filtersflipped_arr->strides[3] != sizeof(%(type)s))
      || (filtersflipped_arr->strides[2] != filtersflipped_arr->dimensions[3]*sizeof(%(type)s))){
