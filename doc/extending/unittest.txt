@@ -289,7 +289,7 @@ Example:
 
     f = T.function([a,b],[c],mode='FAST_RUN')
     m = theano.Module()
-    minstance = m.make(mode='DEBUG_MODE')
+    minstance = m.make(mode='DebugMode')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.
@@ -306,7 +306,7 @@ type this:
 
     THEANO_FLAGS='mode=FAST_COMPILE' nosetests
     THEANO_FLAGS='mode=FAST_RUN' nosetests
-    THEANO_FLAGS='mode=DEBUG_MODE' nosetests
+    THEANO_FLAGS='mode=DebugMode' nosetests
 
 .. _random_value_in_tests:
 

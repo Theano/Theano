@@ -13,7 +13,7 @@
 Guide
 =====
 
-The config module contains many attributes that modify Theano's behavior.  Many of these
+The config module contains many ``attributes`` that modify Theano's behavior.  Many of these
 attributes are consulted during the import of the ``theano`` module and many are assumed to be
 read-only.
 

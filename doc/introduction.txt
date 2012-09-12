@@ -190,12 +190,10 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
   * Will provide better support for GPU on Windows and use an OpenCL backend on CPU.
 
 * Loops work, but not all related optimizations are currently done.
-* The cvm linker allows lazy evaluation. It works, but some work is still
-  needed before enabling it by default.
+* The cvm linker allows lazy evaluation. It is the current default linker.
 
-  * All tests pass with linker=cvm?
-  * How to have `DEBUG_MODE` check it? Right now, DebugMode checks the computation non-lazily.
-  * The profiler used by cvm is less complete than `PROFILE_MODE`.
+  * How to have `DebugMode` check it? Right now, DebugMode checks the computation non-lazily.
+  * The profiler used by cvm is less complete than `ProfileMode`.
 
 * SIMD parallelism on the CPU comes from the compiler.
 * Multi-core parallelism is only supported for gemv and gemm, and only
