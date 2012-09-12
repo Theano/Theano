@@ -6,7 +6,7 @@ import sys
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Op, Type, Apply, Variable, Constant, Generic
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
 scal = scalar # somewhere scalar gets reassigned to be a function
@@ -331,9 +331,9 @@ class GpuFromHostWait(GpuOp):
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
 def async_gpu(node):
     if isinstance(node.op, HostFromGpu):
-        return HostFromGpuWait()(*HostFromGpuStart()(node.inputs[0]))
+        return HostFromGpuWait()(*HostFromGpuSend()(node.inputs[0]))
     if isinstance(node.op, GpuFromHost):
-        return GpuFromHostWait()(*GpuFromHostStart()(node.inputs[0]))
+        return GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))
     return False
 
 class GpuElemwise(GpuOp):
