@@ -220,8 +220,8 @@ def local_async_gpu(node):
         return GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))
     return False
 
-gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
+# gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
 
-#gpu_seqopt.register('local_async_gpu',
-#                    theano.tensor.opt.in2out(local_async_gpu), 3,
-#                    'fast_run', 'gpu')
+gpu_seqopt.register('local_async_gpu',
+                    theano.tensor.opt.in2out(local_async_gpu), 3,
+                    'fast_run', 'gpu')
