@@ -4063,7 +4063,7 @@ class Subtensor(Op):
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same dimensions"
                          " pointers: %%p and %%p",
-                         %(x)s->nd, xview->dimensions, %(x)s->dimensions);
+                         PyArray_NDIM(%(x)s), xview->dimensions, %(x)s->dimensions);
             %(fail)s;
         }
         if (xview->strides == %(x)s->strides
@@ -4072,7 +4072,7 @@ class Subtensor(Op):
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same strides"
                          " pointers: %%p and %%p",
-                         %(x)s->nd, xview->strides, %(x)s->strides);
+                         PyArray_NDIM(%(x)s), xview->strides, %(x)s->strides);
             %(fail)s;
         }
 
@@ -4176,10 +4176,10 @@ class Subtensor(Op):
                 spec_pos += 1;
             }
         }
-        assert (inner_ii <= xview->nd);
-        while (inner_ii < xview->nd)
+        assert (inner_ii <= PyArray_NDIM(xview));
+        while (inner_ii < PyArray_NDIM(xview))
         {
-            assert (outer_ii < %(x)s->nd);
+            assert (outer_ii < PyArray_NDIM(%(x)s));
             xview->dimensions[inner_ii] = %(x)s->dimensions[outer_ii];
             xview->strides[inner_ii] = %(x)s->strides[outer_ii];
             inner_ii += 1;
@@ -5373,7 +5373,7 @@ class Reshape(Op):
             new_ndim = self.ndim
             fail = sub['fail']
             return """
-            assert (%(shp)s->nd == 1);
+            assert (PyArray_NDIM(%(shp)s) == 1);
             npy_intp new_dims[%(new_ndim)s];
             PyArray_Dims newshape;
             newshape.ptr = new_dims;

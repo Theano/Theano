@@ -1266,14 +1266,14 @@ kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
 
-if(%(img2d)s->nd==2){
+if(PyArray_NDIM(%(img2d)s)==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
   img2d_dim[2]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==3){
+}else if(PyArray_NDIM(%(img2d)s)==3){
   img2d_dim[3]=%(img2d)s->dimensions[2];
   img2d_dim[2]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==4){
+}else if(PyArray_NDIM(%(img2d)s)==4){
   img2d_dim[3]=%(img2d)s->dimensions[3];
   img2d_dim[2]=%(img2d)s->dimensions[2];
   img2d_dim[1]=%(img2d)s->dimensions[1];
@@ -1283,18 +1283,18 @@ if(%(img2d)s->nd==2){
     %(fail)s;
 }
 
-if(%(filtersflipped)s->nd==3){
+if(PyArray_NDIM(%(filtersflipped)s)==3){
   kerns_dim[3]=%(filtersflipped)s->dimensions[2];
   kerns_dim[2]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
-}else if(%(filtersflipped)s->nd==4){
+}else if(PyArray_NDIM(%(filtersflipped)s)==4){
   kerns_dim[3]=%(filtersflipped)s->dimensions[3];
   kerns_dim[2]=%(filtersflipped)s->dimensions[2];
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
     std::stringstream temp;
-    temp << "nddim="<<%(filtersflipped)s->nd;
+    temp << "nddim="<<PyArray_NDIM(%(filtersflipped)s);
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
       ("kernel don't have a good shape. " + param).c_str());
@@ -1536,14 +1536,14 @@ kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig;
 
-if(%(img2d)s->nd==2){
+if(PyArray_NDIM(%(img2d)s)==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
   img2d_dim[2]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==3){
+}else if(PyArray_NDIM(%(img2d)s)==3){
   img2d_dim[3]=%(img2d)s->dimensions[2];
   img2d_dim[2]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==4){
+}else if(PyArray_NDIM(%(img2d)s)==4){
   img2d_dim[3]=%(img2d)s->dimensions[3];
   img2d_dim[2]=%(img2d)s->dimensions[2];
   img2d_dim[1]=%(img2d)s->dimensions[1];
@@ -1553,18 +1553,18 @@ if(%(img2d)s->nd==2){
     %(fail)s;
 }
 
-if(%(filtersflipped)s->nd==3){
+if(PyArray_NDIM(%(filtersflipped)s)==3){
   kerns_dim[3]=%(filtersflipped)s->dimensions[2];
   kerns_dim[2]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
-}else if(%(filtersflipped)s->nd==4){
+}else if(PyArray_NDIM(%(filtersflipped)s)==4){
   kerns_dim[3]=%(filtersflipped)s->dimensions[3];
   kerns_dim[2]=%(filtersflipped)s->dimensions[2];
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
     std::stringstream temp;
-    temp << "nddim="<<%(filtersflipped)s->nd;
+    temp << "nddim="<<PyArray_NDIM(%(filtersflipped)s);
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
       ("kernel don't have a good shape. " + param).c_str());
@@ -1637,7 +1637,7 @@ for(int i=0;i < kerns_dim[0];++i){
     for(int j=0;j < kerns_dim[1];++j){
         for(int k=0;k < kerns_dim[2];++k){
             for(int l=0;l < kerns_dim[3];++l){
-                %(type)s * ff = ((%(filtersflipped)s)->nd == 3)
+                %(type)s * ff = ((PyArray_NDIM(%(filtersflipped)s)) == 3)
                     ? (%(type)s *)PyArray_GETPTR3(%(filtersflipped)s, i, kerns_dim[2]-1-k, kerns_dim[3]-1-l)
                     : (%(type)s *)PyArray_GETPTR4(%(filtersflipped)s, i, j, kerns_dim[2]-1-k, kerns_dim[3]-1-l);
                 myfilters[i * (kerns_dim[1]*kerns_dim[2]*kerns_dim[3])
@@ -1788,32 +1788,32 @@ kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
-if(%(img2d)s->nd==2){
+if(PyArray_NDIM(%(img2d)s)==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
   img2d_dim[2]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==3){
+}else if(PyArray_NDIM(%(img2d)s)==3){
   img2d_dim[3]=%(img2d)s->dimensions[2];
   img2d_dim[2]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==4){
+}else if(PyArray_NDIM(%(img2d)s)==4){
   img2d_dim[3]=%(img2d)s->dimensions[3];
   img2d_dim[2]=%(img2d)s->dimensions[2];
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
     std::stringstream temp;
-    temp << "nddim="<<%(img2d)s->nd;
+    temp << "nddim="<<PyArray_NDIM(%(img2d)s);
     std::string param = temp.str();
     PyErr_SetString(PyExc_ValueError,
       ("img don't have a good shape. " + param).c_str());
     %(fail)s;
 }
 
-if(%(filtersflipped)s->nd==3){
+if(PyArray_NDIM(%(filtersflipped)s)==3){
   kerns_dim[3]=%(filtersflipped)s->dimensions[2];
   kerns_dim[2]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
-}else if(%(filtersflipped)s->nd==4){
+}else if(PyArray_NDIM(%(filtersflipped)s)==4){
   kerns_dim[3]=%(filtersflipped)s->dimensions[3];
   kerns_dim[2]=%(filtersflipped)s->dimensions[2];
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
@@ -2025,36 +2025,36 @@ kerns_shape.ptr=kerns_dim;
 kerns_shape.len=4;
 PyObject *img2d=NULL, *contig, *filtersflipped=NULL;
 
-if(%(img2d)s->nd==2){
+if(PyArray_NDIM(%(img2d)s)==2){
   img2d_dim[3]=%(img2d)s->dimensions[1];
   img2d_dim[2]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==3){
+}else if(PyArray_NDIM(%(img2d)s)==3){
   img2d_dim[3]=%(img2d)s->dimensions[2];
   img2d_dim[2]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
-}else if(%(img2d)s->nd==4){
+}else if(PyArray_NDIM(%(img2d)s)==4){
   img2d_dim[3]=%(img2d)s->dimensions[3];
   img2d_dim[2]=%(img2d)s->dimensions[2];
   img2d_dim[1]=%(img2d)s->dimensions[1];
   img2d_dim[0]=%(img2d)s->dimensions[0];
 }else {
     PyErr_Format(PyExc_ValueError,
-      "image don't have a good number of dimensions %%d. ", %(filtersflipped)s->nd);
+      "image don't have a good number of dimensions %%d. ", PyArray_NDIM(%(filtersflipped)s));
     %(fail)s;
 }
 
-if(%(filtersflipped)s->nd==3){
+if(PyArray_NDIM(%(filtersflipped)s)==3){
   kerns_dim[3]=%(filtersflipped)s->dimensions[2];
   kerns_dim[2]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
-}else if(%(filtersflipped)s->nd==4){
+}else if(PyArray_NDIM(%(filtersflipped)s)==4){
   kerns_dim[3]=%(filtersflipped)s->dimensions[3];
   kerns_dim[2]=%(filtersflipped)s->dimensions[2];
   kerns_dim[1]=%(filtersflipped)s->dimensions[1];
   kerns_dim[0]=%(filtersflipped)s->dimensions[0];
 }else{
     PyErr_Format(PyExc_ValueError,
-      "kernel don't have a good number of dimensions %%d. ", %(filtersflipped)s->nd);
+      "kernel don't have a good number of dimensions %%d. ", PyArray_NDIM(%(filtersflipped)s));
     %(fail)s;
 }
 

@@ -55,12 +55,12 @@ class MultinomialFromUniform(Op):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
@@ -233,12 +233,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;

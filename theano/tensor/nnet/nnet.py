@@ -107,12 +107,12 @@ class SoftmaxWithBias(gof.Op):
         init_decl = """
         npy_intp* Nx = %(x)s->dimensions;
 
-        if (%(x)s->nd != 2)
+        if (PyArray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (PyArray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
@@ -277,8 +277,8 @@ class SoftmaxGrad(gof.Op):
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(dy)s->nd != 2)
-            || (%(sm)s->nd != 2))
+        if ((PyArray_NDIM(%(dy)s) != 2)
+            || (PyArray_NDIM(%(sm)s) != 2))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -773,7 +773,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 SoftmaxWithBias.c_code_template()
         return (init_decl,
                 """
-        if (%(y_idx)s->nd != 1)
+        if (PyArray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
@@ -937,9 +937,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
                  "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
-        if ((%(dnll)s->nd != 1)
-            || (%(sm)s->nd != 2)
-            || (%(y_idx)s->nd != 1))
+        if ((PyArray_NDIM(%(dnll)s) != 1)
+            || (PyArray_NDIM(%(sm)s) != 2)
+            || (PyArray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;

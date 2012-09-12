@@ -33,13 +33,13 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
 
     int elemsize ;
 
-    if (%(A)s->nd != 2)
+    if (PyArray_NDIM(%(A)s) != 2)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(A) != 2"); %(fail)s;}
-    if (%(x)s->nd != 1)
+    if (PyArray_NDIM(%(x)s) != 1)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 1"); %(fail)s;}
-    if (%(y)s->nd != 1)
+    if (PyArray_NDIM(%(y)s) != 1)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 1"); %(fail)s;}
-    if (%(a)s->nd != 0)
+    if (PyArray_NDIM(%(a)s) != 0)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 0"); %(fail)s;}
 
     if (%(A)s->descr->type_num != %(x)s->descr->type_num)
@@ -290,27 +290,27 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     float fbeta;
     double dbeta;
 
-    if (%(aa)s->nd != 1)
+    if (PyArray_NDIM(%(aa)s) != 1)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(aa) != 1");
         %(fail)s;
     }
-    if (%(xx)s->nd != 2)
+    if (PyArray_NDIM(%(xx)s) != 2)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(xx) != 2");
         %(fail)s;
     }
-    if (%(yy)s->nd != 1)
+    if (PyArray_NDIM(%(yy)s) != 1)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(yy) != 1");
         %(fail)s;
     }
-    if (%(alpha)s->nd != 0)
+    if (PyArray_NDIM(%(alpha)s) != 0)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(alpha) != 0");
         %(fail)s;
     }
-    if (%(beta)s->nd != 0)
+    if (PyArray_NDIM(%(beta)s) != 0)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(beta) != 0");
         %(fail)s;

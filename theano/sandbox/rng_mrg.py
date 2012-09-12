@@ -241,7 +241,7 @@ class mrg_uniform(mrg_uniform_base):
         int n_elements = 1;
         int n_streams = 0;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                                 || (%(o_sample)s->nd != %(ndim)s)
+                                 || (PyArray_NDIM(%(o_sample)s) != %(ndim)s)
                                  || !(PyArray_ISCONTIGUOUS(%(o_sample)s)));
         %(otype)s * sample_data;
         npy_int32 * state_data;
@@ -261,7 +261,7 @@ class mrg_uniform(mrg_uniform_base):
         const npy_int32 MASK2 = 65535;      //2^16 - 1
         const npy_int32 MULT2 = 21069;
 
-        if (%(size)s->nd != 1)
+        if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
@@ -296,7 +296,7 @@ class mrg_uniform(mrg_uniform_base):
         Py_XDECREF(%(o_rstate)s);
         %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(py_%(rstate)s, NULL, 0, 0, %(o_rstate_requirement)s,NULL);
 
-        if (%(o_rstate)s->nd != 2)
+        if (PyArray_NDIM(%(o_rstate)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be matrix");
             %(fail)s
@@ -501,9 +501,9 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
-                || (%(o_sample)s->nd != %(ndim)s));
+                || (PyArray_NDIM(%(o_sample)s) != %(ndim)s));
 
-        if (%(size)s->nd != 1)
+        if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
@@ -552,7 +552,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             %(o_rstate)s = (CudaNdarray*)CudaNdarray_Copy(%(rstate)s);
         }
 
-        if (%(o_rstate)s->nd != 1)
+        if (PyArray_NDIM(%(o_rstate)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be vector");
             %(fail)s;

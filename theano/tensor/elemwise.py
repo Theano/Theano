@@ -270,7 +270,7 @@ class DimShuffle(Op):
         nd_in = len(self.input_broadcastable)
         nd_out = len(self.new_order)
 
-        check_input_nd = [('if (%(input)s->nd != ' + str(nd_in) + ')'
+        check_input_nd = [('if (PyArray_NDIM(%(input)s) != ' + str(nd_in) + ')'
                 '{PyErr_SetString(PyExc_NotImplementedError, "input nd"); %(fail)s;}')]
 
         clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
@@ -1341,7 +1341,7 @@ class CAReduce(Op):
             pattern_ = str(pattern)[1:-1]
             decl += """int tosum[]={%(pattern_)s};""" % locals()
             alloc += """
-for(int i=0;i<%(iname)s->nd;i++){
+for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
   if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
     PyErr_Format(PyExc_ValueError,
          "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);

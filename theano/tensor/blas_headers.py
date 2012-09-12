@@ -809,9 +809,9 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         int unit = 0;
 
-        if (_x->nd != 2) goto _dot_execute_fallback;
-        if (_y->nd != 2) goto _dot_execute_fallback;
-        if (_z->nd != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_x) != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_y) != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_z) != 2) goto _dot_execute_fallback;
 
         %(check_ab)s
 

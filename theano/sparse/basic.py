@@ -3006,10 +3006,10 @@ class StructuredDotGradCSC(gof.Op):
                                       'g_ab')
 
         return """
-        if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
-        if (%(_g)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
-        if (%(_indices)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
-        if (%(_indptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_d)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_g)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
         if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
@@ -3142,10 +3142,10 @@ class StructuredDotGradCSR(gof.Op):
                                       'g_ab')
 
         return """
-        if (%(_d)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
-        if (%(_g)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
-        if (%(_indices)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
-        if (%(_indptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_d)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(d) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_g)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(g) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
         if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
