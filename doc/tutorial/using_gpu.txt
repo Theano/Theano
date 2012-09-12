@@ -607,8 +607,13 @@ have to be jointly optimized explicitly in the code.)
 Modify and execute to support *stride* (i.e. so as not constrain the input to be *C-contiguous*).
 
 
+GPU Async capabilities
+----------------------
 
-
-
-
-
+Since Theano 0.6, we started to use the asynchone capability of
+GPU. This allow to be faster, but some errors are raised later, at the
+wrong place. This mess with the profiling of Theano apply node.
+In both case, you can use the NVIDIA driver feature that when
+environment variable CUDA_LAUNCH_BLOCKING=1 is set, all kernal call
+get automatically syncronized. This will restore to the old beavior
+that provide good profiling and error message.
