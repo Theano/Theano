@@ -65,7 +65,7 @@ class HostFromGpuSend(GpuOp):
         fail = sub['fail']
         eventName = "%s_event"%out
         return """
-        cudaEvent_t *%(eventName)s = malloc(sizeof(cudaEvent_t));
+        cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
         cudaEventCreate(%(eventName)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
         cudaEventRecord(*%(eventName)s, 0);
@@ -152,7 +152,7 @@ class GpuFromHostSend(GpuOp):
         eventName = "%s_event"%out
         return """
         int err = 0;
-        cudaEvent_t *%(eventName)s = malloc(sizeof(cudaEvent_t));
+        cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
         cudaEventCreate(%(eventName)s);
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*) CudaNdarray_New();
