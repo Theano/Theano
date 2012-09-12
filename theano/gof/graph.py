@@ -1033,7 +1033,7 @@ def memodict(f):
 def depends((a, b)):
     return (not set(a.inputs).isdisjoint(set(b.outputs))
              or any(depends((ainp.owner, b)) for ainp in a.inputs
-                                            if ainp.owner))
+                                              if ainp.owner))
 
 def dependence(a, b):
     """ A cmp function for nodes in a graph - does a depend on b?
