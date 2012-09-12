@@ -24,7 +24,7 @@ where each example has dimension 5. If this would be the input of a
 neural network then the weights from the input to the first hidden
 layer would represent a matrix of size (5, #hid). 
 
-If I have an array:
+Consider this array:
 
 >>> numpy.asarray([[1., 2], [3, 4], [5, 6]])
 array([[ 1.,  2.],
@@ -37,7 +37,7 @@ This is a 3x2 matrix, i.e. there are 3 rows and 2 columns.
 
 To access the entry in the 3rd row (row #2) and the 1st column (column #0):
 
->>> numpy.asarray([[1., 2], [3, 4], [5, 6]])[2,0]
+>>> numpy.asarray([[1., 2], [3, 4], [5, 6]])[2, 0]
 5.0
 
 
@@ -61,5 +61,5 @@ array([2., 4., 6.])
 
 The smaller array ``b`` (actually a scalar here, which works like a 0-d array) in this case is *broadcasted* to the same size
 as ``a`` during the multiplication. This trick is often useful in
-simplifying how expression are written. More details about *broadcasting*
-can be found at `numpy user guide <http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`__.
+simplifying how expression are written. More detail about *broadcasting*
+can be found in the `numpy user guide <http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`__.

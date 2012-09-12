@@ -30,7 +30,7 @@ _logger = logging.getLogger("theano.printing")
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False):
-    """Print a computation graph to file
+    """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
     :param obj: symbolic thing to print
@@ -56,12 +56,12 @@ def debugprint(obj, depth=-1, print_type=False,
     The first part of the text identifies whether it is an input
     (if a name or type is printed) or the output of some Apply (in which case
     the Op is printed).
-    The second part of the text is the memory location of the Variable.
+    The second part of the text is an identifier of the Variable.
     If print_type is True, we add a part containing the type of the Variable
 
     If a Variable is encountered multiple times in the depth-first search,
     it is only printed recursively the first time. Later, just the Variable
-    and its memory location are printed.
+    identifier is printed.
 
     If an Apply has multiple outputs, then a '.N' suffix will be appended
     to the Apply's identifier, to indicate which output a line corresponds to.
@@ -461,7 +461,9 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target')
               LeafPrinter())
 
 pp = pprint
-
+"""
+Print to the terminal a math-like expression.
+"""
 
 # colors not used: orange, amber#FFBF00, purple, pink,
 # used by default: green, blue, grey, red
@@ -530,7 +532,7 @@ def pydotprint(fct, outfile=None,
     blue boxes are outputs variables of the graph
     grey boxes are variables that are not outputs and are not used
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-       HostFromGpu)
+    HostFromGpu)
 
     """
     if colorCodes is None:
