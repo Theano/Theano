@@ -152,7 +152,7 @@ def make_alloc(loop_orders, dtype, sub):
             PyArray_Dims new_dims;
             new_dims.len = %(nd)s;
             new_dims.ptr = dims;
-            PyObject* success = PyArray_Resize(%(olv)s, &new_dims, 0, PyArray_CORDER);
+            PyObject* success = PyArray_Resize(%(olv)s, &new_dims, 0, NPY_CORDER);
             if (!success) {
                 // If we can't resize the ndarray we have we can allocate a new one.
                 PyErr_Clear();

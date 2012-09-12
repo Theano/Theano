@@ -124,13 +124,13 @@ class StructuredDotCSC(gof.Op):
         if (%(b)s->descr->type_num != %(typenum_b)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for b"); %(fail)s;}
 
-        if (%(a_ind)s->descr->type_num != PyArray_INT32) {
+        if (%(a_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
 
-        if (%(a_ptr)s->descr->type_num != PyArray_INT32)
+        if (%(a_ptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
 
-        if (%(a_nrows)s->descr->type_num != PyArray_INT32)
+        if (%(a_nrows)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_nrows dtype not INT32"); %(fail)s;}
 
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
@@ -306,10 +306,10 @@ class StructuredDotCSR(gof.Op):
         if (%(a_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a_ptr) != 1"); %(fail)s;}
         if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a_ind)s->descr->type_num != PyArray_INT32) {
+        if (%(a_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
 
-        if (%(a_ptr)s->descr->type_num != PyArray_INT32)
+        if (%(a_ptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
 
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
@@ -553,13 +553,13 @@ class UsmmCscDense(gof.Op):
         if (%(alpha)s->descr->type_num != %(typenum_alpha)s) {
         PyErr_SetString(PyExc_NotImplementedError, "Invalid type for alpha"); %(fail)s;}
 
-        if (%(x_ind)s->descr->type_num != PyArray_INT32) {
+        if (%(x_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "x_ind dtype not INT32"); %(fail)s;}
 
-        if (%(x_ptr)s->descr->type_num != PyArray_INT32)
+        if (%(x_ptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "x_ptr dtype not INT32"); %(fail)s;}
 
-        if (%(x_nrows)s->descr->type_num != PyArray_INT32)
+        if (%(x_nrows)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "x_nrows dtype not INT32"); %(fail)s;}
 
         if (%(x_val)s->dimensions[0] != %(x_ind)s->dimensions[0])
@@ -749,16 +749,16 @@ class CSMGradC(gof.Op):
         if (%(b_ind)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ind) != 1"); %(fail)s;}
         if (%(b_ptr)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b_ptr) != 1"); %(fail)s;}
 
-        if (%(a_ind)s->descr->type_num != PyArray_INT32) {
+        if (%(a_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "a_ind dtype not INT32"); %(fail)s;}
 
-        if (%(a_ptr)s->descr->type_num != PyArray_INT32)
+        if (%(a_ptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "a_ptr dtype not INT32"); %(fail)s;}
 
-        if (%(b_ind)s->descr->type_num != PyArray_INT32) {
+        if (%(b_ind)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "b_ind dtype not INT32"); %(fail)s;}
 
-        if (%(b_ptr)s->descr->type_num != PyArray_INT32)
+        if (%(b_ptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "b_ptr dtype not INT32"); %(fail)s;}
 
         if (%(a_val)s->dimensions[0] != %(a_ind)s->dimensions[0])
@@ -910,10 +910,10 @@ class MulSDCSC(gof.Op):
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if (!%(_zout)s)
@@ -1024,10 +1024,10 @@ class MulSDCSR(gof.Op):
             PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1");
             %(fail)s;}
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if (!%(_zout)s)
@@ -1178,10 +1178,10 @@ class MulSVCSR(gof.Op):
             %(fail)s;
         }
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if (!%(_zout)s
@@ -1328,10 +1328,10 @@ class StructuredAddSVCSR(gof.Op):
             %(fail)s;
         }
 
-        if( %(_indices)s->descr->type_num != PyArray_INT32) {
+        if( %(_indices)s->descr->type_num != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( %(_indptr)s->descr->type_num != PyArray_INT32)
+        if( %(_indptr)s->descr->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if (!%(_zout)s)

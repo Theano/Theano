@@ -815,16 +815,16 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         %(check_ab)s
 
-        if ((_x->descr->type_num != PyArray_DOUBLE) 
-            && (_x->descr->type_num != PyArray_FLOAT))
+        if ((_x->descr->type_num != NPY_DOUBLE) 
+            && (_x->descr->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != PyArray_DOUBLE) 
-            && (_y->descr->type_num != PyArray_FLOAT))
+        if ((_y->descr->type_num != NPY_DOUBLE) 
+            && (_y->descr->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != PyArray_DOUBLE) 
-            && (_y->descr->type_num != PyArray_FLOAT))
+        if ((_y->descr->type_num != NPY_DOUBLE) 
+            && (_y->descr->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
         if ((_x->descr->type_num != _y->descr->type_num)
@@ -863,7 +863,7 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         switch (type_num)
         {
-            case PyArray_FLOAT:
+            case NPY_FLOAT:
             {
                 #define REAL float
                 float a = %(a_init)s;
@@ -888,7 +888,7 @@ def ____gemm_code(check_ab, a_init, b_init):
                 #undef REAL
             }
             break;
-            case PyArray_DOUBLE:
+            case NPY_DOUBLE:
             {
                 #define REAL double
                 double a = %(a_init)s;
