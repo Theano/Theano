@@ -752,13 +752,26 @@ def general_toposort(r_out, deps, debug_print=False):
     return rlist
 
 
-def io_toposort(i, o, orderings=None):
+def io_toposort(inputs, outputs, orderings=None):
     """WRITEME
+
+    inputs: a list or tuple of Variable instances
+    outputs: a list or tuple of Variable instances
+
+    orderings: a dictionary
+                key: Apply instance
+                value: list of Apply instance
+
+                it is important that the value be
+                a container with a deterministic iteration
+                order. no sets allowed!
+
     """
     if orderings is None:
         orderings = {}
+
     #the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(i)
+    iset = set(inputs)
 
     def deps(obj):
         rval = []
@@ -773,7 +786,7 @@ def io_toposort(i, o, orderings=None):
             assert not orderings.get(obj, [])
         return rval
 
-    topo = general_toposort(o, deps)
+    topo = general_toposort(outputs, deps)
     return [o for o in topo if isinstance(o, Apply)]
 
 
