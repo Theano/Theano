@@ -47,6 +47,7 @@ class DestroyHandler(object):
 
 def _contains_cycle(inputs, outputs, orderings):
     """
+
     inputs  - list of graph inputs
                 must be Variable instances
                 collection must be tuple, list, or deque
@@ -56,7 +57,7 @@ def _contains_cycle(inputs, outputs, orderings):
                 collection must be tuple, list or deque
 
     orderings - dictionary specifying extra dependencies besides
-                those encoded in Variable.owner / Apply.inputs
+                 those encoded in Variable.owner / Apply.inputs
 
                 If orderings[my_apply] == dependencies,
 
@@ -69,18 +70,20 @@ def _contains_cycle(inputs, outputs, orderings):
                 inplace apply nodes from destroying their input before
                 other apply nodes with the same input access it.
 
-    Returns nothing.
-
-    Raises a ValueError whose message contains the substring 'cycle'
-    if the graph contains a cycle.
-
-    The purpose of this function is only to check for cycles.
+    Returns True if the graph contains a cycle, False otherwise.
     """
+
 
     # this is hard-coded reimplementation of functions from graph.py
     # reason: go faster, prepare for port to C.
-    # specifically, it is a drop-in replacement for graph.io_toposort
-    # this version is about 10% faster
+    # specifically, it could be replaced with a wrapper
+    # around graph.io_toposort that returns True iff io_toposort raises
+    # a ValueError containing the substring 'cycle'.
+    # This implementation is optimized for the destroyhandler and runs
+    # slightly faster than io_toposort.
+
+    # this is performance-critical code. it is the largest single-function
+    # bottleneck when compiling large graphs.
 
     assert isinstance(outputs, (tuple, list, deque))
 
