@@ -11,6 +11,7 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
+
 def test_async_to_gpu():
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
@@ -19,6 +20,7 @@ def test_async_to_gpu():
     gx2 = gx2[0]
     assert (gx.dtype, type(gx)) == (gx2.dtype, type(gx2))
     assert isinstance(gx2.owner.op, GpuFromHostWait)
+
 
 def test_async_to_host():
     x = theano.tensor.fmatrix('x')
@@ -31,6 +33,7 @@ def test_async_to_host():
     assert (y.dtype, type(y)) == (y2.dtype, type(y2))
     assert isinstance(y2.owner.op, HostFromGpuWait)
 
+
 def test_compile():
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
@@ -38,15 +41,17 @@ def test_compile():
 
     theano.function([x], gx2, mode=theano.Mode(optimizer=None, linker='c|py'))
 
+
 def test_execute():
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
 
-    f = theano.function([x], gx2, mode=theano.Mode(optimizer=None, linker='c|py'))
-
-    xx = np.ones((5,5), dtype=x.dtype)
+    f = theano.function([x], gx2, mode=theano.Mode(optimizer=None,
+                                                   linker='c|py'))
+    xx = np.ones((5, 5), dtype=x.dtype)
     f(xx)
+
 
 def test_optimizer():
     x = theano.tensor.fmatrix('x')
