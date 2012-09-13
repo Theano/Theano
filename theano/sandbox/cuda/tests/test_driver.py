@@ -27,7 +27,7 @@ def test_nvidia_driver1():
     f = theano.function(inputs=[], outputs=A.sum(), mode=mode_with_gpu,
                         profile=False)
     topo = f.maker.fgraph.toposort()
-    assert len(topo) == 2
+    assert len(topo) in [2, 3]
     if sum(isinstance(node.op, B.GpuCAReduce) for node in topo) != 1:
         msg = '\n\t'.join(['Expected exactly one occurrence of GpuCAReduce ' +
             'but got:']+[str(app) for app in topo])
