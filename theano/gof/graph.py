@@ -202,6 +202,9 @@ class Apply(utils.object2):
             new_node.inputs = new_inputs
         return new_node
 
+    def get_parents(self):
+        return list( self.inputs )
+
     #convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
@@ -363,6 +366,11 @@ class Variable(utils.object2):
     def __ge__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
+
+    def get_parents(self):
+        if self.owner is not None:
+            return [ self.owner ]
+        return [ ]
 
     def env_getter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
