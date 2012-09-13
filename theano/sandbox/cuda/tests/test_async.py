@@ -58,3 +58,13 @@ def test_optimizer():
     gx = theano.sandbox.cuda.gpu_from_host(x)
     fgraph = theano.FunctionGraph([x], [gx])
     async_optimizer.optimize(fgraph)
+
+
+def test_optimizer2():
+    """ Test that the optimization is correctly registered"""
+    x = theano.tensor.fmatrix('x')
+    gx = theano.sandbox.cuda.gpu_from_host(x)
+    mode = theano.Mode(linker='c|py').including("local_async_gpu", 'gpu')
+    f = theano.function([x], gx, mode=mode)
+    xx = np.ones((5, 5), dtype=x.dtype)
+    f(xx)
