@@ -52,6 +52,7 @@ def thunk_hook(type, value, trace):
 sys.excepthook = thunk_hook
 
 
+# TODO: Make this work with linker defined schedule
 def raise_with_op(op, exc_info=None):
     """
     Re-raise an exception while annotating the exception object with
@@ -173,6 +174,8 @@ class Linker(object):
 
         return execute
 
+    def schedule(self, fgraph):
+        return fgraph.toposort()
 
 #TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
@@ -414,7 +417,7 @@ class PerformLinker(LocalLinker):
     """WRITEME
 
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
-    the L{FunctionGraph} in the order given by L{FunctionGraph.toposort}.
+    the L{FunctionGraph} in the order given by L{Linker.schedule}.
     """
 
     def __init__(self, allow_gc=True):
@@ -449,7 +452,7 @@ class PerformLinker(LocalLinker):
 
         """
         fgraph = self.fgraph
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage)

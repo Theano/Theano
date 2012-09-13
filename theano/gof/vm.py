@@ -780,7 +780,7 @@ class VM_Linker(link.LocalLinker):
                  output_storage=None,
                 ):
         fgraph = self.fgraph
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(

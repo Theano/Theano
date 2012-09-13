@@ -436,7 +436,7 @@ class CLinker(link.Linker):
         self.temps = list(set(self.variables).difference(
                 self.inputs).difference(self.outputs).difference(self.orphans))
         self.consts = []
-        self.node_order = fgraph.toposort()
+        self.node_order = self.schedule(fgraph)
 
     def code_gen(self):
         """WRITEME
@@ -994,8 +994,7 @@ class CLinker(link.Linker):
                           c_compiler=self.c_compiler(),
                           )
 
-    @staticmethod
-    def cmodule_key_(fgraph, no_recycling, compile_args=None, libraries=None,
+    def cmodule_key_(self, fgraph, no_recycling, compile_args=None, libraries=None,
                      header_dirs=None, insert_config_md5=True, c_compiler=None):
         """
         Do the actual computation of cmodule_key in a static method
@@ -1007,7 +1006,7 @@ class CLinker(link.Linker):
             libraries = []
         if header_dirs is None:
             header_dirs = []
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         #set of variables that have been computed by nodes we have
         # seen 'so far' in the loop below
         fgraph_computed_set = set()
@@ -1430,7 +1429,7 @@ class OpWiseCLinker(link.LocalLinker):
         try:
 
             fgraph = self.fgraph
-            order = fgraph.toposort()
+            order = self.schedule(fgraph)
             no_recycling = self.no_recycling
 
             input_storage, output_storage, storage_map = link.map_storage(
