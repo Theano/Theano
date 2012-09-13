@@ -115,8 +115,6 @@ class HostFromGpuWait(GpuAsyncTransferOp):
                                          broadcastable=x.broadcastable)()])
 
     def c_code(self, node, name, inputs, outputs, sub):
-        print inputs
-        print type(inputs)
         inp, event = inputs
         out = outputs[0]
         fail = sub['fail']
@@ -209,5 +207,5 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 #gpu_seqopt.register('local_async_gpu',
 #                    theano.tensor.opt.in2out(local_async_gpu), 3,
 #                    'fast_run', 'gpu')
-gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
+#gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
 
