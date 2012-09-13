@@ -27,7 +27,7 @@ def test_nvidia_driver1():
     f = theano.function(inputs=[], outputs=A.sum(), mode=mode_with_gpu,
                         profile=False)
     topo = f.maker.fgraph.toposort()
-    assert len(topo) == 2
+    assert len(topo) in [2, 3]
     assert sum(isinstance(node.op, B.GpuSum) for node in topo) == 1
     if not numpy.allclose(f(), a.sum()):
         raise Exception("The nvidia driver version installed with this OS "
