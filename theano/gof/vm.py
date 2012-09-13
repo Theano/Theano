@@ -798,6 +798,7 @@ class VM_Linker(link.LocalLinker):
                     no_recycling)
                         for node in order]
 
+        import pdb; pdb.set_trace()
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:
             post_thunk_clear = []
