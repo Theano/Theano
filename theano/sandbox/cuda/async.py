@@ -122,7 +122,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
         fail = sub['fail']
         # eventName = "%s_event"%event
         return """
-        cudaEventSynchronize(*(cudaEvent_t)(PyCObject_AsVoidPtr(%(event)s)));
+        cudaEventSynchronize(*(cudaEvent_t*)(PyCObject_AsVoidPtr(%(event)s)));
 
         %(out)s = %(inp)s;
         if(!%(out)s){
