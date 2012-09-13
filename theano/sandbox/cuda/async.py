@@ -2,6 +2,7 @@ import copy
 import logging
 import StringIO
 import sys
+import os
 
 import numpy
 
@@ -18,6 +19,8 @@ from theano.sandbox.cuda.opt import gpu_seqopt
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.opt import gpu_seqopt
+import cuda_ndarray
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 _logger_name = 'theano.sandbox.cuda.async'
 _logger = logging.getLogger(_logger_name)
@@ -49,6 +52,27 @@ class GpuAsyncTransferOp(GpuOp):
 
     def c_headers(self):
         return ['cuda_ndarray.cuh', '<cuda.h>']
+    def c_header_dirs(self):
+        """Override `CLinkerOp.c_headers` """
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'include'))
+        return ret
+    def c_lib_dirs(self):
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'lib'))
+        return ret
+
+    def c_libraries(self):
+        # returning cublas because the cuda_ndarray.cuh header
+        # includes calls to SetVector and cublasGetError
+        return ['cudart', 'cublas']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
 class HostFromGpuSend(GpuAsyncTransferOp):
     """
@@ -185,5 +209,5 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 #gpu_seqopt.register('local_async_gpu',
 #                    theano.tensor.opt.in2out(local_async_gpu), 3,
 #                    'fast_run', 'gpu')
-#gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
+gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
 
