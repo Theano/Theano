@@ -207,7 +207,18 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         # eventName = "GpuFromHost_%s_event"%inp
 
         return """
-        cudaEventSynchronize(*(cudaEvent_t*)(PyCObject_AsVoidPtr(%(event)s)));
+        cudaError_t err = cudaSuccess;
+        cudaEvent_t* tmp = (cudaEvent_t*)(PyCObject_AsVoidPtr(%(event)s));
+        if(!tmp){
+           PyErr_Format(PyExc_ValueError,
+                        "HostFromGpuWait: Received bad event ptr %%p", tmp);
+           %(fail)s;
+        }
+        err = cudaEventSynchronize(*tmp);
+        if(err != cudaSuccess){
+            %(fail)s;
+        }
+
         %(out)s = %(inp)s;
         """ % locals()
 
