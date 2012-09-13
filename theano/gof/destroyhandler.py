@@ -99,13 +99,19 @@ def _contains_cycle(inputs, outputs, orderings):
     # or an Apply node. This allowed checking the bool rather than
     # catching an AttributeError, but proved to be slower. Adding
     # get_parents worked better.
-    # I tried tagging each variable and node with a visited flag
+
+    # IG: I tried tagging each variable and node with a visited flag
     # to avoid needing to do an expand_cache lookup to tell if a
     # node was visited. This requires wrapping everything in a
     # try-finally and setting all the flags to false in the finally.
     # It resulted in a net slowdown, whether I used iteration
     # on expand_cache or rval_list. (rval_list was a list
     # whose contents were the same as expand_cache.keys())
+
+    # IG: I tried converting expand_cache to use an id for the key,
+    # so that the dict would do reference counting on its keys.
+    # For some reason this caused a slowdown--not sure if dict is
+    # slow for int keys, or if call to id function is expensive.
 
     # DWF tried implementing this as cython, including the deque
     # class when compiling cython, and only got a 10% speedup.
@@ -134,13 +140,6 @@ def _contains_cycle(inputs, outputs, orderings):
                 expand_l = []
             else:
                 expand_l = cur_var_or_node.get_parents()
-                #try:
-                #    if cur_var_or_node.owner:
-                #        expand_l = [cur_var_or_node.owner]
-                #    else:
-                #        expand_l = []
-                #except AttributeError:
-                #    expand_l = list(cur_var_or_node.inputs)
                 expand_l.extend(orderings.get(cur_var_or_node, []))
 
             if expand_l:
