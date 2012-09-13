@@ -45,7 +45,7 @@ class DestroyHandler(object):
     def orderings(self, fgraph):
         return self.map[fgraph].orderings(fgraph)
 
-def _dfs_toposort(inputs, outputs, orderings):
+def _contains_cycle(inputs, outputs, orderings):
     """
     inputs  - list of graph inputs
                 must be Variable instances
@@ -148,9 +148,7 @@ def _dfs_toposort(inputs, outputs, orderings):
                 if not expand_cache[client]:
                     fifo_queue.append(client)
 
-    if len(rlist) != len(rval_list):
-        raise ValueError('graph contains cycles')
-
+    return len(rlist) != len(rval_list)
     #return [o for o in rlist if isinstance(o, graph.Apply)]
 
 
@@ -424,20 +422,10 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         """
 
         if self.destroyers:
-            try:
-                ords = self.orderings(fgraph)
-            except Exception, e:
-                raise
+            ords = self.orderings(fgraph)
 
-            try:
-                ### graph.io_toposort(fgraph.inputs, fgraph.outputs, ords)
-                _dfs_toposort(fgraph.inputs, fgraph.outputs, ords)
-            except ValueError, e:
-                if 'cycles' in str(e):
-                    raise InconsistencyError("Dependency graph contains cycles")
-                else:
-                    raise
-            #print 'passing...', ords
+            if _contains_cycle(fgraph.inputs, fgraph.outputs, ords):
+                raise InconsistencyError("Dependency graph contains cycles")
         else:
             #James's Conjecture:
             #If there are no destructive ops, then there can be no cycles.
