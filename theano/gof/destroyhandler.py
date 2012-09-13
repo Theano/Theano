@@ -97,7 +97,15 @@ def _contains_cycle(inputs, outputs, orderings):
     # IG: I tried modifying lifo_queue to hold (var_or_node, bool)
     # tuples, with the bool indicating if var_or_node is a Variable
     # or an Apply node. This allowed checking the bool rather than
-    # catching an AttributeError, but proved to be slower.
+    # catching an AttributeError, but proved to be slower. Adding
+    # get_parents worked better.
+    # I tried tagging each variable and node with a visited flag
+    # to avoid needing to do an expand_cache lookup to tell if a
+    # node was visited. This requires wrapping everything in a
+    # try-finally and setting all the flags to false in the finally.
+    # It resulted in a net slowdown, whether I used iteration
+    # on expand_cache or rval_list. (rval_list was a list
+    # whose contents were the same as expand_cache.keys())
 
     # DWF tried implementing this as cython, including the deque
     # class when compiling cython, and only got a 10% speedup.
@@ -106,7 +114,7 @@ def _contains_cycle(inputs, outputs, orderings):
     lifo_queue = deque(outputs)
     #visited_set = set()
     #visited_set.add(id(None))
-    rval_list = list()
+    #rval_list = list()
     expand_inv = {}
     fifo_queue = deque()
 
@@ -116,7 +124,7 @@ def _contains_cycle(inputs, outputs, orderings):
         cur_var_or_node = lifo_queue.pop()
 
         if cur_var_or_node not in expand_cache: # id(cur_var_or_node) not in visited_set:
-            rval_list.append(cur_var_or_node)
+            #rval_list.append(cur_var_or_node)
             #visited_set.add(id(cur_var_or_node))
 
             if cur_var_or_node in iset:
@@ -145,7 +153,7 @@ def _contains_cycle(inputs, outputs, orderings):
             else:
                 fifo_queue.append(cur_var_or_node)
             expand_cache[cur_var_or_node] = expand_l
-    assert len(rval_list) == len(expand_cache.keys())
+    #assert len(rval_list) == len(expand_cache.keys())
 
     rset = set()
     rlist = []
@@ -159,8 +167,7 @@ def _contains_cycle(inputs, outputs, orderings):
                 if not expand_cache[client]:
                     fifo_queue.append(client)
 
-    return len(rlist) != len(rval_list)
-    #return [o for o in rlist if isinstance(o, graph.Apply)]
+    return len(rlist) != len(expand_cache.keys())
 
 
 
