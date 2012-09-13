@@ -90,10 +90,19 @@ def _contains_cycle(inputs, outputs, orderings):
 
     iset = set(inputs)
 
+
+    # IG: I tried modifying lifo_queue to hold (var_or_node, bool)
+    # tuples, with the bool indicating if var_or_node is a Variable
+    # or an Apply node. This allowed checking the bool rather than
+    # catching an AttributeError, but proved to be slower.
+
+    # DWF tried implementing this as cython, including the deque
+    # class when compiling cython, and only got a 10% speedup.
+
     expand_cache = {}
     lifo_queue = deque(outputs)
     visited_set = set()
-    visited_set.add(id(None))
+    #visited_set.add(id(None))
     rval_list = list()
     expand_inv = {}
     fifo_queue = deque()
@@ -124,7 +133,7 @@ def _contains_cycle(inputs, outputs, orderings):
 
             if expand_l:
                 for r in expand_l:
-                    # insert l in expand_inv[r]
+                    # insert cur_var_or_node in expand_inv[r]
                     # (if r is not already in expand_inv,
                     # intialize it to [])
                     expand_inv.setdefault(r, []).append(cur_var_or_node)
@@ -132,9 +141,7 @@ def _contains_cycle(inputs, outputs, orderings):
             else:
                 fifo_queue.append(cur_var_or_node)
             expand_cache[cur_var_or_node] = expand_l
-    # visited_set should be 1 longer because it contains id(None)
-    # TODO: why does it contain id(None) ?
-    assert len(rval_list) == len(visited_set)-1
+    assert len(rval_list) == len(visited_set)
 
     rset = set()
     rlist = []
