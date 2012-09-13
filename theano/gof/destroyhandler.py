@@ -104,7 +104,7 @@ def _contains_cycle(inputs, outputs, orderings):
 
     expand_cache = {}
     lifo_queue = deque(outputs)
-    visited_set = set()
+    #visited_set = set()
     #visited_set.add(id(None))
     rval_list = list()
     expand_inv = {}
@@ -115,9 +115,9 @@ def _contains_cycle(inputs, outputs, orderings):
         # using a LIFO queue makes the search DFS
         cur_var_or_node = lifo_queue.pop()
 
-        if id(cur_var_or_node) not in visited_set:
+        if cur_var_or_node not in expand_cache: # id(cur_var_or_node) not in visited_set:
             rval_list.append(cur_var_or_node)
-            visited_set.add(id(cur_var_or_node))
+            #visited_set.add(id(cur_var_or_node))
 
             if cur_var_or_node in iset:
                 # Inputs to the graph must not have any dependencies
@@ -144,7 +144,7 @@ def _contains_cycle(inputs, outputs, orderings):
             else:
                 fifo_queue.append(cur_var_or_node)
             expand_cache[cur_var_or_node] = expand_l
-    assert len(rval_list) == len(visited_set)
+    assert len(rval_list) == len(expand_cache.keys())
 
     rset = set()
     rlist = []
