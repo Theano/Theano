@@ -13,7 +13,8 @@ from theano import tensor, scalar, config
 from theano.gof.python25 import all, any
 
 from theano.sandbox.cuda import GpuOp, device_properties
-from theano.sandbox.cuda.basic_ops import (HostFromGpu, GpuFromHost, host_from_gpu,
+from theano.sandbox.cuda.basic_ops import (HostFromGpu, GpuFromHost,
+                                           host_from_gpu,
         gpu_from_host)
 from theano.sandbox.cuda.opt import gpu_seqopt
 
@@ -55,6 +56,7 @@ class GpuAsyncTransferOp(GpuOp):
 
     def c_headers(self):
         return ['cuda_ndarray.cuh', '<cuda.h>']
+
     def c_header_dirs(self):
         """Override `CLinkerOp.c_headers` """
         ret = [os.path.dirname(cuda_ndarray.__file__)]
@@ -77,6 +79,7 @@ class GpuAsyncTransferOp(GpuOp):
     def c_compiler(self):
         return NVCC_compiler
 
+
 class HostFromGpuSend(GpuAsyncTransferOp):
     """
     Start the transfer from gpu to the cpu.
@@ -93,7 +96,7 @@ class HostFromGpuSend(GpuAsyncTransferOp):
         inp = inputs[0]
         out, event = outputs
         fail = sub['fail']
-        eventName = "%s_event"%out
+        eventName = "%s_event" % out
         return """
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
         %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
@@ -101,6 +104,7 @@ class HostFromGpuSend(GpuAsyncTransferOp):
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
         cudaEventRecord(*%(eventName)s, 0);
         """ % locals()
+
 
 class HostFromGpuWait(GpuAsyncTransferOp):
     """
@@ -126,6 +130,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
         }
         """ % locals()
 
+
 class GpuFromHostSend(GpuAsyncTransferOp):
     """
     Start the transfer from cpu to the gpu.
@@ -141,7 +146,7 @@ class GpuFromHostSend(GpuAsyncTransferOp):
         inp = inputs[0]
         out, event = outputs
         fail = sub['fail']
-        eventName = "%s_event"%out
+        eventName = "%s_event" % out
         return """
         int err = 0;
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
@@ -160,6 +165,7 @@ class GpuFromHostSend(GpuAsyncTransferOp):
         }
         cudaEventRecord(*%(eventName)s, 0);
         """ % locals()
+
 
 class GpuFromHostWait(GpuAsyncTransferOp):
     """
@@ -184,6 +190,7 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         %(out)s = %(inp)s;
         """ % locals()
 
+
 # TODO Register
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
 def local_async_gpu(node):
@@ -201,4 +208,3 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 #                    theano.tensor.opt.in2out(local_async_gpu), 3,
 #                    'fast_run', 'gpu')
 #gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu), 3,'fast_run', 'gpu')
-
