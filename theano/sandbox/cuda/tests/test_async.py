@@ -5,7 +5,7 @@ import theano
 import numpy as np
 
 def test_async_to_gpu():
-    x = theano.tensor.matrix('x')
+    x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
     assert len(gx2) == 1
@@ -14,7 +14,7 @@ def test_async_to_gpu():
     assert isinstance(gx2.owner.op, GpuFromHostWait)
 
 def test_async_to_host():
-    x = theano.tensor.matrix('x')
+    x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     y = theano.sandbox.cuda.host_from_gpu(gx)
     y2 = local_async_gpu.transform(y.owner)
@@ -25,14 +25,14 @@ def test_async_to_host():
     assert isinstance(y2.owner.op, HostFromGpuWait)
 
 def test_compile():
-    x = theano.tensor.matrix('x')
+    x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
 
     theano.function([x], gx2, mode=theano.Mode(optimizer=None, linker='c|py'))
 
 def test_execute():
-    x = theano.tensor.matrix('x')
+    x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
 
@@ -42,7 +42,7 @@ def test_execute():
     f(xx)
 
 def test_optimizer():
-    x = theano.tensor.matrix('x')
+    x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     fgraph = theano.FunctionGraph([x], [gx])
     async_optimizer.optimize(fgraph)
