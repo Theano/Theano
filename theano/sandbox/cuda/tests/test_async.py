@@ -1,8 +1,15 @@
-from theano.sandbox.cuda.async import (local_async_gpu, GpuFromHostWait, HostFromGpuWait,
-        async_optimizer)
+import numpy as np
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+
+from theano.sandbox.cuda.async import (local_async_gpu, GpuFromHostWait,
+                                       HostFromGpuWait,
+                                       async_optimizer)
 from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
 import theano
-import numpy as np
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available == False:
+    raise SkipTest('Optional package cuda disabled')
 
 def test_async_to_gpu():
     x = theano.tensor.fmatrix('x')
