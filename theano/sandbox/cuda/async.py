@@ -29,9 +29,14 @@ _logger.addHandler(logging.StreamHandler())  # TO REMOVE
 # Asynchronous GPU Communication #
 ##################################
 
-class HostFromGpuSend(GpuOp):
-    """
-    Start the transfer from gpu to the cpu.
+class GpuAsyncTransferOp(GpuOp):
+    """ Shared code between Gpu Asynchronous Transfer Ops
+
+    See Also:
+        HostFromGpuSend
+        HostFromGpuWait
+        GpuFromHostSend
+        GpuFromHostWait
     """
     def __eq__(self, other):
         return type(self) == type(other)
@@ -39,6 +44,16 @@ class HostFromGpuSend(GpuOp):
     def __hash__(self):
         return hash(type(self))
 
+    def c_code_cache_version(self):
+        return ()
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', '<cuda.h>']
+
+class HostFromGpuSend(GpuAsyncTransferOp):
+    """
+    Start the transfer from gpu to the cpu.
+    """
     def __str__(self):
         return 'HostFromGpuSend'
 
@@ -62,19 +77,10 @@ class HostFromGpuSend(GpuOp):
         cudaEventRecord(*%(eventName)s, 0);
         """ % locals()
 
-    def c_code_cache_version(self):
-        return (1,)
-
-class HostFromGpuWait(GpuOp):
+class HostFromGpuWait(GpuAsyncTransferOp):
     """
     Implement the transfer from gpu to the cpu.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
     def __str__(self):
         return 'HostFromGpuWait'
 
@@ -100,19 +106,10 @@ class HostFromGpuWait(GpuOp):
         }
         """ % locals()
 
-    def c_code_cache_version(self):
-        return (1,)
-
-class GpuFromHostSend(GpuOp):
+class GpuFromHostSend(GpuAsyncTransferOp):
     """
     Start the transfer from cpu to the gpu.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
     def __str__(self):
         return 'GpuFromHostSend'
 
@@ -147,19 +144,10 @@ class GpuFromHostSend(GpuOp):
         cudaEventRecord(*%(eventName)s, 0);
         """ % locals()
 
-    def c_code_cache_version(self):
-        return (1,)
-
-class GpuFromHostWait(GpuOp):
+class GpuFromHostWait(GpuAsyncTransferOp):
     """
     Wait for completion of the transfer from cpu to the gpu.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
     def __str__(self):
         return 'GpuFromHostWait'
 
@@ -180,9 +168,6 @@ class GpuFromHostWait(GpuOp):
         cudaEventSynchronize(*(cudaEvent_t*)(PyCObject_AsVoidPtr(%(event)s)));
         %(out)s = %(inp)s;
         """ % locals()
-
-    def c_code_cache_version(self):
-        return (1,)
 
 # TODO Register
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
