@@ -47,6 +47,9 @@ class GpuAsyncTransferOp(GpuOp):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def c_code_cache_version(self):
         return ()
 
@@ -78,8 +81,6 @@ class HostFromGpuSend(GpuAsyncTransferOp):
     """
     Start the transfer from gpu to the cpu.
     """
-    def __str__(self):
-        return 'HostFromGpuSend'
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
@@ -105,9 +106,6 @@ class HostFromGpuWait(GpuAsyncTransferOp):
     """
     Implement the transfer from gpu to the cpu.
     """
-    def __str__(self):
-        return 'HostFromGpuWait'
-
     def make_node(self, x, event):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
@@ -132,9 +130,6 @@ class GpuFromHostSend(GpuAsyncTransferOp):
     """
     Start the transfer from cpu to the gpu.
     """
-    def __str__(self):
-        return 'GpuFromHostSend'
-
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
@@ -170,8 +165,6 @@ class GpuFromHostWait(GpuAsyncTransferOp):
     """
     Wait for completion of the transfer from cpu to the gpu.
     """
-    def __str__(self):
-        return 'GpuFromHostWait'
 
     def make_node(self, x, event):
         if not isinstance(x.type, CudaNdarrayType):
