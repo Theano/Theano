@@ -125,13 +125,14 @@ def _contains_cycle(inputs, outputs, orderings):
                 assert not orderings.get(cur_var_or_node, False)
                 expand_l = []
             else:
-                try:
-                    if cur_var_or_node.owner:
-                        expand_l = [cur_var_or_node.owner]
-                    else:
-                        expand_l = []
-                except AttributeError:
-                    expand_l = list(cur_var_or_node.inputs)
+                expand_l = cur_var_or_node.get_parents()
+                #try:
+                #    if cur_var_or_node.owner:
+                #        expand_l = [cur_var_or_node.owner]
+                #    else:
+                #        expand_l = []
+                #except AttributeError:
+                #    expand_l = list(cur_var_or_node.inputs)
                 expand_l.extend(orderings.get(cur_var_or_node, []))
 
             if expand_l:
