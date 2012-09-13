@@ -538,7 +538,7 @@ class ProfileMode(Mode):
                 items.sort(key=lambda a: a[1])
                 items.reverse()
 
-                order = fgraph.toposort()
+                order = self.linker.schedule(fgraph)
                 computed, last_user = gof.link.gc_helper(order)
                 for node in order:
                     post_thunk_old_storage.append([ input_idx

@@ -1574,7 +1574,7 @@ class _Linker(gof.link.LocalLinker):
         fgraph = self.fgraph
         input_storage_ = input_storage
         output_storage_ = output_storage
-        #order = fgraph.toposort()
+        #order = self.schedule(fgraph)
 
         #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
         #This will be OK, because every thunk is evaluated on a copy of its input.
@@ -1582,7 +1582,7 @@ class _Linker(gof.link.LocalLinker):
         order_outputs.reverse()
         order = graph.io_toposort(fgraph.inputs, order_outputs)
 
-        active_order = fgraph.toposort()  # an ordering of just the active nodes
+        active_order = self.schedule(fgraph) # an ordering of just the active nodes
         active_order_set = set(active_order)
 
         no_recycling = self.no_recycling
