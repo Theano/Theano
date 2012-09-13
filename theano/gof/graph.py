@@ -21,7 +21,25 @@ is_same_graph_with_merge = None
 equal_computations = None
 
 
-class Apply(utils.object2):
+class Node(utils.object2):
+    """A Node in a theano graph.
+    Graphs contain two kinds of Nodes--
+    Variable and Apply.
+    Edges in the graph are not explicitly represented.
+    Instead each Node keeps track of its parents via
+    Variable.owner / Apply.inputs and its children
+    via Variable.clients / Apply.outputs.
+    """
+
+    def get_parents(self):
+        """ Return a list of the parents of this node.
+        Should return a copy--i.e., modifying the return
+        value should not modify the graph structure."""
+
+        raise NotImplementedError()
+
+
+class Apply(Node):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
     of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
@@ -213,7 +231,7 @@ class Apply(utils.object2):
     """property: Number of outputs"""
 
 
-class Variable(utils.object2):
+class Variable(Node):
     """
     A :term:`Variable` is a node in an expression graph that represents a variable.
 

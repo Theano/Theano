@@ -160,13 +160,12 @@ def _contains_cycle(inputs, outputs, orderings):
                 fifo_queue.append(node)
             node_to_parents[node] = parents
 
-
     rset = set()
-    rlist = []
+    visit_count = 0
     while fifo_queue:
         node = fifo_queue.popleft()
         if node not in rset:
-            rlist.append(node)
+            visit_count += 1
             rset.add(node)
             for client in node_to_children.get(node, []):
                 node_to_parents[client] = [a for a in node_to_parents[client] if a is not node]
@@ -174,7 +173,7 @@ def _contains_cycle(inputs, outputs, orderings):
                     fifo_queue.append(client)
 
 
-    return len(rlist) != len(node_to_parents.keys())
+    return visit_count != len(node_to_parents.keys())
 
 
 
