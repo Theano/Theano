@@ -131,7 +131,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     fgraph = gof.fg.FunctionGraph(inputs, outputs)
 
-    for node in fgraph.nodes:
+    for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
                 raise TypeError("Graph must not contain inplace operations", node, node.op)

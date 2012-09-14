@@ -1382,7 +1382,7 @@ class GemmOptimizer(Optimizer):
                                    (theano.scalar.Add, theano.scalar.Sub,
                                     theano.scalar.Neg, theano.scalar.Mul))):
                     continue
-                if not node in fgraph.nodes:
+                if not node in fgraph.apply_nodes:
                     # This mean that we already removed this node from
                     # the graph
                     continue

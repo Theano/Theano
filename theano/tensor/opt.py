@@ -176,7 +176,7 @@ def inplace_elemwise_optimizer_op(OP):
         # We execute `validate` after this number of change.
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
-            if len(fgraph.nodes) > 500:
+            if len(fgraph.apply_nodes) > 500:
                 check_each_change = 10
             else:
                 check_each_change = 1
@@ -4596,7 +4596,7 @@ class FusionOptimizer(Optimizer):
             did_something = False
             for node in nodelist:
                 # Don't try to fuse node that have already been fused.
-                if node in fgraph.nodes:
+                if node in fgraph.apply_nodes:
                     new_outputs = self.optimizer(node)
                     if new_outputs:
                         assert len(new_outputs) == len(node.outputs)

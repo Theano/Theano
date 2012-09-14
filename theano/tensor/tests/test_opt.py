@@ -2791,14 +2791,14 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     f = function([v], v ** (15), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert len(nodes) == 1
-    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.nodes) == 6
+    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 6
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert numpy.allclose(f(val), val ** 15)
 
     f = function([v], v ** (-15), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert len(nodes) == 2
-    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.nodes) == 6
+    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 6
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op, theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0), val_no0 ** (-15))
@@ -2806,14 +2806,14 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     f = function([v], v ** (16), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert len(nodes) == 1
-    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.nodes) == 4
+    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 4
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert numpy.allclose(f(val), val ** 16)
 
     f = function([v], v ** (-16), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert len(nodes) == 2
-    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.nodes) == 4
+    assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 4
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op, theano.scalar.basic.Inv)
     assert numpy.allclose(f(val_no0), val_no0 ** (-16))
@@ -3204,21 +3204,21 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x], T.log(T.erfc(x)), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 23, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
         f = theano.function([x], T.log(T.erfc(-x)), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 24, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 24, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(-val)))
 
         f = theano.function([x], T.log(T.erfc(x)), mode=mode_fusion)
-        assert len(f.maker.fgraph.nodes) == 1, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.nodes)==2,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.nodes)
+            0].op.scalar_op.fgraph.apply_nodes)==2,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
@@ -3247,7 +3247,7 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x], T.grad(T.log(T.erfc(x)).sum(), x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 23, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert all(numpy.isfinite(f(val)))
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
@@ -3255,14 +3255,14 @@ class T_local_erfc(unittest.TestCase):
         f = theano.function([x], T.mul(T.exp(T.neg(T.sqr(x))), -
             10.12837917) / T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 23, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
         #test that we work without the mul
         f = theano.function([x], T.exp(T.neg(T.sqr(x))) / T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 23, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
@@ -3270,14 +3270,14 @@ class T_local_erfc(unittest.TestCase):
         f = theano.function([x, y], T.exp(T.neg(T.sqr(x))) / T.erfc(
             y), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 5, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 5, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         f(val, val - 3)
 
         #test that we work without the sqr and neg
         f = theano.function([x], T.exp(T.mul(-1, x, x)) / T.erfc(x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 22, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 22, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
@@ -3285,13 +3285,13 @@ class T_local_erfc(unittest.TestCase):
         f = theano.function([x], T.grad(T.log(T.erfc(2 * x)).sum(),
              x), mode=mode)
         #theano.printing.debugprint(f)
-        assert len(f.maker.fgraph.nodes) == 23, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert numpy.isfinite(f(val)).all()
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
         f = theano.function([x], T.grad(T.log(T.erfc(x)).sum(), x),
              mode=mode_fusion)
-        assert len(f.maker.fgraph.nodes) == 1, len(f.maker.fgraph.nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
         #TODO: fix this problem
@@ -3413,18 +3413,18 @@ class T_local_sum(unittest.TestCase):
         a = T.tensor3()
         input = numpy.arange(3 * 3 * 3, dtype=config.floatX).reshape(3, 3, 3)
         f = theano.function([a], a.sum(), mode=self.mode)
-        assert len(f.maker.fgraph.nodes) == 1
+        assert len(f.maker.fgraph.apply_nodes) == 1
         assert numpy.allclose(f(input), input.sum())
 
         f = theano.function([a], a.sum([0, 1, 2]), mode=self.mode)
-        assert len(f.maker.fgraph.nodes) == 1
+        assert len(f.maker.fgraph.apply_nodes) == 1
         assert numpy.allclose(f(input), input.sum())
 
         backup = config.warn.sum_sum_bug
         config.warn.sum_sum_bug = False
         try:
             f = theano.function([a], a.sum(0).sum(0).sum(0), mode=self.mode)
-            assert len(f.maker.fgraph.nodes) == 1
+            assert len(f.maker.fgraph.apply_nodes) == 1
             assert numpy.allclose(f(input), input.sum())
         finally:
             config.warn.sum_sum_bug = backup
@@ -3440,20 +3440,20 @@ class T_local_sum(unittest.TestCase):
             for d, dd in dims:
                 f = theano.function([a], a.sum(d).sum(dd), mode=self.mode)
                 assert numpy.allclose(f(input), input.sum(d).sum(dd))
-                assert len(f.maker.fgraph.nodes) == 1
+                assert len(f.maker.fgraph.apply_nodes) == 1
             for d, dd in dims:
                 f = theano.function([a], a.sum(d).sum(dd).
                     sum(0), mode=self.mode)
                 assert numpy.allclose(f(input), input.sum(d).sum(dd).sum(0))
-                assert len(f.maker.fgraph.nodes) == 1
+                assert len(f.maker.fgraph.apply_nodes) == 1
             for d in [0, 1, 2]:
                 f = theano.function([a], a.sum(d).sum(None), mode=self.mode)
                 assert numpy.allclose(f(input), input.sum(d).sum())
-                assert len(f.maker.fgraph.nodes) == 1
+                assert len(f.maker.fgraph.apply_nodes) == 1
             for d in [0, 1, 2]:
                 f = theano.function([a], a.sum(None).sum(), mode=self.mode)
                 assert numpy.allclose(f(input), input.sum())
-                assert len(f.maker.fgraph.nodes) == 1
+                assert len(f.maker.fgraph.apply_nodes) == 1
         finally:
             config.warn.sum_sum_bug = backup
 
@@ -3468,23 +3468,23 @@ class T_local_sum(unittest.TestCase):
 
             f = theano.function([a], t_like(a).sum(None), mode=mode)
             assert numpy.allclose(f(input), n_like(input).sum())
-            assert len(f.maker.fgraph.nodes) == nb_nodes[0]
+            assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             f = theano.function([a], t_like(a).sum([0, 1, 2]), mode=mode)
             assert numpy.allclose(f(input), n_like(input).sum())
-            assert len(f.maker.fgraph.nodes) == nb_nodes[0]
+            assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             for d in range(3):
                 f = theano.function([a], t_like(a).sum(d), mode=mode)
                 assert numpy.allclose(f(input), n_like(input).sum(d))
-                assert len(f.maker.fgraph.nodes) == nb_nodes[1]
+                assert len(f.maker.fgraph.apply_nodes) == nb_nodes[1]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
                 assert not any([isinstance(node.op, T.Sum) for node in topo])
             for i in range(3):
                 f = theano.function([a], t_like(a).sum(i), mode=mode)
                 assert numpy.allclose(f(input), n_like(input).sum(i))
-                assert len(f.maker.fgraph.nodes) == nb_nodes[2]
+                assert len(f.maker.fgraph.apply_nodes) == nb_nodes[2]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
                 assert not any([isinstance(node.op, T.Sum) for node in topo])
@@ -3497,7 +3497,7 @@ class T_local_sum(unittest.TestCase):
                         sum(d).sum(dd), mode=mode)
                     assert numpy.allclose(f(input),
                         n_like(input).sum(d).sum(dd))
-                    assert len(f.maker.fgraph.nodes) == nb_nodes[3]
+                    assert len(f.maker.fgraph.apply_nodes) == nb_nodes[3]
                     topo = f.maker.fgraph.toposort()
                     assert topo[-1].op == T.alloc
                     assert not any([isinstance(node.op,
