@@ -2,10 +2,10 @@ import numpy as np
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 
-from theano.sandbox.cuda.async import (local_async_gpu, GpuFromHostWait,
-                                       HostFromGpuWait,
-                                       async_optimizer)
-from theano.sandbox.cuda.basic_ops import gpu_from_host, host_from_gpu
+from theano.sandbox.cuda.async import (local_async_gpu, async_optimizer,
+        GpuFromHostWait, HostFromGpuWait,GpuFromHostSend, HostFromGpuSend)
+from theano.sandbox.cuda.basic_ops import (gpu_from_host, host_from_gpu,
+        GpuFromHost)
 import theano
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
@@ -35,6 +35,7 @@ def test_async_to_host():
 
 
 def test_compile():
+    """ Can we compile such a function without failing?"""
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
@@ -43,6 +44,7 @@ def test_compile():
 
 
 def test_execute():
+    """Can we run such a function without failing?"""
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
     gx2 = local_async_gpu.transform(gx.owner)
@@ -58,6 +60,10 @@ def test_optimizer():
     gx = theano.sandbox.cuda.gpu_from_host(x)
     fgraph = theano.FunctionGraph([x], [gx])
     async_optimizer.optimize(fgraph)
+    ops = {node.op for node in fgraph.nodes}
+    assert len(filter(lambda op: isinstance(op, GpuFromHostWait), ops)) == 1
+    assert len(filter(lambda op: isinstance(op, GpuFromHostSend), ops)) == 1
+    assert len(filter(lambda op: isinstance(op, GpuFromHost), ops))     == 0
 
 
 def test_optimizer2():
