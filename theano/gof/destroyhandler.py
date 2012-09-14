@@ -173,7 +173,7 @@ def _contains_cycle(fgraph, orderings):
                     fifo_queue.append(client)
 
 
-    return visit_count != len(node_to_parents.keys())
+    return visit_count != len(node_to_parents)
 
 
 
