@@ -92,21 +92,6 @@ def _contains_cycle(fgraph, orderings):
 
     iset = set(inputs)
 
-
-    # IG: I tried modifying lifo_queue to hold (var_or_node, bool)
-    # tuples, with the bool indicating if var_or_node is a Variable
-    # or an Apply node. This allowed checking the bool rather than
-    # catching an AttributeError, but proved to be slower. Adding
-    # get_parents worked better.
-
-    # IG: I tried tagging each variable and node with a visited flag
-    # to avoid needing to do a parent_counts lookup to tell if a
-    # node was visited. This requires wrapping everything in a
-    # try-finally and setting all the flags to false in the finally.
-    # It resulted in a net slowdown, whether I used iteration
-    # on parent_counts or rval_list. (rval_list was a list
-    # whose contents were the same as parent_counts.keys())
-
     # IG: I tried converting parent_counts to use an id for the key,
     # so that the dict would do reference counting on its keys.
     # This caused a slowdown.
@@ -123,8 +108,6 @@ def _contains_cycle(fgraph, orderings):
     # dict mapping an Apply or Variable instance to its children
     node_to_children = {}
 
-    lifo_queue = deque(outputs)
-
     # visitable: A container holding all Variable and Apply instances
     # that can currently be visited according to the graph topology
     # (ie, whose parents have already been visited)
@@ -138,40 +121,54 @@ def _contains_cycle(fgraph, orderings):
     # on the nodes
     visitable = deque()
 
-    # Do a DFS through the graph, following the edges backwards from
-    # the outputs to the inputs. Build the node_to_parents and
-    # node_to_children dictionaries. Put the roots of the graph
-    # into visitable
+    # Pass through all the nodes to build visitable, parent_count, and
+    # node_to_children
+    for var in fgraph.variables:
 
-    while lifo_queue:
-        # using pop rather than pop_left makes this queue LIFO
-        # using a LIFO queue makes the search DFS
-        node = lifo_queue.pop()
+        # this is faster than calling get_parents
+        owner = var.owner
+        if owner:
+            parents = [ owner ]
+        else:
+            parents = []
 
-        if node not in parent_counts:
+        # variables don't appear in orderings, so we don't need to worry
+        # about that here
 
-            if node in iset:
-                # Inputs to the graph must not have any dependencies
-                # Note: the empty list is treated as false
-                assert not orderings.get(node, False)
-                parents = []
-            else:
-                parents = node.get_parents()
-                parents.extend(orderings.get(node, []))
+        if parents:
+            for parent in parents:
+                # insert node in node_to_children[r]
+                # (if r is not already in node_to_children,
+                # intialize it to [])
+                node_to_children.setdefault(parent, []).append(var)
+            parent_counts[var] = len(parents)
+        else:
+            visitable.append(var)
+            parent_counts[var] = 0
 
-            if parents:
-                for r in parents:
-                    # insert node in node_to_children[r]
-                    # (if r is not already in node_to_children,
-                    # intialize it to [])
-                    node_to_children.setdefault(r, []).append(node)
-                lifo_queue.extend(parents)
-            else:
-                visitable.append(node)
-            parent_counts[node] = len(parents)
+    for a_n in fgraph.apply_nodes:
+        parents = list(a_n.inputs)
+        # This is faster than conditionally extending
+        # IG: I tried using a shared empty_list = [] constructed
+        # outside of the for loop to avoid constructing multiple
+        # lists, but this was not any faster.
+        parents.extend(orderings.get(a_n,[]))
+
+        if parents:
+            for parent in parents:
+                # insert node in node_to_children[r]
+                # (if r is not already in node_to_children,
+                # intialize it to [])
+                node_to_children.setdefault(parent, []).append(a_n)
+            parent_counts[a_n] = len(parents)
+        else:
+            # an Apply with no inputs would be a weird case, but I'm
+            # not sure we forbid it
+            visitable.append(a_n)
+            parent_counts[a_n] = 0
 
     # at this point,
-    # node_to_parents.keys() == fgraph.apply_nodes + fgraph.variables
+    # parent_counts.keys() == fgraph.apply_nodes + fgraph.variables
 
 
 
@@ -192,7 +189,7 @@ def _contains_cycle(fgraph, orderings):
         # and increment the visited node count without double-counting
         node = visitable.popleft()
         visited += 1
-        for client in node_to_children.get(node, []):
+        for client in node_to_children.get(node,[]):
             parent_counts[client] -= 1
             # If all of a node's parents have been visited,
             # it may now be visited too
