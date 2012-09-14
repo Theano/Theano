@@ -71,9 +71,9 @@ if 0:
 
         def apply(self, fgraph):
             tasks = defaultdict(list)
-            
+
             if self.max_use_ratio is not None:
-                max_uses = self.max_use_ratio * len(fgraph.nodes)
+                max_uses = self.max_use_ratio * len(fgraph.apply_nodes)
                 runs = defaultdict(int)
             else:
                 runs = None
@@ -91,10 +91,10 @@ if 0:
                     self.backtrack(new_r.owner, tasks)
 
     #         # == NOT IDEAL == #
-    #         for node in fgraph.nodes:
+    #         for node in fgraph.apply_nodes:
     #             importer(node)
 
-            
+
             for node in fgraph.toposort():
                 tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
 
@@ -124,7 +124,7 @@ if 0:
 #                     if isinstance(in1, basestring):
 #                         candidate.match[in1] = in2
 #         for client in node.clients:
-            
+
 
 #         op = node.op
 #         patterns = self.pattern_base[(depth, op)].union(self.pattern_base[(depth, WILDCARD)])

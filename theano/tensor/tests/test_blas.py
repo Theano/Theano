@@ -478,7 +478,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
                 mode='FAST_RUN',
                 on_unused_input='ignore')
         nb_gemm = 0
-        for node in f.maker.fgraph.nodes:
+        for node in f.maker.fgraph.apply_nodes:
             if node.op == T.dot:
                 raise Failure('dot not changed to gemm_inplace in graph')
             if node.op == _dot22:
@@ -488,7 +488,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
         assert nb_gemm == expected_nb_gemm, (nb_gemm, expected_nb_gemm)
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 allow_input_downcast=True, on_unused_input='ignore')
-        for node in g.maker.fgraph.nodes:
+        for node in g.maker.fgraph.apply_nodes:
             if node.op == gemm_inplace:
                 raise Exception('gemm_inplace in original graph')
 
@@ -561,14 +561,14 @@ def test_gemm_opt_double_gemm():
     try:
         f = inplace_func([Param(ii, mutable=True) for ii in i], o,
                 mode='FAST_RUN', on_unused_input='ignore')
-        for node in f.maker.fgraph.nodes:
+        for node in f.maker.fgraph.apply_nodes:
             if node.op == T.dot:
                 raise Failure('dot in graph')
             if node.op == _dot22:
                 raise Failure('_dot22 in graph')
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 on_unused_input='ignore')
-        #for node in g.maker.fgraph.nodes:
+        #for node in g.maker.fgraph.apply_nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 
         rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
@@ -760,11 +760,11 @@ def test_gemm_opt_vector_stuff():
     u, v = T.vector(), T.vector()
 
     f = inplace_func([a, u, v], a + T.dot(u, v), mode='FAST_RUN')
-    if gemm_inplace in [n.op for n in f.maker.fgraph.nodes]:
+    if gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]:
         raise Failure('gemm_inplace in graph')
 
     f = inplace_func([a, u, X, Y], a * u + T.dot(X, Y), mode='FAST_RUN')
-    if (gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
+    if (gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]):
         raise Failure('gemm_inplace in graph')
 
 
@@ -823,16 +823,16 @@ def test_inplace0():
 
     f = inplace_func([Z, b, R, S],
             [Z * (Z + b * T.dot(R, S).T)], mode='FAST_RUN')
-    if (gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
+    if (gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]):
         print pp(f.maker.fgraph.outputs[0])
         raise Failure('gemm_inplace in graph')
-    assert gemm_no_inplace in [n.op for n in f.maker.fgraph.nodes]
+    assert gemm_no_inplace in [n.op for n in f.maker.fgraph.apply_nodes]
 
     # gemm_inplace should be inserted here, to work in-place on Z*c
     f = inplace_func([X, Y, Z, a, b, R, S, c],
             [Z * (c * Z + a * T.dot(X, Y) + b * T.dot(R, S).T)],
             mode='FAST_RUN')
-    if (not gemm_inplace in [n.op for n in f.maker.fgraph.nodes]):
+    if (not gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]):
         theano.printing.debugprint(f)
         raise Failure('no gemm_inplace in graph')
 
@@ -844,7 +844,7 @@ def test_inplace1():
             [Z + Z + T.dot(X, Y)], mode='FAST_RUN')
     #theano.printing.debugprint(f)
     # it doesn't work inplace because we didn't mark Z as mutable input
-    assert [n.op for n in f.maker.fgraph.nodes] == [gemm_no_inplace]
+    assert [n.op for n in f.maker.fgraph.apply_nodes] == [gemm_no_inplace]
 
 
 def test_dot22():

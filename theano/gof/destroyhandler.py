@@ -133,6 +133,7 @@ def _contains_cycle(inputs, outputs, orderings):
     # into fifo_queue
     # TODO: does the order of the roots in the fifo_queue matter?
 
+
     while lifo_queue:
         # using pop rather than pop_left makes this queue LIFO
         # using a LIFO queue makes the search DFS

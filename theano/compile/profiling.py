@@ -711,7 +711,7 @@ if 0: # old code still to be ported from ProfileMode
                     var_mem[out]=v
             print
             print "Profile of Theano functions memory:"
-            for fgraph,nodes_mem in fct_memory.iteritems():
+            for fgraph, nodes_mem in fct_memory.iteritems():
                 print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.fgraph is fgraph][0].name
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
                 print "    Max without gc, inplace and view (KB)",size_sum/1024

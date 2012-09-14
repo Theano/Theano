@@ -219,7 +219,7 @@ class ReplaceValidate(History, Validator):
         """
         chk = fgraph.replace_all_validate(replacements, reason)
         for rm in remove:
-            if rm in fgraph.nodes or rm in fgraph.variables:
+            if rm in fgraph.apply_nodes or rm in fgraph.variables:
                 fgraph.revert(chk)
                 if warn:
                     out = sys.stderr
