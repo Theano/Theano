@@ -100,45 +100,55 @@ def _contains_cycle(fgraph, orderings):
     # get_parents worked better.
 
     # IG: I tried tagging each variable and node with a visited flag
-    # to avoid needing to do a node_to_parents lookup to tell if a
+    # to avoid needing to do a parent_counts lookup to tell if a
     # node was visited. This requires wrapping everything in a
     # try-finally and setting all the flags to false in the finally.
     # It resulted in a net slowdown, whether I used iteration
-    # on node_to_parents or rval_list. (rval_list was a list
-    # whose contents were the same as node_to_parents.keys())
+    # on parent_counts or rval_list. (rval_list was a list
+    # whose contents were the same as parent_counts.keys())
 
-    # IG: I tried converting node_to_parents to use an id for the key,
+    # IG: I tried converting parent_counts to use an id for the key,
     # so that the dict would do reference counting on its keys.
-    # For some reason this caused a slowdown--not sure if dict is
-    # slow for int keys, or if call to id function is expensive.
+    # This caused a slowdown.
+    # Separate benchmark tests showed that calling id is about
+    # half as expensive as a dictionary access, and that the
+    # dictionary also runs slower when storing ids than when
+    # storing objects.
 
-    # DWF tried implementing this as cython, including the deque
-    # class when compiling cython, and only got a 10% speedup.
 
-
-
-    # dict mapping an Apply or Variable instance to its parents
-    # (including parents imposed by orderings)
-    node_to_parents = {}
-    # the inverse mapping
+    # dict mapping an Apply or Variable instance to the number
+    # of its parents (including parents imposed by orderings)
+    # that haven't been visited yet
+    parent_counts = {}
+    # dict mapping an Apply or Variable instance to its children
     node_to_children = {}
 
     lifo_queue = deque(outputs)
-    fifo_queue = deque()
+
+    # visitable: A container holding all Variable and Apply instances
+    # that can currently be visited according to the graph topology
+    # (ie, whose parents have already been visited)
+    # TODO: visitable is a fifo_queue. could this run faster if we
+    # implement it as a stack rather than a deque?
+    # TODO: visitable need not be a fifo_queue, any kind of container
+    # that we can throw things into and take things out of quickly will
+    # work. is there another kind of container that could run faster?
+    # we don't care about the traversal order here as much as we do
+    # in io_toposort because we aren't trying to generate an ordering
+    # on the nodes
+    visitable = deque()
 
     # Do a DFS through the graph, following the edges backwards from
     # the outputs to the inputs. Build the node_to_parents and
     # node_to_children dictionaries. Put the roots of the graph
-    # into fifo_queue
-    # TODO: does the order of the roots in the fifo_queue matter?
-
+    # into visitable
 
     while lifo_queue:
         # using pop rather than pop_left makes this queue LIFO
         # using a LIFO queue makes the search DFS
         node = lifo_queue.pop()
 
-        if node not in node_to_parents:
+        if node not in parent_counts:
 
             if node in iset:
                 # Inputs to the graph must not have any dependencies
