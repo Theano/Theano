@@ -121,6 +121,17 @@ def _contains_cycle(fgraph, orderings):
     # on the nodes
     visitable = deque()
 
+    # IG: visitable could in principle be initialized to fgraph.inputs
+    #     + fgraph.orphans... if there were an fgraph.orphans structure.
+    #     I tried making one and maintaining it caused a huge slowdown.
+    #     This may be because I made it a list, so it would have a
+    #     deterministic iteration order, in hopes of using it to speed
+    #     up toposort as well.
+    #     I think since we need to scan through all variables and nodes
+    #     to make parent_counts anyway, it's cheap enough to always
+    #     detect orphans at cycle detection / toposort time
+
+
     # Pass through all the nodes to build visitable, parent_count, and
     # node_to_children
     for var in fgraph.variables:
