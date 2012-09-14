@@ -341,7 +341,9 @@ def hist(coll):
     return counts
 
 def give_variables_names(variables):
-    """ Gives unique names to an iterable of variables. Modifies input."""
+    """ Gives unique names to an iterable of variables. Modifies input.
+
+    This function is idempotent."""
     names = map(lambda var: var.name, variables)
     h = hist(names)
     bad_var = lambda var: not var.name or h[var.name] > 1
