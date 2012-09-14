@@ -157,23 +157,40 @@ def _contains_cycle(fgraph, orderings):
                     node_to_children.setdefault(r, []).append(node)
                 lifo_queue.extend(parents)
             else:
-                fifo_queue.append(node)
-            node_to_parents[node] = parents
+                visitable.append(node)
+            parent_counts[node] = len(parents)
 
-    rset = set()
-    visit_count = 0
-    while fifo_queue:
-        node = fifo_queue.popleft()
-        if node not in rset:
-            visit_count += 1
-            rset.add(node)
-            for client in node_to_children.get(node, []):
-                node_to_parents[client] = [a for a in node_to_parents[client] if a is not node]
-                if not node_to_parents[client]:
-                    fifo_queue.append(client)
+    # at this point,
+    # node_to_parents.keys() == fgraph.apply_nodes + fgraph.variables
 
 
-    return visit_count != len(node_to_parents)
+
+    # Now we actually check for cycles
+    # As long as there are nodes that can be visited while respecting
+    # the topology, we keep visiting nodes
+    # If we run out of visitable nodes and we haven't visited all nodes,
+    # then there was a cycle. It blocked the traversal because some
+    # node couldn't be visited until one of its descendants had been
+    # visited too.
+    # This is a standard cycle detection algorithm.
+
+    visited = 0
+    while visitable:
+        # Since each node is inserted into the visitable queue exactly
+        # once, it comes out of the queue exactly once
+        # That means we can decrement its children's unvisited parent count
+        # and increment the visited node count without double-counting
+        node = visitable.popleft()
+        visited += 1
+        for client in node_to_children.get(node, []):
+            parent_counts[client] -= 1
+            # If all of a node's parents have been visited,
+            # it may now be visited too
+            if not parent_counts[client]:
+                visitable.append(client)
+
+
+    return visited != len(parent_counts)
 
 
 
