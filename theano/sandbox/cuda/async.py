@@ -115,6 +115,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
             raise TypeError(x)
         return Apply(self, [x, event], [tensor.TensorType(dtype=x.dtype,
                                          broadcastable=x.broadcastable)()])
+    view_map = {0: [0]}
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp, event = inputs
@@ -140,7 +141,6 @@ class HostFromGpuWait(GpuAsyncTransferOp):
             %(fail)s;
         }
         """ % locals()
-
 
 class GpuFromHostSend(GpuAsyncTransferOp):
     """
@@ -189,6 +189,7 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         return Apply(self, [x, event],
                     [CudaNdarrayType(broadcastable=x.broadcastable,
                                      dtype=x.dtype)()])
+    view_map = {0: [0]}
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp, event = inputs
