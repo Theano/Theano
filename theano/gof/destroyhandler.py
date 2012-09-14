@@ -45,16 +45,11 @@ class DestroyHandler(object):
     def orderings(self, fgraph):
         return self.map[fgraph].orderings(fgraph)
 
-def _contains_cycle(inputs, outputs, orderings):
+
+def _contains_cycle(fgraph, orderings):
     """
 
-    inputs  - list of graph inputs
-                must be Variable instances
-                collection must be tuple, list, or deque
-
-    outputs - list of graph outputs
-                must be Variable instances
-                collection must be tuple, list or deque
+    fgraph  - the FunctionGraph to check for cycles
 
     orderings - dictionary specifying extra dependencies besides
                  those encoded in Variable.owner / Apply.inputs
@@ -72,6 +67,10 @@ def _contains_cycle(inputs, outputs, orderings):
 
     Returns True if the graph contains a cycle, False otherwise.
     """
+
+    # These are lists of Variable instances
+    inputs = fgraph.inputs
+    outputs = fgraph.outputs
 
 
     # this is hard-coded reimplementation of functions from graph.py
@@ -449,7 +448,7 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
         if self.destroyers:
             ords = self.orderings(fgraph)
 
-            if _contains_cycle(fgraph.inputs, fgraph.outputs, ords):
+            if _contains_cycle(fgraph, ords):
                 raise InconsistencyError("Dependency graph contains cycles")
         else:
             #James's Conjecture:
