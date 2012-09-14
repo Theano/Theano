@@ -344,7 +344,7 @@ def give_variables_names(variables):
     """ Gives unique names to an iterable of variables. Modifies input."""
     names = map(lambda var: var.name, variables)
     h = hist(names)
-    bad_var = lambda var: h[var.name] > 1
+    bad_var = lambda var: not var.name or h[var.name] > 1
 
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d"%i
