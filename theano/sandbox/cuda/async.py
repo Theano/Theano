@@ -135,6 +135,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
         }
 
         %(out)s = %(inp)s;
+        Py_INCREF(%(inp)s);
         if(!%(out)s){
             %(fail)s;
         }
@@ -209,6 +210,7 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         }
 
         %(out)s = %(inp)s;
+        Py_INCREF(%(inp)s);
         """ % locals()
 
 
