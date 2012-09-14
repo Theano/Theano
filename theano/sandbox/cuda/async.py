@@ -116,17 +116,6 @@ class HostFromGpuWait(GpuAsyncTransferOp):
         return Apply(self, [x, event], [tensor.TensorType(dtype=x.dtype,
                                          broadcastable=x.broadcastable)()])
 
-    def c_headers(self):
-        """Override `CLinkerOp.c_headers` """
-        return ['cuda_runtime.h', 'cuda.h']
-
-    def c_headers(self):
-        """Override `CLinkerOp.c_headers` """
-        return ['cuda_runtime.h']
-
-    def c_libraries(self):
-        return ['cudart']
-
     def c_code(self, node, name, inputs, outputs, sub):
         inp, event = inputs
         out = outputs[0]
