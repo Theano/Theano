@@ -1,4 +1,7 @@
-"""WRITEME"""
+"""
+Classes and functions for validating graphs that contain view
+and inplace operations.
+"""
 import sys
 if sys.version_info[:2] >= (2,5):
     from collections import defaultdict
