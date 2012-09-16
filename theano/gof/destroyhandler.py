@@ -727,37 +727,31 @@ class DestroyHandler(toolbox.Bookkeeper):
         (see docstrings for these properties above)
         """
         if self.stale_droot:
-            self.droot, self.impact, self.root_destroyer = self._build_droot_impact()
+            droot = {}   # destroyed view + nonview variables -> foundation
+            impact = {}  # destroyed nonview variable -> it + all views of it
+            root_destroyer = {} # root -> destroyer apply
+
+            for app in self.destroyers:
+                for output_idx, input_idx_list in app.op.destroy_map.items():
+                    if len(input_idx_list) != 1:
+                        raise NotImplementedError()
+                    input_idx = input_idx_list[0]
+                    input = app.inputs[input_idx]
+                    input_root = getroot(input, self.view_i)
+                    if input_root in droot:
+                        raise InconsistencyError("Multiple destroyers of %s" % input_root)
+                    droot[input_root] = input_root
+                    root_destroyer[input_root] = app
+                    input_impact = get_impact(input_root, self.view_o)
+                    for v in input_impact:
+                        assert v not in droot
+                        droot[v] = input_root
+
+                    impact[input_root] = input_impact
+                    impact[input_root].add(input_root)
+            self.droot, self.impact, self.root_destroyer = droot, impact, root_destroyer
             self.stale_droot = False
         return self.droot, self.impact, self.root_destroyer
-
-    def _build_droot_impact(self):
-        droot = {}   # destroyed view + nonview variables -> foundation
-        impact = {}  # destroyed nonview variable -> it + all views of it
-        root_destroyer = {} # root -> destroyer apply
-
-        for app in self.destroyers:
-            for output_idx, input_idx_list in app.op.destroy_map.items():
-                if len(input_idx_list) != 1:
-                    raise NotImplementedError()
-                input_idx = input_idx_list[0]
-                input = app.inputs[input_idx]
-                input_root = getroot(input, self.view_i)
-                if input_root in droot:
-                    raise InconsistencyError("Multiple destroyers of %s" % input_root)
-                droot[input_root] = input_root
-                root_destroyer[input_root] = app
-                #input_impact = set([input_root])
-                #add_impact(input_root, self.view_o, input_impact)
-                input_impact = get_impact(input_root, self.view_o)
-                for v in input_impact:
-                    assert v not in droot
-                    droot[v] = input_root
-
-                impact[input_root] = input_impact
-                impact[input_root].add(input_root)
-
-        return droot, impact, root_destroyer
 
     def on_detach(self, fgraph):
         if fgraph is not self.fgraph:
