@@ -641,12 +641,36 @@ class IncrementalDestroyHandler(toolbox.Bookkeeper):
         self.do_imports_on_attach = do_imports_on_attach
 
     def on_attach(self, fgraph):
-        #boilerplate from old implementation
+        """
+        When attaching to a new fgraph, check that
+            1) This DestroyHandler wasn't already attached to some fgraph
+               (its data structures are only set up to serve one)
+            2) The FunctionGraph doesn't already have a DestroyHandler.
+               This would result in it validating everything twice, causing
+               compilation to be slower.
+
+        Give the FunctionGraph instance:
+            1) A new method "destroyers(var)"
+                TODO: what does this do exactly?
+            2) A new attribute, "destroy_handler"
+        TODO: WRITEME: what does this do besides the checks?
+        """
+
+        ####### Do the checking ###########
+        already_there = False
+        if self.fgraph is fgraph:
+            already_there = True
         if self.fgraph is not None:
             raise Exception("A DestroyHandler instance can only serve one FunctionGraph. (Matthew 6:24)")
         for attr in ('destroyers', 'destroy_handler'):
             if hasattr(fgraph, attr):
-                raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
+                already_there = True
+
+        if already_there:
+            # FunctionGraph.attach_feature catches AlreadyThere and cancels the attachment
+            raise toolbox.AlreadyThere("DestroyHandler feature is already present or in conflict with another plugin.")
+
+        ####### Annotate the FunctionGraph ############
 
         def get_destroyers_of(r):
             droot, impact, root_destroyer = self.refresh_droot_impact()
