@@ -16,7 +16,10 @@ from theano.gof.python25 import deque
 from fg import InconsistencyError
 
 class ProtocolError(Exception):
-    """WRITEME"""
+    """Raised when FunctionGraph calls DestroyHandler callbacks in
+    an invalid way, for example, pruning or changing a node that has
+    never been imported.
+    """
     pass
 
 def _contains_cycle(fgraph, orderings):
