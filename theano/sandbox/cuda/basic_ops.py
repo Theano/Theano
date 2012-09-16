@@ -2280,7 +2280,8 @@ class GpuAlloc(GpuOp):
                 %(fail)s;
             }
         }
-        if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
+        if (CudaNdarray_SIZE(%(value)s) > 0 &&
+            CudaNdarray_CopyFromCudaNdarray(%(out)s, %(value)s, true))
         {
             // exception already set
             Py_XDECREF(%(out)s);
@@ -2298,7 +2299,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:

@@ -1715,6 +1715,27 @@ class TestAlloc(unittest.TestCase):
             assert not isinstance(topo[0].op,
                     theano.compile.function_module.DeepCopyOp)
 
+    def test_alloc_empty(self):
+        val = numpy.empty([0, 1], dtype=self.dtype)
+        for alloc in self.allocs:
+            # The output is the result of the alloc operation,
+            # we do not want it to be constant-folded
+            s1 = tensor.lscalar()
+            # We must call alloc as the gpualloc optimizer
+            # Won't move it to the GPU.
+            #out = tensor.empty((50, s1), dtype=self.dtype)
+            out = alloc()(val, 50, s1)
+            f = theano.function([s1], theano.dot(out, out),
+                                mode=self.mode)
+            topo = f.maker.fgraph.toposort()
+            assert numpy.sum([isinstance(node.op, alloc)
+                              for node in topo]) == 1
+            assert not isinstance(topo[0].op,
+                    theano.compile.function_module.DeepCopyOp)
+            # I want to test the case when we reuse the output.
+            f(50)
+            f(50)
+
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):

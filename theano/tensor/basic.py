@@ -2940,6 +2940,21 @@ def ones(shape, dtype=None):
     return alloc(numpy.array(1, dtype=dtype), *shape)
 
 
+def empty(shape, dtype=None):
+    """
+    Create a Tensor without initializing the memory,
+    closer to Numpy's syntax than ``alloc``.
+    """
+    if dtype is None:
+        dtype = config.floatX
+    # On the GPU, we can broadcast only scalar
+    # or we need the same number of dimensions as of
+    # September 16th, 2012.
+    shp = [1] * len(shape)
+    shp[0] = 0
+    return alloc(numpy.empty(shp, dtype=dtype), *shape)
+
+
 class Eye(gof.Op):
     def __init__(self, dtype=None):
         if dtype is None:
@@ -3021,6 +3036,10 @@ class Alloc(gof.Op):
 
     This Op is used to replace fill() during optimizations because after shapes
     are lifted, the first argument to fill can often be pruned from the graph.
+
+    .. note:
+
+        A value with size 0 mean we want un initialized memory.
     """
     def __init__(self):
         pass
@@ -3069,10 +3088,12 @@ class Alloc(gof.Op):
                 out[0] = numpy.zeros(sh, dtype=v.dtype)
             else:
                 out[0] = numpy.empty(sh, dtype=v.dtype)
-                out[0][...] = v  # broadcast v to fill us up
+                if v.size > 0:
+                    out[0][...] = v  # broadcast v to fill us up
         else:
             # reuse the allocated memory.
-            out[0][...] = v  # broadcast v to fill us up
+            if v.size > 0:
+                out[0][...] = v  # broadcast v to fill us up
 
     def c_code(self, node, name, inp, out, sub):
         vv = inp[0]
@@ -3109,13 +3130,14 @@ class Alloc(gof.Op):
             }
 
             // This function takes care of broadcasting
-            PyArray_CopyInto(%(zz)s, %(vv)s);
+            if (PyArray_SIZE(%(vv)s) > 0)
+                PyArray_CopyInto(%(zz)s, %(vv)s);
             """ % dict(vv=vv, ndim=ndim, zz=zz, fail=fail)
 
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
