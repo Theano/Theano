@@ -602,39 +602,65 @@ if 0:
 
             return rval
 
-class IncrementalDestroyHandler(toolbox.Bookkeeper):
+class DestroyHandler(toolbox.Bookkeeper):
     """
-    The DestroyHandler class detects when a graph is impossible to evaluate because of
-    aliasing and destructive operations.
+    The DestroyHandler class detects when a graph is impossible to evaluate
+    because of aliasing and destructive operations.
 
     Several data structures are used to do this.
 
-    When an Op uses its view_map property to declare that an output may be aliased
-    to an input, then if that output is destroyed, the input is also considering to be
-    destroyed.  The view_maps of several Ops can feed into one another and form a directed graph.
-    The consequence of destroying any variable in such a graph is that all variables in the graph
-    must be considered to be destroyed, because they could all be refering to the same
-    underlying storage.  In the current implementation, that graph is a tree, and the root of
-    that tree is called the foundation.  The `droot` property of this class maps from every
-    graph variable to its foundation.  The `impact` property maps backward from the foundation
-    to all of the variables that depend on it. When any variable is destroyed, this class marks
-    the foundation of that variable as being destroyed, with the `root_destroyer` property.
+    An Op can use its view_map property to declare that an output may be
+    aliased to an input. If that output is destroyed, the input is also
+    considered to be destroyed. The view_maps of several Ops can feed into
+    one another and form a directed graph. The consequence of destroying any
+    variable in such a graph is that all variables in the graph must be
+    considered to be destroyed, because they could all be refering to the
+    same underlying storage.
+
+    In the current implementation, that graph is a tree, and the root of that
+    tree is called the foundation.
+
+    TODO: why "in the current implementation" ? is there another implementation
+          planned?
+    TODO: why is the graph a tree? isn't it possible that one variable could
+          be aliased to many variables? for example, don't switch and ifelse
+          have to do this?
+
+    The original DestroyHandler (if 0'ed out above) computed several data
+    structures from scratch each time it was asked to validate the graph.
+    Because this happens potentially thousands of times and each graph to
+    validate is extremely similar to the previous one, computing the
+    data structures from scratch repeatedly was wasteful and resulted in
+    high compile times for large graphs.
+
+    This implementation computes the data structures once at initialization
+    and then incrementally updates them.
+
+    It is a work in progress. The following data structures have been
+    converted to use the incremental strategy:
+        <none>
+
+    The following data structures remain to be converted:
+        <unknown>
     """
 
+    """maps every variable in the graph to its "foundation" (deepest
+    ancestor in view chain)
+    TODO: change name to var_to_vroot"""
     droot = {}
-    """
-    destroyed view + nonview variables -> foundation
-    """
 
+    """maps a variable to all variables that are indirect or direct views of it
+     (including itself)
+     essentially the inverse of droot
+    TODO: do all variables appear in this dict, or only those that are foundations?
+    TODO: do only destoryed variables go in here? one old docstring said so
+    TODO: rename to x_to_views after reverse engineering what x is"""
     impact = {}
-    """
-    destroyed nonview variable -> it + all views of it
-    """
 
+    """if a var is destroyed, then this dict will map
+    droot[var] to the apply node that destroyed var
+    TODO: rename to vroot_to_destroyer"""
     root_destroyer = {}
-    """
-    root -> destroyer apply
-    """
 
     def __init__(self, do_imports_on_attach=True):
         self.fgraph = None
@@ -695,6 +721,11 @@ class IncrementalDestroyHandler(toolbox.Bookkeeper):
             toolbox.Bookkeeper.on_attach(self, fgraph)
 
     def refresh_droot_impact(self):
+        """
+        Makes sure self.droot, self.impact, and self.root_destroyer are
+        up to date, and returns them.
+        (see docstrings for these properties above)
+        """
         if self.stale_droot:
             self.droot, self.impact, self.root_destroyer = self._build_droot_impact()
             self.stale_droot = False
@@ -877,17 +908,12 @@ class IncrementalDestroyHandler(toolbox.Bookkeeper):
             # CHECK for multiple destructions during construction of variables
 
             droot, impact, __ignore = self.refresh_droot_impact()
-            #print "droot", droot
-            #print "impact", impact
-            #print "view_i", self.view_i
-            #print "view_o", self.view_o
 
             # check for destruction of constants
             illegal_destroy = [r for r in droot if \
                     getattr(r.tag,'indestructible', False) or \
                     isinstance(r, graph.Constant)]
             if illegal_destroy:
-                #print 'destroying illegally'
                 raise InconsistencyError("Attempting to destroy indestructible variables: %s" %
                         illegal_destroy)
 
@@ -962,5 +988,3 @@ class IncrementalDestroyHandler(toolbox.Bookkeeper):
                         rval[app] = root_clients
 
         return rval
-
-DestroyHandler = IncrementalDestroyHandler
