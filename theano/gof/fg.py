@@ -449,8 +449,21 @@ class FunctionGraph(utils.object2):
         Adds a gof.toolbox.Feature to this function_graph
         and triggers its on_attach callback
         """
+
+        # Filter out literally identical features
         if feature in self._features:
             return # the feature is already present
+
+        # Filter out functionally identical features.
+        # Features may use their on_attach method to raise
+        # toolbox.AlreadyThere if they detect that some
+        # installed feature does the same thing already
+        attach = getattr(feature, 'on_attach', None)
+        if attach is not None:
+            try:
+                attach(self)
+            except toolbox.AlreadyThere:
+                return
 
         #it would be nice if we could require a specific class instead of
         #a "workalike" so we could do actual error checking
@@ -458,12 +471,7 @@ class FunctionGraph(utils.object2):
         #    raise TypeError("Expected gof.toolbox.Feature instance, got "+\
         #            str(type(feature)))
 
-        attach = getattr(feature, 'on_attach', None)
-        if attach is not None:
-            try:
-                attach(self)
-            except toolbox.AlreadyThere:
-                return
+        # Add the feature
         self._features.append(feature)
 
     def remove_feature(self, feature):
