@@ -7,6 +7,9 @@ import graph
 
 
 class AlreadyThere(Exception):
+    """Raised by a Feature's on_attach callback method if the FunctionGraph
+    attempting to attach the feature already has a functionally identical
+    feature."""
     pass
 
 
@@ -32,13 +35,18 @@ class Feature(object):
 
     def on_attach(self, function_graph):
         """
-        Called by FunctionGraph.attach_feature, the method that attaches the feature
-        to the FunctionGraph. Since this is called after the FunctionGraph
-        is initially populated, this is where you should run checks on the
-        initial contents of the FunctionGraph.
-        The feature has great freedom in what
-        it can do with the function_graph: it may, for example, add methods
-        to it dynamically.
+        Called by FunctionGraph.attach_feature, the method that attaches
+        the feature to the FunctionGraph. Since this is called after the
+        FunctionGraph is initially populated, this is where you should
+        run checks on the initial contents of the FunctionGraph.
+
+        The on_attach method may raise the AlreadyThere exception to cancel
+        the attach operation if it detects that another Feature instance
+        implementing the same functionality is already atttached to the
+        FunctionGraph.
+
+        The feature has great freedom in what it can do with the
+        function_graph: it may, for example, add methods to it dynamically.
         """
 
     def on_detach(self, function_graph):
