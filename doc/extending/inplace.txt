@@ -62,7 +62,7 @@ purpose, you would set the ``view_map`` field as follows:
 
 What this means is that the first output (position 0) is a view of the
 first input (position 0). Even though the interface allows a list of
-inputs that are a view of a given output, this feature is currently
+inputs that are viewed by a given output, this feature is currently
 unsupported. Here are more examples:
 
 
