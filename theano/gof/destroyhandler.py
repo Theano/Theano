@@ -16,8 +16,21 @@ class ProtocolError(Exception):
     """WRITEME"""
     pass
 
-class DestroyHandler(object):
-    """WRITEME"""
+class DestroyHandler(toolbox.Feature):
+    """WRITEME
+
+    The DestroyHandler is never constructed anywhere except as an argument to
+    FunctionGraph.attach_feature.
+
+    TODO: What does the DestroyHandler actually do?
+    TODO: should the DestroyHandler even exist? It is only constructed to be passed
+        to on_attach, and once it is passed there, it does nothing but make a DestroyHandlerHelper2.
+        all it does is add a layer of indirection; all the DestroyHandler callbacks
+        just lookup which DestroyHandlerHelper2 object to route the callback through to
+    TODO: Sometimes FunctionGraph has more than one DestroyHandler as a feature,
+          is this a bug?
+
+    """
 
     def __init__(self, do_imports_on_attach=True):
         self.map = {}
@@ -214,6 +227,11 @@ def _contains_cycle(fgraph, orderings):
 
 def getroot(r, view_i):
     """
+    TODO: what is view_i ? based on add_impact's docstring, IG is guessing
+          it might be a dictionary mapping variables to views, but what is
+          a view? In these old docstrings I'm not sure if "view" always
+          means "view variable" or if it also sometimes means "viewing
+          pattern."
     For views: Return non-view variable which is ultimatly viewed by r.
     For non-views: return self.
     """
@@ -229,6 +247,12 @@ def add_impact(r, view_o, impact):
 
     :param impact: is a set of variables that are views of r
     :param droot: a dictionary mapping views -> r
+
+    TODO: this docstring is hideously wrong, the function doesn't return anything.
+          has droot been renamed to view_o?
+          does it add things to the impact argument instead of returning them?
+          IG thinks so, based on reading the code. It looks like get_impact
+          does what this docstring said this function does.
     """
     for v in view_o.get(r,[]):
         impact.add(v)
