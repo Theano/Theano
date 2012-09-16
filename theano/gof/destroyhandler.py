@@ -19,49 +19,6 @@ class ProtocolError(Exception):
     """WRITEME"""
     pass
 
-class DestroyHandler(toolbox.Feature):
-    """WRITEME
-
-    The DestroyHandler is never constructed anywhere except as an argument to
-    FunctionGraph.attach_feature.
-
-    TODO: What does the DestroyHandler actually do?
-    TODO: should the DestroyHandler even exist? It is only constructed to be passed
-        to on_attach, and once it is passed there, it does nothing but make a DestroyHandlerHelper2.
-        all it does is add a layer of indirection; all the DestroyHandler callbacks
-        just lookup which DestroyHandlerHelper2 object to route the callback through to
-    TODO: Sometimes FunctionGraph has more than one DestroyHandler as a feature,
-          is this a bug?
-
-    """
-
-    def __init__(self, do_imports_on_attach=True):
-        self.map = {}
-        self.do_imports_on_attach=do_imports_on_attach
-
-    def on_attach(self, fgraph):
-        dh = self.map.setdefault(fgraph, DestroyHandlerHelper2(do_imports_on_attach=self.do_imports_on_attach))
-        dh.on_attach(fgraph)
-
-    def on_detach(self, fgraph):
-        self.map[fgraph].on_detach(fgraph)
-
-    def on_import(self, fgraph, op):
-        self.map[fgraph].on_import(fgraph, op)
-
-    def on_prune(self, fgraph, op):
-        self.map[fgraph].on_prune(fgraph, op)
-
-    def on_change_input(self, fgraph, node, i, r, new_r):
-        self.map[fgraph].on_change_input(fgraph, node, i, r, new_r)
-
-    def validate(self, fgraph):
-        self.map[fgraph].validate(fgraph)
-
-    def orderings(self, fgraph):
-        return self.map[fgraph].orderings(fgraph)
-
-
 def _contains_cycle(fgraph, orderings):
     """
 
@@ -226,8 +183,6 @@ def _contains_cycle(fgraph, orderings):
 
     return visited != len(parent_counts)
 
-
-
 def getroot(r, view_i):
     """
     TODO: what is view_i ? based on add_impact's docstring, IG is guessing
@@ -283,9 +238,9 @@ def fast_inplace_check(inputs):
               and i not in protected_inputs]
     return inputs
 
-class DestroyHandlerHelper2(toolbox.Bookkeeper):
+class DestroyHandler(toolbox.Bookkeeper):
     """
-    The DestroyHandlerHelper2 class detects when a graph is impossible to evaluate because of
+    The DestroyHandler class detects when a graph is impossible to evaluate because of
     aliasing and destructive operations.
 
     Several data structures are used to do this.
@@ -619,3 +574,4 @@ class DestroyHandlerHelper2(toolbox.Bookkeeper):
                         rval[app] = root_clients
 
         return rval
+
