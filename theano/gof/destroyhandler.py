@@ -297,7 +297,7 @@ if 0:
             already_there = False
             if self.fgraph is fgraph:
                 already_there = True
-            if self.fgraph is not None:
+            if self.fgraph not in [None, fgraph]:
                 raise Exception("A DestroyHandler instance can only serve one FunctionGraph. (Matthew 6:24)")
             for attr in ('destroyers', 'destroy_handler'):
                 if hasattr(fgraph, attr):
