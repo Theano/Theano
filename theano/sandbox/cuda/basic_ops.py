@@ -941,6 +941,12 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
+        """
+        WRITEME
+        IG: I believe, based on how this is called in c_code, that it
+        is for the case where we are reducing on all axes and x is
+        C contiguous.
+        """
         print >> sio, """
         {
           if(CudaNdarray_SIZE(%(x)s)==0){
