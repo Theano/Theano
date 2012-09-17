@@ -288,7 +288,8 @@ class TestComputeTestValue(unittest.TestCase):
                 # The second is a new message in numpy 1.6.
                 assert (str(e).startswith("shape mismatch") or
                         str(e).startswith("operands could not be broadcast "
-                                          "together with shapes"))
+                                          "together with shapes") or
+                        str(e).startswith("could not broadcast input"))
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value

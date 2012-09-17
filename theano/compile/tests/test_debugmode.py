@@ -56,30 +56,30 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         a, b = inp
         z, = out
         return """
-        if (%(a)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
-        if (%(b)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_DOUBLE)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(b)s->dimensions[0])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(b)s)[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a and b have different lengths"); %(fail)s;}
 
         if ((!%(z)s)
-            || (%(z)s->dimensions[0] != %(b)s->dimensions[0])
+            || (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
             )
         {
             {Py_XDECREF(%(z)s);}
             npy_intp dims[] = {0};
-            dims[0] = %(b)s->dimensions[0];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, %(b)s->descr->type_num);
+            dims[0] = PyArray_DIMS(%(b)s)[0];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         {
-            for (npy_intp m = 0; m < %(z)s->dimensions[0]; ++m)
+            for (npy_intp m = 0; m < PyArray_DIMS(%(z)s)[0]; ++m)
             {
                 ((double*)PyArray_GETPTR1(%(z)s, m))[0]
                 = 0.5
@@ -150,13 +150,13 @@ class WeirdBrokenOp(gof.Op):
         else:
             z_code = """
             {Py_XDECREF(%(z)s);}
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, %(a)s->dimensions, %(a)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(a)s), PyArray_DESCR(%(a)s)->type_num);
             """
         prep_vars = """
             //the output array has size M x N
-            npy_intp M = %(a)s->dimensions[0];
-            npy_intp Sa = %(a)s->strides[0] / %(a)s->descr->elsize;
-            npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
+            npy_intp M = PyArray_DIMS(%(a)s)[0];
+            npy_intp Sa = %(a)s->strides[0] / PyArray_DESCR(%(a)s)->elsize;
+            npy_intp Sz = %(z)s->strides[0] / PyArray_DESCR(%(z)s)->elsize;
 
             npy_double * Da = (npy_double*)%(a)s->data;
             npy_double * Dz = (npy_double*)%(z)s->data;
@@ -603,22 +603,22 @@ class BrokenCImplementationAdd(gof.Op):
         debug = 0
         return """
         //printf("executing c_code\\n");
-        if (%(a)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
-        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(a)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_FLOAT)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_FLOAT)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(a)s->dimensions[1])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(a)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "a is not square"); %(fail)s;}
 
-        if (%(b)s->dimensions[0] != %(b)s->dimensions[1])
+        if (PyArray_DIMS(%(b)s)[0] != PyArray_DIMS(%(b)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "b is not square"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(b)s->dimensions[0])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(b)s)[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a and b have different dimensions"); %(fail)s;}
 
         // We do not check for c_contiguous property here
@@ -626,32 +626,32 @@ class BrokenCImplementationAdd(gof.Op):
         {
             if (!%(z)s)
                 printf("%(z)s is not there, %%p \\n", %(z)s);
-            else if (%(z)s->dimensions[0] != %(b)s->dimensions[0])
+            else if (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
                 printf("Dimension 0 mismatch for %(z)s and %(b)s\\n");
-            else if (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            else if (PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(b)s)[1])
                 printf("Dimension 1 mismatch for %(z)s and %(b)s\\n");
             else
                 printf("Reusing %(z)s\\n");
         }
 
         if ((!%(z)s)
-            || (%(z)s->dimensions[0] != %(b)s->dimensions[0])
-            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            || (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
+            || (PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(b)s)[1])
             )
         {
             Py_XDECREF(%(z)s);
             npy_intp dims[] = {0, 0};
-            dims[0] = %(b)s->dimensions[0];
-            dims[1] = %(b)s->dimensions[1];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+            dims[0] = PyArray_DIMS(%(b)s)[0];
+            dims[1] = PyArray_DIMS(%(b)s)[1];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         // Let us assume that %(z)s is c_contiguous
         {
             dtype_%(z)s * z = ((dtype_%(z)s*)(PyArray_GETPTR2(%(z)s,0,0)));
-            for (int i=0; i<%(b)s->dimensions[0]; i++)
+            for (int i=0; i<PyArray_DIMS(%(b)s)[0]; i++)
             {
-                for (int j=0; j<%(b)s->dimensions[1]; j++)
+                for (int j=0; j<PyArray_DIMS(%(b)s)[1]; j++)
                 {
                     *z = ((float*)PyArray_GETPTR2(%(a)s, i, j))[0] +
                          ((float*)PyArray_GETPTR2(%(b)s, i, j))[0] ;

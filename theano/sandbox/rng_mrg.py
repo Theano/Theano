@@ -220,9 +220,9 @@ class mrg_uniform(mrg_uniform_base):
         rstate, size = inp
         o_rstate, o_sample = out
         if self.inplace:
-            o_rstate_requirement = 'NPY_C_CONTIGUOUS|NPY_ALIGNED'
+            o_rstate_requirement = 'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
         else:
-            o_rstate_requirement = 'NPY_ENSURECOPY|NPY_C_CONTIGUOUS|NPY_ALIGNED'
+            o_rstate_requirement = 'NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
@@ -241,7 +241,7 @@ class mrg_uniform(mrg_uniform_base):
         int n_elements = 1;
         int n_streams = 0;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                                 || (%(o_sample)s->nd != %(ndim)s)
+                                 || (PyArray_NDIM(%(o_sample)s) != %(ndim)s)
                                  || !(PyArray_ISCONTIGUOUS(%(o_sample)s)));
         %(otype)s * sample_data;
         npy_int32 * state_data;
@@ -261,18 +261,18 @@ class mrg_uniform(mrg_uniform_base):
         const npy_int32 MASK2 = 65535;      //2^16 - 1
         const npy_int32 MULT2 = 21069;
 
-        if (%(size)s->nd != 1)
+        if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (%(size)s->dimensions[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, int(%(size)s->dimensions[0]));
+                %(ndim)s, int(PyArray_DIMS(%(size)s)[0]));
             %(fail)s
         }
-        if (%(size)s->descr->type_num != PyArray_INT32)
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s
@@ -281,7 +281,7 @@ class mrg_uniform(mrg_uniform_base):
         {
             odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
             n_elements *= odims[i];
-            must_alloc_sample = must_alloc_sample || (%(o_sample)s->dimensions[i] != odims[i]);
+            must_alloc_sample = must_alloc_sample || (PyArray_DIMS(%(o_sample)s)[i] != odims[i]);
             //fprintf(stderr, "size %%i %%i\\n", i, (int)odims[i]);
         }
         if (must_alloc_sample)
@@ -296,22 +296,22 @@ class mrg_uniform(mrg_uniform_base):
         Py_XDECREF(%(o_rstate)s);
         %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(py_%(rstate)s, NULL, 0, 0, %(o_rstate_requirement)s,NULL);
 
-        if (%(o_rstate)s->nd != 2)
+        if (PyArray_NDIM(%(o_rstate)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be matrix");
             %(fail)s
         }
-        if (%(o_rstate)s->dimensions[1] != 6)
+        if (PyArray_DIMS(%(o_rstate)s)[1] != 6)
         {
             PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
             %(fail)s
         }
-        if (%(o_rstate)s->descr->type_num != PyArray_INT32)
+        if (PyArray_DESCR(%(o_rstate)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be int32");
             %(fail)s
         }
-        n_streams = %(o_rstate)s->dimensions[0];
+        n_streams = PyArray_DIMS(%(o_rstate)s)[0];
 
         sample_data = (%(otype)s *) %(o_sample)s->data;
         state_data = (npy_int32 *) %(o_rstate)s->data;
@@ -501,20 +501,20 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
-                || (%(o_sample)s->nd != %(ndim)s));
+                || (PyArray_NDIM(%(o_sample)s) != %(ndim)s));
 
-        if (%(size)s->nd != 1)
+        if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (%(size)s->dimensions[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, %(size)s->dimensions[0]);
+                %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
-        if (%(size)s->descr->type_num != PyArray_INT32)
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s
@@ -552,7 +552,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             %(o_rstate)s = (CudaNdarray*)CudaNdarray_Copy(%(rstate)s);
         }
 
-        if (%(o_rstate)s->nd != 1)
+        if (PyArray_NDIM(%(o_rstate)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be vector");
             %(fail)s;

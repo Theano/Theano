@@ -105,41 +105,41 @@ class SoftmaxWithBias(gof.Op):
 
         #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
-        npy_intp* Nx = %(x)s->dimensions;
+        npy_intp* Nx = PyArray_DIMS(%(x)s);
 
-        if (%(x)s->nd != 2)
+        if (PyArray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (PyArray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if ((%(x)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(x)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(x)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(x)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if ((%(b)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(b)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
         }
-        if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
+        if ((PyArray_DIMS(%(x)s)[1] != PyArray_DIMS(%(b)s)[0]))
         {
             PyErr_Format(PyExc_ValueError,
                          "number of columns in x (%%ld) does not match length of b (%%ld)",
-                (long int)%(x)s->dimensions[1], (long int)%(b)s->dimensions[0]);
+                (long int)PyArray_DIMS(%(x)s)[1], (long int)PyArray_DIMS(%(b)s)[0]);
             %(fail)s;
         }
 
         if ((NULL == %(sm)s)
-            || (%(sm)s->dimensions[0] != %(x)s->dimensions[0])
-            || (%(sm)s->dimensions[1] != %(x)s->dimensions[1]))
+            || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
+            || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
         {
             if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
             %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
@@ -159,15 +159,15 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
-            const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(%(b)s->data);
-            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_DATA(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
+            const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(PyArray_DATA(%(b)s));
+            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_DATA(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
         """
 
         inside_row_loop = """
-            npy_intp Sx = %(x)s->strides[1]/sizeof(dtype_%(x)s);
-            npy_intp Sb = %(b)s->strides[0]/sizeof(dtype_%(b)s);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            npy_intp Sx = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+            npy_intp Sb = PyArray_STRIDES(%(b)s)[0]/sizeof(dtype_%(b)s);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
             size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0] + b_i[0];
@@ -263,34 +263,34 @@ class SoftmaxGrad(gof.Op):
         dy, sm = inp
         dx, = out
         return '''
-        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(dy)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(dy)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dy)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(sm)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(dy)s->nd != 2)
-            || (%(sm)s->nd != 2))
+        if ((PyArray_NDIM(%(dy)s) != 2)
+            || (PyArray_NDIM(%(sm)s) != 2))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (%(dy)s->dimensions[0] != %(sm)s->dimensions[0])
+        if (PyArray_DIMS(%(dy)s)[0] != PyArray_DIMS(%(sm)s)[0])
         {
             PyErr_SetString(PyExc_ValueError, "dy.shape[0] != sm.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (%(dx)s->dimensions[0] != %(sm)s->dimensions[0])
-            || (%(dx)s->dimensions[1] != %(sm)s->dimensions[1]))
+            || (PyArray_DIMS(%(dx)s)[0] != PyArray_DIMS(%(sm)s)[0])
+            || (PyArray_DIMS(%(dx)s)[1] != PyArray_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
@@ -304,22 +304,22 @@ class SoftmaxGrad(gof.Op):
             }
         }
 
-        for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
+        for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
-            npy_intp Sdy = %(dy)s->strides[1]/sizeof(dtype_%(dy)s);
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (PyArray_DATA(%(dy)s) + PyArray_STRIDES(%(dy)s)[0] * i);
+            npy_intp Sdy = PyArray_STRIDES(%(dy)s)[1]/sizeof(dtype_%(dy)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (PyArray_DATA(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (PyArray_DATA(%(dx)s) + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
             double sum_dy_times_sm = 0.;
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] = dy_i[j * Sdy] * sm_i[j * Ssm];
                 sum_dy_times_sm += dx_i[j * Sdx];
             }
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] -= sum_dy_times_sm * sm_i[j * Ssm];
             }
@@ -773,31 +773,31 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 SoftmaxWithBias.c_code_template()
         return (init_decl,
                 """
-        if (%(y_idx)s->nd != 1)
+        if (PyArray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != PyArray_INT64)
-            && (%(y_idx)s->descr->type_num != PyArray_INT32)
-            && (%(y_idx)s->descr->type_num != PyArray_INT16)
-            && (%(y_idx)s->descr->type_num != PyArray_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
-        if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
+        if (PyArray_DIMS(%(x)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                 "number of rows in x (%%ld) does not match length of y (%%ld)",
-                (long int)%(x)s->dimensions[0],
-                (long int)%(y_idx)s->dimensions[0]);
+                (long int)PyArray_DIMS(%(x)s)[0],
+                (long int)PyArray_DIMS(%(y_idx)s)[0]);
             %(fail)s;
         }
 
         if ((NULL == %(nll)s) //initial condition
-            || (%(nll)s->dimensions[0] != %(y_idx)s->dimensions[0]))
+            || (PyArray_DIMS(%(nll)s)[0] != PyArray_DIMS(%(y_idx)s)[0]))
         {
             if (NULL != %(nll)s) Py_XDECREF(%(nll)s);
             %(nll)s = (PyArrayObject*)PyArray_SimpleNew(1,
@@ -810,7 +810,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             }
         }
         if ((NULL == %(am)s)
-            || (%(am)s->dimensions[0] != %(y_idx)s->dimensions[0]))
+            || (PyArray_DIMS(%(am)s)[0] != PyArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(am)s);
             %(am)s = (PyArrayObject*) PyArray_SimpleNew(1,
@@ -825,13 +825,13 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 """,
                 begin_row_loop,
                 """
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
-            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(%(nll)s->data + %(nll)s->strides[0] * i);
-            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + %(am)s->strides[0] * i);
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(PyArray_DATA(%(y_idx)s) + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
+            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(PyArray_DATA(%(nll)s) + PyArray_STRIDES(%(nll)s)[0] * i);
+            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (PyArray_DATA(%(am)s) + PyArray_STRIDES(%(am)s)[0] * i);
                 """,
                 inside_row_loop,
                 """
-            if ((y_i >= %(x)s->dimensions[1]) || (y_i < 0))
+            if ((y_i >= PyArray_DIMS(%(x)s)[1]) || (y_i < 0))
             {
                 PyErr_SetString(PyExc_ValueError, "y_i value out of bounds");
                 %(fail)s;
@@ -914,55 +914,55 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
 
-        if ((%(dnll)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(dnll)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(dnll)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dnll)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "dnll type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(sm)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "sm type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != PyArray_INT64)
-            && (%(y_idx)s->descr->type_num != PyArray_INT32)
-            && (%(y_idx)s->descr->type_num != PyArray_INT16)
-            && (%(y_idx)s->descr->type_num != PyArray_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
-        if ((%(dnll)s->nd != 1)
-            || (%(sm)s->nd != 2)
-            || (%(y_idx)s->nd != 1))
+        if ((PyArray_NDIM(%(dnll)s) != 1)
+            || (PyArray_NDIM(%(sm)s) != 2)
+            || (PyArray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
+        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(sm)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != sm.shape[0] (%%ld)",
-                         (long int)%(dnll)s->dimensions[0],
-                         (long int)%(sm)s->dimensions[0]);
+                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)PyArray_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
+        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != y_idx.shape[0] (%%ld)",
-                         (long int)%(dnll)s->dimensions[0],
-                         (long int)%(y_idx)s->dimensions[0]);
+                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)PyArray_DIMS(%(y_idx)s)[0]);
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (%(dx)s->dimensions[0] != %(sm)s->dimensions[0])
-            || (%(dx)s->dimensions[1] != %(sm)s->dimensions[1]))
+            || (PyArray_DIMS(%(dx)s)[0] != PyArray_DIMS(%(sm)s)[0])
+            || (PyArray_DIMS(%(dx)s)[1] != PyArray_DIMS(%(sm)s)[1]))
         {
             if (NULL != %(dx)s) Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
@@ -975,23 +975,23 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             }
         }
 
-        for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
+        for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
+            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(PyArray_DATA(%(dnll)s) + PyArray_STRIDES(%(dnll)s)[0] * i))[0];
 
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(PyArray_DATA(%(y_idx)s) + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
 
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_DATA(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(PyArray_DATA(%(dx)s) + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] = dnll_i * sm_i[j * Ssm];
             }
-            if (y_i >= %(dx)s->dimensions[1])
+            if (y_i >= PyArray_DIMS(%(dx)s)[1])
             {
                 PyErr_SetString(PyExc_ValueError, "y_i >= dx dimensions[1]");
                 %(fail)s;

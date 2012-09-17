@@ -270,7 +270,7 @@ class DimShuffle(Op):
         nd_in = len(self.input_broadcastable)
         nd_out = len(self.new_order)
 
-        check_input_nd = [('if (%(input)s->nd != ' + str(nd_in) + ')'
+        check_input_nd = [('if (PyArray_NDIM(%(input)s) != ' + str(nd_in) + ')'
                 '{PyErr_SetString(PyExc_NotImplementedError, "input nd"); %(fail)s;}')]
 
         clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
@@ -282,13 +282,13 @@ class DimShuffle(Op):
                 '{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
         else:
             get_base = [('{ PyArrayObject * %(basename)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s, NULL,'
-                    '0, 0, NPY_ALIGNED|NPY_ENSURECOPY, NULL)')]
+                    '0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY, NULL)')]
 
         shape_statements = ['npy_intp dimensions[%i]' % nd_out]
         for i, o in enumerate(self.new_order):
             if o != 'x':
                 shape_statements += [('dimensions[' + str(
-                    i) + '] = %(basename)s->dimensions[' + str(o) + ']')]
+                    i) + '] = PyArray_DIMS(%(basename)s)[' + str(o) + ']')]
             else:
                 shape_statements += [('dimensions[' + str(i) + '] = 1')]
 
@@ -298,7 +298,7 @@ class DimShuffle(Op):
         for i, o in enumerate(self.new_order):
             if o != 'x':
                 strides_statements += [('strides[' + str(i)
-                     + '] = %(basename)s->strides[' + str(o) + ']')]
+                     + '] = PyArray_STRIDES(%(basename)s)[' + str(o) + ']')]
             else:
                 strides_statements += [('strides[' + str(i) + '] = 0')]
 
@@ -311,7 +311,7 @@ class DimShuffle(Op):
                 str(nd_out) +
                 '-1] == 0) strides[' +
                 str(nd_out) +
-                '-1] = %(basename)s->descr->elsize'
+                '-1] = PyArray_DESCR(%(basename)s)->elsize'
             )
         for i in xrange(nd_out - 2, -1, -1):
             strides_statements.append(
@@ -326,14 +326,20 @@ class DimShuffle(Op):
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
                             'PyArray_TYPE(%(basename)s), strides, '
-                            '%(basename)s->data, PyArray_ITEMSIZE(%(basename)s), '
+                            'PyArray_DATA(%(basename)s), PyArray_ITEMSIZE(%(basename)s), '
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
-                            '(NPY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
+                            '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
-                'PyArray_UpdateFlags(%(res)s, NPY_UPDATE_ALL)',
+                'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
-                '%(res)s->base = (PyObject*)%(basename)s',
+"""
+#if NPY_VERSION <= 0x01000009
+PyArray_BASE(%(res)s) = (PyObject*)%(basename)s;
+#else
+PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
+#endif
+"""
                 '}']
 
         full_code = statements(check_input_nd
@@ -1341,7 +1347,7 @@ class CAReduce(Op):
             pattern_ = str(pattern)[1:-1]
             decl += """int tosum[]={%(pattern_)s};""" % locals()
             alloc += """
-for(int i=0;i<%(iname)s->nd;i++){
+for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
   if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
     PyErr_Format(PyExc_ValueError,
          "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);

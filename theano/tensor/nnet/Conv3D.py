@@ -161,7 +161,6 @@ class Conv3D(theano.Op):
 
     def c_compile_args(self):
         flags =  ldflags(libs=False, flags=True)
-        flags.append('-Werror')
         return flags
 
     def c_lib_dirs(self):
@@ -183,62 +182,62 @@ class Conv3D(theano.Op):
             //printf("\t\t\t\tConv3D c code\\n");
 
             //Check dimensionality of inputs
-            if (%(W)s->nd != 5)
+            if (PyArray_NDIM(%(W)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "Conv3D: W must be a 5 dimensional tensor");
                             %(fail)s
 
             }
 
-            if (%(V)s->nd != 5)
+            if (PyArray_NDIM(%(V)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "Conv3D: V must be a 5 dimensional tensor");
                             %(fail)s
             }
 
-            if (%(b)s->nd != 1)
+            if (PyArray_NDIM(%(b)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"Conv3D: b must be a vector.");
                 %(fail)s
             }
 
-            if (%(d)s->nd != 1)
+            if (PyArray_NDIM(%(d)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError,"Conv3D: d must be a vector.");
                 %(fail)s
             }
 
-            if (%(d)s->dimensions[0] != 3)
+            if (PyArray_DIMS(%(d)s)[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)%(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"Conv3D: 3 stride length arguments expected (row, col, time) but %%li were given", (long)PyArray_DIMS(%(d)s)[0]);
                 %(fail)s
             }
 
             //Read and check sizes of inputs
 { // exta scope so error handler jumps don't cause errors
-            const int batchSize = %(V)s->dimensions[0];
-            const int outputChannels =  %(W)s->dimensions[0];
-            const int inputChannels = %(V)s->dimensions[4];
+            const int batchSize = PyArray_DIMS(%(V)s)[0];
+            const int outputChannels =  PyArray_DIMS(%(W)s)[0];
+            const int inputChannels = PyArray_DIMS(%(V)s)[4];
 
-            if (%(W)s->dimensions[4] != inputChannels)
+            if (PyArray_DIMS(%(W)s)[4] != inputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)", (long)%(W)s->dimensions[4], inputChannels, (long)%(V)s->dimensions[0], (long)%(V)s->dimensions[1], (long)%(V)s->dimensions[2], (long)%(V)s->dimensions[3], (long)%(V)s->dimensions[4]);
+                PyErr_Format(PyExc_ValueError, "Conv3D: W operates on a %%ld channel image but the image has %%d channels. Overall shape of input: (%%ld,%%ld,%%ld,%%ld,%%ld)", (long)PyArray_DIMS(%(W)s)[4], inputChannels, (long)PyArray_DIMS(%(V)s)[0], (long)PyArray_DIMS(%(V)s)[1], (long)PyArray_DIMS(%(V)s)[2], (long)PyArray_DIMS(%(V)s)[3], (long)PyArray_DIMS(%(V)s)[4]);
                 %(fail)s
             }
 
-            if (%(b)s->dimensions[0] != outputChannels)
+            if (PyArray_DIMS(%(b)s)[0] != outputChannels)
             {
-                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels", (long)%(b)s->dimensions[0], outputChannels);
+                PyErr_Format(PyExc_ValueError, "Conv3D: b adds to a(n) %%ld channel output image but the output has %%d channels", (long)PyArray_DIMS(%(b)s)[0], outputChannels);
                 %(fail)s
             }
 
 {  //extra scope so error handler jumps don't cause errors
-            const int filterHeight = %(W)s->dimensions[1];
-            const int filterWidth = %(W)s->dimensions[2];
-            const int filterDur = %(W)s->dimensions[3];
-            const int vidHeight = %(V)s->dimensions[1];
-            const int vidWidth = %(V)s->dimensions[2];
-            const int vidDur = %(V)s->dimensions[3];\
+            const int filterHeight = PyArray_DIMS(%(W)s)[1];
+            const int filterWidth = PyArray_DIMS(%(W)s)[2];
+            const int filterDur = PyArray_DIMS(%(W)s)[3];
+            const int vidHeight = PyArray_DIMS(%(V)s)[1];
+            const int vidWidth = PyArray_DIMS(%(V)s)[2];
+            const int vidDur = PyArray_DIMS(%(V)s)[3];\
 
             if (vidHeight < filterHeight)
             {
@@ -291,13 +290,13 @@ class Conv3D(theano.Op):
 
 
 
-            if(!(%(H)s) || %(H)s->dimensions[0]!=dims[0] ||
-            %(H)s->dimensions[1]!=dims[1] ||
-            %(H)s->dimensions[2]!=dims[2] ||
-            %(H)s->dimensions[3]!=dims[3] ||
-            %(H)s->dimensions[4]!=dims[4]){
+            if(!(%(H)s) || PyArray_DIMS(%(H)s)[0]!=dims[0] ||
+            PyArray_DIMS(%(H)s)[1]!=dims[1] ||
+            PyArray_DIMS(%(H)s)[2]!=dims[2] ||
+            PyArray_DIMS(%(H)s)[3]!=dims[3] ||
+            PyArray_DIMS(%(H)s)[4]!=dims[4]){
                 Py_XDECREF(%(H)s);
-                %(H)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(V)s->descr->type_num);
+                %(H)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, PyArray_DESCR(%(V)s)->type_num);
                 if (!(%(H)s)) {
                     PyErr_Format(PyExc_MemoryError,"Conv3D: Could not allocate output.");
                     %(fail)s
@@ -306,20 +305,20 @@ class Conv3D(theano.Op):
 { // extra scope so fail works
 
 
-            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
+            #define ELEM_AT(x, i) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i) )
 
 
-            const int ws0 = %(W)s->strides[0];
-            const int ws1 = %(W)s->strides[1];
-            const int ws2 = %(W)s->strides[2];
-            const int vs1 = %(V)s->strides[1];
-            const int ws4 = %(W)s->strides[4];
-            const int vs4 = %(V)s->strides[4];
-            const int ws3 = %(W)s->strides[3];
-            const int vs3 = %(V)s->strides[3];
-            const int vs2 = %(V)s->strides[2];
-            const int bs  = %(b)s->strides[0];
-            const int hs4 = %(H)s->strides[4];
+            const int ws0 = PyArray_STRIDES(%(W)s)[0];
+            const int ws1 = PyArray_STRIDES(%(W)s)[1];
+            const int ws2 = PyArray_STRIDES(%(W)s)[2];
+            const int vs1 = PyArray_STRIDES(%(V)s)[1];
+            const int ws4 = PyArray_STRIDES(%(W)s)[4];
+            const int vs4 = PyArray_STRIDES(%(V)s)[4];
+            const int ws3 = PyArray_STRIDES(%(W)s)[3];
+            const int vs3 = PyArray_STRIDES(%(V)s)[3];
+            const int vs2 = PyArray_STRIDES(%(V)s)[2];
+            const int bs  = PyArray_STRIDES(%(b)s)[0];
+            const int hs4 = PyArray_STRIDES(%(H)s)[4];
 
 
 
@@ -425,20 +424,20 @@ class Conv3D(theano.Op):
                                     Wpos = Wposl + ws2;
                                     Vpos = Vposl + vs2;
                                   } //close l
-                                  Wpos = Wposk + %(W)s->strides[1];
-                                  Vpos = Vposk + %(V)s->strides[1];
+                                  Wpos = Wposk + PyArray_STRIDES(%(W)s)[1];
+                                  Vpos = Vposk + PyArray_STRIDES(%(V)s)[1];
                                 } //close k
-                             Hpos = Hpost + %(H)s->strides[3];
+                             Hpos = Hpost + PyArray_STRIDES(%(H)s)[3];
                              Vpos = Vpost + vs3 * dt;
                          } //close t
-                         Hpos = Hposc + %(H)s->strides[2];
+                         Hpos = Hposc + PyArray_STRIDES(%(H)s)[2];
                          Vpos = Vposc + vs2 * dc;
                        } //close c
-                       Hpos = Hposr + %(H)s->strides[1];
-                       Vpos = Vposr + %(V)s->strides[1] * dr;
+                       Hpos = Hposr + PyArray_STRIDES(%(H)s)[1];
+                       Vpos = Vposr + PyArray_STRIDES(%(V)s)[1] * dr;
                    } //closes r
-                   Hpos = Hposi + %(H)s->strides[0];
-                   Vpos = Vposi + %(V)s->strides[0];
+                   Hpos = Hposi + PyArray_STRIDES(%(H)s)[0];
+                   Vpos = Vposi + PyArray_STRIDES(%(V)s)[0];
               } //closes i
 
 
@@ -516,8 +515,8 @@ class Conv3D(theano.Op):
                                     Wpos = Wposl + ws2;
                                     Vpos = Vposl + vs2;
                                   } //close l
-                                  Wpos = Wposk + %(W)s->strides[1];
-                                  Vpos = Vposk + %(V)s->strides[1];
+                                  Wpos = Wposk + PyArray_STRIDES(%(W)s)[1];
+                                  Vpos = Vposk + PyArray_STRIDES(%(V)s)[1];
                                 } //close k
 
 
@@ -528,17 +527,17 @@ class Conv3D(theano.Op):
                               //std::cout << "incremented Wpos by " << ws0 << std::endl;
                               //std::cout << "incremented Hpos by " << hs4 << std::endl;
                              } //close j
-                             Hpos = Hpost + %(H)s->strides[3];
+                             Hpos = Hpost + PyArray_STRIDES(%(H)s)[3];
                              Vpos = Vpost + vs3 * dt;
                          } //close t
-                         Hpos = Hposc + %(H)s->strides[2];
+                         Hpos = Hposc + PyArray_STRIDES(%(H)s)[2];
                          Vpos = Vposc + vs2 * dc;
                        } //close c
-                       Hpos = Hposr + %(H)s->strides[1];
-                       Vpos = Vposr + %(V)s->strides[1] * dr;
+                       Hpos = Hposr + PyArray_STRIDES(%(H)s)[1];
+                       Vpos = Vposr + PyArray_STRIDES(%(V)s)[1] * dr;
                    } //closes r
-                   Hpos = Hposi + %(H)s->strides[0];
-                   Vpos = Vposi + %(V)s->strides[0];
+                   Hpos = Hposi + PyArray_STRIDES(%(H)s)[0];
+                   Vpos = Vposi + PyArray_STRIDES(%(V)s)[0];
               } //closes i
             } //closes general case code
 }}}}}}} //extra scope so error handler jumps don't cross declarations

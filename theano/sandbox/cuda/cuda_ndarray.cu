@@ -788,7 +788,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a ndarray for indices with dtype int32");
             return NULL;
         }
-        if (((PyArrayObject*)indices_obj)->nd != 1) {
+        if (PyArray_NDIM(((PyArrayObject*)indices_obj)) != 1) {
             PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a CudaNdarray of indices with only 1 dimensions");
             return NULL;
         }
@@ -2921,7 +2921,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
             Py_DECREF(broadcastable);
             return NULL;
         }
-        for (int i = 0; i < data->nd; ++i)
+        for (int i = 0; i < PyArray_NDIM(data); ++i)
         {
             if ((data->dimensions[i] > 1) && PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
@@ -3102,7 +3102,7 @@ cublas_shutdown()
 int
 CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
 {
-    int err = CudaNdarray_alloc_contiguous(self, obj->nd, obj->dimensions);
+    int err = CudaNdarray_alloc_contiguous(self, PyArray_NDIM(obj), obj->dimensions);
     if (err) {
         return err;
     }
