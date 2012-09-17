@@ -155,3 +155,15 @@ def sort_apply_nodes(inputs, outputs, cmps):
     """
 
     return posort(list_of_nodes(inputs, outputs), *cmps)
+
+def sort_schedule_fn(*cmps):
+    """ Make a schedule function from comparators
+
+    See also:
+        sort_apply_nodes
+    """
+    cmps = (dependence,) + cmps
+    def schedule(fgraph):
+        """ Order nodes in a FunctionGraph """
+        return sort_apply_nodes(fgraph.inputs, fgraph.outputs, cmps)
+    return schedule
