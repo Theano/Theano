@@ -1453,9 +1453,12 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        # TODO: make this act like tensor.elemwise.CAReduce
+        # needs to include scalar op's cache version in the returned tuple
+        return ()
 
     def _op_guard(self):
+        """ Raises NotImplementedError if op is not Add """
         if not isinstance(self.scalar_op, theano.scalar.basic.Add):
             raise NotImplementedError()
 
