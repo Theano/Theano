@@ -825,7 +825,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -842,7 +842,7 @@ class GpuCAReduce(GpuOp):
         # But only for power or multiple of 2!
         new_version = """
         __syncthreads(); // some kernel do multiple reduction.
-        buf[threadNum] = mysum;
+        buf[threadNum] = myresult;
         __syncthreads();
 
 
@@ -885,7 +885,7 @@ class GpuCAReduce(GpuOp):
 """ % locals()
         return """
         __syncthreads(); // some kernel do multiple reduction.
-        buf[threadNum] = mysum;
+        buf[threadNum] = myresult;
         __syncthreads();
 
         // rest of function is handled by one warp
@@ -894,9 +894,9 @@ class GpuCAReduce(GpuOp):
             //round up all the partial sums into the first `warpSize` elements
             for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
             {
-                mysum += buf[i];
+                myresult += buf[i];
             }
-            buf[threadNum] = mysum;
+            buf[threadNum] = myresult;
 /*Comment this optimization as it don't work on Fermi GPU.
   TODO: find why it don't work or put the GPU compute capability into the version
             // no sync because only one warp is running
@@ -936,7 +936,7 @@ class GpuCAReduce(GpuOp):
         self._op_guard()
         return """
         __syncthreads(); // some kernel do multiple reduction.
-        buf[threadNum] = mysum;
+        buf[threadNum] = myresult;
         __syncthreads();
 
         // rest of function is handled by one warp
@@ -945,9 +945,9 @@ class GpuCAReduce(GpuOp):
             //round up all the partial sums into the first `nb_reduce` elements
             for (int i = threadNum + %(nb_reduce)s; i < threadCount; i += %(nb_reduce)s)
             {
-                mysum += buf[i];
+                myresult += buf[i];
             }
-            %(z_pos)s = mysum;
+            %(z_pos)s = myresult;
         }
         """ % locals()
 
@@ -1502,7 +1502,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1511,7 +1511,7 @@ class GpuCAReduce(GpuOp):
 
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
-                    mysum += A[i0];
+                    myresult += A[i0];
                 }
                 %(reducebuf)s
             }
@@ -1530,7 +1530,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1540,7 +1540,7 @@ class GpuCAReduce(GpuOp):
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
                     float Ai = A[i0 * sA0];
-                    mysum += Ai;
+                    myresult += Ai;
                 }
                 %(reducebuf)s
             }
@@ -1560,7 +1560,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y;
                 const int threadNum = threadIdx.y*blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1572,7 +1572,7 @@ class GpuCAReduce(GpuOp):
                     for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                     {
                         float Ai = A[i0 * sA0 + i1 * sA1];
-                        mysum += Ai;
+                        myresult += Ai;
                     }
                 }
                 %(reducebuf)s
@@ -1619,12 +1619,12 @@ class GpuCAReduce(GpuOp):
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      mysum = 0;
+                      myresult = 0;
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
                             float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            mysum += Ai;
+                            myresult += Ai;
                           }
                         }
                       }
@@ -1638,12 +1638,12 @@ class GpuCAReduce(GpuOp):
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      mysum = 0;
+                      myresult = 0;
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
                             float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            mysum += Ai;
+                            myresult += Ai;
                           }
                         }
                       }
@@ -1685,10 +1685,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
-                        float mysum = 0.0f;
+                        float myresult = 0.0f;
                         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
                         }
                         %(reducebuf)s
                     }
@@ -1711,7 +1711,7 @@ class GpuCAReduce(GpuOp):
             {
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1725,12 +1725,12 @@ class GpuCAReduce(GpuOp):
                         int c = i2_D * 32 + threadIdx.x;
                         if (c < C)
                         {
-                            mysum = 0;
+                            myresult = 0;
                             for (int b = 0; b < B; ++b)
                             {
-                                mysum += X[a * sX0 + b * sX1 + c * sX2];
+                                myresult += X[a * sX0 + b * sX1 + c * sX2];
                             }
-                            Z[a * sZ0 + c * sZ1] = mysum;
+                            Z[a * sZ0 + c * sZ1] = myresult;
                         }
                     }
                 }
@@ -1772,7 +1772,7 @@ class GpuCAReduce(GpuOp):
                  {
                   for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                   {
-                      mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                      myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
                   }
                   %(reducebuf)s
                  }
@@ -1800,7 +1800,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y;
                 const int threadNum = threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -1814,7 +1814,7 @@ class GpuCAReduce(GpuOp):
                     for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                     {
                         float Ai = A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2];
-                        mysum += Ai;
+                        myresult += Ai;
                     }
                 }
 
@@ -1834,10 +1834,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.x; i1 < d1; i1 += gridDim.x)
                     {
-                        mysum = 0;
+                        myresult = 0;
                         for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
                         }
                         %(reducebuf)s
                     }
@@ -1853,14 +1853,14 @@ class GpuCAReduce(GpuOp):
             %(decl)s
             {
                 %(init)s
-                mysum = 0;
+                myresult = 0;
                 for (int i0 = threadIdx.z; i0 < d0; i0 += blockDim.z)
                 {
                     for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                     {
                         for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
                         }
                     }
                 }
@@ -1894,10 +1894,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
                     {
-                        float mysum = 0.0f;
+                        float myresult = 0.0f;
                         for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
                         }
                         %(reducebuf)s
                     }
@@ -1920,12 +1920,12 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
                     {
-                        float mysum = 0.0f;
+                        float myresult = 0.0f;
                     for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
                         }
                     }
                         %(reducebuf)s
@@ -1949,12 +1949,12 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
-                        float mysum = 0.0f;
+                        float myresult = 0.0f;
                     for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
                         }
                     }
                         %(reducebuf)s
@@ -1971,7 +1971,7 @@ class GpuCAReduce(GpuOp):
             %(decl)s
             {
                 %(init)s
-                mysum = 0;
+                myresult = 0;
               for (int i0 = 0; i0 < d0; i0++)
                 for (int i1 = threadIdx.z; i1 < d1; i1 += blockDim.z)
                 {
@@ -1979,7 +1979,7 @@ class GpuCAReduce(GpuOp):
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            mysum += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
                         }
                     }
                 }
@@ -2002,7 +2002,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float mysum = 0.0f;
+                float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
@@ -2016,7 +2016,7 @@ class GpuCAReduce(GpuOp):
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
                             float Ai = A[i0 * sA0 + blockIdx.x * sA1 + i2 * sA2 + i3 * sA3];
-                            mysum += Ai;
+                            myresult += Ai;
                         }
                     }
                 }
