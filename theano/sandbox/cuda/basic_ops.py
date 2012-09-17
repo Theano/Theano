@@ -484,15 +484,15 @@ class GpuDimShuffle(GpuOp):
         return (1, 0)
 
 
-class GpuSum(GpuOp):
-    """GpuSum is a Reduction along some dimensions by summation.
+class GpuCAReduce(GpuOp):
+    """GpuCAReduce is a Reduction along some dimensions by a scalar op.
 
-    The dimensions along which to sum is specified by the
+    The dimensions along which to reduce is specified by the
     `reduce_mask` that you pass to the constructor.  The `reduce_mask`
     is a tuple of booleans (actually integers 0 or 1) that specify for
     each input dimension, whether to reduce it (1) or not (0).
 
-    For example:
+    For example, when scalar_op is theano.scalar.basic.Add:
 
       - reduce_mask == (1,) sums a vector to a scalar
 
@@ -506,7 +506,7 @@ class GpuSum(GpuOp):
            be removed during graph optimization
 
     """
-    def __init__(self, reduce_mask):
+    def __init__(self, reduce_mask, scalar_op):
         self.reduce_mask = tuple(reduce_mask)
 
     def __eq__(self, other):
@@ -517,7 +517,10 @@ class GpuSum(GpuOp):
         return hash(type(self)) ^ hash(self.reduce_mask)
 
     def __str__(self):
-        return "GpuSum{%s}" % ','.join(str(i) for i in self.reduce_mask)
+        return "GpuCAReduce{%s}{%s}" % (
+                str(self.scalar_op),
+                ','.join(str(i) for i in self.reduce_mask)
+                )
 
     def make_node(self, x):
         if (x.type.ndim != len(self.reduce_mask)):
@@ -529,9 +532,11 @@ class GpuSum(GpuOp):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
+        raise NotImplementedError() # TODO
         z[0] = x.reduce_sum(self.reduce_mask)
 
     def c_code(self, node, name, inp, out, sub):
+        raise NotImplementedError()
         x, = inp
         z, = out
 
@@ -627,6 +632,7 @@ class GpuSum(GpuOp):
         return sio.getvalue()
 
     def _makecall(self, node, name, x, z, fail, pattern=None):
+        raise NotImplementedError()
         """Return a string for making a kernel call.
 
             The return value looks something like:
@@ -713,6 +719,7 @@ class GpuSum(GpuOp):
 
     def _k_decl(self, node, nodename, pattern=None,
                 ndim=None, reduce_mask=None):
+        raise NotImplementedError()
         """Return a string to declare a kernel function
 
         .. code-block:: c
@@ -762,6 +769,7 @@ class GpuSum(GpuOp):
         return sio.getvalue()
 
     def _k_init(self, *args):
+        raise NotImplementedError()
         return """
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
@@ -778,6 +786,7 @@ class GpuSum(GpuOp):
         """
 
     def _k_reduce_buf(self, z_pos):
+        raise NotImplementedError()
         # Work with all nvidia driver
         # But only for power or multiple of 2!
         new_version = """
@@ -1021,6 +1030,7 @@ class GpuSum(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         print >> sio, """
         {
             int verbose = 0;
@@ -1070,6 +1080,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_010(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         makecall_inner = self._makecall(node, name, x, z, fail,
                                         pattern="010_inner")
@@ -1192,6 +1203,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_0101(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1211,6 +1223,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_100(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         # use threadIdx.x for i0
         # use blockIdx.x for i1
@@ -1231,6 +1244,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_110(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1252,6 +1266,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_001(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1274,6 +1289,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_111(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1306,6 +1322,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_0011(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1336,6 +1353,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_1111(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1368,6 +1386,7 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
+        raise NotImplementedError()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1392,9 +1411,10 @@ class GpuSum(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (22,)
+        return (1,)
 
     def c_support_code_apply(self, node, nodename):
+        raise NotImplementedError()
         sio = StringIO.StringIO()
         nd_in = len(self.reduce_mask)
         if all(i == 1 for i in self.reduce_mask):
