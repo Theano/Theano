@@ -1028,7 +1028,6 @@ def memodict(f):
     return memodict().__getitem__
 ## end of http://code.activestate.com/recipes/578231/ }}}
 
-
 @memodict
 def depends((a, b)):
     return (not set(a.inputs).isdisjoint(set(b.outputs))
@@ -1046,11 +1045,27 @@ def dependence(a, b):
     if depends((b, a)): return -1
     return 0
 
-def new_io_toposort(inputs, outputs, cmps=[]):
-    """ Same as io_toposort """
-    cmps = [dependence] + cmps # enforce that dependence is the strongest cmp fn
+def sort_apply_nodes(inputs, outputs, cmps):
+    """ Order a graph of apply nodes according to a list of comparators
 
-    # An aggregate comparator - looks at each cmp in order
+    The following example sorts first by dependence of nodes (this is a
+    topological sort) and then by lexicographical ordering (nodes that start
+    with 'E' come before nodes that start with 'I' if there is no dependence.
+
+    >>> from theano.gof.graph import sort_apply_nodes, dependence
+    >>> from theano.tensor import matrix, dot
+    >>> x = matrix('x')
+    >>> y = dot(x*2, x+1)
+    >>> str_cmp = lambda a, b: cmp(str(a), str(b)) # lexicographical sort
+    >>> sort_apply_nodes([x], [y], cmps=[dependence, str_cmp])
+    [Elemwise{add,no_inplace}(x, InplaceDimShuffle{x,x}.0),
+     InplaceDimShuffle{x,x}(TensorConstant{2}),
+     Elemwise{mul,no_inplace}(x, InplaceDimShuffle{x,x}.0),
+     InplaceDimShuffle{x,x}(TensorConstant{1}),
+     dot(Elemwise{mul,no_inplace}.0, Elemwise{add,no_inplace}.0)]
+    """
+
+    # An aggregate comparator - looks at each cmp function in order
     def cmp(a,b, fns=cmps):
         if not fns:  return 0
         head, tail = fns[0], fns[1:]
