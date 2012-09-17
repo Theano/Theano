@@ -493,7 +493,7 @@ class GpuCAReduce(GpuOp):
     is a tuple of booleans (actually integers 0 or 1) that specify for
     each input dimension, whether to reduce it (1) or not (0).
 
-    For example, when scalar_op is theano.scalar.basic.Add:
+    For example, when scalar_op is a theano.scalar.basic.Add instance:
 
       - reduce_mask == (1,) sums a vector to a scalar
 
@@ -505,6 +505,12 @@ class GpuCAReduce(GpuOp):
 
     :note: any reduce_mask of all zeros is a sort of 'copy', and may
            be removed during graph optimization
+
+    This Op is a work in progress.
+
+    This op was recently upgraded from just GpuSum a general CAReduce. Not
+    many code cases are supported for scalar_op being anything other than
+    scal.Add instances yet.
 
     """
 
