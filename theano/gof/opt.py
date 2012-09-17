@@ -162,7 +162,7 @@ class SeqOptimizer(Optimizer, list):
         l = []
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
-        nb_node_before = len(fgraph.nodes)
+        nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         for optimizer in self:
             try:
@@ -184,7 +184,7 @@ class SeqOptimizer(Optimizer, list):
             print "SeqOptimizer",
             if hasattr(self,"name"): print self.name,
             elif hasattr(self,"__name__"): print self.__name__,
-            print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(fgraph.nodes))
+            print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(fgraph.apply_nodes))
             print " time %.3fs for validate " % (
                 fgraph.profile.validate_time - validate_before)
             ll=[]
@@ -208,7 +208,7 @@ class SeqOptimizer(Optimizer, list):
         else:
             validate_time = None
         return (self, l, validate_time, nb_node_before,
-                len(fgraph.nodes), sub_profs)
+                len(fgraph.apply_nodes), sub_profs)
 
     def __eq__(self, other):
         #added to override the list's __eq__ implementation
@@ -1503,7 +1503,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                 max_use_abort = True
                                 opt_name = (getattr(lopt, "name", None)
                                             or getattr(lopt, "__name__", ""))
-                            if node not in fgraph.nodes:
+                            if node not in fgraph.apply_nodes:
                                 # go to next node
                                 break
             finally:

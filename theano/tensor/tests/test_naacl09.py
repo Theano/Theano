@@ -590,7 +590,7 @@ def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
     #print input_pretraining_gradients[4].owner.inputs[1].owner.inputs
     #sys.exit()
 
-    #print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.fgraph.nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
+    #print "PROGRAM LEN %i HASH %i"% (len(m.pretraining_update.maker.fgraph.apply_nodes), reduce(lambda a, b: hash(a) ^ hash(b),prog_str))
 
     rng = N.random.RandomState(unittest_tools.fetch_seed(23904))
 

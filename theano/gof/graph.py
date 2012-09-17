@@ -21,7 +21,25 @@ is_same_graph_with_merge = None
 equal_computations = None
 
 
-class Apply(utils.object2):
+class Node(utils.object2):
+    """A Node in a theano graph.
+    Graphs contain two kinds of Nodes--
+    Variable and Apply.
+    Edges in the graph are not explicitly represented.
+    Instead each Node keeps track of its parents via
+    Variable.owner / Apply.inputs and its children
+    via Variable.clients / Apply.outputs.
+    """
+
+    def get_parents(self):
+        """ Return a list of the parents of this node.
+        Should return a copy--i.e., modifying the return
+        value should not modify the graph structure."""
+
+        raise NotImplementedError()
+
+
+class Apply(Node):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
     of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
@@ -202,6 +220,9 @@ class Apply(utils.object2):
             new_node.inputs = new_inputs
         return new_node
 
+    def get_parents(self):
+        return list( self.inputs )
+
     #convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
@@ -210,7 +231,7 @@ class Apply(utils.object2):
     """property: Number of outputs"""
 
 
-class Variable(utils.object2):
+class Variable(Node):
     """
     A :term:`Variable` is a node in an expression graph that represents a variable.
 
@@ -363,6 +384,11 @@ class Variable(utils.object2):
     def __ge__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
+
+    def get_parents(self):
+        if self.owner is not None:
+            return [ self.owner ]
+        return [ ]
 
     def env_getter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
@@ -726,13 +752,26 @@ def general_toposort(r_out, deps, debug_print=False):
     return rlist
 
 
-def io_toposort(i, o, orderings=None):
+def io_toposort(inputs, outputs, orderings=None):
     """WRITEME
+
+    inputs: a list or tuple of Variable instances
+    outputs: a list or tuple of Variable instances
+
+    orderings: a dictionary
+                key: Apply instance
+                value: list of Apply instance
+
+                it is important that the value be
+                a container with a deterministic iteration
+                order. no sets allowed!
+
     """
     if orderings is None:
         orderings = {}
+
     #the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(i)
+    iset = set(inputs)
 
     def deps(obj):
         rval = []
@@ -747,7 +786,7 @@ def io_toposort(i, o, orderings=None):
             assert not orderings.get(obj, [])
         return rval
 
-    topo = general_toposort(o, deps)
+    topo = general_toposort(outputs, deps)
     return [o for o in topo if isinstance(o, Apply)]
 
 

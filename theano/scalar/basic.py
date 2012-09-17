@@ -2667,7 +2667,7 @@ class Composite(ScalarOp):
     def init_fgraph(self):
         fgraph = FunctionGraph(*gof.graph.clone(self.inputs, self.outputs))
         gof.MergeOptimizer().optimize(fgraph)
-        for node in fgraph.nodes:
+        for node in fgraph.apply_nodes:
             if not isinstance(node.op, ScalarOp):
                 raise ValueError("The fgraph to Composite must be exclusively"
                                  " composed of ScalarOp instances.")

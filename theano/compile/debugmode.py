@@ -675,7 +675,7 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
             features=[equivalence_tracker])
 
     if not accept_inplace:
-        for node in fgraph.nodes:
+        for node in fgraph.apply_nodes:
             if getattr(node.op, 'destroy_map', None):
                 raise TypeError("Graph must not contain inplace operations",
                                 node)
