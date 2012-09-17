@@ -31,6 +31,17 @@ You can enable faster gcc optimization with the ``cxxflags``. This list of flags
 Use it at your own risk. Some people warned that the ``-ftree-loop-distribution`` optimization resulted in wrong results in the past.
 Also the ``-march=native`` flag must be used with care if you have NFS. In that case, you MUST set the compiledir to a local path of the computer.
 
+Faster Theano function
+----------------------
+
+You can set the Theano `allow_gc` to `False` to get a speed up by
+using more memory. By default, Theano free intermediate results when
+we don't need them anymore. Doing so prevent us from reusing this
+memory.  So disabling the gc will keep all intermediate results memory
+space to allow to reuse them during the next call to the same Theano
+function if they are of the good shape. The shape could change if the
+shape of the inputs change.
+
 Related Projects
 ----------------
 

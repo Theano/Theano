@@ -88,6 +88,11 @@ int device_free(void *ptr)
     if(!g_gpu_context_active) {
         return 0;
     }
+
+    // We need sync as the Theano's GC could remove intermediate variable that
+    // are still needed as the gpu kernel are running or in the queue.
+    cudaThreadSynchronize();
+
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
     {
@@ -1043,7 +1048,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     }
     //-10 could be any value different then 0.
     int cpu_err_var=-10;
-                        
+
+    // We are not 100% sure that cudaMemcpy wait that the async gpu kernel are
+    // finished before doing the transfer. So we add this explicit sync as it
+    // is pretty fast. In a python loop, I ran 1 000 000 call in 1 second.
+    // It is better to be save and not significatively slower then not safe.
+    cudaThreadSynchronize();
+
     err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
                      cudaMemcpyDeviceToHost);
     if (cudaSuccess != err) {
@@ -2446,6 +2457,16 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
     return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
 }
 
+/*
+ * Synchronize with all the gpu device stream.
+ */
+PyObject *
+CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
+{
+    cudaThreadSynchronize();
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 #if COMPUTE_GPU_MEM_USED
 /*
  * Return the size in bytes that Theano currently have allocated on the gpu.
@@ -2953,6 +2974,7 @@ static PyMethodDef module_methods[] = {
     {"filter", filter, METH_VARARGS, "filter(obj, broadcastable, strict, storage) returns a CudaNdarray initialized to obj if it matches the constraints of broadcastable.  strict=True prevents any numeric casting. If storage is a CudaNdarray it may be overwritten and used as the return value."},
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {"from_gpu_pointer", CudaNdarray_from_gpu_pointer, METH_VARARGS, "Used to create a CudaNdarray from already allocated memory on the gpu.(example by pycuda)"},
+    {"synchronize", CudaNdarray_synchronize, METH_NOARGS, "Used to synchronize the device"},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
