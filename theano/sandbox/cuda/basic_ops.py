@@ -1486,10 +1486,10 @@ class GpuCAReduce(GpuOp):
             raise NotImplementedError()
 
     def c_support_code_apply(self, node, nodename):
-        self._op_guard()
         sio = StringIO.StringIO()
         nd_in = len(self.reduce_mask)
         if all(i == 1 for i in self.reduce_mask):
+            self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
@@ -1517,6 +1517,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1,):
+            self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
@@ -1545,6 +1546,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1):
+            self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
@@ -1580,6 +1582,7 @@ class GpuCAReduce(GpuOp):
         if (0 == self.reduce_mask[0] and
             all(self.reduce_mask[1:]) and
             nd_in in[2, 3, 4]):
+            self._op_guard()
             # this kernel uses one block for each row.
             # threads per block for each element per row.
 
@@ -1622,6 +1625,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
+            self._op_guard()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
@@ -1664,6 +1668,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0):
+            self._op_guard()
             print >> sio, """
             static __global__ void kernel_reduce_010_AD_%(nodename)s(
                     const int A,
@@ -1704,6 +1709,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0):
+            self._op_guard()
             #
             # This kernel is optimized when the inner most dimensions
             # have the smallest stride.
@@ -1745,6 +1751,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1, 0):
+            self._op_guard()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
@@ -1786,6 +1793,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 0, 0):
+            self._op_guard()
             reducebuf = self._k_reduce_buf('Z[i1 * sZ0 + i2 * sZ1]')
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
@@ -1808,6 +1816,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1, 1):
+            self._op_guard()
             reducebuf = self._k_reduce_buf('Z[0]')
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
@@ -1830,6 +1839,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 0, 1):
+            self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
@@ -1866,6 +1876,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 0, 1, 1):
+            self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
@@ -1894,6 +1905,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0, 1):
+            self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]')
@@ -1922,6 +1934,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1, 1, 1):
+            self._op_guard()
             reducebuf = self._k_reduce_buf('Z[0]')
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
@@ -1945,6 +1958,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 0, 1, 1):
+            self._op_guard()
             reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]')
             print >> sio, """
             static __global__ void kernel_reduce_1011_%(nodename)s(
