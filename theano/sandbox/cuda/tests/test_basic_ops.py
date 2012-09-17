@@ -201,7 +201,10 @@ def test_max():
         gpu_pattern = tuple(gpu_pattern)
         return gpu_pattern
 
-    for shape, pattern in [((100,3,1300),[1]),
+    for shape, pattern in [((1,1),(1,)),
+                           ((2,1),(1,)),
+                           ((1,2),(1,)),
+                           ((100,3,1300),[1]),
                            ((0,),[0]),((5,),[0]),
                            ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
                            ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
@@ -270,10 +273,19 @@ def test_max():
                 #example in debug mode with unittests.rseed=9275
                 orig_rtol = theano.tensor.basic.float32_rtol
                 theano.tensor.basic.float32_rtol = 2e-5
-                assert _allclose(f2(val), f(val)), ('shape', shape,
-                                                    'pattern', pattern,
-                                                    sum([shape[i] for i in pattern]),
-                                                    f2(val), f(val), val)
+                f2_val = f2(val)
+                f_val = f(val)
+                if not _allclose(f2_val, f_val):
+                    print 'failed for the following arguments: '
+                    print 'shape:',shape
+                    print 'pattern: ',pattern
+                    print 'input:'
+                    print val
+                    print 'correct output: '
+                    print f2_val
+                    print 'actual output: '
+                    print f_val
+                    assert False
             finally:
                 theano.tensor.basic.float32_rtol = orig_rtol
 
