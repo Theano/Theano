@@ -844,9 +844,7 @@ class GpuCAReduce(GpuOp):
             returns C code to reduce left and right, assigning the
             result to left."""
 
-        self._op_guard()
-
-        return left + " += " + right + ";"
+        return self.scalar_op.cuda_assign_reduce(left, right)
 
     def _k_reduce_buf(self, z_pos):
         """
