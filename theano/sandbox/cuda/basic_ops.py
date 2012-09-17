@@ -508,6 +508,7 @@ class GpuCAReduce(GpuOp):
     """
     def __init__(self, reduce_mask, scalar_op):
         self.reduce_mask = tuple(reduce_mask)
+        self.scalar_op = scalar_op
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -532,11 +533,11 @@ class GpuCAReduce(GpuOp):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        raise NotImplementedError() # TODO
+        self._op_guard()
         z[0] = x.reduce_sum(self.reduce_mask)
 
     def c_code(self, node, name, inp, out, sub):
-        raise NotImplementedError()
+        self._op_guard()
         x, = inp
         z, = out
 
@@ -632,7 +633,7 @@ class GpuCAReduce(GpuOp):
         return sio.getvalue()
 
     def _makecall(self, node, name, x, z, fail, pattern=None):
-        raise NotImplementedError()
+        self._op_guard()
         """Return a string for making a kernel call.
 
             The return value looks something like:
@@ -719,7 +720,7 @@ class GpuCAReduce(GpuOp):
 
     def _k_decl(self, node, nodename, pattern=None,
                 ndim=None, reduce_mask=None):
-        raise NotImplementedError()
+        self._op_guard()
         """Return a string to declare a kernel function
 
         .. code-block:: c
@@ -769,7 +770,7 @@ class GpuCAReduce(GpuOp):
         return sio.getvalue()
 
     def _k_init(self, *args):
-        raise NotImplementedError()
+        self._op_guard()
         return """
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
@@ -786,7 +787,7 @@ class GpuCAReduce(GpuOp):
         """
 
     def _k_reduce_buf(self, z_pos):
-        raise NotImplementedError()
+        self._op_guard()
         # Work with all nvidia driver
         # But only for power or multiple of 2!
         new_version = """
@@ -1030,7 +1031,7 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         print >> sio, """
         {
             int verbose = 0;
@@ -1080,7 +1081,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_010(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         makecall_inner = self._makecall(node, name, x, z, fail,
                                         pattern="010_inner")
@@ -1203,7 +1204,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_0101(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1223,7 +1224,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_100(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         # use threadIdx.x for i0
         # use blockIdx.x for i1
@@ -1244,7 +1245,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_110(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1266,7 +1267,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_001(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1289,7 +1290,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_111(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1322,7 +1323,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_0011(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1353,7 +1354,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_1111(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1386,7 +1387,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
-        raise NotImplementedError()
+        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1413,8 +1414,12 @@ class GpuCAReduce(GpuOp):
     def c_code_cache_version(self):
         return (1,)
 
+    def _op_guard(self):
+        if not isinstance(self.scalar_op, theano.scalar.basic.Add):
+            raise NotImplementedError()
+
     def c_support_code_apply(self, node, nodename):
-        raise NotImplementedError()
+        self._op_guard()
         sio = StringIO.StringIO()
         nd_in = len(self.reduce_mask)
         if all(i == 1 for i in self.reduce_mask):
