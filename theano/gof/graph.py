@@ -1030,7 +1030,7 @@ def memodict(f):
 
 @memodict
 def depends((a, b)):
-    return (not set(a.inputs).isdisjoint(set(b.outputs))
+    return (any(bout in a.inputs for bout in b.outputs)
              or any(depends((ainp.owner, b)) for ainp in a.inputs
                                               if ainp.owner))
 
