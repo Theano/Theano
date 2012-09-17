@@ -402,8 +402,9 @@ class CLinker(link.Linker):
     associated to it during the computation (to avoid reusing it).
     """
 
-    def __init__(self):
+    def __init__(self, schedule=None):
         self.fgraph = None
+        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         """WRITEME"""
@@ -1396,13 +1397,15 @@ class OpWiseCLinker(link.LocalLinker):
     def __init__(self,
             fallback_on_perform=True,
             allow_gc=None,
-            nice_errors=True):
+            nice_errors=True,
+            schedule=None):
         if allow_gc is None:
             allow_gc = config.allow_gc
         self.fgraph = None
         self.fallback_on_perform = fallback_on_perform
         self.nice_errors = nice_errors
         self.allow_gc = allow_gc
+        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
@@ -1522,7 +1525,7 @@ class DualLinker(link.Linker):
     function.
     """
 
-    def __init__(self, checker=_default_checker):
+    def __init__(self, checker=_default_checker, schedule=None):
         """
         Initialize a DualLinker.
 
@@ -1547,6 +1550,7 @@ class DualLinker(link.Linker):
         """
         self.fgraph = None
         self.checker = checker
+        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
@@ -1564,11 +1568,13 @@ class DualLinker(link.Linker):
         fgraph = self.fgraph
         no_recycling = self.no_recycling
 
-        _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs)
+        _f, i1, o1, thunks1, order1 = (
+                link.PerformLinker(schedule=self.schedule).accept(fgraph,
+                                no_recycling=no_recycling).make_all(**kwargs))
         kwargs.pop('input_storage', None)
-        _f, i2, o2, thunks2, order2 = OpWiseCLinker().accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 = (
+                OpWiseCLinker(schedule=self.schedule).accept(fgraph,
+                                no_recycling=no_recycling).make_all(**kwargs))
 
         def f():
             for input1, input2 in izip(i1, i2):
