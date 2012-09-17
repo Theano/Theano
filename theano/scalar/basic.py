@@ -816,6 +816,13 @@ class ScalarOp(Op):
             else:
                 return self.__class__.__name__
 
+    def cuda_assign_reduce(self, left, right):
+        """ Returns CUDA code assigning the reduction of left and right
+        using this scalar operation to left."""
+
+        raise NotImplementedError(
+                str(self)+" does not implement cuda_assign_reduce")
+
     def c_code_cache_version(self):
         return (4,)
 
@@ -1159,6 +1166,9 @@ class Maximum(BinaryScalarOp):
         gx = eq(output, x) * gz
         gy = eq(output, y) * gz
         return (gx, gy)
+
+    def cuda_assign_reduce(self, left, right):
+        return left + ' = max(' + left + ', '+ right + ');'
 maximum = Maximum(upcast_out, name='maximum')
 
 
@@ -1187,7 +1197,6 @@ class Minimum(BinaryScalarOp):
         gx = eq(output, x) * gz
         gy = eq(output, y) * gz
         return (gx, gy)
-
 minimum = Minimum(upcast_out, name='minimum')
 
 
@@ -1222,6 +1231,10 @@ class Add(ScalarOp):
             for i in inputs:
                     retval += [gz]
         return retval
+
+    def cuda_assign_reduce(self, left, right):
+        return left + ' += ' + right + ';'
+
 add = Add(upcast_out, name='add')
 
 
