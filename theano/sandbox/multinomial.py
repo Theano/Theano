@@ -55,31 +55,31 @@ class MultinomialFromUniform(Op):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
         }
 
-        if (%(unis)s->dimensions[0] != %(pvals)s->dimensions[0])
+        if (PyArray_DIMS(%(unis)s)[0] != PyArray_DIMS(%(pvals)s)[0])
         {
             PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0]");
             %(fail)s;
         }
 
         if ((NULL == %(z)s)
-            || ((%(z)s->dimensions)[0] != (%(pvals)s->dimensions)[0])
-            || ((%(z)s->dimensions)[1] != (%(pvals)s->dimensions)[1])
+            || ((PyArray_DIMS(%(z)s))[0] != (PyArray_DIMS(%(pvals)s))[0])
+            || ((PyArray_DIMS(%(z)s))[1] != (PyArray_DIMS(%(pvals)s))[1])
         )
         {
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
-                %(pvals)s->dimensions,
+                PyArray_DIMS(%(pvals)s),
                 type_num_%(z)s,
                 0);
             if (!%(z)s)
@@ -91,8 +91,8 @@ class MultinomialFromUniform(Op):
 
         { // NESTED SCOPE
 
-        const int nb_multi = %(pvals)s->dimensions[0];
-        const int nb_outcomes = %(pvals)s->dimensions[1];
+        const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
+        const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
 
         //
         // For each multinomial, loop over each possible outcome
@@ -233,12 +233,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;

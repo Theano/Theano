@@ -619,15 +619,15 @@ class Shape_i(T.Op):
         if isinstance(node.inputs[0].type, T.TensorType):
             return """
             if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
-            ((npy_int64*)PyArray_DATA(%(out)s))[0]=%(x)s->dimensions[%(i)s];
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+            ((npy_int64*)PyArray_DATA(%(out)s))[0]=PyArray_DIMS(%(x)s)[%(i)s];
             """ % locals()
 
         elif node.inputs[0].type.__class__.__name__ == "CudaNdarrayType":
             #Don't want to import cuda stuff here.
             return """
             if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
             ((npy_int64*)PyArray_DATA(%(out)s))[0]=
                             CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
             """ % locals()

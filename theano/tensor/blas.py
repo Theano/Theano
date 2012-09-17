@@ -493,16 +493,16 @@ class GemmRelated(Op):
     declare_NS = """
         int unit = 0;
 
-        int type_num = %(_x)s->descr->type_num;
-        int type_size = %(_x)s->descr->elsize; // in bytes
+        int type_num = PyArray_DESCR(%(_x)s)->type_num;
+        int type_size = PyArray_DESCR(%(_x)s)->elsize; // in bytes
 
-        npy_intp* Nx = %(_x)s->dimensions;
-        npy_intp* Ny = %(_y)s->dimensions;
-        npy_intp* Nz = 0; //%(_zout)s->dimensions;
+        npy_intp* Nx = PyArray_DIMS(%(_x)s);
+        npy_intp* Ny = PyArray_DIMS(%(_y)s);
+        npy_intp* Nz = 0; //PyArray_DIMS(%(_zout)s);
 
-        npy_intp* Sx = %(_x)s->strides;
-        npy_intp* Sy = %(_y)s->strides;
-        npy_intp* Sz = 0; //%(_zout)s->strides;
+        npy_intp* Sx = PyArray_STRIDES(%(_x)s);
+        npy_intp* Sy = PyArray_STRIDES(%(_y)s);
+        npy_intp* Sz = 0; //PyArray_STRIDES(%(_zout)s);
 
         //strides for x, y, z in dimensions 0, 1
         int sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
@@ -511,39 +511,49 @@ class GemmRelated(Op):
     #setup_z_Nz_Sz = None
 
     check_xyz_rank2 = """
-        if (%(_x)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(x) != 2. rank(x) is %%d.", %(_x)s->nd); %(fail)s;}
-        if (%(_y)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(y) != 2. rank(y) is %%d.", %(_y)s->nd); %(fail)s;}
-        if (%(_zout)s && %(_zout)s->nd != 2) {
-            PyErr_Format(PyExc_NotImplementedError, "rank(z) != 2. rank(z) is %%d.", %(_zout)s->nd); %(fail)s;}
+        if (PyArray_NDIM(%(_x)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(x) != 2. rank(x) is %%d.",
+                         PyArray_NDIM(%(_x)s));
+            %(fail)s;
+        }
+        if (PyArray_NDIM(%(_y)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(y) != 2. rank(y) is %%d.", PyArray_NDIM(%(_y)s));
+            %(fail)s;
+        }
+        if (%(_zout)s && PyArray_NDIM(%(_zout)s) != 2) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "rank(z) != 2. rank(z) is %%d.", PyArray_NDIM(%(_zout)s));
+            %(fail)s;
+        }
         """
     check_xyz_double_or_float = """
-        if ((%(_x)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_x)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_x)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_x)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(x) is not double or float"); %(fail)s;}
 
-        if ((%(_y)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_y)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_y)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_y)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(y) is not double or float"); %(fail)s;}
 
-        if ((%(_zout)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_zout)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_zout)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_zout)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
 
-        if ((%(_x)s->descr->type_num != %(_y)s->descr->type_num)
-            ||(%(_x)s->descr->type_num != %(_zout)s->descr->type_num))
+        if ((PyArray_DESCR(%(_x)s)->type_num != PyArray_DESCR(%(_y)s)->type_num)
+            ||(PyArray_DESCR(%(_x)s)->type_num != PyArray_DESCR(%(_zout)s)->type_num))
         { PyErr_SetString(PyExc_NotImplementedError, "type(x), type(y), type(z) are not all the same"); %(fail)s; }
         """
 
     #it is not necessary that a or b have the same type as x,y,z
     check_ab_double_or_float = """
-        if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_a)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_a)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_a)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(a) is not double or float"); %(fail)s;}
 
-        if ((%(_b)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_b)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_b)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_b)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(b) is not double or float"); %(fail)s;}
         """
 
@@ -587,7 +597,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_x)s);
             %(_x)s = _x_copy;
-            Sx = %(_x)s->strides;
+            Sx = PyArray_STRIDES(%(_x)s);
         }
 
         if ((Sy[0] < 1) || (Sy[1] < 1) || (Sy[0] MOD type_size) || (Sy[1] MOD type_size)
@@ -598,7 +608,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_y)s);
             %(_y)s = _y_copy;
-            Sy = %(_y)s->strides;
+            Sy = PyArray_STRIDES(%(_y)s);
         }
 
         if ((Sz[0] < 1) || (Sz[1] < 1) || (Sz[0] MOD type_size) || (Sz[1] MOD type_size)
@@ -609,7 +619,7 @@ class GemmRelated(Op):
                 %(fail)s
             Py_XDECREF(%(_zout)s);
             %(_zout)s = _z_copy;
-            Sz = %(_zout)s->strides;
+            Sz = PyArray_STRIDES(%(_zout)s);
         }
         """
 
@@ -644,7 +654,7 @@ class GemmRelated(Op):
         """
 
     case_float = """
-            case PyArray_FLOAT:
+            case NPY_FLOAT:
             {
         """
 
@@ -677,7 +687,7 @@ class GemmRelated(Op):
     case_double = """
             }
             break;
-            case PyArray_DOUBLE:
+            case NPY_DOUBLE:
             {
         """
 
@@ -878,25 +888,25 @@ class Gemm(GemmRelated):
             %(_zout)s = %(_z)s;
             Py_INCREF(%(_zout)s);
         }
-        Nz = %(_z)s->dimensions;
-        Sz = %(_z)s->strides;
+        Nz = PyArray_DIMS(%(_z)s);
+        Sz = PyArray_STRIDES(%(_z)s);
         """
 
     setup_z_Nz_Sz_outplace = """
         if ((NULL == %(_zout)s)
-            || (%(_zout)s->dimensions[0] != %(_z)s->dimensions[0])
-            || (%(_zout)s->dimensions[1] != %(_z)s->dimensions[1])
-            || (%(_zout)s->strides[0] <= 0)
-            || (%(_zout)s->strides[1] <= 0)
-            || (%(_zout)s->strides[0] MOD type_size)
-            || (%(_zout)s->strides[1] MOD type_size)
-            || ((%(_zout)s->strides[0] != type_size)
-                && (%(_zout)s->strides[1] != type_size)))
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_z)s)[0])
+            || (PyArray_DIMS(%(_zout)s)[1] != PyArray_DIMS(%(_z)s)[1])
+            || (PyArray_STRIDES(%(_zout)s)[0] <= 0)
+            || (PyArray_STRIDES(%(_zout)s)[1] <= 0)
+            || (PyArray_STRIDES(%(_zout)s)[0] MOD type_size)
+            || (PyArray_STRIDES(%(_zout)s)[1] MOD type_size)
+            || ((PyArray_STRIDES(%(_zout)s)[0] != type_size)
+                && (PyArray_STRIDES(%(_zout)s)[1] != type_size)))
         {
             Py_XDECREF(%(_zout)s);
             npy_intp dims[2];
-            dims[0] = %(_z)s->dimensions[0];
-            dims[1] = %(_z)s->dimensions[1];
+            dims[0] = PyArray_DIMS(%(_z)s)[0];
+            dims[1] = PyArray_DIMS(%(_z)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
                                                           type_num_%(_z)s);
             //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
@@ -906,17 +916,17 @@ class Gemm(GemmRelated):
                 %(fail)s
             }
         }
-        Nz = %(_zout)s->dimensions;
-        Sz = %(_zout)s->strides;
+        Nz = PyArray_DIMS(%(_zout)s);
+        Sz = PyArray_STRIDES(%(_zout)s);
 
-        if (%(_zout)s->descr->type_num == PyArray_FLOAT)
+        if (PyArray_DESCR(%(_zout)s)->type_num == NPY_FLOAT)
         {
-            float * zoutdata = (float*)%(_zout)s->data;
+            float * zoutdata = (float*)PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(float);
             int zoj = Sz[1] / sizeof(float);
-            const float * zdata = (float*)%(_z)s->data;
-            int zi = %(_z)s->strides[0]/sizeof(float);
-            int zj = %(_z)s->strides[1]/sizeof(float);
+            const float * zdata = (float*)PyArray_DATA(%(_z)s);
+            int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(float);
+            int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(float);
             for (int i = 0; i < Nz[0]; ++i)
             {
                 for (int j = 0; j < Nz[1]; ++j)
@@ -925,14 +935,14 @@ class Gemm(GemmRelated):
                 }
             }
         }
-        else if (%(_zout)s->descr->type_num == PyArray_DOUBLE)
+        else if (PyArray_DESCR(%(_zout)s)->type_num == NPY_DOUBLE)
         {
-            double * zoutdata = (double*) %(_zout)s->data;
+            double * zoutdata = (double*) PyArray_DATA(%(_zout)s);
             int zoi = Sz[0] / sizeof(double);
             int zoj = Sz[1] / sizeof(double);
-            const double * zdata = (double*)%(_z)s->data;
-            int zi = %(_z)s->strides[0]/sizeof(double);
-            int zj = %(_z)s->strides[1]/sizeof(double);
+            const double * zdata = (double*)PyArray_DATA(%(_z)s);
+            int zi = PyArray_STRIDES(%(_z)s)[0]/sizeof(double);
+            int zj = PyArray_STRIDES(%(_z)s)[1]/sizeof(double);
             for (int i = 0; i < Nz[0]; ++i)
             {
                 for (int j = 0; j < Nz[1]; ++j)
@@ -951,22 +961,22 @@ class Gemm(GemmRelated):
 
     case_float_ab_constants = """
         #define REAL float
-        float a = (%(_a)s->descr->type_num == PyArray_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
-        float b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-        (REAL)(((float*)%(_b)s->data)[0])
-        : (REAL)(((double*)%(_b)s->data)[0]);
+        float a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
+        float b = (PyArray_DESCR(%(_b)s)->type_num == NPY_FLOAT) ?
+        (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
         """
     case_double_ab_constants = """
         #define REAL double
-        double a = (%(_a)s->descr->type_num == PyArray_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
-        double b = (%(_b)s->descr->type_num == PyArray_FLOAT) ?
-        (REAL)(((float*)%(_b)s->data)[0])
-        : (REAL)(((double*)%(_b)s->data)[0]);
+        double a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
+        double b = (PyArray_DESCR(%(_b)s)->type_num == NPY_FLOAT) ?
+        (REAL)(((float*)PyArray_DATA(%(_b)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_b)s))[0]);
         #undef REAL
         """
 
@@ -1469,13 +1479,13 @@ class Dot22(GemmRelated):
 
     setup_z_Nz_Sz = """
         if ((NULL == %(_zout)s)
-            || (%(_zout)s->dimensions[0] != %(_x)s->dimensions[0])
-            || (%(_zout)s->dimensions[1] != %(_y)s->dimensions[1]))
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_x)s)[0])
+            || (PyArray_DIMS(%(_zout)s)[1] != PyArray_DIMS(%(_y)s)[1]))
         {
             if (NULL != %(_zout)s) Py_XDECREF(%(_zout)s);
             npy_intp dims[2];
-            dims[0] = %(_x)s->dimensions[0];
-            dims[1] = %(_y)s->dimensions[1];
+            dims[0] = PyArray_DIMS(%(_x)s)[0];
+            dims[1] = PyArray_DIMS(%(_y)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
                             type_num_%(_x)s);
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
@@ -1485,8 +1495,8 @@ class Dot22(GemmRelated):
                 %(fail)s
             }
         }
-        Nz = %(_zout)s->dimensions;
-        Sz = %(_zout)s->strides;
+        Nz = PyArray_DIMS(%(_zout)s);
+        Sz = PyArray_STRIDES(%(_zout)s);
 
         """
     check_ab_double_or_float = ""
@@ -1743,26 +1753,26 @@ class Dot22Scalar(GemmRelated):
     setup_z_Nz_Sz = Dot22.setup_z_Nz_Sz
 
     check_ab_double_or_float = """
-        if ((%(_a)s->descr->type_num != PyArray_DOUBLE)
-            && (%(_a)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(_a)s)->type_num != NPY_DOUBLE)
+            && (PyArray_DESCR(%(_a)s)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError,
                          "type(a) is not double or float"); %(fail)s;}
 
         """
     case_float_ab_constants = """
         #define REAL float
-        float a = (%(_a)s->descr->type_num == PyArray_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        float a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL
         float b = 0.0;
         """
 
     case_double_ab_constants = """
         #define REAL double
-        double a = (%(_a)s->descr->type_num == PyArray_FLOAT)
-        ? (REAL)(((float*)%(_a)s->data)[0])
-        : (REAL)(((double*)%(_a)s->data)[0]);
+        double a = (PyArray_DESCR(%(_a)s)->type_num == NPY_FLOAT)
+        ? (REAL)(((float*)PyArray_DATA(%(_a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(_a)s))[0]);
         #undef REAL
         double b = 0.0;
         """

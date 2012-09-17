@@ -1453,6 +1453,22 @@ class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+        #NumPy 1.7 Deprecate the old API. I updated most of the places
+        #to use the new API, but not everywhere. When finished, enable
+        #the following macro to assert that we don't bring new code
+        #that use the old API.
+        #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        # numpy 1.7 deprecated the following macro but the didn't
+        # existed in the past
+        if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
         return cxxflags
 
     @staticmethod

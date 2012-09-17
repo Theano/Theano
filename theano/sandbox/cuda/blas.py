@@ -123,7 +123,7 @@ class GpuDot22Scalar(GpuOp):
         fail = sub['fail']
         return """
         #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
+        float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
         ? (REAL)(((float*)%(a)s->data)[0])
         : (REAL)(((double*)%(a)s->data)[0]);
         #undef REAL
@@ -231,11 +231,11 @@ class GpuGemm(GpuOp):
         print >> sio, """
 
         #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
+        float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
         ? (REAL)(((float*)%(a)s->data)[0])
         : (REAL)(((double*)%(a)s->data)[0]);
 
-        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
+        float %(name)s_b = (PyArray_TYPE(%(b)s) == NPY_FLOAT) ?
         (REAL)(((float*)%(b)s->data)[0])
         : (REAL)(((double*)%(b)s->data)[0]);
         #undef REAL

@@ -214,7 +214,7 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
                 %(fail)s;
             }
 
-            if (%(neib_shape)s->dimensions[0] != 2)
+            if (PyArray_DIMS(%(neib_shape)s)[0] != 2)
             {
                 PyErr_Format(PyExc_ValueError,
                              "neib_shape has to contain two elements");

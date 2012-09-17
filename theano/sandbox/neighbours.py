@@ -114,28 +114,28 @@ class Images2Neibs(Op):
         int grid_c = -1; //number of patch in height
         int grid_d = -1; //number of patch in width
         {
-        if (%(ten4)s->nd != 4)
+        if (PyArray_NDIM(%(ten4)s) != 4)
         {
             PyErr_Format(PyExc_TypeError, "ten4 wrong rank");
             %(fail)s;
         }
-        if (%(neib_shape)s->nd != 1)
+        if (PyArray_NDIM(%(neib_shape)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "neib_shape wrong rank");
             %(fail)s;
         }
-        if ( (%(neib_shape)s->dimensions)[0] != 2)
+        if ( (PyArray_DIMS(%(neib_shape)s))[0] != 2)
         {
             PyErr_Format(PyExc_TypeError, "neib_shape wrong shape ; has to"
                                           " contain 2 elements");
             %(fail)s;
         }
-        if (%(neib_step)s->nd != 1)
+        if (PyArray_NDIM(%(neib_step)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "neib_step wrong rank");
             %(fail)s;
         }
-        if ( (%(neib_step)s->dimensions)[0] != 2)
+        if ( (PyArray_DIMS(%(neib_step)s))[0] != 2)
         {
             PyErr_Format(PyExc_TypeError,
                          "neib_step wrong step ; has to contain 2 elements");
@@ -154,33 +154,33 @@ class Images2Neibs(Op):
                 PyErr_Format(PyExc_TypeError, "Images2Neibs: in mode wrap_centered need patch with odd shapes");
                 %(fail)s;
             }
-            if ( (%(ten4)s->dimensions)[2] < c || (%(ten4)s->dimensions)[3] < d)
+            if ( (PyArray_DIMS(%(ten4)s))[2] < c || (PyArray_DIMS(%(ten4)s))[3] < d)
             {
                 PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%ld,%%ld), ten4[2:]=[%%ld,%%ld]",
-                             (long int)c, (long int)d, (long int)(%(ten4)s->dimensions[2]), (long int)(%(ten4)s->dimensions[3]));
+                             (long int)c, (long int)d, (long int)(PyArray_DIMS(%(ten4)s)[2]), (long int)(PyArray_DIMS(%(ten4)s)[3]));
                 %(fail)s;
             }
-            grid_c = CEIL_INTDIV(((%(ten4)s->dimensions)[2]),step_x);
-            grid_d = CEIL_INTDIV(((%(ten4)s->dimensions)[3]),step_y);
+            grid_c = CEIL_INTDIV(((PyArray_DIMS(%(ten4)s))[2]),step_x);
+            grid_d = CEIL_INTDIV(((PyArray_DIMS(%(ten4)s))[3]),step_y);
 
         }else if ( "%(mode)s" == "valid") {
-            if ( ((%(ten4)s->dimensions)[2] < c) ||( (((%(ten4)s->dimensions)[2]-c) %% step_x)!=0))
+            if ( ((PyArray_DIMS(%(ten4)s))[2] < c) ||( (((PyArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
             {
                 PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%ld, neib_step[0]=%%ld and ten4.shape[2]=%%ld not consistent",
-                             (long int)c, (long int)step_x, (long int)(%(ten4)s->dimensions[2]));
+                             (long int)c, (long int)step_x, (long int)(PyArray_DIMS(%(ten4)s)[2]));
                 %(fail)s;
             }
-            if ( ((%(ten4)s->dimensions)[3] < d) ||( (((%(ten4)s->dimensions)[3]-d) %% step_y)!=0))
+            if ( ((PyArray_DIMS(%(ten4)s))[3] < d) ||( (((PyArray_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
             {
                 PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%ld, neib_step[1]=%%ld and ten4.shape[3]=%%ld not consistent",
-                             (long int)d, (long int)step_y, (long int)(%(ten4)s->dimensions[3]));
+                             (long int)d, (long int)step_y, (long int)(PyArray_DIMS(%(ten4)s)[3]));
                 %(fail)s;
             }
-            grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
-            grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
+            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
+            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y); //number of patch in width
         }else if ( "%(mode)s" == "ignore_borders") {
-            grid_c = 1+(((%(ten4)s->dimensions)[2]-c)/step_x); //number of patch in height
-            grid_d = 1+(((%(ten4)s->dimensions)[3]-d)/step_y); //number of patch in width
+            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
+            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y); //number of patch in width
         }else{
             PyErr_Format(PyExc_TypeError, "Images2Neibs: unknow mode '%(mode)s'");
             %(fail)s;
@@ -190,12 +190,12 @@ class Images2Neibs(Op):
         const npy_intp z_dim1 = c * d;
         const npy_intp z_dim0 =  grid_c
                             * grid_d
-                            * (%(ten4)s->dimensions)[1]
-                            * (%(ten4)s->dimensions)[0];
+                            * (PyArray_DIMS(%(ten4)s))[1]
+                            * (PyArray_DIMS(%(ten4)s))[0];
 
         if ((NULL == %(z)s)
-            || ((%(z)s->dimensions)[0] != z_dim0 )
-            || ((%(z)s->dimensions)[1] != z_dim1 )
+            || ((PyArray_DIMS(%(z)s))[0] != z_dim0 )
+            || ((PyArray_DIMS(%(z)s))[1] != z_dim1 )
         )
         {
             Py_XDECREF(%(z)s);
@@ -218,10 +218,10 @@ class Images2Neibs(Op):
 
         { // NESTED SCOPE
 
-        const int nb_batch = (%(ten4)s->dimensions)[0];
-        const int nb_stack = (%(ten4)s->dimensions)[1];
-        const int height = (%(ten4)s->dimensions)[2];
-        const int width = (%(ten4)s->dimensions)[3];
+        const int nb_batch = (PyArray_DIMS(%(ten4)s))[0];
+        const int nb_stack = (PyArray_DIMS(%(ten4)s))[1];
+        const int height = (PyArray_DIMS(%(ten4)s))[2];
+        const int width = (PyArray_DIMS(%(ten4)s))[3];
 
         // (c,d) = neib_shape
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
