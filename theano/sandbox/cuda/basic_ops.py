@@ -1501,9 +1501,16 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        # TODO: make this act like tensor.elemwise.CAReduce
-        # needs to include scalar op's cache version in the returned tuple
-        return ()
+        op_version = self.scalar_op.cuda_assign_reduce_code_cache_version()
+        if op_version:
+            # our version is 0
+            rval = [0]
+            rval.extend(op_version)
+            rval = tuple(rval)
+            return rval
+        else:
+            # we can't support caching if the op doesn't
+            return ()
 
     def _op_guard(self):
         """ Raises NotImplementedError if op is not Add """
