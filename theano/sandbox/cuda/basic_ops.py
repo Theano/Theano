@@ -1611,18 +1611,39 @@ class GpuCAReduce(GpuOp):
             # threads per block for each element per row.
 
             N_pattern = ''.join(['1'] * (nd_in - 1))
+            # TODO: is it faster to hardcode sA3, etc. in the later code, rather
+            # than have the for_* variables declare them and the later code use
+            # their names?
             if nd_in == 2:
                 for_i1 = "for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)"
+                first_i1 = 'threadIdx.x'
+                sA1 = 'sA1'
                 for_i2 = "int i2=0, sA2=0;"
+                sA2 = '0'
+                first_i2 = '0'
                 for_i3 = "int i3=0, sA3=0;"
+                sA3 = '0'
+                first_i3 = '0'
             if nd_in == 3:
                 for_i1 = "for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)"
+                first_i1 = 'threadIdx.y'
+                sA1 = 'sA1'
                 for_i2 = "for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)"
+                first_i2 = 'threadIdx.x'
+                sA2 = 'sA2'
                 for_i3 = "int i3=0, sA3=0;"
+                first_i3 = 0
+                sA3 = '0'
             if nd_in == 4:
                 for_i1 = "for (int i1 = threadIdx.z; i1 < d1; i1 += blockDim.z)"
+                first_i1 = 'threadIdx.z'
+                sA1 = 'sA1'
                 for_i2 = "for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)"
+                first_i2 = 'threadIdx.y'
+                sA2 = 'sA2'
                 for_i3 = "for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)"
+                first_i3 = 'threadIdx.x'
+                sA3 = 'sA3'
 
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0]')
             param_dim = ",".join(["const int d%(i)s" % locals()
@@ -1658,17 +1679,16 @@ class GpuCAReduce(GpuOp):
                 }
                 """ % locals()
             elif isinstance(self.scalar_op, scal.Maximum):
-                self._op_guard()
                 print >> sio, """
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      myresult = 0;
+                      myresult = A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0];
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
                             float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            myresult += Ai;
+                            myresult = max(myresult, Ai);
                           }
                         }
                       }
