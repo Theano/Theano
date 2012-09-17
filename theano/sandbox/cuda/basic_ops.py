@@ -765,7 +765,6 @@ class GpuCAReduce(GpuOp):
 
     def _k_decl(self, node, nodename, pattern=None,
                 ndim=None, reduce_mask=None):
-        self._op_guard()
         """Return a string to declare a kernel function
 
         The result will look something like this:
