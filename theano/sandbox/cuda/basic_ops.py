@@ -828,7 +828,10 @@ class GpuCAReduce(GpuOp):
 
                 if (warpSize != 32)
                 {
-                    //TODO: set error code
+                    // TODO: set error code
+                    // 2012-09-17 IG: as of today, Fred says this is unlikely to change for any GPU released
+                    // anytime soon. Hard to fix as _k_init is called by c_support_code_apply and
+                    // c_support_code_apply is not passed a 'fail' code string.
                     Z[0] = -666;
                     return;
                 }
