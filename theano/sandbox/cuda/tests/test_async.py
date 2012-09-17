@@ -60,7 +60,7 @@ def test_optimizer():
     gx = theano.sandbox.cuda.gpu_from_host(x)
     fgraph = theano.FunctionGraph([x], [gx])
     async_optimizer.optimize(fgraph)
-    ops = {node.op for node in fgraph.nodes}
+    ops = set([node.op for node in fgraph.nodes])
     assert len(filter(lambda op: isinstance(op, GpuFromHostWait), ops)) == 1
     assert len(filter(lambda op: isinstance(op, GpuFromHostSend), ops)) == 1
     assert len(filter(lambda op: isinstance(op, GpuFromHost), ops))     == 0
