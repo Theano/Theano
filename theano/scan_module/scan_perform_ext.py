@@ -5,8 +5,9 @@ from theano import config
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 
+
 _logger = logging.getLogger('theano.scan_module.scan_perform')
-logging.basicConfig(level=logging.DEBUG)
+_logger.setLevel(logging.WARN)
 
 
 # Ensure the compiledir is in `sys.path` to be able to reload an existing
