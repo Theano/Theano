@@ -1459,10 +1459,14 @@ class GCC_compiler(object):
         #that use the old API.
         #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        # numpy 1.7b1 replaced NPY_ENSURECOPY to NPY_ARRAY_ENSURECOPY
-        # that didn't existed before.
+
+        # numpy 1.7 deprecated the following macro but the didn't
+        # existed in the past
         if bool(numpy_ver < [1, 7]):
             cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
         return cxxflags
 
     @staticmethod
