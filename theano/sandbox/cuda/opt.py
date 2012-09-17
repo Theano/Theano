@@ -581,10 +581,15 @@ def local_gpu_gemm(node):
 
 @register_opt()
 @local_optimizer([])
-def local_gpu_sum(node):
+def local_gpu_careduce(node):
     if isinstance(node.op, tensor.elemwise.CAReduce):
-        if node.op.scalar_op == scal.add:
+        scalar_op = node.op.scalar_op
+        # currently, only these two ops are supported at all,
+        # and max does not support all combinations of axes
+        if node.op.scalar_op in [scal.add, scal.maximum]:
             x, = node.inputs
+            gpu_x = gpu_from_host(x)
+            gpu_inputs = [ gpu_x ]
             if x.owner and x.owner.op == host_from_gpu:
                 if node.op.axis is None:
                     reduce_mask = [1] * x.type.ndim
@@ -593,22 +598,21 @@ def local_gpu_sum(node):
                     for a in node.op.axis:
                         assert reduce_mask[a] == 0
                         reduce_mask[a] = 1
-                gsum = GpuCAReduce(reduce_mask, theano.scalar.basic.add)
-                pattern = (''.join(str(i) for i in reduce_mask))
-                if hasattr(gsum, 'c_code_reduce_%s' % pattern):
-                    rval = host_from_gpu(gsum(gpu_from_host(x)))
+                greduce = GpuCAReduce(reduce_mask, scalar_op)
+                if greduce.supports_c_code(gpu_inputs):
+                    rval = host_from_gpu(greduce(gpu_x))
                     if rval.type == node.outputs[0].type:
                         return [rval]
                     else:
                         print >> sys.stderr, \
-                                "WARNING: local_gpu_sum got type wrong"
+                                "WARNING: local_gpu_careduce got type wrong"
                         return None
                 else:
 
                     # Try to make a simpler pattern based on reshaping
                     # The principle is that if two adjacent dimensions have
                     # the same value in the reduce_mask, then we can reshape
-                    # to make them a single dimension, do the sum, and then
+                    # to make them a single dimension, do the reduction, and then
                     # reshape to get them back.
 
                     shape_of = node.fgraph.shape_feature.shape_of
@@ -624,27 +628,28 @@ def local_gpu_sum(node):
                             new_mask.append(reduce_mask[i])
                             new_in_shp.append(x_shape[i])
 
-                    pattern = (''.join(str(i) for i in new_mask))
-                    new_gsum = GpuCAReduce(new_mask, theano.scalar.basic.add)
-                    if hasattr(new_gsum, 'c_code_reduce_%s' % pattern):
-                        reshaped_x = x.reshape(tensor.stack(*new_in_shp))
-                        sum_reshaped_x = host_from_gpu(
-                            new_gsum(gpu_from_host(reshaped_x)))
+                    new_greduce = GpuCAReduce(new_mask, scalar_op)
+                    reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+                    gpu_reshaped_x = gpu_from_host(reshaped_x)
+                    reshaped_gpu_inputs = [ gpu_reshaped_x ]
+                    if new_greduce.supports_c_code(reshaped_gpu_inputs):
+                        reduce_reshaped_x = host_from_gpu(
+                            new_greduce(gpu_reshaped_x))
 
-                        if sum_reshaped_x.ndim != node.outputs[0].ndim:
-                            unreshaped_sum = sum_reshaped_x.reshape(
+                        if reduce_reshaped_x.ndim != node.outputs[0].ndim:
+                            unreshaped_reduce = reduce_reshaped_x.reshape(
                                 tensor.stack(*shape_of[node.outputs[0]]))
                         else:
-                            unreshaped_sum = sum_reshaped_x
-                        if unreshaped_sum.type == node.outputs[0].type:
-                            return [unreshaped_sum]
+                            unreshaped_reduce = reduce_reshaped_x
+                        if unreshaped_reduce.type == node.outputs[0].type:
+                            return [unreshaped_reduce]
                         else:
                             print >> sys.stderr, \
-                                    "WARNING: local_gpu_sum got type wrong"
+                                    "WARNING: local_gpu_careduce got type wrong"
                             return None
 
                         raise Exception(
-                            "GpuCAReduce don't have implemented the pattern",
+                                "GpuCAReduce does not yet implement this pattern:",
                             pattern)
     return False
 
