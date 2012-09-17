@@ -836,6 +836,18 @@ class GpuCAReduce(GpuOp):
 
         """
 
+    def _assign_reduce(self, left, right):
+        """
+            left: a C code string identifying an lvalue
+            right: a C code string identifying an expression
+
+            returns C code to reduce left and right, assigning the
+            result to left."""
+
+        self._op_guard()
+
+        return left + " += " + right + ";"
+
     def _k_reduce_buf(self, z_pos):
         self._op_guard()
         # Work with all nvidia driver
