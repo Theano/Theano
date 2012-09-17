@@ -593,7 +593,7 @@ def local_gpu_sum(node):
                     for a in node.op.axis:
                         assert reduce_mask[a] == 0
                         reduce_mask[a] = 1
-                gsum = GpuSum(reduce_mask)
+                gsum = GpuCAReduce(reduce_mask, theano.scalar.basic.add)
                 pattern = (''.join(str(i) for i in reduce_mask))
                 if hasattr(gsum, 'c_code_reduce_%s' % pattern):
                     rval = host_from_gpu(gsum(gpu_from_host(x)))
@@ -625,7 +625,7 @@ def local_gpu_sum(node):
                             new_in_shp.append(x_shape[i])
 
                     pattern = (''.join(str(i) for i in new_mask))
-                    new_gsum = GpuSum(new_mask)
+                    new_gsum = GpuCAReduce(new_mask, theano.scalar.basic.add)
                     if hasattr(new_gsum, 'c_code_reduce_%s' % pattern):
                         reshaped_x = x.reshape(tensor.stack(*new_in_shp))
                         sum_reshaped_x = host_from_gpu(
@@ -644,7 +644,7 @@ def local_gpu_sum(node):
                             return None
 
                         raise Exception(
-                            "GpuSum don't have implemented the pattern",
+                            "GpuCAReduce don't have implemented the pattern",
                             pattern)
     return False
 
