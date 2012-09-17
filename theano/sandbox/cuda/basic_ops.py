@@ -1035,14 +1035,15 @@ class GpuCAReduce(GpuOp):
         :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
                   Work for N=1,2,3
         """
+
         assert N in [1, 2, 3]
         makecall = self._makecall(node, name, x, z, fail)
-        self._op_guard()
         N_pattern = ''.join(['1'] * N)
         param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
                               for i in xrange(N + 1)])
         strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]"
                                 % locals() for i in xrange(N + 1)])
+
         threads_y = """
             //get as many y threads as we can fit
             while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
@@ -1051,8 +1052,8 @@ class GpuCAReduce(GpuOp):
                     n_threads.y += 1;
                 else
                     break;
-            }
-""" % locals()
+            }""" % locals()
+
         threads_z = """
             //get as many z threads as we can fit
             while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
@@ -1061,13 +1062,15 @@ class GpuCAReduce(GpuOp):
                     n_threads.z += 1;
                 else
                     break;
-            }
-""" % locals()
+            }""" % locals()
+
         if len(self.reduce_mask) == 2:
             threads_y = ''
             threads_z = ''
+
         if len(self.reduce_mask) == 3:
             threads_z = ''
+
         print >> sio, """
         {
             int verbose = 0;
