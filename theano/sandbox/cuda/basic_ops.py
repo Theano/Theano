@@ -1582,7 +1582,6 @@ class GpuCAReduce(GpuOp):
         if (0 == self.reduce_mask[0] and
             all(self.reduce_mask[1:]) and
             nd_in in[2, 3, 4]):
-            self._op_guard()
             # this kernel uses one block for each row.
             # threads per block for each element per row.
 
@@ -1607,23 +1606,53 @@ class GpuCAReduce(GpuOp):
                                       for i in xrange(nd_in)])
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
-            print >> sio, """
-            %(decl)s{
-                %(init)s
-                for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                  mysum = 0;
-                  %(for_i1)s{
-                    %(for_i2)s{
-                      %(for_i3)s{
-                        float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                        mysum += Ai;
+            # TODO: ideally this would all be some clean function of scalar_op,
+            # but since sum is a special case where it's OK to reduce with an
+            # extra 0, I would need to change the behavior of the sum reduction
+            # code to do that. I don't want to benchmark and test changes to the
+            # sum code so I will leave that for later.
+            # max reduction is also a special case that is simple to implement.
+            # this is the special case where reduction is idempotent so it doesn't
+            # matter if we reduce with the first element multiple times.
+            if isinstance(self.scalar_op, scal.Add):
+                print >> sio, """
+                %(decl)s{
+                    %(init)s
+                    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
+                      mysum = 0;
+                      %(for_i1)s{
+                        %(for_i2)s{
+                          %(for_i3)s{
+                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
+                            mysum += Ai;
+                          }
+                        }
                       }
+                      %(reducebuf)s
                     }
-                  }
-                  %(reducebuf)s
                 }
-            }
-            """ % locals()
+                """ % locals()
+            elif isinstance(self.scalar_op, scal.Maximum):
+                self._op_guard()
+                print >> sio, """
+                %(decl)s{
+                    %(init)s
+                    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
+                      mysum = 0;
+                      %(for_i1)s{
+                        %(for_i2)s{
+                          %(for_i3)s{
+                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
+                            mysum += Ai;
+                          }
+                        }
+                      }
+                      %(reducebuf)s
+                    }
+                }
+                """ % locals()
+            else:
+                raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
             self._op_guard()
             # this kernel uses one block for each column,
