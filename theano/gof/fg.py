@@ -501,6 +501,9 @@ class FunctionGraph(utils.object2):
             try:
                 fn = getattr(feature, name)
             except AttributeError:
+                # this is safe because there is no work done inside the
+                # try; the AttributeError reall must come from feature.${name}
+                # not existing
                 continue
 
             #####HORRIBLE OPTIONAL ARGUMENT HACK
