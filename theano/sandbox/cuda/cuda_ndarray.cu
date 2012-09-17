@@ -2452,7 +2452,7 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 }
 
 /*
- * Returns in *free and *total respectively, the free and total amount of memory available for allocation by the device in bytes.
+ * Synchronize with all the gpu device stream.
  */
 PyObject *
 CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
