@@ -256,13 +256,13 @@ what to expect right now:
   that data.  Getting GPU performance largely hinges on making data transfer to
   the device pay off.
 
-
 Tips for Improving Performance on GPU
 -------------------------------------
 
 * Consider 
   adding ``floatX=float32`` to your ``.theanorc`` file if you plan to do a lot of
   GPU work.
+* Use the Theano flag ``allow_gc=False``. See :ref:`gpu_async`
 * Prefer  
   constructors like ``matrix``, ``vector`` and ``scalar`` to ``dmatrix``, ``dvector`` and
   ``dscalar`` because the former will give you *float32* variables when
@@ -285,6 +285,25 @@ Tips for Improving Performance on GPU
   This can tell you if not enough of your graph is on the GPU or if there
   is too much memory transfer.
 
+.. _gpu_async:
+
+GPU Async capabilities
+----------------------
+
+Ever since Theano 0.6 we started to use the asynchronous capability of
+GPUs. This allows us to be faster but with the possibility that some
+errors may be raised later than when they should occur. This can cause
+difficulties when profiling Theano apply nodes. There is a NVIDIA
+driver feature to help with these issues. If you set the environment
+variable CUDA_LAUNCH_BLOCKING=1 then all kernel calls will be
+automatically synchronized. This reduces performance but provides good
+profiling and appropriately placed error messages.
+
+This feature interacts with Theano garbage collection of intermediate
+results. To get the most of this feature, you need to disable the gc
+as it inserts synchronization points in the graph. Set the Theano flag
+``allow_gc=False`` to get even faster speed! This will raise the memory
+usage.
 
 Changing the Value of Shared Variables
 --------------------------------------
@@ -605,10 +624,4 @@ efficiency over the basic solution that is asked here, the two operations would
 have to be jointly optimized explicitly in the code.)
 
 Modify and execute to support *stride* (i.e. so as not constrain the input to be *C-contiguous*).
-
-
-
-
-
-
 
