@@ -849,9 +849,14 @@ class GpuCAReduce(GpuOp):
         return left + " += " + right + ";"
 
     def _k_reduce_buf(self, z_pos):
-        self._op_guard()
-        # Work with all nvidia driver
-        # But only for power or multiple of 2!
+        """
+        WRITEME
+        """
+
+        # This code (the code in new_version) is currently ignored.
+        # Code produced later in this function is returned instead.
+        # The code here works with all nvidia driver
+        # But only for powers or multiples of 2!
         new_version = """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = myresult;
@@ -860,15 +865,15 @@ class GpuCAReduce(GpuOp):
 
         if (threadNum >= ((threadCount >> 1) * 2))
         {
-            int idx = threadNum - (threadCount >> 1) * 2;
-            buf[idx] += buf[threadNum];
-//            buf[0] = 998;
-        } else {
-//            buf[threadNum] = 0;-999;
+            int idx = threadNum - (threadCount >> 1) * 2;"""
+
+        new_version += self._assign_reduce('buf[idx]','buf[threadNum]')
+
+        new_version += """
         }
         __syncthreads();
 
-        //Work for power of 2 only.
+        // Works for power of 2 only.
         int nTotalThreads = threadCount; // Total number of active threads
         while(nTotalThreads > 1)
         {
@@ -879,8 +884,11 @@ class GpuCAReduce(GpuOp):
             {
               // Get the shared value stored by another thread
               float temp = buf[threadNum + halfPoint];
+              """
 
-              buf[threadNum] += temp;
+        new_version += self._assign_reduce('buf[threadNum]', 'temp')
+
+        new_version += """
             }
             __syncthreads();
 
@@ -892,10 +900,11 @@ class GpuCAReduce(GpuOp):
         {
             %(z_pos)s = buf[0];
         }
-            __syncthreads();
+            __syncthreads();"""
 
-""" % locals()
-        return """
+        new_version = new_version % locals()
+
+        current_version = """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = myresult;
         __syncthreads();
@@ -906,19 +915,19 @@ class GpuCAReduce(GpuOp):
             //round up all the partial sums into the first `warpSize` elements
             for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
             {
-                myresult += buf[i];
+                """
+        current_version += self._assign_reduce('myresult', 'buf[i]') + """
             }
             buf[threadNum] = myresult;
-/*Comment this optimization as it don't work on Fermi GPU.
-  TODO: find why it don't work or put the GPU compute capability into the version
+        /*Comment this optimization as it don't work on Fermi GPU.
+        TODO: find why it don't work or put the GPU compute capability into the version
             // no sync because only one warp is running
             if(threadCount >32)
-            {
-                buf[threadNum] += buf[threadNum+16];
-                buf[threadNum] += buf[threadNum+8];
-                buf[threadNum] += buf[threadNum+4];
-                buf[threadNum] += buf[threadNum+2];
-                buf[threadNum] += buf[threadNum+1];
+            {"""
+        for num in [16,8,4,2,1]:
+            current_version += self._assign_reduce('buf[threadNum]',
+                    'buf[threadNum+%d]') % num
+        current_version += """
                 if (threadNum == 0)
                 {
                     %(z_pos)s = buf[0];
@@ -928,19 +937,24 @@ class GpuCAReduce(GpuOp):
             else */
             if (threadNum < 16)
             {
-                //reduce so that threadNum 0 has the sum of everything
-                if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
-                if(threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
-                if(threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
-                if(threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
-                if(threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
+                //reduce so that threadNum 0 has the reduction of everything
+                """
+        for num in [16,8,4,2,1]:
+            this_if = "if (threadNum + %d < threadCount) " + \
+                self._assign_reduce('buf[threadNum]','buf[threadNum+%d]')
+            current_version += this_if % (num, num)
+        current_version += """
                 if (threadNum == 0)
                 {
                     %(z_pos)s = buf[0];
                 }
             }
         }
-        """ % locals()
+        """
+
+        current_version = current_version % locals()
+
+        return current_version
 
     #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
     #nb_reduce<=warpSize
