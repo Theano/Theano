@@ -654,7 +654,7 @@ class GpuCAReduce(GpuOp):
         #
 
         if all(i == 1 for i in self.reduce_mask):
-            #check if the tensor is ccontiguous, if true, use the c_c0de_reduce_ccontig code.
+            #check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
             #TODO: check if we are ccontiguous when we un-dimshuffle
             #TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
