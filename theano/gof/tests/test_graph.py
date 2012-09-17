@@ -3,7 +3,7 @@ import unittest
 from theano import tensor
 from theano.gof.graph import (
         Apply, as_string, clone, general_toposort, inputs, io_toposort,
-        is_same_graph, Variable)
+        is_same_graph, Variable, dependence, sort_apply_nodes)
 from theano.gof.op import Op
 from theano.gof.type import Type
 
@@ -82,7 +82,7 @@ class X:
         return as_string(inputs, outputs,
                          leaf_formatter = self.leaf_formatter,
                          node_formatter = self.node_formatter)
-    
+
 
 class TestStr(X):
 
@@ -151,7 +151,7 @@ class TestClone(X):
 ############
 
 def prenode(obj):
-    if isinstance(obj, Variable): 
+    if isinstance(obj, Variable):
         if obj.owner:
             return [obj.owner]
     if isinstance(obj, Apply):
@@ -290,3 +290,20 @@ class TestIsSameGraph(unittest.TestCase):
                                     ({y: x, t: z}, True))),
             ],
             debug=False)
+
+def test_dependence():
+    x = tensor.matrix('x')
+    y = tensor.dot(x*2, x+1)
+    nodes = io_toposort([x], [y])
+
+    for a, b in zip(nodes[:-1], nodes[1:]):
+        assert dependence(a, b) <= 0
+
+def test_sort_apply_nodes():
+    x = tensor.matrix('x')
+    y = tensor.dot(x*2, x+1)
+    str_cmp = lambda a, b: cmp(str(a), str(b)) # lexicographical sort
+    nodes = sort_apply_nodes([x], [y], cmps=[str_cmp])
+
+    for a, b in zip(nodes[:-1], nodes[1:]):
+        assert str(a) <= str(b)
