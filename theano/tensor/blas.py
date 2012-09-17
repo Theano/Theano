@@ -1640,19 +1640,19 @@ def local_dot22_to_ger_or_gemv(node):
             # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
             xv = x.dimshuffle(1)
             zeros = T.zeros([1], x.dtype)
-            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if xb[0] and not yb[0] and not yb[1]:
             # x is vector, y is matrix so try gemv
             xv = x.dimshuffle(1)
             zeros = T.zeros([y.shape[1]], x.dtype)
-            rval = gemv_no_inplace(zeros, one, y.T, xv, one)
+            rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if not xb[0] and not xb[1] and yb[1]:
             # x is matrix, y is vector, try gemv
             yv = y.dimshuffle(0)
             zeros = T.zeros([x.shape[0]], dtype=x.dtype)
-            rval = gemv_no_inplace(zeros, one, x, yv, one)
+            rval = gemv_no_inplace(zeros, one, x, yv, zero)
             return [rval.dimshuffle(0, 'x')]
 
 
