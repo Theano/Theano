@@ -1002,7 +1002,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.fgraph.nodes])
+                                    for node in f.maker.fgraph.apply_nodes])
 
                     #test the optijmization local_gpu_elemwise_1
                     f = theano.function(
@@ -1013,7 +1013,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.fgraph.nodes])
+                                    for node in f.maker.fgraph.apply_nodes])
                     assert numpy.allclose(out, outputs[-1])
 
                 results_gpu, results_cpu = outputs
