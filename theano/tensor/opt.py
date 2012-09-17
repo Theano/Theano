@@ -1118,7 +1118,11 @@ def local_useless_alloc(node):
     of the input. This is not needed.
     """
     if node.op == T.alloc:
-        if node.inputs[0].type == node.outputs[0].type:
+        if (node.inputs[0].type == node.outputs[0].type and
+            # We use an empty constant tensor to specify we want
+            # uninitizalied memory.
+            not (isinstance(node.inputs[0], T.TensorConstant) and
+                 node.inputs[0].data.size == 0)):
             return [node.inputs[0]]
 
 
