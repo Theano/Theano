@@ -687,9 +687,9 @@ class GpuCAReduce(GpuOp):
             .. code-block:: c
 
                 if (verbose)
-                    printf("running kernel_reduce_sum_10_%(name)s\\n");
+                    printf("running kernel_reduce_10_%(name)s\\n");
                 int n_shared = sizeof(float) * n_threads.x;
-                kernel_reduce_sum_10_%(name)s<<<n_blocks, n_threads,
+                kernel_reduce_10_%(name)s<<<n_blocks, n_threads,
                                                 n_shared>>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
                         CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -713,7 +713,7 @@ class GpuCAReduce(GpuOp):
         nd_out = ndim - sum(self.reduce_mask)
         print >> sio, """
             if (verbose)
-                printf("running kernel_reduce_sum_%(pattern)s_%(name)s\\n");
+                printf("running kernel_reduce_%(pattern)s_%(name)s\\n");
             int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
             if (verbose>1)
                 printf("n_threads.x=%%d, n_threads.y=%%d, n_threads.z=%%d,"
@@ -723,7 +723,7 @@ class GpuCAReduce(GpuOp):
                                   n_threads.x*n_threads.y*n_threads.z,
                                   n_blocks.x,n_blocks.y,
                                   n_blocks.x*n_blocks.y, n_shared);
-            kernel_reduce_sum_%(pattern)s_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+            kernel_reduce_%(pattern)s_%(name)s<<<n_blocks, n_threads, n_shared>>>(
             """ % locals()
         for i in xrange(ndim):
             print >> sio, """
@@ -752,7 +752,7 @@ class GpuCAReduce(GpuOp):
                 PyErr_Format(PyExc_RuntimeError,
                     "Cuda error: %%s: %%s."
                     " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_%(pattern)s_%(name)s",
+                    "kernel_reduce_%(pattern)s_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
@@ -769,9 +769,11 @@ class GpuCAReduce(GpuOp):
         self._op_guard()
         """Return a string to declare a kernel function
 
+        The result will look something like this:
+
         .. code-block:: c
 
-            static __global__ void kernel_reduce_sum_110_%(nodename)s(
+            static __global__ void kernel_reduce_110_%(nodename)s(
                     const int d0,
                     const int d1,
                     const int d2,
@@ -792,7 +794,7 @@ class GpuCAReduce(GpuOp):
         sio = StringIO.StringIO()
 
         print >> sio, """
-            static __global__ void kernel_reduce_sum_%(pattern)s_%(nodename)s(
+            static __global__ void kernel_reduce_%(pattern)s_%(nodename)s(
         """ % locals()
         for i in xrange(ndim):
             print >> sio, """
@@ -965,11 +967,11 @@ class GpuCAReduce(GpuOp):
                     std::min(CudaNdarray_SIZE(%(x)s),
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(1);
-            if (verbose) printf("running kernel_reduce_sum_ccontig_%(name)s"
+            if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
                                 " n_threads.x=%%d, size=%%d, ndim=%%d\\n",
                                 n_threads.x,CudaNdarray_SIZE(%(x)s),%(x)s->nd);
             int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_sum_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+            kernel_reduce_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                     CudaNdarray_SIZE(%(x)s),
                     CudaNdarray_DEV_DATA(%(x)s),
                     CudaNdarray_DEV_DATA(%(z)s));
@@ -980,7 +982,7 @@ class GpuCAReduce(GpuOp):
                 PyErr_Format(PyExc_RuntimeError,
                              "Cuda error: %%s: %%s."
                              " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_ccontig_%(name)s",
+                    "kernel_reduce_ccontig_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
@@ -1031,9 +1033,9 @@ class GpuCAReduce(GpuOp):
         :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
                   Work for N=1,2,3
         """
-        self._op_guard()
         assert N in [1, 2, 3]
         makecall = self._makecall(node, name, x, z, fail)
+        self._op_guard()
         N_pattern = ''.join(['1'] * N)
         param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
                               for i in xrange(N + 1)])
@@ -1100,13 +1102,13 @@ class GpuCAReduce(GpuOp):
                     NUM_VECTOR_OP_BLOCKS));
             if (verbose) {
               fprintf(stderr,
-                "running kernel_reduce_sum_10_%(name)s n_blocks=(%%i,%%i)\\n",
+                "running kernel_reduce_10_%(name)s n_blocks=(%%i,%%i)\\n",
                 n_blocks.x,
                 n_blocks.y);
             }
             assert( CudaNdarray_HOST_DIMS(%(x)s)[1] == CudaNdarray_HOST_DIMS(%(z)s)[0]);
             int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_sum_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+            kernel_reduce_010_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                     1,
                     CudaNdarray_HOST_DIMS(%(x)s)[0],
                     CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -1125,7 +1127,7 @@ class GpuCAReduce(GpuOp):
                 PyErr_Format(PyExc_RuntimeError,
                     "Cuda error: %%s: %%s."
                     " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_sum_010_%(name)s",
+                    "kernel_reduce_010_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
@@ -1177,7 +1179,7 @@ class GpuCAReduce(GpuOp):
                 if (n_blocks.x > NUM_VECTOR_OP_BLOCKS) n_blocks.x = NUM_VECTOR_OP_BLOCKS;
                 if (n_blocks.x*n_blocks.y > NUM_VECTOR_OP_BLOCKS) n_blocks.y = NUM_VECTOR_OP_BLOCKS/n_blocks.x;
                 int n_shared = 0;
-                kernel_reduce_sum_010_AD_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                kernel_reduce_010_AD_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                 A,B,C,D,
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -1194,7 +1196,7 @@ class GpuCAReduce(GpuOp):
                     PyErr_Format(PyExc_RuntimeError,
                         "Cuda error: %%s: %%s."
                         " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                        "kernel_reduce_sum_010_%(name)s",
+                        "kernel_reduce_010_%(name)s",
                         cudaGetErrorString(sts),
                         n_blocks.x,
                         n_blocks.y,
@@ -1247,7 +1249,7 @@ class GpuCAReduce(GpuOp):
                 if (cudaSuccess != sts)
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                        "kernel_reduce_sum_%(pattern)s_%(name)s",
+                        "kernel_reduce_%(pattern)s_%(name)s",
                         cudaGetErrorString(sts),
                         n_blocks.x,
                         n_blocks.y,
@@ -1487,7 +1489,7 @@ class GpuCAReduce(GpuOp):
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_ccontig_%(nodename)s(
+            static __global__ void kernel_reduce_ccontig_%(nodename)s(
                     const unsigned int d0,
                     const float *A,
                     float * Z)
@@ -1514,7 +1516,7 @@ class GpuCAReduce(GpuOp):
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_1_%(nodename)s(
+            static __global__ void kernel_reduce_1_%(nodename)s(
                     const unsigned int d0,
                     const float *A, const int sA0,
                     float * Z)
@@ -1542,7 +1544,7 @@ class GpuCAReduce(GpuOp):
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_11_%(nodename)s(
+            static __global__ void kernel_reduce_11_%(nodename)s(
                     const int d0,
                     const int d1,
                     const float *A, const int sA0, const int sA1,
@@ -1623,7 +1625,7 @@ class GpuCAReduce(GpuOp):
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_010_%(nodename)s(
+            static __global__ void kernel_reduce_010_%(nodename)s(
                     const int d0,
                     const int d1,
                     const int d2,
@@ -1658,7 +1660,7 @@ class GpuCAReduce(GpuOp):
             """ % locals()
         if self.reduce_mask == (0, 1, 0):
             print >> sio, """
-            static __global__ void kernel_reduce_sum_010_AD_%(nodename)s(
+            static __global__ void kernel_reduce_010_AD_%(nodename)s(
                     const int A,
                     const int B,
                     const int C,
@@ -1746,7 +1748,7 @@ class GpuCAReduce(GpuOp):
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_110_%(nodename)s(
+            static __global__ void kernel_reduce_110_%(nodename)s(
                     const int d0,
                     const int d1,
                     const int d2,
@@ -1827,7 +1829,7 @@ class GpuCAReduce(GpuOp):
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_001_%(nodename)s(
+            static __global__ void kernel_reduce_001_%(nodename)s(
                     const int d0,
                     const int d1,
                     const int d2,
@@ -1940,7 +1942,7 @@ class GpuCAReduce(GpuOp):
         if self.reduce_mask == (1, 0, 1, 1):
             reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]')
             print >> sio, """
-            static __global__ void kernel_reduce_sum_1011_%(nodename)s(
+            static __global__ void kernel_reduce_1011_%(nodename)s(
                     const unsigned int d0,
                     const unsigned int d1,
                     const unsigned int d2,
