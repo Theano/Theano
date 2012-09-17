@@ -1083,6 +1083,7 @@ class Elemwise(Op):
 class CAReduce(Op):
     """
     Reduces a scalar operation along the specified axis(es).
+    Named for the CAR function from LISP.
 
     The output will have the same shape as the input minus the reduced
     dimensions. It will contain the variable of accumulating all values
