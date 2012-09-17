@@ -28,7 +28,7 @@ def test_nvidia_driver1():
                         profile=False)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 2
-    assert sum(isinstance(node.op, B.GpuSum) for node in topo) == 1
+    assert sum(isinstance(node.op, B.GpuCAReduce) for node in topo) == 1
     if not numpy.allclose(f(), a.sum()):
         raise Exception("The nvidia driver version installed with this OS "
                         "does not give good results for reduction."

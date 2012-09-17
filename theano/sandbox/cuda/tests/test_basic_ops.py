@@ -108,7 +108,7 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         if val.size == 0:
             assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
@@ -145,7 +145,7 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         assert _allclose(f2(val), f(val)), ('shape', shape,
                                             'pattern', pattern,
@@ -181,7 +181,7 @@ def test_sum():
             val2 = val2[::2, ::2, ::2, ::2]
         f = theano.function([a], b, mode=mode_without_gpu)
         f2 = theano.function([a2], b2, mode=mode_with_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert _allclose(f2(val2), f(val)), ('shape', shape,
                                              'pattern', pattern,
