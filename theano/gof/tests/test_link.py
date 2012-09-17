@@ -163,3 +163,18 @@ class TestWrapLinker(unittest.TestCase):
         fn()
         assert nodes == [div, add, mul]
         assert o[0].data == 1.5
+
+def test_sort_schedule_fn():
+    import theano
+    from theano.gof.sched import sort_schedule_fn, depends
+    x = theano.tensor.matrix('x')
+    y = theano.tensor.dot(x[:5]*2, x.T+1).T
+    str_cmp = lambda a, b: cmp(str(a), str(b)) # lexicographical sort
+    linker = theano.OpWiseCLinker(schedule=sort_schedule_fn(str_cmp))
+    mode = theano.Mode(linker=linker)
+    f = theano.function((x,), (y,), mode=mode)
+
+    nodes = f.maker.linker.make_all()[-1]
+    for a, b in zip(nodes[:-1], nodes[1:]):
+        if not depends((b,a)):
+            assert str(a) < str(b)
