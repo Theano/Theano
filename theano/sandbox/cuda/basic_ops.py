@@ -679,7 +679,6 @@ class GpuCAReduce(GpuOp):
         return sio.getvalue()
 
     def _makecall(self, node, name, x, z, fail, pattern=None):
-        self._op_guard()
         """Return a string for making a kernel call.
 
             The return value looks something like:
