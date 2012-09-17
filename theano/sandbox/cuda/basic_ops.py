@@ -784,7 +784,10 @@ class GpuCAReduce(GpuOp):
                     float * Z,
                     const int sZ0)
 
-        """ % locals()
+            Since the nodename is unique, we don't need to put the name
+            of the scalar_op in here.
+
+        """
         if reduce_mask is None:
             reduce_mask = self.reduce_mask
         if ndim is None:
