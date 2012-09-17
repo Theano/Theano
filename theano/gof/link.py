@@ -420,10 +420,11 @@ class PerformLinker(LocalLinker):
     the L{FunctionGraph} in the order given by L{Linker.schedule}.
     """
 
-    def __init__(self, allow_gc=True):
+    def __init__(self, allow_gc=True, schedule=None):
         #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
         self.fgraph = None
         self.allow_gc = allow_gc
+        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
@@ -533,7 +534,7 @@ class WrapLinker(Linker):
 
     """
 
-    def __init__(self, linkers, wrapper):
+    def __init__(self, linkers, wrapper, schedule=None):
         """
         Initialize a WrapLinker.
 
@@ -555,6 +556,7 @@ class WrapLinker(Linker):
         self.fgraph = None
         self.linkers = linkers
         self.wrapper = wrapper
+        self.schedule = schedule or self.schedule
 
     def __copy__(self):
         """
@@ -569,7 +571,8 @@ class WrapLinker(Linker):
         """
         other = self.__class__(
                 linkers=[copy(l) for l in self.linkers],
-                wrapper=self.wrapper)
+                wrapper=self.wrapper,
+                schedule=self.schedule)
         return other
 
     def accept(self, fgraph, no_recycling=None):

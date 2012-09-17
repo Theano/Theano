@@ -1547,10 +1547,11 @@ default_make_thunk = [theano.gof.Op.make_thunk.im_func,
 
 class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
-    def __init__(self, maker):
+    def __init__(self, maker, schedule=None):
         super(gof.LocalLinker, self).__init__()
         self.fgraph = None
         self.maker = maker
+        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
