@@ -578,7 +578,6 @@ class GpuCAReduce(GpuOp):
         return True
 
     def c_code(self, node, name, inp, out, sub):
-        self._op_guard()
         x, = inp
         z, = out
 
