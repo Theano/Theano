@@ -1661,6 +1661,8 @@ class GpuCAReduce(GpuOp):
             # this is the special case where reduction is idempotent so it doesn't
             # matter if we reduce with the first element multiple times.
             if isinstance(self.scalar_op, scal.Add):
+                # special cased sum code (special case because starts the
+                # reduction with 0)
                 print >> sio, """
                 %(decl)s{
                     %(init)s
@@ -1679,6 +1681,8 @@ class GpuCAReduce(GpuOp):
                 }
                 """ % locals()
             elif isinstance(self.scalar_op, scal.Maximum):
+                # special cased max code (special case because visits first
+                # member of each row twice)
                 print >> sio, """
                 %(decl)s{
                     %(init)s
@@ -1697,6 +1701,15 @@ class GpuCAReduce(GpuOp):
                 }
                 """ % locals()
             else:
+                # TODO: implement general case and get rid of the two special
+                # cases above
+                # it should initialize myresult to element 0,
+                # and the for loop should begin traversing from element 1
+                # raise an error if asked to reduce an empty dimension
+                # (maybe special-case sum to return 0 instead of returning an
+                # error)
+                # in both cases, benchmark the general case against the existing
+                # code to make sure it does not cause a slowdown
                 raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
             self._op_guard()
