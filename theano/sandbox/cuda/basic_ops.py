@@ -819,7 +819,6 @@ class GpuCAReduce(GpuOp):
         return sio.getvalue()
 
     def _k_init(self, *args):
-        self._op_guard()
         return """
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
