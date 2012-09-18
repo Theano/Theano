@@ -251,3 +251,20 @@ def irecv(shape, dtype, source, tag):
     return MPIRecv(source, tag, shape, dtype)()
 def recv(shape, dtype, source, tag):
     return MPIRecvWait()(*irecv(shape, dtype, source, tag))
+
+def mpi_key(a):
+    # Wait as long as possible on Waits
+    if isinstance(a.op, (MPIRecvWait, MPISendWait)):
+        return (1,)
+    # Start async communication as soon as possible
+    # Break ties by the variable tag
+    if isinstance(a.op, (MPIRecv, MPISend)):
+        return (-1, a.op.tag)
+    # Everything else is normal
+    return (0,)
+
+def mpi_cmp(a, b):
+    """
+    A comparator function to optimize MPI computation/communicaiton overlap
+    """
+    return cmp(mpi_key(a), mpi_key(b))
