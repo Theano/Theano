@@ -821,15 +821,18 @@ class GpuCAReduce(GpuOp):
     def _k_init(self, *args):
         return """
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
-                const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+                const int threadNum = threadIdx.z * blockDim.x * blockDim.y
+                + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
                 float myresult = 0.0f;
 
                 if (warpSize != 32)
                 {
                     // TODO: set error code
-                    // 2012-09-17 IG: as of today, Fred says this is unlikely to change for any GPU released
-                    // anytime soon. Hard to fix as _k_init is called by c_support_code_apply and
+                    // 2012-09-17 IG: as of today, Fred says this is unlikely
+                    // to change for any GPU released
+                    // anytime soon. Hard to fix as _k_init is called by
+                    // c_support_code_apply and
                     // c_support_code_apply is not passed a 'fail' code string.
                     Z[0] = -666;
                     return;
