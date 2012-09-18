@@ -146,11 +146,11 @@ class MPIRecvWait(Op):
     @note: Non-differentiable.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, tag):
+        self.tag = tag
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.tag == other.tag
 
     def __hash__(self):
         return hash(type(self))
@@ -223,11 +223,11 @@ class MPISendWait(Op):
     @note: Non-differentiable.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, tag):
+        self.tag = tag
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.tag == other.tag
 
     def __hash__(self):
         return hash(type(self))
@@ -247,21 +247,23 @@ class MPISendWait(Op):
 def isend(var, dest, tag):
     return MPISend(dest, tag)(var)
 def send(var, dest, tag):
-    return MPISendWait()(isend(var, dest, tag))
+    return MPISendWait(tag)(isend(var, dest, tag))
 
 def irecv(shape, dtype, source, tag):
     return MPIRecv(source, tag, shape, dtype)()
 def recv(shape, dtype, source, tag):
-    return MPIRecvWait()(*irecv(shape, dtype, source, tag))
+    return MPIRecvWait(tag)(*irecv(shape, dtype, source, tag))
 
 def mpi_key(a):
     # Wait as long as possible on Waits
     if isinstance(a.op, (MPIRecvWait, MPISendWait)):
-        return (1,)
+        return ( 1, a.op.tag)
     # Start async communication as soon as possible
-    # Break ties by the variable tag
     if isinstance(a.op, (MPIRecv, MPISend)):
         return (-1, a.op.tag)
+
+    # Break ties by the tag. Earlier tags first.
+
     # Everything else is normal
     return (0,)
 

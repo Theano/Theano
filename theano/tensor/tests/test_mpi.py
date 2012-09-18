@@ -2,6 +2,10 @@ from theano.tensor.io import send, recv, mpi_cmp, MPISend, MPISendWait
 import theano
 import subprocess
 import os
+from theano.gof.graph import sort_schedule_fn
+mpi_scheduler = sort_schedule_fn(mpi_cmp)
+mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
+mpi_mode = theano.Mode(linker=mpi_linker)
 
 def test_recv():
     x = recv((10,10), 'float64', 0, 11)
@@ -45,12 +49,17 @@ def test_mpi_cmp():
     assert mpi_cmp(sendnode, addnode) < 0 # send happens first
     assert mpi_cmp(waitnode, addnode) > 0 # wait happens last
 
-def test_mpi_schedule():
-    from theano.gof.graph import sort_schedule_fn
-    scheduler = sort_schedule_fn(mpi_cmp)
-    linker = theano.OpWiseCLinker(schedule=scheduler)
-    mode = theano.Mode(linker=linker)
+def test_mpi_tag_ordering():
+    x = recv((2,2), 'float32', 1, 12)
+    y = recv((2,2), 'float32', 1, 11)
+    z = recv((2,2), 'float32', 1, 13)
+    f = theano.function([], [x,y,z], mode=mpi_mode)
+    nodes = f.maker.linker.make_all()[-1]
 
+    assert all(node.op.tag == tag
+            for node, tag in zip(nodes, (11,12,13,11,12,13)))
+
+def test_mpi_schedule():
     x = theano.tensor.matrix('x')
     y = send(x, 1, 11)
     z = x + x
@@ -58,7 +67,7 @@ def test_mpi_schedule():
     sendnode = y.owner.inputs[0].owner
     addnode = z.owner
 
-    f = theano.function([x], [y, z], mode=mode)
+    f = theano.function([x], [y, z], mode=mpi_mode)
     nodes = f.maker.linker.make_all()[-1]
     optypes = [MPISend, theano.tensor.Elemwise, MPISendWait]
     assert all(isinstance(node.op, optype)
