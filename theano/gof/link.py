@@ -424,7 +424,8 @@ class PerformLinker(LocalLinker):
         #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
         self.fgraph = None
         self.allow_gc = allow_gc
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
