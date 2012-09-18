@@ -6,7 +6,7 @@ import sys
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Op, Type, Apply, Variable, Constant, Generic
 from theano import tensor, scalar, config
 
 from theano.gof.python25 import all, any
@@ -156,6 +156,10 @@ class GpuFromHost(GpuOp):
         return (1,)
 
 gpu_from_host = GpuFromHost()
+
+##################################
+# Asynchronous GPU Communication #
+##################################
 
 
 class GpuElemwise(GpuOp):
