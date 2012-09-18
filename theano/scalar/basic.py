@@ -827,6 +827,11 @@ class ScalarOp(Op):
         """ Returns a tuple of integers representing the version of the
         scalar op's cuda_assign_reduce method. Must be unique across ops.
         An empty tuple means not to use code caching for this op"""
+
+        # Because this is the abstract parent class, we must return ()
+        # Returning a non-empty tuple would enable caching for all scalar
+        # ops, and some ops may be incompatible with it
+
         return ()
 
     def c_code_cache_version(self):
