@@ -512,6 +512,12 @@ class GpuCAReduce(GpuOp):
     many code cases are supported for scalar_op being anything other than
     scal.Add instances yet.
 
+    Important note: if you implement new cases for this op, be sure to
+    benchmark them and make sure that the local_gpu_careduce op should
+    really replace CAReduce with GpuCAReduce for these cases. GPUs are
+    not especially well-suited to reduction operations so it is quite
+    possible that the GPU might be slower for some cases.
+
     """
 
     def __init__(self, reduce_mask, scalar_op):
