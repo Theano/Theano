@@ -7,19 +7,15 @@ import os
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant, Generic
-from theano import tensor, scalar, config
+from theano import Apply, Variable, Generic
+from theano import tensor, config
 
-from theano.gof.python25 import all, any
-
-from theano.sandbox.cuda import GpuOp, device_properties
+from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (HostFromGpu, GpuFromHost,
-                                           host_from_gpu,
-        gpu_from_host)
+                                           host_from_gpu, gpu_from_host)
 from theano.sandbox.cuda.opt import gpu_seqopt
 
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.opt import gpu_seqopt
 import cuda_ndarray
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
@@ -214,8 +210,6 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         Py_INCREF(%(inp)s);
         """ % locals()
 
-
-# TODO Register
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
 def local_async_gpu(node):
     if isinstance(node.op, HostFromGpu):
@@ -223,13 +217,9 @@ def local_async_gpu(node):
     if isinstance(node.op, GpuFromHost):
         return [GpuFromHostWait()(*GpuFromHostSend()(node.inputs[0]))]
     return False
+
 async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 
-
-# gpu_seqopt.register('local_async_gpu', local_async_gpu, 3, 'fast_run', 'gpu')
-
-#gpu_seqopt.register('local_async_gpu',
-#                    theano.tensor.opt.in2out(local_async_gpu), 3,
-#                    'fast_run', 'gpu')
-gpu_seqopt.register('local_async_gpu', theano.tensor.opt.in2out(local_async_gpu),
-                    3,'fast_run', 'gpu')
+gpu_seqopt.register('local_async_gpu',
+                    theano.tensor.opt.in2out(local_async_gpu),
+                    3, 'fast_run', 'gpu')
