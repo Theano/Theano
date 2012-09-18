@@ -15,8 +15,7 @@ class DebugLinker(gof.WrapLinker):
                  copy_originals=False,
                  check_types=True,
                  compare_variables=True,
-                 compare_fn=(lambda x, y: x == y),
-                 schedule=None):
+                 compare_fn=(lambda x, y: x == y)):
         if debug_pre is None:
             debug_pre = []
         if debug_post is None:
@@ -46,8 +45,6 @@ class DebugLinker(gof.WrapLinker):
             self.debug_post.append(self.check_types)
         if compare_variables is not None:
             self.debug_post.append(self.compare_variables)
-
-        self.schedule = schedule or self.schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
