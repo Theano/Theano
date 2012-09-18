@@ -404,7 +404,8 @@ class CLinker(link.Linker):
 
     def __init__(self, schedule=None):
         self.fgraph = None
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """WRITEME"""
@@ -1405,7 +1406,8 @@ class OpWiseCLinker(link.LocalLinker):
         self.fallback_on_perform = fallback_on_perform
         self.nice_errors = nice_errors
         self.allow_gc = allow_gc
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
@@ -1550,7 +1552,8 @@ class DualLinker(link.Linker):
         """
         self.fgraph = None
         self.checker = checker
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:

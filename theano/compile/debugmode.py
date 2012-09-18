@@ -1551,7 +1551,8 @@ class _Linker(gof.link.LocalLinker):
         super(gof.LocalLinker, self).__init__()
         self.fgraph = None
         self.maker = maker
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:

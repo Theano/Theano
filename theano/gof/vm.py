@@ -538,7 +538,8 @@ class VM_Linker(link.LocalLinker):
         self.callback = callback
         self.lazy = lazy
         self.updated_vars = {}
-        self.schedule = schedule or self.schedule
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
