@@ -1504,9 +1504,7 @@ class GpuCAReduce(GpuOp):
         op_version = self.scalar_op.cuda_assign_reduce_code_cache_version()
         if op_version:
             # our version is 0
-            rval = [0]
-            rval.extend(op_version)
-            rval = tuple(rval)
+            rval = (0,) + op_version
             return rval
         else:
             # we can't support caching if the op doesn't
