@@ -7,6 +7,8 @@ import subprocess
 import sys
 import warnings
 
+import numpy
+
 import theano
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -120,6 +122,17 @@ class NVCC_compiler(object):
         cuda_ndarray_cuh_hash = hash_from_file(
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
+
+        # numpy 1.7 deprecated the following macro but the didn't
+        # existed in the past
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if bool(numpy_ver < [1, 7]):
+            flags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            flags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            flags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            flags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # We compile cuda_ndarray.cu during import.
         # We should not add device properties at that time.
