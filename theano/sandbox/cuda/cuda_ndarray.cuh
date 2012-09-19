@@ -161,6 +161,14 @@ DllExport const int *CudaNdarray_DEV_STRIDES(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self);
 DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
 
+// The following 4 macro are here to help make c code generator that work on
+// both PyArray and CudaNdarray.  This is at least used for Subtensor and
+// GpuSubtensor
+#define CudaNdarray_DIMS CudaNdarray_HOST_DIMS
+#define CudaNdarray_NDIM(self) self->nd
+#define CudaNdarray_STRIDES CudaNdarray_HOST_STRIDES
+#define CudaNdarray_BYTES CudaNdarray_DEV_DATA
+
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
