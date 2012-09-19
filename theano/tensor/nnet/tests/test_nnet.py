@@ -843,6 +843,74 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
                 raise
 
+    def test_optimize_xent_vector3(self):
+        # Same as test_optimize_xent_vector2, but y is the result of
+        # a "flatten", and it somehow makes the constant-folding
+        # of arange(y.shape[0]) happen before the xent optimization
+        verbose = 0
+        mode = theano.compile.mode.get_default_mode()
+        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
+            mode = 'FAST_RUN'
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x_val = rng.randn(5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
+        y_val = numpy.asarray([2])
+
+        x = T.vector('x')
+        b = T.vector('b')
+        y_ = T.lvector('y_')
+        y = y_.flatten()
+
+        def print_graph(func):
+            for i, node in enumerate(func.maker.fgraph.toposort()):
+                print i, node
+            # Last node should be the output
+            print i, printing.pprint(node.outputs[0])
+            print
+
+        ## Test that a biased softmax is optimized correctly
+        bias_expressions = [
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
+
+        for expr in bias_expressions:
+            f = theano.function([x, b, y_], expr, mode=mode)
+            if verbose:
+                print_graph(f)
+            try:
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                # [big_op, sum, dim_shuffle, flatten]
+                assert len(ops) <= 4
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
+                f(x_val, b_val, y_val)
+            except Exception:
+                theano.printing.debugprint(f)
+                raise
+
+            backup = config.warn.sum_div_dimshuffle_bug
+            config.warn.sum_div_dimshuffle_bug = False
+            try:
+                g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
+            finally:
+                config.warn.sum_div_dimshuffle_bug = backup
+
+            if verbose:
+                print_graph(g)
+            try:
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) <= 6
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax_with_bias in ops
+                assert softmax_grad not in ops
+                g(x_val, b_val, y_val)
+            except Exception:
+                theano.printing.debugprint(g)
+                raise
+
     def test_scale_cost(self):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
