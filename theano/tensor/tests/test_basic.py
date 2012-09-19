@@ -2565,15 +2565,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.fail()
 
     def test1_ok_range_finite(self):
-        n = self.shared(numpy.ones(3, dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(3, dtype=self.dtype))
         t = n[0:2]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(tval[1] == 5.0)
+        self.assertTrue((tval == [0, 1]).all())
 
     def test2_ok_range_finite(self):
-        n = self.shared(numpy.ones((3, 4), dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((3, 4)))
         # Also check negative index
         for idx in [(slice(0, 2), 3), ((slice(0, 2), -1)), (slice(0, 2), -4)]:
             t = n[idx]  # l]#0:2,3]
@@ -2612,25 +2612,25 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test1_ok_range_infinite(self):
         #Subtensor.debug = True
-        n = self.shared(numpy.ones(3, dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(3, dtype=self.dtype))
         t = n[1:]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(tval[1] == 5.0)
+        self.assertTrue((tval == [1.0, 2.0]).all())
 
     def test1_ok_strided(self):
-        n = self.shared(numpy.ones(5, dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(5, dtype=self.dtype))
         t = n[1::2]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(tval[1] == 5.0)
+        self.assertTrue((tval == [1.0, 3.0]).all())
 
         t = n[0:-1:2]  # 0 to 1 from the end stepping by 2
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(tval[1] == 5.0)
+        self.assertTrue((tval == [0.0, 2.0]).all())
 
     def test2_err_bounds0(self):
         n = self.shared(numpy.ones((2, 3), dtype=self.dtype) * 5)
@@ -2671,8 +2671,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             sys.stderr = old_stderr
 
     def test2_ok_elem(self):
-        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).
-            reshape((2, 3)))
+        n = self.shared(numpy.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[0, 2]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
@@ -2680,8 +2679,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(numpy.all(tval == 2))
 
     def test2_ok_row(self):
-        n = self.shared(numpy.asarray(range(6), dtype=self.dtype).
-            reshape((2, 3)))
+        n = self.shared(numpy.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[1]
         self.assertFalse(any(n.type.broadcastable))
         self.assertTrue(isinstance(t.owner.op, Subtensor))
@@ -2690,25 +2688,24 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(numpy.all(tval == [3, 4, 5]))
 
     def test2_ok_col(self):
-        n = self.shared(numpy.ones((2, 3), dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[:, 0]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         self.assertFalse(any(n.type.broadcastable))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(numpy.all(tval == 5.0))
+        self.assertTrue(numpy.all(tval == [0, 3]))
 
     def test2_ok_rows_finite(self):
-        n = self.shared(numpy.ones((4, 3), dtype=self.dtype) * 5)
+        n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1:3, 0]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
-        self.assertTrue(numpy.all(tval == 5.0))
+        self.assertTrue(numpy.all(tval == [3, 6]))
 
     def test2_ok_cols_infinite(self):
-        n = self.shared(numpy.asarray(range(12), dtype=self.dtype).
-            reshape((4, 3)))
+        n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1, 2:]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
@@ -2716,8 +2713,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(numpy.all(tval == 5))
 
     def test2_ok_strided(self):
-        n = self.shared(numpy.asarray(range(20), dtype=self.dtype).
-            reshape((4, 5)))
+        n = self.shared(numpy.arange(20, dtype=self.dtype).reshape((4, 5)))
         t = n[1:4:2, 1:5:2]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
@@ -2725,8 +2721,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(numpy.all(tval == [[6, 8], [16, 18]]))
 
     def test3_ok_mat(self):
-        n = self.shared(numpy.asarray(range(24), dtype=self.dtype).
-            reshape((2, 3, 4)))
+        n = self.shared(numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
         t = n[0, 0, 0]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
@@ -2745,8 +2740,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         """
         newaxis = numpy.newaxis
 
-        n = self.shared(numpy.asarray(range(24), dtype=self.dtype).
-            reshape((2, 3, 4)))
+        n = self.shared(numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
         assert n.ndim == 3
 
         n4 = n[newaxis, :, :, :]
