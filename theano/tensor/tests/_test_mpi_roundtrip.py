@@ -6,7 +6,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 import theano
 from theano.tensor.io import send, recv, mpi_cmp
-from theano.gof.graph import sort_schedule_fn
+from theano.gof.sched import sort_schedule_fn
 import numpy as np
 from sys import stdout
 
