@@ -816,24 +816,6 @@ class ScalarOp(Op):
             else:
                 return self.__class__.__name__
 
-    def cuda_assign_reduce(self, left, right):
-        """ Returns CUDA code assigning the reduction of left and right
-        using this scalar operation to left."""
-
-        raise NotImplementedError(
-                str(self)+" does not implement cuda_assign_reduce")
-
-    def cuda_assign_reduce_code_cache_version(self):
-        """ Returns a tuple of integers representing the version of the
-        scalar op's cuda_assign_reduce method. Must be unique across ops.
-        An empty tuple means not to use code caching for this op"""
-
-        # Because this is the abstract parent class, we must return ()
-        # Returning a non-empty tuple would enable caching for all scalar
-        # ops, and some ops may be incompatible with it
-
-        return ()
-
     def c_code_cache_version(self):
         return (4,)
 
@@ -1178,12 +1160,6 @@ class Maximum(BinaryScalarOp):
         gy = eq(output, y) * gz
         return (gx, gy)
 
-    def cuda_assign_reduce(self, left, right):
-        return left + ' = max(' + left + ', '+ right + ');'
-    def cuda_assign_reduce_code_cache_version(self):
-        # Maximum's unique identifier is 0
-        # Version 0 of its code
-        return (0,0)
 maximum = Maximum(upcast_out, name='maximum')
 
 
@@ -1247,13 +1223,6 @@ class Add(ScalarOp):
                     retval += [gz]
         return retval
 
-    def cuda_assign_reduce(self, left, right):
-        return left + ' += ' + right + ';'
-
-    def cuda_assign_reduce_code_cache_version(self):
-        # Add's unique identifier is 1
-        # Version 0 of its code
-        return (1,0)
 
 add = Add(upcast_out, name='add')
 
