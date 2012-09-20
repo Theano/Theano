@@ -82,8 +82,9 @@ struct CudaNdarray
 
     //device pointers (allocated by cudaMalloc)
     mutable int dev_structure_fresh;
-    //dev_structure should be accessed via macros, otherwise may not be synchronized
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
+    //dev_structure should be accessed via macros, otherwise may not be
+    //synchronized. The macro will allocate it when needed.
+    mutable int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
 };
 
@@ -251,19 +252,8 @@ CudaNdarray_set_nd(CudaNdarray * self, const int nd)
         {
             self->host_structure[i] = 0;
         }
-
-        int struct_size = cnda_structure_size(nd);
-        if (struct_size)
-        {
-            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
-            if (NULL == self->dev_structure)
-            {
-                free(self->host_structure);
-                self->host_structure = NULL;
-                self->dev_structure = NULL;
-                return -1;
-            }
-        }
+        //The device structure will be created in cnda_copy_structure_to_device
+        //if needed.
         self->nd = nd;
         self->dev_structure_fresh = 0;
     }
