@@ -523,6 +523,9 @@ class GpuCAReduce(GpuOp):
     def __init__(self, reduce_mask, scalar_op):
         self.reduce_mask = tuple(reduce_mask)
         self.scalar_op = scalar_op
+        # used to make sure that calls to scalar op
+        # have unique name arguments
+        self._n_scalar_op_calls = 0
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -843,19 +846,38 @@ class GpuCAReduce(GpuOp):
 
         """
 
-    def _assign_reduce(self, left, right):
+    def _assign_reduce(self, node, name, left, right, sub):
         """
+            node: the node argument to this op's c_code
+            name: the name argument to this op's c_code
             left: a C code string identifying an lvalue
             right: a C code string identifying an expression
+            sub: the sub argument to this op's c_code
 
             returns C code to reduce left and right, assigning the
             result to left."""
 
-        return self.scalar_op.cuda_assign_reduce(left, right)
+        x ,= node.inputs
 
-    def _k_reduce_buf(self, z_pos):
+        dtype = x.dtype
+
+
+        dummy_left = scal.Scalar(dtype = dtype)()
+        dummy_right = scal.Scalar(dtype = dtype)()
+
+        dummy_node = self.scalar_op.make_node(dummy_left, dummy_right)
+
+        dummy_name = name + '_scalar_op'+ str(self._n_scalar_op_calls)
+        self._n_scalar_op_calls += 1
+
+        return self.scalar_op.c_code(node, name, (left, right), (left, ), sub)
+
+    def _k_reduce_buf(self, z_pos, node, name, sub):
         """
         WRITEME
+
+        node, name, sub: these should be passed through from the original
+        call to c_code
         """
 
         # This code (the code in new_version) is currently ignored.
@@ -872,7 +894,7 @@ class GpuCAReduce(GpuOp):
         {
             int idx = threadNum - (threadCount >> 1) * 2;"""
 
-        new_version += self._assign_reduce('buf[idx]','buf[threadNum]')
+        new_version += self._assign_reduce(node, name, 'buf[idx]','buf[threadNum]', sub)
 
         new_version += """
         }
@@ -891,7 +913,7 @@ class GpuCAReduce(GpuOp):
               float temp = buf[threadNum + halfPoint];
               """
 
-        new_version += self._assign_reduce('buf[threadNum]', 'temp')
+        new_version += self._assign_reduce(node, name, 'buf[threadNum]', 'temp', sub)
 
         new_version += """
             }
@@ -921,7 +943,7 @@ class GpuCAReduce(GpuOp):
             for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
             {
                 """
-        current_version += self._assign_reduce('myresult', 'buf[i]') + """
+        current_version += self._assign_reduce(node, name, 'myresult', 'buf[i]', sub) + """
             }
             buf[threadNum] = myresult;
         /*Comment this optimization as it don't work on Fermi GPU.
@@ -930,8 +952,8 @@ class GpuCAReduce(GpuOp):
             if(threadCount >32)
             {"""
         for num in [16,8,4,2,1]:
-            current_version += self._assign_reduce('buf[threadNum]',
-                    'buf[threadNum+%d]') % num
+            current_version += self._assign_reduce(node, name, 'buf[threadNum]',
+                    'buf[threadNum+%d]' % num, sub)
         current_version += """
                 if (threadNum == 0)
                 {
@@ -945,9 +967,9 @@ class GpuCAReduce(GpuOp):
                 //reduce so that threadNum 0 has the reduction of everything
                 """
         for num in [16,8,4,2,1]:
-            this_if = "if (threadNum + %d < threadCount) " + \
-                self._assign_reduce('buf[threadNum]','buf[threadNum+%d]')
-            current_version += this_if % (num, num)
+            this_if = "if (threadNum + %d < threadCount) " % num + \
+                self._assign_reduce(node, name, 'buf[threadNum]','buf[threadNum+%d]' % num, sub)
+            current_version += this_if
         current_version += """
                 if (threadNum == 0)
                 {
@@ -1528,7 +1550,7 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
-            reducebuf = self._k_reduce_buf('Z[0]')
+            reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_ccontig_%(nodename)s(
                     const unsigned int d0,
@@ -1556,7 +1578,7 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
-            reducebuf = self._k_reduce_buf('Z[0]')
+            reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_1_%(nodename)s(
                     const unsigned int d0,
@@ -1585,7 +1607,7 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             #this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
-            reducebuf = self._k_reduce_buf('Z[0]')
+            reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_11_%(nodename)s(
                     const int d0,
@@ -1656,7 +1678,7 @@ class GpuCAReduce(GpuOp):
                 first_i3 = 'threadIdx.x'
                 sA3 = 'sA3'
 
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0]', node, nodename, sub = {})
             param_dim = ",".join(["const int d%(i)s" % locals()
                                   for i in xrange(nd_in)])
             param_strides = ",".join(["const int sA%(i)s" % locals()
@@ -1730,7 +1752,7 @@ class GpuCAReduce(GpuOp):
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]', node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_010_%(nodename)s(
                     const int d0,
@@ -1856,7 +1878,7 @@ class GpuCAReduce(GpuOp):
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]')
+            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_110_%(nodename)s(
                     const int d0,
@@ -1892,7 +1914,8 @@ class GpuCAReduce(GpuOp):
             """ % locals()
         if self.reduce_mask == (1, 0, 0):
             self._op_guard()
-            reducebuf = self._k_reduce_buf('Z[i1 * sZ0 + i2 * sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i1 * sZ0 + i2 * sZ1]',
+                    node, nodename, sub={})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
             print >> sio, """
@@ -1915,7 +1938,8 @@ class GpuCAReduce(GpuOp):
             """ % locals()
         if self.reduce_mask == (1, 1, 1):
             self._op_guard()
-            reducebuf = self._k_reduce_buf('Z[0]')
+            reducebuf = self._k_reduce_buf('Z[0]', node,
+                    nodename, sub={})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
             print >> sio, """
@@ -1940,7 +1964,8 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]',
+                    node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_001_%(nodename)s(
                     const int d0,
@@ -1977,7 +2002,8 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]',
+                    node, nodename, sub = {})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
             print >> sio, """
@@ -2006,7 +2032,8 @@ class GpuCAReduce(GpuOp):
             self._op_guard()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]')
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]',
+                    node, nodename, sub = {})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
             print >> sio, """
@@ -2033,7 +2060,8 @@ class GpuCAReduce(GpuOp):
             """ % locals()
         if self.reduce_mask == (1, 1, 1, 1):
             self._op_guard()
-            reducebuf = self._k_reduce_buf('Z[0]')
+            reducebuf = self._k_reduce_buf('Z[0]', node, nodename,
+                    sub = {})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
             print >> sio, """
@@ -2057,7 +2085,8 @@ class GpuCAReduce(GpuOp):
             """ % locals()
         if self.reduce_mask == (1, 0, 1, 1):
             self._op_guard()
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]')
+            reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]',
+                    node, nodename, sub = {})
             print >> sio, """
             static __global__ void kernel_reduce_1011_%(nodename)s(
                     const unsigned int d0,
