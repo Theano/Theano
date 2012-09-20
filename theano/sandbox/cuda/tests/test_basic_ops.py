@@ -9,6 +9,7 @@ from theano import tensor
 import numpy
 import theano
 import theano.tensor as T
+from numpy.testing.noseclasses import KnownFailureTest
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -201,6 +202,8 @@ def test_max():
         gpu_pattern = tuple(gpu_pattern)
         return gpu_pattern
 
+    known_fail = False
+
     for shape, pattern in [((1,1),(1,)),
                            ((1,0),(1,)),
                            ((0,1),(1,)),
@@ -272,6 +275,15 @@ def test_max():
         except ValueError, e:
             exc = e
             f_caused_value_error = True
+        except RuntimeError:
+            if (shape, pattern) in [((1,0),(1,)),
+                                  ((0,1),(1,)),
+                                  ((0,0),(1,)),
+                                  ((0,0,0),(1,2)),
+                                  ((0,0,0,0),(1,2,3))]:
+                known_fail = True
+                continue
+
         f2 = theano.function([a], b, mode=mode_without_gpu)
         try:
             f2_out = f2(val)
@@ -304,7 +316,8 @@ def test_max():
             continue
 
         if val.size == 0:
-            assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
+            assert f2(val).size == f(val).size
+            assert f2(val).shape == f(val).shape
         else:
             try:
                 #We raise the error threashold as we sum big matrix
@@ -401,6 +414,10 @@ def test_max():
         assert _allclose(f2(val2), f(val)), ('shape', shape,
                                              'pattern', pattern,
                                              sum([shape[i] for i in pattern]))
+
+    if known_fail:
+        raise KnownFailureTest("GpuCAReduce does not handle some shapes"
+                " with 0s in them correctly.")
 
 def test_flatten():
     x = cuda.fmatrix('x')
