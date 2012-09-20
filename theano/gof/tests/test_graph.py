@@ -290,3 +290,18 @@ class TestIsSameGraph(unittest.TestCase):
                                     ({y: x, t: z}, True))),
             ],
             debug=False)
+
+
+
+################
+# eval         #
+################
+
+def test_eval():
+    x = tensor.scalar()
+    y = tensor.scalar()
+    z = x + y
+
+    result = z.eval({x : 1., y : 2.})
+
+    assert z == 3.
