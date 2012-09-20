@@ -616,6 +616,24 @@ class GpuCAReduce(GpuOp):
         }
         """ % locals()
 
+        # It might be nice to use a property of the op class to do this,
+        # but tensor.elemwise.CAReduce has this exact same check so I guess
+        # this is OK to do
+        if self.scalar_op in [scal.minimum, scal.maximum]:
+            for i in xrange(nd_in):
+                conds = []
+                if self.reduce_mask[i]:
+                    conds.append("(CudaNdarray_HOST_DIMS(%(x)s)[%(i)s] == 0)" % locals())
+            assert len(conds) > 0
+            cond = "(" + " || ".join(conds) + ")"
+            print >> sio, """
+            if %(cond)s
+            {
+                PyErr_Format(PyExc_ValueError," tried to reduce a 0-length axis.");
+                %(fail)s;
+            }
+            """ %locals()
+
         #
         # alloc an output if we need one
         #
@@ -1531,7 +1549,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [4]  # the version corresponding to the c code in this Op
+        version = [5]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
