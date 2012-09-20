@@ -33,6 +33,7 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.sandbox.cuda.elemwise import SupportCodeError
+from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.scan_module import scan_utils, scan_op
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 
@@ -1335,6 +1336,18 @@ def local_gpualloc(node):
         #if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
+
+
+@register_opt()
+@local_optimizer([tensor.Alloc])
+def local_gpualloc_memset_0(node):
+    replace = False
+    if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
+        inp = node.inputs[0]
+        if (isinstance(inp, CudaNdarrayConstant) and
+            numpy.asarray(inp.data) == 0 and inp.data.size == 1):
+            new_out = GpuAlloc(memset_0=True)(*node.inputs)
+            return [new_out]
 
 
 def safe_to_gpu(x):

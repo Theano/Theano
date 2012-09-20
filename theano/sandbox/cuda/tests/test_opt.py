@@ -70,6 +70,17 @@ def test_gpualloc():
     assert numpy.any(ininstance(x.op, cuda.GpuAlloc) for x in l )
 
 
+def test_alloc_memset_0():
+    i = tensor.iscalar()
+    z = numpy.zeros((1,), dtype='float32')
+    a = basic_ops.gpu_alloc(cuda.gpu_from_host(tensor.constant(z)), i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, basic_ops.GpuAlloc) and topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 0).all()
+
+
 def test_gpuspecifyshape():
     x = cuda.shared_constructor(numpy.ones(3,dtype='float32'), 'x')
     m = theano.tensor.specify_shape(x + numpy.float32(1), (3,))
