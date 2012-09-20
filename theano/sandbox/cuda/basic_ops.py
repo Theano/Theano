@@ -1911,7 +1911,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
 
-class GpuSubtensor(tensor.Subtensor, GpuOp):
+class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
     Implement subtensor on the gpu.
     """
@@ -1920,19 +1920,16 @@ class GpuSubtensor(tensor.Subtensor, GpuOp):
         assert isinstance(x.type, CudaNdarrayType)
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = CudaNdarrayType(rval.outputs[0].type.broadcastable)
-        #We reverse the index here as a speed optimization
-        #this opt was saving 0.40e-05s of 3.49e05s
-        return Apply(self, [x] + list(reversed(rval.inputs[1:])), [otype()])
+        return Apply(self, [x] + rval.inputs[1:], [otype()])
 
     def perform(self, node, inputs, out_):
         out, = out_
         x = inputs[0]
-        indices = inputs[1:]
+        indices = list(reversed(inputs[1:]))
 
         def convert(entry):
             if isinstance(entry, Type):
                 rval = indices.pop()
-                #the if take about .25e-05s
                 if sys.version_info < (2, 5):
                     # Before Python 2.5, PySlice_GetIndicesEx requires
                     # Python int to be passed.
@@ -1954,6 +1951,59 @@ class GpuSubtensor(tensor.Subtensor, GpuOp):
         if len(cdata) == 1:
             cdata = cdata[0]
         out[0] = x.__getitem__(cdata)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x = inputs[0]
+        z, = outputs
+        view_ndim = node.outputs[0].ndim
+        fail = sub['fail']
+
+        build_view = """
+        //TODO: give this Op a second output so that this view can be cached
+        //TODO: alternatively, fix the memory leak on failure
+        CudaNdarray* xview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
+        if (!xview)
+        {
+            %(fail)s;
+        }
+        if (CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(%(x)s),
+                                       (PyObject*) NULL))
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set the"
+                         " devdata field of the view");
+            Py_XDECREF(xview);
+            %(fail)s;
+        }
+        cnda_mark_dev_structure_dirty(xview);
+        #define CudaNdarray_set_device_data2(obj, ptr, base) \
+                CudaNdarray_set_device_data(obj, (float *)ptr, base)
+""" % locals()
+        get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
+                                       self.idx_list,
+                                       c_prefix='CudaNdarray',
+                                       set_data='CudaNdarray_set_device_data2',
+                                       set_dim='CudaNdarray_set_dim',
+                                       set_stride='CudaNdarray_set_stride',
+                                       update_flags="", strides_mul=4)
+
+        finish_view = """
+        //Set the base only now
+
+        if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
+                                    %(x)s)){
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set"
+                         " the base of the view array");
+            Py_XDECREF(xview);
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(z)s);
+        %(z)s = xview;
+        """ % locals()
+
+        return build_view + "{" + get_xview + "}" + finish_view
 
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):

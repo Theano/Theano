@@ -544,12 +544,14 @@ def pydotprint(fct, outfile=None,
 
     if isinstance(fct, Function):
         mode = fct.maker.mode
-        fct_fgraph = fct.maker.fgraph
+        profile = getattr(fct, "profile", None)
         if (not isinstance(mode, ProfileMode)
             or not fct in mode.profile_stats):
             mode = None
+        fct_fgraph = fct.maker.fgraph
     elif isinstance(fct, gof.FunctionGraph):
         mode = None
+        profile = None
         fct_fgraph = fct
     else:
         raise ValueError(('pydotprint expects as input a theano.function or '
@@ -660,6 +662,14 @@ def pydotprint(fct, outfile=None,
             else:
                 pf = time * 100 / mode.profile_stats[fct].fct_call_time
             prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
+        elif profile:
+            time = profile.apply_time.get(node, 0)
+            #second, %fct time in profiler
+            if profile.fct_callcount == 0:
+                pf = 0
+            else:
+                pf = time * 100 / profile.fct_call_time
+            prof_str = '   (%.3fs,%.3f%%)' % (time, pf)
         applystr = str(node.op).replace(':', '_')
         applystr += prof_str
         if (applystr in all_strings) or with_ids:
