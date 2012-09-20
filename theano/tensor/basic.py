@@ -3952,9 +3952,21 @@ class Subtensor(Op):
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
 
     @staticmethod
-    def helper_c_code(node, name, inputs, outputs, sub, idx_list):
-        if not isinstance(node.inputs[0].type, TensorType):
-            raise NotImplementedError()
+    def helper_c_code(node, name, inputs, outputs, sub, idx_list,
+                      c_prefix="PyArray",
+                      update_flags=("PyArray_UpdateFlags(xview,"
+                                    " NPY_ARRAY_C_CONTIGUOUS|"
+                                    "NPY_ARRAY_F_CONTIGUOUS);"),
+                      set_data='PyArray_set_data',
+                      set_dim='PyArray_set_dim',
+                      set_stride='PyArray_set_stride',
+                      strides_mul=1,
+                  ):
+        """The parameters c_prefix, update_flags, set_data, set_dim,
+        set_stride and strides_mul are there to allow reusing this
+        function on PyArray and CudaNdarray object.
+
+        """
         #
         # two arrays are created in C code:
         # is_slice: len == ndim, 0 means int, 1 means slice
@@ -4019,7 +4031,6 @@ class Subtensor(Op):
         assert len(is_slice) <= node.inputs[0].ndim, node.inputs[0].ndim
 
         len_is_slice = len(is_slice)
-        view_ndim = node.inputs[0].ndim - (numpy.asarray(is_slice) == 0).sum()
 
         len_subtensor_spec = spec_pos()
 
@@ -4030,6 +4041,10 @@ class Subtensor(Op):
         z, = outputs
 
         rval = """
+        #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
+        #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
+        #define PyArray_set_data(obj, ptr, base) PyArray_BYTES(obj)=ptr
+
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
 
@@ -4040,39 +4055,30 @@ class Subtensor(Op):
         int inner_ii = 0; // the current dimension of zview
         int outer_ii = 0; // current dimension of z
 
-        //TODO: give this Op a second output so that this view can be cached
-        //TODO: alternatively, fix the memory leak on failure
-        Py_INCREF(PyArray_DESCR(%(x)s));
-        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
-                &PyArray_Type,
-                PyArray_DESCR(%(x)s),
-                %(view_ndim)s,
-                PyArray_DIMS(%(x)s),
-                PyArray_STRIDES(%(x)s),
-                PyArray_DATA(%(x)s),
-                %(x)s->flags,
-                NULL);
-        if (!xview)
-        {
-            %(fail)s;
-        }
+        char* ptr = (char*) %(c_prefix)s_BYTES(xview);
 
-        if ((PyArray_DIMS(xview) == PyArray_DIMS(%(x)s))
-            && (PyArray_DIMS(%(x)s) != NULL))
+        if ((%(c_prefix)s_DIMS(xview) == %(c_prefix)s_DIMS(%(x)s))
+            && (%(c_prefix)s_DIMS(%(x)s) != NULL))
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same dimensions"
                          " pointers: %%p and %%p",
-                         PyArray_NDIM(%(x)s), PyArray_DIMS(xview), PyArray_DIMS(%(x)s));
+                         %(c_prefix)s_NDIM(%(x)s),
+                         %(c_prefix)s_DIMS(xview),
+                         %(c_prefix)s_DIMS(%(x)s));
+            Py_XDECREF(xview);
             %(fail)s;
         }
-        if (PyArray_STRIDES(xview) == PyArray_STRIDES(%(x)s)
-            && (PyArray_DIMS(%(x)s) != NULL))
+        if (%(c_prefix)s_STRIDES(xview) == %(c_prefix)s_STRIDES(%(x)s)
+            && (%(c_prefix)s_DIMS(%(x)s) != NULL))
         {
             PyErr_Format(PyExc_ValueError, "x and xview"
                          "(with %%d dims) have the same strides"
                          " pointers: %%p and %%p",
-                         PyArray_NDIM(%(x)s), PyArray_STRIDES(xview), PyArray_STRIDES(%(x)s));
+                         %(c_prefix)s_NDIM(%(x)s),
+                         %(c_prefix)s_STRIDES(xview),
+                         %(c_prefix)s_STRIDES(%(x)s));
+            Py_XDECREF(xview);
             %(fail)s;
         }
 
@@ -4080,7 +4086,7 @@ class Subtensor(Op):
         {
             if (is_slice[outer_ii])
             {
-                npy_intp length = PyArray_DIMS(%(x)s)[outer_ii];
+                npy_intp length = %(c_prefix)s_DIMS(%(x)s)[outer_ii];
                 npy_intp slicelength;
                 npy_intp start = subtensor_spec[spec_pos+0];
                 npy_intp stop  = subtensor_spec[spec_pos+1];
@@ -4097,6 +4103,7 @@ class Subtensor(Op):
                     Py_DECREF(xview);
                     PyErr_Format(PyExc_ValueError,
                                  "slice step cannot be zero");
+                    Py_XDECREF(xview);
                     %(fail)s;
                 }
 
@@ -4144,9 +4151,12 @@ class Subtensor(Op):
                 }
 
                 assert (slicelength <= length);
-                xview->data += PyArray_STRIDES(%(x)s)[outer_ii] * start;
-                PyArray_DIMS(xview)[inner_ii] = slicelength;
-                PyArray_STRIDES(xview)[inner_ii] = PyArray_STRIDES(%(x)s)[outer_ii] * step;
+
+                ptr += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * start *
+                       %(strides_mul)s;
+                %(set_dim)s(xview, inner_ii, slicelength);
+                %(set_stride)s(xview, inner_ii,
+                               %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step);
 
                 inner_ii += 1;
                 spec_pos += 3;
@@ -4154,53 +4164,81 @@ class Subtensor(Op):
             else // tuple coord `outer_ii` is an int
             {
                 int idx = subtensor_spec[spec_pos];
-                if (idx < 0) idx += PyArray_DIMS(%(x)s)[outer_ii];
+                if (idx < 0) idx += %(c_prefix)s_DIMS(%(x)s)[outer_ii];
                 if (idx >= 0)
                 {
-                    if (idx < PyArray_DIMS(%(x)s)[outer_ii])
+                    if (idx < %(c_prefix)s_DIMS(%(x)s)[outer_ii])
                     {
-                        xview->data += PyArray_STRIDES(%(x)s)[outer_ii] * idx;
+                        ptr += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * idx *
+                               %(strides_mul)s;
                     }
                     else
                     {
                         PyErr_Format(PyExc_IndexError,"index out of bounds");
+                        Py_XDECREF(xview);
                         %(fail)s;
                     }
                 }
                 else
                 {
                     PyErr_Format(PyExc_IndexError,"index out of bounds");
+                    Py_XDECREF(xview);
                     %(fail)s;
                 }
 
                 spec_pos += 1;
             }
         }
-        assert (inner_ii <= PyArray_NDIM(xview));
-        while (inner_ii < PyArray_NDIM(xview))
+        %(set_data)s(xview, ptr, (PyObject*)NULL);
+        assert (inner_ii <= %(c_prefix)s_NDIM(xview));
+        while (inner_ii < %(c_prefix)s_NDIM(xview))
         {
-            assert (outer_ii < PyArray_NDIM(%(x)s));
-            PyArray_DIMS(xview)[inner_ii] = PyArray_DIMS(%(x)s)[outer_ii];
-            PyArray_STRIDES(xview)[inner_ii] = PyArray_STRIDES(%(x)s)[outer_ii];
+            assert (outer_ii < %(c_prefix)s_NDIM(%(x)s));
+            %(set_dim)s(xview, inner_ii, %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
+            %(set_stride)s(xview, inner_ii, %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
             inner_ii += 1;
             outer_ii += 1;
         }
-        PyArray_UpdateFlags(xview, NPY_ARRAY_C_CONTIGUOUS|NPY_F_CONTIGUOUS);
+        %(update_flags)s
         """ % locals()
         # print rval
         return rval
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
-        part0 = self.helper_c_code(node, name, inputs, outputs, sub,
-                self.idx_list)
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError()
 
         x = inputs[0]
         z, = outputs
-        part1 = """
+        view_ndim = node.outputs[0].ndim
+        fail = sub['fail']
+
+        build_view = """
+        //TODO: give this Op a second output so that this view can be cached
+        //TODO: alternatively, fix the memory leak on failure
+        Py_INCREF(PyArray_DESCR(%(x)s));
+        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
+                &PyArray_Type,
+                PyArray_DESCR(%(x)s),
+                %(view_ndim)s,
+                PyArray_DIMS(%(x)s),
+                PyArray_STRIDES(%(x)s),
+                PyArray_DATA(%(x)s),
+                %(x)s->flags,
+                NULL);
+        if (!xview)
+        {
+            %(fail)s;
+        }
+        """ % locals()
+        get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
+                self.idx_list)
+
+        finish_view = """
         if (%(z)s) Py_DECREF(%(z)s);
         Py_INCREF(py_%(x)s);
         PyArray_BASE(xview) = py_%(x)s;
@@ -4208,7 +4246,7 @@ class Subtensor(Op):
         %(z)s = xview;
         """ % locals()
 
-        return part0 + part1
+        return build_view + "{" + get_xview + "}" + finish_view
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
@@ -4216,7 +4254,7 @@ class Subtensor(Op):
         # have a versioned version of this op's C code.
         if len(hv) == 0:
             return ()
-        return (1, hv)
+        return (2, hv)
 
     def R_op(self, inputs, eval_points):
         # Subtensor is not differentiable wrt to its indices, therefore we
@@ -4476,6 +4514,8 @@ class IncSubtensor(Op):
         out[0] = x
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError()
 
         if self.inplace:  # convert bool to int
             inplace = 1
@@ -4489,7 +4529,9 @@ class IncSubtensor(Op):
         else:
             op_is_set = 0
         fail = sub['fail']
-
+        view_ndim = (node.inputs[0].ndim -
+                     numpy.sum([not isinstance(idx, slice)
+                                for idx in self.idx_list]))
         copy_input_if_necessary = """
         if (%(inplace)s)
         {
@@ -4508,6 +4550,25 @@ class IncSubtensor(Op):
         }
         """ % locals()
 
+        #Make a first view on the output, as we will write into it.
+        build_view = """
+        //TODO: give this Op a second output so that this view can be cached
+        //TODO: alternatively, fix the memory leak on failure
+        Py_INCREF(PyArray_DESCR(%(z)s));
+        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
+                &PyArray_Type,
+                PyArray_DESCR(%(z)s),
+                %(view_ndim)s,
+                PyArray_DIMS(%(z)s),
+                PyArray_STRIDES(%(z)s),
+                PyArray_DATA(%(z)s),
+                %(z)s->flags,
+                NULL);
+        if (!xview)
+        {
+            %(fail)s;
+        }
+        """ % locals()
         # make xview actually a view of %(z)s
         get_xview = Subtensor.helper_c_code(node, name,
                 outputs[:1] + inputs[2:],
@@ -4541,7 +4602,8 @@ class IncSubtensor(Op):
         """ % locals()
 
         return (copy_input_if_necessary
-                + get_xview
+                + build_view
+                + "{" + get_xview + "}"
                 + make_modification
                 + "Py_DECREF(xview);"
                 )
@@ -5385,7 +5447,7 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        PyArray_DATA(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
+                        PyArray_BYTES(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
