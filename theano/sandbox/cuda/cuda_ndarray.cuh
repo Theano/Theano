@@ -299,7 +299,7 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         size = size * dim[i];
     }
 
-    if (CudaNdarray_is_c_contiguous(self) && (self->data_allocated == size))
+    if ((self->data_allocated == size) && CudaNdarray_is_c_contiguous(self))
     {
         return 0;
     }
