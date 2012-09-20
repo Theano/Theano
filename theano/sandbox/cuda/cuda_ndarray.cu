@@ -4385,7 +4385,30 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
 int
 cnda_copy_structure_to_device(const CudaNdarray * self)
 {
-    cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
+    //If the device structure do not exists, create it.
+    //We allocate it here as we do not need it often.
+    //In fact, we need it so infrequently that we expect
+    //that most object won't need it. Not allocating it
+    //save a significant when creating object.
+    //This speed up a benchmark by 8% with the gc.
+    if (!self->dev_structure)
+    {
+        int struct_size = cnda_structure_size(self->nd);
+        if (struct_size)
+        {
+            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
+            if (NULL == self->dev_structure)
+            {
+                return -1;
+            }
+        }
+    }
+    cublasSetVector(cnda_structure_size(self->nd),
+                    sizeof(int),
+                    self->host_structure,
+                    1,
+                    self->dev_structure,
+                    1);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
