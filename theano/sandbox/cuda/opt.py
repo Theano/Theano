@@ -1345,7 +1345,8 @@ def local_gpualloc_memset_0(node):
     if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
         inp = node.inputs[0]
         if (isinstance(inp, CudaNdarrayConstant) and
-            numpy.asarray(inp.data) == 0 and inp.data.size == 1):
+            inp.data.size == 1 and
+            (numpy.asarray(inp.data) == 0).all()):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             return [new_out]
 
