@@ -5447,7 +5447,7 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        PyArray_DATA(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
+                        PyArray_BYTES(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
