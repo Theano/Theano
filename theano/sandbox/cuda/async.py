@@ -18,6 +18,7 @@ from theano.sandbox.cuda.opt import gpu_seqopt
 from theano.sandbox.cuda.type import CudaNdarrayType
 import cuda_ndarray
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.gof.sched import key_to_cmp
 
 _logger_name = 'theano.sandbox.cuda.async'
 _logger = logging.getLogger(_logger_name)
@@ -223,3 +224,13 @@ async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 gpu_seqopt.register('local_async_gpu',
                     theano.tensor.opt.in2out(local_async_gpu),
                     3, 'fast_run', 'gpu')
+
+def gpu_send_wait_key(a):
+    """ Wait as long as possible on Waits, Start Send/Recvs early """
+    if isinstance(a.op, (GpuFromHostWait, HostFromGpuWait)):
+        return 1
+    if isinstance(a.op, (GpuFromHostSend, HostFromGpuSend)):
+        return -1
+    return 0
+
+gpu_cmp = key_to_cmp(gpu_send_wait_key)
