@@ -3133,24 +3133,6 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     return 0;
 }
 
-bool
-CudaNdarray_is_c_contiguous(const CudaNdarray * self)
-{
-    bool c_contiguous = true;
-    int size = 1;
-    for (int i = self->nd-1; (i >= 0) && c_contiguous; --i)
-    {
-        if (CudaNdarray_HOST_DIMS(self)[i] == 1)
-            continue;
-        if (CudaNdarray_HOST_STRIDES(self)[i] != size)
-        {
-            c_contiguous = false;
-        }
-        size = size * CudaNdarray_HOST_DIMS(self)[i];
-    }
-    return c_contiguous;
-}
-
 PyObject *
 CudaNdarray_new_nd(int nd)
 {
@@ -4346,12 +4328,6 @@ CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self)
     return self->host_structure + 2*self->nd;
 }
 
-void
-cnda_mark_dev_structure_dirty(CudaNdarray * self)
-{
-    self->dev_structure_fresh = 0;
-}
-
 int
 CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase)
 {
@@ -4406,43 +4382,33 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2)
     return CudaNdarray_EqualAndIgnore(cnda1, cnda2, 0, 0);
 }
 
-void
-CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
-{
-    if ((idx >= self->nd) || (idx < 0) || (d < 0))
-    {
-        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: %i %i\n", idx, d);
-    }
-
-    if (d != self->host_structure[idx])
-    {
-        self->host_structure[idx] = d;
-        int log2d = (int)log2((double)d);
-        self->host_structure[idx + 2*self->nd] = (d == (1 << log2d)) ? log2d : -1;
-        cnda_mark_dev_structure_dirty(self);
-    }
-}
-
-void
-CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
-{
-    if ((idx >= self->nd) || (idx < 0))
-    {
-        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_stride arguments: %i %i\n", idx, s);
-    }
-
-    if (s != CudaNdarray_HOST_STRIDES(self)[idx])
-    {
-        self->host_structure[idx+self->nd] = s;
-        cnda_mark_dev_structure_dirty(self);
-    }
-}
-
-
 int
 cnda_copy_structure_to_device(const CudaNdarray * self)
 {
-    cublasSetVector(cnda_structure_size(self->nd), sizeof(int), self->host_structure, 1, self->dev_structure, 1);
+    //If the device structure do not exists, create it.
+    //We allocate it here as we do not need it often.
+    //In fact, we need it so infrequently that we expect
+    //that most object won't need it. Not allocating it
+    //save a significant when creating object.
+    //This speed up a benchmark by 8% with the gc.
+    if (!self->dev_structure)
+    {
+        int struct_size = cnda_structure_size(self->nd);
+        if (struct_size)
+        {
+            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
+            if (NULL == self->dev_structure)
+            {
+                return -1;
+            }
+        }
+    }
+    cublasSetVector(cnda_structure_size(self->nd),
+                    sizeof(int),
+                    self->host_structure,
+                    1,
+                    self->dev_structure,
+                    1);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -4508,56 +4474,6 @@ PyObject *
 CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
 {
     return PyInt_FromLong(CudaNdarray_SIZE(self));
-}
-
-int CudaNdarray_set_nd(CudaNdarray * self, const int nd)
-{
-    if (nd != self->nd)
-    {
-        if (self->dev_structure)
-        {
-            if (device_free(self->dev_structure))
-            {
-                return -1;
-            }
-            self->dev_structure = NULL;
-        }
-        if (self->host_structure)
-        {
-            free(self->host_structure);
-            self->host_structure = NULL;
-            self->nd = -1;
-        }
-        if (nd == -1) return 0;
-
-        self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
-        if (NULL == self->host_structure)
-        {
-            PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
-            return -1;
-        }
-        //initialize all dimensions and strides to 0
-        for (int i = 0; i < cnda_structure_size(nd); ++i)
-        {
-            self->host_structure[i] = 0;
-        }
-
-        int struct_size = cnda_structure_size(nd);
-        if (struct_size)
-        {
-            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
-            if (NULL == self->dev_structure)
-            {
-                free(self->host_structure);
-                self->host_structure = NULL;
-                self->dev_structure = NULL;
-                return -1;
-            }
-        }
-        self->nd = nd;
-        self->dev_structure_fresh = 0;
-    }
-    return 0;
 }
 
 int CudaNdarray_set_device_data(CudaNdarray * self, float * data, const CudaNdarray * base)
