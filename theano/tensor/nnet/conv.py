@@ -966,7 +966,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (8, self.openmp)
+        return (9, self.openmp)
 
     def c_support_code(self):
         return """
@@ -1310,12 +1310,12 @@ if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
+    img2d_arr = (PyArrayObject*)img2d;
     if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
 }
-img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
@@ -1584,12 +1584,12 @@ if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
+    img2d_arr = (PyArrayObject*)img2d;
     if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
 }
-img2d_arr = (PyArrayObject*)img2d;
 
 typenum = PyArray_ObjectType((PyObject*)%(img2d)s, 0);
 typenum_f = PyArray_ObjectType((PyObject*)%(filtersflipped)s, 0);
@@ -1834,12 +1834,12 @@ if ((PyArray_STRIDES(img2d_arr)[3] != (npy_intp)sizeof(%(type)s))
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
+    img2d_arr = (PyArrayObject*)img2d;
     if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
 }
-img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
@@ -2070,12 +2070,12 @@ if ((PyArray_STRIDES(img2d_arr)[3] != sizeof(%(type)s))
     contig = (PyObject*)(PyArray_GETCONTIGUOUS((PyArrayObject*)img2d));
     Py_DECREF(img2d);
     img2d = contig;
+    img2d_arr = (PyArrayObject*)img2d;
     if (!PyArray_ISCONTIGUOUS(img2d_arr)){
         PyErr_SetString(PyExc_ValueError, "img2d isn't contiguous");
         %(fail)s;
     }
 }
-img2d_arr = (PyArrayObject*)img2d;
 
 filtersflipped = PyArray_Newshape(%(filtersflipped)s,&kerns_shape, NPY_CORDER);
 filtersflipped_arr = (PyArrayObject*)filtersflipped;
