@@ -304,4 +304,4 @@ def test_eval():
 
     result = z.eval({x : 1., y : 2.})
 
-    assert z == 3.
+    assert result == 3.
