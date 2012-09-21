@@ -11,7 +11,11 @@ from theano.sandbox.cuda.async import (local_async_gpu, async_optimizer,
 from theano.sandbox.cuda.basic_ops import (gpu_from_host, host_from_gpu,
         GpuFromHost)
 import theano
+from theano.gof.sched import sort_schedule_fn
 
+gpu_scheduler = sort_schedule_fn(gpu_cmp)
+gpu_linker = theano.OpWiseCLinker(schedule=gpu_scheduler)
+gpu_mode = theano.Mode(linker = gpu_linker, optimizer = async_optimizer)
 
 def test_async_to_gpu():
     x = theano.tensor.fmatrix('x')
@@ -90,3 +94,14 @@ def test_gpu_cmp():
     assert gpu_cmp(sendnode, addnode) < 0 # send happens first
     assert gpu_cmp(waitnode, addnode) > 0 # wait happens last
 
+def test_gpu_schedule():
+    x = theano.tensor.fmatrix('x')
+    gx = theano.sandbox.cuda.gpu_from_host(x)
+    y = x + 1
+    f = theano.function((x,), (gx, y), mode = gpu_mode)
+
+    nodes = f.maker.linker.make_all()[-1]
+    assert isinstance(nodes[0].op, GpuFromHostSend)
+    assert isinstance(nodes[1].op, theano.tensor.DimShuffle)
+    assert isinstance(nodes[2].op, theano.tensor.Elemwise)
+    assert isinstance(nodes[3].op, GpuFromHostWait)
