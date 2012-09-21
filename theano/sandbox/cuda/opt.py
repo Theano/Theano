@@ -588,8 +588,6 @@ def local_gpu_careduce(node):
         # and max does not support all combinations of axes
         if node.op.scalar_op in [scal.add, scal.maximum]:
             x, = node.inputs
-            gpu_x = gpu_from_host(x)
-            gpu_inputs = [ gpu_x ]
             if x.owner and x.owner.op == host_from_gpu:
                 if node.op.axis is None:
                     reduce_mask = [1] * x.type.ndim
@@ -599,8 +597,8 @@ def local_gpu_careduce(node):
                         assert reduce_mask[a] == 0
                         reduce_mask[a] = 1
                 greduce = GpuCAReduce(reduce_mask, scalar_op)
-                if greduce.supports_c_code(gpu_inputs):
-                    rval = host_from_gpu(greduce(gpu_x))
+                if greduce.supports_c_code([gpu_from_host(x)]):
+                    rval = host_from_gpu(greduce(gpu_from_host(x)))
                     if rval.type == node.outputs[0].type:
                         return [rval]
                     else:
