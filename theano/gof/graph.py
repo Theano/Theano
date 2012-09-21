@@ -405,6 +405,26 @@ class Variable(Node):
                 stacklevel=2)
         del self.fgraph
 
+
+    def eval(self, inputs_to_values = None):
+        """ Evaluates this variable.
+
+        inputs_to_values: a dictionary mapping theano Variables to values.
+        """
+
+        if inputs_to_values is None:
+            inputs_to_values = {}
+
+        if not hasattr(self, '_fn'):
+            self._fn_inputs = inputs_to_values.keys()
+            self._fn = theano.function(self._fn_inputs, self)
+        args = [ inputs_to_values[param] for param in self._fn_inputs ]
+
+        rval = self._fn(*args)
+
+        return rval
+
+
     env = property(env_getter, env_setter, env_deleter)
 
 
