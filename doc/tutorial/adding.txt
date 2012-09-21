@@ -116,6 +116,31 @@ is a single Variable *or* a list of Variables. For either case, the second
 argument is what we want to see as output when we apply the function. *f* may
 then be used like a normal Python function.
 
+.. note::
+
+    As a shortcut, you can skip step 3, and just use a variable's
+    :func:`eval` method. The :func:`eval` method is not as flexible
+    as :func:`function` but it can do everything we've covered in
+    the tutorial so far. It has the added benefit of not requiring
+    you to import :func:`function` . Here is how :func:`eval` works:
+
+    >>> import theano.tensor as T
+    >>> x = T.dscalar('x')
+    >>> y = T.dscalar('y')
+    >>> z = x + y
+    >>> z.eval({x : 16.3, y : 12.1})
+    array(28.4)
+
+    We passed :func:`eval` a dictionary mapping symbolic theano
+    variables to the values to substitute for them, and it returned
+    the numerical value of the expression.
+
+    :func:`eval` will be slow the first time you call it on a variable--
+    it needs to call :func:`function` to compile the expression behind
+    the scenes. Subsequent calls to :func:`eval` on that same variable
+    will be fast, because the variable caches the compiled function.
+
+
 
 Adding two Matrices
 ===================
