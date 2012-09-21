@@ -6,7 +6,8 @@ if cuda_ndarray.cuda_available == False:
 
 import numpy as np
 from theano.sandbox.cuda.async import (local_async_gpu, async_optimizer,
-        GpuFromHostWait, HostFromGpuWait,GpuFromHostSend, HostFromGpuSend)
+        GpuFromHostWait, HostFromGpuWait,GpuFromHostSend, HostFromGpuSend,
+        gpu_cmp)
 from theano.sandbox.cuda.basic_ops import (gpu_from_host, host_from_gpu,
         GpuFromHost)
 import theano
@@ -74,3 +75,18 @@ def test_optimizer2():
     f = theano.function([x], gx, mode=mode)
     xx = np.ones((5, 5), dtype=x.dtype)
     f(xx)
+
+def test_gpu_cmp():
+    x = theano.tensor.fmatrix('x')
+    gx = theano.sandbox.cuda.gpu_from_host(x)
+    gx2 = local_async_gpu.transform(gx.owner)
+    y = x + 1
+
+    waitnode = x.owner
+    sendnode = gx2.owner.inputs[0].owner
+    waitnode = gx2.owner
+    addnode = y.owner
+    assert gpu_cmp(sendnode, waitnode) < 0 # send happens first
+    assert gpu_cmp(sendnode, addnode) < 0 # send happens first
+    assert gpu_cmp(waitnode, addnode) > 0 # wait happens last
+
