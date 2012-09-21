@@ -79,7 +79,7 @@ def test_optimizer2():
 def test_gpu_cmp():
     x = theano.tensor.fmatrix('x')
     gx = theano.sandbox.cuda.gpu_from_host(x)
-    gx2 = local_async_gpu.transform(gx.owner)
+    gx2 = local_async_gpu.transform(gx.owner)[0]
     y = x + 1
 
     waitnode = x.owner
