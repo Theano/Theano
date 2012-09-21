@@ -84,6 +84,9 @@ void * device_malloc(size_t size)
 int device_free(void *ptr)
 {
 
+    // TODO: Move all device_free calls to wait side of gpu async calls
+    return 0;
+
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
         return 0;
@@ -341,9 +344,9 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 
     assert (PyArray_ITEMSIZE(rval) == sizeof(real));
 
-    cublasGetVector(PyArray_SIZE(rval), sizeof(real),
-                    contiguous_self->devdata, 1,
-                    PyArray_DATA(rval), 1);
+    getVector(PyArray_SIZE(rval), sizeof(real),
+              contiguous_self->devdata, 1,
+              PyArray_DATA(rval), 1);
     CNDA_THREAD_SYNC;
 
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
@@ -2599,7 +2602,7 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 
     // Transfer the result to cpu
     int gpu_sizes[] = {-1,-1};
-    cublasGetVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
+    getVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
     device_free(gpu_data);
 
     if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
@@ -3118,10 +3121,10 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     if (!py_src) {
         return -1;
     }
-    cublasSetVector(PyArray_SIZE(py_src),
-            sizeof(real),
-            PyArray_DATA(py_src), 1,
-            self->devdata, 1);
+    setVector(PyArray_SIZE(py_src),
+              sizeof(real),
+              PyArray_DATA(py_src), 1,
+              self->devdata, 1);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -4403,12 +4406,12 @@ cnda_copy_structure_to_device(const CudaNdarray * self)
             }
         }
     }
-    cublasSetVector(cnda_structure_size(self->nd),
-                    sizeof(int),
-                    self->host_structure,
-                    1,
-                    self->dev_structure,
-                    1);
+    setVector(cnda_structure_size(self->nd), 
+              sizeof(int),
+              self->host_structure, 
+              1, 
+              self->dev_structure, 
+              1);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -4505,17 +4508,17 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     fprintf(fd, "\n\tDEV_DIMS:      ");
     for (int i = 0; i < self->nd; ++i)
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure+i, 1,
-                        &data, 1);
+        getVector(1, sizeof(int),
+                  self->dev_structure+i, 1,
+                  &data, 1);
         fprintf(fd, "%i\t", data);
     }
     fprintf(fd, "\n\tDEV_STRIDES: ");
     for (int i = 0; i < self->nd; ++i)
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure + self->nd+i, 1,
-                        &data, 1);
+        getVector(1, sizeof(int),
+                  self->dev_structure + self->nd+i, 1,
+                  &data, 1);
         fprintf(fd, "%i \t", data);
     }
     fprintf(fd, "\n");
@@ -4524,6 +4527,28 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 void free_cudaEvent(void *_event)
 {
     free(_event);
+}
+void getVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+{
+    if (!ASYNC)
+    {
+        cublasGetVector(n, elemSize, x, incx, y, incy);
+    }
+    else
+    {
+        cublasGetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+    }
+}
+void setVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+{
+    if (!ASYNC)
+    {
+        cublasSetVector(n, elemSize, x, incx, y, incy);
+    }
+    else
+    {
+        cublasSetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+    }
 }
 
 /*

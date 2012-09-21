@@ -27,7 +27,8 @@ typedef float real;
 #define NUM_VECTOR_OP_THREADS_PER_BLOCK     256  //Should be read from device properties. (#10)
 #endif
 
-#if 1
+#define ASYNC 1
+#if ASYNC
 // Do not wait after every kernel & transfer.
 #define CNDA_THREAD_SYNC
 #else
@@ -440,6 +441,8 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 void free_cudaEvent(void *_event);
+void setVector(int n, int elemSize, const void *x, int incx, void *y, int incy);
+void getVector(int n, int elemSize, const void *x, int incx, void *y, int incy);
 
 #endif
 /*
