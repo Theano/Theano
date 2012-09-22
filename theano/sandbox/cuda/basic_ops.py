@@ -548,6 +548,10 @@ class GpuCAReduce(GpuOp):
                        in xrange(x.type.ndim) if not self.reduce_mask[i]]
         return Apply(self, [x], [CudaNdarrayType(o_broadcast)()])
 
+    """
+    This method must be commented, because there's no way
+    to communicate that it's OK to call for + but not for
+    max
     def perform(self, node, inp, out):
         x, = inp
         z, = out
@@ -557,6 +561,7 @@ class GpuCAReduce(GpuOp):
         # We can't call it here anyway because it hasn't
         # been added to the python bindings yet
         z[0] = x.reduce_sum(self.reduce_mask)
+    """
 
     def supports_c_code(self, inputs):
         """ Returns True if the current op and reduce pattern
