@@ -269,9 +269,9 @@ def test_max():
 #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
+        f_caused_value_error = False
         try:
             f_out = f(val)
-            f_caused_value_error = False
         except ValueError, e:
             exc = e
             f_caused_value_error = True
@@ -283,6 +283,8 @@ def test_max():
                                   ((0,0,0,0),(1,2,3))]:
                 known_fail = True
                 continue
+            else:
+                raise
 
         f2 = theano.function([a], b, mode=mode_without_gpu)
         try:
