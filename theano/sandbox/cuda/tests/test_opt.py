@@ -44,11 +44,11 @@ def test_int_pow():
     f = theano.function([a], (a*4).sum(), mode=mode_with_gpu)
 
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
-    assert op_names == ['GpuSum', 'GpuElemwise', 'HostFromGpu']
+    assert op_names == ['GpuCAReduce', 'GpuElemwise', 'HostFromGpu']
 
     f = theano.function([a], tensor.pow(a,4).sum(), mode=mode_with_gpu)
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
-    assert op_names == ['GpuElemwise', 'GpuSum', 'HostFromGpu']
+    assert op_names == ['GpuElemwise', 'GpuCAReduce', 'HostFromGpu']
 
     #theano.printing.debugprint(f)
 
