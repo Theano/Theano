@@ -159,7 +159,11 @@ following methods:
 
   If the output is not differentiable with respect to an input
   then this method should be defined to return a variable of type
-  NullType for that input.
+  NullType for that input. Likewise, if you have not implemented the
+  grad computation for some input, you may return a variable of type
+  NullType for that input. theano.gradient contains convenience methods
+  that can construct the variable for you: grad_undefined and
+  grad_not_implemented, respectively.
 
   If an element of output_gradient is of type theano.gradient.DisconnectedType,
   it means that the cost is not a function of this output. If any of the
