@@ -30,7 +30,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(input.shape[-1] / ds[1] + yi)
         output_val = numpy.zeros(out_shp)
 
-        for k in numpy.ndindex(input.shape[:-2]):
+        for k in numpy.ndindex(*input.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii = i * ds[0]
                 for j in range(output_val.shape[-1]):
