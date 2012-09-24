@@ -56,7 +56,15 @@ def test_sum():
 
     TODO: test with broadcast
     """
-    for shape, pattern in [((100,3,1300),[1]),
+    for shape, pattern in [((1,1),(1,)),
+                           ((1,0),(1,)),
+                           ((0,1),(1,)),
+                           ((0,0),(1,)),
+                           ((0,0,0),(1,2)),
+                           ((0,0,0,0),(1,2,3)),
+                           ((2,1),(1,)),
+                           ((1,2),(1,)),
+                           ((100,3,1300),[1]),
                            ((0,),[0]),((5,),[0]),
                            ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
                            ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
@@ -112,7 +120,7 @@ def test_sum():
         assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         if val.size == 0:
-            assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
+            assert _allclose(f2(val), f(val)), ('shape', shape, 'pattern', pattern)
         else:
             try:
                 #We raise the error threashold as we sum big matrix
@@ -275,16 +283,6 @@ def test_max():
         except ValueError, e:
             exc = e
             f_caused_value_error = True
-        except RuntimeError:
-            if (shape, pattern) in [((1,0),(1,)),
-                                  ((0,1),(1,)),
-                                  ((0,0),(1,)),
-                                  ((0,0,0),(1,2)),
-                                  ((0,0,0,0),(1,2,3))]:
-                known_fail = True
-                continue
-            else:
-                raise
 
         f2 = theano.function([a], b, mode=mode_without_gpu)
         try:
@@ -372,7 +370,6 @@ def test_max():
                                             'pattern', pattern,
                                             sum([shape[i] for i in pattern]))
 
-
         #test with broadcast
     for shape, pattern in [((5,),(0,)),
                            ((5,4),(0,1)),
@@ -417,9 +414,6 @@ def test_max():
                                              'pattern', pattern,
                                              sum([shape[i] for i in pattern]))
 
-    if known_fail:
-        raise KnownFailureTest("GpuCAReduce does not handle some shapes"
-                " with 0s in them correctly.")
 
 def test_flatten():
     x = cuda.fmatrix('x')

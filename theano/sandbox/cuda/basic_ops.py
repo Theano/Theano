@@ -684,7 +684,10 @@ class GpuCAReduce(GpuOp):
         # \begin bracket the reduction in a check that there is
         # actually work to do
         print >> sio, """
-        if (CudaNdarray_SIZE(%(z)s))
+        if (CudaNdarray_SIZE(%(z)s) && ! CudaNdarray_SIZE(%(x)s)){
+            cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float));
+        }
+        else if (CudaNdarray_SIZE(%(z)s))
         {
         """ % locals()
 
@@ -1553,13 +1556,13 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [5]  # the version corresponding to the c code in this Op
+        version = [6]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version(scalar_node))
+        version.extend(self.scalar_op.c_code_cache_version())
         for i in node.inputs + node.outputs:
             version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
