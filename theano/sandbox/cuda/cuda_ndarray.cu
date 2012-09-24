@@ -13,6 +13,9 @@
 
 //If true, we fill with NAN allocated device memory.
 #define ALLOC_MEMSET 0
+#include <sys/time.h>                // for gettimeofday()
+#include <stdio.h>
+
 
 /////////////////////////
 // Alloc and Free
@@ -3105,6 +3108,8 @@ cublas_shutdown()
 int
 CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
 {
+    timeval t1, t2, t3, t4;
+    gettimeofday(&t1, NULL);
     int err = CudaNdarray_alloc_contiguous(self, PyArray_NDIM(obj), obj->dimensions);
     if (err) {
         return err;
@@ -3121,10 +3126,12 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     if (!py_src) {
         return -1;
     }
+    gettimeofday(&t2, NULL);
     setVector(PyArray_SIZE(py_src),
               sizeof(real),
               PyArray_DATA(py_src), 1,
               self->devdata, 1);
+    gettimeofday(&t3, NULL);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -3133,6 +3140,16 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
         return -1;
     }
     Py_DECREF(py_src);
+    gettimeofday(&t4, NULL);
+    double elapsedTimeFirst = (t2.tv_sec - t1.tv_sec) * 1000.0; 
+    elapsedTimeFirst += (t2.tv_usec - t1.tv_usec) / 1000.0;
+    double elapsedTimeSecond = (t3.tv_sec - t2.tv_sec) * 1000.0; 
+    elapsedTimeSecond += (t3.tv_usec - t2.tv_usec) / 1000.0;
+    double elapsedTimeThird = (t4.tv_sec - t3.tv_sec) * 1000.0; 
+    elapsedTimeThird += (t4.tv_usec - t3.tv_usec) / 1000.0;
+    printf("Elapsed time First : %lf\n", elapsedTimeFirst);
+    printf("Elapsed time Second: %lf\n", elapsedTimeSecond);
+    printf("Elapsed time Third : %lf\n", elapsedTimeThird);
     return 0;
 }
 
@@ -4536,18 +4553,26 @@ void getVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
     }
     else
     {
-        cublasGetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+        cudaMemcpyAsync( y, x, n*elemSize, cudaMemcpyDeviceToHost );
+        // cublasGetVectorAsync(n, elemSize, x, incx, y, incy, 0);
     }
 }
 void setVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
 {
+    timeval t1, t2, t3, t4;
     if (!ASYNC)
     {
         cublasSetVector(n, elemSize, x, incx, y, incy);
     }
     else
     {
-        cublasSetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+        gettimeofday(&t1, NULL);
+        cudaMemcpyAsync( y, x, n*elemSize, cudaMemcpyHostToDevice );
+        gettimeofday(&t2, NULL);
+        double elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0; 
+        elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+        printf("Time spent in setVector: %lfms\n", elapsedTime);
+        //cublasSetVectorAsync(n, elemSize, x, incx, y, incy, 0);
     }
 }
 
