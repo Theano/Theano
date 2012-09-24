@@ -624,8 +624,8 @@ class GpuCAReduce(GpuOp):
         # but tensor.elemwise.CAReduce has this exact same check so I guess
         # this is OK to do
         if self.scalar_op in [scal.minimum, scal.maximum]:
+            conds = []
             for i in xrange(nd_in):
-                conds = []
                 if self.reduce_mask[i]:
                     conds.append("(CudaNdarray_HOST_DIMS(%(x)s)[%(i)s] == 0)" % locals())
             assert len(conds) > 0
@@ -723,7 +723,7 @@ class GpuCAReduce(GpuOp):
 
                 if (verbose)
                     printf("running kernel_reduce_10_%(name)s\\n");
-                int n_shared = sizeof(float) * n_threads.x;
+                int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
                 kernel_reduce_10_%(name)s<<<n_blocks, n_threads,
                                                 n_shared>>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
@@ -862,11 +862,10 @@ class GpuCAReduce(GpuOp):
                 extern __shared__ float buf[];
                 float myresult = 0.0f;
 
+                //This is caught in cuda/init.py when we init the gpu. I keep
+                //it here to ease finding code that rely on this.
                 if (warpSize != 32)
                 {
-                    // TODO: set error code
-                    // 2012-09-20 IG: as of today, Fred says he will check
-                    // this elsewhere, in a different PR
                     Z[0] = -666;
                     return;
                 }
