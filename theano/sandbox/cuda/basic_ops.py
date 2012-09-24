@@ -862,11 +862,10 @@ class GpuCAReduce(GpuOp):
                 extern __shared__ float buf[];
                 float myresult = 0.0f;
 
+                //This is caught in cuda/init.py when we init the gpu. I keep
+                //it here to ease finding code that rely on this.
                 if (warpSize != 32)
                 {
-                    // TODO: set error code
-                    // 2012-09-20 IG: as of today, Fred says he will check
-                    // this elsewhere, in a different PR
                     Z[0] = -666;
                     return;
                 }
