@@ -1082,14 +1082,16 @@ class Elemwise(Op):
 
 class CAReduce(Op):
     """
+    CAReduce = Commutative Associative Reduce
     Reduces a scalar operation along the specified axis(es).
+    (The scalar op should be both commutative and assocative)
 
     The output will have the same shape as the input minus the reduced
     dimensions. It will contain the variable of accumulating all values
     over the reduced dimensions using the specified scalar op.
 
     Examples:
-     CAReduce(add) -> sum
+     CAReduce(add) -> sum (ie, acts like the numpy sum operation)
      CAReduce(mul) -> product
      CAReduce(maximum) -> max
      CAReduce(minimum) -> min

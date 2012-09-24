@@ -1159,6 +1159,7 @@ class Maximum(BinaryScalarOp):
         gx = eq(output, x) * gz
         gy = eq(output, y) * gz
         return (gx, gy)
+
 maximum = Maximum(upcast_out, name='maximum')
 
 
@@ -1187,7 +1188,6 @@ class Minimum(BinaryScalarOp):
         gx = eq(output, x) * gz
         gy = eq(output, y) * gz
         return (gx, gy)
-
 minimum = Minimum(upcast_out, name='minimum')
 
 
@@ -1222,6 +1222,8 @@ class Add(ScalarOp):
             for i in inputs:
                     retval += [gz]
         return retval
+
+
 add = Add(upcast_out, name='add')
 
 

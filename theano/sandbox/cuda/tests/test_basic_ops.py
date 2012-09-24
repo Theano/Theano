@@ -9,6 +9,7 @@ from theano import tensor
 import numpy
 import theano
 import theano.tensor as T
+from numpy.testing.noseclasses import KnownFailureTest
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -108,7 +109,7 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         if val.size == 0:
             assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
@@ -145,7 +146,7 @@ def test_sum():
         val = theano._asarray(val, dtype='float32')
         f = theano.function([a], b, mode=mode_with_gpu)
         f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         assert _allclose(f2(val), f(val)), ('shape', shape,
                                             'pattern', pattern,
@@ -181,12 +182,244 @@ def test_sum():
             val2 = val2[::2, ::2, ::2, ::2]
         f = theano.function([a], b, mode=mode_without_gpu)
         f2 = theano.function([a2], b2, mode=mode_with_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
         assert T.Sum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
         assert _allclose(f2(val2), f(val)), ('shape', shape,
                                              'pattern', pattern,
                                              sum([shape[i] for i in pattern]))
 
+def test_max():
+    """
+    test GpuMax pattern 01, 011, 0111 (tensor.max pattern (1,), (1,2), (1,2,3) )
+
+    TODO: are others currently implemented by reshape?
+    """
+
+    def tensor_pattern_to_gpu_pattern(shape, pattern):
+        gpu_pattern = [ 0 for elem in shape ]
+        for idx in pattern:
+            gpu_pattern[idx] = 1
+        gpu_pattern = tuple(gpu_pattern)
+        return gpu_pattern
+
+    known_fail = False
+
+    for shape, pattern in [((1,1),(1,)),
+                           ((1,0),(1,)),
+                           ((0,1),(1,)),
+                           ((0,0),(1,)),
+                           ((0,0,0),(1,2)),
+                           ((0,0,0,0),(1,2,3)),
+                           ((2,1),(1,)),
+                           ((1,2),(1,)),
+                           ((100,3,1300),[1]),
+                           ((0,),[0]),((5,),[0]),
+                           ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
+                           ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
+                           ((0,0,0,0),[0,1,2,3]),
+                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+                           ((5,4,3,10,11),[1,2]),
+                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+
+                           #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
+                           ((4100,3),[0]),((3,4101),[0]),#10
+                           ((1024,33),[0]),((33,1024),[0]),#10
+                           ((1025,33),[0]),((33,1025),[0]),#10
+
+                           ((4100,3),[1]),((3,4101),[1]),#01
+                           ((1024,33),[1]),((33,1024),[1]),#01
+                           ((1025,33),[1]),((33,1025),[1]),#01
+
+                           ((4100,3),[0,1]),((3,4101),[0,1]),#11
+                           ((1024,33),[0,1]),((33,1024),[0,1]),#01
+                           ((1025,33),[0,1]),((33,1025),[0,1]),#01
+
+                           ((4100,4,3),[0]),((5,4100,3),[0]),((5,4,4100),[0]),#100
+                           ((4100,4,3),[1]),((5,4100,3),[1]),((5,4,4100),[1]),#010
+                           ((4100,4,3),[2]),((5,4100,3),[2]),((5,4,4100),[2]),#001
+                           ((4100,4,3),[0,1]),((5,4100,3),[0,1]),((5,4,4100),[0,1]),#110
+                           ((4100,4,3),[1,2]),((5,4100,3),[1,2]),((5,4,4100),[1,2]),#011
+                           #((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
+                           ((4100,4,3),[0,1,2]),((5,4100,3),[0,1,2]),((5,4,4100),[0,1,2]),#111
+
+                           ((4100,4,3,2),[2,3]),((4,4100,3,2),[2,3]),((4,3,4100,2),[2,3]),((4,3,2,4100),[2,3]),#0011
+                           ((4100,4,3,2),[1,3]),((4,4100,3,2),[1,3]),((4,3,4100,2),[1,3]),((4,3,2,4100),[1,3]),#0101
+                           ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
+                           ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
+                           ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),#1111
+
+
+                           #test pattern implemented by reshape
+                           ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
+                           ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
+                           ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
+                           ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
+                           ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
+
+                           ]:
+        # Don't test patterns that aren't implemented for max yet
+        if tensor_pattern_to_gpu_pattern(shape, pattern) not in \
+            [ (0,1), (0,1,1), (0,1,1) ]:
+            continue
+
+        a = tensor.TensorType('float32', (False,) * len(shape))()
+        b = T.max(a, pattern)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = theano._asarray(val, dtype='float32')
+        f = theano.function([a], b, mode=mode_with_gpu)
+        f_caused_value_error = False
+        try:
+            f_out = f(val)
+        except ValueError, e:
+            exc = e
+            f_caused_value_error = True
+        except RuntimeError:
+            if (shape, pattern) in [((1,0),(1,)),
+                                  ((0,1),(1,)),
+                                  ((0,0),(1,)),
+                                  ((0,0,0),(1,2)),
+                                  ((0,0,0,0),(1,2,3))]:
+                known_fail = True
+                continue
+            else:
+                raise
+
+        f2 = theano.function([a], b, mode=mode_without_gpu)
+        try:
+            f2_out = f2(val)
+            f2_caused_value_error = False
+        except ValueError, e:
+            exc2 = e
+            f2_caused_value_error = True
+
+
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert T.CAReduce in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+
+        # Check that 0 shape matrices are invalid in the same cases
+        if f_caused_value_error != f2_caused_value_error:
+            if f_caused_value_error:
+                print 'f caused this value error:'
+                print exc
+            else:
+                print 'f did not raise a value error, but should have'
+            if f2_caused_value_error:
+                print 'f2 caused this value error:'
+                print exc2
+            else:
+                print 'f should not have raised a value error'
+            print 'shape was: ',shape
+            print 'pattern was: ',pattern
+            assert False
+
+        if f_caused_value_error:
+            continue
+
+        if val.size == 0:
+            assert f2(val).size == f(val).size
+            assert f2(val).shape == f(val).shape
+        else:
+            try:
+                #We raise the error threashold as we sum big matrix
+                #and this cause small rounding difference with some seed
+                #example in debug mode with unittests.rseed=9275
+                orig_rtol = theano.tensor.basic.float32_rtol
+                theano.tensor.basic.float32_rtol = 2e-5
+                f2_val = f2(val)
+                f_val = f(val)
+                if not _allclose(f2_val, f_val):
+                    print 'failed for the following arguments: '
+                    print 'shape:',shape
+                    print 'pattern: ',pattern
+                    print 'input:'
+                    print val
+                    print 'correct output: '
+                    print f2_val
+                    print 'actual output: '
+                    print f_val
+                    assert False
+            finally:
+                theano.tensor.basic.float32_rtol = orig_rtol
+
+
+        #test with dimshuffle
+        #we shuffle the 2 outer dims.
+    for shape, pattern in [#((5,),[0]),
+                           ((5,4),(0,1)),((5,4),[0]),
+                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+        # Don't test patterns that aren't implemented for max yet
+        if tensor_pattern_to_gpu_pattern(shape, pattern) not in \
+            [ (0,1), (0,1,1), (0,1,1) ]:
+            continue
+        a = tensor.TensorType('float32', (False,) * len(shape))()
+        dim_pattern = range(len(shape))
+        dim_pattern[0] = 1
+        dim_pattern[1] = 0
+        a = a.dimshuffle(dim_pattern)
+        b = T.max(a, pattern)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = theano._asarray(val, dtype='float32')
+        f = theano.function([a], b, mode=mode_with_gpu)
+        f2 = theano.function([a], b, mode=mode_without_gpu)
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert T.CAReduce in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+        assert _allclose(f2(val), f(val)), ('shape', shape,
+                                            'pattern', pattern,
+                                            sum([shape[i] for i in pattern]))
+
+
+        #test with broadcast
+    for shape, pattern in [((5,),(0,)),
+                           ((5,4),(0,1)),
+                           ((5,4),(0,)),
+                           ((5,4,3),(0,)),
+                           ((5,4,3),(0,1)),
+                           ((5,4,3),(2,)),
+                           ((5,4,3),(0,1,2)),
+                           ((5,4,3,2),(0,1,2,3)),
+                           ((5,4,3,2),(0,2,3))]:
+        # Don't test patterns that aren't implemented for max yet
+        if tensor_pattern_to_gpu_pattern(shape, pattern) not in \
+            [ (0,1), (0,1,1), (0,1,1) ]:
+            continue
+        shape = numpy.asarray(shape) * 2
+        a = tensor.TensorType('float32', (False,) * len(shape))()
+        a2 = tcn.CudaNdarrayType((False,) * len(shape))()
+        b = T.max(a, pattern)
+        b2 = T.max(a2, pattern)
+        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+#        val = numpy.ones(shape)
+#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+        val = theano._asarray(val, dtype='float32')
+        val2 = cuda.CudaNdarray(val)
+        if len(shape) == 1:
+            val = val[::2]
+            val2 = val2[::2]
+        elif len(shape) == 2:
+            val = val[::2, ::2]
+            val2 = val2[::2, ::2]
+        elif len(shape) == 3:
+            val = val[::2, ::2, ::2]
+            val2 = val2[::2, ::2, ::2]
+        elif len(shape) == 4:
+            val = val[::2, ::2, ::2, ::2]
+            val2 = val2[::2, ::2, ::2, ::2]
+        f = theano.function([a], b, mode=mode_without_gpu)
+        f2 = theano.function([a2], b2, mode=mode_with_gpu)
+        assert tcn.GpuCAReduce in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
+        assert T.CAReduce in [x.op.__class__ for x in f.maker.fgraph.toposort()]
+        assert _allclose(f2(val2), f(val)), ('shape', shape,
+                                             'pattern', pattern,
+                                             sum([shape[i] for i in pattern]))
+
+    if known_fail:
+        raise KnownFailureTest("GpuCAReduce does not handle some shapes"
+                " with 0s in them correctly.")
 
 def test_flatten():
     x = cuda.fmatrix('x')
