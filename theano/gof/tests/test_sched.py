@@ -26,7 +26,8 @@ def test_reverse_dict():
     assert reverse_dict(d) ==  {1: ('a',), 2: ('a', 'b'), 3: ('b',)}
 
 def test__toposort():
-    edges = {1: {4, 6, 7}, 2: {4, 6, 7}, 3: {5, 7}, 4: {6, 7}, 5: {7}}
+    edges = {1: set((4, 6, 7)), 2: set((4, 6, 7)),
+             3: set((5, 7)),    4: set((6, 7)), 5: set((7,))}
     order = _toposort(edges)
     assert not any(a in edges.get(b, ()) for i, a in enumerate(order)
                                          for b    in order[i:])
