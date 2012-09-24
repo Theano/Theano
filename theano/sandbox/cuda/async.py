@@ -225,12 +225,28 @@ gpu_seqopt.register('local_async_gpu',
                     theano.tensor.opt.in2out(local_async_gpu),
                     3, 'fast_run', 'gpu')
 
-def gpu_send_wait_key(a):
-    """ Wait as long as possible on Waits, Start Send/Recvs early """
+# GPU Scheduling Comparators
+
+def send_wait(a):
+    """ Wait as long as possible on Waits. Start Send/Recvs early """
     if isinstance(a.op, (GpuFromHostWait, HostFromGpuWait)):
         return 1
     if isinstance(a.op, (GpuFromHostSend, HostFromGpuSend)):
         return -1
     return 0
 
-gpu_cmp = key_to_cmp(gpu_send_wait_key)
+def gpu_ops_first(a):
+    """ Do GpuOps first. They don't block. """
+    if isinstance(a.op, GpuOp):
+        return -1
+    return 0
+
+def send_in_order(a, b):
+    """ Send variables in the order in which they are needed """
+    from theano.gof.sched import dependence
+    if ((isinstance(a, GpuFromHostSend) and isinstance(b, GpuFromHostSend)) or
+        (isinstance(a, HostFromGpuSend) and isinstance(b, HostFromGpuSend))):
+        return dependence(a.inputs[0].owner, b.inputs[0].owner)
+    return 0
+
+gpu_cmps = map(key_to_cmp, (send_wait, gpu_ops_first)) + [send_in_order]
