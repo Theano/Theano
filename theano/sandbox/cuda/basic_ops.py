@@ -624,8 +624,8 @@ class GpuCAReduce(GpuOp):
         # but tensor.elemwise.CAReduce has this exact same check so I guess
         # this is OK to do
         if self.scalar_op in [scal.minimum, scal.maximum]:
+            conds = []
             for i in xrange(nd_in):
-                conds = []
                 if self.reduce_mask[i]:
                     conds.append("(CudaNdarray_HOST_DIMS(%(x)s)[%(i)s] == 0)" % locals())
             assert len(conds) > 0
