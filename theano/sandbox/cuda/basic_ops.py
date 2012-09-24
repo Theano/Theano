@@ -1559,7 +1559,7 @@ class GpuCAReduce(GpuOp):
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version(scalar_node))
+        version.extend(self.scalar_op.c_code_cache_version())
         for i in node.inputs + node.outputs:
             version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
