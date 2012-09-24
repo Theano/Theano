@@ -446,10 +446,20 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
                 raise TypeError('Elements of consider_constant must be '
                                 'variables, but got ' + str(type(elem)))
 
+    if isinstance(wrt, set):
+        raise TypeError("wrt must not be a set. sets have no defined "
+                "iteration order, so we can't return gradients in a matching"
+                " order.")
+
     using_list = isinstance(wrt, list)
     using_tuple = isinstance(wrt, tuple)
     if not using_list and not using_tuple:
         wrt = [wrt]
+
+    for elem in wrt:
+        if not isinstance(elem, Variable):
+            raise TypeError("Expected Variable, got " + str(elem) +
+                    " of type "+str(type(elem)))
 
     var_to_node_to_idx = _populate_var_to_node_to_idx([cost], wrt)
 
