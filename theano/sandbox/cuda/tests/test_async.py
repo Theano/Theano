@@ -7,7 +7,7 @@ if cuda_ndarray.cuda_available == False:
 import numpy as np
 from theano.sandbox.cuda.async import (local_async_gpu, async_optimizer,
         GpuFromHostWait, HostFromGpuWait,GpuFromHostSend, HostFromGpuSend,
-        gpu_cmps, send_wait, gpu_ops_first, send_in_order)
+        gpu_cmps, send_wait, gpu_ops_first, send_in_order, tiebreaker)
 from theano.sandbox.cuda.basic_ops import (gpu_from_host, host_from_gpu,
         GpuFromHost)
 import theano
@@ -132,6 +132,14 @@ def test_send_order():
     assert set(node.inputs[0].name for node in nodes[:2]) == {a.name, b.name}
     # C is the last needed. Ensure that it happens last
     assert nodes[2].inputs[0].name == c.name
+
+def test_tiebreaker():
+    a = theano.tensor.fmatrix('a')
+    b = theano.tensor.fmatrix('b')
+    c = theano.tensor.fmatrix('c')
+    d = a+b
+    e = b+c
+    assert tiebreaker(d.owner) < tiebreaker(e.owner)
 
 def test_gpu_schedule():
     x = theano.tensor.fmatrix('x')

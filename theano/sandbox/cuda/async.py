@@ -249,4 +249,15 @@ def send_in_order(a, b):
         return dependence(a.inputs[0].owner, b.inputs[0].owner)
     return 0
 
-gpu_cmps = map(key_to_cmp, (send_wait, gpu_ops_first)) + [send_in_order]
+def tiebreaker(a):
+    """
+    Break ties by the maximum var-name on which the node depends
+    """
+    if not a or not a.inputs:
+        return 'ZZZ'
+    return max(inp.name or tiebreaker(inp.owner) for inp in a.inputs)
+
+gpu_cmps = [key_to_cmp(send_wait),
+            key_to_cmp(gpu_ops_first),
+            send_in_order,
+            key_to_cmp(tiebreaker)]
