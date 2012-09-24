@@ -723,7 +723,7 @@ class GpuCAReduce(GpuOp):
 
                 if (verbose)
                     printf("running kernel_reduce_10_%(name)s\\n");
-                int n_shared = sizeof(float) * n_threads.x;
+                int n_shared = sizeof(float) * n_threads.x * n_threads.y * n_threads.z;
                 kernel_reduce_10_%(name)s<<<n_blocks, n_threads,
                                                 n_shared>>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
