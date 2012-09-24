@@ -533,7 +533,7 @@ class GpuCAReduce(GpuOp):
                 self.scalar_op == other.scalar_op)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.reduce_mask)
+        return hash(type(self)) ^ hash(self.reduce_mask) ^ hash(type(self.scalar_op))
 
     def __str__(self):
         return "GpuCAReduce{%s}{%s}" % (
@@ -1559,7 +1559,7 @@ class GpuCAReduce(GpuOp):
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        version.extend(self.scalar_op.c_code_cache_version(scalar_node))
         for i in node.inputs + node.outputs:
             version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
