@@ -487,7 +487,7 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
             if disconnected_inputs == 'ignore':
                 pass
             elif disconnected_inputs == 'warn':
-                warnings.warn(message, stacklevel=1)
+                warnings.warn(message, stacklevel=2)
             elif disconnected_inputs == 'raise':
                 raise ValueError(message)
             else:
