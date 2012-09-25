@@ -28,6 +28,28 @@ def dependence(a, b):
     if depends((b, a)): return -1
     return 0
 
+def make_dependence_cmp():
+    """ Create a comparator to represent the dependence of nodes in a graph """
+    @memodict
+    def depends((a, b)):
+        """ Returns True if a depends on b """
+        return (any(bout in a.inputs for bout in b.outputs)
+                 or any(depends((ainp.owner, b)) for ainp in a.inputs
+                                                  if ainp.owner))
+
+    def dependence(a, b):
+        """ A cmp function for nodes in a graph - does a depend on b?
+
+        Returns positive number if a depends on b
+        Returns negative number if b depends on a
+        Returns 0 otherwise
+        """
+        if depends((a, b)): return  1
+        if depends((b, a)): return -1
+        return 0
+
+    return dependence
+
 def reverse_dict(d):
     """ Reverses direction of dependence dict
 
