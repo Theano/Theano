@@ -1029,3 +1029,11 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+
+def list_of_nodes(inputs, outputs):
+    """ Return the apply nodes of the graph between inputs and outputs """
+    return stack_search(
+            deque([o.owner for o in outputs]),
+            lambda o: [inp.owner for inp in o.inputs
+                           if inp.owner
+                           and not any(i in inp.owner.outputs for i in inputs)])
