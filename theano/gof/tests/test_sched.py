@@ -1,11 +1,13 @@
-from theano.gof.sched import (dependence, sort_apply_nodes, reverse_dict,
-        _toposort, posort)
+from theano.gof.sched import (make_dependence_cmp, sort_apply_nodes,
+        reverse_dict, _toposort, posort)
 
 import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
 
 def test_dependence():
+    dependence = make_dependence_cmp()
+
     x = tensor.matrix('x')
     y = tensor.dot(x*2, x+1)
     nodes = io_toposort([x], [y])
