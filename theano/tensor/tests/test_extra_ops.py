@@ -10,6 +10,9 @@ from theano import tensor as T
 from theano import config, tensor, function
 
 
+numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+numpy_16 = bool(numpy_ver >= [1, 6])
+
 class TestBinCountOp(utt.InferShapeTester):
     def setUp(self):
         super(TestBinCountOp, self).setUp()
@@ -39,12 +42,14 @@ class TestBinCountOp(utt.InferShapeTester):
 
                 f1 = theano.function([x], bincount(x))
                 f2 = theano.function([x, w], bincount(x, weights=w))
-                f3 = theano.function([x], bincount(x, minlength=23))
-                f4 = theano.function([x], bincount(x, minlength=5))
 
                 assert (np.bincount(a) == f1(a)).all()
                 assert np.allclose(np.bincount(a, weights=weights),
                                    f2(a, weights))
+                if not numpy_16:
+                    continue
+                f3 = theano.function([x], bincount(x, minlength=23))
+                f4 = theano.function([x], bincount(x, minlength=5))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
 
@@ -79,6 +84,8 @@ class TestBinCountOp(utt.InferShapeTester):
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
 
+                if not numpy_16:
+                    continue
                 self._compile_and_check(
                         [x],
                         [bincount(x, minlength=60)],
