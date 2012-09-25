@@ -553,7 +553,9 @@ class FunctionGraph(utils.object2):
             # 1-element graphs.
             return list(self.apply_nodes)
         fg = self
+
         ords = self.orderings()
+
         order = graph.io_toposort(fg.inputs, fg.outputs, ords)
         return order
 
