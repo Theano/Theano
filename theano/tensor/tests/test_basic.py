@@ -261,8 +261,11 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 raise SkipTest(skip)
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
-                inputrs = [TensorType(dtype=input.dtype, broadcastable=                             [shape_elem == 1 for shape_elem in input.shape]
-                             )() for input in inputs]
+                inputrs = [TensorType(
+                            dtype=input.dtype,
+                            broadcastable=[shape_elem == 1
+                                           for shape_elem in input.shape]
+                            )() for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
                 except Exception, exc:
@@ -291,7 +294,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     eps = 1e-10
 
                 if any([i.dtype == 'float32' for i in inputs]):
-                    eps = 8e-6  # 1e-6
+                    eps = 1e-6
                 eps = numpy.max([eps, _eps])
 
                 try:
@@ -310,7 +313,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                         izip(variables, expecteds)):
                     if (variable.dtype != expected.dtype
                             or variable.shape != expected.shape
-                            or numpy.any(abs(variable - expected) > eps)):
+                            or not numpy.allclose(variable, expected,
+                                atol=eps, rtol=eps)):
                         self.fail(("Test %s::%s: Output %s gave the wrong"
                             " value. With inputs %s, expected %s (dtype %s),"
                             " got %s (dtype %s). eps=%f"
@@ -324,7 +328,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                                 variable,
                                 variable.dtype,
                                 eps,
-                                numpy.allclose(variable, expected, atol=eps),
+                                numpy.allclose(variable, expected,
+                                    atol=eps, rtol=eps),
                                 numpy.allclose(variable, expected)))
 
                 for description, check in self.checks.items():
