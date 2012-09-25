@@ -68,7 +68,7 @@ def _toposort(edges):
     [2] http://en.wikipedia.org/wiki/Toposort#Algorithms
     """
     incoming_edges = reverse_dict(edges)
-    incoming_edges = {k: set(val) for k, val in incoming_edges.items()}
+    incoming_edges = dict((k, set(val)) for k, val in incoming_edges.items())
     S = set((v for v in edges if v not in incoming_edges))
     L = []
 
@@ -104,8 +104,8 @@ def posort(l, *cmps):
     [0, 8, 2, 4, 6, 1, 3, 5, 7, 9, 16, 18, 10, 12, 14, 17, 19, 11, 13, 15]
 
     implemented with _toposort """
-    comes_before = {a: set() for a in l}
-    comes_after  = {a: set() for a in l}
+    comes_before = dict((a, set()) for a in l)
+    comes_after  = dict((a, set()) for a in l)
 
     def add_links(a, b): # b depends on a
         comes_after[a].add(b)
