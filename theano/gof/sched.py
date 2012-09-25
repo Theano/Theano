@@ -87,6 +87,22 @@ def _toposort(edges):
 def posort(l, *cmps):
     """ Partially ordered sort with multiple comparators
 
+    Given a list of comparators order the elements in l so that the comparators
+    are satisfied as much as possible giving precedence to earlier comparators.
+
+    inputs:
+        l - an iterable of nodes in a graph
+        cmps - a sequence of comparator functions that describe which nodes
+               should come before which others
+
+    outputs:
+        a list of nodes which satisfy the comparators as much as possible.
+
+    >>> lower_tens = lambda a, b: a/10 - b/10 # prefer lower numbers div 10
+    >>> prefer evens = lambda a, b: a%2 - b%2 # prefer even numbers
+    >>> posort(range(20), lower_tens, prefer_evens)
+    [0, 8, 2, 4, 6, 1, 3, 5, 7, 9, 16, 18, 10, 12, 14, 17, 19, 11, 13, 15]
+
     implemented with _toposort """
     comes_before = {a: set() for a in l}
     comes_after  = {a: set() for a in l}
