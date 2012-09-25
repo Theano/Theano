@@ -53,6 +53,14 @@ def reverse_dict(d):
 def _toposort(edges):
     """ Topological sort algorithm by Kahn [1] - O(nodes + vertices)
 
+    inputs:
+        edges - a dict of the form {a: {b, c}} where b and c depend on a
+    outputs:
+        L - an ordered list of nodes that satisfy the dependencies of edges
+
+    >>> _toposort({1: {2, 3}, 2: (3, )})
+    [1, 2, 3]
+
     Closely follows the wikipedia page [2]
 
     [1] Kahn, Arthur B. (1962), "Topological sorting of large networks",
