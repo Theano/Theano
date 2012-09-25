@@ -1,5 +1,4 @@
 import unittest
-from numpy.testing import assert_allclose
 from theano.tests import unittest_tools as utt
 
 import numpy as np
@@ -22,7 +21,7 @@ class test_sort(unittest.TestCase):
         a = tensor.dmatrix()
         w = sort(a)
         f = theano.function([a], w)
-        assert_allclose(f(self.m_val), np.sort(self.m_val))
+        assert np.allclose(f(self.m_val), np.sort(self.m_val))
 
     def test2(self):
         a = tensor.dmatrix()
@@ -32,7 +31,7 @@ class test_sort(unittest.TestCase):
         for axis_val in 0, 1:
             gv = f(self.m_val, axis_val)
             gt = np.sort(self.m_val, axis_val)
-            assert_allclose(gv, gt)
+            assert np.allclose(gv, gt)
 
     def test3(self):
         a = tensor.dvector()
@@ -40,7 +39,7 @@ class test_sort(unittest.TestCase):
         f = theano.function([a], w2)
         gv = f(self.v_val)
         gt = np.sort(self.v_val)
-        assert_allclose(gv, gt)
+        assert np.allclose(gv, gt)
 
     def test4(self):
         a = tensor.dmatrix()
@@ -50,7 +49,7 @@ class test_sort(unittest.TestCase):
         for axis_val in 0, 1:
             gv = f(self.m_val, axis_val)
             gt = np.sort(self.m_val, axis_val)
-            assert_allclose(gv, gt)
+            assert np.allclose(gv, gt)
 
     def test5(self):
         a1 = SortOp("mergesort", [])
@@ -67,7 +66,7 @@ class test_sort(unittest.TestCase):
         f = theano.function([a], l)
         gv = f(self.m_val)
         gt = np.sort(self.m_val, None)
-        assert_allclose(gv, gt)
+        assert np.allclose(gv, gt)
 
 
 class TensorInferShapeTester(utt.InferShapeTester):
@@ -97,7 +96,7 @@ def test_argsort():
     f = theano.function([a], w)
     gv = f(m_val)
     gt = np.argsort(m_val)
-    assert_allclose(gv, gt)
+    assert np.allclose(gv, gt)
 
     #Example 2
     a = tensor.dmatrix()
@@ -107,7 +106,7 @@ def test_argsort():
     for axis_val in 0, 1:
         gv = f(m_val, axis_val)
         gt = np.argsort(m_val, axis_val)
-        assert_allclose(gv, gt)
+        assert np.allclose(gv, gt)
 
     #Example 3
     a = tensor.dvector()
@@ -115,7 +114,7 @@ def test_argsort():
     f = theano.function([a], w2)
     gv = f(v_val)
     gt = np.argsort(v_val)
-    assert_allclose(gv, gt)
+    assert np.allclose(gv, gt)
 
     #Example 4
     a = tensor.dmatrix()
@@ -125,7 +124,7 @@ def test_argsort():
     for axis_val in 0, 1:
         gv = f(m_val, axis_val)
         gt = np.argsort(m_val, axis_val)
-        assert_allclose(gv, gt)
+        assert np.allclose(gv, gt)
 
     #Example 5
     a = tensor.dmatrix()
@@ -143,4 +142,4 @@ def test_argsort():
     f = theano.function([a], w2)
     gv = f(m_val)
     gt = np.argsort(m_val, None)
-    assert_allclose(gv, gt)
+    assert np.allclose(gv, gt)
