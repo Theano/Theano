@@ -854,7 +854,7 @@ class CSMGrad(gof.op.Op):
             sp_dim = x_shape[0]
 
         g_row = numpy.zeros(sp_dim, dtype=g_data.dtype)
-        gout_data = numpy.zeros_like(x_data, dtype=node.outputs[0].dtype)
+        gout_data = numpy.zeros(x_data.shape, dtype=node.outputs[0].dtype)
 
         for i in range(len(x_indptr) - 1):
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
