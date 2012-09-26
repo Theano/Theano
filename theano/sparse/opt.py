@@ -675,7 +675,8 @@ local_usmm = gof.opt.PatternSub(
     (theano.tensor.sub, 'z',
      (theano.tensor.mul,
       {'pattern': 'alpha',
-       'constraint': lambda expr: numpy.all(expr.type.broadcastable)},
+       'constraint': lambda expr: (numpy.all(expr.type.broadcastable) and
+                                   theano.config.blas.ldflags)},
     (sparse._dot, 'x', 'y'))),
     (usmm, (theano.tensor.neg, 'alpha'), 'x', 'y', 'z'))
 register_specialize(local_usmm, name="local_usmm")
