@@ -51,7 +51,7 @@ class Conv3D(theano.Op):
         return "Conv3D"
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
     def make_node(self, V, W, b, d):
@@ -338,7 +338,8 @@ class Conv3D(theano.Op):
         #if the data types are not mixed, we can insert special case optimizations based on BLAS
         VV, WV, bv, dv = node.inputs
         HV = node.outputs[0]
-        if VV.dtype == WV.dtype and HV.dtype == VV.dtype:
+        if (theano.config.blas.ldflags and
+            VV.dtype == WV.dtype and HV.dtype == VV.dtype):
             if VV.dtype == 'float64':
                 gemv = 'dgemv_'
             elif VV.dtype == 'float32':
