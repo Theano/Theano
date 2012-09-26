@@ -843,7 +843,11 @@ class LogicalComparison(BinaryScalarOp):
         return [int8]
 
     def grad(self, inputs, output_gradients):
-        return [None, None]
+        x, y = inputs
+        out = self(x, y)
+        assert str(out.type.dtype).find('int') != -1
+        return [x.zeros_like().astype(theano.config.floatX),
+                y.zeros_like().astype(theano.config.floatX)]
 
 
 class FixedLogicalComparison(UnaryScalarOp):
@@ -854,7 +858,10 @@ class FixedLogicalComparison(UnaryScalarOp):
         return [int8]
 
     def grad(self, inputs, output_gradients):
-        return [None]
+        x ,= inputs
+        out = self(x)
+        assert str(out.type.dtype).find('int') != -1
+        return [x.zeros_like().astype(theano.config.floatX)]
 
 
 class LT(LogicalComparison):
