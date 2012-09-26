@@ -184,7 +184,7 @@ class Scan(PureOp):
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                        self.outputs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
-            self._cmodule_key = gof.CLinker.cmodule_key_(local_fgraph, [])
+            self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
         else:
             self._hash_inner_graph = self.info['gpu_hash']

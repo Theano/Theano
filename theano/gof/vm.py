@@ -508,7 +508,7 @@ class VM_Linker(link.LocalLinker):
     """
 
     def __init__(self, allow_gc=None, use_cloop=False, callback=None,
-                 lazy=None):
+                 lazy=None, schedule=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
@@ -538,6 +538,8 @@ class VM_Linker(link.LocalLinker):
         self.callback = callback
         self.lazy = lazy
         self.updated_vars = {}
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
@@ -559,7 +561,8 @@ class VM_Linker(link.LocalLinker):
                     allow_gc=self.allow_gc,
                     use_cloop=self.use_cloop,
                     callback=self.callback,
-                    lazy=self.lazy
+                    lazy=self.lazy,
+                    schedule=self.schedule
                     ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
@@ -780,7 +783,7 @@ class VM_Linker(link.LocalLinker):
                  output_storage=None,
                 ):
         fgraph = self.fgraph
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
