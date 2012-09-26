@@ -1646,6 +1646,9 @@ sampling_dot_csr = SamplingDotCSR()
 # register a specialization to replace SamplingDot -> SamplingDotCsr
 @gof.local_optimizer([sparse.sampling_dot])
 def local_sampling_dot_csr(node):
+    if not theano.config.blas.ldflags:
+        # The C implementation of SamplingDotCsr relies on BLAS routines
+        return
     if node.op == sparse.sampling_dot:
         x, y, p = node.inputs
         if p.type.format == 'csr':
@@ -1656,6 +1659,7 @@ def local_sampling_dot_csr(node):
 
             return [sparse.CSR(z_data, z_ind, z_ptr, p_shape)]
     return False
+
 sparse.register_specialize(local_sampling_dot_csr,
                            'cxx_only',
                            name='local_sampling_dot_csr')
