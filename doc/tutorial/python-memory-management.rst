@@ -12,8 +12,8 @@ should know, or at least get a good feel about, is the sizes of basic
 Python objects. Another thing is how Python manages its memory internally.
 
 So let us begin with the size of basic objects. In Python, there's not a
-lot of primitive data types: there are ``int``s, ``long``s (an unlimited
-precision version of ``int``), floats (which are doubles), tuples, strings,
+lot of primitive data types: there are ints, longs (an unlimited
+precision version of ints), floats (which are doubles), tuples, strings,
 lists, dictionaries, and classes.
 
 Basic Objects
@@ -33,7 +33,7 @@ if necessary):
 
     def show_sizeof(x, level=0):
 
-        print "\t"*level, x.__class__, sys.getsizeof(x), x
+        print "\t" * level, x.__class__, sys.getsizeof(x), x
 
         if hasattr(x, '__iter__'):
             if hasattr(x, 'items'):
@@ -54,7 +54,7 @@ data types:
         show_sizeof(102947298469128649161972364837164)
         show_sizeof(918659326943756134897561304875610348756384756193485761304875613948576297485698417)
 
-If you have a 32-bits 2.7x Python, you'll see:
+If you have a 32-bit 2.7x Python, you'll see:
 
 ::
 
@@ -64,7 +64,7 @@ If you have a 32-bits 2.7x Python, you'll see:
       28 102947298469128649161972364837164
       48 918659326943756134897561304875610348756384756193485761304875613948576297485698417
 
-and if you have a 64-bits 2.7x Python, you'll see:
+and if you have a 64-bit 2.7x Python, you'll see:
 
 ::
 
@@ -74,14 +74,14 @@ and if you have a 64-bits 2.7x Python, you'll see:
       40 102947298469128649161972364837164
       60 918659326943756134897561304875610348756384756193485761304875613948576297485698417
 
-Let us focus on the 64-bits version (mainly because that's what we need the
-most often in our case). ``None`` takes 16 bytes. ``int`` take 24 bytes,
-*three times* as much memory as a C ``int64_t``, despite being some king of
+Let us focus on the 64-bit version (mainly because that's what we need the
+most often in our case). ``None`` takes 16 bytes. ``int`` takes 24 bytes,
+*three times* as much memory as a C ``int64_t``, despite being some kind of
 "machine-friendly" integer. Long integers (unbounded precision), used to
 represent integers larger than 2\ :sup:`63`\ -1, have a minimum size of 36
 bytes. Then it grows linearly in the logarithm of the integer represented.
 
-Python's floats are implementation-specific but seems to be C doubles.
+Python's floats are implementation-specific but seem to be C doubles.
 However, they do not eat up only 8 bytes:
 
 ::
@@ -94,13 +94,13 @@ Outputs
 
       16 3.14159265359
 
-on a 32-bits platform and
+on a 32-bit platform and
 
 ::
 
       24 3.14159265359
 
-on a 64-bits platform. That's again, three times the size a C programmer
+on a 64-bit platform. That's again, three times the size a C programmer
 would expect. Now, what about strings?
 
 ::
@@ -108,7 +108,7 @@ would expect. Now, what about strings?
         show_sizeof("")
         show_sizeof("My hovercraft is full of eels")
 
-outputs, on a 32 bits platform:
+outputs, on a 32 bit platform:
 
 ::
 
@@ -122,13 +122,13 @@ and
       37
       66 My hovercraft is full of eels
 
-An *empty* string costs 37 bytes in a 64-bits environment! Memory used
-by string then linearly grow in the length of the (useful) string.
+An *empty* string costs 37 bytes in a 64-bit environment! Memory used
+by string then linearly grows in the length of the (useful) string.
 
 \*
 \* \*
 
-Other structures commonly used, tuples, lists, and dictionary are
+Other structures commonly used, tuples, lists, and dictionaries are
 worthwhile to examine. Lists (which are implemented as `array
 lists <http://en.wikipedia.org/wiki/Dynamic_array>`_, not as `linked
 lists <http://en.wikipedia.org/wiki/Linked_list>`_, with `everything it
@@ -148,15 +148,15 @@ outputs
       32 []
       44 [4, 'toaster', 230.1]
 
-on a 32-bits platform and
+on a 32-bit platform and
 
 ::
 
       72 []
       96 [4, 'toaster', 230.1]
 
-on a 64-bits platform. An empty list eats up 72 bytes. The size of an
-empty, 64-bits C++ ``std::list()``is only 16 bytes, 4-5 times less. What
+on a 64-bit platform. An empty list eats up 72 bytes. The size of an
+empty, 64-bit C++ ``std::list()``is only 16 bytes, 4-5 times less. What
 about tuples? (and dictionaries?):
 
 ::
@@ -164,7 +164,7 @@ about tuples? (and dictionaries?):
         show_sizeof({})
         show_sizeof({'a':213, 'b':2131})
 
-outputs, on a 32-bits box
+outputs, on a 32-bit box
 
 ::
 
@@ -190,11 +190,11 @@ and
                      38 b
                      24 2131
 
-for a 64-bits box.
+for a 64-bit box.
 
 This last example is particularly interesting because it "doesn't add up."
-If we look at individual tuples, they take 72 bytes (while their components
-take 38+24=62 bytes, leaving 10 bytes for the tuple itself), but the
+If we look at individual key/value pairs, they take 72 bytes (while their components
+take 38+24=62 bytes, leaving 10 bytes for the pair itself), but the
 dictionary takes 280 bytes (rather than a strict minimum of 144=72×2
 bytes). The dictionary is supposed to be an efficient data structure for
 search and the two likely implementations will use more space that strictly
@@ -205,7 +205,7 @@ good performance.
 
 The (somewhat) equivalent ``std::map`` C++ structure takes 48 bytes when
 created (that is, empty). An empty C++ string takes 8 bytes (then allocated
-size grows linearly the size of the string). An integer takes 32 bits.
+size grows linearly the size of the string). An integer takes 4 bytes (32 bits).
 
 \*
 \* \*
@@ -213,9 +213,9 @@ size grows linearly the size of the string). An integer takes 32 bits.
 Why does all this matter? It seems that whether an empty string takes 8
 bytes or 37 doesn't change anything much. That's true. That's true *until*
 you need to scale. Then, you need to be really careful about how many
-objects you create to limit the quantity of memory you program uses. It is
+objects you create to limit the quantity of memory your program uses. It is
 a problem in real-life applications. However, to devise a really good
-strategy about memory management, we mustn't only consider the sizes of
+strategy about memory management, we must not only consider the sizes of
 objects, but how many and in which order they are created. It turns out to
 be very important for Python programs. One key element to understand is how
 Python allocates its memory internally, which we will discuss next.
@@ -288,12 +288,13 @@ program (it makes my point entirely):
 
 ::
 
-    import copy, memory_profiler
+    import copy
+    import memory_profiler
 
     @profile
     def function():
-        x=range(1000000)  # allocate a big list
-        y=copy.deepcopy(x)
+        x = range(1000000)  # allocate a big list
+        y = copy.deepcopy(x)
         del x
         return y
 
@@ -306,7 +307,7 @@ invoking
 
     python -m memory_profiler memory-profile-me.py
 
-prints, on a 64-bits computer
+prints, on a 64-bit computer
 
 ::
 
@@ -351,23 +352,25 @@ Consider this short example:
 
 ::
 
-    import memory_profiler, random, pickle
+    import memory_profiler
+    import pickle
+    import random
 
     def random_string():
-        return "".join([ chr(64+random.randint(0,25)) for _ in xrange(20) ])
+        return "".join([chr(64 + random.randint(0, 25)) for _ in xrange(20)])
 
     @profile
     def create_file():
-        x=[ (random.random(),
-             random_string(),
-             random.randint(0,2**64))
-            for _ in xrange(1000000) ]
+        x = [(random.random(),
+              random_string(),
+              random.randint(0, 2 ** 64))
+             for _ in xrange(1000000)]
 
-        pickle.dump(x,open('machin.pkl','w'))
+        pickle.dump(x, open('machin.pkl', 'w'))
 
     @profile
     def load_file():
-        y=pickle.load(open('machin.pkl','r'))
+        y = pickle.load(open('machin.pkl', 'r'))
         return y
 
     if __name__=="__main__":
@@ -425,31 +428,35 @@ A naïve implementation would give:
 
 ::
 
-    import memory_profiler, random, pickle
+    import memory_profiler
+    import random
+    import pickle
 
     def random_string():
-        return "".join([ chr(64+random.randint(0, 25)) for _ in xrange(20) ])
+        return "".join([chr(64 + random.randint(0, 25)) for _ in xrange(20)])
 
     @profile
     def create_file():
-        x=[ (random.random(),
-             random_string(),
-             random.randint(0, 2**64))
-            for _ in xrange(1000000) ]
+        x = [(random.random(),
+              random_string(),
+              random.randint(0, 2 ** 64))
+             for _ in xrange(1000000) ]
 
-        f=open('machin.flat', 'w')
+        f = open('machin.flat', 'w')
         for xx in x:
             print >>f, xx
+        f.close()
 
     @profile
     def load_file():
-        y=[]
-        f=open('machin.flat', 'r')
+        y = []
+        f = open('machin.flat', 'r')
         for line in f:
             y.append(eval(line))
+        f.close()
         return y
 
-    if __name__=="__main__":
+    if __name__== "__main__":
         create_file()
         #load_file()
 
@@ -502,7 +509,7 @@ twice: once by pickle, and once through Numpy.
 
 Or even better yet: use Numpy (or PyTables) arrays. But that's a different
 topic. In the mean time, you can have a look at `loading and saving
-<https://github.com/Theano/Theano/blob/master/doc/tutorial/loading_and_saving.txt>`_
+<http://deeplearning.net/software/theano/tutorial/loading_and_saving.html>`_
 another tutorial in the Theano/doc/tutorial directory.
 
 \*
