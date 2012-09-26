@@ -128,7 +128,9 @@ class ArgSortOp(theano.Op):
         a = inputs[0]
         axis = inputs[1]
         z = output_storage[0]
-        z[0] = np.argsort(a, axis, self.kind, self.order)
+        z[0] = theano._asarray(
+                np.argsort(a, axis, self.kind, self.order),
+                dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and

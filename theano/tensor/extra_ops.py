@@ -151,11 +151,14 @@ class BinCountOp(theano.Op):
 
         if weights is not None and weights.shape != x.shape:
             raise TypeError("All inputs must have the same shape.")
+
         #Needed for numpy 1.4.1 compatibility
         if self.minlength:
-            z[0] = np.bincount(x, weights=weights, minlength=self.minlength)
+            out = np.bincount(x, weights=weights, minlength=self.minlength)
         else:
-            z[0] = np.bincount(x, weights=weights)
+            out = np.bincount(x, weights=weights)
+
+        z[0] = theano._asarray(out, dtype=node.outputs[0].dtype)
 
     def grad(self, inputs, outputs_gradients):
         output = self(*inputs)
