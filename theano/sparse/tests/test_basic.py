@@ -127,14 +127,19 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
                 value = a + numpy.random.random(shape) * (b - a)
             else:
                 value = numpy.random.random(shape) * gap[0]
-
-        value.astype(out_dtype)
-        return where * value
+        return (where * value).astype(out_dtype)
 
     variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
                 for k in range(n)]
     data = [getattr(scipy.sparse, format + '_matrix')(_rand(), dtype=out_dtype)
             for k in range(n)]
+    #numpy 1.5.0 with scipy 0.9.0 have scipy.sparse.XXX_matrix return
+    #typenum 10(ulonglong) instead of 8(uint64) event if they are the same!
+    #Theano don't like ulonglong type_num
+    dtype = numpy.dtype(out_dtype)  # Convert into dtype object.
+    if data[0].dtype.num != dtype.num and dtype.str == data[0].dtype.str:
+        data[0].data = theano._asarray(data[0].data, out_dtype)
+    assert data[0].dtype.num == dtype.num
     return (variable, data)
 
 
