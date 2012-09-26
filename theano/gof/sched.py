@@ -162,6 +162,7 @@ def sort_schedule_fn(*cmps):
     See also:
         sort_apply_nodes
     """
+    dependence = make_dependence_cmp()
     cmps = (dependence,) + cmps
     def schedule(fgraph):
         """ Order nodes in a FunctionGraph """
