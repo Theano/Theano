@@ -36,7 +36,15 @@ def test__toposort():
 
 def test_posort_easy():
     nodes = "asdfghjkl"
-    cmp = lambda a,b: -1 if a<b else 1 if a>b else 0
+
+    def cmp(a, b):
+        if a < b:
+            return -1
+        elif a > b:
+            return 1
+        else:
+            return 0
+
     assert posort(nodes, cmp) == list("adfghjkls")
 
 def test_posort():
