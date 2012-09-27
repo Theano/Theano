@@ -3323,6 +3323,59 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                     return -1;
                 }
             }; break;
+        case 4: // 4-tensor
+            {
+                if (verbose) fprint_CudaNdarray(stderr, other);
+
+                // The blocks implement the looping over the first two axes so
+                // this needs to be (N1, N2)
+                dim3 n_blocks( (unsigned int) CudaNdarray_HOST_DIMS(self)[0],
+                               (unsigned int) CudaNdarray_HOST_DIMS(self)[1]);
+                // For the threads, just make as many as possible
+                dim3 n_threads( std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[2],
+                                 (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK),
+                                std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[3],
+                                    (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK));
+
+                for (int i = 0; n_threads.x * n_threads.y > NUM_VECTOR_OP_THREADS_PER_BLOCK; i++)
+                {
+                    if (i % 2)
+                        n_threads.x--;
+                    else
+                        n_threads.y--;
+                }
+
+                k_copy_4d<<<n_blocks, n_threads>>>(
+                                            // size of y
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[0], // N1
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[1], // N2
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[2], // N3
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[3], // N4
+                                            CudaNdarray_DEV_DATA(other), // x
+                                            // x strides
+                                            CudaNdarray_HOST_STRIDES(other)[0],
+                                            CudaNdarray_HOST_STRIDES(other)[1],
+                                            CudaNdarray_HOST_STRIDES(other)[2],
+                                            CudaNdarray_HOST_STRIDES(other)[3],
+                                            CudaNdarray_DEV_DATA(self), // y
+                                            // y strides
+                                            CudaNdarray_HOST_STRIDES(self)[0],
+                                            CudaNdarray_HOST_STRIDES(self)[1],
+                                            CudaNdarray_HOST_STRIDES(self)[2],
+                                            CudaNdarray_HOST_STRIDES(self)[3]
+                                            );
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %s: %s.",
+                                 "k_copy_4d",
+                                 cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
+                    return -1;
+                }
+            }; break;
         default:
             {
                 assert (cudaSuccess == cudaGetLastError());
