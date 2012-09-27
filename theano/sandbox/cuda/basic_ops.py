@@ -2413,6 +2413,22 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         # TODO opt to make this inplace
         if self.set_instead_of_inc:
             return super(GpuIncSubtensor, self).perform(node, inp, out_)
+        """
+            inp is:
+                x: the tensor to be added to / assigned to
+                y: the tensor to add
+                <indexing args>: these contain only the indexing arguments
+                                that are not constant. for example, if the
+                                user indexed x[0:x.shape[0]:2], you would
+                                only get an indexing arg for the x.shape[0].
+                                The constants are built into the op instance
+                                itself in self.idx_list
+
+            see theano.tensor.basic.Subtensor for a description of the idx_list
+            format
+
+            TODO: WRITEME: how to map between variables in idx_list and inp?
+        """
 
         x, y = inp[0:2]
         out, = out_
