@@ -130,5 +130,11 @@ def test_local_sampling_dot_csr():
                             sparse.sampling_dot(*inputs),
                             mode=mode)
 
-        assert not any(isinstance(node.op, sparse.SamplingDot) for node
+        if theano.config.blas.ldflags:
+            assert not any(isinstance(node.op, sparse.SamplingDot) for node
+                       in f.maker.fgraph.toposort())
+        else:
+            # SamplingDotCSR's C implementation needs blas, so it should not
+            # be inserted
+            assert not any(isinstance(node.op, sparse.opt.SamplingDotCSR) for node
                        in f.maker.fgraph.toposort())
