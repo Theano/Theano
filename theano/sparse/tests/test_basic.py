@@ -1204,7 +1204,16 @@ class UsmmTests(unittest.TestCase):
 
             fast_compile = theano.config.mode == "FAST_COMPILE"
 
-            if (y.type.dtype == up and format1 == 'csc' and format2 == 'dense'
+            if not theano.config.blas.ldflags:
+                # Usmm should not be inserted, because it relies on BLAS
+                assert len(topo) == 4, topo
+                assert isinstance(topo[0].op, theano.sparse.Dot)
+                assert isinstance(topo[1].op, theano.tensor.DimShuffle)
+                assert (isinstance(topo[2].op, theano.tensor.Elemwise) and
+                        isinstance(topo[2].op.scalar_op, theano.scalar.Mul))
+                assert (isinstance(topo[3].op, theano.tensor.Elemwise) and
+                        isinstance(topo[3].op.scalar_op, theano.scalar.Sub))
+            elif (y.type.dtype == up and format1 == 'csc' and format2 == 'dense'
                 and not fast_compile and theano.config.cxx and
                 up in ('float32', 'float64')):
                 # The op UsmmCscDense should be inserted
