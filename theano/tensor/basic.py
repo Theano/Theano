@@ -3698,21 +3698,28 @@ class AdvancedIndexingError(TypeError):
 class Subtensor(Op):
     """Return a subtensor view
 
-    This class uses a relatively complex internal representation of the inputs
-    to remember how the input tensor x should be sliced.  The instance variable
-    idx_list is a list whose elements are either integers, or slices.  The
-    integers are indexes into the inputs array, and the start/stop/step members
-    of each slice are also integer indexes into the inputs array (or None).
     The inputs array is the tensor x, followed by scalar integer variables.
+    TODO: WRITEME: how are the scalar integer variables formatted?
+
+    This class uses a relatively complex internal representation of the inputs
+    to remember how the input tensor x should be sliced.
+
+    idx_list: instance variable TODO: WRITEME: is this a list or a tuple?
+                                        (old docstring gives two conflicting
+                                        descriptions)
+              elements are either integers, theano scalars, or slices.
+              one element per "explicitly named dimension"
+                TODO: WRITEME: what is an "explicitly named dimension" ?
+
+              if integer:
+                  indexes into the inputs array
+              if slice:
+                  start/stop/step members of each slice are integer indices
+                  into the inputs array or None
+                  integer indices be actual integers or theano scalars
 
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
-    The idx_list is a tuple similar in structure to the sort of key you might
-    expect in numpy's basic indexing mode. It has one element for each
-    explicitly named dimension. In numpy, the elements can be either integers
-    or slices containing integers and None. In Subtensor, each element can
-    additionally be a Scalar instance, and slice components can also be Scalar
-    instances too.
     """
     e_invalid = ('The index list is longer (size %d) than the number of '
                  'dimensions of the tensor(namely %d). You are asking for '
@@ -3810,6 +3817,10 @@ class Subtensor(Op):
             return scal.as_scalar(a)
 
     def make_node(self, x, *inputs):
+        """
+            x: the tensor to take a subtensor of
+            inputs: a list of theano Scalars
+        """
         x = as_tensor_variable(x)
         inputs = tuple(self.my_as_scalar(a) for a in inputs)
 
@@ -4440,6 +4451,11 @@ class IncSubtensor(Op):
                 ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
+        """
+            x: the tensor to increment
+            y: the value to increment by
+            inputs: TODO WRITEME
+        """
         x, y = map(as_tensor_variable, [x, y])
         inputs = tuple(map(Subtensor.my_as_scalar, inputs))
 
