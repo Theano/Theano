@@ -2411,6 +2411,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
+        if self.set_instead_of_inc:
+            return super(GpuIncSubtensor, self).perform(node, inp, out_)
+
         x, y = inp[0:2]
         out, = out_
         if not self.inplace:
@@ -2431,6 +2434,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             assert len(self.idx_list) == 0
             idx = inp[2:]
             unique, inverse = numpy.unique(idx, return_inverse=True)
+            assert unique.dtype == "int64"
+            assert inverse.dtype == "int64"
             idx_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(idx.astype("float32"))
             unique_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(unique.astype("float32"))
             inverse_float32 = cuda_ndarray.cuda_ndarray.CudaNdarray(inverse.astype("float32"))
@@ -2443,8 +2448,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         out[0] = x
 
     def make_node(self, x, y, *inputs):
-        assert isinstance(x.type, CudaNdarrayType)
-        assert isinstance(y.type, CudaNdarrayType)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x, y] + rval.inputs[2:], [x.type()])
 
