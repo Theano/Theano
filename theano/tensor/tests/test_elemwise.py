@@ -848,6 +848,24 @@ class TestElemwise(unittest_tools.InferShapeTester):
                             [t_left_val, t_right_val], Elemwise)
 
 
+def test_gt_grad():
+
+    floatX = config.floatX
+    T = theano.tensor
+
+    input_ = T.vector(dtype=floatX)
+    random_values = numpy.random.RandomState(1234).uniform(low=-1, high=1, size=(2,2))
+    W_values = numpy.asarray(random_values, dtype=floatX)
+    W = theano.shared(value=W_values, name='weights')
+    correct_score = T.dot(input_, W)
+    wrong_input = T.vector(dtype=floatX)
+    wrong_score = theano.clone(correct_score, {input_: wrong_input})
+    # Hinge loss
+
+    scores = T.ones_like(correct_score) - correct_score + wrong_score
+    cost = (scores * (scores > 0)).sum()
+    T.grad(cost, input_)
+
 """
 if __name__ == '__main__':
     #unittest.main()
