@@ -2409,9 +2409,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
     """
+
     def make_node(self, x, y, *inputs):
-        assert isinstance(x.type, CudaNdarrayType)
-        assert isinstance(y.type, CudaNdarrayType)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x, y] + rval.inputs[2:], [x.type()])
 
