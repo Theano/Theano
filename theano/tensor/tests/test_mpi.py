@@ -1,9 +1,9 @@
-from theano.tensor.io import send, recv, mpi_cmp, MPISend, MPISendWait
+from theano.tensor.io import send, recv, mpi_cmps, MPISend, MPISendWait
 import theano
 import subprocess
 import os
 from theano.gof.sched import sort_schedule_fn
-mpi_scheduler = sort_schedule_fn(mpi_cmp)
+mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
 mpi_mode = theano.Mode(linker=mpi_linker)
 
