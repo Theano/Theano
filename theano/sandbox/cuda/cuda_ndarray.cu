@@ -2127,7 +2127,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
     }
 
     PyObject * intobj = NULL;
-    if(CudaNdarray_Check(o)  && PyArray_Check(value)){
+    if (CudaNdarray_Check(o)  && PyArray_Check(value)){
         if (verbose)
             fprintf(stderr,
                     "CudaNdarray_setitem dest is a CudaNdarray and"
@@ -2137,7 +2137,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
         {
             return -1;
         }
-        if(CudaNdarray_CopyFromArray(new_value, (PyArrayObject *) value))
+        if (CudaNdarray_CopyFromArray(new_value, (PyArrayObject *) value))
         {
             Py_XDECREF(new_value);
             Py_XDECREF(rval);
@@ -2214,7 +2214,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     PyObject *baseSavedForComparison = rval->base;
 
-    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
+    if (CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
     {
         Py_DECREF((PyObject*)rval);
         Py_XDECREF(new_value);
@@ -3190,14 +3190,21 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
     }
 }
 
-static __global__ void k_copy_4d(const int N1, N2, N3, N4, const float
-* x, const int sx1, sx2, sx3, sx4, float * y, const int sy1, ...)
+// N1 through N4 are the size of y
+static __global__ void k_copy_4d(const int N1,
+        const int N2, const int N3, const int N4,
+        const float * x, const int sx1, const int sx2, const int sx3,
+        const int sx4,  float * y, const int sy1, const int sy2,
+        const int sy3, const int sy4)
 {
+    // N1 and N2 are kept in case a future implementation needs to
+    // loop on the first two dimensions if there are not enough blocks
     for (int i = threadIdx.x; i < N3; i += blockDim.x)
     {
         for (int j = threadIdx.y; j < N4; j += blockDim.y)
         {
-            y[gridDim.x*sy1 + gridDim.y*sy2 + i*sy3 + j*sy4] = x[...];
+            y[gridIdx.x*sy1 + gridIdx.y*sy2 + i*sy3 + j*sy4] = 
+                x[gridIdx.x*sx1 + gridIdx.y*sx2 + i*sx3 + j*sx4];
         }
     }
 }
