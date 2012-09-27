@@ -3190,6 +3190,18 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
     }
 }
 
+static __global__ void k_copy_4d(const int N1, N2, N3, N4, const float
+* x, const int sx1, sx2, sx3, sx4, float * y, const int sy1, ...)
+{
+    for (int i = threadIdx.x; i < N3; i += blockDim.x)
+    {
+        for (int j = threadIdx.y; j < N4; j += blockDim.y)
+        {
+            y[gridDim.x*sy1 + gridDim.y*sy2 + i*sy3 + j*sy4] = x[...];
+        }
+    }
+}
+
 //copy from other into self
 int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                                     const CudaNdarray * other,
