@@ -3203,8 +3203,8 @@ static __global__ void k_copy_4d(const int N1,
     {
         for (int j = threadIdx.y; j < N4; j += blockDim.y)
         {
-            y[gridIdx.x*sy1 + gridIdx.y*sy2 + i*sy3 + j*sy4] = 
-                x[gridIdx.x*sx1 + gridIdx.y*sx2 + i*sx3 + j*sx4];
+            y[blockIdx.x*sy1 + blockIdx.y*sy2 + i*sy3 + j*sy4] = 
+                x[blockIdx.x*sx1 + blockIdx.y*sx2 + i*sx3 + j*sx4];
         }
     }
 }
