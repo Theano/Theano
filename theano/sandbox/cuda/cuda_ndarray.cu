@@ -1360,7 +1360,7 @@ CudaNdarray_AddTo(CudaNdarray * self, PyObject *args){
             }
             break;
     default:
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_AddTo: only ipnut with 1 or 2 dimensions are currently supported");
+        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_AddTo: only input with 1 or 2 dimensions are currently supported");
         
     }        
 
