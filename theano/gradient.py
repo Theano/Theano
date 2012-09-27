@@ -696,6 +696,7 @@ def _populate_grad_dict(var_to_node_to_idx,
 
     def access_term_cache(node):
         """ Populates term_dict[node] and returns it """
+        global theano
 
         if node not in term_dict:
 
@@ -814,6 +815,8 @@ def _populate_grad_dict(var_to_node_to_idx,
                         # The above won't work if it's a sparse type, handle sparse
                         # types here
                         if no_constant_value:
+                            if not hasattr(theano, 'sparse'):
+                                import theano.sparse
                             if isinstance(term.type, theano.sparse.SparseType):
                                 if term.owner is not None and isinstance(term.owner.op,
                                         theano.sparse.CSM):
