@@ -2410,9 +2410,6 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     Implement IncSubtensor on the gpu.
     """
     def perform(self, node, inp, out_):
-        # TODO opt to make this inplace
-        if self.set_instead_of_inc:
-            return super(GpuIncSubtensor, self).perform(node, inp, out_)
         """
             inp is:
                 x: the tensor to be added to / assigned to
@@ -2429,6 +2426,13 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
             TODO: WRITEME: how to map between variables in idx_list and inp?
         """
+        #print 'GpuIncSubtensor perform'
+        # TODO opt to make this inplace
+        if self.set_instead_of_inc:
+            #print 'calling superclass'
+            return super(GpuIncSubtensor, self).perform(node, inp, out_)
+        print node.inputs
+        assert False
 
         x, y = inp[0:2]
         out, = out_
