@@ -2429,10 +2429,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         #print 'GpuIncSubtensor perform'
         # TODO opt to make this inplace
         if self.set_instead_of_inc:
-            #print 'calling superclass'
             return super(GpuIncSubtensor, self).perform(node, inp, out_)
-        print node.inputs
-        assert False
 
         x, y = inp[0:2]
         out, = out_
