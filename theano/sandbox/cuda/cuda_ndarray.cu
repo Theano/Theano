@@ -13,6 +13,9 @@
 
 //If true, we fill with NAN allocated device memory.
 #define ALLOC_MEMSET 0
+#include <sys/time.h>                // for gettimeofday()
+#include <stdio.h>
+
 
 /////////////////////////
 // Alloc and Free
@@ -83,6 +86,9 @@ void * device_malloc(size_t size)
 }
 int device_free(void *ptr)
 {
+
+    // TODO: Move all device_free calls to wait side of gpu async calls
+    return 0;
 
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
@@ -341,9 +347,9 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
 
     assert (PyArray_ITEMSIZE(rval) == sizeof(real));
 
-    cublasGetVector(PyArray_SIZE(rval), sizeof(real),
-                    contiguous_self->devdata, 1,
-                    PyArray_DATA(rval), 1);
+    getVector(PyArray_SIZE(rval), sizeof(real),
+              contiguous_self->devdata, 1,
+              PyArray_DATA(rval), 1);
     CNDA_THREAD_SYNC;
 
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
@@ -2599,7 +2605,7 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 
     // Transfer the result to cpu
     int gpu_sizes[] = {-1,-1};
-    cublasGetVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
+    getVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
     device_free(gpu_data);
 
     if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
@@ -3102,6 +3108,8 @@ cublas_shutdown()
 int
 CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
 {
+    timeval t1, t2, t3, t4;
+    gettimeofday(&t1, NULL);
     int err = CudaNdarray_alloc_contiguous(self, PyArray_NDIM(obj), obj->dimensions);
     if (err) {
         return err;
@@ -3118,10 +3126,12 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     if (!py_src) {
         return -1;
     }
-    cublasSetVector(PyArray_SIZE(py_src),
-            sizeof(real),
-            PyArray_DATA(py_src), 1,
-            self->devdata, 1);
+    gettimeofday(&t2, NULL);
+    setVector(PyArray_SIZE(py_src),
+              sizeof(real),
+              PyArray_DATA(py_src), 1,
+              self->devdata, 1);
+    gettimeofday(&t3, NULL);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -3130,6 +3140,16 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
         return -1;
     }
     Py_DECREF(py_src);
+    gettimeofday(&t4, NULL);
+    double elapsedTimeFirst = (t2.tv_sec - t1.tv_sec) * 1000.0; 
+    elapsedTimeFirst += (t2.tv_usec - t1.tv_usec) / 1000.0;
+    double elapsedTimeSecond = (t3.tv_sec - t2.tv_sec) * 1000.0; 
+    elapsedTimeSecond += (t3.tv_usec - t2.tv_usec) / 1000.0;
+    double elapsedTimeThird = (t4.tv_sec - t3.tv_sec) * 1000.0; 
+    elapsedTimeThird += (t4.tv_usec - t3.tv_usec) / 1000.0;
+    printf("Elapsed time First : %lf\n", elapsedTimeFirst);
+    printf("Elapsed time Second: %lf\n", elapsedTimeSecond);
+    printf("Elapsed time Third : %lf\n", elapsedTimeThird);
     return 0;
 }
 
@@ -4403,12 +4423,12 @@ cnda_copy_structure_to_device(const CudaNdarray * self)
             }
         }
     }
-    cublasSetVector(cnda_structure_size(self->nd),
-                    sizeof(int),
-                    self->host_structure,
-                    1,
-                    self->dev_structure,
-                    1);
+    setVector(cnda_structure_size(self->nd), 
+              sizeof(int),
+              self->host_structure, 
+              1, 
+              self->dev_structure, 
+              1);
     CNDA_THREAD_SYNC;
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -4505,20 +4525,55 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     fprintf(fd, "\n\tDEV_DIMS:      ");
     for (int i = 0; i < self->nd; ++i)
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure+i, 1,
-                        &data, 1);
+        getVector(1, sizeof(int),
+                  self->dev_structure+i, 1,
+                  &data, 1);
         fprintf(fd, "%i\t", data);
     }
     fprintf(fd, "\n\tDEV_STRIDES: ");
     for (int i = 0; i < self->nd; ++i)
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure + self->nd+i, 1,
-                        &data, 1);
+        getVector(1, sizeof(int),
+                  self->dev_structure + self->nd+i, 1,
+                  &data, 1);
         fprintf(fd, "%i \t", data);
     }
     fprintf(fd, "\n");
+}
+
+void free_cudaEvent(void *_event)
+{
+    free(_event);
+}
+void getVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+{
+    if (!ASYNC)
+    {
+        cublasGetVector(n, elemSize, x, incx, y, incy);
+    }
+    else
+    {
+        cudaMemcpyAsync( y, x, n*elemSize, cudaMemcpyDeviceToHost );
+        // cublasGetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+    }
+}
+void setVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+{
+    timeval t1, t2, t3, t4;
+    if (!ASYNC)
+    {
+        cublasSetVector(n, elemSize, x, incx, y, incy);
+    }
+    else
+    {
+        gettimeofday(&t1, NULL);
+        cudaMemcpyAsync( y, x, n*elemSize, cudaMemcpyHostToDevice );
+        gettimeofday(&t2, NULL);
+        double elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0; 
+        elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+        printf("Time spent in setVector: %lfms\n", elapsedTime);
+        //cublasSetVectorAsync(n, elemSize, x, incx, y, incy, 0);
+    }
 }
 
 /*

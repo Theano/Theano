@@ -168,3 +168,8 @@ def sort_schedule_fn(*cmps):
         """ Order nodes in a FunctionGraph """
         return sort_apply_nodes(fgraph.inputs, fgraph.outputs, cmps)
     return schedule
+
+def key_to_cmp(key):
+    def key_cmp(a, b):
+        return cmp(key(a), key(b))
+    return key_cmp
