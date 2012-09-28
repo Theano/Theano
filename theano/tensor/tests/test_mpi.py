@@ -1,5 +1,5 @@
 from theano.tensor.io import (send, recv, mpi_cmps, MPISend, MPISendWait,
-        mpi_send_wait_cmp, mpi_tag_cmp)
+        mpi_send_wait_cmp, mpi_tag_cmp, mpi_enabled)
 import theano
 import subprocess
 import os
@@ -36,6 +36,8 @@ def test_mpi_roundtrip():
 #                                 "theano/tensor/tests/_test_mpi_roundtrip.py"),
 #                         stdout=subprocess.PIPE)
 #    assert p.stdout.read() == "True"
+    if not mpi_enabled:
+        return
     result = os.popen("mpiexec -np 2 python "
                       "theano/tensor/tests/_test_mpi_roundtrip.py").read()
     assert result == "True"
