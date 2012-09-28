@@ -1471,7 +1471,7 @@ def gpuScanOptimization(node):
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_fgraph, [])
+            _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
             typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
@@ -1520,7 +1520,7 @@ def gpuScanOptimization(node):
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
                                                        scan_outs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
-            _cmodule_key = gof.CLinker.cmodule_key_(local_fgraph, [])
+            _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
             def typeConstructor(broadcastable, dtype):
                 assert dtype == 'float32'
