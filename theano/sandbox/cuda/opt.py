@@ -43,7 +43,7 @@ gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
-        'fast_run', 'inplace')
+        'fast_run', 'inplace', 'gpu')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
         'fast_run', 'gpu')
 # DO NOT PUT fast_run in gpu_opt! This will ALWAYS enable the GPU!
@@ -63,7 +63,7 @@ optdb.register('gpu_after_fusion',
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        gpu_optimizer.register(name, local_opt, 'fast_run', *tags)
+        gpu_optimizer.register(name, local_opt, 'fast_run', 'gpu', *tags)
         return local_opt
     return f
 
