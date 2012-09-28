@@ -586,6 +586,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 rval.outputs = node_output_storage
                 rval.lazy = False
                 return rval
+                # the next line does nothing, but pyflakes is too
+                # stupid to realize the def rval below is not a
+                # redefinition unless I include this
+                del rval
             except (NotImplementedError, utils.MethodNotDefined):
                 logger.debug('Falling back on perform')
 
