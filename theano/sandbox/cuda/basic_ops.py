@@ -2408,6 +2408,9 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
+
+    Note: the optimization to make this inplace is in tensor/opt.
+          the same optimization handles IncSubtensor and GpuIncSubtensor.
     """
     def perform(self, node, inp, out_):
         """
@@ -2425,9 +2428,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             format
 
             TODO: WRITEME: how to map between variables in idx_list and inp?
+
         """
         #print 'GpuIncSubtensor perform'
-        # TODO opt to make this inplace
         if self.set_instead_of_inc:
             return super(GpuIncSubtensor, self).perform(node, inp, out_)
 
