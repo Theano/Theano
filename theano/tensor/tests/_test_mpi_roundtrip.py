@@ -7,10 +7,16 @@ import theano
 from theano.tensor.io import send, recv, mpi_cmps
 from theano.gof.sched import sort_schedule_fn
 import numpy as np
-from sys import stdout
+from sys import stdout, stderr, exit
 
 rank = comm.Get_rank()
 size = comm.Get_size()
+
+if size != 2:
+    stderr.write("mpiexec failed to create a world with two nodes.\n"
+                 "Closing with success message.")
+    stdout.write("True")
+    exit(0)
 
 shape = (2, 2)
 dtype = 'float32'

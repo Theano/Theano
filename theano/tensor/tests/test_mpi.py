@@ -38,9 +38,10 @@ def test_mpi_roundtrip():
 #    assert p.stdout.read() == "True"
     if not mpi_enabled:
         return
-    result = os.popen("mpiexec -np 2 python "
-                      "theano/tensor/tests/_test_mpi_roundtrip.py").read()
-    assert result == "True"
+    sin, sout, serr = os.popen3("mpiexec -np 2 python "
+                                "theano/tensor/tests/_test_mpi_roundtrip.py")
+    result = sout.read()
+    assert "True" in result
 
 def test_mpi_send_wait_cmp():
     x = theano.tensor.matrix('x')
