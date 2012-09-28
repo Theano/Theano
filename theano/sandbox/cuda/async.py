@@ -258,7 +258,7 @@ def tiebreaker(a):
         return 'ZZZ'
     return max(inp.name or tiebreaker(inp.owner) for inp in a.inputs)
 
-gpu_cmps = [key_to_cmp(send_wait),
+gpu_cmps = (key_to_cmp(send_wait),
             key_to_cmp(gpu_ops_first),
             send_in_order,
-            key_to_cmp(tiebreaker)]
+            key_to_cmp(tiebreaker))
