@@ -4501,24 +4501,31 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
         fprintf(fd, "%i\t", CudaNdarray_HOST_STRIDES(self)[i]);
     }
 
-    int data=0;
-    fprintf(fd, "\n\tDEV_DIMS:      ");
-    for (int i = 0; i < self->nd; ++i)
+    if (self->dev_structure)
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure+i, 1,
-                        &data, 1);
-        fprintf(fd, "%i\t", data);
+        int data=0;
+        fprintf(fd, "\n\tDEV_DIMS:      ");
+        for (int i = 0; i < self->nd; ++i)
+        {
+            cublasGetVector(1, sizeof(int),
+                            self->dev_structure+i, 1,
+                            &data, 1);
+            fprintf(fd, "%i\t", data);
+        }
+        fprintf(fd, "\n\tDEV_STRIDES: ");
+        for (int i = 0; i < self->nd; ++i)
+        {
+            cublasGetVector(1, sizeof(int),
+                            self->dev_structure + self->nd+i, 1,
+                            &data, 1);
+            fprintf(fd, "%i \t", data);
+        }
+        fprintf(fd, "\n");
     }
-    fprintf(fd, "\n\tDEV_STRIDES: ");
-    for (int i = 0; i < self->nd; ++i)
+    else
     {
-        cublasGetVector(1, sizeof(int),
-                        self->dev_structure + self->nd+i, 1,
-                        &data, 1);
-        fprintf(fd, "%i \t", data);
+        fprintf(fd, "\n\tdev_structure not allocated\n");
     }
-    fprintf(fd, "\n");
 }
 
 /*
