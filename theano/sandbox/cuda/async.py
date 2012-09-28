@@ -243,7 +243,8 @@ def gpu_ops_first(a):
 
 def send_in_order(a, b):
     """ Send variables in the order in which they are needed """
-    from theano.gof.sched import dependence
+    from theano.gof.sched import make_dependence_cmp
+    dependence = make_dependence_cmp()
     if ((isinstance(a, GpuFromHostSend) and isinstance(b, GpuFromHostSend)) or
         (isinstance(a, HostFromGpuSend) and isinstance(b, HostFromGpuSend))):
         return dependence(a.inputs[0].owner, b.inputs[0].owner)
