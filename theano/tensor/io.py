@@ -271,5 +271,8 @@ def mpi_tag_key(a):
     else:
         return 0
 
-mpi_cmp_keys = (mpi_send_wait_key, mpi_tag_key)
-mpi_cmps = map(key_to_cmp, mpi_cmp_keys)
+mpi_send_wait_cmp = key_to_cmp(mpi_send_wait_key)
+mpi_tag_cmp = key_to_cmp(mpi_tag_key)
+
+mpi_keys = (mpi_send_wait_key, mpi_tag_key)
+mpi_cmps = (mpi_send_wait_cmp, mpi_tag_cmp)
