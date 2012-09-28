@@ -2408,6 +2408,9 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
+
+    Note: the optimization to make this inplace is in tensor/opt.
+          the same optimization handles IncSubtensor and GpuIncSubtensor.
     """
 
     def make_node(self, x, y, *inputs):
