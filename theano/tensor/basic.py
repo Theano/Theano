@@ -65,7 +65,7 @@ def check_equal_numpy(x, y):
     elif (isinstance(x, numpy.random.RandomState) and
           isinstance(y, numpy.random.RandomState)):
         return python_all(numpy.all(a == b) for a, b in
-                          zip(x.__getstate__(), y.__getstate__()))
+                          izip(x.__getstate__(), y.__getstate__()))
     else:
         return x == y
 
@@ -3834,7 +3834,7 @@ class Subtensor(Op):
         # infer the broadcasting pattern
         padded = (idx_list
                 + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
-        broadcastable = [bc for p, bc in zip(padded, x.type.broadcastable)
+        broadcastable = [bc for p, bc in izip(padded, x.type.broadcastable)
                 if isinstance(p, slice)]
 
         input_types = Subtensor.collapse(idx_list,
@@ -3843,7 +3843,7 @@ class Subtensor(Op):
             raise IndexError(
                     "Not enough inputs to fill in the Subtensor template.",
                     inputs, idx_list)
-        for input, expected_type in zip(inputs, input_types):
+        for input, expected_type in izip(inputs, input_types):
             if input.type != expected_type:
                 raise TypeError(
                     "Wrong type for Subtensor template. Expected %s, got %s."
@@ -4511,7 +4511,7 @@ class IncSubtensor(Op):
             raise IndexError(
                     "Not enough inputs to fill in the Subtensor template.",
                     inputs, idx_list)
-        for input, expected_type in zip(inputs, input_types):
+        for input, expected_type in izip(inputs, input_types):
             if input.type != expected_type:
                 raise TypeError(
                     "Wrong type for Subtensor template. Expected %s, got %s."
@@ -5998,7 +5998,7 @@ class PermuteRowElements(Op):
 
         # Compute the broadcastable pattern of the output
         out_broadcastable = [xb and yb for xb, yb in
-                             zip(x.type.broadcastable, y.type.broadcastable)]
+                             izip(x.type.broadcastable, y.type.broadcastable)]
         out_type = tensor(dtype=x.type.dtype, broadcastable=out_broadcastable)
 
         inputlist = [x, y, inverse]
@@ -6065,7 +6065,7 @@ class PermuteRowElements(Op):
 
         # Make sure the output is big enough
         out_s = []
-        for xdim, ydim in zip(x_s, y_s):
+        for xdim, ydim in izip(x_s, y_s):
             if xdim == ydim:
                 outdim = xdim
             elif xdim == 1:
