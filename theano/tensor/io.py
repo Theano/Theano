@@ -122,7 +122,7 @@ class MPIRecv(Op):
                                            broadcastable=self.broadcastable)])
     def perform(self, node, inp, out):
 
-        data = numpy.empty(self.shape, dtype=self.dtype)
+        data = numpy.zeros(self.shape, dtype=self.dtype)
         request = comm.Irecv(data, self.source, self.tag)
 
         out[0][0] = request
