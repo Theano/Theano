@@ -30,7 +30,7 @@ class LoadFromDisk(Op):
         return (type(self) == type(other) and self._info == other._info)
 
     def __hash__(self):
-        return hash(self._info)
+        return hash((type(self),) + self._info)
 
     def make_node(self, path):
         if isinstance(path, str):
@@ -114,7 +114,7 @@ class MPIRecv(Op):
         return (type(self) == type(other) and self._info == other._info)
 
     def __hash__(self):
-        return hash(self._info)
+        return hash((type(self),) + self._info)
 
     def make_node(self):
         return gof.Apply(self, [], [theano.Variable(Generic()),
@@ -154,7 +154,7 @@ class MPIRecvWait(Op):
         return type(self) == type(other) and self.tag == other.tag
 
     def __hash__(self):
-        return hash(type(self))
+        return hash((type(self), self.tag))
 
     def make_node(self, request, data):
         return gof.Apply(self, [request, data],
@@ -197,7 +197,7 @@ class MPISend(Op):
         return (type(self) == type(other) and self._info == other._info)
 
     def __hash__(self):
-        return hash(self._info)
+        return hash((type(self),) + self._info)
 
     def make_node(self, data):
         return gof.Apply(self, [data],
@@ -231,7 +231,7 @@ class MPISendWait(Op):
         return type(self) == type(other) and self.tag == other.tag
 
     def __hash__(self):
-        return hash(type(self))
+        return hash((type(self), self.tag))
 
     def make_node(self, request):
         return gof.Apply(self, [request],
