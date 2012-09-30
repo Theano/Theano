@@ -49,17 +49,17 @@ Faster Small Theano function
 
    For Theano 0.6 and up.
 
-For Theano function that don't do much work like a regular logistic
+For Theano functions that don't do much work, like a regular logistic
 regression, the overhead of checking the input can be significant. You
-can disable it by setting f.trust_input to True to remove this
-check. Make sure you pass argument as what you said when compiling the
-Theano function.
+can disable it by setting ``f.trust_input`` to True.
+Make sure the types of arguments you provide match those defined when
+the function was compiled.
 
-Also for small Theano function, you can remove more python overhead by
-making a Theano function that don't take any inputs. You can use shared
-variable to help you. Then you can call it like this: ``f.fn()`` or
-``f.fn(n_calls=N)`` to speed up. In the last case, only the last
-function output is returned.
+Also, for small Theano functions, you can remove more Python overhead by
+making a Theano function that does not take any input. You can use shared
+variables to achieve this. Then you can call it like this: ``f.fn()`` or
+``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
+function output (out of N calls) is returned.
 
 Related Projects
 ----------------
