@@ -29,7 +29,7 @@ instructions below for detailed installation steps):
         Not technically required but *highly* recommended, in order to compile
         generated C code. Theano `can` fall back on a NumPy-based Python execution
         model, but a C compiler allows for vastly faster execution.
-	g++ >= 4.2 (for openmp that is currently always used)
+        g++ >= 4.2 (for openmp that is currently always used)
         more recent version recommended!
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.5.0
@@ -41,7 +41,7 @@ instructions below for detailed installation steps):
         >=0.8 if you are using sparse matrices, because ``scipy.sparse``
         is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
         bug with singleton dimensions, there may be more bugs) and we do not
-	tests with 0.7*.
+        run tests with 0.7.
 
     A `BLAS`_ installation (with Level 3 functionality)
         Including the development headers (``-dev``, ``-devel``, depending on

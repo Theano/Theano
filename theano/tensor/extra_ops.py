@@ -96,7 +96,7 @@ class BinCountOp(theano.Op):
             if not bool(numpy_ver >= [1, 6]):
                 raise NotImplementedError(
                     "BinCountOp with minlength attribute"
-                    " need NumPy 1.6 or higher.")
+                    " requires NumPy 1.6 or higher.")
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -152,7 +152,7 @@ class BinCountOp(theano.Op):
         if weights is not None and weights.shape != x.shape:
             raise TypeError("All inputs must have the same shape.")
 
-        #Needed for numpy 1.4.1 compatibility
+        # Needed for numpy 1.4.1 compatibility
         if self.minlength:
             out = np.bincount(x, weights=weights, minlength=self.minlength)
         else:

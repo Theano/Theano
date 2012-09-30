@@ -1,4 +1,6 @@
-import os, logging, sys
+import logging
+import os
+import sys
 
 import theano
 from theano import config
