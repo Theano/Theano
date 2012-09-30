@@ -15,7 +15,7 @@ Note that you want SciPy >= 0.8.0.
     dimensions. There may be more bugs. It also has inconsistent
     implementation of sparse matrices.
 
-    We do not test again SciPy 0.7.*.
+    We do not test against SciPy 0.7.*.
 
 We describe the details of the compressed sparse matrix types.
     ``scipy.sparse.csc_matrix``
