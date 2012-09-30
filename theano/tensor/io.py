@@ -49,8 +49,7 @@ class LoadFromDisk(Op):
         out[0][0] = result
 
     def __str__(self):
-        return "Load{dtype:%s, broadcastable:%s, mmep:%s}" % self._info
-
+        return "Load{dtype: %s, broadcastable: %s, mmep: %s}" % self._info
 
 def load(path, dtype, broadcastable, mmap_mode=None):
     """
@@ -129,7 +128,7 @@ class MPIRecv(Op):
         out[1][0] = data
 
     def __str__(self):
-        return "MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}"%self._info
+        return "MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}" % self._info
 
     def infer_shape(self, node, shapes):
         return [None, self.shape]
@@ -212,7 +211,7 @@ class MPISend(Op):
         out[0][0] = request
 
     def __str__(self):
-        return "MPISend{dest: %d, tag: %d}"%self._info
+        return "MPISend{dest: %d, tag: %d}" % self._info
 
 class MPISendWait(Op):
     """
@@ -247,11 +246,13 @@ class MPISendWait(Op):
 
 def isend(var, dest, tag):
     return MPISend(dest, tag)(var)
+
 def send(var, dest, tag):
     return MPISendWait(tag)(isend(var, dest, tag))
 
 def irecv(shape, dtype, source, tag):
     return MPIRecv(source, tag, shape, dtype)()
+
 def recv(shape, dtype, source, tag):
     return MPIRecvWait(tag)(*irecv(shape, dtype, source, tag))
 
