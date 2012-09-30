@@ -85,11 +85,11 @@ def load(path, dtype, broadcastable, mmap_mode=None):
 
 try:
     from mpi4py import MPI
+except ImportError:
+    mpi_enabled = False
+else:
     comm = MPI.COMM_WORLD
     mpi_enabled = True
-except:
-    mpi_enabled = False
-
 
 class MPIRecv(Op):
     """
