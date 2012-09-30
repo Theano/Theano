@@ -61,7 +61,7 @@ def test_mpi_tag_ordering():
     nodes = f.maker.linker.make_all()[-1]
 
     assert all(node.op.tag == tag
-            for node, tag in zip(nodes, (11,12,13,11,12,13)))
+            for node, tag in zip(nodes, (11, 12, 13, 11, 12, 13)))
 
 def test_mpi_schedule():
     x = theano.tensor.matrix('x')
