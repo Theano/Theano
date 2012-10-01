@@ -441,7 +441,7 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 
 PyObject * CudaNdarray_View(const CudaNdarray * self);
-CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
+PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 
 
 #endif

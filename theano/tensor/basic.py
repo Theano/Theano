@@ -4712,7 +4712,7 @@ class IncSubtensor(Op):
         return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
-    def make_view_array(x, view_ndim):
+    def make_view_array(self, x, view_ndim):
         """
             x: a string identifying an array to be viewed
             view_ndim: a string specifying the number of dimensions
