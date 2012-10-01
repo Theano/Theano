@@ -232,8 +232,9 @@ def rebuild_collect_shared(outputs,
                                                       copy_inputs_over)
                 cloned_outputs.append(Out(cloned_v, borrow=v.borrow))
             else:
-                raise TypeError('outputs must be theano Variable or '
-                                'Out instances', v)
+                raise TypeError('Outputs must be theano Variable or '
+                                'Out instances. Received ' + str(v)\
+                                + ' of type '+str(type(v)))
             #computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
