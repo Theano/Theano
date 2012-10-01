@@ -18,8 +18,8 @@ if [ "$1" == "--buildbot" ]; then
     FLAGS=compiledir=$COMPILEDIR
     cd ${ROOT_CWD}/Theano
     git rev-parse HEAD
-    cd ..
-    ARGS="Theano"
+    #Run tests from inside the Theano directory to prevent import problem.
+    ARGS=""
     PROFILING="--with-coverage --cover-package=theano"
     NOSETESTS=${ROOT_CWD}/Theano/bin/theano-nose
     export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH

@@ -18,12 +18,13 @@ need_reload = False
 
 
 def try_import():
+    global scan_perform
     sys.path[0:0] = [config.compiledir]
     import scan_perform
     del sys.path[0]
 
 
-def try_reload()
+def try_reload():
     sys.path[0:0] = [config.compiledir]
     reload(scan_perform)
     del sys.path[0]
