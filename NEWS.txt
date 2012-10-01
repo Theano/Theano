@@ -10,10 +10,6 @@ Release Notes
 
 Theano 0.6rc1 (1 October 2012)
 ==============================
-Updates in the Trunk since the last release up to
-git log -p rel-0.5... |grep Merge|less
-done up to and including merge of PR 976
-
 
 Highlight:
  * Bug fix, crash fix, CPU and GPU speed up.
@@ -25,10 +21,10 @@ Highlight:
  * Use GPU asynchronous functionality (Frederic B.)
  * Better Windows support.
 
-Known bug
+Known bug:
  * A few crash case that will be fixed by the final release.
 
-Bug fixes
+Bug fixes:
  * Outputs of Scan nodes could contain corrupted values: some parts of the
    output would be repeated a second time, instead of the correct values.
    It happened randomly, and quite infrequently, but the bug has been present
@@ -39,7 +35,7 @@ Bug fixes
    was transformed into inc_subtensor on the GPU. Now we have a correct
    (but slow) GPU implementation.
    Note 1: set_subtensor(x[slice[,...]], new_value) was working correctly
-   in all cases as well as inc_subtensor(*, *).
+   in all cases as well as all inc_subtensor.
    Note 2: If your code was affected by the incorrect behavior, we now print
    a warning by default (Frederic B.)
  * Fixed an issue whereby config values were used as default arguments,
@@ -72,11 +68,11 @@ Bug fixes
    This probably didn't cause problem as there is only the UsmmCscDense op
    (used call to Usmm wieh CSC matrix) that could interfere with them.
 
-Deprecation
+Deprecation:
  * Deprecated the Module class (Ian G.)
    This was a predecessor of SharedVariable with a less pythonic phylosophy.
 
-Interface changes
+Interface changes:
  * Now the base version requirement are numpy >= 1.5.0 and the optional scipy >= 0.8.
  * In Theano 0.5, we removed the deprecated sharedvar.value property.
    Now we raise an error if you access it. (Frederic B.)
@@ -123,7 +119,7 @@ New memory output contract(was told about in the release note of Theano 0.5):
  * Updated the a few ops to respect this contract (Pascal L.)
 
 
-New Features
+New Features:
  * GPU scan now work (don't crash) when there is a mixture of float32 and other dtypes.
  * theano_var.eval({other_var:val[,...]} to simplify the usage of Theano (Ian G.)
  * debugprint new param ids=["CHAR", "id", "int", ""]
@@ -190,7 +186,7 @@ New Features
    Now it is applied more frequently. (Pascal L.)
 
 
-New Op/function
+New Op/function:
  * Added element-wise operation theano.tensor.{GammaLn,Psi} (John Salvatier, Nicolas Bouchard)
  * Added element-wise operation theano.tensor.{arcsin,arctan,arccosh,arcsinh,arctanh,exp2,arctan2} (Nicolas Bouchard)
  * Added element-wise operation theano.tensor.{gamma,conj,complex_from_polar,expm1,deg2rad,rad2deg,trunc,gamma} (Nicolas Bouchard)
@@ -209,7 +205,7 @@ New Op/function
  * theano.sandbox.linalg.kron.py:Kron op. (Eric L.)
    Kronecker product
 
-Speed up
+Speed up:
  * CPU convolution are now parallelized (Frederic B.)
    By default use all cores/hyper-threads
    To control it, use the `OMP_NUM_THREADS=N` environment variable where N is the number of
@@ -230,7 +226,7 @@ Speed up
    There was warning printed by the subtensor optimization in those cases.
  * faster rng_mrg python code. (mostly used for tests) (Frederic B.)
 
-Speed up GPU
+Speed up GPU:
  * Convolution on the GPU now check the generation of the card to make
    it faster in some cases (especially medium/big ouput image) (Frederic B.)
    * We had hardcoded 512 as the maximum number of thread per block. Newer card
@@ -243,14 +239,14 @@ Speed up GPU
  * Faster creation of CudaNdarray objects (Frederic B.)
  * Now some Max reduction are implemented on the GPU. (Ian G.)
 
-Sparse Sandbox graduate (moved from theano.sparse.sandbox.sp)
+Sparse Sandbox graduate (moved from theano.sparse.sandbox.sp):
  * sparse.remove0 (Frederic B., Nicolas B.)
  * sparse.sp_sum(a, axis=None) (Nicolas B.)
    * bugfix: the not structured grad was returning a structured grad.
  * sparse.{col_scale,row_scale,ensure_sorted_indices,clean} (Nicolas B.)
  * sparse.{diag,square_diagonal} (Nicolas B.)
 
-Sparse
+Sparse:
  * Support for uint* dtype.
  * Implement theano.sparse.mul(sparse1, sparse2) when both inputs don't
    have the same sparsity pattern. (Frederic B.)
@@ -270,7 +266,7 @@ Sparse
  * Implement the CSMProperties grad method (Yann Dauphin)
  * Move optimizations to theano/sparse/opt.py (Nicolas B.)
 
-New flags
+New flags:
  * `profile=True` flag now print a printing of the sum of all printed profile.(Frederic B.)
    * It work with the linker vm/cvm(default).
    * Also print compile time, optimizer time and linker time.
@@ -295,7 +291,7 @@ New flags
  * new flag `cxx`. This is the c++ compiler to use. If empty do not compile c code. (Frederic B.)
  * New flag `print_active_device` flag that default to True. (Matthew R.)
 
-Documentation
+Documentation:
  * Added in the tutorial documentation on how to extend Theano.
    This explains how to make a Theano Op from a Python function.
    http://deeplearning.net/software/theano/tutorial/extending_theano.html
@@ -310,11 +306,11 @@ Documentation
  * Doc type fix, Doc update, Better error messag: Olivier D., David W.F., Frederic B., James B., Matthew Rocklin, Ian G.
  * Python Memory Management (Steven Pigeon, Olivier D.)
 
-Proposal
+Proposal:
  * Math framework for complex gradien (Pascal L.)
 
 
-Internal changes
+Internal changes:
  * Define new exceptions MissingInputError and UnusedInputError, and use them
    in theano.function, instead of TypeError and ValueError. (Pascal L.)
  * Better handling of bitwidth and max values of integers and pointers
@@ -344,7 +340,7 @@ Internal changes
  * New theano.gof.sched.sort_apply_nodes() that will allow other execution ordering. (Matthew R.)
  * New attribute sort_schedule_fn, a way to specify a scheduler to use. (Matthew R.)
 
-Crash Fix
+Crash Fix:
  * Fix import conflict name (usaar33, Frederic B.)
     * This make Theano work with PiCloud.
  * Do not try to use the BLAS library when blas.ldflags is manually set to an
@@ -388,7 +384,7 @@ Crash Fix
  * MaxArgmax.grad() when one of the gradient it receive is None. (Razvan P, reported by Mark Fenner)
  * Fix crash of GpuSum when some dimensions shape was 0. (Frederic B.)
 
-Tests
+Tests:
  * Use less memory (Olivier D.)(frix crash on 32-bits computers)
  * Fix test with Theano flag "blas.ldflags=". (Frederic B., Pascal L.)
  * Fix crash with advanced subtensor and numpy constant.
@@ -398,7 +394,7 @@ Tests
  * DebugMode now check the view_map for all type of Theano variable.
    It was doing only variable of tensor type. (Frederic B.)
 
-Others
+Others:
  * Remove python warning for some python version. (Gabe Schwartz)
  * Remove useless fill op in fast_compile mode to make the graph more readable. (Fredric B.)
  * Remove GpuOuter as it is a subset of the new GpuGer (Frederic B.)
@@ -411,8 +407,6 @@ Others
 Other thanks:
  * blaxill reported an error introduced into the trunk.
 
-New stuff that will probably be reworked/removed before the release
- * new flag "time_seq_optimizer" (Frederic B.)
- * new flag "time_eq_optimizer" (Frederic B.)
+New stuff that will probably be reworked/removed before the release:
  * Better PyCUDA sharing of the GPU context.(fix crash at exit) (Frederic B.)
    TODO: there is still a crash at exit!

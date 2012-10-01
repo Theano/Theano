@@ -13,7 +13,7 @@ Highlight:
  * Theano vision: http://deeplearning.net/software/theano/introduction.html#theano-vision (Many people)
  * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
  * Faster dot() call: New/Better direct call to cpu and gpu ger, gemv, gemm
-   and dot(vector, vector). (James, Frédéric, Pascal)
+   and dot(vector, vector). (James, Frederic, Pascal)
  * C implementation of Alloc. (James, Pascal)
  * theano.grad() now also work with sparse variable. (Arnaud)
  * Macro to implement the Jacobian/Hessian with theano.tensor.{jacobian,hessian} (Razvan)
@@ -24,7 +24,7 @@ Interface Behavior Changes:
  * The current default value of the parameter axis of
    theano.{max,min,argmax,argmin,max_and_argmax} is now the same as
    numpy: None. i.e. operate on all dimensions of the tensor.
-   (Frédéric Bastien, Olivier Delalleau) (was deprecated and generated
+   (Frederic Bastien, Olivier Delalleau) (was deprecated and generated
    a warning since Theano 0.3 released Nov. 23rd, 2010)
  * The current output dtype of sum with input dtype [u]int* is now always [u]int64.
    You can specify the output dtype with a new dtype parameter to sum.
@@ -209,7 +209,7 @@ Crashes fixed:
  * When the subtensor inputs had 0 dimensions and the outputs 0 dimensions. (Frederic)
  * Crash when the step to subtensor was not 1 in conjunction with some optimization. (Frederic, reported by Olivier Chapelle)
  * Runtime crash related to an optimization with subtensor of alloc (reported by Razvan, fixed by Frederic)
- * Fix dot22scalar cast of integer scalars (Justin Bayer, Frédéric, Olivier)
+ * Fix dot22scalar cast of integer scalars (Justin Bayer, Frederic, Olivier)
  * Fix runtime crash in gemm, dot22. FB
  * Fix on 32bits computer: make sure all shape are int64.(Olivier)
  * Fix to deque on python 2.4 (Olivier)
