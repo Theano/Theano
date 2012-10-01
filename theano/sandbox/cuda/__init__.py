@@ -107,9 +107,9 @@ def try_import():
     try:
         # If we load a previously-compiled version, config.compiledir should
         # be in sys.path.
-        if config.compiledir not in sys.path:
-            sys.path.append(config.compiledir)
+        sys.path[0:0] = [config.compiledir]
         import cuda_ndarray.cuda_ndarray
+        del sys.path[0]
     except ImportError:
         return False
     return True
