@@ -232,7 +232,10 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             # Copy dict before modifying them
             val_dict = val_dict.copy()
 
-            for k, v in val_dict.items():
+            # Note that we sort items in the dictionary to ensure tests are
+            # deterministic (since the loop below will break on the first valid
+            # item that can be memmapped).
+            for k, v in sorted(val_dict.items()):
                 new_k = '_'.join((k, 'memmap'))
                 if new_k in val_dict:
                     # A corresponding key was already provided
