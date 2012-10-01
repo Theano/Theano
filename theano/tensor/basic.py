@@ -4598,9 +4598,15 @@ class IncSubtensor(Op):
         }
         """ % locals()
         # make xview actually a view of %(z)s
-        get_xview = Subtensor.helper_c_code(node, name,
-                outputs[:1] + inputs[2:],
-                outputs, sub, self.idx_list)
+        get_xview = Subtensor.helper_c_code(
+                node=node,
+                name=name,
+                inputs=outputs[:1] + inputs[2:],
+                outputs=outputs,
+                sub=sub,
+                idx_list=self.idx_list,
+                update_flags=self.get_update_flags()
+                )
 
         make_modification = """
         if (%(op_is_set)s)
@@ -4693,6 +4699,10 @@ class IncSubtensor(Op):
                 PyArray_DATA(%(x)s),
                 %(x)s->flags,
                 NULL)""" % locals()
+
+    def get_update_flags(self):
+        """ Return the update_flags string to pass to helper c_code."""
+        return Subtensor.default_update_flags()
 
 
     def infer_shape(self, node, shapes):
