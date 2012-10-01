@@ -27,11 +27,6 @@ from theano.configparser import AddConfigVar, BoolParam
 _logger = logging.getLogger('theano.gof.opt')
 
 
-AddConfigVar('time_eq_optimizer',
-        "Should EquilibriumOptimizer print the time taken by each optimizer",
-        BoolParam(False),
-        in_c_key=False)
-
 import destroyhandler as dh
 import traceback
 
@@ -1489,29 +1484,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
-
-        if config.time_eq_optimizer:
-            print "EquilibriumOptimizer",
-            print getattr(self, "name", getattr(self, "__name__", ""))
-            print " time %.3fs for %d passes, %d nodes max" % (
-                    sum(loop_timing), len(loop_timing), max_nb_nodes)
-
-            for i in range(len(loop_timing)):
-                print '%d - %.3fs (%.3fs in global opts) - %d nodes' % (
-                        i, loop_timing[i], global_opt_timing[i], nb_nodes[i])
-            print
-
-            count_opt = []
-            for opt, count in process_count.iteritems():
-                if count > 0:
-                    count_opt.append((count, opt))
-
-            if count_opt:
-                print 'times applied - optimizer:'
-                count_opt.sort()
-                for (count, opt) in count_opt[::-1]:
-                    print '  %d - %s' % (count, opt)
-                print
 
         return (self, loop_timing, process_count, max_nb_nodes,
                 global_opt_timing, nb_nodes, time_lopts, io_toposort_timing)
