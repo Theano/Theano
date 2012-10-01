@@ -2495,8 +2495,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
                          " devdata field of the view");
             Py_XDECREF(xview);
             %(fail)s;
+        }
         cnda_mark_dev_structure_dirty(xview);
-        }""" % locals()
+        """ % locals()
 
     def set_view_base(self, x, fail):
         return """
@@ -2515,7 +2516,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
         return """
 
-        PyObject * add_result =  CudaNdarray_inplace_add(xview, py_%(x)s);
+        PyObject * add_result =  CudaNdarray_inplace_add((PyObject *) xview,
+                                                         (PyObject *) py_%(x)s);
 
         if (! add_result )
         {
