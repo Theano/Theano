@@ -4381,7 +4381,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     else:
         raise TypeError('x must be result of a subtensor operation')
 
-
+response = None
 class IncSubtensor(Op):
     """Increment a subtensor.
 
@@ -4532,10 +4532,12 @@ class IncSubtensor(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         if not isinstance(node.inputs[0].type, TensorType):
-            x = raw_input('Use GPU C code?')
-            if x == 'n':
+            global response
+            if response is None:
+                response = raw_input('Use GPU C code?')
+            if response == 'n':
                 raise NotImplementedError()
-            assert x == 'y'
+            assert response == 'y'
 
         if self.inplace:  # convert bool to int
             inplace = 1
