@@ -3325,7 +3325,14 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
             }; break;
         case 4: // 4-tensor
             {
-                if (verbose) fprint_CudaNdarray(stderr, other);
+                if (verbose)
+                {
+                    if (0 != fprint_CudaNdarray(stderr, other))
+                    {
+                        Py_XDECREF(new_other);
+                        return -1;
+                    }
+                }
 
                 // The blocks implement the looping over the first two axes so
                 // this needs to be (N1, N2)
@@ -4558,8 +4565,17 @@ PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self)
     return PyBool_FromLong(CudaNdarray_is_c_contiguous(self));
 }
 
-void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
+int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 {
+    cudaError_t err = cudaGetLastError();
+    if( cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Cuda error: %s: %s.",
+                     "fprint_CudaNdarray was called with an uncleared error",
+                     cudaGetErrorString(err));
+        return -1;
+    }
     fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d data_allocated=%d\n",
             self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
     fprintf(fd, "\tHOST_DIMS:      ");
@@ -4598,6 +4614,17 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     {
         fprintf(fd, "\n\tdev_structure not allocated\n");
     }
+
+    err = cudaGetLastError();
+    if( cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Cuda error: %s: %s.",
+                     "fprint_CudaNdarray",
+                     cudaGetErrorString(err));
+        return -1;
+    }
+    return 0;
 }
 
 /*
