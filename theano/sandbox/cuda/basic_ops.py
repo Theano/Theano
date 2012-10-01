@@ -2433,6 +2433,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def copy_of_x(self, x):
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
+    def make_view_buffer(self, x, view_ndim):
+        return """CudaNdarray* xview = (CudaNdarray*)
+                CudaNdarray_New(%(view_ndim)s)""" % locals()
+
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code
         return ()

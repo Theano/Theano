@@ -439,6 +439,10 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
 static int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
+
+PyObject * CudaNdarray_View(const CudaNdarray * self);
+
+
 #endif
 /*
   Local Variables:
