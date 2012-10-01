@@ -518,7 +518,7 @@ you can simply install it with::
 
         $ sudo easy_install pip
 
-Then in a terminal excute this command to install the lastest Theano release:
+Then in a terminal execute this command to install the latest Theano release:
 
     .. code-block:: bash
 
@@ -709,6 +709,11 @@ Windows
 Installing Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+    Command lines listed below are assumed to be run in a Windows prompt:
+    click ``Start`` and type the ``cmd`` command to launch a command window.
+
 In academia: EPD
 ################
 
@@ -745,6 +750,9 @@ Then, it should work in all new terminals.
 pip is not included in EPD, but you can simply install it with::
 
     easy_install pip
+
+You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_edge`.
+
 
 Alternative: Anaconda 0.8.3 (Linux VM on Windows)
 #################################################
@@ -888,9 +896,26 @@ should have MinGW, Python, Numpy, Scipy and Nose installed.
 Installing Theano
 ~~~~~~~~~~~~~~~~~
 
-It is possible to install Theano with ``pip`` as described in
-:ref:`linux_basic`. However, if you want to get the latest development version,
-or edit the code, you should follow the instructions below.
+Once the dependencies are installed, you can download and install
+Theano. The easiest way is to install the latest released version
+(see :ref:`windows_basic`).  However, if you want to get the latest
+development version, or edit the code, you should follow the
+instructions in :ref:`windows_bleeding_edge`.
+
+.. _windows_basic:
+
+Basic user installation
+#######################
+
+The easiest way to obtain the released version of Theano is from PyPI using
+pip_ by typing, in a Windows command prompt:
+
+.. code-block:: bash
+
+    pip install Theano
+
+
+.. _windows_bleeding_edge:
 
 Bleeding-edge installation
 ##########################
@@ -908,8 +933,11 @@ used within an MSYS Shell (not available if you only installed Python(x,y)).
   installed, then rename the unzipped folder to ``Theano``.
 
 - The second option is to use Git, which you can get
-  `here <http://git-scm.com/download>`__ (download the latest version of the
-  "Full installer for official Git" from the ``msysgit`` download page).
+  `here <http://git-scm.com/download>`__: download the latest version of the
+  "Full installer for official Git" from the ``msysgit`` download page.
+  We recommend that you select the following options:
+  "Run Git from the Windows Command Prompt" / 'Use Git Bash only",
+  then "Checkout as is, commit Unix-style endings".
   Navigate into the directory you want Theano to be installed in, and download
   it with
 
