@@ -4616,7 +4616,14 @@ class IncSubtensor(Op):
         }
         """ % locals()
 
-        alloc_view_of_z = self.make_view_buffer(z, view_ndim)
+        # IG: Note: this makes a variable called "xview"
+        # even though it is a view of z.
+        # I assume this is because IncSubtensor was written
+        # by copy-pasting Subtensor and in Subtensor you make
+        # a view of x.
+        alloc_view_of_z = self.make_view_array(z, view_ndim)
+        # On GPU, it takes two steps to make a view
+        link_view_of_z = self.link_view_array(z, fail);
 
         #Make a first view on the output, as we will write into it.
         build_view = """
@@ -4627,6 +4634,7 @@ class IncSubtensor(Op):
         {
             %(fail)s;
         }
+        %(link_view_of_z)s;
         """ % locals()
         # make xview actually a view of %(z)s
         get_xview = self.define_set_data() + \
@@ -4713,7 +4721,7 @@ class IncSubtensor(Op):
         return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
-    def make_view_buffer(x, view_ndim):
+    def make_view_array(x, view_ndim):
         """
             x: a string identifying an array to be viewed
             view_ndim: a string specifying the number of dimensions
@@ -4752,6 +4760,19 @@ class IncSubtensor(Op):
     def define_set_data(self):
         """ Returns C code used to define any macros used in the
         set data argument to the helper C code. """
+        return ""
+
+    def link_view_array(self, x, fail):
+        """ Returns code to complete making xview a view of x"""
+
+        # On CPU there is nothing to do, make_view_array already did this
+        return ""
+
+    def set_view_base(self, x, fail):
+        """ Returns code to make xview be a correct view of x,
+        after helper_c_code is done messing with x"""
+
+        # On CPU there is nothing to do
         return ""
 
 
