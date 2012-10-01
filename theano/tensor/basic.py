@@ -4532,7 +4532,10 @@ class IncSubtensor(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         if not isinstance(node.inputs[0].type, TensorType):
-            raise NotImplementedError()
+            x = raw_input('Use GPU C code?')
+            if x == 'n':
+                raise NotImplementedError()
+            assert x == 'y'
 
         if self.inplace:  # convert bool to int
             inplace = 1
