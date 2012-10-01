@@ -2531,7 +2531,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        # TODO: cooperate with parent class' C code
+
+        parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
+        if parent_version:
+            return parent_version + (0,)
         return ()
 
 
