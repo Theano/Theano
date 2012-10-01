@@ -4608,10 +4608,12 @@ class IncSubtensor(Op):
                 update_flags=self.get_update_flags()
                 )
 
+        copy_into = self.copy_into("xview", y)
+
         make_modification = """
         if (%(op_is_set)s)
         {
-            if (PyArray_CopyInto(xview, %(y)s)) // does broadcasting
+            if (%(copy_into)s) // does broadcasting
             {
                 Py_DECREF(xview);
                 %(fail)s;
@@ -4703,6 +4705,16 @@ class IncSubtensor(Op):
     def get_update_flags(self):
         """ Return the update_flags string to pass to helper c_code."""
         return Subtensor.default_update_flags()
+
+    def copy_into(self, view, source):
+        """
+            view: string, C code expression for an array
+            source: string, C code expression for an array
+
+            returns a C code expression to copy source into view, and
+            return 0 on success
+        """
+        return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
 
 
     def infer_shape(self, node, shapes):
