@@ -4088,7 +4088,6 @@ class Subtensor(Op):
         z, = outputs
 
         rval = """
-        fprintf(stderr, "Enter helper_c_code\\n");
         #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
         #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
         #define PyArray_set_data(obj, ptr, base) PyArray_BYTES(obj)=ptr
@@ -4598,7 +4597,6 @@ class IncSubtensor(Op):
         copy_input_if_necessary = """
         if (%(inplace)s)
         {
-            fprintf(stderr, "Inplace\\n");
             if (%(x)s != %(z)s)
             {
                 if (%(z)s)
