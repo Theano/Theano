@@ -1,9 +1,11 @@
 from graph import list_of_nodes
+from theano.gof.python25 import any, defaultdict
+
 
 ## {{{ http://code.activestate.com/recipes/578231/ (r1)
 def memodict(f):
     """ Memoization decorator for a function taking a single argument """
-    class memodict(dict):
+    class memodict(defaultdict):
         def __missing__(self, key):
             ret = self[key] = f(key)
             return ret
