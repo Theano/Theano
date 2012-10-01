@@ -4575,20 +4575,14 @@ class IncSubtensor(Op):
             %(z)s = %(copy_of_x)s;        }
         """ % locals()
 
+        alloc_view_of_z = self.make_view_buffer(z, view_ndim)
+
         #Make a first view on the output, as we will write into it.
         build_view = """
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
         Py_INCREF(PyArray_DESCR(%(z)s));
-        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
-                &PyArray_Type,
-                PyArray_DESCR(%(z)s),
-                %(view_ndim)s,
-                PyArray_DIMS(%(z)s),
-                PyArray_STRIDES(%(z)s),
-                PyArray_DATA(%(z)s),
-                %(z)s->flags,
-                NULL);
+        %(alloc_view_of_z)s;
         if (!xview)
         {
             %(fail)s;
@@ -4669,6 +4663,27 @@ class IncSubtensor(Op):
         # context: this is almost always NULL, I'm not sure what it's used for
         return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
+
+    def make_view_buffer(x, view_ndim):
+        """
+            x: a string identifying an array to be viewed
+            view_ndim: a string specifying the number of dimensions
+                     to have in the view
+
+            This doesn't need to actually set up the view with the
+            right indexing; we'll do that manually later.
+        """
+
+        return """PyArrayObject * xview =
+                (PyArrayObject*)PyArray_NewFromDescr(
+                &PyArray_Type,
+                PyArray_DESCR(%(x)s),
+                %(view_ndim)s,
+                PyArray_DIMS(%(x)s),
+                PyArray_STRIDES(%(x)s),
+                PyArray_DATA(%(x)s),
+                %(x)s->flags,
+                NULL)""" % locals()
 
 
     def infer_shape(self, node, shapes):

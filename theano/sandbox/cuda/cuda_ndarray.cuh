@@ -447,6 +447,8 @@ static int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 PyObject* 
 CudaNdarray_AddTo(CudaNdarray * self, PyObject *args);
 
+PyObject * CudaNdarray_View(const CudaNdarray * self);
+
 
 #endif
 /*
