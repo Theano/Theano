@@ -2431,11 +2431,31 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             raise NotImplementedError()
 
     def copy_of_x(self, x):
+        """
+            x: a string giving the name of a C variable pointing to an array
+
+            Returns C code expression to make a copy of x.
+
+            Base class uses PyArrayObject *, subclasses may override for
+            different types of arrays.
+        """
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
     def make_view_buffer(self, x, view_ndim):
+        """
+            x: a string identifying an array to be viewed
+            view_ndim: a string specifying the number of dimensions
+                     to have in the view
+
+            This doesn't need to actually set up the view with the
+            right indexing; we'll do that manually later.
+        """
         return """CudaNdarray* xview = (CudaNdarray*)
                 CudaNdarray_New(%(view_ndim)s)""" % locals()
+
+    def get_update_flags(self):
+        """ Return the update_flags string to pass to helper_c_code."""
+        return ""
 
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code
