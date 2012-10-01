@@ -4571,9 +4571,13 @@ class IncSubtensor(Op):
         copy_input_if_necessary = """
         if (%(inplace)s)
         {
+            fprintf(stderr, "Inplace\\n");
             if (%(x)s != %(z)s)
             {
-                if (%(z)s) Py_DECREF(%(z)s);
+                if (%(z)s)
+                {
+                    Py_DECREF(%(z)s);
+                }
                 Py_INCREF(%(x)s);
                 %(z)s = %(x)s;
             }
@@ -4581,7 +4585,8 @@ class IncSubtensor(Op):
         else
         {
             if (%(z)s) Py_DECREF(%(z)s);
-            %(z)s = %(copy_of_x)s;        }
+            %(z)s = %(copy_of_x)s;
+        }
         """ % locals()
 
         alloc_view_of_z = self.make_view_buffer(z, view_ndim)
