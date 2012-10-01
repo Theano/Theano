@@ -581,29 +581,6 @@ import theano and print the config variable, as in:
               C. log_likelihood_h
 
 
-.. attribute:: config.time_eq_optimizer
-
-    Bool value, default: False
-
-    Should each EquilibriumOptimizer print the time taken by each of its
-    iterations, the total number of times each of its optimizers is applied,
-    and informations about the total number of nodes in the graph.
-    Here is an example of output::
-
-        EquilibriumOptimizer specialize
-         time 4.760s for 4 passes, 3801 nodes max
-        0 - 1.961s (0.079s in global opts) - 3797 nodes
-        1 - 1.233s (0.080s in global opts) - 3801 nodes
-        2 - 0.857s (0.071s in global opts) - 3203 nodes
-        3 - 0.710s (0.066s in global opts) - 3095 nodes
-
-        times applied - optimizer:
-          384 - dimshuffle_as_view
-          262 - constant_folding
-          216 - local_subtensor_make_vector
-          216 - local_shape_to_shape_i
-          4 - local_mul_specialize
-
 .. attribute:: config.cmodule.warn_no_version
 
     Bool value, default: False
