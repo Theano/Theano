@@ -14,7 +14,7 @@ from copy import copy
 import theano
 import warnings
 from theano.gof import utils
-from theano.gof.python25 import deque
+from theano.gof.python25 import any, deque
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None
