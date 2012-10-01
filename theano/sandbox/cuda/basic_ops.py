@@ -2448,7 +2448,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
-    def make_view_buffer(self, x, view_ndim):
+    def make_view_array(self, x, view_ndim):
         """
             x: a string identifying an array to be viewed
             view_ndim: a string specifying the number of dimensions
@@ -2483,6 +2483,33 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
     def define_set_data(self):
         return _define_set_data
+
+    def link_view_array(self, x, fail):
+
+        return """
+        if (CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(%(x)s),
+                                       (PyObject*) NULL))
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set the"
+                         " devdata field of the view");
+            Py_XDECREF(xview);
+            %(fail)s;
+        cnda_mark_dev_structure_dirty(xview);
+        }""" % locals()
+
+    def set_view_base(self, x, fail):
+        return """
+        //Set the base only now
+
+        if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
+                                    %(x)s)){
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set"
+                         " the base of the view array");
+            Py_XDECREF(xview);
+            %(fail)s;
+        }""" % locals()
 
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code
