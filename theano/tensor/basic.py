@@ -4595,7 +4595,6 @@ class IncSubtensor(Op):
         build_view = """
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
-        Py_INCREF(PyArray_DESCR(%(z)s));
         %(alloc_view_of_z)s;
         if (!xview)
         {
@@ -4696,7 +4695,8 @@ class IncSubtensor(Op):
             right indexing; we'll do that manually later.
         """
 
-        return """PyArrayObject * xview =
+        return """Py_INCREF(PyArray_DESCR(%(z)s));
+        PyArrayObject * xview =
                 (PyArrayObject*)PyArray_NewFromDescr(
                 &PyArray_Type,
                 PyArray_DESCR(%(x)s),
