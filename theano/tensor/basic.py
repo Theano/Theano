@@ -4648,6 +4648,8 @@ class IncSubtensor(Op):
 
         copy_into = self.copy_into("xview", y)
 
+        add_to_xview = self.add_to_xview(y, fail)
+
         make_modification = """
         if (%(op_is_set)s)
         {
@@ -4659,19 +4661,7 @@ class IncSubtensor(Op):
         }
         else
         {
-            PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
-                    (PyObject*)xview, py_%(y)s);
-            if (add_rval)
-            {
-                assert (PyArray_Check((PyObject*)add_rval));
-                assert (PyArray_DATA(add_rval) == PyArray_DATA(xview));
-                Py_DECREF(add_rval);
-            }
-            else
-            {
-                Py_DECREF(xview);
-                %(fail)s;
-            }
+            %(add_to_xview)s
         }
         """ % locals()
 
@@ -4773,6 +4763,24 @@ class IncSubtensor(Op):
         # On CPU there is nothing to do
         return ""
 
+    def add_to_xview(self, x, fail):
+        """ Return C code to add x to xview. Should DECREF xview if the
+        add fails."""
+
+        return """
+            PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
+                    (PyObject*)xview, py_%(x)s);
+            if (add_rval)
+            {
+                assert (PyArray_Check((PyObject*)add_rval));
+                assert (PyArray_DATA(add_rval) == PyArray_DATA(xview));
+                Py_DECREF(add_rval);
+            }
+            else
+            {
+                Py_DECREF(xview);
+                %(fail)s;
+            }""" % locals()
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

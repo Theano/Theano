@@ -1740,7 +1740,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
  * It returns py_self on success with an additional reference. Else NULL.
  */
 // Will be called by __iadd__ in Python
-static PyObject *
+PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 {
     if (CudaNdarray_inplace_elemwise(py_self, py_other, IADD))

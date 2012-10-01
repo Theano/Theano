@@ -2511,6 +2511,23 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             %(fail)s;
         }""" % locals()
 
+    def add_to_xview(self, x, fail):
+
+        return """
+
+        PyObject * add_result =  CudaNdarray_inplace_add(xview, py_%(x)s);
+
+        if (! add_result )
+        {
+            Py_DECREF(xview);
+            %(fail)s;
+        }
+        else
+        {
+            Py_DECREF(add_result);
+        }
+        """ % locals()
+
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code
         return ()
