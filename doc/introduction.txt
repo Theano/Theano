@@ -165,11 +165,11 @@ Note: There is no short term plan to support multi-node computation.
 Theano Vision State
 ===================
 
-Here is the state of that vision as of 24 October 2011 (after Theano release
-0.4.1):
+Here is the state of that vision as of 1 October 2012 (after Theano release
+0.6rc1):
 
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
-* We support sparse types by using the `scipy.{csc,csr}_matrix` object and support some operations on them (more are coming).
+* We support sparse types by using the `scipy.{csc,csr}_matrix` object and support some operations on them.
 * We have started implementing/wrapping more advanced linear algebra operations.
 * We have many graph transformations that cover the 4 categories listed above.
 * We can improve the graph transformation with better storage optimization
@@ -196,16 +196,15 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
   * The profiler used by cvm is less complete than `ProfileMode`.
 
 * SIMD parallelism on the CPU comes from the compiler.
-* Multi-core parallelism is only supported for gemv and gemm, and only
-  if the external BLAS implementation supports it.
+* Multi-core parallelism is only supported Conv2d. If the external BLAS implementation supports it,
+  there is also, gemm, gemv and ger that are parallelized.
 * No multi-node support.
 * Many, but not all NumPy functions/aliases are implemented.
   * http://www.assembla.com/spaces/theano/tickets/781
-* Wrapping an existing Python function in easy, but better documentation of
-  it would make it even easier.
-* We need to find a way to separate the shared variable memory
+* Wrapping an existing Python function in easy and documented.
+* We know how to separate the shared variable memory
   storage location from its object type (tensor, sparse, dtype, broadcast
-  flags).
+  flags), but we need to do it.
 
 
 Contact us
