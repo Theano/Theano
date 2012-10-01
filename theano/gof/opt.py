@@ -26,10 +26,6 @@ from theano.configparser import AddConfigVar, BoolParam
 
 _logger = logging.getLogger('theano.gof.opt')
 
-AddConfigVar('time_seq_optimizer',
-        "Should SeqOptimizer print the time taked by each of its optimizer",
-        BoolParam(False),
-        in_c_key=False)
 
 AddConfigVar('time_eq_optimizer',
         "Should EquilibriumOptimizer print the time taken by each optimizer",
@@ -180,29 +176,6 @@ class SeqOptimizer(Optimizer, list):
                 else:
                     raise
 
-        if config.time_seq_optimizer:
-            print "SeqOptimizer",
-            if hasattr(self,"name"): print self.name,
-            elif hasattr(self,"__name__"): print self.__name__,
-            print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(fgraph.apply_nodes))
-            print " time %.3fs for validate " % (
-                fgraph.profile.validate_time - validate_before)
-            ll=[]
-            for opt in self:
-                if hasattr(opt,"__name__"):
-                    ll.append((opt.__name__,opt.__class__.__name__))
-                else:
-                    ll.append((opt.name,opt.__class__.__name__))
-            lll=zip(l,ll)
-            def cmp(a,b):
-                if a[0]==b[0]: return 0
-                if a[0]<b[0]: return -1
-                return 1
-            lll.sort(cmp)
-
-            for (t, opt) in lll[::-1]:
-                print '  %.6fs - %s' % (t, opt)
-            print
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
         else:
