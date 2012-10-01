@@ -4554,6 +4554,9 @@ class IncSubtensor(Op):
         view_ndim = (node.inputs[0].ndim -
                      numpy.sum([not isinstance(idx, slice)
                                 for idx in self.idx_list]))
+
+        copy_of_x = self.copy_of_x(x)
+
         copy_input_if_necessary = """
         if (%(inplace)s)
         {
@@ -4567,9 +4570,7 @@ class IncSubtensor(Op):
         else
         {
             if (%(z)s) Py_DECREF(%(z)s);
-            %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
-                                                    NPY_ARRAY_ENSURECOPY, NULL);
-        }
+            %(z)s = %(copy_of_x)s;        }
         """ % locals()
 
         #Make a first view on the output, as we will write into it.
@@ -4636,6 +4637,27 @@ class IncSubtensor(Op):
             return (1, hv)
         else:
             return ()
+
+    def copy_of_x(self, x):
+        """
+            x: a string giving the name of a C variable pointing to an array
+
+            Returns C code expression to make a copy of x.
+
+            Base class uses PyArrayObject *, subclasses may override for
+            different types of arrays.
+        """
+        # Parameters of PyArrary_FromAny are:
+        # array
+        # dtype: we pass NULL to say any dtype is acceptable, so the existing
+        #        dtype will be copied
+        # min_depth: we pass 0 to have this parameter ignored
+        # max_depth: we pass 0 to have this parameter ignored
+        # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
+        # context: this is almost always NULL, I'm not sure what it's used for
+        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
+                NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
+
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
