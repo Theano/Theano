@@ -26,15 +26,6 @@ from theano.configparser import AddConfigVar, BoolParam
 
 _logger = logging.getLogger('theano.gof.opt')
 
-AddConfigVar('time_seq_optimizer',
-        "Should SeqOptimizer print the time taked by each of its optimizer",
-        BoolParam(False),
-        in_c_key=False)
-
-AddConfigVar('time_eq_optimizer',
-        "Should EquilibriumOptimizer print the time taken by each optimizer",
-        BoolParam(False),
-        in_c_key=False)
 
 import destroyhandler as dh
 import traceback
@@ -180,29 +171,6 @@ class SeqOptimizer(Optimizer, list):
                 else:
                     raise
 
-        if config.time_seq_optimizer:
-            print "SeqOptimizer",
-            if hasattr(self,"name"): print self.name,
-            elif hasattr(self,"__name__"): print self.__name__,
-            print " time %.3fs for %d/%d nodes before/after optimization"%(sum(l),nb_node_before,len(fgraph.apply_nodes))
-            print " time %.3fs for validate " % (
-                fgraph.profile.validate_time - validate_before)
-            ll=[]
-            for opt in self:
-                if hasattr(opt,"__name__"):
-                    ll.append((opt.__name__,opt.__class__.__name__))
-                else:
-                    ll.append((opt.name,opt.__class__.__name__))
-            lll=zip(l,ll)
-            def cmp(a,b):
-                if a[0]==b[0]: return 0
-                if a[0]<b[0]: return -1
-                return 1
-            lll.sort(cmp)
-
-            for (t, opt) in lll[::-1]:
-                print '  %.6fs - %s' % (t, opt)
-            print
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
         else:
@@ -1516,29 +1484,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
-
-        if config.time_eq_optimizer:
-            print "EquilibriumOptimizer",
-            print getattr(self, "name", getattr(self, "__name__", ""))
-            print " time %.3fs for %d passes, %d nodes max" % (
-                    sum(loop_timing), len(loop_timing), max_nb_nodes)
-
-            for i in range(len(loop_timing)):
-                print '%d - %.3fs (%.3fs in global opts) - %d nodes' % (
-                        i, loop_timing[i], global_opt_timing[i], nb_nodes[i])
-            print
-
-            count_opt = []
-            for opt, count in process_count.iteritems():
-                if count > 0:
-                    count_opt.append((count, opt))
-
-            if count_opt:
-                print 'times applied - optimizer:'
-                count_opt.sort()
-                for (count, opt) in count_opt[::-1]:
-                    print '  %d - %s' % (count, opt)
-                print
 
         return (self, loop_timing, process_count, max_nb_nodes,
                 global_opt_timing, nb_nodes, time_lopts, io_toposort_timing)
