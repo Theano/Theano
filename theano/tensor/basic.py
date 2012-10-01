@@ -4530,7 +4530,7 @@ class IncSubtensor(Op):
                 x.__setitem__(cdata, y)
         out[0] = x
 
-    def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
+    def c_code(self, node, name, inputs, outputs, sub):
         if not isinstance(node.inputs[0].type, TensorType):
             raise NotImplementedError()
 
