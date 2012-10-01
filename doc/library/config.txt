@@ -245,6 +245,22 @@ import theano and print the config variable, as in:
     This sets the default compilation mode for theano functions. By default the
     mode Mode is equivalent to FAST_RUN. See Config attribute linker and optimizer.
 
+.. attribute:: profile
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linker profile the execution of Theano function?
+
+.. attribute:: profile_optimizer
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linker profile the optimization phase when compiling a Theano function?
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
