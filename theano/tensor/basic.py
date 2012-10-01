@@ -4419,7 +4419,6 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     else:
         raise TypeError('x must be result of a subtensor operation')
 
-response = None
 class IncSubtensor(Op):
     """Increment a subtensor.
 
@@ -4569,13 +4568,13 @@ class IncSubtensor(Op):
         out[0] = x
 
     def c_code(self, node, name, inputs, outputs, sub):
-        if not isinstance(node.inputs[0].type, TensorType):
-            global response
-            if response is None:
-                response = raw_input('Use GPU C code?')
-            if response == 'n':
-                raise NotImplementedError()
-            assert response == 'y'
+
+        # This method delegates much of the work to helper
+        # methods. This method implements the main logic
+        # but subclasses may override the helper methods
+        # to change the particulars, e.g. GpuIncSubtensor
+        # turns the view/copy operations on numpy arrays
+        # into the same operations on cuda arrays.
 
         self.do_type_checking(node)
 
