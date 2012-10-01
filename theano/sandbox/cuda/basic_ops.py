@@ -2425,6 +2425,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def copy_of_x(self, x):
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
+    def c_code_cache_version(self):
+        # TODO: cooperate with parent class' C code
+        return ()
+
 
 class GpuFlatten(tensor.Flatten, GpuOp):
     """
