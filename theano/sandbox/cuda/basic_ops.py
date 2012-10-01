@@ -2409,8 +2409,11 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
 
-    Note: the optimization to make this inplace is in tensor/opt.
-          the same optimization handles IncSubtensor and GpuIncSubtensor.
+    Note: The optimization to make this inplace is in tensor/opt.
+          The same optimization handles IncSubtensor and GpuIncSubtensor.
+          This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
+          The helper methods like do_type_checking, copy_of_x, etc. specialize
+          the c_code for this Op.
     """
 
     def make_node(self, x, y, *inputs):
