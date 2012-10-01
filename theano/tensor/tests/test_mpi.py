@@ -38,8 +38,9 @@ def test_mpi_roundtrip():
 #    assert p.stdout.read() == "True"
     if not mpi_enabled:
         return
-    sin, sout, serr = os.popen3("mpiexec -np 2 python "
-                                "theano/tensor/tests/_test_mpi_roundtrip.py")
+    theano_root = theano.__file__.split('__init__')[0]
+    sin, sout, serr = os.popen3("mpiexec -np 2 python " + theano_root +
+                                "tensor/tests/_test_mpi_roundtrip.py")
     result = sout.read()
     assert "True" in result
 
