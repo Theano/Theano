@@ -112,9 +112,6 @@ int device_free(void *ptr)
         }
     #endif
 
-    // TODO: Move all device_free calls to wait side of gpu async calls
-    return 0;
-
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
         return 0;
