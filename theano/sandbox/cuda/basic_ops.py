@@ -2422,6 +2422,14 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x, y] + rval.inputs[2:], [x.type()])
 
+    def do_type_checking(self, node):
+        """ Should raise NotImplementedError if c_code does not support
+        the types involved in this node.
+        """
+
+        if not isinstance(node.inputs[0].type, CudaNdarrayType):
+            raise NotImplementedError()
+
     def copy_of_x(self, x):
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
