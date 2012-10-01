@@ -3978,7 +3978,7 @@ class Subtensor(Op):
                 "set_data" : "PyArray_set_data",
                 "set_dim" : "PyArray_set_dim",
                 "set_stride" : "PyArray_set_stride",
-                "strides_mul" : "strides_mul" }
+                "strides_mul" : 1 }
 
 
     @staticmethod
@@ -4012,6 +4012,9 @@ class Subtensor(Op):
 
         if strides_mul is None:
             strides_mul = default_args['strides_mul']
+
+        if c_prefix is None:
+            c_prefix = default_args['c_prefix']
 
 
         #
