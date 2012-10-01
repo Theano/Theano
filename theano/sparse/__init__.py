@@ -13,6 +13,8 @@ except ImportError:
     sys.stderr.write("WARNING: scipy can't be imported."
             " We disable the sparse matrix code.")
 
+from type import *
+
 if enable_sparse:
     from basic import *
     import opt
