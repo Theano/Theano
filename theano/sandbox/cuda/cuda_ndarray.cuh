@@ -437,7 +437,7 @@ DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const
 DllExport PyObject*
 CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
-static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
+static int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 #endif
 /*
