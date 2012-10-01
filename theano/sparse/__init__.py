@@ -13,10 +13,10 @@ except ImportError:
     sys.stderr.write("WARNING: scipy can't be imported."
             " We disable the sparse matrix code.")
 
-from type import *
+from theano.sparse.type import *
 
 if enable_sparse:
-    from basic import *
-    import opt
-    import sharedvar
-    from sharedvar import sparse_constructor as shared
+    from theano.sparse.basic import *
+    from theano.sparse import opt
+    from theano.sparse import sharedvar
+    from theano.sparse.sharedvar import sparse_constructor as shared
