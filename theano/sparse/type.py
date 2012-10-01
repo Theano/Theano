@@ -49,6 +49,9 @@ class SparseType(gof.Type):
         @param format:  The sparse storage strategy.
         @return         An empty SparseVariable instance.
         """
+        if not imported_scipy:
+            raise Exception("You can't make SparseType object as SciPy"
+                            " is not available.")
         dtype = str(dtype)
         if dtype in self.dtype_set:
             self.dtype = dtype
