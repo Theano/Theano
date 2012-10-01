@@ -849,7 +849,14 @@ class TestElemwise(unittest_tools.InferShapeTester):
 
 
 def test_gt_grad():
+    """A user test that failed.
 
+    Something about it made Elemwise.grad return something that was
+    too complicated for get_constant_value to recognize as being 0, so
+    gradient.grad reported that it was not a valid gradient of an
+    integer.
+
+    """
     floatX = config.floatX
     T = theano.tensor
 
