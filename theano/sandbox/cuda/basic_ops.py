@@ -2457,6 +2457,16 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """ Return the update_flags string to pass to helper_c_code."""
         return ""
 
+    def copy_into(self, view, source):
+        """
+            view: string, C code expression for an array
+            source: string, C code expression for an array
+
+            returns a C code expression to copy source into view, and
+            return 0 on success
+        """
+        return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
+
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code
         return ()
