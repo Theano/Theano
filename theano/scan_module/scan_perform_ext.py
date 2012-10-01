@@ -12,16 +12,24 @@ _logger = logging.getLogger('theano.scan_module.scan_perform')
 _logger.setLevel(logging.WARN)
 
 
-# Ensure the compiledir is in `sys.path` to be able to reload an existing
-# precompiled library.
-if config.compiledir not in sys.path:
-    sys.path.append(config.compiledir)
-
 version = 0.278  # must match constant returned in function get_version()
 
 need_reload = False
-try:
+
+
+def try_import():
+    sys.path[0:0] = [config.compiledir]
     import scan_perform
+    del sys.path[0]
+
+
+def try_reload()
+    sys.path[0:0] = [config.compiledir]
+    reload(scan_perform)
+    del sys.path[0]
+
+try:
+    try_import()
     need_reload = True
     if version != getattr(scan_perform, '_version', None):
         raise ImportError()
@@ -34,9 +42,9 @@ except ImportError:
             if need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
-                reload(scan_perform)
+                try_reload()
             else:
-                import scan_perform
+                try_import()
                 need_reload = True
             if version != getattr(scan_perform, '_version', None):
                 raise ImportError()
@@ -66,8 +74,9 @@ except ImportError:
             init_pyc = os.path.join(loc, '__init__.pyc')
             if os.path.isfile(init_pyc):
                 os.remove(init_pyc)
-            import scan_perform
-            reload(scan_perform)
+            try_import()
+
+            try_reload()
             from scan_perform import scan_perform as scan_c
             assert (scan_perform._version ==
                     scan_c.get_version())
