@@ -144,7 +144,7 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 /****
  *  Set the idx'th dimension to value d.
  *
- *  Updates the log2dim shaddow array.
+ *  Updates the log2dim shadow array.
  *
  *  Does not sync structure to host.
  */
@@ -441,6 +441,7 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 
 PyObject * CudaNdarray_View(const CudaNdarray * self);
+CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 
 
 #endif
