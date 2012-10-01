@@ -4539,6 +4539,8 @@ class IncSubtensor(Op):
                 raise NotImplementedError()
             assert response == 'y'
 
+        self.do_type_checking(node)
+
         if self.inplace:  # convert bool to int
             inplace = 1
         else:
@@ -4630,6 +4632,16 @@ class IncSubtensor(Op):
                 + make_modification
                 + "Py_DECREF(xview);"
                 )
+
+    def do_type_checking(self, node):
+        """ Should raise NotImplementedError if c_code does not support
+        the types involved in this node.
+        """
+
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError()
+
+
 
     def c_code_cache_version(self):
         hv = Subtensor.helper_c_code_cache_version()
