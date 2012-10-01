@@ -4723,7 +4723,7 @@ class IncSubtensor(Op):
             right indexing; we'll do that manually later.
         """
 
-        return """Py_INCREF(PyArray_DESCR(%(z)s));
+        return """Py_INCREF(PyArray_DESCR(%(x)s));
         PyArrayObject * xview =
                 (PyArrayObject*)PyArray_NewFromDescr(
                 &PyArray_Type,
