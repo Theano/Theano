@@ -804,35 +804,10 @@ def _populate_grad_dict(var_to_node_to_idx,
 
                         no_constant_value = True
                         try:
-                            constant_value = tensor.get_constant_value(term)
+                            constant_value = theano.get_constant_value(term)
                             no_constant_value = False
                         except TypeError:
                             pass
-
-                        extra_msg = ''
-
-                        # The above won't work if it's a sparse type, handle sparse
-                        # types here
-                        if no_constant_value:
-                            if isinstance(term.type, theano.sparse.SparseType):
-                                if term.owner is not None and isinstance(term.owner.op,
-                                        theano.sparse.CSM):
-                                    data = term.owner.inputs[0]
-                                    try:
-                                        constant_value = tensor.get_constant_value(data)
-                                        no_constant_value = False
-                                    except TypeError:
-                                        print theano.printing.min_informative_str(data)
-                                        extra_msg += " It is a CSM, but its data isn't constant."
-                                        pass
-                                else:
-                                    extra_msg += " It is a SparseType but theano doesn't know how"
-                                    extra_msg += " to turn it into a constant."
-                                #end if CSM
-                            else:
-                                extra_msg += " It is not a SparseType."
-                            #end if SparseType
-                        #end if no_constant_value
 
                         if no_constant_value:
                             msg = "%s.grad returned %s of type %s for input"
@@ -844,7 +819,6 @@ def _populate_grad_dict(var_to_node_to_idx,
                             msg += "DisconnectedType and theano can't "
                             msg += "simplify it to a constant, so it's not "
                             msg += "verifiably zeros."
-                            msg += extra_msg
 
                             msg = msg % (str(node.op), str(term),
                                     str(type(term)), i)
