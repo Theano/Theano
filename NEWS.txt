@@ -303,7 +303,7 @@ Documentation
  * New installation instructions for Windows using EPD (Pascal L.)
  * New installation on Windows by using a Linux VM from ContinuumIO (Frederic B.)
  * Revisions of Theano tutorial and addition of exercices to it. (Eric L.)
- * New tutorial on Sparse variable. (Nicolas B., Sébastien Lemieux, Frederic Bastien
+ * New tutorial on Sparse variable. (Nicolas B., Sebastien Lemieux, Frederic Bastien
    http://www.deeplearning.net/software/theano/tutorial/sparse.html
  * Installation documentation for CentOS6 (Frederic B.)
  * Installation documentation for Ubuntu (with GPU) (Frederic B., Matthias Zoehrer)
