@@ -3964,11 +3964,16 @@ class Subtensor(Op):
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
 
     @staticmethod
+    def default_update_flags():
+        return ("PyArray_UpdateFlags(xview,"
+                " NPY_ARRAY_C_CONTIGUOUS|"
+                "NPY_ARRAY_F_CONTIGUOUS);")
+
+
+    @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list,
                       c_prefix="PyArray",
-                      update_flags=("PyArray_UpdateFlags(xview,"
-                                    " NPY_ARRAY_C_CONTIGUOUS|"
-                                    "NPY_ARRAY_F_CONTIGUOUS);"),
+                      update_flags=None,
                       set_data='PyArray_set_data',
                       set_dim='PyArray_set_dim',
                       set_stride='PyArray_set_stride',
@@ -3979,6 +3984,10 @@ class Subtensor(Op):
         function on PyArray and CudaNdarray object.
 
         """
+
+        if update_flags is None:
+            update_flags = Subtensor.default_update_flags()
+
         #
         # two arrays are created in C code:
         # is_slice: len == ndim, 0 means int, 1 means slice
