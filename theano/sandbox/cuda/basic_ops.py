@@ -2175,6 +2175,12 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
 
+# C Code shared by GpuSubtensor and GpuIncSubtensor
+_define_set_data = """
+    #define CudaNdarray_set_device_data2(obj, ptr, base) \
+            CudaNdarray_set_device_data(obj, (float *)ptr, base)
+"""
+
 class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
     Implement subtensor on the gpu.
@@ -2240,16 +2246,17 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
             %(fail)s;
         }
         cnda_mark_dev_structure_dirty(xview);
-        #define CudaNdarray_set_device_data2(obj, ptr, base) \
-                CudaNdarray_set_device_data(obj, (float *)ptr, base)
-""" % locals()
-        get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
+        """ % locals()
+
+        get_xview = _define_set_data + \
+                    self.helper_c_code(node, name, inputs, outputs, sub,
                                        self.idx_list,
                                        c_prefix='CudaNdarray',
                                        set_data='CudaNdarray_set_device_data2',
                                        set_dim='CudaNdarray_set_dim',
                                        set_stride='CudaNdarray_set_stride',
                                        update_flags="", strides_mul=4)
+
 
         finish_view = """
         //Set the base only now
@@ -2453,9 +2460,16 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         return """CudaNdarray* xview = (CudaNdarray*)
                 CudaNdarray_New(%(view_ndim)s)""" % locals()
 
-    def get_update_flags(self):
-        """ Return the update_flags string to pass to helper_c_code."""
-        return ""
+    def get_helper_c_code_args(self):
+        """ Return a dictionary of arguments to use with helper_c_code"""
+        return { 'update_flags' : "",
+                'c_prefix' : 'CudaNdarray',
+                'set_data' :'CudaNdarray_set_device_data2',
+                'set_dim' : 'CudaNdarray_set_dim',
+                'set_stride' : 'CudaNdarray_set_stride',
+                'update_flags' : "",
+                'strides_mul': 4
+                }
 
     def copy_into(self, view, source):
         """
@@ -2466,6 +2480,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             return 0 on success
         """
         return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
+
+    def define_set_data(self):
+        return _define_set_data
 
     def c_code_cache_version(self):
         # TODO: cooperate with parent class' C code

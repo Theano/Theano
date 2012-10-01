@@ -3964,29 +3964,55 @@ class Subtensor(Op):
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
 
     @staticmethod
-    def default_update_flags():
-        return ("PyArray_UpdateFlags(xview,"
+    def default_helper_c_code_args():
+        """
+        Returns a dictionary of default arguments to
+        helper_c_code
+        """
+
+        return {
+                "c_prefix" : "PyArray",
+                "update_flags": ("PyArray_UpdateFlags(xview,"
                 " NPY_ARRAY_C_CONTIGUOUS|"
-                "NPY_ARRAY_F_CONTIGUOUS);")
+                "NPY_ARRAY_F_CONTIGUOUS);"),
+                "set_data" : "PyArray_set_data",
+                "set_dim" : "PyArray_set_dim",
+                "set_stride" : "PyArray_set_stride",
+                "strides_mul" : "strides_mul" }
 
 
     @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list,
-                      c_prefix="PyArray",
+                      c_prefix=None,
                       update_flags=None,
-                      set_data='PyArray_set_data',
-                      set_dim='PyArray_set_dim',
-                      set_stride='PyArray_set_stride',
-                      strides_mul=1,
+                      set_data=None,
+                      set_dim=None,
+                      set_stride=None,
+                      strides_mul=None,
                   ):
-        """The parameters c_prefix, update_flags, set_data, set_dim,
+        """
+        The parameters c_prefix, update_flags, set_data, set_dim,
         set_stride and strides_mul are there to allow reusing this
         function on PyArray and CudaNdarray object.
-
         """
 
+        default_args = Subtensor.default_helper_c_code_args()
+
         if update_flags is None:
-            update_flags = Subtensor.default_update_flags()
+            update_flags = default_args['update_flags']
+
+        if set_data is None:
+            set_data = default_args['set_data']
+
+        if set_dim is None:
+            set_dim = default_args['set_dim']
+
+        if set_stride is None:
+            set_stride = default_args['set_stride']
+
+        if strides_mul is None:
+            strides_mul = default_args['strides_mul']
+
 
         #
         # two arrays are created in C code:
@@ -4062,6 +4088,7 @@ class Subtensor(Op):
         z, = outputs
 
         rval = """
+        fprintf(stderr, "Enter helper_c_code\\n");
         #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
         #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
         #define PyArray_set_data(obj, ptr, base) PyArray_BYTES(obj)=ptr
@@ -4602,14 +4629,15 @@ class IncSubtensor(Op):
         }
         """ % locals()
         # make xview actually a view of %(z)s
-        get_xview = Subtensor.helper_c_code(
+        get_xview = self.define_set_data() + \
+                Subtensor.helper_c_code(
                 node=node,
                 name=name,
                 inputs=outputs[:1] + inputs[2:],
                 outputs=outputs,
                 sub=sub,
                 idx_list=self.idx_list,
-                update_flags=self.get_update_flags()
+                **self.get_helper_c_code_args()
                 )
 
         copy_into = self.copy_into("xview", y)
@@ -4707,9 +4735,9 @@ class IncSubtensor(Op):
                 %(x)s->flags,
                 NULL)""" % locals()
 
-    def get_update_flags(self):
-        """ Return the update_flags string to pass to helper c_code."""
-        return Subtensor.default_update_flags()
+    def get_helper_c_code_args(self):
+        """ Return a dictionary of arguments to pass to helper_c_code."""
+        return Subtensor.default_helper_c_code_args()
 
     def copy_into(self, view, source):
         """
@@ -4720,6 +4748,11 @@ class IncSubtensor(Op):
             return 0 on success
         """
         return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
+
+    def define_set_data(self):
+        """ Returns C code used to define any macros used in the
+        set data argument to the helper C code. """
+        return ""
 
 
     def infer_shape(self, node, shapes):
