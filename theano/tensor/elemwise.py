@@ -15,6 +15,7 @@ from theano.printing import min_informative_str, pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
 from theano.gradient import DisconnectedType
+from theano.gof.null_type import NullType
 
 config = theano.config
 
@@ -538,14 +539,14 @@ class Elemwise(Op):
         # it is multiplied by nout because Elemwise supports multiple outputs
         # (nout of them)
         out_broadcastables = [[all(bcast)
-            for bcast in zip(*[input.type.broadcastable
+            for bcast in izip(*[input.type.broadcastable
                 for input in inputs])]] * shadow.nout
 
         #inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
             for overwriter, overwritten in inplace_pattern.items():
-                for ob, ib in zip(out_broadcastables[overwriter],
+                for ob, ib in izip(out_broadcastables[overwriter],
                                   inputs[overwritten].type.broadcastable):
                     if ib and not ob:
                         raise ValueError((
@@ -560,7 +561,7 @@ class Elemwise(Op):
                 ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern)))
 
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
-                for dtype, broadcastable in zip(out_dtypes, out_broadcastables)
+                for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
                 ]
         return Apply(self, inputs, outputs)
 
@@ -608,7 +609,7 @@ class Elemwise(Op):
             bgrads = self._bgrad(inputs, ograds)
             rop_out = None
 
-            for jdx, (inp, eval_point) in enumerate(zip(inputs,
+            for jdx, (inp, eval_point) in enumerate(izip(inputs,
                                                         eval_points)):
                 # if None, then we can just ignore this branch ..
                 # what we do is to assume that for any non-differentiable
@@ -638,8 +639,41 @@ class Elemwise(Op):
 
     def grad(self, inputs, ograds):
 
+
+        outs = self(*inputs)
+        if not isinstance(outs, (list,tuple)):
+            outs = [ outs ]
+
+
         #compute grad with respect to broadcasted input
         rval = self._bgrad(inputs, ograds)
+
+        # TODO: make sure that zeros are clearly identifiable
+        # to the gradient.grad method when the outputs have
+        # some integer and some floating point outputs
+        if False in [str(out.type.dtype).find('int') == -1
+                for out in outs]:
+            # For integer output, return value may
+            # only be zero or undefined
+            # We don't bother with trying to check
+            # that the scalar ops correctly
+            # returned something that evaluates to 0,
+            # we just make the return
+            # value obviously zero so that gradient.grad
+            # can tell this op did
+            # the right thing.
+            new_rval = []
+            for elem, ipt in izip(rval, inputs):
+                if isinstance(elem.type, (NullType, DisconnectedType)):
+                    new_rval.append(elem)
+                else:
+                    elem = ipt.zeros_like()
+                    if str(elem.type.dtype).find('int') != -1:
+                        elem = elem.astype(theano.config.floatX)
+                    assert str(elem.type.dtype).find('int') == -1
+                    new_rval.append(elem)
+            return new_rval
+
 
         #sum out the broadcasted dimensions
         for i, ipt in enumerate(inputs):
@@ -724,7 +758,7 @@ class Elemwise(Op):
                     *[transform(ipt) for ipt in node.inputs])
             return new_r
         ret = []
-        for scalar_igrad, ipt in zip(scalar_igrads, inputs):
+        for scalar_igrad, ipt in izip(scalar_igrads, inputs):
             if scalar_igrad is None:
                 # undefined gradient
                 ret.append(None)
@@ -735,7 +769,7 @@ class Elemwise(Op):
 
     def perform(self, node, inputs, output_storage):
         maxsize = max(len(input.shape) for input in inputs)
-        for dims in zip(*[([(1, True)] * (maxsize - len(input.shape))
+        for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
                             + zip(input.shape, sinput.type.broadcastable))
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d, b in dims) != 1 and (1, False) in dims:
@@ -767,7 +801,7 @@ class Elemwise(Op):
 
         # Determine the shape of outputs
         out_shape = []
-        for values in zip(*[input.shape for input in inputs]):
+        for values in izip(*[input.shape for input in inputs]):
             if numpy.prod(values) == 0:
                 # All non-broadcasted dimensions should be zero
                 assert max(values) <= 1
@@ -777,7 +811,7 @@ class Elemwise(Op):
         out_shape = tuple(out_shape)
 
         if not self.inplace_pattern:
-            for output, storage in zip(node.outputs, output_storage):
+            for output, storage in izip(node.outputs, output_storage):
                 odat = storage[0]
                 if odat is not None:
                     if odat.shape != out_shape:
@@ -789,7 +823,7 @@ class Elemwise(Op):
                 storage[0] = odat
         else:
             for i, (output, storage) in enumerate(
-                    zip(node.outputs, output_storage)):
+                    izip(node.outputs, output_storage)):
                 #i is an output idx
                 if i in self.inplace_pattern:
                     odat = inputs[self.inplace_pattern[i]]
@@ -883,7 +917,7 @@ class Elemwise(Op):
                 else:
                     # there must be some input that is not broadcastable in
                     # dimension 'dim'
-                    for ishp, i in zip(i_shapes, node.inputs):
+                    for ishp, i in izip(i_shapes, node.inputs):
                         if isinstance(i.type, theano.scalar.Scalar):
                             continue  # we skip scalar
                         if not i.type.broadcastable[dim]:
@@ -926,7 +960,7 @@ class Elemwise(Op):
         # These are the outputs that we will need to allocate
         # (output, name, name of the c type), transposed
         real = zip(*[(r, s, r.type.dtype_specs()[1])
-                     for r, s in zip(node.outputs, onames) if r not in dmap])
+                     for r, s in izip(node.outputs, onames) if r not in dmap])
         if real:
             real_outputs, real_onames, real_odtypes = real
         else:
@@ -936,7 +970,7 @@ class Elemwise(Op):
         # (output, name), transposed (c type name not needed since we don't
         # need to allocate.
         aliased = zip(*[(r, s)
-                        for (r, s) in zip(node.outputs, onames) if r in dmap])
+                        for (r, s) in izip(node.outputs, onames) if r in dmap])
         if aliased:
             aliased_outputs, aliased_onames = aliased
         else:
@@ -952,7 +986,7 @@ class Elemwise(Op):
         # dimensionality)
         nnested = len(orders[0])
         sub = dict(sub)
-        for i, (input, iname) in enumerate(zip(inputs, inames)):
+        for i, (input, iname) in enumerate(izip(inputs, inames)):
             # the c generators will substitute the input names for
             # references to loop variables lv0, lv1, ...
             sub['lv%i' % i] = iname
@@ -964,7 +998,7 @@ class Elemwise(Op):
         # We loop over the "real" outputs, i.e., those that are not
         # inplace (must be allocated) and we declare/allocate/check
         # them
-        for output, oname, odtype in zip(
+        for output, oname, odtype in izip(
                 real_outputs, real_onames, real_odtypes):
             i += 1  # before this loop, i = number of inputs
             sub['lv%i' % i] = oname
@@ -980,7 +1014,7 @@ class Elemwise(Op):
         # inplace (overwrite the contents of one of the inputs) and
         # make the output pointers point to theur corresponding input
         # pointers.
-        for output, oname in zip(aliased_outputs, aliased_onames):
+        for output, oname in izip(aliased_outputs, aliased_onames):
             olv_index = inputs.index(dmap[output][0])
             iname = inames[olv_index]
             # We make the output point to the corresponding input and
@@ -1006,7 +1040,7 @@ class Elemwise(Op):
         # not be declared, as they are #defined in defines
         task_decl = "".join([
             "%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals()
-                for name, dtype in zip(inames + list(real_onames),
+                for name, dtype in izip(inames + list(real_onames),
                                        idtypes + list(real_odtypes))])
 
         # We generate the C code of the inner loop using the scalar op
@@ -1305,7 +1339,7 @@ class CAReduce(Op):
         nnested = len(order1)
 
         sub = dict(sub)
-        for i, (input, iname) in enumerate(zip(node.inputs, inames)):
+        for i, (input, iname) in enumerate(izip(node.inputs, inames)):
             sub['lv%i' % i] = iname
 
         decl = cgen.make_declare([order], [idtype], sub)
