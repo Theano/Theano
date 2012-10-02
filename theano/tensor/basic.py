@@ -6867,7 +6867,14 @@ def take(a, indices, axis=None, mode='raise'):
 
 
 class Dot(Op):
-    """Compute matrix-matrix, matrix-vector products and vector inner-products.
+    """
+    Computes the dot product of two variables. For two matrices, this is
+    equivalent to matrix multiplication. For two vectors, this is the inner
+    product. When one variable is a scalar, it is like elementwise
+    multiplication.  For N dimensions, it is a sum product over the last axis
+    of the first array and the second-to-last axis of the second array:
+
+        dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
 
     :note: matrix-matrix products are sometimes optimized to Dot22 ops
         (see tensor.blas)
@@ -6890,51 +6897,21 @@ class Dot(Op):
     def make_node(self, *inputs):
         inputs = map(as_tensor_variable, inputs)
 
-        numpy_semantics = 0
-        if numpy_semantics:
-            # numpy defines dot for tensor pairs with any rank
-            if len(inputs) != 2:
-                raise TypeError(
-                    "Wrong number of inputs for %s (got %i, expected 2)" %
-                    self)
-            i_broadcastables = [input.type.broadcastable for input in inputs]
-            bx, by = i_broadcastables
-            if len(bx) == 0:     # x is a scalar
-                bz = by
-            else:
-                if len(by) >= 2:  # y is a matrix or tensor
-                    bz = bx[:-1] + by[:-2] + by[-1:]
-                elif len(by) == 1:  # y is vector
-                    bz = bx[:-1]
-                else:  # y is a scalar
-                    bz = bx
+        if len(inputs) != 2:
+            raise TypeError(
+                'theanor.tensor.Dot: 2 arguments required, %d given ' %
+                len(inputs))
+        i_broadcastables = [input.type.broadcastable for input in inputs]
+        bx, by = i_broadcastables
+        if len(bx) == 0:     # x is a scalar
+            bz = by
         else:
-            if len(inputs) != 2:
-                raise TypeError(
-                    'theanor.tensor.Dot: 2 arguments required, %d given ' %
-                    len(inputs))
-
-            x, y = inputs
-            nx = x.type.ndim
-            ny = y.type.ndim
-
-            if nx not in (1, 2):
-                raise TypeError(
-                    ('dot supports matrix and vector args: email theano-dev '
-                    'about enabling numpy dot semantics if you want them'), x)
-            if ny not in (1, 2):
-                raise TypeError(
-                    ('dot supports matrix and vector args: email theano-dev '
-                    'about enabling numpy dot semantics if you want them'), y)
-
-            if nx == 2 and ny == 2:
-                bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
-            elif nx == 1 and ny == 2:
-                bz = [y.type.broadcastable[1]]
-            elif nx == 2 and ny == 1:
-                bz = [x.type.broadcastable[0]]
-            else:
-                bz = []
+            if len(by) >= 2:  # y is a matrix or tensor
+                bz = bx[:-1] + by[:-2] + by[-1:]
+            elif len(by) == 1:  # y is vector
+                bz = bx[:-1]
+            else:  # y is a scalar
+                bz = bx
 
         i_dtypes = [input.type.dtype for input in inputs]
         outputs = [tensor(scal.upcast(*i_dtypes), bz)]
@@ -6966,14 +6943,50 @@ class Dot(Op):
 
         x, y = inp
         gz, = grads
+        xdim, ydim = x.type.ndim, y.type.ndim
+
+        #grad is scalar
         if gz.type.ndim == 0:
-            rval = gz * y, gz * x
-        elif x.type.ndim == 1 and y.type.ndim > 1:
-            rval = dot(gz, y.T), outer(x.T, gz)
-        elif x.type.ndim > 1 and y.type.ndim == 1:
-            rval = outer(gz, y.T), dot(x.T, gz)
+            xgrad = gz * y
+            ygrad = gz * x
+        #x is scalar
+        elif xdim == 0:
+            xgrad = (gz * y).sum()
+            ygrad = x * gz
+        #y is scalar
+        elif ydim == 0:
+            xgrad = y * gz
+            ygrad = (gz * x).sum()
+        #x is vector, y is matrix
+        elif xdim == 1 and ydim == 2:
+            xgrad = dot(gz, y.T)
+            ygrad = outer(x.T, gz)
+        #x is matrix, y is vector
+        elif xdim == 2 and ydim == 1:
+            xgrad = outer(gz, y.T)
+            ygrad = dot(x.T, gz)
+        #x is matrix, y is matrix
+        elif xdim == ydim == 2:
+            xgrad = dot(gz, y.T)
+            ygrad = dot(x.T, gz)
+        #x is tensor, y is vector (corner case)
+        elif xdim > 2 and ydim == 1:
+            xgrad = tensordot(y, gz, 0).transpose(range(xdim)[1:] + [0])
+            ygrad = tensordot(x, gz, [range(xdim - 1)] * 2)
+        #x or y is tensor
         else:
-            rval = dot(gz, y.T), dot(x.T, gz)
+            sum0, sum1 = range(xdim), range(xdim - 1)
+            sum0.pop(-1)
+            dims = range(ydim)
+            dims[-1:-1] = [dims.pop(0)]
+            ygrad = tensordot(x, gz, [sum0, sum1]).transpose(dims)
+
+            sum0, sum1 = range(ydim), range(xdim - 1, xdim + ydim - 2)
+            sum0.pop(-2)
+            dims = range(xdim)[1:] + [0]
+            xgrad = tensordot(y, gz, [sum0, sum1]).transpose(dims)
+
+        rval = xgrad, ygrad
 
         for elem in rval:
             assert elem.dtype.find('float') != -1
@@ -7041,14 +7054,28 @@ class Dot(Op):
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
         x, y = node.inputs
-        if x.ndim == 2 and y.ndim == 2:
-            return [(xshp[0], yshp[1])]
-        if x.ndim == 1 and y.ndim == 2:
-            return [(yshp[1],)]
-        if x.ndim == 2 and y.ndim == 1:
-            return [(xshp[0],)]
+
+        #scalar / scalar
+        if x.ndim == 0 and y.ndim == 0:
+            return [()]
+        #not scalar / scalar
+        if x.ndim != 0 and y.ndim == 0:
+            return [xshp]
+        #scalar / not scalar
+        if x.ndim == 0 and y.ndim != 0:
+            return [yshp]
+        #vector / vector
         if x.ndim == 1 and y.ndim == 1:
             return [()]
+        #tensor / vector
+        if x.ndim > 1 and y.ndim == 1:
+            return [xshp[:-1]]
+        #vector / tensor
+        if x.ndim == 1 and y.ndim > 1:
+            return [yshp[:-2] + yshp[-1:]]
+        #tensor / tensor
+        if x.ndim > 1 and y.ndim > 1:
+            return [xshp[:-1] + yshp[:-2] + yshp[-1:]]
         raise NotImplementedError()
 
     def __str__(self):
