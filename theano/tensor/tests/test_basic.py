@@ -4348,7 +4348,7 @@ class t_dot(unittest.TestCase):
     def test_align_2_1(self):
         self.not_aligned(rand(5, 4), rand(6))
 
-    def test_align_2_1(self):
+    def test_align_2_2(self):
         self.not_aligned(rand(5, 4), rand(6, 7))
 
     def test_align_2_3(self):
