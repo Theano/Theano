@@ -4601,10 +4601,7 @@ class IncSubtensor(Op):
         {
             if (%(x)s != %(z)s)
             {
-                if (%(z)s)
-                {
-                    Py_DECREF(%(z)s);
-                }
+                Py_xDECREF(%(z)s);
                 Py_INCREF(%(x)s);
                 %(z)s = %(x)s;
             }
