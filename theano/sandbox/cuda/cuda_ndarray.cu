@@ -81,6 +81,7 @@ void * device_malloc(size_t size)
     }
     return rval;
 }
+
 int device_free(void *ptr)
 {
 
@@ -168,8 +169,8 @@ CudaNdarray_uninit(CudaNdarray*self)
         if (device_free(self->devdata))
         {
             fprintf(stderr,
-                    "!!!! error freeing device memory %p (self=%p)\n",
-                    self->devdata, self);
+                    "CudaNdarray_uninit: error freeing self->devdata. (self=%p, self->devata=%p)\n",
+                    self, self->devdata);
             rval = -1;
         }
         self->devdata = NULL;
@@ -180,7 +181,7 @@ CudaNdarray_uninit(CudaNdarray*self)
         if (device_free(self->dev_structure))
         {
             fprintf(stderr,
-                    "!!!! error freeing dev_structure memory %p (self=%p)\n",
+                    "CudaNdarray_uninit: error freeing dev_structure memory %p (self=%p)\n",
                     self->dev_structure, self);
             rval = -1;
         }
