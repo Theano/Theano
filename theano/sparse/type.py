@@ -1,12 +1,13 @@
 import numpy
 try:
-    import scipy
+    import scipy.sparse
     imported_scipy = True
 except ImportError:
     imported_scipy = False
 
 import theano
 from theano import gof
+
 
 def _is_sparse(x):
     """
