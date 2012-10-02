@@ -886,7 +886,7 @@ class ScanSaveMem(gof.Optimizer):
                             isinstance(_tmp, tensor.IncSubtensor) and
                             isinstance(_tmp.idx_list[0], slice)):
 
-                            _nw_input = _tmp.inputs[1]
+                            _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             val = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
                             tmp = pre_greedy_local_optimizer(list_opt_slice,
