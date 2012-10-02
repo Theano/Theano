@@ -904,6 +904,12 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
 
 # This is to don't duplicate test.
 class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
+
+    # This prevents nose from printing method docstrings instead of method
+    # names
+    def shortDescription(self):
+        return None
+
     shared = staticmethod(cuda.shared_constructor)
     sub = cuda.GpuSubtensor
     inc_sub = cuda.GpuIncSubtensor
@@ -921,6 +927,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                      self).__init__(name)
 
     def test_adv_sub1_fast(self):
+
         """We check that the special cases of advanced indexing that
         use CudaNdarrayTakeFrom are handled correctly
 
