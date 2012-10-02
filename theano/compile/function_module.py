@@ -251,6 +251,24 @@ class ViewOp(theano.gof.Op):
     def grad(self, args, g_outs):
         return g_outs
 
+    def c_code_cache_version(self):
+        return (1)
+
+    def c_code(self, node, name, inames, onames, sub):
+        iname = inames[0]
+        oname = onames[0]
+        fail = sub['fail']
+        if isinstance(node.inputs[0].type, theano.tensor.TensorType):
+            return """
+                Py_XDECREF(%(oname)s);
+                Py_XINCREF(%(iname)s);
+                %(oname)s = %(iname)s;
+                """%locals()
+        else:
+            return """
+            %(oname)s = %(iname)s;
+            """ % locals()
+
 deep_copy_op = DeepCopyOp()
 view_op      = ViewOp()
 
