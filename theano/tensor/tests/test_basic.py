@@ -4192,20 +4192,42 @@ class t_dot(unittest.TestCase):
         self.assertTrue(tz.shape == nz.shape)
         self.assertTrue(_approx_eq(nz, tz))
 
-    #def test_dot_0d_0d(self): self.cmp_dot(1.1, 2.2)
-    #def test_dot_0d_1d(self): self.cmp_dot(1.1, rand(5))
-    #def test_dot_0d_2d(self): self.cmp_dot(3.0, rand(6,7))
-    #def test_dot_0d_3d(self): self.cmp_dot(3.0, rand(8,6,7))
-    #def test_dot_1d_0d(self): self.cmp_dot(rand(5), 1.1 )
+    def test_dot_0d_0d(self):
+        self.cmp_dot(1.1, 2.2)
+
+    def test_dot_0d_1d(self):
+        self.cmp_dot(1.1, rand(5))
+
+    def test_dot_0d_2d(self):
+        self.cmp_dot(3.0, rand(6,7))
+
+    def test_dot_0d_3d(self):
+        self.cmp_dot(3.0, rand(8,6,7))
+
+    def test_dot_1d_0d(self):
+        self.cmp_dot(rand(5), 1.1 )
+
     def test_dot_1d_1d(self):
         self.cmp_dot(rand(5), rand(5))
 
     def test_dot_1d0_1d0(self):
         self.cmp_dot(rand(0), rand(0))
+
     #numpy return matrix not aligned...
-    #def test_dot_1d_1d0(self): self.cmp_dot(rand(5), rand(0))
+    def test_dot_1d_1d0(self):
+        try:
+            self.cmp_dot(rand(5), rand(0))
+            assert False
+        except ValueError:
+            pass
+
     #numpy return matrix not aligned...
-    #def test_dot_1d0_1d(self): self.cmp_dot(rand(0), rand(5))
+    def test_dot_1d0_1d(self):
+        try:
+            self.cmp_dot(rand(0), rand(5))
+            assert False
+        except ValueError:
+            pass
 
     def test_dot_1d_2d(self):
         self.cmp_dot(rand(6), rand(6, 7))
@@ -4218,8 +4240,12 @@ class t_dot(unittest.TestCase):
 
     def test_dot_1d0_2d0(self):
         self.cmp_dot(rand(0), rand(0, 0))
-    #def test_dot_1d_3d(self): self.cmp_dot(rand(6), rand(8,6,7))
-    #def test_dot_2d_0d(self): self.cmp_dot(rand(5,6), 1.0)
+
+    def test_dot_1d_3d(self):
+        self.cmp_dot(rand(6), rand(8,6,7))
+
+    def test_dot_2d_0d(self):
+        self.cmp_dot(rand(5,6), 1.0)
 
     def test_dot_2d_1d(self):
         self.cmp_dot(rand(5, 6), rand(6))
@@ -4250,11 +4276,21 @@ class t_dot(unittest.TestCase):
 
     def test_dot_2d0_0_2d0(self):
         self.cmp_dot(rand(0, 6), rand(6, 0))
-    #def test_dot_2d_3d(self): self.cmp_dot(rand(5,6), rand(8,6,7))
-    #def test_dot_3d_0d(self): self.cmp_dot(rand(4,5,6), 1.0)
-    #def test_dot_3d_1d(self): self.cmp_dot(rand(4,5,6), rand(6))
-    #def test_dot_3d_2d(self): self.cmp_dot(rand(4,5,6), rand(6,7))
-    #def test_dot_3d_3d(self): self.cmp_dot(rand(4,5,6), rand(8,6,7))
+
+    def test_dot_2d_3d(self):
+        self.cmp_dot(rand(5,6), rand(8,6,7))
+
+    def test_dot_3d_0d(self):
+        self.cmp_dot(rand(4,5,6), 1.0)
+
+    def test_dot_3d_1d(self):
+        self.cmp_dot(rand(4,5,6), rand(6))
+
+    def test_dot_3d_2d(self):
+        self.cmp_dot(rand(4,5,6), rand(6,7))
+
+    def test_dot_3d_3d(self):
+        self.cmp_dot(rand(4,5,6), rand(8,6,7))
 
     def not_aligned(self, x, y):
         ctv_backup = config.compute_test_value
@@ -4294,7 +4330,8 @@ class t_dot(unittest.TestCase):
     def test_align_1_2(self):
         self.not_aligned(rand(5), rand(6, 4))
 
-    #def test_align_1_3(self): self.not_aligned(rand(5), rand(6,4,7))
+    def test_align_1_3(self):
+        self.not_aligned(rand(5), rand(6,4,7))
 
     def test_align_2_1(self):
         self.not_aligned(rand(5, 4), rand(6))
@@ -4302,31 +4339,44 @@ class t_dot(unittest.TestCase):
     def test_align_2_1(self):
         self.not_aligned(rand(5, 4), rand(6, 7))
 
-    #def test_align_2_3(self): self.not_aligned(rand(5,4), rand(6,7,8))
-    #def test_align_3_1(self): self.not_aligned(rand(5,4,3), rand(6))
-    #def test_align_3_2(self): self.not_aligned(rand(5,4,3), rand(6,7))
-    #def test_align_3_3(self): self.not_aligned(rand(5,4,3), rand(6,7,8))
+    def test_align_2_3(self):
+        self.not_aligned(rand(5,4), rand(6,7,8))
+
+    def test_align_3_1(self):
+        self.not_aligned(rand(5,4,3), rand(6))
+
+    def test_align_3_2(self):
+        self.not_aligned(rand(5,4,3), rand(6,7))
+
+    def test_align_3_3(self):
+        self.not_aligned(rand(5,4,3), rand(6,7,8))
 
     def test_grad(self):
-        #utt.verify_grad(dot, [rand(2,3,4), rand(4)])
         utt.verify_grad(dot, [rand(2, 3), rand(3, 2)])
         utt.verify_grad(dot, [rand(2), rand(2, 3)])
         utt.verify_grad(dot, [rand(3, 2), rand(2)])
         utt.verify_grad(dot, [rand(2), rand(2)])
-        #utt.verify_grad(dot, [rand(), rand(2)])
-        #utt.verify_grad(dot, [rand(), rand(2,5)])
+        utt.verify_grad(dot, [rand(), rand(2)])
+        utt.verify_grad(dot, [rand(), rand(2,5)])
+        utt.verify_grad(dot, [rand(2), rand()])
+        utt.verify_grad(dot, [rand(2,5), rand()])
+        utt.verify_grad(dot, [rand(2,3,4), rand(4)])
+        utt.verify_grad(dot, [rand(3), rand(2,3,4)])
+        utt.verify_grad(dot, [rand(4,3), rand(2,3,4)])
+        utt.verify_grad(dot, [rand(2,3,4), rand(4,5)])
+        utt.verify_grad(dot, [rand(2,3,4), rand(3,4,5)])
 
     def test_broadcastable_patterns(self):
 
         #
-        # These examples hsould all work because we broadcastable or no, all dimensions of all
+        # These examples should all work because we broadcastable or no, all dimensions of all
         # results have size 1.
         #
         def val_for(r):
             if r.dtype.startswith('complex'):
                 # We want to test complex at the same time, so we give a value
                 # To the imaginary component.
-                # This stange way to doing thing is the only way that worked on
+                # This strange way of doing things is the only way that worked on
                 # numpy 1.4.1
                 if r.ndim == 0:
                     return numpy.asarray(numpy.complex(1.1, 2.1), dtype=r.dtype)
