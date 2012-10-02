@@ -7,21 +7,26 @@ from theano.gof import cmodule
 
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
-# Ensure the compiledir is in `sys.path` to be able to reload an existing
-# precompiled library.
-if config.compiledir not in sys.path:
-    sys.path.append(config.compiledir)
-
 force_compile = False
 version = 0.20  # must match constant returned in function get_version()
 
+def try_import():
+    global lazylinker_ext
+    sys.path[0:0] = [config.compiledir]
+    import lazylinker_ext
+    del sys.path[0]
+
+def try_reload():
+    sys.path[0:0] = [config.compiledir]
+    reload(lazylinker_ext)
+    del sys.path[0]
 
 try:
     _need_reload = False
     if force_compile:
         raise ImportError()
     else:
-        import lazylinker_ext
+        try_import()
         _need_reload = True
         if version != getattr(lazylinker_ext, '_version', None):
             raise ImportError()
@@ -36,9 +41,9 @@ except ImportError:
             if _need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
-                reload(lazylinker_ext)
+                try_reload()
             else:
-                import lazylinker_ext
+                try_import()
                 _need_reload = True
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
@@ -65,8 +70,8 @@ except ImportError:
             init_pyc = os.path.join(loc, '__init__.pyc')
             if os.path.isfile(init_pyc):
                 os.remove(init_pyc)
-            import lazylinker_ext
-            reload(lazylinker_ext)
+            try_import()
+            try_reload()
             from lazylinker_ext import lazylinker_ext as lazy_c
             assert (lazylinker_ext._version ==
                     lazy_c.get_version())
