@@ -14,6 +14,17 @@
 //If true, we fill with NAN allocated device memory.
 #define ALLOC_MEMSET 0
 
+//If true, we print out when we free a device pointer, uninitialize a
+//CudaNdarray, or allocate a device pointer
+#define PRINT_FREE_MALLOC 0
+
+//If true, we do error checking at the start of functions, to make sure there
+//is not a pre-existing error when the function is called.
+//You probably need to set the environment variable
+//CUDA_LAUNCH_BLOCKING=1
+//if you want this to work.
+#define PRECHECK_ERROR 0
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
@@ -53,37 +64,53 @@ void * device_malloc(size_t size)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-#if COMPUTE_GPU_MEM_USED
-        fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
-#else
-        fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
-#endif
-        PyErr_Format(PyExc_MemoryError, "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
+        #if COMPUTE_GPU_MEM_USED
+            fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+        #else
+            fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+        #endif
+        PyErr_Format(PyExc_MemoryError,
+                "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
-#if COMPUTE_GPU_MEM_USED
-    for(int i=0;i<TABLE_SIZE;i++){
-        if(NULL==_alloc_size_table[i].ptr){
-            _alloc_size_table[i].ptr=rval;
-            _alloc_size_table[i].size=size;
-            break;
+    #if COMPUTE_GPU_MEM_USED
+        for(int i=0;i<TABLE_SIZE;i++){
+            if(NULL==_alloc_size_table[i].ptr){
+                _alloc_size_table[i].ptr=rval;
+                _alloc_size_table[i].size=size;
+                break;
+            }
         }
-    }
-    _allocated_size += size;
-#endif
-    //fprintf(stderr, "allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n", (long)size, cudaGetErrorString(err),_allocated_size,rval);
+        _allocated_size += size;
+    #endif
+    //fprintf(stderr,
+    //"allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n",
+    //(long)size, cudaGetErrorString(err),_allocated_size,rval);
 
     if(ALLOC_MEMSET){
         //We init them to nan to make sure we catch more debug case.
         cudaMemset(rval, 0xFF, size);
         //printf("MEMSET\n");
     }
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "device malloc %p\n",rval);
+    #endif
     return rval;
 }
 
 int device_free(void *ptr)
 {
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "device_free %p\n",ptr);
+    #endif
+    #if PRECHECK_ERROR
+        cudaError_t prevError = cudaGetLastError();
+        if (cudaSuccess != prevError)
+        {
+            fprintf(stderr, "Error existed before calling device_free.\n");
+        }
+    #endif
 
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
@@ -163,6 +190,9 @@ CudaNdarray_null_init(CudaNdarray*self)
 static int
 CudaNdarray_uninit(CudaNdarray*self)
 {
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "CudaNdarray_uninit %p\n", self);
+    #endif
     int rval = 0;
     if (self->data_allocated) {
         assert(self->devdata);
