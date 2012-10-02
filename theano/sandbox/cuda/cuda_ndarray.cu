@@ -101,33 +101,42 @@ int device_free(void *ptr)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-#if COMPUTE_GPU_MEM_USED
-        fprintf(stderr, "Error freeing device pointer %p (%s).%d byte already allocated\n", ptr, cudaGetErrorString(err), _allocated_size);
-#else
-        fprintf(stderr, "Error freeing device pointer %p (%s).\n", ptr, cudaGetErrorString(err));
-#endif
-        PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p (%s)", ptr, cudaGetErrorString(err));
+        #if COMPUTE_GPU_MEM_USED
+            fprintf(stderr,
+                    "Error freeing device pointer %p (%s).%d byte already allocated\n",
+                    ptr, cudaGetErrorString(err), _allocated_size);
+        #else
+            fprintf(stderr,
+                    "Error freeing device pointer %p (%s).\n",
+                    ptr,
+                    cudaGetErrorString(err));
+        #endif
+        PyErr_Format(PyExc_MemoryError,
+                "error freeing device pointer %p (%s)",
+                ptr,
+                cudaGetErrorString(err));
         return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
-#if COMPUTE_GPU_MEM_USED
-    int i=0;
-    size_t total_freed = 0;
-    for(;i<TABLE_SIZE;i++)
-        if(_alloc_size_table[i].ptr==ptr){
-            _allocated_size -= _alloc_size_table[i].size;
-            total_freed += _alloc_size_table[i].size;
-            _alloc_size_table[i].ptr=0;
-            _alloc_size_table[i].size=0;
+    #if COMPUTE_GPU_MEM_USED
+        int i=0;
+        size_t total_freed = 0;
+        for(;i<TABLE_SIZE;i++)
+            if(_alloc_size_table[i].ptr==ptr){
+                _allocated_size -= _alloc_size_table[i].size;
+                total_freed += _alloc_size_table[i].size;
+                _alloc_size_table[i].ptr=0;
+                _alloc_size_table[i].size=0;
 
-            break;
-        }
-    //if(i==TABLE_SIZE)
-    //    printf("Unallocated unknow size!\n");
-    //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
-#endif
+                break;
+            }
+        //if(i==TABLE_SIZE)
+        //    printf("Unallocated unknow size!\n");
+        //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
+    #endif
     return 0;
 }
+
 static PyObject *
 outstanding_mallocs(PyObject* self, PyObject * args)
 {
