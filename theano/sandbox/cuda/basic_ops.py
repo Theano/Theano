@@ -2457,7 +2457,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
         """
-        return """CudaNdarray* xview = (CudaNdarray*)
+        return """CudaNdarray* zview = (CudaNdarray*)
                 CudaNdarray_New(%(view_ndim)s)""" % locals()
 
     def get_helper_c_code_args(self):
@@ -2487,41 +2487,41 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def link_view_array(self, x, fail):
 
         return """
-        if (CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(%(x)s),
+        if (CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(%(x)s),
                                        (PyObject*) NULL))
         {
             PyErr_Format(PyExc_RuntimeError,
                          "GpuSubtensor is not able to set the"
                          " devdata field of the view");
-            Py_XDECREF(xview);
+            Py_XDECREF(zview);
             %(fail)s;
         }
-        cnda_mark_dev_structure_dirty(xview);
+        cnda_mark_dev_structure_dirty(zview);
         """ % locals()
 
     def set_view_base(self, x, fail):
         return """
         //Set the base only now
 
-        if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
+        if(CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(zview),
                                     %(x)s)){
             PyErr_Format(PyExc_RuntimeError,
                          "GpuSubtensor is not able to set"
                          " the base of the view array");
-            Py_XDECREF(xview);
+            Py_XDECREF(zview);
             %(fail)s;
         }""" % locals()
 
-    def add_to_xview(self, x, fail):
+    def add_to_zview(self, x, fail):
 
         return """
 
-        PyObject * add_result =  CudaNdarray_inplace_add((PyObject *) xview,
+        PyObject * add_result =  CudaNdarray_inplace_add((PyObject *) zview,
                                                          (PyObject *) py_%(x)s);
 
         if (! add_result )
         {
-            Py_DECREF(xview);
+            Py_DECREF(zview);
             %(fail)s;
         }
         else
