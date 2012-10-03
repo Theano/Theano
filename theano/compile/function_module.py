@@ -258,16 +258,17 @@ class ViewOp(theano.gof.Op):
         iname = inames[0]
         oname = onames[0]
         fail = sub['fail']
-        if isinstance(node.inputs[0].type, theano.tensor.TensorType):
-            return """
-                Py_XDECREF(%(oname)s);
-                Py_XINCREF(%(iname)s);
-                %(oname)s = %(iname)s;
-                """%locals()
-        else:
+        if isinstance(node.inputs[0].type, theano.scalar.Scalar):
             return """
             %(oname)s = %(iname)s;
             """ % locals()
+        else:
+            return """
+                Py_XDECREF(%(oname)s);
+                %(oname)s = %(iname)s;
+                Py_XINCREF(%(iname)s);
+                """%locals()
+
 
 deep_copy_op = DeepCopyOp()
 view_op      = ViewOp()
