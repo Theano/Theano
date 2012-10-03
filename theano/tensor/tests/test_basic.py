@@ -6690,6 +6690,18 @@ class TestInferShape(utt.InferShapeTester):
                                 [adtens_val], (opt.MakeVector, Shape))
 
         # Dot
+
+        #scal/scal
+        adscal = dscalar()
+        bdscal = dscalar()
+        adscal_val = rand(1)[0]
+        bdscal_val = rand(1)[0]
+        self._compile_and_check([adscal, bdscal],
+                                [Dot()(adscal, bdscal)],
+                                [adscal_val, bdscal_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #vec/vec
         advec = dvector()
         bdvec = dvector()
         advec_val = rand(4)
@@ -6699,6 +6711,9 @@ class TestInferShape(utt.InferShapeTester):
                                 [advec_val, bdvec_val],
                                 (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
 
+        #mat/mat
+        admat = dmatrix()
+        bdmat = dmatrix()
         admat_val = rand(4, 5)
         bdmat_val = rand(5, 3)
         self._compile_and_check([admat, bdmat],
@@ -6706,16 +6721,91 @@ class TestInferShape(utt.InferShapeTester):
                                 [admat_val, bdmat_val],
                                 (Dot, tensor.blas.Dot22))
 
-        admat_val = rand(5, 4)
-        self._compile_and_check([admat, advec],
-                                [Dot()(admat, advec)],
-                                [admat_val, advec_val],
+        #tens3/tens3
+        adtens3 = dtensor3()
+        bdtens3 = dtensor3()
+        adtens3_val = rand(3, 4, 5)
+        bdtens3_val = rand(6, 5, 7)
+        self._compile_and_check([adtens3, bdtens3],
+                                [Dot()(adtens3, bdtens3)],
+                                [adtens3_val, bdtens3_val],
                                 (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
 
+        #scal/vec
+        self._compile_and_check([adscal, bdvec],
+                                [Dot()(adscal, bdvec)],
+                                [adscal_val, bdvec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #scal/mat
+        self._compile_and_check([adscal, bdmat],
+                                [Dot()(adscal, bdmat)],
+                                [adscal_val, bdmat_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #scal/tens3
+        self._compile_and_check([adscal, bdtens3],
+                                [Dot()(adscal, bdtens3)],
+                                [adscal_val, bdtens3_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #vec/scal
+        self._compile_and_check([advec, bdscal],
+                                [Dot()(advec, bdscal)],
+                                [advec_val, bdscal_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #vec/mat
         bdmat_val = rand(4, 5)
         self._compile_and_check([advec, bdmat],
                                 [Dot()(advec, bdmat)],
                                 [advec_val, bdmat_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #vec/tens3
+        bdtens3_val = rand(3, 4, 5)
+        self._compile_and_check([advec, bdtens3],
+                                [Dot()(advec, bdtens3)],
+                                [advec_val, bdtens3_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #mat/scal
+        self._compile_and_check([admat, bdscal],
+                                [Dot()(admat, bdscal)],
+                                [admat_val, bdscal_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #mat/vec
+        admat_val = rand(5, 4)
+        self._compile_and_check([admat, bdvec],
+                                [Dot()(admat, bdvec)],
+                                [admat_val, bdvec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #mat/tens3
+        self._compile_and_check([admat, bdtens3],
+                                [Dot()(admat, bdtens3)],
+                                [admat_val, bdtens3_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #tens3/scal
+        self._compile_and_check([adtens3, bdscal],
+                                [Dot()(adtens3, bdscal)],
+                                [adtens3_val, bdscal_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #tens3/vec
+        bdvec_val = rand(5)
+        self._compile_and_check([adtens3, bdvec],
+                                [Dot()(adtens3, bdvec)],
+                                [adtens3_val, bdvec_val],
+                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+
+        #tens3/mat
+        bdmat_val = rand(5, 4)
+        self._compile_and_check([adtens3, bdmat],
+                                [Dot()(adtens3, bdmat)],
+                                [adtens3_val, bdmat_val],
                                 (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
 
         # Split
