@@ -7169,10 +7169,15 @@ tensordot_grad = TensorDotGrad
 
 
 class TensorDot(Op):
-    """Compute tensor-tensor products over the given axes.
-    See numpy documentation for details.
-    (http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html)
+    """
+    Compute tensor-tensor dot products along specified axes.
 
+    Given two tensors A and B, TensorDot takes the product of elements
+    in A and B and sums that result over the provided axes.
+
+    See documentation for theano.tensor.tensordot for more detail,
+    or the NumPy documentation at:
+    http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html
     """
 
     @classmethod
@@ -7266,6 +7271,78 @@ class TensorDot(Op):
 
 
 def tensordot(x, y=None, axes=2):
+    """
+    Compute tensor-tensor dot products along specified axes.
+
+    Given two tensors A and B, TensorDot takes the product of elements
+    in A and B and sums that result over the provided axes.
+
+    :param x: the first tensor variable
+
+    :param y: the second tensor variable
+
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor:
+                     axes = [range(x.ndim - i, x.ndim), range(i)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 0]] means sum
+                 over the 2nd and 3rd axes of x and the 3rd and 1st axes of y.
+                 (Remember axes are zero-indexed!) The 2nd axis of x and the
+                 3rd axis of y must have the same shape; the same is true for
+                 the 3rd axis of x and the 1st axis of y.
+
+    :returns: a tensor with shape equal to the concatenation of x's shape
+              (less any dimensions that were summed over) and y's shape
+              (less any dimensions that were summed over).
+
+    It may be helpful to consider an example to see what tensordot does.
+    Theano's implementation is identical to NumPy's. Here x has shape (2, 3, 4)
+    and y has shape (5, 6, 4, 3). The axes to sum over are [[1, 2], [3, 2]] --
+    note that x.shape[1] == y.shape[3] and x.shape[2] == y.shape[2]; these axes
+    are compatible. The resulting tensor will have shape (2, 5, 6) -- the
+    dimensions that are not being summed:
+
+        x = np.random.random((2,3,4))
+        y = np.random.random((5,6,4,3))
+
+        #tensordot
+        z = np.tensordot(x, y, [[1,2],[3,2]])
+
+        #loop replicating tensordot
+        x0, x1, x2 = x.shape
+        y0, y1, _, _ = y.shape
+        zloop = np.zeros((x0,y0,y1))
+
+        #loop over non-summed indices -- these exist
+        #in the tensor product.
+        for i in range(x0):
+            for j in range(y0):
+                for k in range(y1):
+                    #loop over summed indices -- these don't exist
+                    #in the tensor product.
+                    for l in range(x1):
+                        for m in range(x2):
+                            zloop[i,j,k] += x[i,l,m] * y[j,k,m,l]
+
+        np.all(z == zloop) #true
+
+    In an extreme case, no axes may be specified. The resulting tensor
+    will have shape equal to the concatenation of the shapes of x and y:
+
+        z = np.tensordot(x, y, 0)
+        print(x.shape) #(2,3,4)
+        print(y.shape) #(5,6,4,3)
+        print(z.shape) #(2,3,4,5,6,4,3)
+
+    See the documentation of np.tensordot for more examples.
+    """
     if y is None:
         raise NotImplementedError(
                 'The interface to tensordot has changed from '
