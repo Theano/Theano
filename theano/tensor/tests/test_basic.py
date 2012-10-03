@@ -1231,12 +1231,6 @@ ArccosInplaceTester = makeBroadcastTester(op=inplace.arccos_inplace,
                                           grad=_grad_broadcast_unary_arcsin,
                                           inplace=True)
 
-tan_grad_rtol = None
-if config.floatX == 'float32':
-    #We raise the relative tolerence for the grad as their is error in float32
-    #This is probably caused by our way of computing the gradient error.
-    tan_grad_rtol = 0.052
-
 _good_broadcast_unary_tan = dict(
     normal=(rand_ranged(-3.14, 3.14, (2, 3)),),
     shifted=(rand_ranged(3.15, 6.28, (2, 3)),),
@@ -1250,25 +1244,22 @@ _grad_broadcast_unary_tan = dict(normal=(rand_ranged(-1.5, 1.5, (2, 3)),),
 TanTester = makeBroadcastTester(op=tensor.tan,
                                 expected=numpy.tan,
                                 good=_good_broadcast_unary_tan,
-                                grad=_grad_broadcast_unary_tan,
-                                grad_rtol=tan_grad_rtol)
+                                grad=_grad_broadcast_unary_tan)
+
 TanInplaceTester = makeBroadcastTester(op=inplace.tan_inplace,
                                        expected=numpy.tan,
                                        good=_good_broadcast_unary_tan,
                                        grad=_grad_broadcast_unary_tan,
-                                       grad_rtol=tan_grad_rtol,
                                        inplace=True)
 
 ArctanTester = makeBroadcastTester(op=tensor.arctan,
                                    expected=numpy.arctan,
                                    good=_good_broadcast_unary_wide,
-                                   grad=_grad_broadcast_unary_wide,
-                                   grad_rtol=tan_grad_rtol)
+                                   grad=_grad_broadcast_unary_wide)
 ArctanInplaceTester = makeBroadcastTester(op=inplace.arctan_inplace,
                                           expected=numpy.arctan,
                                           good=_good_broadcast_unary_wide,
                                           grad=_grad_broadcast_unary_wide,
-                                          grad_rtol=tan_grad_rtol,
                                           inplace=True)
 
 _good_broadcast_binary_arctan2 = dict(
@@ -1293,13 +1284,11 @@ _grad_broadcast_binary_arctan2 = dict(
 Arctan2Tester = makeBroadcastTester(op=tensor.arctan2,
                                     expected=numpy.arctan2,
                                     good=_good_broadcast_binary_arctan2,
-                                    grad=_grad_broadcast_binary_arctan2,
-                                    grad_rtol=tan_grad_rtol)
+                                    grad=_grad_broadcast_binary_arctan2)
 Arctan2InplaceTester = makeBroadcastTester(op=inplace.arctan2_inplace,
                                            expected=numpy.arctan2,
                                            good=_good_broadcast_binary_arctan2,
                                            grad=_grad_broadcast_binary_arctan2,
-                                           grad_rtol=tan_grad_rtol,
                                            inplace=True)
 
 CoshTester = makeBroadcastTester(op=tensor.cosh,
