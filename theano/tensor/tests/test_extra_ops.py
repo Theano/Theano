@@ -242,7 +242,8 @@ class TestRepeatOp(utt.InferShapeTester):
     def test_infer_shape(self):
         for ndim in range(4):
             x = T.TensorType(config.floatX, [False] * ndim)()
-            a = np.random.random((10, ) * ndim).astype(config.floatX)
+            shp = (numpy.arange(ndim) + 1) * 5
+            a = np.random.random(shp).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
                 for dtype in tensor.discrete_dtypes:
@@ -261,6 +262,9 @@ class TestRepeatOp(utt.InferShapeTester):
                         if axis is None:
                             r = np.random.random_integers(
                                     5, size=a.size).astype(dtype)
+                        elif a.size > 0:
+                            r = np.random.random_integers(
+                                    5, size=a.shape[axis]).astype(dtype)
                         else:
                             r = np.random.random_integers(
                                     5, size=(10,)).astype(dtype)
