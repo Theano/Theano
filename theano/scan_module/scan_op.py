@@ -235,13 +235,13 @@ class Scan(PureOp):
                     'graph of scan results in an upcast or downcast. '
                     'Please make sure that you use dtypes consistently')
         # TODO make the assert exact
-        # TODO assert the type(dtype, nbdim of self.inputs and
+        # TODO assert the type(dtype, ndim of self.inputs and
         #      inputs correspond)
-        #assert len(inputs) >= len(self.inputs)
-        #if self.info['as_while']:
+        # assert len(inputs) >= len(self.inputs)
+        # if self.info['as_while']:
         #    assert len(inputs) == len(self.inputs) + 2 + \
         #       self.info["n_nit_sot"]
-        #else:
+        # else:
         #    assert len(inputs) == len(self.inputs) + 1 + \
         #       self.info["n_nit_sot"]
         # Flags that indicate which inputs are vectors
