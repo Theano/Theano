@@ -1092,7 +1092,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     // We are not 100% sure that cudaMemcpy wait that the async gpu kernel are
     // finished before doing the transfer. So we add this explicit sync as it
     // is pretty fast. In a python loop, I ran 1 000 000 call in 1 second.
-    // It is better to be save and not significatively slower then not safe.
+    // It is better to be safe and not significatively slower than unsafe.
     cudaThreadSynchronize();
 
     err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
