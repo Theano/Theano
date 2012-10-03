@@ -6499,13 +6499,14 @@ class Dot(Op):
         #
         # for grad x:
         #     gradient is a tensordot over y and grad, summing out all but
-        #     the second-to-last dim of y and transposed such that the first
-        #     resulting dim goes last.
+        #     the second-to-last dim of y (if it exists) and transposed
+        #     such that the first resulting dim goes last.
         #
         # for grad y:
         #     gradient is a tensordot over x and grad, summing out all but
-        #     the last dim of x and transposed such that the first resulting
-        #     dim goes last.
+        #     the last dim of x and transposed such that the first
+        #     resulting dim goes second-to-last (unless ydim == 1, when
+        #     it goes last).
         else:
             x_axes0 = range(ydim-2)
             x_axes1 = range(xdim - 1, gdim)
