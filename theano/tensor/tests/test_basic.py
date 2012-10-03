@@ -39,7 +39,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile, AdvancedIncSubtensor)
+        itensor3, Tile, AdvancedIncSubtensor, switch)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -617,6 +617,36 @@ SubInplaceTester = makeBroadcastTester(op=inplace.sub_inplace,
                                          bad_runtime = _bad_runtime_broadcast_binary_normal,
                                          grad = _grad_broadcast_binary_normal,
                                          inplace = True)
+
+
+SwitchTester = makeBroadcastTester(
+    op=switch,
+    expected=numpy.where,
+    good=dict(all_true=(numpy.asarray(1, dtype=config.floatX),
+                        rand(4, 5), rand(4, 5)),
+              false_true=(numpy.asarray(0, dtype=config.floatX),
+                          rand(4, 5), rand(4, 5)),
+              mixed=(randint_ranged(0, 1, (4, 5)),
+                     rand(4, 5), rand(4, 5))
+          ),
+    bad_build=dict(all_true=(numpy.asarray(1, dtype=config.floatX),
+                             rand(4, 5))),
+    bad_runtime=dict(all_true=(numpy.asarray(1, dtype=config.floatX),
+                               rand(3, 5), rand(4, 5)),
+                     false_true=(numpy.asarray(0, dtype=config.floatX),
+                                 rand(4, 6), rand(4, 5)),
+                 ),
+    # We suppose that cond+eps do not switch branch in switch.grad()
+    # So we can't call verify_grad with cond 0.
+    grad=dict(all_true=(numpy.asarray(1, dtype=config.floatX),
+                        rand(4, 5), rand(4, 5)),
+#              false_true=(numpy.asarray(0, dtype=config.floatX),
+#                          rand(4, 5), rand(4, 5)),
+#              mixed=(randint_ranged(0, 1, (4, 5)).astype(config.floatX),
+#                     rand(4, 5), rand(4, 5))
+          ),
+)
+
 
 MaximumTester = makeBroadcastTester(op=maximum,
                                   expected = lambda *inputs: check_floatX(inputs, numpy.maximum(*inputs)),

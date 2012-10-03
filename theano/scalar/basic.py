@@ -1051,7 +1051,12 @@ class Switch(ScalarOp):
         else:
             second_part = None
 
-        return (None, first_part, second_part)
+        # cond does affect the elements of the output so it is connected.
+        # For the sake of making the gradient convenient we assume that
+        # condition + epsilon always triggers the same branch as condition
+        condition_grad = cond.zeros_like().astype(theano.config.floatX)
+
+        return (condition_grad, first_part, second_part)
 
     def output_types(self, (cond_t, ift_t, iff_t)):
         return upcast_out(ift_t, iff_t)
