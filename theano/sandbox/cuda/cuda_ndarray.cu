@@ -3238,14 +3238,17 @@ static __global__ void k_copy_4d(const int N1,
         const int sx4,  float * y, const int sy1, const int sy2,
         const int sy3, const int sy4)
 {
+    // These must be made int instead of unsigned int due to a bug in nvcc
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
     // N1 and N2 are kept in case a future implementation needs to
     // loop on the first two dimensions if there are not enough blocks
-    for (int i = threadIdx.x; i < N3; i += blockDim.x)
+    for (int i = threadIdx.x; i <  N3; i += (int) blockDim.x)
     {
-        for (int j = threadIdx.y; j < N4; j += blockDim.y)
+        for (int j = threadIdx.y; j < (int) N4; j += (int) blockDim.y)
         {
-            y[blockIdx.x*sy1 + blockIdx.y*sy2 + i*sy3 + j*sy4] = 
-                x[blockIdx.x*sx1 + blockIdx.y*sx2 + i*sx3 + j*sx4];
+            y[bx * sy1 + by * sy2 + i * sy3 + j * sy4] =  
+                x[bx * sx1 + by * sx2 + i * sx3 + j * sx4];
         }
     }
 }
