@@ -1,11 +1,9 @@
-import time
 import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
 try:
     import scipy.sparse as sp
-    import scipy.sparse
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
