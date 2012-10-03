@@ -1,9 +1,7 @@
-import theano
 import numpy
 import scipy.sparse
 
-from theano import gof, tensor, scalar, sparse
-from theano.tensor import blas
+from theano import gof, tensor
 
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
@@ -40,6 +38,7 @@ from theano.sparse.opt import (
     SamplingDotCSR, sampling_dot_csr,
     local_mul_s_d, local_mul_s_v,
     local_structured_add_s_v, local_sampling_dot_csr)
+
 
 # Alias to maintain compatibility
 EliminateZeros = Remove0
