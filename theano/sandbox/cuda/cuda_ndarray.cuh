@@ -75,15 +75,16 @@ struct CudaNdarray
     /* Type-specific fields go here. */
     //GpuTensorType::VoidTensor * vt;
     int nd; //the number of dimensions of the tensor
-    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
+    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES functions
     int * host_structure; //dim0, dim1, ... stride0, stride1, ...
     int data_allocated; //the number of bytes allocated for devdata
 
 
     //device pointers (allocated by cudaMalloc)
     mutable int dev_structure_fresh;
-    //dev_structure should be accessed via macros, otherwise may not be
-    //synchronized. The macro will allocate it when needed.
+    //dev_structure should be accessed via the functions like
+    //CudaNdarray_DEV_DIMS, otherwise may not be
+    //synchronized with host_structure. The accessor functions will allocate it when needed.
     mutable int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
 };
@@ -118,6 +119,12 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self);
  */
 DllExport int cnda_structure_size(int nd);
 
+/*
+ * This describes the shape of the ndarray. The array
+ * of dimensions is itself stored on the host.
+ * If you need to access the dimensions array from inside
+ * a kernel, use CudaNdarray_DEVICE_DIMS.
+ */
 DllExport const int *
 CudaNdarray_HOST_DIMS(const CudaNdarray * self);
 
@@ -188,6 +195,10 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
  */
 DllExport int cnda_copy_structure_to_device(const CudaNdarray * self);
 
+/* CudaNdarray_DEV_DIMS gives the same information as CudaNdarray_HOST_DIMS,
+ * but stored on the GPU. Use this pointer when it needs to be accessed
+ * from inside a CUDA kernel.
+ */
 DllExport const int *CudaNdarray_DEV_DIMS(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_STRIDES(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self);
@@ -389,8 +400,21 @@ DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  * Transfer the contents of CudaNdarray `other` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
+ * TODO: WRITEME: what does "if necessary" mean?
+ * TODO: we use this to implement set/inc subtensor, where self is a view of
+ *       the original tensor so that we write only to the subtensor. How
+ *       do we ensure that self is not reallocated in this case?
+ *
+ *  unbroadcast: if true, this means that other is broadcastable in some
+ *               dimensions, and the result, self, is not.
+ *               ie, if unbroadcast=false, we must do the broadcasting
+ *               operation as part of the copy.
+ *               e.g. suppose self and other are 2D matrices and other
+ *               has only one row. Then we need to copy this row several
+ *               times when copying to self.
  */
-DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast = false);
+DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
+        const CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.

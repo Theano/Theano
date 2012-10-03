@@ -1204,6 +1204,7 @@ CudaNdarray_exp(CudaNdarray* self)
 
     return (PyObject*)rval;
 }
+
 static PyMethodDef CudaNdarray_methods[] =
 {
     {"__array__",
