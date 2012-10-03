@@ -4362,18 +4362,6 @@ class t_dot(unittest.TestCase):
     def test_dot_3d_3d(self):
         self.cmp_dot(rand(4,5,6), rand(8,6,7))
 
-    def test_dot_0di_0di(self):
-        self.cmp_dot(randint(1)[0], randint(1)[0])
-
-    def test_dot_0di_1d(self):
-        self.cmp_dot(randint(1)[0], rand(3))
-
-    def test_dot_0di_2d(self):
-        self.cmp_dot(randint(1)[0], rand(3,4))
-
-    def test_dot_0di_3d(self):
-        self.cmp_dot(randint(1)[0], rand(3,4,5))
-
     def not_aligned(self, x, y):
         ctv_backup = config.compute_test_value
         config.compute_test_value = 'off'
