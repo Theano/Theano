@@ -986,6 +986,11 @@ Condition
       x,y = T.dmatrices('x','y')
       z = T.switch(T.lt(a,b), x, y)
 
+.. function:: where(cond, ift, iff)
+
+   Alias for `switch`. where is the numpy name.
+
+
 .. function:: clip(x, min, max)
 
     Return a variable representing x, but with all elements greater than
