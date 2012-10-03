@@ -2605,11 +2605,11 @@ def isinf(a):
 # Condition
 ##########################
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('where', 3, 1)
 def switch(cond, ift, iff):
     """if cond then ift else iff"""
 
-
+where = switch
 ##########################
 # Bit-wise
 ##########################
