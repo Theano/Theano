@@ -221,7 +221,7 @@ class Apply(Node):
         return new_node
 
     def get_parents(self):
-        return list( self.inputs )
+        return list(self.inputs)
 
     #convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
@@ -387,8 +387,8 @@ class Variable(Node):
 
     def get_parents(self):
         if self.owner is not None:
-            return [ self.owner ]
-        return [ ]
+            return [self.owner]
+        return []
 
     def env_getter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
@@ -405,8 +405,7 @@ class Variable(Node):
                 stacklevel=2)
         del self.fgraph
 
-
-    def eval(self, inputs_to_values = None):
+    def eval(self, inputs_to_values=None):
         """ Evaluates this variable.
 
         inputs_to_values: a dictionary mapping theano Variables to values.
@@ -418,12 +417,11 @@ class Variable(Node):
         if not hasattr(self, '_fn'):
             self._fn_inputs = inputs_to_values.keys()
             self._fn = theano.function(self._fn_inputs, self)
-        args = [ inputs_to_values[param] for param in self._fn_inputs ]
+        args = [inputs_to_values[param] for param in self._fn_inputs]
 
         rval = self._fn(*args)
 
         return rval
-
 
     env = property(env_getter, env_setter, env_deleter)
 
@@ -1029,6 +1027,7 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+
 
 def list_of_nodes(inputs, outputs):
     """ Return the apply nodes of the graph between inputs and outputs """
