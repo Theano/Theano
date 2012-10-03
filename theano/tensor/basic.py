@@ -6943,48 +6943,67 @@ class Dot(Op):
 
         x, y = inp
         gz, = grads
-        xdim, ydim = x.type.ndim, y.type.ndim
+        xdim, ydim, gdim = x.type.ndim, y.type.ndim, gz.type.ndim
 
-        #grad is scalar
-        if gz.type.ndim == 0:
+        #grad is scalar, so x is scalar or vector and y is same as x
+        if gdim == 0:
             xgrad = gz * y
             ygrad = gz * x
-        #x is scalar
+
+        #x is scalar, y is not scalar, grad.shape == y.shape
         elif xdim == 0:
             xgrad = (gz * y).sum()
             ygrad = x * gz
-        #y is scalar
+
+        #x is not scalar, y is scalar, grad.shape == x.shape
         elif ydim == 0:
             xgrad = y * gz
             ygrad = (gz * x).sum()
-        #x is vector, y is matrix
+
+        #x is vector, y is matrix, grad is vector
         elif xdim == 1 and ydim == 2:
             xgrad = dot(gz, y.T)
             ygrad = outer(x.T, gz)
-        #x is matrix, y is vector
+
+        #x is matrix, y is vector, grad is vector
         elif xdim == 2 and ydim == 1:
             xgrad = outer(gz, y.T)
             ygrad = dot(x.T, gz)
-        #x is matrix, y is matrix
+
+        #x is matrix, y is matrix, grad is matrix
         elif xdim == ydim == 2:
             xgrad = dot(gz, y.T)
             ygrad = dot(x.T, gz)
-        #x is tensor, y is vector (corner case)
-        elif xdim > 2 and ydim == 1:
-            xgrad = tensordot(y, gz, 0).transpose(range(xdim)[1:] + [0])
-            ygrad = tensordot(x, gz, [range(xdim - 1)] * 2)
-        #x or y is tensor
-        else:
-            sum0, sum1 = range(xdim), range(xdim - 1)
-            sum0.pop(-1)
-            dims = range(ydim)
-            dims[-1:-1] = [dims.pop(0)]
-            ygrad = tensordot(x, gz, [sum0, sum1]).transpose(dims)
 
-            sum0, sum1 = range(ydim), range(xdim - 1, xdim + ydim - 2)
-            sum0.pop(-2)
-            dims = range(xdim)[1:] + [0]
-            xgrad = tensordot(y, gz, [sum0, sum1]).transpose(dims)
+        # x or y is tensor, grad is tensor
+        #
+        # the grad has the same dim as the dot product output, namely
+        # (x.shape[:-1] + y.shape[:-2] + [y.shape[-1]]). To get the grad
+        # wrt x or y, a tensordot is used to sum out non-compatible dims.
+        #
+        # for grad x:
+        #     gradient is a tensordot over y and grad, summing out all but
+        #     the second-to-last dim of y and transposed such that the first
+        #     resulting dim goes last.
+        #
+        # for grad y:
+        #     gradient is a tensordot over x and grad, summing out all but
+        #     the last dim of x and transposed such that the first resulting
+        #     dim goes last.
+        else:
+            x_axes0 = range(ydim-2)
+            x_axes1 = range(xdim - 1, gdim)
+            x_tdims = range(1, xdim) + [0]
+            if ydim >= 2:
+                x_axes0 += [ydim - 1]
+            xgrad = tensordot(y, gz, [x_axes0, x_axes1]).transpose(x_tdims)
+
+            y_axes0 = range(xdim - 1)
+            y_axes1 = range(xdim - 1)
+            y_tdims = range(1, ydim - 1) + [0]
+            if ydim >= 2:
+                y_tdims += [ydim - 1]
+            ygrad = tensordot(x, gz, [y_axes0, y_axes1]).transpose(y_tdims)
 
         rval = xgrad, ygrad
 
