@@ -1243,8 +1243,9 @@ _good_broadcast_unary_tan = dict(
     integers=(randint_ranged(-3, 3, (2, 3)),),
     complex=(randc128_ranged(-3.14, 3.14, (2, 3)),),
     empty=(numpy.asarray([]),),)
-_grad_broadcast_unary_tan = dict(normal=(rand_ranged(-3.14, 3.14, (2, 3)),),
-                                 shifted=(rand_ranged(3.15, 6.28, (2, 3)),))
+#We do not want to test around the discontinuity.
+_grad_broadcast_unary_tan = dict(normal=(rand_ranged(-1.5, 1.5, (2, 3)),),
+                                 shifted=(rand_ranged(1.6, 4.6, (2, 3)),))
 
 TanTester = makeBroadcastTester(op=tensor.tan,
                                 expected=numpy.tan,
