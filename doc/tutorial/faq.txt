@@ -34,13 +34,12 @@ Also the ``-march=native`` flag must be used with care if you have NFS. In that 
 Faster Theano function
 ----------------------
 
-You can set the Theano `allow_gc` to `False` to get a speed up by
-using more memory. By default, Theano free intermediate results when
-we don't need them anymore. Doing so prevent us from reusing this
-memory.  So disabling the gc will keep all intermediate results memory
-space to allow to reuse them during the next call to the same Theano
-function if they are of the good shape. The shape could change if the
-shape of the inputs change.
+You can set the Theano flag `allow_gc` to `False` to get a speed-up by using
+more memory. By default, Theano frees intermediate results when we don't need
+them anymore. Doing so prevents us from reusing this memory. So disabling the
+garbage collection will keep all intermediate results' memory space to allow to
+reuse them during the next call to the same Theano function, if they are of the
+correct shape. The shape could change if the shapes of the inputs change.
 
 Faster Small Theano function
 ----------------------------
