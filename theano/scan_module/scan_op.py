@@ -1322,6 +1322,8 @@ class Scan(PureOp):
                 # placeholder, which for now has the same dtype as the
                 # output
                 inner_g_out = safe_new(out)
+            if dx >= self.n_mit_mot_outs:
+                precomputed_out = safe_new(out)
             ###
             #### I need to clip the gradient HERE !!
 
