@@ -1527,7 +1527,7 @@ class SpSumTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for axis in self.possible_axis:
                 variable, data = sparse_random_inputs(format,
-                                                      shape=(10, 10))
+                                                      shape=(9, 10))
                 self._compile_and_check(variable,
                                         [self.op(variable[0], axis=axis)],
                                         data,
@@ -1538,7 +1538,7 @@ class SpSumTester(utt.InferShapeTester):
             for axis in self.possible_axis:
                 for struct in [True, False]:
                     variable, data = sparse_random_inputs(format,
-                                                          shape=(10, 10))
+                                                          shape=(9, 10))
                     verify_grad_sparse(
                         self.op_class(axis=axis, sparse_grad=struct),
                         data,
@@ -1744,7 +1744,7 @@ class Remove0Tester(utt.InferShapeTester):
             assert result.size == target.size, msg
 
     def test_infer_shape(self):
-        mat = (numpy.arange(9) + 1).reshape((3, 3))
+        mat = (numpy.arange(12) + 1).reshape((4, 3))
         mat[0, 1] = mat[1, 0] = mat[2, 2] = 0
 
         x_csc = theano.sparse.csc_matrix(dtype=theano.config.floatX)
