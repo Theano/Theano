@@ -4441,6 +4441,7 @@ class IncSubtensor(Op):
 
     def make_node(self, x, y, *inputs):
         x, y = map(as_tensor_variable, [x, y])
+        assert y.ndim <= x.ndim
         inputs = tuple(map(Subtensor.my_as_scalar, inputs))
 
         idx_list = list(self.idx_list)
