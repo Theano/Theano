@@ -304,7 +304,9 @@ class Scan(PureOp):
                                       (str(outer_mitmot),
                                        argoffset + idx,
                                        outer_mitmot.type.dtype,
-                                       inner_mitmot_outs[opos + k].type.dtype))
+                                       outer_mitmot.ndim,
+                                       inner_mitmot_outs[opos + k].type.dtype,
+                                       inner_mitmot_outs[opos + k].ndim))
             opos += len(otaps)
         argoffset += len(self.outer_mitmot(inputs))
         # Same checks as above but for outputs of type mit_sot
