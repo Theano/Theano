@@ -379,7 +379,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
             if v != 'x':
                 grad_order[v] = i
         # Do not make the DimShuffle inplace as an optimization at the
-        # canonicalization optimization phase will remove the implace.
+        # canonicalization optimization phase will remove the inplace.
         # The inplace will be reintroduced automatically later in the graph.
         return [DimShuffle(gz.type.broadcastable, grad_order)(
             Elemwise(scalar.identity)(gz))]
