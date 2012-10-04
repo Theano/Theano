@@ -226,48 +226,13 @@ class DeepCopyOp(theano.gof.Op):
             super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
 
-class ViewOp(theano.gof.Op):
-    def __init__(self):
-        self.view_map={0:[0]}
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def make_node(self, x):
-        return theano.gof.Apply(self, [x], [x.type()])
-
-    def perform( self, node, args, outs):
-        outs[0][0] = args[0]
-
+class ViewOp(mode_module.OutputGuard):
+    destroy_map = {}
     def infer_shape(self, node, input_shapes):
         return input_shapes
 
     def grad(self, args, g_outs):
         return g_outs
-
-    def c_code_cache_version(self):
-        return (1)
-
-    def c_code(self, node, name, inames, onames, sub):
-        iname = inames[0]
-        oname = onames[0]
-        fail = sub['fail']
-        if isinstance(node.inputs[0].type, theano.scalar.Scalar):
-            return """
-            %(oname)s = %(iname)s;
-            """ % locals()
-        else:
-            return """
-                Py_XDECREF(%(oname)s);
-                %(oname)s = %(iname)s;
-                Py_XINCREF(%(iname)s);
-                """%locals()
 
 
 deep_copy_op = DeepCopyOp()
