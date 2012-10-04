@@ -1490,7 +1490,7 @@ class Scan(PureOp):
         n_sitsot_outs = len(prev_inner_gfn_outs[offset:])
         scan_sitsot_ins = prev_inner_gfn_outs[offset:]
         scan_sitsot_init = []
-        for x,y in zip(prev_inner_gfn_outs[offset:],
+        for x, y in zip(prev_inner_gfn_outs[offset:],
                        zeros_like_diff_ins[offset:]):
             shapes = [y.shape[i] for i in xrange(x.ndim)]
             empty = tensor.zeros([do_steps + 1] + shapes,
