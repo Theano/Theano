@@ -7285,6 +7285,12 @@ def tensordot(x, y=None, axes=2):
                  to sum over. If an array, it must have two array
                  elements containing the axes to sum over in each tensor.
 
+                 Note that the default value of 2 is not guaranteed to work
+                 for all values of x and y, and an error will be raised if
+                 that is the case. The reason for keeping the default is to
+                 maintain the same signature as numpy's tensordot function
+                 (and np.tensordot raises analogous errors for non-compatible
+                 inputs).
 
                  If an integer i, it is converted to an array containing
                  the last i dimensions of the first tensor and the first
