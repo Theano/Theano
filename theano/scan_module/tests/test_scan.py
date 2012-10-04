@@ -513,7 +513,7 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return (u_t * W_in + x_tm1 * W,
-                    tensor.cast(u_t+x_tm1, 'int64'))
+                    tensor.cast(u_t + x_tm1, 'int64'))
 
         u = theano.tensor.fvector('u')
         x0 = theano.tensor.fscalar('x0')
@@ -560,7 +560,6 @@ class T_Scan(unittest.TestCase):
         assert len(scan_node) == 1
         scan_node = scan_node[0]
         assert scan_node.op.gpu
-
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
@@ -1874,8 +1873,8 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5, name = 'fc1')
-        fc2 = theano.shared(0.9, name = 'fc2')
+        fc1 = theano.shared(0.5, name='fc1')
+        fc2 = theano.shared(0.9, name='fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
         y.name = 'y'
         gy = theano.tensor.grad(y, x)
@@ -3549,7 +3548,7 @@ def test_compute_test_value():
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
-        z.name='z'
+        z.name = 'z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
