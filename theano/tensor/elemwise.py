@@ -101,6 +101,8 @@ class DimShuffle(Op):
         - new_order: a list representing the relationship between the
                      input's dimensions and the output's dimensions. Each
                      element of the list can either be an index or 'x'.
+                     Indices must be encoded as python integers, not
+                     theano symbolic integers.
         - inplace: if True, the output will be a view of the input.
                    If False, the output will be a copy of the input.
 
@@ -119,10 +121,17 @@ class DimShuffle(Op):
         self.new_order = new_order
         self.inplace = inplace
 
-        for i in xrange(len(new_order) - 1):
-            j = new_order[i]
-            if j != 'x' and j in new_order[(i + 1):]:
-                raise ValueError((
+        for i, j in enumerate(new_order):
+            if j != 'x':
+                if not isinstance(j, int):
+                    raise TypeError(
+                            "DimShuffle indices must be python ints.")
+                if j >= len(input_broadcastable):
+                    raise ValueError(("new_order[%d] is %d, but the input "
+                        "only has %d axes.") %
+                        (i,j,len(input_broadcastable)))
+                if j in new_order[(i + 1):]:
+                    raise ValueError((
                     "The same input dimension may not appear twice in the "
                     "list of output dimensions", (new_order)))
 
