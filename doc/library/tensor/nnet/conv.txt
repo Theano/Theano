@@ -7,8 +7,8 @@
 .. note::
 
     Two similar implementation exists for conv2d:
-    **theano.tensor.signal.conv.conv2d** and
-    **theano.tensor.nnet.conv.conv2d**. The foremer implements a traditional
+    :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>` and
+    :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>. The foremer implements a traditional
     2D convolution, while the latter implements the convolutional layers
     present in convolutional neural networks (where filters are 3D and pool
     over several input channels).
@@ -26,6 +26,5 @@ TODO: Give examples for how to use these things! They are pretty complicated.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
 
-.. autofunction:: theano.tensor.signal.conv.conv2d
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
