@@ -1,11 +1,11 @@
 import numpy
-import theano
 from theano import gof
-from theano.gof import Apply, Constant, Generic, Op, Type, Variable
+from theano.gof import Constant, Generic, Op
 from basic import tensor
 ##########################
 # Disk Access
 ##########################
+
 
 class LoadFromDisk(Op):
     """
@@ -17,7 +17,7 @@ class LoadFromDisk(Op):
     @note: Non-differentiable.
     """
     def __init__(self, dtype, broadcastable, mmap_mode=None):
-        self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
+        self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = broadcastable
         if mmap_mode not in (None, 'c'):
             raise ValueError("The only supported values for mmap_mode "
@@ -40,15 +40,17 @@ class LoadFromDisk(Op):
     def perform(self, node, inp, out):
         path = inp[0]
         if (path.split('.')[-1] == 'npz'):
-            raise ValueError("Expected a .npy file, got %s instead"%path)
+            raise ValueError("Expected a .npy file, got %s instead" % path)
         result = numpy.load(path, mmap_mode=self.mmap_mode)
         if result.dtype != self.dtype:
-            raise TypeError("Expected an array of type %s, got %s instead"%
+            raise TypeError("Expected an array of type %s, got %s instead" %
                     (self.dtype, result.dtype))
+        print 'result:', result, type(result)
         out[0][0] = result
 
     def __str__(self):
-        return "Load{dtype:%s, broadcastable:%s, mmep:%s}"%self._info
+        return "Load{dtype:%s, broadcastable:%s, mmep:%s}" % self._info
+
 
 def load(path, dtype, broadcastable, mmap_mode=None):
     """
@@ -76,4 +78,3 @@ def load(path, dtype, broadcastable, mmap_mode=None):
     """
 
     return LoadFromDisk(dtype, broadcastable, mmap_mode)(path)
-
