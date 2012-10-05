@@ -216,6 +216,11 @@ def test_grad_gt():
 
 def test_grad_switch():
 
+    # This is a code snippet from the mailing list
+    # It caused an assert to be raised due to the
+    # switch op's grad method not handling integer
+    # inputs correctly
+
     x = theano.tensor.matrix()
     c = theano.tensor.matrix()
 
