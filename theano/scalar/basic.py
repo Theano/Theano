@@ -1041,15 +1041,13 @@ class Switch(ScalarOp):
         return "%(z)s = %(cond)s ? %(ift)s : %(iff)s;" % locals()
 
     def grad(self, (cond, ift, iff), (gz, )):
-        if ift.type in continuous_types:
-            first_part = switch(cond, gz, 0)
-        else:
-            first_part = None
+        first_part = switch(cond, gz, 0.)
+        second_part = switch(cond, 0., gz)
 
-        if iff.type in continuous_types:
-            second_part = switch(cond, 0, gz)
-        else:
-            second_part = None
+        out = self(cond, ift, iff)
+        if out.type.dtype in discrete_types:
+            first_part = 0.
+            second_part = 0.
 
         # cond does affect the elements of the output so it is connected.
         # For the sake of making the gradient convenient we assume that
