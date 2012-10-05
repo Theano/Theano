@@ -17,7 +17,7 @@ import theano.sandbox.linalg as linalg
 gpu_scheduler = sort_schedule_fn(*gpu_cmps)
 gpu_linker = theano.OpWiseCLinker(schedule=gpu_scheduler)
 gpu_mode = theano.Mode(linker = gpu_linker, optimizer = async_optimizer)
-full_opt = theano.compile.mode.get_default_mode().optimizer
+full_opt = theano.compile.optdb.query("+fast_run", "+gpu_async")
 
 def test_async_to_gpu():
     x = theano.tensor.fmatrix('x')
