@@ -214,6 +214,20 @@ def test_grad_gt():
     g = theano.gradient.grad(z, y)
     assert g.eval({ y : 1. }) == 0.
 
+def test_grad_switch():
+
+    # This is a code snippet from the mailing list
+    # It caused an assert to be raised due to the
+    # switch op's grad method not handling integer
+    # inputs correctly
+
+    x = theano.tensor.matrix()
+    c = theano.tensor.matrix()
+
+    s = theano.tensor.switch(c, x, 0)
+    l = s.sum()
+
+    theano.gradient.grad(l, x)
 
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
