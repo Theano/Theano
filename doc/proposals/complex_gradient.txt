@@ -52,9 +52,9 @@ variables, and then:
     \frac{\partial C}{\partial r} = \frac{\partial C}{\partial x} \frac{\partial x}{\partial r} + \frac{\partial C}{\partial y} \frac{\partial y}{\partial r}
 
 If we want to use an algorithm similar to gradient backpropagation,
-we can see that, here, we need to have both :math:\frac{\partial
-C}{\partial \Re t} and :math:\frac{\partial C}{\partial \Im t}, in order
-to compute :math:`\frac{\partial C}{\partial r}.
+we can see that, here, we need to have both :math:`\frac{\partial
+C}{\partial \Re t}` and :math:`\frac{\partial C}{\partial \Im t}`, in order
+to compute :math:`\frac{\partial C}{\partial r}`.
 
 For each variable :math:`v` in the expression graph, let us denote
 :math:`\nabla_C(v)` the *gradient* of :math:`C` with respect to

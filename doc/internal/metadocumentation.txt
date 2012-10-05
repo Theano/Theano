@@ -39,7 +39,7 @@ For more details:
 Use ReST for documentation
 --------------------------
 
- * :ref:`ReST <http://docutils.sourceforge.net/rst.html>` is standardized.
+ * `ReST <http://docutils.sourceforge.net/rst.html>`__ is standardized.
    epydoc is not. trac wiki-markup is not.
    This means that ReST can be cut-and-pasted between epydoc, code, other
    docs, and TRAC.  This is a huge win!
