@@ -4503,7 +4503,10 @@ class IncSubtensor(Op):
             inputs: TODO WRITEME
         """
         x, y = map(as_tensor_variable, [x, y])
-        assert y.ndim <= x.ndim
+        if y.ndim > x.ndim:
+            raise ValueError(("Trying to increment a %d-dimensional "
+                "subtensor with a %d-dimensional value.") % (x.ndim,
+                    y.ndim))
         inputs = tuple(map(Subtensor.my_as_scalar, inputs))
 
         idx_list = list(self.idx_list)
