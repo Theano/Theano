@@ -885,7 +885,7 @@ class MulSDCSC(gof.Op):
                                [tensor.tensor(b.dtype, (False,))])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
@@ -918,17 +918,19 @@ class MulSDCSC(gof.Op):
         if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s ||
+            (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]) ||
+            !(PyArray_ISCONTIGUOUS(%(_zout)s)))
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
                   PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_b)s)->type_num);
-        }
-
-        if (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError,
-    "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
+            if (!%(_zout)s)
+            {
+                PyErr_SetString(PyExc_MemoryError,
+                    "Could not allocate output memory.");
+                %(fail)s;
+            }
         }
 
         { //makes it compile even though labels jump over variable definitions.
@@ -999,7 +1001,7 @@ class MulSDCSR(gof.Op):
                                [tensor.tensor(b.dtype, (False,))])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
@@ -1032,17 +1034,19 @@ class MulSDCSR(gof.Op):
         if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s ||
+            (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]) ||
+            !(PyArray_ISCONTIGUOUS(%(_zout)s)))
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
                     PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_b)s)->type_num);
-        }
-
-        if (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError,
-    "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
+            if (!%(_zout)s)
+            {
+                PyErr_SetString(PyExc_MemoryError,
+                    "Could not allocate output memory.");
+                %(fail)s;
+            }
         }
 
         { //makes it compile even though labels jump over variable definitions.
@@ -1302,7 +1306,7 @@ class StructuredAddSVCSR(gof.Op):
                                [tensor.tensor(b.dtype, (False,))])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         _data, _indices, _indptr, _b, = inputs
@@ -1336,17 +1340,19 @@ class StructuredAddSVCSR(gof.Op):
         if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
-        if (!%(_zout)s)
+        if (!%(_zout)s
+            || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0])
+            || !(PyArray_ISCONTIGUOUS(%(_zout)s)))
         {
+            Py_XDECREF(%(_zout)s);
             %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1,
                     PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_b)s)->type_num);
-        }
-
-        if (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0])
-        {
-            PyErr_SetString(PyExc_NotImplementedError,
-     "somehow _zout got the wrong size.. and I don't know how to resize it.");
-            %(fail)s;
+            if (!%(_zout)s)
+            {
+                PyErr_SetString(PyExc_MemoryError,
+                    "Could not allocate output memory.");
+                %(fail)s;
+            }
         }
 
         { //makes it compile even though labels jump over variable definitions.
@@ -1489,7 +1495,7 @@ class SamplingDotCSR(gof.Op):
         ])
 
     def c_code_cache_version(self):
-        return (1, )
+        return (2, )
 
     def c_support_code(self):
         return blas.blas_header_text()
@@ -1572,7 +1578,9 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
         // Allocate output
         if (!%(z_data)s
             || (PyArray_DIMS(%(z_data)s)[0] != PyArray_DIMS(%(p_data)s)[0])
-            || (PyArray_DESCR(%(z_data)s)->type_num != %(typenum_zd)s)) {
+            || (PyArray_DESCR(%(z_data)s)->type_num != %(typenum_zd)s)
+            || !(PyArray_ISCONTIGUOUS(%(z_data)s)))
+         {
             {Py_XDECREF(%(z_data)s);}
             npy_intp dims[] = {0};
             dims[0] = PyArray_DIMS(%(p_data)s)[0];
@@ -1581,7 +1589,9 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
         }
         if (!%(z_ind)s
             || (PyArray_DIMS(%(z_ind)s)[0] != PyArray_DIMS(%(p_ind)s)[0])
-            || (PyArray_DESCR(%(z_ind)s)->type_num != %(typenum_zi)s)) {
+            || (PyArray_DESCR(%(z_ind)s)->type_num != %(typenum_zi)s)
+            || !(PyArray_ISCONTIGUOUS(%(z_ind)s)))
+        {
             {Py_XDECREF(%(z_ind)s);}
             npy_intp dims[] = {0};
             dims[0] = PyArray_DIMS(%(p_ind)s)[0];
@@ -1590,7 +1600,9 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
         }
         if (!%(z_ptr)s
             || (PyArray_DIMS(%(z_ptr)s)[0] != PyArray_DIMS(%(p_ptr)s)[0])
-            || (PyArray_DESCR(%(z_ptr)s)->type_num != %(typenum_zp)s)) {
+            || (PyArray_DESCR(%(z_ptr)s)->type_num != %(typenum_zp)s)
+            || !(PyArray_ISCONTIGUOUS(%(z_ptr)s)))
+        {
             {Py_XDECREF(%(z_ptr)s);}
             npy_intp dims[] = {0};
             dims[0] = PyArray_DIMS(%(p_ptr)s)[0];
