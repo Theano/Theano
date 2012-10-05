@@ -19,6 +19,9 @@ class LoadFromDisk(Op):
     def __init__(self, dtype, broadcastable, mmap_mode=None):
         self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
         self.broadcastable = broadcastable
+        if mmap_mode not in (None, 'c'):
+            raise ValueError("The only supported values for mmap_mode "
+                    "are None and 'c', got %s" % mmap_mode)
         self.mmap_mode = mmap_mode
         self._info = (dtype, broadcastable, mmap_mode)
 
@@ -49,7 +52,19 @@ class LoadFromDisk(Op):
 
 def load(path, dtype, broadcastable, mmap_mode=None):
     """
-    Load an array from an .npy file
+    Load an array from an .npy file.
+
+    :param path: A Generic symbolic variable, that will contain a string
+    :param dtype: The data type of the array to be read.
+    :param broadcastable: The broadcastable pattern of the loaded array,
+      for instance, (False,) for a vector, (False, True) for a column,
+      (False, False) for a matrix.
+    :param mmap_mode: How the file will be loaded. None means that the
+      data will be copied into an array in memory, 'c' means that the file
+      will be mapped into virtual memory, so only the parts that are
+      needed will be actually read from disk and put into memory.
+      Other modes supported by numpy.load ('r', 'r+', 'w+') cannot
+      be supported by Theano.
 
     >>> from theano import *
     >>> path = Variable(Generic())
