@@ -159,11 +159,6 @@ class GpuFromHost(GpuOp):
 
 gpu_from_host = GpuFromHost()
 
-##################################
-# Asynchronous GPU Communication #
-##################################
-
-
 class GpuElemwise(GpuOp):
     """
     Implement a generic elemwise on the gpu.
