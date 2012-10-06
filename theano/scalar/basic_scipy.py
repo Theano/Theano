@@ -94,7 +94,7 @@ class Erfinv(UnaryScalarOp):
         else:
             return None,
 
-    # TODO
+    # TODO: erfinv() is not provided by the C standard library
     #def c_code(self, node, name, inp, out, sub):
     #    x, = inp
     #    z, = out
@@ -124,7 +124,7 @@ class Erfcinv(UnaryScalarOp):
         else:
             return None,
 
-    # TODO
+    # TODO: erfcinv() is not provided by the C standard library
     #def c_code(self, node, name, inp, out, sub):
     #    x, = inp
     #    z, = out
@@ -133,7 +133,6 @@ class Erfcinv(UnaryScalarOp):
     #    return "%(z)s = erfcinv(%(x)s);" % locals()
 
 erfcinv = Erfcinv(upgrade_to_float_no_complex, name='erfcinv')
-
 
 
 class Gamma(UnaryScalarOp):
