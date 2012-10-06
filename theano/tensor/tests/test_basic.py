@@ -891,7 +891,7 @@ _good_broadcast_unary_normal_float_no_complex = copymod(
         without=['complex'])
 
 _good_broadcast_unary_normal = dict(
-        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        config.floatX)],
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=config.floatX)],
         integers=[randint_ranged(-5, 5, (2, 3))],
         corner_case=[corner_case],
         complex=[randcomplex(2, 3)],
