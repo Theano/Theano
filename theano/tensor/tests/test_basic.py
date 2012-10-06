@@ -4594,7 +4594,8 @@ class T_op_cache(unittest.TestCase):
         utt.seed_rng()
 
     def test0(self):
-        """trigger bug in ticket #162"""
+        """trigger bug in ticket #162
+        """
         lr = constant(0.011)
         v = matrix()
         v.name = 'v'
