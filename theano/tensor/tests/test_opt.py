@@ -2257,7 +2257,7 @@ class Test_alloc_zero(unittest.TestCase):
 
     def test_setsubtensor_allocs1(self):
         y = tensor.matrix()
-        x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4, 4)),
+        x0 = tensor.constant(numpy.asarray(numpy.zeros((4, 4)),
              dtype=config.floatX))
         y0 = tensor.zeros_like(y)
         z = tensor.set_subtensor(x0[:4], y0)
@@ -2267,7 +2267,7 @@ class Test_alloc_zero(unittest.TestCase):
 
     def test_setsubtensor_allocs1t(self):
         y = tensor.matrix()
-        x0 = tensor.constant(numpy.asarray(numpy.zeros_like((4, 4)),
+        x0 = tensor.constant(numpy.asarray(numpy.zeros((4, 4)),
              dtype=config.floatX))
         y0 = tensor.zeros_like(y)
         z = tensor.set_subtensor(x0[:4], y0.T)
