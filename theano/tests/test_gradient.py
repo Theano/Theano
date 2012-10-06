@@ -131,23 +131,6 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] is gval0)
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
-    def test_some_None_ograds(self):
-        """Test grad is called when some output gradients are None"""
-        class O(gof.op.Op):
-            def __init__(self, tst):
-                self.tst = tst
-
-            def make_node(self, *inputs):
-                outputs = [theano.tensor.matrix(), theano.tensor.matrix()]
-                return gof.Apply(self, inputs, outputs)
-
-            def grad(self, inputs, g_out):
-                return [one]
-        i = theano.tensor.matrix()
-        a1 = O(self).make_node(i)
-        g = grad_sources_inputs([(a1.outputs[0], one)], None)
-        self.assertTrue(g[i] is one)
-
 
 def test_unimplemented_grad_func():
     # tests that function compilation catches unimplemented grads in the graph
