@@ -1399,6 +1399,8 @@ if imported_scipy_special:
 else:
     expected_erf = []
     expected_erfc = []
+    expected_erfinv = []
+    expected_erfcinv = []
     expected_gamma = []
     expected_gammaln = []
     expected_psi = []
