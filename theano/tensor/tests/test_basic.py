@@ -915,6 +915,14 @@ _grad_broadcast_unary_normal = dict(
         #empty = [numpy.asarray([])] # XXX: should this be included?
         )
 
+_grad_broadcast_unary_abs1_no_complex = dict(
+        normal=[numpy.asarray(rand_ranged(-1, 1, (2, 3)), dtype=floatX)],
+        )
+
+_grad_broadcast_unary_0_2_no_complex = dict(
+        normal=[numpy.asarray(rand_ranged(0, 2, (2, 3)), dtype=floatX)],
+        )
+
 
 AbsTester = makeBroadcastTester(op=tensor.abs_,
                                   expected=lambda x: abs(x),
@@ -1382,6 +1390,8 @@ del _good_broadcast_unary_normal_no_int['integers']
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
+    expected_erfinv = scipy.special.erfinv
+    expected_erfcinv = scipy.special.erfcinv
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
@@ -1428,6 +1438,24 @@ ErfcInplaceTester = makeBroadcastTester(
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
+    skip=skip_scipy)
+
+ErfinvTester = makeBroadcastTester(
+    op=tensor.erfinv,
+    expected=expected_erfinv,
+    good=_good_broadcast_unary_normal_no_int_no_complex,
+    grad=_grad_broadcast_unary_abs1_no_complex,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+
+ErfcinvTester = makeBroadcastTester(
+    op=tensor.erfcinv,
+    expected=expected_erfcinv,
+    good=_good_broadcast_unary_normal_no_int_no_complex,
+    grad=_grad_broadcast_unary_0_2_no_complex,
+    eps=2e-10,
+    mode=mode_no_scipy,
     skip=skip_scipy)
 
 _good_broadcast_unary_gammaln = dict(

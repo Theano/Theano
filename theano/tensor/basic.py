@@ -2848,6 +2848,16 @@ def erfc(a):
 
 
 @_scal_elemwise
+def erfinv(a):
+    """inverse error function"""
+
+
+@_scal_elemwise
+def erfcinv(a):
+    """inverse complementary error function"""
+
+
+@_scal_elemwise
 def gamma(a):
     """gamma function"""
 

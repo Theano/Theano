@@ -75,6 +75,67 @@ class Erfc(UnaryScalarOp):
 erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
+class Erfinv(UnaryScalarOp):
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfinv(x)
+        else:
+            super(Erfinv, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+                                dtype=upcast(x.type.dtype, gz.type.dtype))
+            return gz * cst * exp(erfinv(x) ** 2),
+        else:
+            return None,
+
+    # TODO
+    #def c_code(self, node, name, inp, out, sub):
+    #    x, = inp
+    #    z, = out
+    #    if node.inputs[0].type in complex_types:
+    #        raise NotImplementedError('type not supported', type)
+    #    return "%(z)s = erfinv(%(x)s);" % locals()
+
+erfinv = Erfinv(upgrade_to_float_no_complex, name='erfinv')
+
+
+class Erfcinv(UnaryScalarOp):
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfcinv(x)
+        else:
+            super(Erfcinv, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+                                dtype=upcast(x.type.dtype, gz.type.dtype))
+            return - gz * cst * exp(erfcinv(x) ** 2),
+        else:
+            return None,
+
+    # TODO
+    #def c_code(self, node, name, inp, out, sub):
+    #    x, = inp
+    #    z, = out
+    #    if node.inputs[0].type in complex_types:
+    #        raise NotImplementedError('type not supported', type)
+    #    return "%(z)s = erfcinv(%(x)s);" % locals()
+
+erfcinv = Erfcinv(upgrade_to_float_no_complex, name='erfcinv')
+
+
+
 class Gamma(UnaryScalarOp):
     @staticmethod
     def st_impl(x):
