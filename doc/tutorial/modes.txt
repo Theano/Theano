@@ -149,8 +149,8 @@ short name        Full constructor                                              
 ================= =============================================================== ===============================================================================
 ``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations
 ``FAST_RUN``      ``compile.mode.Mode(linker='cvm', optimizer='fast_run')``       C implementations where available, all available graph transformations.
-``DebugMode``    ``compile.debugmode.DebugMode()``                                Both implementations where available, all available graph transformations.
-``ProfileMode``  ``compile.profilemode.ProfileMode()``                            C implementations where available, all available graph transformations, print profile information.
+``DebugMode``     ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
+``ProfileMode``   ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
 Linkers
