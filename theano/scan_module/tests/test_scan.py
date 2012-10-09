@@ -513,7 +513,7 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return (u_t * W_in + x_tm1 * W,
-                    tensor.cast(u_t + x_tm1, 'int64'))
+                    tensor.cast(u_t+x_tm1, 'int64'))
 
         u = theano.tensor.fvector('u')
         x0 = theano.tensor.fscalar('x0')
@@ -560,6 +560,7 @@ class T_Scan(unittest.TestCase):
         assert len(scan_node) == 1
         scan_node = scan_node[0]
         assert scan_node.op.gpu
+
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
@@ -1122,29 +1123,6 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_y2, numpy_y2)
         assert numpy.allclose(W1.get_value(), numpy_W1)
         assert numpy.allclose(W2.get_value(), numpy_W2)
-
-    def test_grad_dtype_change(self):
-        x = tensor.fscalar('x')
-        y = tensor.fscalar('y')
-        c = tensor.iscalar('c')
-
-        def inner_fn(cond, x, y):
-            new_cond = tensor.cast(tensor.switch(cond, x, y), 'int32')
-            new_x = tensor.switch(cond, tensor.nnet.sigmoid(y * x), x)
-            new_y = tensor.switch(cond, y, tensor.nnet.sigmoid(x))
-            return new_cond, new_x, new_y
-
-        values, _ = theano.scan(
-            inner_fn,
-            outputs_info=[c, x, y],
-            n_steps=10,
-            truncate_gradient=-1,
-            go_backwards=False)
-        gX, gY = tensor.grad(values[1].sum(), [x, y])
-        f = theano.function([c, x, y], [gX, gY],
-                           allow_input_downcast=True)
-        # Check for runtime errors
-        f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
 
     def test_simple_shared_mrg_random(self):
         theano_rng = theano.sandbox.rng_mrg.MRG_RandomStreams(utt.fetch_seed())
@@ -1896,8 +1874,8 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5, name='fc1')
-        fc2 = theano.shared(0.9, name='fc2')
+        fc1 = theano.shared(0.5, name = 'fc1')
+        fc2 = theano.shared(0.9, name = 'fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
         y.name = 'y'
         gy = theano.tensor.grad(y, x)
@@ -3571,7 +3549,7 @@ def test_compute_test_value():
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
-        z.name = 'z'
+        z.name='z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
