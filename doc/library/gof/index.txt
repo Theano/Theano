@@ -13,7 +13,7 @@
 .. toctree::
     :maxdepth: 1
 
-    fg
+    fgraph
     toolbox
     type
 
