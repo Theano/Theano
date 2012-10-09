@@ -251,7 +251,7 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the vm/cvm linker profile the execution of Theano function?
+    Do the vm/cvm linkers profile the execution of Theano functions?
 
 .. attribute:: profile_optimizer
 
@@ -259,7 +259,7 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the vm/cvm linker profile the optimization phase when compiling a Theano function?
+    Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
 
 .. attribute:: config.lib.amdlibm
 
