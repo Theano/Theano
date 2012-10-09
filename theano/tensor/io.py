@@ -45,7 +45,6 @@ class LoadFromDisk(Op):
         if result.dtype != self.dtype:
             raise TypeError("Expected an array of type %s, got %s instead" %
                     (self.dtype, result.dtype))
-        print 'result:', result, type(result)
         out[0][0] = result
 
     def __str__(self):
