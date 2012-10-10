@@ -56,9 +56,15 @@ class RandomStateType(gof.Type):
                 return False
         return True
 
-# Register CudaNdarrayType to the OutputGuard list of known types
-# to have OutputGuard generate C code for this type.
-theano.compile.mode.register_OutputGuard_c_code(RandomStateType)
+# Register CudaNdarrayType's C code for ViewOp.
+theano.compile.register_view_op_c_code(
+        RandomStateType,
+        """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """,
+        1)
 
 random_state_type = RandomStateType()
 

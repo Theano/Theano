@@ -14,7 +14,7 @@ def test_viewop_gpu():
         raise SkipTest('Optional package cuda disabled')
     _x = theano.tensor.fvector('x')
     x = cuda.gpu_from_host(_x)
-    _out = theano.compile.function_module.ViewOp()(x)
+    _out = theano.compile.ViewOp()(x)
     out = cuda.host_from_gpu(_out)
     f = theano.function([x],
                         out,
