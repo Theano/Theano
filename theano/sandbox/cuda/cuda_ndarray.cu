@@ -4528,6 +4528,19 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     }
 }
 
+
+int CudaNdarray_ensure_dims(CudaNdarray ** arr, int nd, const int * dims)
+{
+    if (*arr == NULL)
+    {
+        // This allocates the metadata but not the data
+        *arr = (CudaNdarray *) CudaNdarray_new_nd(nd);
+        if (*arr == NULL)
+            return -1;
+    }
+
+    return CudaNdarray_alloc_contiguous(*arr, nd, dims);
+}
 /*
   Local Variables:
   mode:c++

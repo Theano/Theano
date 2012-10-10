@@ -439,6 +439,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
 static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
+
+// Ensures that *arr is a pointer to an ndarray of the specified dimensions
+// *arr may initially be NULL, a pointer to an ndarray of the wrong size,
+// or a pointer to an ndarray of the right size. In the last case it will
+// not change.
+int CudaNdarray_ensure_dims(CudaNdarray ** arr, int nd, const int * dims);
+
 #endif
 /*
   Local Variables:
