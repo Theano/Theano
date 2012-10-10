@@ -1613,13 +1613,21 @@ class Clip(ScalarOp):
     def c_code(self, node, name, (x, min, max), (z, ), sub):
         return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
 
-    def grad(self, (x, min, max), (gz, )):
+    def grad(self, (x, mn, mx), (gz, )):
         assert gz.type not in complex_types
-        gx = ((x > min) & (x < max)) * gz
-        if x.type in float_types:
-            return gx, None, None
-        else:
-            return None, None, None
+        gx = ((x > mn) & (x < mx)) * gz
+        gmn = (x < mn) * gz
+        gmx = (x > mx) * gz
+
+        out = self(x, mn, mx)
+
+        def handle_int(v):
+            if out.type in int_types:
+                return v.zeros_like().astype(config.floatX)
+            return v
+
+        return map(handle_int, [gx, gmn, gmx])
+
 # Don't allow complex even if numpy do
 # As there is no mathematical reason for this function on complex
 clip = Clip(upcast_out_no_complex, name='clip')
