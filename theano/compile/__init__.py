@@ -1,3 +1,7 @@
+import ops
+from ops import (
+        DeepCopyOp, deep_copy_op, register_deep_copy_op_c_code,
+        ViewOp, view_op, register_view_op_c_code)
 
 import function_module
 from function_module import *

@@ -14,6 +14,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 import theano
 import theano.scalar as scal
 from theano import compile
+from theano.compile import deep_copy_op, DeepCopyOp
 from theano import config
 from theano import function
 from theano import gof
@@ -476,7 +477,7 @@ class test_canonize(unittest.TestCase):
                 print "ID TOPO", id, topo, sym_inputs
                 for r, t in f.maker.fgraph.shape_feature.shape_of.items():
                     print '  ', r, t
-                if topo and not(len(topo)==1 and topo[0].op==theano.compile.function_module.deep_copy_op):
+                if topo and not(len(topo)==1 and topo[0].op==deep_copy_op):
                     for node in topo[:-1]:
                         assert isinstance(node.op, Shape_i)
                     assert isinstance(topo[-1].op, tensor.Alloc)
@@ -576,7 +577,7 @@ class test_canonize(unittest.TestCase):
                 assert numpy.allclose(out, val_inputs[0])
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
-                topo[0].op == theano.compile.function_module.deep_copy_op
+                topo[0].op == deep_copy_op
                 assert(out_dtype == out.dtype)
 
             #test x / abs(x) -> sign(x)
@@ -1593,8 +1594,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         prog = f.maker.fgraph.toposort()
         assert prog[0].op == tensor.exp
         assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
-        assert isinstance(prog[2].op, theano.compile.
-            function_module.DeepCopyOp)
+        assert isinstance(prog[2].op, DeepCopyOp)
         assert len(prog) == 3
         f([[0, 1], [2, 3]])  # let debugmode test something
 
@@ -1764,8 +1764,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             topo = f.maker.fgraph.toposort()
             assert len([t for t in topo
                         if isinstance(t.op, tensor.Subtensor)]) == 1
-            assert isinstance(topo[-1].op,
-                              theano.compile.function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1793,8 +1792,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op,
-                          theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1821,8 +1819,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             assert len([t for t in topo
                         if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
-            assert isinstance(topo[-1].op,
-                              theano.compile.function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1849,8 +1846,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op,
-                          theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1873,8 +1869,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             assert len([t for t in topo
                         if isinstance(t.op, tensor.Subtensor)]) == 1
             #print topo[-1].op
-            assert isinstance(topo[-1].op, theano.compile.
-                function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1892,8 +1887,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op,
-                          theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1913,8 +1907,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 assert len([t for t in topo
                             if isinstance(t.op, tensor.Subtensor)]) == 1
                 #print topo[-1].op
-                assert isinstance(topo[-1].op,
-                                  theano.compile.function_module.DeepCopyOp)
+                assert isinstance(topo[-1].op, DeepCopyOp)
 
                 for x_s in self.x_shapes:
                     x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1933,8 +1926,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op,
-                          theano.compile.function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -1978,8 +1970,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo if isinstance(t.op, tensor.
             Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.
-            function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         b1r = self.rng.permutation(range(-8, 8))[:2]
         e1r = self.rng.permutation(range(-8, 8))[:2]
@@ -2062,8 +2053,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([t for t in topo if isinstance(t.op, tensor.
             Subtensor)]) == 1
         #print topo[-1].op
-        assert isinstance(topo[-1].op, theano.compile.
-            function_module.DeepCopyOp)
+        assert isinstance(topo[-1].op, DeepCopyOp)
 
         b_r = self.rng.permutation(range(-4, 4))[:3]
         e_r = self.rng.permutation(range(-4, 4))[:3]
@@ -2150,8 +2140,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo if isinstance(t.op,
                  tensor.Subtensor)]) <= 1
-            assert isinstance(topo[-1].op, theano.compile.
-                function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -2208,8 +2197,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo if isinstance(t.op,
                  tensor.Subtensor)]) <= 1
-            assert isinstance(topo[-1].op, theano.compile.
-                function_module.DeepCopyOp)
+            assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
                 x_val = self.rng.uniform(size=x_s).astype(config.floatX)
@@ -2442,7 +2430,7 @@ class Test_local_useless_alloc(unittest.TestCase):
         f = function([], a, mode=mode_opt)
         # The optimization should then be applied, and remove Alloc
         assert ([node.op for node in f.maker.fgraph.toposort()]
-                == [compile.deep_copy_op])
+                == [deep_copy_op])
 
         # In DebugMode, the shape mismatch should be detected
         if isinstance(mode_opt, compile.DebugMode):
@@ -2485,7 +2473,7 @@ class test_shapeoptimizer(unittest.TestCase):
         f = function([v], v.dimshuffle('x', 'x', 0).shape[1], mode=mode)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert topo[0].op == theano.compile.function_module.deep_copy_op
+        assert topo[0].op == deep_copy_op
 
     def test_local_track_shape_i(self):
         class IdentityNoShape(gof.Op):
@@ -2599,7 +2587,7 @@ class test_assert(utt.InferShapeTester):
         assert f(5) == 5
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert topo[0].op == theano.compile.function_module.deep_copy_op
+        assert topo[0].op == deep_copy_op
 
     def test2(self):
         #remove assert condition that are always true
@@ -2617,7 +2605,7 @@ class test_assert(utt.InferShapeTester):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 2
         assert len(topo[0].inputs) == 2
-        assert topo[1].op == theano.compile.function_module.deep_copy_op
+        assert topo[1].op == deep_copy_op
 
     def test3(self):
         #don't remove assert condition that are always false
@@ -2634,7 +2622,7 @@ class test_assert(utt.InferShapeTester):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 2
         assert len(topo[0].inputs) == 3
-        assert topo[1].op == theano.compile.function_module.deep_copy_op
+        assert topo[1].op == deep_copy_op
 
     def test_infer_shape(self):
 
@@ -2667,7 +2655,7 @@ def test_local_mul_specialize():
     f = function([v], v * 1, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     print nodes
-    nodes == [theano.compile.function_module.deep_copy_op]
+    nodes == [deep_copy_op]
 
     f = function([v], v * 0, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -2747,7 +2735,7 @@ def test_local_pow_specialize():
 
     f = function([v], v ** 1, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
-    nodes == [theano.compile.function_module.deep_copy_op]
+    nodes == [deep_copy_op]
     assert numpy.allclose(f(val), val ** 1)
 
     f = function([v], v ** (-1), mode=mode)
@@ -2897,7 +2885,7 @@ class T_useless_elemwise(unittest.TestCase):
         f(vx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert topo[0].op == theano.compile.function_module.deep_copy_op
+        assert topo[0].op == deep_copy_op
         f2 = theano.function([x, y], T.mul(x, y), mode=self.mode)
         assert numpy.all(f2(vx, vy) == vx * vy)
         topo2 = f2.maker.fgraph.toposort()
@@ -2915,7 +2903,7 @@ class T_useless_elemwise(unittest.TestCase):
         f(vx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert topo[0].op == theano.compile.function_module.deep_copy_op
+        assert topo[0].op == deep_copy_op
         f2 = theano.function([x, y], T.add(x, y), mode=self.mode)
         assert numpy.all(f2(vx, vy) == vx + vy)
         topo2 = f2.maker.fgraph.toposort()
@@ -2933,7 +2921,7 @@ class T_useless_elemwise(unittest.TestCase):
         f(vx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert topo[0].op == theano.compile.function_module.deep_copy_op
+        assert topo[0].op == deep_copy_op
 
 
 def test_constant_get_stabilized():

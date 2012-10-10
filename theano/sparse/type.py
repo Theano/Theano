@@ -147,6 +147,12 @@ class SparseType(gof.Type):
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
-# Register CudaNdarrayType to the OutputGuard list of known types
-# to have OutputGuard generate C code for this type.
-theano.compile.mode.register_OutputGuard_c_code(SparseType)
+# Register CudaNdarrayType's C code for ViewOp.
+theano.compile.register_view_op_c_code(
+        SparseType,
+        """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """,
+        1)

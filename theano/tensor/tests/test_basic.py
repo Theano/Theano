@@ -19,6 +19,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 from theano import compile, config, function, gof, tensor, shared
+from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
 from theano.gof.python25 import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
@@ -1777,8 +1778,7 @@ class TestAlloc(unittest.TestCase):
             topo = f.maker.fgraph.toposort()
             assert numpy.sum([isinstance(node.op, alloc)
                               for node in topo]) == 1
-            assert not isinstance(topo[0].op,
-                    theano.compile.function_module.DeepCopyOp)
+            assert not isinstance(topo[0].op, DeepCopyOp)
 
 
 def test_eye():
@@ -1824,8 +1824,7 @@ def test_identity():
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         if theano.config.mode != 'FAST_COMPILE':
-            assert isinstance(topo[0].op, theano.compile.
-                function_module.DeepCopyOp)
+            assert isinstance(topo[0].op, DeepCopyOp)
 
     for dtype in ALL_DTYPES:
         yield check, dtype
@@ -2532,7 +2531,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
                  mode=None,
                  dtype=theano.config.floatX,
-                 ignore_topo=(theano.compile.function_module.DeepCopyOp)):
+                 ignore_topo=DeepCopyOp):
         self.shared = shared
         self.sub = sub
         self.inc_sub = inc_sub
@@ -3581,7 +3580,7 @@ class T_Join_and_Split(unittest.TestCase):
                             mode=self.mode.including('local_join_1'))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert isinstance(topo[0].op, theano.compile.DeepCopyOp)
+        assert isinstance(topo[0].op, DeepCopyOp)
 
     def test_join_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))

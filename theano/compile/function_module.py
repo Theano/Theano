@@ -17,6 +17,7 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
+from theano.compile.ops import deep_copy_op, view_op
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -159,85 +160,6 @@ class AliasedMemoryError(Exception):
 ###
 ### Function
 ###
-
-def register_DeepCopyOp_c_code(typ, code):
-    """ Tell DeepCopyOp how to generate C code for a Theano Type
-
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    """
-    DeepCopyOp.c_codes[typ] = code
-
-
-class DeepCopyOp(theano.gof.Op):
-    c_codes = {}  # Theano Type, code
-
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def make_node(self, x):
-        return theano.gof.Apply(self, [x], [x.type()])
-
-    def perform( self, node, args, outs):
-        if hasattr(args[0],'copy'):
-            #when args[0] is a an ndarray of 0 dimensions,
-            #this return a numpy.dtype and not an ndarray
-            #So when the args have a copy attribute we use it
-            #as this don't have this problem
-            outs[0][0] = args[0].copy()
-        else:
-            outs[0][0] = copy.deepcopy(args[0])
-
-    def c_code_cache_version(self):
-        return (1)
-
-    def c_code(self, node, name, inames, onames, sub):
-        iname = inames[0]
-        oname = onames[0]
-        fail = sub['fail']
-        if isinstance(node.inputs[0].type, theano.tensor.TensorType):
-            return """
-        Py_XDECREF(%(oname)s);
-
-        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
-
-        if (!%(oname)s)
-        {
-            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
-            %(fail)s;
-        }
-
-        """%locals()
-        elif node.inputs[0].type.__class__ in self.c_codes:
-            return self.c_codes[node.inputs[0].type.__class__] % locals()
-        else:
-            super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
-
-
-class ViewOp(mode_module.OutputGuard):
-    destroy_map = {}
-    def infer_shape(self, node, input_shapes):
-        return input_shapes
-
-    def grad(self, args, g_outs):
-        return g_outs
-
-
-deep_copy_op = DeepCopyOp()
-view_op      = ViewOp()
-
 
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries

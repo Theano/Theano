@@ -421,6 +421,14 @@ class Scalar(Type):
         return (4,)  # explicit T given in specialization of operator=
                      # lines.  This makes it compile with open64
 
+# Register C code for ViewOp on Scalars.
+theano.compile.register_view_op_c_code(
+        Scalar,
+        """
+        %(oname)s = %(iname)s;
+        """,
+        1)
+
 
 int8 = Scalar('int8')
 int16 = Scalar('int16')
