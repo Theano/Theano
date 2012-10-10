@@ -513,7 +513,7 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return (u_t * W_in + x_tm1 * W,
-                    tensor.cast(u_t+x_tm1, 'int64'))
+                    tensor.cast(u_t + x_tm1, 'int64'))
 
         u = theano.tensor.fvector('u')
         x0 = theano.tensor.fscalar('x0')
@@ -560,7 +560,6 @@ class T_Scan(unittest.TestCase):
         assert len(scan_node) == 1
         scan_node = scan_node[0]
         assert scan_node.op.gpu
-
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
@@ -1874,8 +1873,8 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5, name = 'fc1')
-        fc2 = theano.shared(0.9, name = 'fc2')
+        fc1 = theano.shared(0.5, name='fc1')
+        fc2 = theano.shared(0.9, name='fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
         y.name = 'y'
         gy = theano.tensor.grad(y, x)
@@ -2337,7 +2336,8 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[y])
 
-        f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x, y], [sx, sy],
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2346,7 +2346,8 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x], n_steps=2)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=3)
 
-        f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x, y], [sx, sy],
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2355,7 +2356,8 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x], n_steps=4)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=4)
 
-        f = theano.function([x, y], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x, y], [sx, sy],
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n: isinstance(
             n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2364,7 +2366,8 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x])
 
-        f = theano.function([x], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x], [sx, sy],
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2374,7 +2377,7 @@ class T_Scan(unittest.TestCase):
         sy, upy = theano.scan(sum, sequences=[x], mode='FAST_COMPILE')
 
         f = theano.function([x], [sx, sy],
-                            mode=mode_with_opt)
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2383,7 +2386,8 @@ class T_Scan(unittest.TestCase):
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
 
-        f = theano.function([x], [sx, sy], mode=mode_with_opt)
+        f = theano.function([x], [sx, sy],
+                            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
         scans = filter(lambda n:
                        isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
@@ -2798,7 +2802,7 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(out2 == vx + 2)
         lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
-        assert len(lssc) == 2
+        assert len(lssc) == 1
 
     @dec.knownfailureif(True,
                         ("This test fails because not typed outputs_info "
@@ -3187,6 +3191,71 @@ class T_Scan(unittest.TestCase):
         p = tensor.dvector()
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
+    def test_eliminate_seqs(self):
+        U = tensor.vector('U')
+        sh = theano.shared(asarrayX(2.))
+        x1 = tensor.vector('x1')
+        x2 = tensor.scalar('x2')
+
+        def rec_fn(*args):
+            u_t = args[0]
+            return [(u_t + 1,  # mitsot
+                     u_t + 2,  # sitsot
+                     u_t + 3),  # nitsot
+                    {sh: u_t + 4}]  # shared
+
+        [X1, X2, X3], updates = theano.scan(
+            rec_fn,
+            U,
+            [dict(initial=x1, taps=[-1, -3]), x2, None],
+            n_steps=None,
+            truncate_gradient=-1,
+            go_backwards=False)
+        f = theano.function([U, x1, x2], [X1, X2, X3],
+                            updates=updates,
+                            mode=theano.Mode(linker='py'),
+                            allow_input_downcast=True)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = asarrayX(rng.uniform(size=(5,)))
+        outs = f(v_u, [0, 0, 0], 0)
+        assert numpy.allclose(outs[0], v_u + 1)
+        assert numpy.allclose(outs[1], v_u + 2)
+        assert numpy.allclose(outs[2], v_u + 3)
+        assert numpy.allclose(sh.get_value(), v_u[-1] + 4)
+
+    def test_eliminate_nonseqs(self):
+        W = tensor.scalar('W')
+        sh = theano.shared(asarrayX(2.))
+        x1 = tensor.vector('x1')
+        x2 = tensor.scalar('x2')
+
+        def rec_fn(*args):
+            w = args[-1]
+            return [(w + 1.,  # mitsot
+                     w + 2.,  # sitsot
+                     w + 3.),  # nitsot
+                    {sh: w + 4.}]  # shared
+
+        [X1, X2, X3], updates = theano.scan(
+            rec_fn,
+            [],
+            [dict(initial=x1, taps=[-1, -3]), x2, None],
+            W,
+            n_steps=5,
+            truncate_gradient=-1,
+            go_backwards=False)
+        f = theano.function([W, x1, x2], [X1, X2, X3],
+                            updates=updates,
+                            mode=theano.Mode(linker='py'),
+                            allow_input_downcast=True)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_w = asarrayX(rng.uniform())
+        outs = f(v_w, [0, 0, 0], 0)
+        assert numpy.allclose(outs[0], v_w + 1)
+        assert numpy.allclose(outs[1], v_w + 2)
+        assert numpy.allclose(outs[2], v_w + 3)
+        assert numpy.allclose(sh.get_value(), v_w + 4)
+
 
 def test_speed():
     #
@@ -3549,7 +3618,7 @@ def test_compute_test_value():
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
-        z.name='z'
+        z.name = 'z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)

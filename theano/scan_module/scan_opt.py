@@ -103,20 +103,35 @@ def remove_constants_and_unused_inputs_scan(node):
             except TypeError:
                 pass
         elif op_ins[idx] in all_ins:
-            nw_inner += [op_ins[idx]]
-            nw_outer += [node.inputs[idx + 1]]
+            # Check for identical other sequence
+            identical_seqs = [x for x in nw_outer
+                              if scan_utils.equal_computations(
+                                  [x], [node.inputs[idx + 1]])]
+            if identical_seqs:
+                index = node.inputs.index(identical_seqs[0]) - 1
+                givens[op_ins[idx]] = op_ins[index]
+            else:
+                nw_inner += [op_ins[idx]]
+                nw_outer += [node.inputs[idx + 1]]
 
     nw_n_seqs = len(nw_inner)
     # Add outputs stuff
     nw_inner += out_stuff_inner
     nw_outer += out_stuff_outer
     # Look through non sequences
-    for nw_in, nw_out in zip(non_seqs, outer_non_seqs):
+    for idx, (nw_in, nw_out) in enumerate(zip(non_seqs, outer_non_seqs)):
         if isinstance(nw_out, tensor.Constant):
             givens[nw_in] = nw_out.clone()
         elif nw_in in all_ins:
-            nw_inner += [nw_in]
-            nw_outer += [nw_out]
+            identical_non_seqs = [x for x in outer_non_seqs[:idx]
+                                  if scan_utils.equal_computations(
+                                      [x], [nw_out])]
+            if identical_non_seqs:
+                index = outer_non_seqs.index(identical_non_seqs[0])
+                givens[nw_in] = non_seqs[index]
+            else:
+                nw_inner += [nw_in]
+                nw_outer += [nw_out]
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
@@ -128,17 +143,6 @@ def remove_constants_and_unused_inputs_scan(node):
         return nw_outs
     else:
         return False
-
-scan_seqopt = theano.gof.SequenceDB()
-# We run before blas opt at 1.7 and specialize 2.0
-# but after stabilize at 1.5. Should we put it before stabilize?
-optdb.register('scan_seqopt', scan_seqopt, 1.6, 'fast_run', 'scan')
-scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
-                     opt.in2out(remove_constants_and_unused_inputs_scan,
-                                ignore_newtrees=True),
-                     5,
-                     'fast_run',
-                     'scan')
 
 
 # This is a global opt for historical reason
@@ -170,28 +174,22 @@ class PushOutNonSeqScan(gof.Optimizer):
         to_replace = []
         replace_with_in = []
         replace_with_out = []
+
         op = node.op
         # Construct the list of non_sequences to simplify a few things
-        st = op.n_seqs
-        st += int(numpy.sum([len(x) for x in
-                             op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
-        st += op.n_sit_sot
-        st += op.n_shared_outs
-        non_seqs = clean_inputs[st:]
-        st = (op.n_seqs +
-              op.n_mit_mot +
-              op.n_mit_sot +
-              op.n_sit_sot +
-              op.n_nit_sot +
-              op.n_shared_outs + 1)
-        outer_non_seqs = node.inputs[st:]
-        assert len(non_seqs) == len(outer_non_seqs)
+        inner_non_seqs = op.inner_non_seqs(clean_inputs)
+        outer_non_seqs = op.outer_non_seqs(node.inputs)
+        inner_seqs = op.inner_seqs(clean_inputs)
+        outer_seqs = op.outer_seqs(node.inputs)
+        assert len(inner_non_seqs) == len(outer_non_seqs)
+        assert len(inner_seqs) == len(outer_seqs)
+
         while changed and counts < max_iterations:
             counts += 1
             changed = False
 
             for nd in local_fgraph.toposort():
-                if (numpy.all([(x in non_seqs) or
+                if (numpy.all([(x in inner_non_seqs) or
                                (x.owner in to_remove) or
                                isinstance(x, tensor.Constant)
                                  for x in nd.inputs]) and
@@ -208,8 +206,9 @@ class PushOutNonSeqScan(gof.Optimizer):
                     to_remove.append(nd)
                     outside_ins = []
                     for x in nd.inputs:
-                        if x in non_seqs:
-                            outside_ins += [outer_non_seqs[non_seqs.index(x)]]
+                        if x in inner_non_seqs:
+                            _idx = inner_non_seqs.index(x)
+                            outside_ins += [outer_non_seqs[_idx]]
                         elif x in to_replace:
                             outside_ins += [
                                 replace_with_out[to_replace.index(x)]]
@@ -222,7 +221,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                  'to move some computation fron scan '
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
-                    outside_ins = [x.type.filter_variable(y) for x,y in
+                    outside_ins = [x.type.filter_variable(y) for x, y in
                                    zip(nd.inputs, outside_ins)]
                     nw_outer_node = nd.op.make_node(*outside_ins)
                     # Step 2. Create variables for replacements
@@ -234,6 +233,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                         assert type(y) == type(nw_outer_node.outputs[idx])
                         replace_with_out += [nw_outer_node.outputs[idx]]
                     changed = True
+
         if counts >= max_iterations:
             raise Exception('Error in the `scan_pushout_non_seq_operations`.'
                             ' The optimization exhausted the maximal number '
@@ -246,6 +246,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_to_replace = []
         clean_replace_with_in = []
         clean_replace_with_out = []
+
         existent_nodes = [nd for nd in local_fgraph.toposort()
                             if nd not in to_remove]
         to_keep = []
@@ -290,11 +291,26 @@ class PushOutNonSeqScan(gof.Optimizer):
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
                     x = node.outputs[local_fgraph.outputs.index(out)]
-                    y = replace_with_out[idx]
-                    shape = [y.shape[idx] for idx in xrange(y.ndim)]
-                    replace_with[x] = tensor.alloc(y,
-                                                   node.inputs[0],
-                                                   *shape)
+                    _y_slice = replace_with_out[idx]
+                    shape = [_y_slice.shape[idx]
+                             for idx in xrange(_y_slice.ndim)]
+                    _y = tensor.alloc(_y_slice, node.inputs[0], *shape)
+
+                    ls = local_fgraph.outputs
+                    if out in op.inner_mitsot_outs(ls):
+                        odx = op.inner_mitsot_outs(ls).index(out)
+                        inp = op.outer_mitsot(node)[odx]
+                        st = abs(numpy.min(op.mitsot_taps()))
+                        y = tensor.set_subtensor(inp[st:], _y)
+                    elif out in op.inner_sitsot_outs(ls):
+                        odx = op.inner_sitsot_outs(ls).index(out)
+                        inp = op.outer_sitsot(node)[odx]
+                        y = tensor.set_subtensor(inp[1:], _y)
+                    elif out in op.inner_nitsot_outs(ls):
+                        y = _y
+                    else:
+                        y = _y_slice
+                    replace_with[x] = y
 
             # We need to add one extra dimension to the outputs
             if replace_with:
@@ -307,11 +323,200 @@ class PushOutNonSeqScan(gof.Optimizer):
             return False
 
 
-scan_seqopt.register('scanOp_pushout_nonseqs_ops',
-                     PushOutNonSeqScan(),
-                     1,
-                     'fast_run',
-                     'scan')
+# This is a global opt for historical reason
+# It should be possible to change it to a local opt.
+class PushOutSeqScan(gof.Optimizer):
+
+    def __init__(self):
+        gof.Optimizer.__init__(self)
+
+    def add_requirements(self, fgraph):
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
+
+    def apply(self, fgraph):
+        nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
+                                                           scan_op.Scan)]
+        for node in nodelist:
+            self.process_node(fgraph, node)
+
+    def process_node(self, fgraph, node):
+        # this flag tells if there was any change during the last iterations
+        changed = True
+        clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
+                        node.op.inputs, node.op.outputs)
+
+        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
+        max_iterations = 2 * len(local_fgraph.toposort()) + 3
+        counts = 0
+        to_remove = []
+        to_replace = []
+        replace_with_in = []
+        replace_with_out = []
+
+        op = node.op
+        # Construct the list of non_sequences to simplify a few things
+        inner_non_seqs = op.inner_non_seqs(clean_inputs)
+        outer_non_seqs = op.outer_non_seqs(node.inputs)
+        inner_seqs = op.inner_seqs(clean_inputs)
+        outer_seqs = op.outer_seqs(node.inputs)
+        assert len(inner_non_seqs) == len(outer_non_seqs)
+        assert len(inner_seqs) == len(outer_seqs)
+
+        while changed and counts < max_iterations:
+            counts += 1
+            changed = False
+
+            for nd in local_fgraph.toposort():
+                if (isinstance(nd.op, theano.tensor.Elemwise) and
+                      numpy.all([(x in inner_non_seqs) or
+                                 (x.owner in to_remove) or
+                                 isinstance(x, tensor.Constant) or
+                                 (x in inner_seqs)
+                                 for x in nd.inputs]) and
+                      not nd in to_remove):
+                    to_remove.append(nd)
+                    outside_ins = []
+                    for x in nd.inputs:
+                        if x in inner_non_seqs:
+                            _idx = inner_non_seqs.index(x)
+                            outside_ins += [outer_non_seqs[_idx]]
+                        elif x in inner_seqs:
+                            outside_ins += [outer_seqs[inner_seqs.index(x)]]
+                        elif x in to_replace:
+                            outside_ins += [replace_with_out[\
+                                                    to_replace.index(x)]]
+                        elif isinstance(x, theano.Constant):
+                            outside_ins += [x.clone()]
+                        else:
+                            raise Exception(
+                                ('Error in the `scan_pushout_non_seq_'
+                                 'operations`. The optimization tries '
+                                 'to move some computation fron scan '
+                                 'which is not allowed to move. Report '
+                                 'this on theano-users list'), x)
+                    nw_outer_node = nd.op.make_node(*outside_ins)
+                    # Step 2. Create variables for replacements
+                    for idx, y in enumerate(nd.outputs):
+
+                        y_place_holder = scan_utils.safe_new(y, '_replace')
+                        to_replace += [y]
+                        replace_with_in += [y_place_holder]
+                        replace_with_out += [nw_outer_node.outputs[idx]]
+
+                    changed = True
+
+                elif (isinstance(nd.op, theano.tensor.DimShuffle) and
+                      (nd.inputs[0] in inner_seqs or
+                       nd.inputs[0].owner in to_remove) and
+                      not nd in to_remove):
+                    to_remove.append(nd)
+                    x = nd.inputs[0]
+                    if x in inner_seqs:
+                        outside_ins = outer_seqs[inner_seqs.index(x)]
+                    elif x in to_replace:
+                        outside_ins = replace_with_out[to_replace.index(x)]
+                    new_ord = (0,)
+                    for old_ord in nd.op.new_order:
+                        if isinstance(old_ord, int):
+                            new_ord += (old_ord + 1,)
+                        else:
+                            new_ord += (old_ord,)
+                    new_outer = outside_ins.dimshuffle(new_ord)
+                    y = nd.outputs[0]
+                    y_place_holder = scan_utils.safe_new(y, '_replace')
+                    to_replace += [y]
+                    replace_with_in += [y_place_holder]
+                    replace_with_out += [new_outer]
+
+                    changed = True
+        if counts >= max_iterations:
+            raise Exception('Error in the `scan_pushout_non_seq_operations`.'
+                            ' The optimization exhausted the maximal number '
+                            'of iterations allowed!')
+        # We need to check all candidate replacements and choose those that
+        # make sense for us
+
+        # Step 1. which elements of `to_replace` are used by remaining
+        # components of the inner function
+        clean_to_replace = []
+        clean_replace_with_in = []
+        clean_replace_with_out = []
+
+        existent_nodes = [nd for nd in local_fgraph.toposort()
+                            if nd not in to_remove]
+        to_keep = []
+        for nd in existent_nodes:
+            to_keep += nd.inputs
+        for idx, out in enumerate(to_replace):
+            if out in to_keep and out.owner not in existent_nodes:
+                clean_to_replace += [out]
+                clean_replace_with_in += [replace_with_in[idx]]
+                clean_replace_with_out += [replace_with_out[idx]]
+
+        if len(clean_to_replace) > 0:
+            # We can finally put an end to all this madness
+            givens = {}
+            nw_outer = []
+            nw_inner = []
+            for to_repl, repl_in, repl_out in zip(clean_to_replace,
+                                              clean_replace_with_in,
+                                              clean_replace_with_out):
+                if isinstance(repl_out, theano.Constant):
+                    repl_in = repl_out.clone()
+                else:
+                    nw_inner += [repl_in]
+                    nw_outer += [repl_out]
+                givens[to_repl] = repl_in
+
+            _op_outs = scan_utils.clone(clean_outputs,
+                                        replace=givens)
+            _op_ins = nw_inner + clean_inputs
+            op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
+            # Reconstruct node
+            nw_info = op.info.copy()
+            nw_info['n_seqs'] += len(nw_inner)
+            nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
+            nw_node = nwScan.make_node(* (node.inputs[:1] + nw_outer +
+                                          node.inputs[1:]))
+            fgraph.replace_all_validate_remove(
+                zip(node.outputs, nw_node.outputs),
+                remove=[node],
+                reason='scan_push_computation_out')
+            return True
+        elif (to_keep == [] and
+              not op.as_while and
+              not op.outer_mitmot(node)):
+            # Nothing in the inner graph should be kept
+            replace_with = {}
+            for idx, out in enumerate(to_replace):
+                if out in local_fgraph.outputs:
+                    x = node.outputs[local_fgraph.outputs.index(out)]
+                    _y = replace_with_out[idx]
+                    ls = local_fgraph.outputs
+                    if out in op.inner_mitsot_outs(ls):
+                        odx = op.inner_mitsot_outs(ls).index(out)
+                        inp = op.outer_mitsot(node)[odx]
+                        st = abs(numpy.min(op.mitsot_taps()))
+                        y = tensor.set_subtensor(inp[st:], _y)
+                    elif out in op.inner_sitsot_outs(ls):
+                        odx = op.inner_sitsot_outs(ls).index(out)
+                        inp = op.outer_sitsot(node)[odx]
+                        y = tensor.set_subtensor(inp[1:], _y)
+                    elif out in op.inner_nitsot_outs(ls):
+                        y = _y
+                    else:
+                        y = _y[-1]
+                    replace_with[x] = y
+
+            # We need to add one extra dimension to the outputs
+            if replace_with:
+                fgraph.replace_all_validate_remove(
+                    replace_with.items(),
+                    remove=[node],
+                    reason='scan_push_seq_computation_out')
+
+        else:
+            return False
 
 
 class ScanInplaceOptimizer(Optimizer):
@@ -372,14 +577,6 @@ class ScanInplaceOptimizer(Optimizer):
                 except InconsistencyError, e:
                     # Failed moving output to be comptued inplace
                     pass
-
-optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(typeConstructor=None,
-                                   gpu_flag=False),
-               75,
-               'fast_run',
-               'inplace',
-               'scan')
 
 
 class ScanSaveMem(gof.Optimizer):
@@ -679,10 +876,15 @@ class ScanSaveMem(gof.Optimizer):
                         #   b) it is not, and we simply take a slice of it.
 
                         #TODO: commit change below with Razvan
+                        # constructed variable to solve line too long PEP8
+                        # constraint
+                        if nw_inputs[offset + idx].owner:
+                            _tmp = nw_inputs[offset + idx].owner.op
+                        else:
+                            _tmp = None
                         if (nw_inputs[offset + idx].owner and
-                            isinstance(nw_inputs[offset + idx].owner.op,
-                                       tensor.IncSubtensor) and
-                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+                            isinstance(_tmp, tensor.IncSubtensor) and
+                            isinstance(_tmp.idx_list[0], slice)):
 
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             val = tensor.as_tensor_variable(val)
@@ -843,15 +1045,6 @@ class ScanSaveMem(gof.Optimizer):
         for node in nodelist:
             if not hasattr(node.op, '_scan_savemem_visited'):
                 self.process_node(fgraph, node)
-
-# Just before specialize to have the other optimization
-# like constant folding being applied
-# This don't introduce inplace.
-scan_seqopt.register('scanOp_save_mem',
-                     ScanSaveMem(),
-                     4,
-                     'fast_run',
-                     'scan')
 
 
 class ScanMerge(gof.Optimizer):
@@ -1034,16 +1227,6 @@ class ScanMerge(gof.Optimizer):
                                                    reason='scan_merge')
 
 
-# after const merge but before stabilize so that we can have identity
-# for equivalent nodes but we still have the chance to hoist stuff out
-# of the scan later.
-scan_seqopt.register('scanOp_merge',
-                     ScanMerge(),
-                     2,
-                     'fast_run',
-                     'scan')
-
-
 def has_duplicates(l):
     """returns true if l has any duplicates (according to __eq__)."""
     return len(set(l)) < len(l)
@@ -1073,7 +1256,6 @@ def scan_merge_inouts(node):
                   node.op.inputs, node.op.outputs, node.op.info)
 
     inp_equiv = {}
-
     if has_duplicates(a.outer_in_seqs):
         new_outer_seqs = []
         new_inner_seqs = []
@@ -1195,8 +1377,283 @@ def scan_merge_inouts(node):
 
     return na.outer_outputs
 
-scan_seqopt.register('scanOp_merge_inouts',
-                     opt.in2out(scan_merge_inouts, ignore_newtrees=True),
-                     3,
-                     'fast_run',
-                     'scan')
+
+@gof.local_optimizer([None])
+def scan_pushout_dot1(node):
+    if not isinstance(node.op, scan_op.Scan):
+        return False
+    # Replace pattern of the form
+    # x[t] = x[t-1] + dot(seq[t], value[t])
+    # with Sequence.reshape((-1, seq.shape[2])) \dot Value
+    op = node.op
+    sitsot_ins = op.inner_sitsot(op.inputs)
+    sitsot_outs = op.inner_sitsot_outs(op.outputs)
+    outer_sitsot = op.outer_sitsot_outs(node)
+    seqs = op.inner_seqs(op.inputs)
+    for inp, out, outer_out in zip(sitsot_ins, sitsot_outs, outer_sitsot):
+        if (isinstance(out.owner.op, theano.tensor.Elemwise) and
+            isinstance(out.owner.op.scalar_op, theano.scalar.Add) and
+            inp in out.owner.inputs and
+            len(outer_out.clients) == 1 and
+            not isinstance(outer_out.clients[0][0], str) and
+            isinstance(outer_out.clients[0][0].op, theano.tensor.Subtensor)
+            and outer_out.clients[0][0].op.idx_list == (-1,)):
+
+            x = out.owner.inputs[0]
+            if x == inp:
+                x = out.owner.inputs[1]
+            # We need to check if x is the result of an outer product
+            if (x.owner and
+                isinstance(x.owner.op, theano.tensor.Dot) and
+                x.owner.inputs[0].ndim == 2 and
+                x.owner.inputs[1].ndim == 2):
+
+                # We need to check if any of the inputs are a sequence
+                inp1 = x.owner.inputs[0]
+                inp2 = x.owner.inputs[1]
+
+                if inp1 in seqs or inp2 in seqs:
+                    new_scan_out = inp2
+
+                    if inp2 in seqs:
+                        new_scan_out = inp1
+                    idx = sitsot_outs.index(out)
+                    # We've found our pattern and need to construct a new
+                    # scan node to replace this one. For this we need to
+                    # replace the sit_sot output with a nit_sot output
+
+                    # First let us split all arguments according to their
+                    # corresponding categories
+
+                    inner_seqs = op.inner_seqs(op.inputs)
+                    outer_seqs = op.outer_seqs(node)
+                    inner_mitmot = op.inner_mitmot(op.inputs)
+                    outer_mitmot = op.outer_mitmot(node)
+                    inner_mitmot_outs = op.inner_mitmot_outs(op.outputs)
+                    inner_mitsot = op.inner_mitsot(op.inputs)
+                    outer_mitsot = op.outer_mitsot(node)
+                    inner_mitsot_outs = op.inner_mitsot_outs(op.outputs)
+                    inner_sitsot = op.inner_sitsot(op.inputs)
+                    outer_sitsot = op.outer_sitsot(node)
+                    inner_sitsot_outs = op.inner_sitsot_outs(op.outputs)
+                    outer_nitsot = op.outer_nitsot(node)
+                    inner_nitsot_outs = op.inner_nitsot_outs(op.outputs)
+                    inner_shared = op.inner_shared(op.inputs)
+                    outer_shared = op.outer_shared(node)
+                    inner_shared_outs = op.inner_shared_outs(op.outputs)
+                    inner_non_seqs = op.inner_non_seqs(op.inputs)
+                    outer_non_seqs = op.outer_non_seqs(node)
+
+                    new_info = op.info.copy()
+                    st = len(op.mitmot_taps()) + len(op.mitsot_taps())
+
+                    new_info['tap_array'] = (new_info['tap_array'][:st + idx] +
+                                        new_info['tap_array'][st + idx + 1:])
+                    new_info['n_sit_sot'] -= 1
+                    new_info['n_nit_sot'] += 1
+                    inner_sitsot = inner_sitsot[:idx] + inner_sitsot[idx + 1:]
+                    outer_sitsot = outer_sitsot[:idx] + outer_sitsot[idx + 1:]
+                    inner_sitsot_outs = inner_sitsot_outs[:idx] +\
+                            inner_sitsot_outs[idx + 1:]
+                    # add n_steps as the length
+                    outer_nitsot.append(node.inputs[0])
+                    inner_nitsot_outs.append(new_scan_out)
+                    _new_inner_inps = (inner_seqs +
+                                       inner_mitmot +
+                                       inner_mitsot +
+                                       inner_sitsot +
+                                       inner_shared +
+                                       inner_non_seqs)
+                    _new_inner_outs = (inner_mitmot_outs +
+                                       inner_mitsot_outs +
+                                       inner_sitsot_outs +
+                                       inner_nitsot_outs +
+                                       inner_shared_outs)
+                    new_inner_inps, new_inner_outs =\
+                            scan_utils.reconstruct_graph(
+                                _new_inner_inps, _new_inner_outs)
+
+                    new_op = scan_op.Scan(new_inner_inps, new_inner_outs,
+                                          new_info)
+
+                    _scan_inputs = ([node.inputs[0]] +
+                                    outer_seqs +
+                                    outer_mitmot +
+                                    outer_mitsot +
+                                    outer_sitsot +
+                                    outer_shared +
+                                    outer_nitsot +
+                                    outer_non_seqs)
+                    new_outs = new_op(*_scan_inputs)
+
+                    # We need now to pair correctly the new outputs with the
+                    # old ones
+                    outer_mitmot_outs = new_op.outer_mitmot_outs(new_outs)
+                    outer_mitsot_outs = new_op.outer_mitsot_outs(new_outs)
+                    outer_sitsot_outs = new_op.outer_sitsot_outs(new_outs)
+                    outer_nitsot_outs = new_op.outer_nitsot_outs(new_outs)
+                    outer_shared_outs = new_op.outer_shared_outs(new_outs)
+
+                    _val = outer_nitsot_outs[-1]
+                    outer_nitsot_outs = outer_nitsot_outs[:-1]
+                    if inp1 in seqs:
+                        _out_seq = op.outer_seqs(node)[seqs.index(inp1)]
+                        # We need to clip the seq to the number of steps
+                        _out_seq = _out_seq[:node.inputs[0]]
+                        sh0 = _out_seq.shape[0]
+                        sh1 = _out_seq.shape[1]
+                        sh2 = _out_seq.shape[2]
+                        out_seq = _out_seq.dimshuffle(1, 0, 2)
+                        out_seq = out_seq.reshape((sh1, sh0 * sh2))
+                        sh0 = _val.shape[0]
+                        sh1 = _val.shape[1]
+                        sh2 = _val.shape[2]
+                        val = _val.reshape((sh0 * sh1, sh2))
+                        new_out = tensor.dot(out_seq, val)
+                        new_out = tensor.unbroadcast(
+                            new_out.dimshuffle('x', 0, 1), 0)
+                    else:
+                        _out_seq = op.outer_seqs(node)[seqs.index(inp2)]
+                        out_seq = _out_seq.reshape(
+                            (_out_seq.shape[0] * _out_seq.shape[1],
+                             _out_seq.shape[2]))
+
+                        val = _val.dimshuffle(1, 0, 2).reshape(
+                            (_val.shape[1],
+                             _val.shape[0] * _val.shape[2]))
+                        new_out = tensor.dot(val, out_seq)
+                        new_out = tensor.unbroadcast(
+                            new_out.dimshuffle('x', 0, 1), 0)
+                    outer_sitsot_outs = (outer_sitsot_outs[:idx] +
+                                         [new_out] +
+                                         outer_sitsot_outs[idx:])
+                    final_outs = (outer_mitmot_outs +
+                                  outer_mitsot_outs +
+                                  outer_sitsot_outs +
+                                  outer_nitsot_outs +
+                                  outer_shared_outs)
+
+                    return final_outs
+
+    return False
+
+
+# I've added an equilibrium because later scan optimization in the sequence
+# can make it such that earlier optimizations should apply. However, in
+# general I do not expect the sequence to run more then once
+scan_eqopt1 = theano.gof.EquilibriumDB()
+scan_seqopt1 = theano.gof.SequenceDB()
+
+scan_eqopt2 = theano.gof.EquilibriumDB()
+scan_seqopt2 = theano.gof.EquilibriumDB()
+# We run before blas opt at 1.7 and specialize 2.0
+# but after stabilize at 1.5. Should we put it before stabilize?
+optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
+optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
+optdb.register('scanOp_make_inplace',
+               ScanInplaceOptimizer(typeConstructor=None,
+                                   gpu_flag=False),
+               75,
+               'fast_run',
+               'inplace',
+               'scan')
+
+scan_eqopt2.register(
+    'all_scan_opts', scan_seqopt2, 1, 'fast_run', 'scan')
+scan_eqopt1.register(
+    'all_pushout_opt', scan_seqopt1, 1, 'fast_run', 'scan')
+
+
+scan_seqopt1.register('scanOp_remove_constants_and_unused_inputs0',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      1,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scanOp_pushout_nonseqs_ops',
+                      PushOutNonSeqScan(),
+                      2,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scanOp_pushout_seqs_ops',
+                      PushOutSeqScan(),
+                      3,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scan_pushout_dot1',
+                      opt.in2out(scan_pushout_dot1, ignore_newtrees=True),
+                      4,
+                      'fast_run',
+                      'more_mem',
+                      'scan')
+
+
+scan_seqopt2.register('constant_folding_for_scan2',
+                      opt.in2out(tensor.opt.constant_folding,
+                                 ignore_newtrees=True),
+                      1,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      2,
+                      'fast_run',
+                      'scan')
+
+
+# After nonsequences had been pushed out
+scan_seqopt2.register('scanop_remove_constants_and_unused_inputs1',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      3,
+                      'fast_run',
+                      'scan')
+
+# after const merge but before stabilize so that we can have identity
+# for equivalent nodes but we still have the chance to hoist stuff out
+# of the scan later.
+scan_seqopt2.register('scanOp_merge',
+                      ScanMerge(),
+                      4,
+                      'fast_run',
+                      'scan')
+
+# After Merge optimization
+scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      5,
+                      'fast_run',
+                      'scan')
+
+scan_seqopt2.register('scanOp_merge_inouts',
+                      opt.in2out(scan_merge_inouts, ignore_newtrees=True),
+                      6,
+                      'fast_run',
+                      'scan')
+
+# Just before specialize to have the other optimization
+# like constant folding being applied
+# This don't introduce inplace.
+scan_seqopt2.register('scanOp_save_mem',
+                      ScanSaveMem(),
+                      7,
+                      'fast_run',
+                      'scan')
+
+# After everything else
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      8,
+                      'fast_run',
+                      'scan')

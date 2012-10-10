@@ -34,7 +34,7 @@ from theano.gradient import DisconnectedType
 from theano.compile.profiling import ScanProfileStats
 
 import scan_utils
-from scan_utils import safe_new
+from scan_utils import safe_new, forced_replace
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
@@ -259,9 +259,7 @@ class Scan(PureOp):
         for idx, (inner_seq, outer_seq) in enumerate(
                                     zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs))):
-            if inner_seq.type.dtype != outer_seq[idx].type.dtype:
-                assert isinstance(idx, int)
-
+            if inner_seq.type.dtype != outer_seq[0].type.dtype:
                 raise ValueError(err_msg1 % ('sequence',
                                              str(outer_seq),
                                              idx,
@@ -664,7 +662,7 @@ class Scan(PureOp):
 
     def outer_mitmot_outs(self, list_outputs):
         if isinstance(list_outputs, Apply):
-            list_outputs = list_outputs.ouputs
+            list_outputs = list_outputs.outputs
         return list_outputs[:self.n_mit_mot]
 
     def mitmot_taps(self):
@@ -1278,6 +1276,18 @@ class Scan(PureOp):
         # 7.1. empty lists to hold gradients
         # List of slices from outputs (used to compute the gradients)
         inner_g_outs = []
+        # Note: most gradients of outputs contain the output itself in the
+        # computation of the graidnet. For e.g. grad of sigmoid(x) is
+        # sigmoid(x)*(1-sigmoid(x)). To avoid re-computing sigmoid(x) it is
+        # useful to provide the new scan Op representing the gradients the
+        # outputs of the previous scan as sequences, and replace these
+        # computational graphs in the computational graph of the grad, i.e.
+        # transform the grad of the sigmoid in out*(1-out).
+        #
+        # We do however only consider mitsot, sitsot and nitsot kind of
+        # outputs, because mitmot outputs are more complicated and rarely
+        # usde in practive ..
+        precomputed_outs = []
         g_out_slices = []
         # List of outputs of the gradient function
         inner_gfn_outs = []
@@ -1312,6 +1322,8 @@ class Scan(PureOp):
                 # placeholder, which for now has the same dtype as the
                 # output
                 inner_g_out = safe_new(out)
+            if dx >= self.n_mit_mot_outs:
+                precomputed_out = safe_new(out)
             ###
             #### I need to clip the gradient HERE !!
 
@@ -1321,11 +1333,21 @@ class Scan(PureOp):
                 g_out_slices.append(None)
             if getattr(out, 'name', None) is not None:
                 inner_g_out.name = 'g_' + out.name
+                if dx >= self.n_mit_mot_outs:
+                    precomputed_out.name = 'p_' + out.name
             else:
                 inner_g_out.name = 'g_' + str(dx)
+                if dx >= self.n_mit_mot_outs:
+                    precomputed_out.name = 'p_' + str(dx)
             inner_g_outs.append(inner_g_out)
+            if dx >= self.n_mit_mot_outs:
+                precomputed_outs.append(precomputed_out)
             _g_out = inner_g_out
-            grad_outs = compute_gradient(out, _g_out)
+            if dx >= self.n_mit_mot_outs:
+                grad_outs = [forced_replace(x, out, precomputed_out) for
+                         x in compute_gradient(out, _g_out)]
+            else:
+                grad_outs = compute_gradient(out, _g_out)
             if not inner_gfn_outs:
                 for idx, gfn_out in enumerate(grad_outs):
                     if idx >= self.n_seqs:
@@ -1363,11 +1385,6 @@ class Scan(PureOp):
                         numpy.array(0, theano.config.floatX))
 
         ## 10. Get your sequence in order for the scan:
-        n_seqs = (self.n_seqs +
-                  n_ins_mit_mot +
-                  n_ins_mit_sot +
-                  self.n_sit_sot +
-                  self.n_nit_sot)
         offset = (self.n_mit_mot_outs +
                   self.n_mit_sot +
                   self.n_sit_sot)
@@ -1375,7 +1392,8 @@ class Scan(PureOp):
                       outs_mit_mot +
                       outs_mit_sot +
                       outs_sit_sot +
-                      inner_g_outs[offset:offset + self.n_nit_sot])
+                      inner_g_outs[offset:offset + self.n_nit_sot] +
+                      precomputed_outs)
 
         scan_seqs = [x[::-1] for x in args[1:self.n_seqs + 1]]
         offset = 0
@@ -1411,6 +1429,16 @@ class Scan(PureOp):
                   self.n_sit_sot)
         scan_seqs += [x[::-1] for x in
                       g_outs[offset:offset + self.n_nit_sot]]
+        # We ignore the mitmot outputs because it is a bit more complicated
+        # to consider them. That is not to say they can not be considered,
+        # but the effort of implementing this special case is large
+        # comparable with the minimum benefit that we get.
+        offset = self.n_mit_mot
+        end = offset + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
+        for _out in scan_outputs[offset: end]:
+            scan_seqs += [_out[::-1]]
+
+        n_seqs = len(scan_seqs)
 
         scan_mit_mot = []
         inner_mit_mot = []
@@ -1607,8 +1635,9 @@ class Scan(PureOp):
             rop_self_outputs = self_outputs
         if self.info['n_shared_outs'] > 0:
             rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
-        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs,
-             inner_eval_points)
+        rop_outs = tensor.Rop(rop_self_outputs,
+                              rop_of_inputs,
+                              inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
         # Step 2. Figure out what corresponds to what in the scan
@@ -1699,7 +1728,7 @@ class Scan(PureOp):
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #SIT_SOT sequences ...
+        # SIT_SOT sequences ...
         b = e
         e = e + self.n_sit_sot
         ib = ie
