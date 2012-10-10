@@ -23,8 +23,7 @@ from theano import gof
 from theano.gof.python25 import maxsize
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
-from theano.compile import optdb
-from theano.compile.function_module import deep_copy_op
+from theano.compile import deep_copy_op, optdb
 
 import scan_op
 import scan_utils
