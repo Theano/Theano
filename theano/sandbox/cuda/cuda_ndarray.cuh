@@ -265,6 +265,7 @@ CudaNdarray_set_nd(CudaNdarray * self, const int nd)
  * CudaNdarray_alloc_contiguous
  *
  * Allocate storage space for a tensor of rank 'nd' and given dimensions.
+ * (No-op if self already has a contiguous tensor of the right dimensions)
  *
  * Note: CudaNdarray_alloc_contiguous is templated to work for both int dimensions and npy_intp dimensions
  */
@@ -275,13 +276,39 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
     // return 0 on success
     int size = 1; //set up the strides for contiguous tensor
     assert (nd >= 0);
+
+    // check if by any chance our current dims are correct,
+    // and strides already contiguous
+    // in that case we can return right here.
+    if (self->nd == nd)
+    {
+        const int * cur_dims = CudaNdarray_HOST_DIMS(self);
+        const int * cur_strides = CudaNdarray_HOST_STRIDES(self);
+        bool good = true;
+        for (int i = nd -1; i >= 0; --i)
+        {
+            if (cur_strides[i] != (dim[i] == 1) ? 0 : size)
+            {
+                good = false;
+                break;
+            }
+            if (cur_dims[i] != dim[i])
+            {
+                good = false;
+                break;
+            }
+            size *= dim[i];
+        }
+        if (good)
+            return 0;
+        size = 1;
+    }
+
     if (CudaNdarray_set_nd(self, nd))
     {
         return -1;
     }
-    //TODO: check if by any chance our current dims are correct,
-    //      and strides already contiguous
-    //      in that case we can return right here.
+
     for (int i = nd-1; i >= 0; --i)
     {
         CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
