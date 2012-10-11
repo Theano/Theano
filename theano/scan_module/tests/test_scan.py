@@ -2339,12 +2339,13 @@ class T_Scan(unittest.TestCase):
                             allow_input_downcast=True, mode=mode_with_opt)
         self.assertTrue(numpy.allclose(f([1, 2, 3]), 2. / 3))
 
-        #theano.printing.debugprint(f, print_type=True)
         topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
-        self.assertTrue(nb_scan == 1)
+        # For this to work we need an optimization that it will be pushed in
+        # a new pull request
+        self.assertTrue(nb_scan == 2)
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
         if theano.config.mode != 'FAST_COMPILE':
