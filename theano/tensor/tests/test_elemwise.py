@@ -883,6 +883,25 @@ if __name__ == '__main__':
     unittest.TextTestRunner().run(suite)
 """
 
+def test_clip_grad():
+
+    # test the gradient of clip
+    def func(x,y,z):
+        return theano.tensor.clip(x,y,z)
+    # use an x value less than y, an x value between y and z, and an x value
+    # greater than z
+    unittest_tools.verify_grad(func,
+            [ numpy.asarray([-1.,0.5,2.]), 0., 1.])
+
+def test_clip_grad_int():
+
+    # test that integers don't crash clip gradient
+    x = tensor.iscalar()
+    y = tensor.iscalar()
+    z = tensor.iscalar()
+    c = tensor.clip(x,y,z)
+    tensor.grad(c, [x, y, z])
+
 
 if __name__ == '__main__':
 
