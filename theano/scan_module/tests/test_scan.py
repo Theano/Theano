@@ -1124,6 +1124,29 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(W1.get_value(), numpy_W1)
         assert numpy.allclose(W2.get_value(), numpy_W2)
 
+    def test_grad_dtype_change(self):
+        x = tensor.fscalar('x')
+        y = tensor.fscalar('y')
+        c = tensor.iscalar('c')
+
+        def inner_fn(cond, x, y):
+            new_cond = tensor.cast(tensor.switch(cond, x, y), 'int32')
+            new_x = tensor.switch(cond, tensor.nnet.sigmoid(y * x), x)
+            new_y = tensor.switch(cond, y, tensor.nnet.sigmoid(x))
+            return new_cond, new_x, new_y
+
+        values, _ = theano.scan(
+            inner_fn,
+            outputs_info=[c, x, y],
+            n_steps=10,
+            truncate_gradient=-1,
+            go_backwards=False)
+        gX, gY = tensor.grad(values[1].sum(), [x, y])
+        f = theano.function([c, x, y], [gX, gY],
+                           allow_input_downcast=True)
+        # Check for runtime errors
+        f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
+
     def test_simple_shared_mrg_random(self):
         theano_rng = theano.sandbox.rng_mrg.MRG_RandomStreams(utt.fetch_seed())
 
