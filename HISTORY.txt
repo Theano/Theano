@@ -7,15 +7,15 @@ Old Release Notes
 Theano 0.5 (23 February 2012)
 =============================
 
-Highlight:
+Highlights:
  * Moved to github: http://github.com/Theano/Theano/
- * Old trac ticket moved to assembla ticket: http://www.assembla.com/spaces/theano/tickets
+ * Old trac tickets moved to assembla tickets: http://www.assembla.com/spaces/theano/tickets
  * Theano vision: http://deeplearning.net/software/theano/introduction.html#theano-vision (Many people)
  * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
  * Faster dot() call: New/Better direct call to cpu and gpu ger, gemv, gemm
    and dot(vector, vector). (James, Frédéric, Pascal)
  * C implementation of Alloc. (James, Pascal)
- * theano.grad() now also work with sparse variable. (Arnaud)
+ * theano.grad() now also works with sparse variables. (Arnaud)
  * Macro to implement the Jacobian/Hessian with theano.tensor.{jacobian,hessian} (Razvan)
  * See the Interface changes.
 
@@ -28,14 +28,14 @@ Interface Behavior Changes:
    a warning since Theano 0.3 released Nov. 23rd, 2010)
  * The current output dtype of sum with input dtype [u]int* is now always [u]int64.
    You can specify the output dtype with a new dtype parameter to sum.
-   The output dtype is the one using for the summation.
-   There is no warning in previous Theano version about this.
+   The output dtype is the one used for the summation.
+   There is no warning in previous Theano versions about this.
    The consequence is that the sum is done in a dtype with more precision than before.
-   So the sum could be slower, but will be more resistent to overflow.
+   So the sum could be slower, but will be more resistant to overflow.
    This new behavior is the same as numpy. (Olivier, Pascal)
  * When using a GPU, detect faulty nvidia drivers. This was detected
    when running Theano tests. Now this is always tested. Faulty
-   drivers results in wrong results for reduce operations. (Frederic B.)
+   drivers result in wrong results for reduce operations. (Frederic B.)
 
 
 Interface Features Removed (most were deprecated):
@@ -69,7 +69,7 @@ New deprecation (will be removed in Theano 0.6, warning generated if you use the
 
 Bug fixes (incorrect results):
  * On CPU, if the convolution had received explicit shape information,
-   they where not checked at runtime.  This caused wrong result if the
+   they were not checked at runtime.  This caused wrong result if the
    input shape was not the one expected. (Frederic, reported by Sander
    Dieleman)
  * Theoretical bug: in some case we could have GPUSum return bad value.
@@ -95,21 +95,21 @@ Bug fixes (incorrect results):
 
 Scan fixes:
  * computing grad of a function of grad of scan (reported by Justin Bayer, fix by Razvan)
-   before : most of the time crash, but could be wrong value with bad number of dimensions (so a visible bug)
-   now : do the right thing.
+   before: most of the time crash, but could be wrong value with bad number of dimensions (so a visible bug)
+   now: do the right thing.
  * gradient with respect to outputs using multiple taps (reported by Timothy, fix by Razvan)
-   before : it used to return wrong values
-   now : do the right thing.
+   before: it used to return wrong values
+   now: do the right thing.
    Note: The reported case of this bug was happening in conjunction with the
          save optimization of scan that give run time errors. So if you didn't
          manually disable the same memory optimization (number in the list4),
          you are fine if you didn't manually request multiple taps.
  * Rop of gradient of scan (reported by Timothy and Justin Bayer, fix by Razvan)
-   before : compilation error when computing R-op
-   now : do the right thing.
+   before: compilation error when computing R-op
+   now: do the right thing.
  * save memory optimization of scan (reported by Timothy and Nicolas BL, fix by Razvan)
-   before : for certain corner cases used to result in a runtime shape error
-   now : do the right thing.
+   before: for certain corner cases used to result in a runtime shape error
+   now: do the right thing.
  * Scan grad when the input of scan has sequences of different lengths. (Razvan, reported by Michael Forbes)
  * Scan.infer_shape now works correctly when working with a condition for the number of loops.
    In the past, it returned n_steps as the length, which is not always true. (Razvan)
@@ -118,10 +118,10 @@ Scan fixes:
 New features:
  * AdvancedIncSubtensor grad defined and tested (Justin Bayer)
  * Adding 1D advanced indexing support to inc_subtensor and set_subtensor (James Bergstra)
- * tensor.{zeros,ones}_like now support the dtype param as numpy (Frederic)
+ * tensor.{zeros,ones}_like now supports the dtype param as numpy (Frederic)
  * Added configuration flag "exception_verbosity" to control the verbosity of exceptions (Ian)
  * theano-cache list: list the content of the theano cache (Frederic)
- * theano-cache unlock: remove the Theano lock (Olivier)
+ * theano-cache unlock: remove the Theano cache lock (Olivier)
  * tensor.ceil_int_div to compute ceil(a / float(b)) (Frederic)
  * MaxAndArgMax.grad now works with any axis (The op supports only 1 axis) (Frederic)
      * used by tensor.{max,min,max_and_argmax}
@@ -142,12 +142,12 @@ New features:
  * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.mem_info() return free and total gpu memory (Frederic)
  * Theano flags compiledir_format. Keep the same default as before: compiledir_%(platform)s-%(processor)s-%(python_version)s. (Josh Bleecher Snyder)
      * We also support the "theano_version" substitution.
- * IntDiv C code (faster and allow this elemwise to be fused with other elemwise) (Pascal)
+ * IntDiv C code (faster and allows this elemwise to be fused with other elemwise) (Pascal)
  * Internal filter_variable mechanism in Type. (Pascal, Ian)
     * Ifelse works on sparse.
     * It makes use of gpu shared variable more transparent with theano.function updates and givens parameter.
  * Added a_tensor.transpose(axes) axes is optional (James)
-    * theano.tensor.transpose(a_tensor, kwargs) We where ignoring kwargs, now it is used as the axes.
+    * theano.tensor.transpose(a_tensor, kwargs) We were ignoring kwargs, now it is used as the axes.
  * a_CudaNdarray_object[*] = int, now works (Frederic)
  * tensor_variable.size (as numpy) computes the product of the shape elements. (Olivier)
  * sparse_variable.size (as scipy) computes the number of stored values. (Olivier)
@@ -168,11 +168,11 @@ New features:
  * 'theano-cache list' prints the number of compiled modules per op class (Frederic B.)
  * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
  * Add the header_dirs to the hard part of the compilation key. This is
-   currently used only by cuda, but if we use library that are only headers,
+   currently used only by cuda, but if we use libraries that are only headers,
    this can be useful. (Frederic B.)
  * The Theano flag "nvcc.flags" is now included in the hard part of the key.
-   This mean that now we recompile all modules for each value of "nvcc.flags".
-   A change in "nvcc.flags" used to be ignored for module that were already
+   This means that now we recompile all modules for each value of "nvcc.flags".
+   A change in "nvcc.flags" used to be ignored for modules that were already
    compiled. (Frederic B.)
  * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization)
    at compile time if all their inputs are constant.
@@ -209,7 +209,7 @@ Crashes fixed:
  * Runtime crash related to an optimization with subtensor of alloc (reported by Razvan, fixed by Frederic)
  * Fix dot22scalar cast of integer scalars (Justin Bayer, Frédéric, Olivier)
  * Fix runtime crash in gemm, dot22. FB
- * Fix on 32bits computer: make sure all shape are int64.(Olivier)
+ * Fix on 32 bit computer: make sure all shapes are int64. (Olivier)
  * Fix to deque on python 2.4 (Olivier)
  * Fix crash when not using C code (or using DebugMode) (not used by
    default) with numpy 1.6*. Numpy has a bug in the reduction code that
@@ -287,10 +287,9 @@ Others:
    The other accepted value is "raise" to raise an error when this happens. (Frederic)
  * The buidbot now raises optimization/shape errors instead of just printing a warning. (Frederic)
  * better pycuda tests (Frederic)
- * check_blas.py now accept the shape and the number of iteration as parameter (Frederic)
+ * check_blas.py now accepts the shape and the number of iterations as parameter (Frederic)
  * Fix opt warning when the opt ShapeOpt is disabled (enabled by default) (Frederic)
  * More internal verification on what each op.infer_shape return. (Frederic, James)
- * Argmax dtype to int64 (Olivier)
  * Improved docstring and basic tests for the Tile Op (David).
 
 Reviewers (alphabetical order):
