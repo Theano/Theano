@@ -4529,7 +4529,8 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 }
 
 
-int CudaNdarray_ensure_dims(CudaNdarray ** arr, int nd, const int * dims)
+int CudaNdarray_ensure_contiguous(CudaNdarray ** arr, int nd,
+        const int * dims)
 {
     if (*arr == NULL)
     {
@@ -4541,6 +4542,8 @@ int CudaNdarray_ensure_dims(CudaNdarray ** arr, int nd, const int * dims)
 
     return CudaNdarray_alloc_contiguous(*arr, nd, dims);
 }
+
+
 /*
   Local Variables:
   mode:c++
