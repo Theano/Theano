@@ -4532,15 +4532,26 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 int CudaNdarray_ensure_contiguous(CudaNdarray ** arr, int nd,
         const int * dims)
 {
+    bool allocated = false;
     if (*arr == NULL)
     {
         // This allocates the metadata but not the data
         *arr = (CudaNdarray *) CudaNdarray_new_nd(nd);
         if (*arr == NULL)
             return -1;
+        allocated = true;
     }
 
-    return CudaNdarray_alloc_contiguous(*arr, nd, dims);
+    if (CudaNdarray_alloc_contiguous(*arr, nd, dims))
+    {
+        if (allocated)
+        {
+            Py_DECREF(*arr);
+            *arr = NULL;
+        }
+        return -1;
+    }
+    return 0;
 }
 
 
