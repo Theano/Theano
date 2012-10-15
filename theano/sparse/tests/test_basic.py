@@ -1120,6 +1120,22 @@ class DotTests(unittest.TestCase):
                 assert sum([isinstance(node.op, (Dot, Usmm, UsmmCscDense))
                             for node in topo]) == nb
 
+    def test_cuda(self):
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("Optional package cuda not available")
+
+        a = sparse.csr_matrix('a', dtype='float32')
+        b = cuda.float32_shared_constructor(
+                numpy.random.rand(3, 4).astype('float32'))
+        d = sparse.dot(a, b)
+        f = theano.function([a], d)
+
+        a_val = scipy.sparse.csr_matrix(random_lil((5, 3), 'float32', 5))
+        d_theano = f(a_val)
+        d_numpy = a_val * b.get_value()
+        assert numpy.allclose(d_theano, d_numpy)
+
 
 class UsmmTests(unittest.TestCase):
     """ Test the Usmm and UsmmCscDense class and related optimization """

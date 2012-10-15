@@ -43,25 +43,27 @@ _mtype_to_str = {scipy.sparse.csc_matrix: "csc",
 def _is_sparse_variable(x):
     """
     @rtype: boolean
-    @return: True iff x is a L{SparseVariable} (and not a L{tensor.TensorType})
+    @return: True iff x is a L{SparseVariable} (and not a L{tensor.TensorType},
+        for instance)
     """
-    if not isinstance(x.type, (SparseType, tensor.TensorType)):
+    if not isinstance(x, gof.Variable):
         raise NotImplementedError("this function should only be called on "
                                   "*variables* (of type sparse.SparseType "
-                                  "or tensor.TensorType), not,", x)
+                                  "or tensor.TensorType, for instance), not ",
+                                  x)
     return isinstance(x.type, SparseType)
 
 
 def _is_dense_variable(x):
     """
     @rtype: boolean
-    @return: True unless x is a L{SparseVariable} (and not a
-    L{tensor.TensorType})
+    @return: True if x is a L{tensor.TensorType} (and not a
+        L{SparseVariable}, for instance)
     """
-    if not isinstance(x.type, (SparseType, tensor.TensorType)):
+    if not isinstance(x, gof.Variable):
         raise NotImplementedError("this function should only be called on "
                                   "*variables* (of type sparse.SparseType or "
-                                  "tensor.TensorType), not,", x)
+                                  "tensor.TensorType, for instance), not ", x)
     return isinstance(x.type, tensor.TensorType)
 
 
@@ -3073,8 +3075,22 @@ class Dot(gof.op.Op):
     def make_node(self, x, y):
         dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
 
-        if not _is_sparse_variable(x) and not _is_sparse_variable(y):
-            raise TypeError(x)
+        # Sparse dot product should have at least one sparse variable
+        # as input. If the other one is not sparse, it has to be converted
+        # into a tensor.
+        x_is_sparse_var = _is_sparse_variable(x)
+        y_is_sparse_var = _is_sparse_variable(y)
+
+        if not x_is_sparse_var and not y_is_sparse_var:
+            raise TypeError("Sparse dot product should have at least one "
+                "sparse variable as inputs, but the inputs are "
+                "%s (%s) and %s (%s)." % (x, x.type, y, y.type))
+
+        if not x_is_sparse_var:
+            x = tensor.as_tensor_variable(x)
+
+        if not y_is_sparse_var:
+            y = tensor.as_tensor_variable(y)
 
         return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
                          broadcastable=(False, False))])
