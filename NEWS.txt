@@ -98,7 +98,7 @@ Interface changes:
    (Frederic B.)
  * Do not reorder the user flags passed to the compiler. They get set after other flags. (Frederic B.)
  * Make setuptools optional (Ilan Schnell)
- * We warn when a user tries to use an old GPU with which TheNo is untested.
+ * We warn when a user tries to use an old GPU with which Theano is untested.
    This could cause crash and will also be very slow. (Frederic B.)
  * Make theano.grad able to differentiate between not implemented, undefined and disconnected grad.
    Op.grad function should return theano.gradient.{grad_not_implemented,grad_undefined} or
