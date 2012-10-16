@@ -292,8 +292,11 @@ class Scan(PureOp):
                                            str(outer_mitmot),
                                            argoffset + idx,
                                            outer_mitmot.type.dtype,
+                                           outer_mitmot.type.ndim,
                                            str(inner_mitmot[ipos + k]),
-                                           inner_mitmot[ipos + k].type.dtype))
+                                           inner_mitmot[ipos +
+                                                        k].type.dtype,
+                                           inner_mitmot[ipos + k].type.ndim))
             ipos += len(itaps)
             for k in xrange(len(otaps)):
                 if (inner_mitmot_outs[opos + k].type.dtype != \
