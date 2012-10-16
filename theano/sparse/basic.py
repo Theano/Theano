@@ -3109,7 +3109,7 @@ class Dot(gof.op.Op):
         if x_is_sparse and y_is_sparse:
             rval = rval.toarray()
 
-        out[0] = rval
+        out[0] = theano._asarray(rval, dtype=node.outputs[0].dtype)
 
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) or _is_sparse_variable(y)
