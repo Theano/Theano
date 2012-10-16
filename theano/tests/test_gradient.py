@@ -329,7 +329,7 @@ def test_grad_int():
     int_result = int_func(X, W, b)
     float_result = float_func(np.cast[float_type](X), W, b)
 
-    assert np.allclose(int_result, float_result)
+    assert np.allclose(int_result, float_result), (int_result, float_result)
 
 
 def test_grad_disconnected():
