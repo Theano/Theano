@@ -3159,6 +3159,19 @@ class T_Scan(unittest.TestCase):
             raise Exception(theano.tensor.verify_grad.E_grad,
                     (max_err, 1e-2, max_err_pos))
 
+    def test_grad_numeric_shared(self):
+        shared_var = theano.shared(numpy.float32(1.))
+        def inner_fn():
+            return [], {shared_var:shared_var + numpy.float32(1.)}
+        _, updates = theano.scan(inner_fn,
+                                 n_steps = 10,
+                                 truncate_gradient=-1,
+                                 go_backwards=False)
+        cost = updates.values()[0]
+        g_sh = tensor.grad(cost, shared_var)
+        fgrad = theano.function([], g_sh)
+        assert fgrad() == 1
+
     def test_rop_mitmot(self):
         # this test is a copy paste from the script given by Justin Bayer to
         # reproduce this bug
