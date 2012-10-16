@@ -4,9 +4,12 @@ import theano
 import subprocess
 import os
 from theano.gof.sched import sort_schedule_fn
+from theano.gof.python25 import all
+
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
 mpi_mode = theano.Mode(linker=mpi_linker)
+
 
 def test_recv():
     x = recv((10,10), 'float64', 0, 11)
