@@ -764,7 +764,7 @@ def _populate_grad_dict(var_to_node_to_idx,
 
             #List of bools indicating if each output is an integer dtype
             output_is_int = [hasattr(output.type, 'dtype') and
-                    output.type.dtype.find('int') != -1
+                    output.type.dtype in theano.tensor.discrete_dtypes
                     for output in node.outputs]
 
             #List of bools indicating if each input only has integer outputs
@@ -792,7 +792,7 @@ def _populate_grad_dict(var_to_node_to_idx,
 
                 if not isinstance(term.type,
                         (NullType, DisconnectedType)):
-                    if term.type.dtype.find('float') == -1:
+                    if term.type.dtype not in theano.tensor.float_dtypes:
                         raise TypeError(str(node.op) + '.grad illegally '
                                 ' returned an integer-valued variable.'
                                 ' (Input index %d, dtype %s)' % (i,
