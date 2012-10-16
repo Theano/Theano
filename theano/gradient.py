@@ -1369,12 +1369,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     cost_fn = function(tensor_pt, cost)
 
-    # todo-- determine if this is actually needed
-    g_cost = as_tensor_variable(1.0, name='g_cost')
-    if cast_to_output_type:
-        g_cost = cast(g_cost, o_output.dtype)
-
-    symbolic_grad = grad(cost, tensor_pt, g_cost,
+    symbolic_grad = grad(cost, tensor_pt,
                          disconnected_inputs='ignore')
 
     grad_fn = function(tensor_pt, symbolic_grad)
