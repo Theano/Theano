@@ -6748,6 +6748,8 @@ def tensordot(a, b, axes = 2):
 
     See the documentation of np.tensordot for more examples.
     """
+    a, b = map(as_tensor_variable, (a, b))
+
     # axes must be a scalar or list/tuple of length 2
     if not numpy.isscalar(axes) and len(axes) != 2:
         raise ValueError('Axes should be scalar valued or a '
