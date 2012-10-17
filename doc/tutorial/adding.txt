@@ -135,7 +135,7 @@ then be used like a normal Python function.
     variables to the values to substitute for them, and it returned
     the numerical value of the expression.
 
-    :func:`eval` will be slow the first time you call it on a variable--
+    :func:`eval` will be slow the first time you call it on a variable --
     it needs to call :func:`function` to compile the expression behind
     the scenes. Subsequent calls to :func:`eval` on that same variable
     will be fast, because the variable caches the compiled function.
