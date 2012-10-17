@@ -6616,11 +6616,12 @@ class Dot(Op):
     def __str__(self):
         return "dot"
 
-_dot = Dot()
-pprint.assign(_dot, printing.OperatorPrinter(printing.special['middle_dot'],
-                                             -1, 'left'))
+dot = Dot()
+pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'],
+                                            -1, 'left'))
 
-def dot(a, b):
+#TODO replace dot with dotfunc?
+def dotfunc(a, b):
     """
     Computes the dot product of two variables. For two matrices, this is
     equivalent to matrix multiplication. For two vectors, this is the inner
@@ -6654,7 +6655,7 @@ def dot(a, b):
     elif a.ndim > 2 or b.ndim > 2:
         return tensordot(a, b, [[a.ndim - 1], [numpy.maximum(0, b.ndim - 2)]])
     else:
-        return _dot(a, b)
+        return dot(a, b)
 
 
 
