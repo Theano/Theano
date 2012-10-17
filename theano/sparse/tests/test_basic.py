@@ -1031,6 +1031,7 @@ class DotTests(unittest.TestCase):
     def setUp(self):
         x_size = (10, 100)
         y_size = (100, 1000)
+        utt.seed_rng()
 
         self.x_csr = scipy.sparse.csr_matrix(
             numpy.random.binomial(1, 0.5, x_size), dtype=theano.config.floatX)
@@ -1135,6 +1136,29 @@ class DotTests(unittest.TestCase):
         d_theano = f(a_val)
         d_numpy = a_val * b.get_value()
         assert numpy.allclose(d_theano, d_numpy)
+
+    def test_int32_dtype(self):
+        # Reported on the theano-user mailing-list:
+        # https://groups.google.com/d/msg/theano-users/MT9ui8LtTsY/rwatwEF9zWAJ
+        size = 9
+        intX = 'int32'
+
+        C = tensor.matrix('C', dtype=intX)
+        I = tensor.matrix('I', dtype=intX)
+
+        fI = I.flatten()
+        data = tensor.ones_like(fI)
+        indptr = tensor.arange(data.shape[0] + 1)
+
+        m1 = sparse.CSR(data, fI, indptr, (8, size))
+        m2 = sparse.dot(m1, C)
+        y = m2.reshape(shape=(2, 4, 9), ndim=3)
+
+        f = theano.function(inputs=[I, C], outputs=y)
+        i = numpy.asarray([[4, 3, 7, 7], [2, 8, 4, 5]], dtype=intX)
+        a = numpy.asarray(numpy.random.randint(0, 100, (size, size)),
+                          dtype=intX)
+        f(i, a)
 
 
 class UsmmTests(unittest.TestCase):
