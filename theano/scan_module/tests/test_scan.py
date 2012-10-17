@@ -3187,6 +3187,25 @@ class T_Scan(unittest.TestCase):
         p = tensor.dvector()
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
+    def test_seq_tap_bug_jeremiah(self):
+        inp = numpy.arange(10).reshape(-1,1).astype(theano.config.floatX)
+        exp_out = numpy.zeros((10,1)).astype(theano.config.floatX)
+        exp_out[4:] = inp[:-4]
+
+        def onestep(x, x_tm4):
+            return x, x_tm4
+
+        seq = tensor.matrix()
+        initial_value = theano.shared(numpy.zeros((4,1),
+                                                  dtype=theano.config.floatX))
+        outputs_info = [{'initial' : initial_value, 'taps' : [-4]}, None]
+        results, updates = theano.scan(fn=onestep,
+                                       sequences=seq,
+                                       outputs_info=outputs_info)
+
+        f = theano.function([seq], results[1])
+        assert numpy.all(exp_out == f(inp))
+
 
 def test_speed():
     #
