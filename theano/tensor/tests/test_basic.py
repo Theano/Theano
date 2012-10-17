@@ -5471,7 +5471,13 @@ class test_tensordot(unittest.TestCase):
         # Test matrix-matrix
         amat = matrix()
         bmat = matrix()
-        for axes in 0, (1, 0), [1, 0], (1, (0, )), ((1, ), 0), ([1], [0]):
+        for axes in [0,
+                     (1, 0),
+                     [1, 0],
+                     (1, (0, )),
+                     ((1, ), 0),
+                     ([1], [0]),
+                     ([], [])]:
             c = tensordot(amat, bmat, axes)
             f3 = inplace_func([amat, bmat], c)
             aval = rand(4, 7)

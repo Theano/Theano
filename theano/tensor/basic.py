@@ -6803,7 +6803,7 @@ def tensordot(a, b, axes = 2):
 
         # check that a_axes doesn't contain an axis greater than or equal to
         # a's dimensions.
-        if numpy.max(numpy.array(a_axes)) >= a.ndim:
+        if len(a_axes) > 0 and numpy.max(numpy.array(a_axes)) >= a.ndim:
             raise ValueError('axes[0] contains dimensions greater than or '
                              'equal to a.ndim (a.ndim=%i, max(axes[0])=%i).' %
                              (a.ndim, numpy.max(numpy.array(a_axes))))
@@ -6817,7 +6817,7 @@ def tensordot(a, b, axes = 2):
 
         # check that b_axes doesn't contain an axis greater than or equal to
         # b's dimensions.
-        if numpy.max(numpy.array(b_axes)) >= b.ndim:
+        if len(b_axes) != 0 and numpy.max(numpy.array(b_axes)) >= b.ndim:
             raise ValueError('axes[1] contains dimensions greater than or '
                              'equal to b.ndim (b.ndim=%i, max(axes[1])=%i).' %
                              (b.ndim, numpy.max(numpy.array(b_axes))))
