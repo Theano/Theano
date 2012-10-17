@@ -7136,7 +7136,7 @@ def dot(a, b):
     if a.ndim == 0 or b.ndim == 0:
         return a * b
     elif a.ndim > 2 or b.ndim > 2:
-        return tensordot(a, b, [[a.ndim - 1], [b.ndim - 2]])
+        return tensordot(a, b, [[a.ndim - 1], [numpy.maximum(0, b.ndim - 2)]])
     else:
         return _dot(a, b)
 
