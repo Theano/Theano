@@ -21,8 +21,10 @@ Highlights:
  * Use GPU asynchronous functionality (Frederic B.)
  * Better Windows support.
 
-Known bug:
+Known bugs:
  * A few crash cases that will be fixed by the final release.
+ * CAReduce with NaN in inputs do not return the correct output. (reported by Pascal L.)
+     * This is used in tensor.{all,any,max,mean,prod,sum} and in the grad of PermuteRowElements.
 
 Bug fixes:
  * Outputs of Scan nodes could contain corrupted values: some parts of the
@@ -46,8 +48,6 @@ Bug fixes:
    they were not supposed to share. (David W-F)
  * Correctly record the GPU device number used when we let the driver select it.
    (Frederic B.)
- * CAReduce with NaN in inputs did not return the good output. (Pascal L.)
-     * This is used in tensor.{all,any,max,mean,prod,sum} and in the grad of PermuteRowElements.
  * The grad of TensorDot, was returning the wrong shape for some combination of axes.
    We now raise NotImplementedError in those cases. (Frederic B.)
  * conv2d with subsample >2 returned wrong values. (Pascal L.)
