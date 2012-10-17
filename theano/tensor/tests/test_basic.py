@@ -5589,25 +5589,6 @@ class test_tensordot(unittest.TestCase):
                                        f3(aval, bval)))
         utt.verify_grad(self.TensorDot(axes), [aval, bval])
 
-    def test_tensordot_grad(self):
-        # We test it manually as we recreate the op in the make_node
-
-        amat = matrix()
-        bmat = matrix()
-        gzmat = matrix()
-        axes = 1
-        aval = rand(4, 5)
-        bval = rand(5, 3)
-        gzval = rand(4, 3)
-        f1 = inplace_func([amat, bmat, gzmat], tensordot_grad(axes)(
-            amat, bmat, gzmat))
-        f2 = inplace_func([amat, bmat, gzmat], tensordot_grad(((1, ), (
-            0,)))(amat, bmat, gzmat))
-        o1 = f1(aval, bval, gzval)
-        o2 = f2(aval, bval, gzval)
-        self.assertTrue(numpy.allclose(o1[0], o2[0]))
-        self.assertTrue(numpy.allclose(o1[1], o2[1]))
-
 
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
