@@ -7250,12 +7250,15 @@ def tensordot(a, b, axes = 2):
 
         outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
         outndim = a.ndim + b.ndim - (2 * axes)
-        a_reshaped = a.reshape((prod(a.shape[:a.ndim - axes]),
-                                prod(a.shape[a.ndim - axes:])),
-                                ndim = 2)
-        b_reshaped = b.reshape((prod(b.shape[:axes]),
-                                prod(b.shape[axes:])),
-                                ndim = 2)
+
+        a_shape_0 = b_shape_0 = 1
+        for s0 in range(a.ndim - axes):
+            a_shape_0 *= a.shape[s0]
+        for s0 in range(axes):
+            b_shape_0 *= b.shape[s0]
+
+        a_reshaped = a.reshape((a_shape_0, -1), ndim = 2)
+        b_reshaped = b.reshape((b_shape_0, -1), ndim = 2)
 
         return dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
 
