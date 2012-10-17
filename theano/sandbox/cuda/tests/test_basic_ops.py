@@ -1129,54 +1129,6 @@ def test_shared_cudandarray():
     assert isinstance(a.type, tcn.CudaNdarrayType)
 
 
-class test_tensordot_reshape(unittest.TestCase):
-    '''Test alternative tensordot implementation.
-
-    Test that the tensordot implementation using dimshuffle, reshape and dot
-    gives the same results as the default (numpy) version.
-    '''
-
-    def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed())
-
-    def test1(self):
-        # define some tensors
-        tensor1 = self.rng.rand(20, 10, 5, 8).astype(theano.config.floatX)
-        tensor2 = self.rng.rand(5, 8, 20).astype(theano.config.floatX)
-        tensor3 = self.rng.rand(8, 20, 5).astype(theano.config.floatX)
-
-        x = T.tensor4('x')
-        y = T.tensor3('y')
-
-        # case 1: number of axes to sum over
-        default1 = theano.function([x, y], T.tensordot(x, y, 2))(
-                tensor1, tensor2)
-        reshape1 = theano.function([x, y], B.tensordot(x, y, 2))(
-                tensor1, tensor2)
-        assert numpy.allclose(default1, reshape1)
-
-        # case 2: axis pairs
-        default2 = theano.function(
-                [x, y],
-                T.tensordot(x, y, axes=[(0, 3), (1, 0)])
-                )(tensor1, tensor3)
-        reshape2 = theano.function(
-                [x, y],
-                B.tensordot(x, y, axes=[(0, 3), (1, 0)])
-                )(tensor1, tensor3)
-        assert numpy.allclose(default2, reshape2)
-
-        default3 = theano.function(
-                [x, y],
-                T.tensordot(x, y, axes=[(0, 3, 2), (1, 0, 2)])
-                )(tensor1, tensor3)
-        reshape3 = theano.function(
-                [x, y],
-                B.tensordot(x, y, axes=[(0, 3, 2), (1, 0, 2)])
-                )(tensor1, tensor3)
-        assert numpy.allclose(default3, reshape3)
-
-
 class test_size(unittest.TestCase):
 
     """
