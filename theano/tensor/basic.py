@@ -4435,9 +4435,10 @@ def batched_dot22(x, y):
     >>> second = T.tensor3('second')
     >>> result = batched_dot22(first, second)
     """
-    result, updates = theano.scan(fn=lambda x_mat, y_mat: T.dot(x_mat.T, y_mat),
+    result, updates = theano.scan(fn=lambda x_mat, y_mat:
+            theano.tensor.dot(x_mat.T, y_mat),
             outputs_info=None,
-            sequences=[x_mat, y_mat],
+            sequences=[x, y],
             non_sequences=None)
     return result
 
