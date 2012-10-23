@@ -229,8 +229,8 @@ Speed up:
 Speed up GPU:
  * Convolution on the GPU now checks the generation of the card to make
    it faster in some cases (especially medium/big ouput image) (Frederic B.)
-   * We had hardcoded 512 as the maximum number of threads per block. Newer cards
-     support up to 1024 threads per block.
+     * We had hardcoded 512 as the maximum number of threads per block. Newer cards
+       support up to 1024 threads per block.
  * Faster GpuAdvancedSubtensor1, GpuSubtensor, GpuAlloc (Frederic B.)
  * We now pass the GPU architecture to nvcc when compiling (Frederic B.)
  * Now we use the GPU function async feature by default. (Frederic B.)
@@ -242,7 +242,7 @@ Speed up GPU:
 Sparse Sandbox graduate (moved from theano.sparse.sandbox.sp):
  * sparse.remove0 (Frederic B., Nicolas B.)
  * sparse.sp_sum(a, axis=None) (Nicolas B.)
-   * bugfix: the not structured grad was returning a structured grad.
+     * bugfix: the not structured grad was returning a structured grad.
  * sparse.{col_scale,row_scale,ensure_sorted_indices,clean} (Nicolas B.)
  * sparse.{diag,square_diagonal} (Nicolas B.)
 
@@ -257,8 +257,8 @@ Sparse:
      * Optimized op: StructuredAddSV, StrucutedAddSVCSR (inserted automatically)
  * New Op: sparse.mul_s_v multiplication of sparse matrix by broadcasted vector (Yann D.)
  * New Op: sparse.Cast() (Yann D., Nicolas B.)
-   * Add sparse_variable.astype() and theano.sparse.cast() and
-     theano.sparse.{b,w,i,l,f,d,c,z}cast() as their tensor equivalent (Nicolas B.)
+     * Add sparse_variable.astype() and theano.sparse.cast() and
+       theano.sparse.{b,w,i,l,f,d,c,z}cast() as their tensor equivalent (Nicolas B.)
  * Op class: SamplingDot (Yann D., Nicolas B.)
    * Optimized version: SamplingDotCsr, StructuredDotCSC
    * Optimizations to insert the optimized version: local_sampling_dot_csr, local_structured_add_s_v
@@ -268,9 +268,9 @@ Sparse:
 
 New flags:
  * `profile=True` flag now prints the sum of all printed profiles. (Frederic B.)
-   * It works with the linkers vm/cvm (default).
-   * Also print compile time, optimizer time and linker time.
-   * Also print a summary by op class.
+     * It works with the linkers vm/cvm (default).
+     * Also print compile time, optimizer time and linker time.
+     * Also print a summary by op class.
  * new flag "profile_optimizer" (Frederic B.)
    when profile=True, will also print the time spent in each optimizer.
    Useful to find optimization bottleneck.
