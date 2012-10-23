@@ -294,7 +294,10 @@ if sys.version_info[:2] < (2, 7):
         return not self == other
 
 else:
-    from UserDict import DictMixin
+    try:
+        from UserDict import DictMixin
+    except ImportError:
+        from collections import MutableMapping as DictMixin
     OrderedDict = collections.OrderedDict
     from collections import Callable
 
