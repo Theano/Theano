@@ -158,7 +158,7 @@ on a 32-bit platform and
       96 [4, 'toaster', 230.1]
 
 on a 64-bit platform. An empty list eats up 72 bytes. The size of an
-empty, 64-bit C++ ``std::list()``is only 16 bytes, 4-5 times less. What
+empty, 64-bit C++ ``std::list()`` is only 16 bytes, 4-5 times less. What
 about tuples? (and dictionaries?):
 
 ::
