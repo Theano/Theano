@@ -5,6 +5,7 @@
 #   * Add download_url
 
 import os
+import sys
 import subprocess
 from fnmatch import fnmatchcase
 from distutils.util import convert_path
@@ -12,6 +13,11 @@ try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+try:
+   from distutils.command.build_py import build_py_2to3 \
+        as build_py
+except ImportError:
+   from distutils.command.build_py import build_py
 
 
 CLASSIFIERS = """\
@@ -102,6 +108,29 @@ def git_version():
         git_revision = "unknown-git"
     return git_revision
 
+# Python 2.4 compatibility: Python versions 2.6 and later support new
+# exception syntax, but for now we have to resort to exec. 
+if sys.hexversion >= 0x2070000:
+    exec("""\
+def write_text(filename, text):
+    with open(filename, 'w') as a:
+        try:
+            a.write(text)
+        except Exception as e:
+            print(e)
+""")
+else:
+    exec("""\
+def write_text(filename, text):
+    a = open(filename, 'w')
+    try:
+        try:
+            a.write(text)
+        except Exception, e:
+            print e
+    finally:
+        a.close()
+""")
 
 def write_version_py(filename=os.path.join('theano', 'generated_version.py')):
     cnt = """
@@ -126,19 +155,11 @@ if not release:
         GIT_REVISION = "unknown-git"
 
     FULL_VERSION += '.dev-' + GIT_REVISION
-
-    a = open(filename, 'w')
-    try:
-        try:
-            a.write(cnt % {'version': VERSION,
-                           'full_version': FULL_VERSION,
-                           'git_revision': GIT_REVISION,
-                           'isrelease': str(ISRELEASED)})
-        except Exception, e:
-            print e
-    finally:
-        a.close()
-
+    text = cnt % {'version': VERSION,
+                  'full_version': FULL_VERSION,
+                  'git_revision': GIT_REVISION,
+                  'isrelease': str(ISRELEASED)}
+    write_text(filename, text)
 
 def do_setup():
     write_version_py()
@@ -163,7 +184,8 @@ def do_setup():
           keywords=' '.join([
             'theano', 'math', 'numerical', 'symbolic', 'blas',
             'numpy', 'gpu', 'autodiff', 'differentiation'
-          ])
+          ]),
+          cmdclass = {'build_py': build_py}
     )
 if __name__ == "__main__":
     do_setup()
