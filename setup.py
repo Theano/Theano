@@ -16,8 +16,11 @@ except ImportError:
 try:
    from distutils.command.build_py import build_py_2to3 \
         as build_py
+   from distutils.command.build_scripts import build_scripts_2to3 \
+        as build_scripts
 except ImportError:
    from distutils.command.build_py import build_py
+   from distutils.command.build_scripts import build_scripts
 
 
 CLASSIFIERS = """\
@@ -185,7 +188,8 @@ def do_setup():
             'theano', 'math', 'numerical', 'symbolic', 'blas',
             'numpy', 'gpu', 'autodiff', 'differentiation'
           ]),
-          cmdclass = {'build_py': build_py}
+          cmdclass = {'build_py': build_py,
+                      'build_scripts': build_scripts}
     )
 if __name__ == "__main__":
     do_setup()
