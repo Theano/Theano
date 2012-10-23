@@ -43,3 +43,4 @@ you out.
     debug_faq
     extending_theano
     faq
+    python-memory-management

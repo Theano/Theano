@@ -11,3 +11,5 @@ tutorials/exercises if you need to learn it or only need a refresher:
   * `Python Challenge <http://www.pythonchallenge.com/>`__
   * `Dive into Python <http://diveintopython.net/>`__
   * `Google Python Class <http://code.google.com/edu/languages/google-python-class/index.html>`__
+
+We have a tutorial on how :ref:`python manage its memory <python-memory-management>`
