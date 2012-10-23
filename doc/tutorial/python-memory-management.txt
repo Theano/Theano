@@ -1,3 +1,5 @@
+.. _python-memory-management:
+
 Python Memory Management
 ========================
 
