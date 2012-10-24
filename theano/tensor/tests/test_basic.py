@@ -1927,12 +1927,12 @@ def test_batched_dot22():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
     output = theano.tensor.basic.batched_dot22(first, second)
-    first_val = numpy.random.rand(10, 20, 10)
+    first_val = numpy.random.rand(10, 10, 20)
     second_val = numpy.random.rand(10, 20, 5)
     result_fn = theano.function([first, second], output)
     result = result_fn(first_val, second_val)
     assert result.shape[0] == first_val.shape[0]
-    assert result.shape[1] == first_val.shape[2]
+    assert result.shape[1] == first_val.shape[1]
     assert result.shape[2] == second_val.shape[2]
 
 def test_tensor_values_eq_approx():
