@@ -70,9 +70,8 @@ class ViewOp(gof.Op):
                         "when calling register_deep_copy_op_c_code." % t,
                         stacklevel=2)
                 return ()
+            version.append((str(t), v))
 
-        version.append((str(t), v))
-        print 'view version:', version
         return tuple(version)
 
     def infer_shape(self, node, input_shapes):
@@ -161,9 +160,8 @@ class DeepCopyOp(gof.Op):
                         "when calling register_OutputGuard_c_code." % t,
                         stacklevel=2)
                 return ()
+            version.append((str(t), v))
 
-        version.append((str(t), v))
-        print 'deeop copy version:', version
         return tuple(version)
 
     def c_code(self, node, name, inames, onames, sub):
