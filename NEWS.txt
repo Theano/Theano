@@ -23,8 +23,6 @@ Highlights:
 
 Known bugs:
  * A few crash cases that will be fixed by the final release.
- * CAReduce with NaN in inputs do not return the correct output. (reported by Pascal L.)
-     * This is used in tensor.{all,any,max,mean,prod,sum} and in the grad of PermuteRowElements.
 
 Bug fixes:
  * Outputs of Scan nodes could contain corrupted values: some parts of the
