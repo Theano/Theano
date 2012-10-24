@@ -6113,21 +6113,33 @@ def test_unalign():
     av, bv = tensor.vectors('ab')
     f = theano.function([av, bv], 2 * av + 3 * bv)
     f.maker.fgraph.toposort()
-    # FAST_COMPILE use the python code that support unaligned data
-    # The DebugMode make a copy of the inputs, so they will be aligned.
-    should_raise = (theano.config.mode not in ["FAST_COMPILE", "DebugMode",
-                                              "DEBUG_MODE"] and
-                    theano.config.linker != 'py')
+
     try:
         out_theano = f(a, b)
         assert not a.flags.aligned
         assert not b.flags.aligned
         assert numpy.allclose(out_numpy, out_theano)
-        if should_raise:
-            raise Exception("Expected an error from Theano!")
-    except NotImplementedError, e:
-        if not should_raise:
-            raise Exception("Theano raised an unexpected exception")
+        assert False
+    except TypeError, e:
+        pass
+
+    a = numpy.empty((), dtype=dtype)['f1']
+    b = numpy.empty((), dtype=dtype)['f1']
+    assert not a.flags.aligned
+    assert not b.flags.aligned
+    out_numpy = 2 * a + 3 * b
+
+    av, bv = tensor.scalars('ab')
+    f = theano.function([av, bv], 2 * av + 3 * bv)
+    f.maker.fgraph.toposort()
+    try:
+        out_theano = f(a, b)
+        assert not a.flags.aligned
+        assert not b.flags.aligned
+        assert numpy.allclose(out_numpy, out_theano)
+        assert False
+    except TypeError, e:
+        pass
 
 
 def test_dimshuffle_duplicate():

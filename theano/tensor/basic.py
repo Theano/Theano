@@ -707,6 +707,17 @@ class TensorType(Type):
             raise TypeError("Wrong number of dimensions: expected %s,"
                             " got %s with shape %s." % (self.ndim, data.ndim,
                                                         data.shape), data)
+        if not data.flags.aligned:
+            try:
+                msg = "object buffer" + str(data.data)
+            except AttributeError:
+                msg = ""
+            raise TypeError("The numpy.ndarray object is not aligned."
+                            " Theano c code do not support that.",
+                            msg,
+                            "object shape", data.shape,
+                            "object strides", data.strides)
+
         i = 0
         for b in self.broadcastable:
             if b and data.shape[i] != 1:
