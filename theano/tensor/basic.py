@@ -4434,6 +4434,9 @@ def batched_dot(x, y):
     >>> first = T.tensor3('first')
     >>> second = T.tensor3('second')
     >>> result = batched_dot(first, second)
+    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
+    But numpy einsum is slower then dot or tensordot:
+    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
     """
     result, updates = theano.scan(fn=lambda x_mat, y_mat:
             theano.tensor.dot(x_mat, y_mat),
