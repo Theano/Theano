@@ -147,7 +147,7 @@ class SparseType(gof.Type):
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
-# Register CudaNdarrayType's C code for ViewOp.
+# Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
         SparseType,
         """

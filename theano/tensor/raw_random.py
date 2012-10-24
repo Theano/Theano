@@ -56,7 +56,7 @@ class RandomStateType(gof.Type):
                 return False
         return True
 
-# Register CudaNdarrayType's C code for ViewOp.
+# Register RandomStateType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
         RandomStateType,
         """
