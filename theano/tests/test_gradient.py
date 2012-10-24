@@ -380,6 +380,24 @@ class test_grad(unittest.TestCase):
         # In an earlier version of theano, the above line would have failed
         # while trying to add two DisconnectedTypes
 
+    def test_output_grad_on_int(self):
+        # If the g_cost argument is specified when x has a discrete dtype,
+        # g_cost should be equivalent to 0.
+        x = theano.tensor.iscalar('x')
+        y = x * 2
+
+        # Should work:
+        c0 = theano.tensor.constant(0)
+        theano.grad(y, x, g_cost=c0)
+        theano.grad(y, x, g_cost=y.zeros_like())
+        theano.grad(y, x, g_cost=y.zeros_like().astype('float64'))
+
+        # Should raise ValueError
+        c1 = theano.tensor.constant(1)
+        self.assertRaises(ValueError, theano.grad, y, x, g_cost=c1)
+        s0 = theano.shared(np.zeros((), dtype='int8'))
+        self.assertRaises(ValueError, theano.grad, y, x, g_cost=s0)
+
 
 if __name__ == '__main__':
     unittest.main()
