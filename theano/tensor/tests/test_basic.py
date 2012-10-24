@@ -1923,10 +1923,10 @@ def _approx_eq(a, b, eps=1.0e-4):
     return  True
 _approx_eq.debug = 0
 
-def test_batched_dot22():
+def test_batched_dot():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
-    output = theano.tensor.basic.batched_dot22(first, second)
+    output = theano.tensor.basic.batched_dot(first, second)
     first_val = numpy.random.rand(10, 10, 20)
     second_val = numpy.random.rand(10, 20, 5)
     result_fn = theano.function([first, second], output)
@@ -1934,6 +1934,16 @@ def test_batched_dot22():
     assert result.shape[0] == first_val.shape[0]
     assert result.shape[1] == first_val.shape[1]
     assert result.shape[2] == second_val.shape[2]
+
+    first_mat = theano.tensor.dmatrix("first")
+    second_mat = theano.tensor.dmatrix("second")
+    output = theano.tensor.basic.batched_dot(first_mat, second_mat)
+    first_mat_val = numpy.random.rand(10, 10)
+    second_mat_val = numpy.random.rand(10, 10)
+    result_fn = theano.function([first_mat, second_mat], output)
+    result = result_fn(first_mat_val, second_mat_val)
+
+    assert result.shape[0] == first_val.shape[0]
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
