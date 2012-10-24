@@ -475,6 +475,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
                 cval = theano.get_constant_value(g_cost)
                 if cval == 0:
                     g_cost_is_zero = True
+                else:
+                    g_cost_is_zero = False
             except TypeError:
                 g_cost_is_zero = False
 
