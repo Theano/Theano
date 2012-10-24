@@ -11,7 +11,6 @@ from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
 import numpy as np
-from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType
 
 one = theano.tensor.as_tensor_variable(1.)
@@ -35,7 +34,8 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertRaises(TypeError, grad_sources_inputs, [(a.out, one)], None)
 
     def test_wrong_rval_len1(self):
-        """Test that it is not ok to return the wrong number of gradient terms"""
+        """Test that it is not ok to return the wrong number of gradient terms
+        """
         class retOne(gof.op.Op):
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
@@ -47,7 +47,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         i = theano.tensor.vector()
         j = theano.tensor.vector()
         a1 = retOne().make_node(i)
-        g = grad_sources_inputs([(a1.out, one)], None)
+        grad_sources_inputs([(a1.out, one)], None)
         a2 = retOne().make_node(i, j)
         self.assertRaises(ValueError, grad_sources_inputs,
                 [(a2.out, one)], None)
