@@ -32,11 +32,7 @@ class testgrad_sources_inputs(unittest.TestCase):
                 gz, = grads
                 pass
         a = retNone().make_node()
-        try:
-            grad_sources_inputs([(a.out, one)], None)
-        except TypeError, e:
-            return
-        self.fail()
+        self.assertRaises(TypeError, grad_sources_inputs, [(a.out, one)], None)
 
     def test_wrong_rval_len1(self):
         """Test that it is not ok to return the wrong number of gradient terms"""
@@ -53,11 +49,8 @@ class testgrad_sources_inputs(unittest.TestCase):
         a1 = retOne().make_node(i)
         g = grad_sources_inputs([(a1.out, one)], None)
         a2 = retOne().make_node(i, j)
-        try:
-            g = grad_sources_inputs([(a2.out, one)], None)
-        except ValueError, e:
-            return
-        self.fail()
+        self.assertRaises(ValueError, grad_sources_inputs,
+                [(a2.out, one)], None)
 
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
@@ -132,281 +125,261 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
 
-def test_unimplemented_grad_func():
-    # tests that function compilation catches unimplemented grads in the graph
-    a = theano.tensor.vector()
-    b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
-    try:
-        f = theano.function([a], b, on_unused_input='ignore')
-        assert 0
-    except TypeError:
-        pass
+class test_grad(unittest.TestCase):
 
+    def test_unimplemented_grad_func(self):
+        # tests that function compilation catches unimplemented grads
+        # in the graph
+        a = theano.tensor.vector()
+        b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
+        self.assertRaises(TypeError, theano.function,
+                [a], b, on_unused_input='ignore')
 
-def test_undefined_grad_func():
-    #tests that function compilation catches undefined grads in the graph
-    a = theano.tensor.vector()
-    b = theano.gradient.grad_undefined(theano.tensor.add, 0, a)
-    try:
-        f = theano.function([a], b, on_unused_input='ignore')
-        assert 0
-    except TypeError:
-        pass
+    def test_undefined_grad_func(self):
+        #tests that function compilation catches undefined grads in the graph
+        a = theano.tensor.vector()
+        b = theano.gradient.grad_undefined(theano.tensor.add, 0, a)
+        self.assertRaises(TypeError, theano.function,
+                [a], b, on_unused_input='ignore')
 
+    def test_unimplemented_grad_grad(self):
+        #tests that unimplemented grads are caught in the grad method
 
-def test_unimplemented_grad_grad():
-    #tests that unimplemented grads are caught in the grad method
+        class DummyOp(gof.Op):
+            def make_node(self, x):
+                return gof.Apply(self, [x], [x.type()])
 
-    class DummyOp(gof.Op):
-        def make_node(self, x):
-            return gof.Apply(self, [x], [x.type()])
+            def grad(self, inputs, output_grads):
+                return [theano.gradient.grad_not_implemented(
+                            self, 0, inputs[0])]
 
-        def grad(self, inputs, output_grads):
-            return [theano.gradient.grad_not_implemented(self, 0, inputs[0])]
+        a = theano.tensor.scalar()
+        b = DummyOp()(a)
 
-    a = theano.tensor.scalar()
-    b = DummyOp()(a)
+        self.assertRaises(TypeError, theano.gradient.grad, b, a)
 
-    try:
-        g = theano.gradient.grad(b, a)
-        assert False
-    except TypeError:
-        pass
+    def test_undefined_grad_grad(self):
+        #tests that undefined grads are caught in the grad method
 
+        V = theano.tensor.TensorType(dtype=config.floatX,
+                broadcastable=(False, False, False, False, False))()
+        W = theano.tensor.TensorType(dtype=config.floatX,
+                broadcastable=(False, False, False, False, False))()
+        b = theano.tensor.vector()
+        d = theano.tensor.ivector()
 
-def test_undefined_grad_grad():
-    #tests that undefined grads are caught in the grad method
+        Z = conv3D(V, W, b, d)
 
-    V = theano.tensor.TensorType(dtype=config.floatX,
-            broadcastable=(False, False, False, False, False))()
-    W = theano.tensor.TensorType(dtype=config.floatX,
-            broadcastable=(False, False, False, False, False))()
-    b = theano.tensor.vector()
-    d = theano.tensor.ivector()
+        self.assertRaises(TypeError, theano.gradient.grad, Z.sum(), d)
 
-    Z = conv3D(V, W, b, d)
+    def test_grad_name(self):
+        A = theano.tensor.matrix('A')
+        x = theano.tensor.vector('x')
+        f = theano.tensor.dot(x, theano.tensor.dot(A, x))
+        f.name = 'f'
+        g = theano.tensor.grad(f, x)
+        assert g.name == '(df/dx)'
 
-    try:
-        g = theano.gradient.grad(Z.sum(), d)
-        assert False
-    except TypeError:
-        pass
+    def test_grad_duplicate_input(self):
 
+        #test that the grad works when a variable
+        #appears in more than one place in a node's input list
 
-def test_grad_name():
-    A = theano.tensor.matrix('A')
-    x = theano.tensor.vector('x')
-    f = theano.tensor.dot(x, theano.tensor.dot(A, x))
-    f.name = 'f'
-    g = theano.tensor.grad(f, x)
-    assert g.name == '(df/dx)'
+        def output(x):
+            return (x * x)
 
+        rng = np.random.RandomState([2012, 8, 28])
 
-def test_grad_duplicate_input():
+        vx = rng.randn(2)
 
-    #test that the grad works when a variable
-    #appears in more than one place in a node's input list
+        theano.tests.unittest_tools.verify_grad(output, [vx])
 
-    def output(x):
-        return (x * x)
+    def test_grad_quadratic(self):
 
-    rng = np.random.RandomState([2012, 8, 28])
+        #test the gradient on a tiny graph
 
-    vx = rng.randn(2)
+        def cost(x, A):
+            return theano.tensor.dot(x, theano.tensor.dot(A, x))
 
-    theano.tests.unittest_tools.verify_grad(output, [vx])
+        rng = np.random.RandomState([2012, 8, 28])
 
+        vx = rng.randn(2)
+        vA = rng.randn(2, 2)
 
-def test_grad_quadratic():
+        theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
 
-    #test the gradient on a tiny graph
+    def test_grad_quadratic_vector(self):
 
-    def cost(x, A):
-        return theano.tensor.dot(x, theano.tensor.dot(A, x))
+        #test the gradient on a small graph
 
-    rng = np.random.RandomState([2012, 8, 28])
+        def output(x, A):
+            return theano.tensor.dot(x * x, A)
 
-    vx = rng.randn(2)
-    vA = rng.randn(2, 2)
+        rng = np.random.RandomState([2012, 8, 28])
 
-    theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
+        vx = rng.randn(2)
+        vA = rng.randn(2, 2)
 
+        theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
-def test_grad_quadratic_vector():
+    def test_grad_cubic(self):
 
-    #test the gradient on a small graph
+        #test the gradient on a bigger graph
 
-    def output(x, A):
-        return theano.tensor.dot(x * x, A)
+        def cost(x, A):
+            return theano.tensor.dot(x * x, theano.tensor.dot(A, x))
 
-    rng = np.random.RandomState([2012, 8, 28])
+        rng = np.random.RandomState([2012, 8, 28])
 
-    vx = rng.randn(2)
-    vA = rng.randn(2, 2)
+        vx = rng.randn(2)
+        vA = rng.randn(2, 2)
 
-    theano.tests.unittest_tools.verify_grad(output, [vx, vA])
+        theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
 
+    def test_grad_grad_quadratic(self):
 
-def test_grad_cubic():
+        #test the gradient on a graph constructed using the gradient
 
-    #test the gradient on a bigger graph
+        def output(x, A):
+            orig_cost = theano.tensor.dot(x, theano.tensor.dot(A, x))
+            return theano.gradient.grad(orig_cost, x)
 
-    def cost(x, A):
-        return theano.tensor.dot(x * x, theano.tensor.dot(A, x))
+        rng = np.random.RandomState([2012, 8, 28])
 
-    rng = np.random.RandomState([2012, 8, 28])
+        vx = rng.randn(2)
+        vA = rng.randn(2, 2)
 
-    vx = rng.randn(2)
-    vA = rng.randn(2, 2)
+        theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
-    theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
+    def test_grad_grad_cubic(self):
 
+        #test the gradient on a bigger graph constructed using the gradient
 
-def test_grad_grad_quadratic():
+        def output(x, A):
+            orig_cost = theano.tensor.dot(x * x, theano.tensor.dot(A, x))
+            return theano.gradient.grad(orig_cost, x)
 
-    #test the gradient on a graph constructed using the gradient
+        rng = np.random.RandomState([2012, 8, 28])
 
-    def output(x, A):
-        orig_cost = theano.tensor.dot(x, theano.tensor.dot(A, x))
-        return theano.gradient.grad(orig_cost, x)
+        vx = rng.randn(2)
+        vA = rng.randn(2, 2)
 
-    rng = np.random.RandomState([2012, 8, 28])
+        theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
-    vx = rng.randn(2)
-    vA = rng.randn(2, 2)
+    def test_grad_int(self):
 
-    theano.tests.unittest_tools.verify_grad(output, [vx, vA])
+        # tests that the gradient with respect to an integer
+        # is the same as the gradient with respect to a float
 
+        W = theano.tensor.matrix()
+        b = theano.tensor.vector()
 
-def test_grad_grad_cubic():
+        def make_grad_func(X):
+            Z = theano.tensor.dot(X, W) + b
+            H = theano.tensor.nnet.sigmoid(Z)
+            cost = H.sum()
+            g = gradient.grad(cost, X)
+            return theano.function([X, W, b], g, on_unused_input='ignore')
 
-    #test the gradient on a bigger graph constructed using the gradient
+        int_func = make_grad_func(theano.tensor.imatrix())
+        #we have to use float64 as the float type to get the results to match
+        #using an integer for the input makes all the later functions use
+        #float64
+        float_func = make_grad_func(theano.tensor.matrix(dtype='float64'))
 
-    def output(x, A):
-        orig_cost = theano.tensor.dot(x * x, theano.tensor.dot(A, x))
-        return theano.gradient.grad(orig_cost, x)
+        m = 5
+        d = 3
+        n = 4
+        rng = np.random.RandomState([2012, 9, 5])
 
-    rng = np.random.RandomState([2012, 8, 28])
+        int_type = theano.tensor.imatrix().dtype
+        float_type = 'float64'
 
-    vx = rng.randn(2)
-    vA = rng.randn(2, 2)
+        X = np.cast[int_type](rng.randn(m, d) * 127.)
+        W = np.cast[W.dtype](rng.randn(d, n))
+        b = np.cast[b.dtype](rng.randn(n))
 
-    theano.tests.unittest_tools.verify_grad(output, [vx, vA])
+        int_result = int_func(X, W, b)
+        float_result = float_func(np.cast[float_type](X), W, b)
 
+        assert np.allclose(int_result, float_result), (
+                int_result, float_result)
 
-def test_grad_int():
+    def test_grad_disconnected(self):
 
-    # tests that the gradient with respect to an integer
-    # is the same as the gradient with respect to a float
+        #tests corner cases of gradient for shape and alloc
 
-    W = theano.tensor.matrix()
-    b = theano.tensor.vector()
+        x = theano.tensor.vector(name='x')
+        total = x.sum()
+        total.name = 'total'
+        num_elements = x.shape[0]
+        num_elements.name = 'num_elements'
+        silly_vector = theano.tensor.alloc(total / num_elements, num_elements)
+        silly_vector.name = 'silly_vector'
+        cost = silly_vector.sum()
+        cost.name = 'cost'
+        #note that cost simplifies to be the same as "total"
+        g = gradient.grad(cost, x, add_names=False)
+        #we still need to pass in x because it determines the shape of
+        #the output
+        f = theano.function([x], g)
+        rng = np.random.RandomState([2012, 9, 5])
+        x = np.cast[x.dtype](rng.randn(3))
+        g = f(x)
+        assert np.allclose(g, np.ones(x.shape, dtype=x.dtype))
 
-    def make_grad_func(X):
-        Z = theano.tensor.dot(X, W) + b
-        H = theano.tensor.nnet.sigmoid(Z)
-        cost = H.sum()
-        g = gradient.grad(cost, X)
-        return theano.function([X, W, b], g, on_unused_input='ignore')
+    def test_disconnected_nan(self):
 
-    int_func = make_grad_func(theano.tensor.imatrix())
-    #we have to use float64 as the float type to get the results to match
-    #using an integer for the input makes all the later functions use float64
-    float_func = make_grad_func(theano.tensor.matrix(dtype='float64'))
+        # test that connection_pattern can prevent getting NaN
 
-    m = 5
-    d = 3
-    n = 4
-    rng = np.random.RandomState([2012, 9, 5])
+        # Op1 has two outputs, f and g
+        # x is connected to f but not to g
+        class Op1(theano.gof.Op):
+            def make_node(self, x):
+                return theano.Apply(self, inputs=[x],
+                        outputs=[x.type(), theano.tensor.scalar()])
 
-    int_type = theano.tensor.imatrix().dtype
-    float_type = 'float64'
+            def connection_pattern(self, node):
+                return [[True, False]]
 
-    X = np.cast[int_type](rng.randn(m, d) * 127.)
-    W = np.cast[W.dtype](rng.randn(d, n))
-    b = np.cast[b.dtype](rng.randn(n))
+            def grad(self, inputs, output_grads):
+                return [inputs[0].zeros_like()]
 
-    int_result = int_func(X, W, b)
-    float_result = float_func(np.cast[float_type](X), W, b)
+        # Op2 has two inputs, f and g
+        # Its gradient with respect to g is not defined
+        class Op2(theano.gof.Op):
+            def make_node(self, f, g):
+                return theano.Apply(self, inputs=[f, g],
+                        outputs=[theano.tensor.scalar()])
 
-    assert np.allclose(int_result, float_result), (int_result, float_result)
+            def grad(self, inputs, output_grads):
+                return [inputs[0].zeros_like(), NullType()()]
 
+        x = theano.tensor.vector()
+        f, g = Op1()(x)
+        cost = Op2()(f, g)
 
-def test_grad_disconnected():
+        # cost is differentiable wrt x
+        # but we can't tell that without using Op1's connection pattern
+        # looking at the theano graph alone, g is an ancestor of cost
+        # and has x as an ancestor, so we must compute its gradient
 
-    #tests corner cases of gradient for shape and alloc
+        g = gradient.grad(cost, x)
 
-    x = theano.tensor.vector(name='x')
-    total = x.sum()
-    total.name = 'total'
-    num_elements = x.shape[0]
-    num_elements.name = 'num_elements'
-    silly_vector = theano.tensor.alloc(total / num_elements, num_elements)
-    silly_vector.name = 'silly_vector'
-    cost = silly_vector.sum()
-    cost.name = 'cost'
-    #note that cost simplifies to be the same as "total"
-    g = gradient.grad(cost, x, add_names=False)
-    #we still need to pass in x because it determines the shape of the output
-    f = theano.function([x], g)
-    rng = np.random.RandomState([2012, 9, 5])
-    x = np.cast[x.dtype](rng.randn(3))
-    g = f(x)
-    assert np.allclose(g, np.ones(x.shape, dtype=x.dtype))
+        # If we made it to here without an exception, then the
+        # connection_pattern functionality worked correctly
 
+    def test_sum_disconnected(self):
 
-def test_disconnected_nan():
+        # Tests that we can add DisconnectedType to other terms correctly
+        x = theano.tensor.scalar()
+        y = x * 2.
+        z = x + 1.
+        cost = y + z
+        theano.tensor.grad(cost, x, consider_constant=[y, z])
+        # In an earlier version of theano, the above line would have failed
+        # while trying to add two DisconnectedTypes
 
-    # test that connection_pattern can prevent getting NaN
-
-    # Op1 has two outputs, f and g
-    # x is connected to f but not to g
-    class Op1(theano.gof.Op):
-        def make_node(self, x):
-            return theano.Apply(self, inputs=[x],
-                    outputs=[x.type(), theano.tensor.scalar()])
-
-        def connection_pattern(self, node):
-            return [[True, False]]
-
-        def grad(self, inputs, output_grads):
-            return [inputs[0].zeros_like()]
-
-    # Op2 has two inputs, f and g
-    # Its gradient with respect to g is not defined
-    class Op2(theano.gof.Op):
-        def make_node(self, f, g):
-            return theano.Apply(self, inputs=[f, g],
-                    outputs=[theano.tensor.scalar()])
-
-        def grad(self, inputs, output_grads):
-            return [inputs[0].zeros_like(), NullType()()]
-
-    x = theano.tensor.vector()
-    f, g = Op1()(x)
-    cost = Op2()(f, g)
-
-    # cost is differentiable wrt x
-    # but we can't tell that without using Op1's connection pattern
-    # looking at the theano graph alone, g is an ancestor of cost
-    # and has x as an ancestor, so we must compute its gradient
-
-    g = gradient.grad(cost, x)
-
-    # If we made it to here without an exception, then the
-    # connection_pattern functionality worked correctly
-
-
-def test_sum_disconnected():
-
-    # Tests that we can add DisconnectedType to other terms correctly
-    x = theano.tensor.scalar()
-    y = x * 2.
-    z = x + 1.
-    cost = y + z
-    theano.tensor.grad(cost, x, consider_constant=[y, z])
-    # In an earlier version of theano, the above line would have failed
-    # while trying to add two DisconnectedTypes
 
 if __name__ == '__main__':
     unittest.main()
