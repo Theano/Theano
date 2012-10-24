@@ -788,11 +788,10 @@ def _populate_grad_dict(var_to_node_to_idx,
                 for o, og in zip(node.outputs, output_grads):
                     o_dt = getattr(o.type, 'dtype', None)
                     og_dt = getattr(og.type, 'dtype', None)
-                    if o_dt and og_dt and o_dt != og_dt:
-                        if o_dt in theano.tensor.float_dtypes:
-                            new_output_grads.append(og.astype(o_dt))
-                        else:
-                            new_output_grads.append(o.zeros_like())
+                    if og_dt and o_dt in theano.tensor.discrete_dtypes:
+                        new_output_grads.append(o.zeros_like())
+                    elif o_dt and og_dt and o_dt != og_dt:
+                        new_output_grads.append(og.astype(o_dt))
                     else:
                         new_output_grads.append(og)
 
