@@ -4370,6 +4370,27 @@ def set_subtensor(x, y, inplace=False,
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
 
+def batched_dot(x, y):
+    """
+    :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    This function computes the dot product between the two tensors, by iterating
+    over the first dimension using scan.
+    Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
+    Example:
+    >>> first = T.tensor3('first')
+    >>> second = T.tensor3('second')
+    >>> result = batched_dot(first, second)
+    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
+    But numpy einsum is slower then dot or tensordot:
+    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+    """
+    result, updates = theano.scan(fn=lambda x_mat, y_mat:
+            theano.tensor.dot(x_mat, y_mat),
+            outputs_info=None,
+            sequences=[x, y],
+            non_sequences=None)
+    return result
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         tolerate_inplace_aliasing=False):
