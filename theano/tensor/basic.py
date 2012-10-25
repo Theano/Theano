@@ -4165,7 +4165,7 @@ class Subtensor(Op):
         rval = """
         #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
         #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
-        #define PyArray_set_data(obj, ptr, base) PyArray_BYTES(obj)=ptr
+        #define PyArray_set_data(obj, ptr, base) ((PyArrayObject*)(obj))->data=ptr
 
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
@@ -4328,7 +4328,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, TensorType):
