@@ -46,6 +46,7 @@ Bug fixes:
    they were not supposed to share. (David W-F)
  * Correctly record the GPU device number used when we let the driver select it.
    (Frederic B.)
+ * Min, max with NaN in inputs did not return the right output. (Pascal L.)
  * The grad of TensorDot, was returning the wrong shape for some combination of axes.
    We now raise NotImplementedError in those cases. (Frederic B.)
  * conv2d with subsample >2 returned wrong values. (Pascal L.)
