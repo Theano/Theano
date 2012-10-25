@@ -206,7 +206,7 @@ Bleeding-edge install instructions
 
 Master Tests Status:
 
-.. image:: https://secure.travis-ci.org/Theano/Theano.png
+.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
     :target: http://travis-ci.org/Theano/Theano/builds
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
