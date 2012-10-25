@@ -707,6 +707,17 @@ class TensorType(Type):
             raise TypeError("Wrong number of dimensions: expected %s,"
                             " got %s with shape %s." % (self.ndim, data.ndim,
                                                         data.shape), data)
+        if not data.flags.aligned:
+            try:
+                msg = "object buffer" + str(data.data)
+            except AttributeError:
+                msg = ""
+            raise TypeError("The numpy.ndarray object is not aligned."
+                            " Theano c code do not support that.",
+                            msg,
+                            "object shape", data.shape,
+                            "object strides", data.strides)
+
         i = 0
         for b in self.broadcastable:
             if b and data.shape[i] != 1:
@@ -988,8 +999,20 @@ class TensorType(Type):
         if (!PyArray_ISALIGNED(py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
                          "expected an aligned array of type %%d "
-                         "(%(type_num)s), got non-aligned array of type %%d",
-                         %(type_num)s, type_num_%(name)s);
+                         "(%(type_num)s), got non-aligned array of type %%d"
+                         " with %%d dimensions, with 2 last dims %%d, %%d"
+                         " and 2 last strides %%d, %%d.",
+                         %(type_num)s, type_num_%(name)s,
+                         PyArray_NDIM(py_%(name)s),
+                         PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
+                         PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
+        );
             %(fail)s
         }
         // This is a TypeError to be consistent with DEBUG_MODE
@@ -1043,7 +1066,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (5,) + scalar_version
+            return (6,) + scalar_version
         else:
             return ()
 
