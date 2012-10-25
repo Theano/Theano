@@ -398,6 +398,26 @@ class test_grad(unittest.TestCase):
         s0 = theano.shared(np.zeros((), dtype='int8'))
         self.assertRaises(ValueError, theano.grad, y, x, g_cost=s0)
 
+    def test_downcast_dtype(self):
+        # Test that the gradient of a cost wrt a float32 variable does not
+        # get upcasted to float64.
+        # x has dtype float32, regardless of the value of floatX
+        x = theano.tensor.fscalar('x')
+        y = x * 2
+        z = theano.tensor.lscalar('z')
+
+        c = y + z
+        dc_dx, dc_dy, dc_dz, dc_dc = theano.grad(c, [x, y, z, c])
+        # The dtype of dc_dy and dc_dz can be either float32 or float64,
+        # that might depend on floatX, but is not specified.
+        assert dc_dc.dtype in ('float32', 'float64')
+        assert dc_dz.dtype in ('float32', 'float64')
+        assert dc_dy.dtype in ('float32', 'float64')
+
+        # When the output gradient of y is passed to op.grad, it should
+        # be downcasted to float32, so dc_dx should also be float32
+        assert dc_dx.dtype == 'float32'
+
 
 if __name__ == '__main__':
     unittest.main()
