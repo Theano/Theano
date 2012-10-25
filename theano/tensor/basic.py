@@ -1054,9 +1054,31 @@ class TensorType(Type):
         return numpy.zeros(shape, dtype=self.dtype)
 
 
-# Register CudaNdarrayType to the OutputGuard list of known types
-# to have OutputGuard generate C code for this type.
-theano.compile.mode.register_OutputGuard_c_code(TensorType)
+# Register TensorType C code for ViewOp.
+theano.compile.register_view_op_c_code(
+        TensorType,
+        """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """,
+        version=1)
+
+# Register TensorType C code for DeepCopyOp
+theano.compile.register_deep_copy_op_c_code(
+        TensorType,
+        """
+        Py_XDECREF(%(oname)s);
+
+        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
+
+        if (!%(oname)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
+            %(fail)s;
+        }
+        """,
+        version=1)
 
 
 # Easy constructors

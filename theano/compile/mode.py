@@ -1,6 +1,8 @@
 """WRITEME
 """
 import logging
+import warnings
+from textwrap import dedent
 
 import numpy
 
@@ -8,6 +10,7 @@ import  theano
 from theano import gof
 import theano.gof.vm
 from theano.configparser import config, AddConfigVar, StrParam
+from theano.compile.ops import register_view_op_c_code, _output_guard
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -112,74 +115,6 @@ def register_optimizer(name, opt):
     if name in predefined_optimizers:
         raise ValueError('Optimizer name already taken: %s' % name)
     predefined_optimizers[name] = opt
-
-
-def register_OutputGuard_c_code(type):
-    OutputGuard.c_code_types.append(type)
-
-
-class OutputGuard(gof.Op):
-    """
-    This op is used only internally by Theano.
-
-    Only the AddDestroyHandler optimizer tries to insert them in the graph.
-
-    This Op is declared as destructive while it is not destroying
-    anything. It returns a view. This is used to prevent destruction of
-    the output variables of a Theano function.
-
-    There is a mechanism in Theano that should prevent this, but the use
-    of OutputGuard adds a safeguard: it may be possible for some optimization
-    run before the add_destroy_handler phase to bypass this mechanism, by
-    making in-place optimizations.
-
-    TODO: find a current full explanation.
-    """
-    destroy_map = {0: [0]}
-    view_map = {0: [0]}
-    c_code_types = []
-
-    def make_node(self, x):
-        return gof.Apply(self, [x], [x.type()])
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def perform(self, node, inp, out):
-        x, = inp
-        z, = out
-        z[0] = x
-
-    def __str__(self):
-        return '%s' % self.__class__.__name__
-
-    def c_code(self, node, nodename, inp, out, sub):
-        x, = inp
-        z, = out
-        if isinstance(node.inputs[0].type, theano.scalar.Scalar):
-            # Scalars are C objects on the stack,
-            # and should not be inc/decrefed
-            return """
-            %(z)s = %(x)s;
-            """ % locals()
-        elif (isinstance(node.inputs[0].type, tuple(self.c_code_types))):
-            # These are Python object types
-            return """
-            Py_XDECREF(%(z)s);
-            %(z)s = %(x)s;
-            Py_XINCREF(%(z)s);
-            """ % locals()
-
-        # Else, no C code for you
-        return super(OutputGuard, self).c_code(node, nodename, inp, out, sub)
-
-    def c_code_cache_version(self):
-        return (2,)
-
-_output_guard = OutputGuard()
 
 
 class AddDestroyHandler(gof.Optimizer):
@@ -448,3 +383,17 @@ def register_mode(name, mode):
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
+
+
+def register_OutputGuard_c_code(type):
+    """Deprecated function calling register_view_op_c_code"""
+    warnings.warn("register_OutputGuard_c_code(type) is deprecated, "
+            "theano.compile.register_view_op_c_code(type, code) instead.",
+            stacklevel=2)
+    register_view_op_c_code(
+            type,
+            dedent("""
+                Py_XDECREF(%(oname)s);
+                %(oname)s = %(iname)s;
+                Py_XINCREF(%(oname)s);
+                """))

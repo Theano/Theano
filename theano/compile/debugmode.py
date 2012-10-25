@@ -27,6 +27,7 @@ from theano.compile.function_module import (FunctionMaker,
         Supervisor,
         std_fgraph)
 from theano.compile.mode import Mode, register_mode
+from theano.compile.ops import OutputGuard
 
 AddConfigVar('DebugMode.patience',
         "Optimize graph this many times to detect inconsistency",
@@ -715,7 +716,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused and destroyed_res_list:
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+            if isinstance(node.op, OutputGuard):
                 # The point of OutputGuard is to be declared as destructive
                 # while not destroying anything
                 continue
@@ -738,7 +739,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             # the version of numpy!
             if getattr(out_var, 'size', 2) <= 1:
                 continue
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+            if isinstance(node.op, OutputGuard):
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
