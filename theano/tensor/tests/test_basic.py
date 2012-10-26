@@ -1927,8 +1927,8 @@ def test_batched_dot():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
     output = theano.tensor.basic.batched_dot(first, second)
-    first_val = numpy.random.rand(10, 10, 20)
-    second_val = numpy.random.rand(10, 20, 5)
+    first_val = numpy.random.rand(10, 10, 20).astype(config.floatX)
+    second_val = numpy.random.rand(10, 20, 5).astype(config.floatX)
     result_fn = theano.function([first, second], output)
     result = result_fn(first_val, second_val)
     assert result.shape[0] == first_val.shape[0]
@@ -1938,8 +1938,8 @@ def test_batched_dot():
     first_mat = theano.tensor.dmatrix("first")
     second_mat = theano.tensor.dmatrix("second")
     output = theano.tensor.basic.batched_dot(first_mat, second_mat)
-    first_mat_val = numpy.random.rand(10, 10)
-    second_mat_val = numpy.random.rand(10, 10)
+    first_mat_val = numpy.random.rand(10, 10).astype(config.floatX)
+    second_mat_val = numpy.random.rand(10, 10).astype(config.floatX)
     result_fn = theano.function([first_mat, second_mat], output)
     result = result_fn(first_mat_val, second_mat_val)
 
