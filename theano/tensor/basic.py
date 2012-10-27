@@ -706,7 +706,7 @@ class TensorType(Type):
         if self.ndim != data.ndim:
             raise TypeError("Wrong number of dimensions: expected %s,"
                             " got %s with shape %s." % (self.ndim, data.ndim,
-                                                        data.shape), data)
+                                                        data.shape))
         i = 0
         for b in self.broadcastable:
             if b and data.shape[i] != 1:
