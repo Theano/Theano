@@ -3243,9 +3243,9 @@ static __global__ void k_copy_4d(const int N1,
     int by = blockIdx.y;
     // N1 and N2 are kept in case a future implementation needs to
     // loop on the first two dimensions if there are not enough blocks
-    for (int i = threadIdx.x; i <  N3; i += (int) blockDim.x)
+    for (int j = threadIdx.y; j < (int) N4; j += (int) blockDim.y)
     {
-        for (int j = threadIdx.y; j < (int) N4; j += (int) blockDim.y)
+        for (int i = threadIdx.x; i <  N3; i += (int) blockDim.x)
         {
             y[bx * sy1 + by * sy2 + i * sy3 + j * sy4] =  
                 x[bx * sx1 + by * sx2 + i * sx3 + j * sx4];
@@ -3388,13 +3388,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                                 std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[3],
                                     (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
-                for (int i = 0; n_threads.x * n_threads.y > NUM_VECTOR_OP_THREADS_PER_BLOCK; i++)
-                {
-                    if (i % 2)
-                        n_threads.x--;
-                    else
-                        n_threads.y--;
-                }
+                n_threads.x = std::min( (unsigned int) 32, (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                n_threads.y = NUM_VECTOR_OP_THREADS_PER_BLOCK / n_threads.x;
 
                 k_copy_4d<<<n_blocks, n_threads>>>(
                                             // size of y
