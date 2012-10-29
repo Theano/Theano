@@ -5778,13 +5778,20 @@ class Flatten(Op):
         in_shp, = in_shapes
         part1 = in_shp[:self.outdim - 1]
         part2 = in_shp[self.outdim - 1:]
-        # The if is needed as numpy.prod([]) return a float 1.0
-        # We do not want to force the other dtype to int32/64.
+
         if len(part2) > 1:
-            part2 = prod(part2, dtype='int64')
+            part2 = (prod(part2, dtype='int64'),)
+        elif len(part2) == 1:
+            # We do not want to force an upcast of part2 if its length is 1
+            pass
         else:
-            part2 = 1
-        out_shape = (part1 + (part2,))
+            if len(in_shp) == 0 and self.outdim == 1:
+                part2 = (1,)
+            else:
+                raise ValueError('invalid output ndimensions (%i) for tensor '
+                                 'of rank %i' % (self.outdim, len(in_shp)))
+
+        out_shape = (part1 + part2)
         return [out_shape]
 
     def grad(self, inp, grads):
