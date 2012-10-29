@@ -3388,8 +3388,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                                 std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[3],
                                     (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK));
 
-                n_threads.x = std::min( (unsigned int) 32, (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                n_threads.y = NUM_VECTOR_OP_THREADS_PER_BLOCK / n_threads.x;
+                n_threads.x = std::min( (unsigned int) 32, std::min((unsigned int) n_threads.x, (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                n_threads.y = std::min( n_threads.y, NUM_VECTOR_OP_THREADS_PER_BLOCK / n_threads.x);
 
                 k_copy_4d<<<n_blocks, n_threads>>>(
                                             // size of y
