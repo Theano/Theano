@@ -3222,7 +3222,8 @@ class T_Scan(unittest.TestCase):
         results, _ = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
-        sharedvar = theano.shared(numpy.zeros((1,1)))
+        sharedvar = theano.shared(numpy.zeros((1,1),
+                                              dtype=theano.config.floatX))
         updates = {sharedvar : results[0][-1:]}
 
         f = theano.function([seq], results[1], updates=updates)
