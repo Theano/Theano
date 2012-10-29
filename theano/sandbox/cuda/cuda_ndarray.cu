@@ -14,6 +14,17 @@
 //If true, we fill with NAN allocated device memory.
 #define ALLOC_MEMSET 0
 
+//If true, we print out when we free a device pointer, uninitialize a
+//CudaNdarray, or allocate a device pointer
+#define PRINT_FREE_MALLOC 0
+
+//If true, we do error checking at the start of functions, to make sure there
+//is not a pre-existing error when the function is called.
+//You probably need to set the environment variable
+//CUDA_LAUNCH_BLOCKING=1
+//if you want this to work.
+#define PRECHECK_ERROR 0
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
@@ -53,36 +64,53 @@ void * device_malloc(size_t size)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-#if COMPUTE_GPU_MEM_USED
-        fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
-#else
-        fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
-#endif
-        PyErr_Format(PyExc_MemoryError, "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
+        #if COMPUTE_GPU_MEM_USED
+            fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+        #else
+            fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+        #endif
+        PyErr_Format(PyExc_MemoryError,
+                "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
         return NULL;
     }
     _outstanding_mallocs[0] += (rval != NULL);
-#if COMPUTE_GPU_MEM_USED
-    for(int i=0;i<TABLE_SIZE;i++){
-        if(NULL==_alloc_size_table[i].ptr){
-            _alloc_size_table[i].ptr=rval;
-            _alloc_size_table[i].size=size;
-            break;
+    #if COMPUTE_GPU_MEM_USED
+        for(int i=0;i<TABLE_SIZE;i++){
+            if(NULL==_alloc_size_table[i].ptr){
+                _alloc_size_table[i].ptr=rval;
+                _alloc_size_table[i].size=size;
+                break;
+            }
         }
-    }
-    _allocated_size += size;
-#endif
-    //fprintf(stderr, "allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n", (long)size, cudaGetErrorString(err),_allocated_size,rval);
+        _allocated_size += size;
+    #endif
+    //fprintf(stderr,
+    //"allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n",
+    //(long)size, cudaGetErrorString(err),_allocated_size,rval);
 
     if(ALLOC_MEMSET){
         //We init them to nan to make sure we catch more debug case.
         cudaMemset(rval, 0xFF, size);
         //printf("MEMSET\n");
     }
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "device malloc %p\n",rval);
+    #endif
     return rval;
 }
+
 int device_free(void *ptr)
 {
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "device_free %p\n",ptr);
+    #endif
+    #if PRECHECK_ERROR
+        cudaError_t prevError = cudaGetLastError();
+        if (cudaSuccess != prevError)
+        {
+            fprintf(stderr, "Error existed before calling device_free.\n");
+        }
+    #endif
 
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
     if(!g_gpu_context_active) {
@@ -101,33 +129,42 @@ int device_free(void *ptr)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-#if COMPUTE_GPU_MEM_USED
-        fprintf(stderr, "Error freeing device pointer %p (%s).%d byte already allocated\n", ptr, cudaGetErrorString(err), _allocated_size);
-#else
-        fprintf(stderr, "Error freeing device pointer %p (%s).\n", ptr, cudaGetErrorString(err));
-#endif
-        PyErr_Format(PyExc_MemoryError, "error freeing device pointer %p (%s)", ptr, cudaGetErrorString(err));
+        #if COMPUTE_GPU_MEM_USED
+            fprintf(stderr,
+                    "Error freeing device pointer %p (%s).%d byte already allocated\n",
+                    ptr, cudaGetErrorString(err), _allocated_size);
+        #else
+            fprintf(stderr,
+                    "Error freeing device pointer %p (%s).\n",
+                    ptr,
+                    cudaGetErrorString(err));
+        #endif
+        PyErr_Format(PyExc_MemoryError,
+                "error freeing device pointer %p (%s)",
+                ptr,
+                cudaGetErrorString(err));
         return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
-#if COMPUTE_GPU_MEM_USED
-    int i=0;
-    size_t total_freed = 0;
-    for(;i<TABLE_SIZE;i++)
-        if(_alloc_size_table[i].ptr==ptr){
-            _allocated_size -= _alloc_size_table[i].size;
-            total_freed += _alloc_size_table[i].size;
-            _alloc_size_table[i].ptr=0;
-            _alloc_size_table[i].size=0;
+    #if COMPUTE_GPU_MEM_USED
+        int i=0;
+        size_t total_freed = 0;
+        for(;i<TABLE_SIZE;i++)
+            if(_alloc_size_table[i].ptr==ptr){
+                _allocated_size -= _alloc_size_table[i].size;
+                total_freed += _alloc_size_table[i].size;
+                _alloc_size_table[i].ptr=0;
+                _alloc_size_table[i].size=0;
 
-            break;
-        }
-    //if(i==TABLE_SIZE)
-    //    printf("Unallocated unknow size!\n");
-    //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
-#endif
+                break;
+            }
+        //if(i==TABLE_SIZE)
+        //    printf("Unallocated unknow size!\n");
+        //fprintf(stderr, "freed %li bytes of device memory (%s). %d already allocated, ptr=%p\n", (long)total_freed, cudaGetErrorString(err),_allocated_size,ptr);
+    #endif
     return 0;
 }
+
 static PyObject *
 outstanding_mallocs(PyObject* self, PyObject * args)
 {
@@ -153,14 +190,17 @@ CudaNdarray_null_init(CudaNdarray*self)
 static int
 CudaNdarray_uninit(CudaNdarray*self)
 {
+    #if PRINT_FREE_MALLOC
+        fprintf(stderr, "CudaNdarray_uninit %p\n", self);
+    #endif
     int rval = 0;
     if (self->data_allocated) {
         assert(self->devdata);
         if (device_free(self->devdata))
         {
             fprintf(stderr,
-                    "!!!! error freeing device memory %p (self=%p)\n",
-                    self->devdata, self);
+                    "CudaNdarray_uninit: error freeing self->devdata. (self=%p, self->devata=%p)\n",
+                    self, self->devdata);
             rval = -1;
         }
         self->devdata = NULL;
@@ -171,7 +211,7 @@ CudaNdarray_uninit(CudaNdarray*self)
         if (device_free(self->dev_structure))
         {
             fprintf(stderr,
-                    "!!!! error freeing dev_structure memory %p (self=%p)\n",
+                    "CudaNdarray_uninit: error freeing dev_structure memory %p (self=%p)\n",
                     self->dev_structure, self);
             rval = -1;
         }
@@ -1164,6 +1204,7 @@ CudaNdarray_exp(CudaNdarray* self)
 
     return (PyObject*)rval;
 }
+
 static PyMethodDef CudaNdarray_methods[] =
 {
     {"__array__",
@@ -1740,7 +1781,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
  * It returns py_self on success with an additional reference. Else NULL.
  */
 // Will be called by __iadd__ in Python
-static PyObject *
+PyObject *
 CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other)
 {
     if (CudaNdarray_inplace_elemwise(py_self, py_other, IADD))
@@ -2127,7 +2168,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
     }
 
     PyObject * intobj = NULL;
-    if(CudaNdarray_Check(o)  && PyArray_Check(value)){
+    if (CudaNdarray_Check(o)  && PyArray_Check(value)){
         if (verbose)
             fprintf(stderr,
                     "CudaNdarray_setitem dest is a CudaNdarray and"
@@ -2137,7 +2178,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
         {
             return -1;
         }
-        if(CudaNdarray_CopyFromArray(new_value, (PyArrayObject *) value))
+        if (CudaNdarray_CopyFromArray(new_value, (PyArrayObject *) value))
         {
             Py_XDECREF(new_value);
             Py_XDECREF(rval);
@@ -2214,7 +2255,7 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     PyObject *baseSavedForComparison = rval->base;
 
-    if(CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
+    if (CudaNdarray_CopyFromCudaNdarray(rval, (CudaNdarray*)value, true))
     {
         Py_DECREF((PyObject*)rval);
         Py_XDECREF(new_value);
@@ -3190,6 +3231,28 @@ static __global__ void k_copy_1d(const int N, const float * x, const int sx, flo
     }
 }
 
+// N1 through N4 are the size of y
+static __global__ void k_copy_4d(const int N1,
+        const int N2, const int N3, const int N4,
+        const float * x, const int sx1, const int sx2, const int sx3,
+        const int sx4,  float * y, const int sy1, const int sy2,
+        const int sy3, const int sy4)
+{
+    // These must be made int instead of unsigned int due to a bug in nvcc
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+    // N1 and N2 are kept in case a future implementation needs to
+    // loop on the first two dimensions if there are not enough blocks
+    for (int j = threadIdx.y; j < (int) N4; j += (int) blockDim.y)
+    {
+        for (int i = threadIdx.x; i <  N3; i += (int) blockDim.x)
+        {
+            y[bx * sy1 + by * sy2 + i * sy3 + j * sy4] =  
+                x[bx * sx1 + by * sx2 + i * sx3 + j * sx4];
+        }
+    }
+}
+
 //copy from other into self
 int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                                     const CudaNdarray * other,
@@ -3300,6 +3363,61 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                                  "Cuda error: %s: %s. (n_blocks=%i,"
                                  " n_threads_per_block=%i)\n", "k_copy_1d",
                                  cudaGetErrorString(err), n_blocks, n_threads);
+                    Py_XDECREF(new_other);
+                    return -1;
+                }
+            }; break;
+        case 4: // 4-tensor
+            {
+                if (verbose)
+                {
+                    if (0 != fprint_CudaNdarray(stderr, other))
+                    {
+                        Py_XDECREF(new_other);
+                        return -1;
+                    }
+                }
+
+                // The blocks implement the looping over the first two axes so
+                // this needs to be (N1, N2)
+                dim3 n_blocks( (unsigned int) CudaNdarray_HOST_DIMS(self)[0],
+                               (unsigned int) CudaNdarray_HOST_DIMS(self)[1]);
+                // For the threads, just make as many as possible
+                dim3 n_threads( std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[2],
+                                 (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK),
+                                std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[3],
+                                    (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK));
+
+                n_threads.x = std::min( (unsigned int) 32, (unsigned int) n_threads.x);
+                n_threads.y = std::min( n_threads.y, NUM_VECTOR_OP_THREADS_PER_BLOCK / n_threads.x);
+
+                k_copy_4d<<<n_blocks, n_threads>>>(
+                                            // size of y
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[0], // N1
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[1], // N2
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[2], // N3
+                                            (unsigned int) CudaNdarray_HOST_DIMS(self)[3], // N4
+                                            CudaNdarray_DEV_DATA(other), // x
+                                            // x strides
+                                            CudaNdarray_HOST_STRIDES(other)[0],
+                                            CudaNdarray_HOST_STRIDES(other)[1],
+                                            CudaNdarray_HOST_STRIDES(other)[2],
+                                            CudaNdarray_HOST_STRIDES(other)[3],
+                                            CudaNdarray_DEV_DATA(self), // y
+                                            // y strides
+                                            CudaNdarray_HOST_STRIDES(self)[0],
+                                            CudaNdarray_HOST_STRIDES(self)[1],
+                                            CudaNdarray_HOST_STRIDES(self)[2],
+                                            CudaNdarray_HOST_STRIDES(self)[3]
+                                            );
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %s: %s.",
+                                 "k_copy_4d",
+                                 cudaGetErrorString(err));
                     Py_XDECREF(new_other);
                     return -1;
                 }
@@ -4486,8 +4604,17 @@ PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self)
     return PyBool_FromLong(CudaNdarray_is_c_contiguous(self));
 }
 
-void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
+int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 {
+    cudaError_t err = cudaGetLastError();
+    if( cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Cuda error: %s: %s.",
+                     "fprint_CudaNdarray was called with an uncleared error",
+                     cudaGetErrorString(err));
+        return -1;
+    }
     fprintf(fd, "CudaNdarray <%p, %p> nd=%i dev_structure_fresh=%d data_allocated=%d\n",
             self, self->devdata, self->nd, self->dev_structure_fresh, self->data_allocated);
     fprintf(fd, "\tHOST_DIMS:      ");
@@ -4526,6 +4653,17 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
     {
         fprintf(fd, "\n\tdev_structure not allocated\n");
     }
+
+    err = cudaGetLastError();
+    if( cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Cuda error: %s: %s.",
+                     "fprint_CudaNdarray",
+                     cudaGetErrorString(err));
+        return -1;
+    }
+    return 0;
 }
 
 /*

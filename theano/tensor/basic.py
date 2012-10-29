@@ -3761,21 +3761,28 @@ class AdvancedIndexingError(TypeError):
 class Subtensor(Op):
     """Return a subtensor view
 
-    This class uses a relatively complex internal representation of the inputs
-    to remember how the input tensor x should be sliced.  The instance variable
-    idx_list is a list whose elements are either integers, or slices.  The
-    integers are indexes into the inputs array, and the start/stop/step members
-    of each slice are also integer indexes into the inputs array (or None).
     The inputs array is the tensor x, followed by scalar integer variables.
+    TODO: WRITEME: how are the scalar integer variables formatted?
+
+    This class uses a relatively complex internal representation of the inputs
+    to remember how the input tensor x should be sliced.
+
+    idx_list: instance variable TODO: WRITEME: is this a list or a tuple?
+                                        (old docstring gives two conflicting
+                                        descriptions)
+              elements are either integers, theano scalars, or slices.
+              one element per "explicitly named dimension"
+                TODO: WRITEME: what is an "explicitly named dimension" ?
+
+              if integer:
+                  indexes into the inputs array
+              if slice:
+                  start/stop/step members of each slice are integer indices
+                  into the inputs array or None
+                  integer indices be actual integers or theano scalars
 
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
-    The idx_list is a tuple similar in structure to the sort of key you might
-    expect in numpy's basic indexing mode. It has one element for each
-    explicitly named dimension. In numpy, the elements can be either integers
-    or slices containing integers and None. In Subtensor, each element can
-    additionally be a Scalar instance, and slice components can also be Scalar
-    instances too.
     """
     e_invalid = ('The index list is longer (size %d) than the number of '
                  'dimensions of the tensor(namely %d). You are asking for '
@@ -3873,6 +3880,10 @@ class Subtensor(Op):
             return scal.as_scalar(a)
 
     def make_node(self, x, *inputs):
+        """
+            x: the tensor to take a subtensor of
+            inputs: a list of theano Scalars
+        """
         x = as_tensor_variable(x)
         inputs = tuple(self.my_as_scalar(a) for a in inputs)
 
@@ -4016,21 +4027,66 @@ class Subtensor(Op):
         return "%s{%s}" % (self.__class__.__name__, ", ".join(indices))
 
     @staticmethod
+    def default_helper_c_code_args():
+        """
+        Returns a dictionary of default arguments to
+        helper_c_code
+        """
+
+        return {
+                "c_prefix" : "PyArray",
+                "update_flags": ("PyArray_UpdateFlags(%(view_name)s,"
+                " NPY_ARRAY_C_CONTIGUOUS|"
+                "NPY_ARRAY_F_CONTIGUOUS);"),
+                "set_data" : "PyArray_set_data",
+                "set_dim" : "PyArray_set_dim",
+                "set_stride" : "PyArray_set_stride",
+                "strides_mul" : 1,
+                "view_name" : "xview" }
+
+
+    @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list,
-                      c_prefix="PyArray",
-                      update_flags=("PyArray_UpdateFlags(xview,"
-                                    " NPY_ARRAY_C_CONTIGUOUS|"
-                                    "NPY_ARRAY_F_CONTIGUOUS);"),
-                      set_data='PyArray_set_data',
-                      set_dim='PyArray_set_dim',
-                      set_stride='PyArray_set_stride',
-                      strides_mul=1,
+                      c_prefix=None,
+                      update_flags=None,
+                      set_data=None,
+                      set_dim=None,
+                      set_stride=None,
+                      strides_mul=None,
+                      view_name=None
                   ):
-        """The parameters c_prefix, update_flags, set_data, set_dim,
+        """
+        The parameters c_prefix, update_flags, set_data, set_dim,
         set_stride and strides_mul are there to allow reusing this
         function on PyArray and CudaNdarray object.
-
         """
+
+        default_args = Subtensor.default_helper_c_code_args()
+
+        if update_flags is None:
+            update_flags = default_args['update_flags']
+
+        if set_data is None:
+            set_data = default_args['set_data']
+
+        if set_dim is None:
+            set_dim = default_args['set_dim']
+
+        if set_stride is None:
+            set_stride = default_args['set_stride']
+
+        if strides_mul is None:
+            strides_mul = default_args['strides_mul']
+
+        if c_prefix is None:
+            c_prefix = default_args['c_prefix']
+
+        if view_name is None:
+            view_name = default_args['view_name']
+
+        #update_flags may depend on view_name
+        update_flags = update_flags % locals()
+
         #
         # two arrays are created in C code:
         # is_slice: len == ndim, 0 means int, 1 means slice
@@ -4104,6 +4160,8 @@ class Subtensor(Op):
         x, = inputs[:1]
         z, = outputs
 
+        xview = view_name
+
         rval = """
         #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
         #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
@@ -4119,30 +4177,30 @@ class Subtensor(Op):
         int inner_ii = 0; // the current dimension of zview
         int outer_ii = 0; // current dimension of z
 
-        char* ptr = (char*) %(c_prefix)s_BYTES(xview);
+        char* ptr = (char*) %(c_prefix)s_BYTES(%(xview)s);
 
-        if ((%(c_prefix)s_DIMS(xview) == %(c_prefix)s_DIMS(%(x)s))
+        if ((%(c_prefix)s_DIMS(%(xview)s) == %(c_prefix)s_DIMS(%(x)s))
             && (%(c_prefix)s_DIMS(%(x)s) != NULL))
         {
-            PyErr_Format(PyExc_ValueError, "x and xview"
+            PyErr_Format(PyExc_ValueError, "x and %(xview)s"
                          "(with %%d dims) have the same dimensions"
                          " pointers: %%p and %%p",
                          %(c_prefix)s_NDIM(%(x)s),
-                         %(c_prefix)s_DIMS(xview),
+                         %(c_prefix)s_DIMS(%(xview)s),
                          %(c_prefix)s_DIMS(%(x)s));
-            Py_XDECREF(xview);
+            Py_XDECREF(%(xview)s);
             %(fail)s;
         }
-        if (%(c_prefix)s_STRIDES(xview) == %(c_prefix)s_STRIDES(%(x)s)
+        if (%(c_prefix)s_STRIDES(%(xview)s) == %(c_prefix)s_STRIDES(%(x)s)
             && (%(c_prefix)s_DIMS(%(x)s) != NULL))
         {
-            PyErr_Format(PyExc_ValueError, "x and xview"
+            PyErr_Format(PyExc_ValueError, "x and %(xview)s"
                          "(with %%d dims) have the same strides"
                          " pointers: %%p and %%p",
                          %(c_prefix)s_NDIM(%(x)s),
-                         %(c_prefix)s_STRIDES(xview),
+                         %(c_prefix)s_STRIDES(%(xview)s),
                          %(c_prefix)s_STRIDES(%(x)s));
-            Py_XDECREF(xview);
+            Py_XDECREF(%(xview)s);
             %(fail)s;
         }
 
@@ -4164,10 +4222,10 @@ class Subtensor(Op):
                 // PySlice_GetIndicesEx in python source
                 if (!step)
                 {
-                    Py_DECREF(xview);
+                    Py_DECREF(%(xview)s);
                     PyErr_Format(PyExc_ValueError,
                                  "slice step cannot be zero");
-                    Py_XDECREF(xview);
+                    Py_XDECREF(%(xview)s);
                     %(fail)s;
                 }
 
@@ -4218,8 +4276,8 @@ class Subtensor(Op):
 
                 ptr += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * start *
                        %(strides_mul)s;
-                %(set_dim)s(xview, inner_ii, slicelength);
-                %(set_stride)s(xview, inner_ii,
+                %(set_dim)s(%(xview)s, inner_ii, slicelength);
+                %(set_stride)s(%(xview)s, inner_ii,
                                %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step);
 
                 inner_ii += 1;
@@ -4239,27 +4297,27 @@ class Subtensor(Op):
                     else
                     {
                         PyErr_Format(PyExc_IndexError,"index out of bounds");
-                        Py_XDECREF(xview);
+                        Py_XDECREF(%(xview)s);
                         %(fail)s;
                     }
                 }
                 else
                 {
                     PyErr_Format(PyExc_IndexError,"index out of bounds");
-                    Py_XDECREF(xview);
+                    Py_XDECREF(%(xview)s);
                     %(fail)s;
                 }
 
                 spec_pos += 1;
             }
         }
-        %(set_data)s(xview, ptr, (PyObject*)NULL);
-        assert (inner_ii <= %(c_prefix)s_NDIM(xview));
-        while (inner_ii < %(c_prefix)s_NDIM(xview))
+        %(set_data)s(%(xview)s, ptr, (PyObject*)NULL);
+        assert (inner_ii <= %(c_prefix)s_NDIM(%(xview)s));
+        while (inner_ii < %(c_prefix)s_NDIM(%(xview)s))
         {
             assert (outer_ii < %(c_prefix)s_NDIM(%(x)s));
-            %(set_dim)s(xview, inner_ii, %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
-            %(set_stride)s(xview, inner_ii, %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
+            %(set_dim)s(%(xview)s, inner_ii, %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
+            %(set_stride)s(%(xview)s, inner_ii, %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
             inner_ii += 1;
             outer_ii += 1;
         }
@@ -4454,7 +4512,6 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     else:
         raise TypeError('x must be result of a subtensor operation')
 
-
 class IncSubtensor(Op):
     """Increment a subtensor.
 
@@ -4524,6 +4581,11 @@ class IncSubtensor(Op):
                 ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
+        """
+            x: the tensor to increment
+            y: the value to increment by
+            inputs: TODO WRITEME
+        """
         x, y = map(as_tensor_variable, [x, y])
         if y.ndim > x.ndim:
             raise ValueError(("Trying to increment a %d-dimensional "
@@ -4602,9 +4664,16 @@ class IncSubtensor(Op):
                 x.__setitem__(cdata, y)
         out[0] = x
 
-    def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
-        if not isinstance(node.inputs[0].type, TensorType):
-            raise NotImplementedError()
+    def c_code(self, node, name, inputs, outputs, sub):
+
+        # This method delegates much of the work to helper
+        # methods. This method implements the main logic
+        # but subclasses may override the helper methods
+        # to change the particulars, e.g. GpuIncSubtensor
+        # turns the view/copy operations on numpy arrays
+        # into the same operations on cuda arrays.
+
+        self.do_type_checking(node)
 
         if self.inplace:  # convert bool to int
             inplace = 1
@@ -4621,12 +4690,15 @@ class IncSubtensor(Op):
         view_ndim = (node.inputs[0].ndim -
                      numpy.sum([not isinstance(idx, slice)
                                 for idx in self.idx_list]))
+
+        copy_of_x = self.copy_of_x(x)
+
         copy_input_if_necessary = """
         if (%(inplace)s)
         {
             if (%(x)s != %(z)s)
             {
-                if (%(z)s) Py_DECREF(%(z)s);
+                Py_XDECREF(%(z)s);
                 Py_INCREF(%(x)s);
                 %(z)s = %(x)s;
             }
@@ -4634,68 +4706,74 @@ class IncSubtensor(Op):
         else
         {
             if (%(z)s) Py_DECREF(%(z)s);
-            %(z)s = (PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
-                                                    NPY_ARRAY_ENSURECOPY, NULL);
+            %(z)s = %(copy_of_x)s;
         }
         """ % locals()
+
+        alloc_zview = self.make_view_array(z, view_ndim)
+        # On GPU, it takes two steps to make a view
+        link_zview = self.link_view_array(z, fail);
 
         #Make a first view on the output, as we will write into it.
         build_view = """
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
-        Py_INCREF(PyArray_DESCR(%(z)s));
-        PyArrayObject * xview = (PyArrayObject*)PyArray_NewFromDescr(
-                &PyArray_Type,
-                PyArray_DESCR(%(z)s),
-                %(view_ndim)s,
-                PyArray_DIMS(%(z)s),
-                PyArray_STRIDES(%(z)s),
-                PyArray_DATA(%(z)s),
-                %(z)s->flags,
-                NULL);
-        if (!xview)
+        %(alloc_zview)s;
+        if (!zview)
         {
             %(fail)s;
         }
+        %(link_zview)s;
         """ % locals()
-        # make xview actually a view of %(z)s
-        get_xview = Subtensor.helper_c_code(node, name,
-                outputs[:1] + inputs[2:],
-                outputs, sub, self.idx_list)
+        # make zview actually a view of %(z)s
+        helper_args = self.get_helper_c_code_args()
+        helper_args['view_name'] = 'zview'
+        get_zview = self.define_set_data() + \
+                Subtensor.helper_c_code(
+                node=node,
+                name=name,
+                inputs=outputs[:1] + inputs[2:],
+                outputs=outputs,
+                sub=sub,
+                idx_list=self.idx_list,
+                ** helper_args
+                )
+
+        copy_into = self.copy_into("zview", y)
+
+        add_to_zview = self.add_to_zview(y, fail)
 
         make_modification = """
         if (%(op_is_set)s)
         {
-            if (PyArray_CopyInto(xview, %(y)s)) // does broadcasting
+            if (%(copy_into)s) // does broadcasting
             {
-                Py_DECREF(xview);
+                Py_DECREF(zview);
                 %(fail)s;
             }
         }
         else
         {
-            PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
-                    (PyObject*)xview, py_%(y)s);
-            if (add_rval)
-            {
-                assert (PyArray_Check((PyObject*)add_rval));
-                assert (PyArray_DATA(add_rval) == PyArray_DATA(xview));
-                Py_DECREF(add_rval);
-            }
-            else
-            {
-                Py_DECREF(xview);
-                %(fail)s;
-            }
+            %(add_to_zview)s
         }
         """ % locals()
 
         return (copy_input_if_necessary
                 + build_view
-                + "{" + get_xview + "}"
+                + "{" + get_zview + "}"
                 + make_modification
-                + "Py_DECREF(xview);"
+                + "Py_DECREF(zview);"
                 )
+
+    def do_type_checking(self, node):
+        """ Should raise NotImplementedError if c_code does not support
+        the types involved in this node.
+        """
+
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError()
+
+
 
     def c_code_cache_version(self):
         hv = Subtensor.helper_c_code_cache_version()
@@ -4703,6 +4781,99 @@ class IncSubtensor(Op):
             return (1, hv)
         else:
             return ()
+
+    def copy_of_x(self, x):
+        """
+            x: a string giving the name of a C variable pointing to an array
+
+            Returns C code expression to make a copy of x.
+
+            Base class uses PyArrayObject *, subclasses may override for
+            different types of arrays.
+        """
+        # Parameters of PyArrary_FromAny are:
+        # array
+        # dtype: we pass NULL to say any dtype is acceptable, so the existing
+        #        dtype will be copied
+        # min_depth: we pass 0 to have this parameter ignored
+        # max_depth: we pass 0 to have this parameter ignored
+        # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
+        # context: this is almost always NULL, I'm not sure what it's used for
+        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
+                NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
+
+    def make_view_array(self, x, view_ndim):
+        """
+            x: a string identifying an array to be viewed
+            view_ndim: a string specifying the number of dimensions
+                     to have in the view
+
+            This doesn't need to actually set up the view with the
+            right indexing; we'll do that manually later.
+        """
+
+        return """Py_INCREF(PyArray_DESCR(%(x)s));
+        PyArrayObject * zview =
+                (PyArrayObject*)PyArray_NewFromDescr(
+                &PyArray_Type,
+                PyArray_DESCR(%(x)s),
+                %(view_ndim)s,
+                PyArray_DIMS(%(x)s),
+                PyArray_STRIDES(%(x)s),
+                PyArray_DATA(%(x)s),
+                %(x)s->flags,
+                NULL)""" % locals()
+
+    def get_helper_c_code_args(self):
+        """ Return a dictionary of arguments to pass to helper_c_code."""
+        return Subtensor.default_helper_c_code_args()
+
+    def copy_into(self, view, source):
+        """
+            view: string, C code expression for an array
+            source: string, C code expression for an array
+
+            returns a C code expression to copy source into view, and
+            return 0 on success
+        """
+        return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
+
+    def define_set_data(self):
+        """ Returns C code used to define any macros used in the
+        set data argument to the helper C code. """
+        return ""
+
+    def link_view_array(self, x, fail):
+        """ Returns code to complete making zview a view of x"""
+
+        # On CPU there is nothing to do, make_view_array already did this
+        return ""
+
+    def set_view_base(self, x, fail):
+        """ Returns code to make zview be a correct view of x,
+        after helper_c_code is done messing with x"""
+
+        # On CPU there is nothing to do
+        return ""
+
+    def add_to_zview(self, x, fail):
+        """ Return C code to add x to zview. Should DECREF zview if the
+        add fails."""
+
+        return """
+            PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
+                    (PyObject*)zview, py_%(x)s);
+            if (add_rval)
+            {
+                assert (PyArray_Check((PyObject*)add_rval));
+                assert (PyArray_DATA(add_rval) == PyArray_DATA(zview));
+                Py_DECREF(add_rval);
+            }
+            else
+            {
+                Py_DECREF(zview);
+                %(fail)s;
+            }""" % locals()
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

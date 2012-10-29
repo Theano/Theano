@@ -2175,6 +2175,12 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
 
+# C Code shared by GpuSubtensor and GpuIncSubtensor
+_define_set_data = """
+    #define CudaNdarray_set_device_data2(obj, ptr, base) \
+            CudaNdarray_set_device_data(obj, (float *)ptr, base)
+"""
+
 class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
     Implement subtensor on the gpu.
@@ -2240,16 +2246,17 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
             %(fail)s;
         }
         cnda_mark_dev_structure_dirty(xview);
-        #define CudaNdarray_set_device_data2(obj, ptr, base) \
-                CudaNdarray_set_device_data(obj, (float *)ptr, base)
-""" % locals()
-        get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
+        """ % locals()
+
+        get_xview = _define_set_data + \
+                    self.helper_c_code(node, name, inputs, outputs, sub,
                                        self.idx_list,
                                        c_prefix='CudaNdarray',
                                        set_data='CudaNdarray_set_device_data2',
                                        set_dim='CudaNdarray_set_dim',
                                        set_stride='CudaNdarray_set_stride',
                                        update_flags="", strides_mul=4)
+
 
         finish_view = """
         //Set the base only now
@@ -2408,12 +2415,127 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
+
+    Note: The optimization to make this inplace is in tensor/opt.
+          The same optimization handles IncSubtensor and GpuIncSubtensor.
+          This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
+          The helper methods like do_type_checking, copy_of_x, etc. specialize
+          the c_code for this Op.
     """
+
     def make_node(self, x, y, *inputs):
-        assert isinstance(x.type, CudaNdarrayType)
-        assert isinstance(y.type, CudaNdarrayType)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return Apply(self, [x, y] + rval.inputs[2:], [x.type()])
+
+    def do_type_checking(self, node):
+        """ Should raise NotImplementedError if c_code does not support
+        the types involved in this node.
+        """
+
+        if not isinstance(node.inputs[0].type, CudaNdarrayType):
+            raise NotImplementedError()
+
+    def copy_of_x(self, x):
+        """
+            x: a string giving the name of a C variable pointing to an array
+
+            Returns C code expression to make a copy of x.
+
+            Base class uses PyArrayObject *, subclasses may override for
+            different types of arrays.
+        """
+        return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
+
+    def make_view_array(self, x, view_ndim):
+        """
+            x: a string identifying an array to be viewed
+            view_ndim: a string specifying the number of dimensions
+                     to have in the view
+
+            This doesn't need to actually set up the view with the
+            right indexing; we'll do that manually later.
+        """
+        return """CudaNdarray* zview = (CudaNdarray*)
+                CudaNdarray_New(%(view_ndim)s)""" % locals()
+
+    def get_helper_c_code_args(self):
+        """ Return a dictionary of arguments to use with helper_c_code"""
+        return { 'update_flags' : "",
+                'c_prefix' : 'CudaNdarray',
+                'set_data' :'CudaNdarray_set_device_data2',
+                'set_dim' : 'CudaNdarray_set_dim',
+                'set_stride' : 'CudaNdarray_set_stride',
+                'update_flags' : "",
+                'strides_mul': 4
+                }
+
+    def copy_into(self, view, source):
+        """
+            view: string, C code expression for an array
+            source: string, C code expression for an array
+
+            returns a C code expression to copy source into view, and
+            return 0 on success
+        """
+        return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
+
+    def define_set_data(self):
+        return _define_set_data
+
+    def link_view_array(self, x, fail):
+
+        return """
+        if (CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(%(x)s),
+                                       (PyObject*) NULL))
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set the"
+                         " devdata field of the view");
+            Py_XDECREF(zview);
+            %(fail)s;
+        }
+        cnda_mark_dev_structure_dirty(zview);
+        """ % locals()
+
+    def set_view_base(self, x, fail):
+        return """
+        //Set the base only now
+
+        if(CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(zview),
+                                    %(x)s)){
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set"
+                         " the base of the view array");
+            Py_XDECREF(zview);
+            %(fail)s;
+        }""" % locals()
+
+    def add_to_zview(self, x, fail):
+
+        return """
+
+        PyObject * add_result =  CudaNdarray_inplace_add((PyObject *) zview,
+                                                         (PyObject *) py_%(x)s);
+
+        if (! add_result )
+        {
+            Py_DECREF(zview);
+            %(fail)s;
+        }
+        else
+        {
+            Py_DECREF(add_result);
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+
+        parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
+        if parent_version:
+            return parent_version + (0,)
+        return ()
 
 
 class GpuFlatten(tensor.Flatten, GpuOp):
