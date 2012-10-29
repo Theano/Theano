@@ -6505,17 +6505,26 @@ class TestInferShape(utt.InferShapeTester):
                         [admat_val, adtens4_val], TensorDot)
 
         # Flatten
-        adtens = tensor3()
-        adtens_val = rand(4, 5, 3)
-        outdim = 2
-        self._compile_and_check([adtens],
-                                [Flatten(outdim)(adtens)],
-                                [adtens_val], Flatten)
+        atens3 = tensor3()
+        atens3_val = rand(4, 5, 3)
+        for outdim in (3, 2, 1):
+            self._compile_and_check([atens3],
+                                    [Flatten(outdim)(atens3)],
+                                    [atens3_val], Flatten)
 
+        amat = matrix()
+        amat_val = rand(4, 5)
+        for outdim in (2, 1):
+            self._compile_and_check([amat],
+                                    [Flatten(outdim)(amat)],
+                                    [amat_val], Flatten)
+
+        avec = vector()
+        avec_val = rand(4)
         outdim = 1
-        self._compile_and_check([adtens],
-                                [Flatten(outdim)(adtens)],
-                                [adtens_val], Flatten)
+        self._compile_and_check([avec],
+                                [Flatten(outdim)(avec)],
+                                [avec_val], Flatten)
 
         # Eye
         aiscal = iscalar()
@@ -6536,6 +6545,8 @@ class TestInferShape(utt.InferShapeTester):
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
         # elements of shape
+        adtens = tensor3()
+        adtens_val = rand(4, 5, 3)
         self._compile_and_check([adtens],
                                 [Shape()(adtens)],
                                 [adtens_val], (opt.MakeVector, Shape))
