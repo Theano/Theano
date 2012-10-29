@@ -2685,6 +2685,7 @@ where = switch
 # Bit-wise
 ##########################
 
+
 @_scal_elemwise_with_nfunc('bitwise_and', 2, 1)
 def and_(a, b):
     """bitwise a & b"""
@@ -4334,8 +4335,10 @@ class Subtensor(Op):
         while (inner_ii < %(c_prefix)s_NDIM(%(xview)s))
         {
             assert (outer_ii < %(c_prefix)s_NDIM(%(x)s));
-            %(set_dim)s(%(xview)s, inner_ii, %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
-            %(set_stride)s(%(xview)s, inner_ii, %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
+            %(set_dim)s(%(xview)s, inner_ii,
+                        %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
+            %(set_stride)s(%(xview)s, inner_ii,
+                           %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
             inner_ii += 1;
             outer_ii += 1;
         }
@@ -4469,8 +4472,8 @@ def batched_dot(x, y):
     """
     :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
     :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
-    This function computes the dot product between the two tensors, by iterating
-    over the first dimension using scan.
+    This function computes the dot product between the two tensors, by
+    iterating over the first dimension using scan.
     Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
     Example:
     >>> first = T.tensor3('first')
@@ -5727,7 +5730,8 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        PyArray_BYTES(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
+                        PyArray_BYTES(%(shp)s) +
+                        ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
@@ -5939,8 +5943,8 @@ def tile(x, reps, ndim=None):
         ndim = len(reps)
 
     # backport
-    # ndim = len(reps) if ndim is None else ndim # not sure if len(shp) is going
-    # to work.
+    # ndim = len(reps) if ndim is None else ndim
+    # not sure if len(shp) is going to work.
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
     return tile.op[ndim](x, reps)
