@@ -2725,11 +2725,17 @@ class Composite(ScalarOp):
             return super(Composite, self).make_node(*inputs)
         else:
             # Make a new op with the right input type.
+            assert len(inputs) == self.nin
             res = theano.compile.rebuild_collect_shared(
                 self.outputs,
                 replace=dict(zip(self.inputs, inputs)),
                 rebuild_strict=False)
-            node = Composite(inputs, res[1]).make_node(*inputs)
+            # After rebuild_collect_shared, the Variable in inputs
+            # are not necessarily in the graph represented by res.
+            # res[2][0] is a dict that map from the original variable to the
+            # cloned variable.
+            cloned_inputs = [res[2][0][i] for i in inputs]
+            node = Composite(cloned_inputs, res[1]).make_node(*inputs)
             return node
 
     def perform(self, node, inputs, output_storage):

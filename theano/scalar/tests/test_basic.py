@@ -101,6 +101,26 @@ class test_composite(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0, 3.0) == [6.0, 7.0, 0.5]
 
+    def test_make_node_continue_graph(self):
+        # This is a test for a bug (now fixed) that disabled the
+        # local_gpu_elemwise_0 optimization and printed an
+        # optimization warning on the terminal.
+
+        # We test that Composite.make_node accept as inputs Variable
+        # some that represent existing computation.
+
+        si0 = theano.scalar.int8()
+        si1 = theano.scalar.int8()
+        si2 = theano.scalar.float32()
+        sout = (si0 * si1) / si2
+        sop = theano.scalar.Composite([si0, si1, si2],
+                                      [sout])
+        si0 = theano.scalar.int8()
+        si1 = theano.scalar.int8()
+        si2 = theano.scalar.float32()
+        si3 = theano.scalar.float32()
+        sop.make_node(si0 * si3, si1, si2)
+
 
 class test_logical(unittest.TestCase):
     def test_gt(self):
