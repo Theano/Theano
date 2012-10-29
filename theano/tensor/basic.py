@@ -4464,6 +4464,7 @@ def set_subtensor(x, y, inplace=False,
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
 
+
 def batched_dot(x, y):
     """
     :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
@@ -4476,7 +4477,7 @@ def batched_dot(x, y):
     >>> second = T.tensor3('second')
     >>> result = batched_dot(first, second)
     :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower then dot or tensordot:
+    But numpy einsum is slower than dot or tensordot:
     http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
     """
     result, updates = theano.scan(fn=lambda x_mat, y_mat:
@@ -4485,6 +4486,7 @@ def batched_dot(x, y):
             sequences=[x, y],
             non_sequences=None)
     return result
+
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         tolerate_inplace_aliasing=False):
