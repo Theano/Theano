@@ -186,7 +186,7 @@ if __name__ == "__main__":
         goto2 1.13/8                                                      1.94s
         goto2 1.13/16                                                     3.16s
 
-        Test time in float32 with cuda 3.0.14
+        Test time in float32
         (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
         gpu/cuda version
@@ -194,6 +194,7 @@ if __name__ == "__main__":
         GTX580/4.2        0.164s
         GTX480/4.2        0.192s
         GTX470/4.2        0.238s
+        C2075/4.2         0.25s
         GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
 
         GTX580/3.2        0.203s
