@@ -256,7 +256,9 @@ class RandomFunction(gof.Op):
         out[0] = rval
 
     def grad(self, inputs, outputs):
-        return [theano.gradient.DisconnectedType()() for i in inputs]
+        return [theano.gradient.grad_undefined(self, k, inp,
+                        'No gradient defined through raw random numbers op')
+                for k, inp in enumerate(inputs)]
 
     def R_op(self, inputs, eval_points):
         return [None for i in eval_points]
