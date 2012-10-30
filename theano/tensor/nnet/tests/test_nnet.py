@@ -562,8 +562,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
         verbose = 0
-        if verbose:
-            from theano.printing import pprint
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
@@ -727,10 +725,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1], dtype='int64')
         x = T.matrix('x')
-        b = T.vector('b')
         y = T.lvector('y')
         yi = T.cast(y, 'int32')
         expressions = [
@@ -963,10 +959,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1])
         x = T.matrix('x')
-        b = T.vector('b')
         y = T.lvector('y')
         a = T.scalar('a')
 
