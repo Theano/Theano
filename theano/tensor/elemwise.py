@@ -391,7 +391,8 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         # canonicalization optimization phase will remove the inplace.
         # The inplace will be reintroduced automatically later in the graph.
         if 'int' in inp[0].dtype:
-            return [DisconnectedType()()]
+            return [theano.tensor.zeros_like(inp[0],
+                                             dtype=theano.config.floatX)]
         else:
             return [DimShuffle(gz.type.broadcastable, grad_order)(
                 Elemwise(scalar.identity)(gz))]
