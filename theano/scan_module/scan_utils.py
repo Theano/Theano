@@ -47,7 +47,7 @@ def safe_new(x, tag='', dtype=None):
         nw_name = None
     if isinstance(x, theano.Constant):
         if dtype and x.dtype != dtype:
-            return tensor.cast(x.clone(), dtype=dtype)
+            return x.clone().astype(dtype)
         else:
             return x.clone()
     # Note, as_tensor_variable will convert the Scalar into a
@@ -70,7 +70,7 @@ def safe_new(x, tag='', dtype=None):
             pass
     nw_x = x.type()
     if dtype and nw_x.dtype != dtype:
-        nw_x = tensor.cast(nw_x, dtype=dtype)
+        nw_x = nw_x.astype(dtype)
     nw_x.name = nw_name
     # Preserve test values so that the 'compute_test_value' option can be used.
     # The test value is deep-copied to ensure there can be no interactions

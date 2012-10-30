@@ -1348,8 +1348,7 @@ class Scan(PureOp):
                 dC_dXtm1s.append(dC_dXts[opos].type())
                 if x.dtype != dC_dXts[opos].dtype:
                     dC_dinps_t[pos + self.n_seqs] = \
-                            tensor.cast(x,
-                                        dtype=dC_dXts[opos].dtype)
+                            x.astype(dC_dXts[opos].dtype)
             else:
                 dC_dXtm1s.append(x.type())
         for dx, dC_dXtm1 in enumerate(dC_dXtm1s):
