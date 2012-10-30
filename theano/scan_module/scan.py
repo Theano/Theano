@@ -53,6 +53,7 @@ from theano.tensor import opt
 from theano import tensor
 from theano import config
 from theano.updates import Updates
+from theano.compile import ops
 
 
 import scan_op
@@ -849,7 +850,7 @@ def scan(fn,
             new_var = safe_new(input.variable)
             if getattr(input.variable, 'name', None) is not None:
                 new_var.name = input.variable.name + '_copy'
-            if isinstance(new_var.type, tensor.TensorType):
+            if isinstance(new_var.type, ops.expandable_types):
                 sit_sot_inner_inputs.append(new_var)
                 sit_sot_scan_inputs.append(
                     scan_utils.expand(

@@ -1076,6 +1076,7 @@ class TensorType(Type):
         """
         return numpy.zeros(shape, dtype=self.dtype)
 
+theano.compile.ops.expandable_types += (TensorType,)
 
 # Register TensorType C code for ViewOp.
 theano.compile.register_view_op_c_code(

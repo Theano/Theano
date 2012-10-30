@@ -411,6 +411,7 @@ class CudaNdarrayType(Type):
     def c_compile_args(self):
         return []
 
+theano.compile.ops.expandable_types += (CudaNdarrayType,)
 
 # Register C code for ViewOp on CudaNdarrayType
 theano.compile.register_view_op_c_code(
