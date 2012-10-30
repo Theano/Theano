@@ -1286,7 +1286,9 @@ class Scan(PureOp):
 
         def compute_gradient(y, g_y):
             gmp = gradient.grad_sources_inputs(
-                        [(y, g_y)], theano.gof.graph.inputs([y]))
+                    [(y, g_y)],
+                    [x for x in theano.gof.graph.inputs([y])
+                     if x in diff_inputs])
             return [gmp.get(p, None) for p in diff_inputs]
         dC_dinps_t = [None for inp in diff_inputs]
         dC_dXts = []
