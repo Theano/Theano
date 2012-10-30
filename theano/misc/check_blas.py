@@ -17,6 +17,7 @@ import os
 import sys
 import time
 from optparse import OptionParser
+import subprocess
 
 import numpy
 import theano
@@ -53,6 +54,8 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print 'Numpy dot module:', numpy.dot.__module__
         print 'Numpy location:', numpy.__file__
         print 'Numpy version:', numpy.__version__
+        print 'nvcc version:'
+        subprocess.call(("nvcc", "--version"))
         print
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
