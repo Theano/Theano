@@ -13,7 +13,10 @@ import numpy
 
 try:
     import pydot as pd
-    pydot_imported = True
+    if pd.find_graphviz():
+        pydot_imported = True
+    else:
+        pydot_imported = False
 except ImportError:
     pydot_imported = False
 
