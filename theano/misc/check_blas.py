@@ -57,7 +57,8 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         if (theano.config.device.startswith("gpu") or
             theano.config.init_gpu_device.startswith("gpu")):
             print 'nvcc version:'
-            subprocess.call(("nvcc", "--version"))
+            subprocess.call((theano.sandbox.cuda.nvcc_compiler.nvcc_path,
+                             "--version"))
             print
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
