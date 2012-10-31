@@ -1130,7 +1130,11 @@ Mathematical
 
 .. function:: erf(a), erfc(a)
 
-    Returns a variable representing the error function or the complementary error function.
+    Returns a variable representing the error function or the complementary error function. `wikipedia <http://en.wikipedia.org/wiki/Error_function>`__
+
+.. function:: erfinv(a), erfcinv(a)
+
+    Returns a variable representing the inverse error function or the inverse complementary error function. `wikipedia <http://en.wikipedia.org/wiki/Error_function#Inverse_functions>`__
 
 
 .. _libdoc_tensor_broadcastable:
@@ -1211,6 +1215,29 @@ Linear Algebra
     :type axes: see numpy.tensordot
 
     :return: tensor product
+
+.. function:: batched_dot(X, Y)
+
+    :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    This function computes the dot product between the two tensors, by iterating
+    over the first dimension using scan.
+    Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
+    Example:
+    >>> first = T.tensor3('first')
+    >>> second = T.tensor3('second')
+    >>> result = batched_dot(first, second)
+
+    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
+    But numpy einsum is slower then dot or tensordot:
+    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+
+    :param X: left term
+    :param Y: right term
+    :type X: symbolic tensor
+    :type Y: symbolic tensor
+
+    :return: tensor of products
 
 
 
