@@ -624,7 +624,7 @@ def _populate_var_to_node_to_idx(outputs, wrt):
 
     """
 
-    # var_to_node_to_idx[var][node] = [i,j] means node has
+    # var_to_app_to_idx[var][node] = [i,j] means node has
     # var as input at positions i and j
     var_to_app_to_idx = {}
 
