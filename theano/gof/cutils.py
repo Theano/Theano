@@ -57,8 +57,11 @@ def compile_cutils():
                                      preargs=args)
 
 try:
-    # Must be at the beginning to ensure no conflict with other project
-    # that would use the same module name.
+    # Compiledir ust be at the beginning of the path to ensure no conflict with
+    # other project that would use the same module name. An __init__ file must
+    # also exist. Note that compile_str also creates an __init__ but if another
+    # cutils_ext exists somewhere on the path it will be imported without
+    # calling compile_str.
     sys.path.insert(0, config.compiledir)
     location = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(location):
