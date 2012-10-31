@@ -661,8 +661,8 @@ def _populate_var_to_node_to_idx(outputs, wrt):
                 if app not in app_to_idx:
                     app_to_idx[app] = []
                 idx = app_to_idx[app]
-                assert i not in idx
-                idx.append(i)
+                if i not in idx:
+                    idx.append(i)
                 account_for(ipt)
 
     # add all variables that are true ancestors of the cost
