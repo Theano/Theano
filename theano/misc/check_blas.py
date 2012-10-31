@@ -17,6 +17,7 @@ import os
 import sys
 import time
 from optparse import OptionParser
+import subprocess
 
 import numpy
 import theano
@@ -53,7 +54,12 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print 'Numpy dot module:', numpy.dot.__module__
         print 'Numpy location:', numpy.__file__
         print 'Numpy version:', numpy.__version__
-        print
+        if (theano.config.device.startswith("gpu") or
+            theano.config.init_gpu_device.startswith("gpu")):
+            print 'nvcc version:'
+            subprocess.call((theano.sandbox.cuda.nvcc_compiler.nvcc_path,
+                             "--version"))
+            print
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
                                  order=order))
@@ -84,9 +90,14 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
     t1 = -1
 
     if execute:
+        sync = (hasattr(theano, "sandbox") and
+                hasattr(theano.sandbox, "cuda") and
+                theano.sandbox.cuda.cuda_available)
         t0 = time.time()
         for i in range(iters):
             f()
+        if sync:
+            theano.sandbox.cuda.synchronize()
         t1 = time.time()
     return t1 - t0, impl
 
@@ -183,7 +194,7 @@ if __name__ == "__main__":
         goto2 1.13/8                                                      1.94s
         goto2 1.13/16                                                     3.16s
 
-        Test time in float32 with cuda 3.0.14
+        Test time in float32
         (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
         gpu/cuda version
@@ -191,6 +202,7 @@ if __name__ == "__main__":
         GTX580/4.2        0.164s
         GTX480/4.2        0.192s
         GTX470/4.2        0.238s
+        C2075/4.2         0.25s
         GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
 
         GTX580/3.2        0.203s
