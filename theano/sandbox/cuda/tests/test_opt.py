@@ -377,6 +377,29 @@ class TestIfElse(theano.tests.test_ifelse.test_ifelse):
     def get_ifelse(self, n):
         return theano.ifelse.IfElse(n, gpu=True, as_view=True)
 
+def test_incsubtensor_mixed():
+
+    # This catches a bug that occurred when incrementing
+    # a float32 tensor by a float64 tensor.
+    # The result is defined to be float32, so it is OK
+    # to downcast the float64 increment in order to
+    # transfer it to the GPU.
+    # The bug was that the optimization called GpuFromHost
+    # without casting first, causing the optimization to
+    # fail.
+    X = tensor.fmatrix()
+    Y = tensor.dmatrix()
+    Z = tensor.inc_subtensor(X[0:1,0:1],Y)
+    f = theano.function([X,Y], Z, mode=mode_with_gpu)
+    packed, = f.maker.fgraph.inputs[1].clients
+    client, idx = packed
+    print client
+    assert isinstance(client.op, tensor.Elemwise)
+    assert isinstance(client.op.scalar_op, theano.scalar.Cast)
+    packed ,= client.outputs[0].clients
+    client, idx = packed
+    assert isinstance(client.op, cuda.GpuFromHost)
+
 if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()
