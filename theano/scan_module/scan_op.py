@@ -1373,7 +1373,10 @@ class Scan(PureOp):
                         if not isinstance(dC_douts[oidx].type,
                                           DisconnectedType):
                             dtypes.append(dC_douts[oidx].dtype)
-                new_dtype = theano.scalar.upcast(*dtypes)
+                if dtypes:
+                    new_dtype = theano.scalar.upcast(*dtypes)
+                else:
+                    new_dtype = theano.config.floatX
                 dC_dXt = safe_new(Xt, dtype=new_dtype)
             else:
                 if isinstance(dC_douts[idx].type, DisconnectedType):
