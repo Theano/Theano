@@ -562,8 +562,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
         verbose = 0
-        if verbose:
-            from theano.printing import pprint
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
@@ -591,7 +589,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(f)
             try:
-                assert len(f.maker.fgraph.toposort()) == 4
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 4
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
                 f(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -602,7 +604,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(g)
             try:
-                assert len(g.maker.fgraph.toposort()) == 4
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) == 4
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax in ops
+                assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
@@ -620,7 +626,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(f)
             try:
-                assert len(f.maker.fgraph.toposort()) == 2  # [big_op, sum]
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 2  # [big_op, sum]
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
                 f(x_val, b_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -629,7 +637,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(g)
             try:
-                assert len(g.maker.fgraph.toposort()) == 4
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) == 4
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax_with_bias in ops
+                assert softmax_grad not in ops
                 g(x_val, b_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
@@ -647,7 +659,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(f)
             try:
-                assert len(f.maker.fgraph.toposort()) == 6
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 6
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
                 f(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -657,9 +673,13 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(g)
             try:
-                assert len(g.maker.fgraph.toposort()) in (6, 7)
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) in (6, 7)
                 #there's an extra dimshuffle in there
                 # but I can't think of a good rule to get rid of it
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax in ops
+                assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
@@ -676,7 +696,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(f)
             try:
-                assert len(f.maker.fgraph.toposort()) == 4
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 4
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
             except Exception:
                 theano.printing.debugprint(f)
                 raise
@@ -684,7 +708,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(g)
             try:
-                assert len(g.maker.fgraph.toposort()) in (6, 7)
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) in (6, 7)
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax_with_bias in ops
+                assert softmax_grad not in ops
                 g(x_val, b_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
@@ -697,10 +725,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1], dtype='int64')
         x = T.matrix('x')
-        b = T.vector('b')
         y = T.lvector('y')
         yi = T.cast(y, 'int32')
         expressions = [
@@ -716,7 +742,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(f)
             try:
-                assert len(f.maker.fgraph.toposort()) == 5
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 5
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
                 f(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -727,7 +757,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 theano.printing.debugprint(g)
             try:
-                assert len(g.maker.fgraph.toposort()) == 5
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) == 5
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax in ops
+                assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
@@ -762,8 +796,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 print_graph(f)
             try:
-                prev, last = f.maker.fgraph.toposort()[-2:]
-                assert len(f.maker.fgraph.toposort()) == 5
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                assert len(ops) == 5
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
                 f(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -815,9 +852,80 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             if verbose:
                 print_graph(f)
             try:
-                prev, last = f.maker.fgraph.toposort()[-2:]
-                assert len(f.maker.fgraph.toposort()) == 3
+                ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle]
+                assert len(ops) == 3
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
+                f(x_val, b_val, y_val)
+            except Exception:
+                theano.printing.debugprint(f)
+                raise
+
+            backup = config.warn.sum_div_dimshuffle_bug
+            config.warn.sum_div_dimshuffle_bug = False
+            try:
+                g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
+            finally:
+                config.warn.sum_div_dimshuffle_bug = backup
+
+            if verbose:
+                print_graph(g)
+            try:
+                ops = [node.op for node in g.maker.fgraph.toposort()]
+                assert len(ops) <= 6
+                assert crossentropy_softmax_1hot_with_bias_dx in ops
+                assert softmax_with_bias in ops
+                assert softmax_grad not in ops
+                g(x_val, b_val, y_val)
+            except Exception:
+                theano.printing.debugprint(g)
+                raise
+
+    def test_optimize_xent_vector3(self):
+        # Same as test_optimize_xent_vector2, but y is the result of
+        # a "flatten", and it somehow makes the constant-folding
+        # of arange(y.shape[0]) happen before the xent optimization
+        verbose = 0
+        mode = theano.compile.mode.get_default_mode()
+        if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
+            mode = 'FAST_RUN'
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x_val = rng.randn(5).astype(config.floatX)
+        b_val = rng.randn(5).astype(config.floatX)
+        y_val = numpy.asarray([2])
+
+        x = T.vector('x')
+        b = T.vector('b')
+        y_ = T.lvector('y_')
+        y = y_.flatten()
+
+        def print_graph(func):
+            for i, node in enumerate(func.maker.fgraph.toposort()):
+                print i, node
+            # Last node should be the output
+            print i, printing.pprint(node.outputs[0])
+            print
+
+        ## Test that a biased softmax is optimized correctly
+        bias_expressions = [
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
+
+        for expr in bias_expressions:
+            f = theano.function([x, b, y_], expr, mode=mode)
+            if verbose:
+                print_graph(f)
+            try:
+                ops = [node.op for node in f.maker.fgraph.toposort()]
+                # [big_op, sum, dim_shuffle, flatten]
+                assert len(ops) <= 4
+                assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                assert not [1 for o in ops
+                            if isinstance(o, T.AdvancedSubtensor)]
                 f(x_val, b_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
@@ -851,10 +959,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             mode = 'FAST_RUN'
         rng = numpy.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        b_val = rng.randn(5).astype(config.floatX)
         y_val = numpy.asarray([2, 4, 1])
         x = T.matrix('x')
-        b = T.vector('b')
         y = T.lvector('y')
         a = T.scalar('a')
 
