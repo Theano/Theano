@@ -822,6 +822,9 @@ def local_gpu_incsubtensor(node):
                     gpu_from_host(x),
                     gpu_from_host(y),
                     *coords)]
+    # Incrementing a float32 x results in a float32
+    # output even if y is float64, so we can downcast
+    # y to put it on GPU
     if type(node.op) == tensor.IncSubtensor and \
        node.inputs[0].dtype == "float32":
         x, y = node.inputs[0:2]
@@ -838,6 +841,8 @@ def local_gpu_incsubtensor(node):
             go_gpu = True
             gpu_y, = y.owner.inputs
         else:
+            if y.dtype != 'float32':
+                y = tensor.cast(y, 'float32')
             gpu_y = gpu_from_host(y)
         if go_gpu:
             return [host_from_gpu(GpuIncSubtensor(
