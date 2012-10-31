@@ -60,6 +60,11 @@ try:
     # Must be at the beginning to ensure no conflict with other project
     # that would use the same module name.
     sys.path.insert(0, config.compiledir)
+    location = os.path.join(config.compiledir, 'cutils_ext')
+    if not os.path.exists(location):
+        os.mkdir(location)
+    file(os.path.join(location, "__init__.py"), 'w').close()
+
     try:
         from cutils_ext.cutils_ext import *
     except ImportError:
