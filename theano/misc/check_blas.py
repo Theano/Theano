@@ -54,9 +54,11 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print 'Numpy dot module:', numpy.dot.__module__
         print 'Numpy location:', numpy.__file__
         print 'Numpy version:', numpy.__version__
-        print 'nvcc version:'
-        subprocess.call(("nvcc", "--version"))
-        print
+        if (theano.config.device.startswith("gpu") or
+            theano.config.init_gpu_device.startswith("gpu")):
+            print 'nvcc version:'
+            subprocess.call(("nvcc", "--version"))
+            print
 
     a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
                                  order=order))
