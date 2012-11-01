@@ -67,7 +67,8 @@ try:
     location = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(location):
         os.mkdir(location)
-    file(os.path.join(location, "__init__.py"), 'w').close()
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        file(os.path.join(location, '__init__.py'), 'w').close()
 
     try:
         from cutils_ext.cutils_ext import *
@@ -80,7 +81,7 @@ try:
     # compile the cutils_ext module simultaneously.
         try:
             try:
-                # We must retry to import it as some other processs could
+                # We must retry to import it as some other process could
                 # have been compiling it between the first failed import
                 # and when we receive the lock
                 from cutils_ext.cutils_ext import *
