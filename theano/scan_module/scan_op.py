@@ -1315,6 +1315,9 @@ class Scan(PureOp):
                 else:
                     for inner_out in ols:
                         if hasattr(inner_out, 'dtype'):
+                            # Note that we do not care about the output of
+                            # this compute gradient. We just care to see if
+                            # it is None or not. (i.e. disconnected or not)
                             tmp = compute_gradient(
                                 inner_out,
                                 safe_new(inner_out, dtype='float64'),
