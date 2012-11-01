@@ -1312,8 +1312,14 @@ class Scan(PureOp):
                     connection_pattern[iidx+1][oidx] = True
                 else:
                     for inner_out in ols:
-                        tmp = compute_gradient(
-                            inner_out, safe_new(inner_out, dtype='float64'), ils)
+                        if hasattr(inner_out, 'dtype'):
+                            tmp = compute_gradient(
+                                inner_out,
+                                safe_new(inner_out, dtype='float64'),
+                                ils)
+                        else:
+                            # It should be undefined not disconnected
+                            tmp = ils
                         if any([x is not None for x in tmp]):
                             connection_pattern[iidx+1][oidx] = True
         return connection_pattern
