@@ -1011,11 +1011,7 @@ def local_gpu_conv(node):
     """
     def GpuConvOp_from_ConvOp(op):
         logical_img_hw = None
-        if op.imshp_logical is not None:
-            logical_img_hw = op.imshp_logical[1:3]
-            if logical_img_hw != op.imshp[1:3]:
-                # this case is not implemented
-                return None
+
         if op.kshp_logical is not None and op.kshp_logical != op.kshp:
             return None
         #print op.kshp, op.imshp[1:3]
@@ -1033,6 +1029,23 @@ def local_gpu_conv(node):
         #HACK to print the number of MFlops in the profiler output.
         if hasattr(op, 'flops'):
             ret.flops = op.flops
+        if op.imshp_logical is not None:
+            logical_img_hw = op.imshp_logical[1:3]
+            if logical_img_hw != op.imshp[1:3]:
+                # this case is not implemented
+                #return None
+                rstride = int(numpy.ceil(op.imshp_logical[1] /
+                                         float(op.imshp[1])))
+                cstride = int(numpy.ceil(op.imshp_logical[2] /
+                                         float(op.imshp[2])))
+                def make_graph(img, kern):
+                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
+                                       img.shape[0], *op.imshp_logical)
+                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
+                                               img)
+                    img = gpu_from_host(img)
+                    return ret(img, kern)
+                return make_graph
         return ret
 
     if node.op == gpu_from_host:

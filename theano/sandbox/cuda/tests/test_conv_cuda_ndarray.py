@@ -17,6 +17,7 @@ except ImportError:
     pass
 
 import theano
+from theano import tensor
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda_ndarray
@@ -707,14 +708,41 @@ def test_subsample():
     exec_conv(version_full, shapes, verbose, random, 'full',
               print_=print_, ones=ones)
 
-## See #616
-#def test_logical_shapes():
-#    # implement when
-#    print >> sys.stderr, ("WARNING TODO: test_logical_shapes not implemented"
-#    " (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)")
-
 
 class TestConv2DGPU(unittest.TestCase):
+    def test_logical_shapes(self):
+        for stride in range(1, 4):
+            kshp = (10, 2, 10, 10)
+            featshp = (3, 10, 11, 11)
+
+            a = tensor.ftensor4()
+            A = tensor.ftensor4()
+
+            # Need to transpose first two dimensions of kernel, and reverse
+            # index kernel image dims (for correlation)
+            kernel_rotated = tensor.transpose(A, axes=[1, 0, 2, 3])
+
+            featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
+                               featshp[3] * stride)
+            kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
+            print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
+            image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
+                                                border_mode='full',
+                                                image_shape=featshp,
+                                                filter_shape=kshp_rotated,
+                                                imshp_logical=featshp_logical[1:],
+                                                kshp_logical=kshp[2:])
+
+            func = theano.function([a, A], image_estimate, mode=theano_mode)
+            theano.printing.debugprint(func,)
+            assert any([isinstance(node.op, theano.sandbox.cuda.blas.GpuConv)
+                        for node in func.maker.fgraph.toposort()])
+
+            a_in = numpy.random.randn(*featshp).astype("float32")
+            A_in = numpy.random.randn(*kshp).astype("float32")
+
+            func(a_in, A_in)
+
     def test_invalid_input_shape(self):
         """
         Tests that when the shape gived at build time is not the same as
