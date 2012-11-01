@@ -128,11 +128,12 @@ compile_cuda_ndarray = True
 if not compile_cuda_ndarray:
     compile_cuda_ndarray = not try_import()
 
-if not nvcc_compiler.is_nvcc_available():
-    # It can happen that there the file cuda_ndarray.so is already compiled
+if not nvcc_compiler.is_nvcc_available() or not theano.config.cxx:
+    # It can happen that the file cuda_ndarray.so is already compiled
     # but nvcc is not available. In that case we need to disable the CUDA
     # back-end as we won't be able to compile any new op and we can't only
     # use already compiled GPU op and not the others.
+    # Also, if cxx is not available, we need to disable all GPU code.
     set_cuda_disabled()
 
 if compile_cuda_ndarray and cuda_available:
