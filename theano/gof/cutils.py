@@ -81,7 +81,7 @@ try:
     # compile the cutils_ext module simultaneously.
         try:
             try:
-                # We must retry to import it as some other processs could
+                # We must retry to import it as some other process could
                 # have been compiling it between the first failed import
                 # and when we receive the lock
                 from cutils_ext.cutils_ext import *
