@@ -22,6 +22,19 @@ def try_reload():
     del sys.path[0]
 
 try:
+    # See gh issue #728 for why these lines are here. Summary: compiledir must
+    # be at the beginning of the path to avoid conflicts with any other
+    # lazylinker_ext modules that might exist (this step handled in try_import
+    # and try_reload). An __init__.py file must be created for the same reason.
+    # Note that these lines may seem redundant (they are repeated in
+    # compile_str()) but if another lazylinker_ext does exist then it will be
+    # imported and compile_str won't get called at all.
+    location = os.path.join(config.compiledir, 'lazylinker_ext')
+    if not os.path.exists(location):
+        os.mkdir(location)
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        file(os.path.join(location, '__init__.py'), 'w').close()
+
     _need_reload = False
     if force_compile:
         raise ImportError()
