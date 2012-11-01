@@ -1254,10 +1254,15 @@ class Scan(PureOp):
                               for x in node.inputs[1:]]
 
         def compute_gradient(y, g_y, diff_inputs):
-            gmp = gradient.grad_sources_inputs(
+            try:
+                gmp = gradient.grad_sources_inputs(
                     [(y, g_y)],
                     [x for x in theano.gof.graph.inputs([y])
                      if x in diff_inputs])
+            except TypeError:
+                # It means the gradient is undefined (which implies
+                # is connected)
+                return diff_inputs
             return [gmp.get(p, None) for p in diff_inputs]
         def _get_inner_outs(oidx):
             s = 0
