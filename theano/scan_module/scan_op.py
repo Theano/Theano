@@ -1319,6 +1319,9 @@ class Scan(PureOp):
                     connection_pattern[iidx + 1][oidx] = False
                 else:
                     for inner_out in ols:
+                        # We check for the dtype because inner_out could be
+                        # any Theano type like Generic or RandomState, for
+                        # which we can not impose a dtype
                         if hasattr(inner_out, 'dtype'):
                             # Note that we do not care about the output of
                             # this compute gradient. We just care to see if
