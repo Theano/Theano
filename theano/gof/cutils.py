@@ -67,7 +67,8 @@ try:
     location = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(location):
         os.mkdir(location)
-    file(os.path.join(location, "__init__.py"), 'w').close()
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        file(os.path.join(location, '__init__.py'), 'w').close()
 
     try:
         from cutils_ext.cutils_ext import *
