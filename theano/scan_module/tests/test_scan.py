@@ -1493,9 +1493,9 @@ class T_Scan(unittest.TestCase):
                                          go_backwards=False)
         vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
         # y0 is actually not used in the computation of the cost
-        params = [u1, u2, x0, W_in1]
-        gparams = theano.tensor.grad(cost, params)
-        gparams = gparams[:3] + [tensor.zeros_like(y0)] + gparams[3:]
+        params = [u1, u2, y0, x0, W_in1]
+        gparams = theano.grad(cost, params,
+                                     disconnected_inputs='ignore')
 
         grad_fn = theano.function([u1, u2, x0, y0, W_in1],
                                   gparams,
