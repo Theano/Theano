@@ -1279,15 +1279,19 @@ class Scan(PureOp):
             return self.outputs[s:e]
         def _get_inner_inps(iidx):
             s = 0
-            e = 1
+            if self.n_seqs > 0:
+                e = 1
+            else:
+                e = len(self.tap_array[0])
             p = iidx
-            if (node.inputs[iidx] in self.outer_nitsot(node) or
-               node.inputs[iidx] in self.outer_shared(node)):
+            if (node.inputs[iidx + 1] in self.outer_nitsot(node) or
+               node.inputs[iidx + 1] in self.outer_shared(node)):
                 return None
-            if node.inputs[iidx] in self.outer_non_seqs(node):
+            if node.inputs[iidx + 1] in self.outer_non_seqs(node):
                 loc_idx = self.outer_non_seqs(node).index(
-                    node.inputs[iidx])
-                return [self.inner_non_seqs()[loc_idx]]
+                    node.inputs[iidx + 1])
+                return [self.inner_non_seqs(self.inputs)[loc_idx]]
+
 
             for p in xrange(iidx):
                 s = e
