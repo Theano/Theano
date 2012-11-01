@@ -860,8 +860,11 @@ def scan(fn,
                 sit_sot_inner_outputs.append(input.update)
                 # Not that pos is not a negative index. The sign of pos is used
                 # as a flag to indicate if this output should be part of the
-                # update rules or part of the standard outputs of scan. Its
-                # absolute value (-1 in case is negative) represents an index
+                # update rules or part of the standard outputs of scan.
+                # If `pos` is positive than it corresponds to the standard
+                # outputs of scan and it refers to output of index `pos`. If `pos`
+                # is negative that it corresponds to update rules of scan and it
+                # refers to update rule of index -1 - `pos`.
                 sit_sot_rightOrder.append(-1 - len(sit_sot_shared))
                 sit_sot_shared.append(input.variable)
                 givens[input.variable] = new_var
@@ -1065,8 +1068,11 @@ def scan(fn,
         else:
             # Not that pos is not a negative index. The sign of pos is used
             # as a flag to indicate if this output should be part of the
-            # update rules or part of the standard outputs of scan. Its
-            # absolute value (-1 in case is negative) represents an index
+            # update rules or part of the standard outputs of scan.
+            # If `pos` is positive than it corresponds to the standard
+            # outputs of scan and it refers to output of index `pos`. If `pos`
+            # is negative that it corresponds to update rules of scan and it
+            # refers to update rule of index -1 - `pos`.
             update_map[sit_sot_shared[abs(pos) - 1]] = _scan_out_list[idx][-1]
     scan_out_list = [x for x in scan_out_list if x is not None]
     if len(scan_out_list) == 1:
