@@ -1264,6 +1264,7 @@ class Scan(PureOp):
                 # is connected)
                 return diff_inputs
             return [gmp.get(p, None) for p in diff_inputs]
+
         def _get_inner_outs(oidx):
             s = 0
             if self.n_mit_mot > 0:
@@ -1277,6 +1278,7 @@ class Scan(PureOp):
                 else:
                     e += 1
             return self.outputs[s:e]
+
         def _get_inner_inps(iidx):
             s = 0
             if self.n_seqs > 0:
@@ -1292,16 +1294,14 @@ class Scan(PureOp):
                     node.inputs[iidx + 1])
                 return [self.inner_non_seqs(self.inputs)[loc_idx]]
 
-
             for p in xrange(iidx):
                 s = e
                 if p < self.n_seqs:
                     e += 1
                 else:
-                    e += len(self.tap_array[p-self.n_seqs])
+                    e += len(self.tap_array[p - self.n_seqs])
 
             return self.inputs[s:e]
-
         for oidx, out in enumerate(node.outputs):
             for iidx, inp in enumerate(node.inputs[1:]):
                 ols = _get_inner_outs(oidx)
@@ -1309,7 +1309,7 @@ class Scan(PureOp):
 
                 if ils is None:
                     # The gradient should be undefined, not disconnected
-                    connection_pattern[iidx+1][oidx] = True
+                    connection_pattern[iidx + 1][oidx] = True
                 else:
                     for inner_out in ols:
                         if hasattr(inner_out, 'dtype'):
@@ -1321,7 +1321,7 @@ class Scan(PureOp):
                             # It should be undefined not disconnected
                             tmp = ils
                         if any([x is not None for x in tmp]):
-                            connection_pattern[iidx+1][oidx] = True
+                            connection_pattern[iidx + 1][oidx] = True
         return connection_pattern
 
     ### GRAD FUNCTION
@@ -1498,9 +1498,11 @@ class Scan(PureOp):
                 inner_out_mitmot.append(dC_dinps_t[ins_pos])
                 if not disconnected_dC_dinps_t[ins_pos]:
                     disconnected = False
+
                 for _sh in self.inner_shared(self_inputs):
                     if _sh in gof.graph.inputs([dC_dinps_t[ins_pos]]):
                         undefined = True
+
                 n_mitmot_inps_ += 1
                 ins_pos += 1
                 n_mitmot_outs += 1
@@ -1670,6 +1672,7 @@ class Scan(PureOp):
             zip(outputs[offset:offset + self.n_seqs],
                 type_outs[offset:offset + self.n_seqs])):
             if t == 'undefined':
+
                 gradients.append(
                     grad_undefined(self,
                                    p + 1,

@@ -513,7 +513,7 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return (u_t * W_in + x_tm1 * W,
-                    tensor.cast(u_t+x_tm1, 'int64'))
+                    tensor.cast(u_t + x_tm1, 'int64'))
 
         u = theano.tensor.fvector('u')
         x0 = theano.tensor.fscalar('x0')
@@ -560,7 +560,6 @@ class T_Scan(unittest.TestCase):
         assert len(scan_node) == 1
         scan_node = scan_node[0]
         assert scan_node.op.gpu
-
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
@@ -1737,8 +1736,8 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn_cmpl(u_t, x_tm1, W_in):
             trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
-            x_t = theano.dot(u_t, W_in) + x_tm1 + \
-                    trng1.uniform(low=-.1, high=.1)
+            rnd_nb = trng1.uniform(low=-.1, high=.1)
+            x_t = theano.dot(u_t, W_in) + x_tm1 + rnd_nb
             x_t = theano.tensor.cast(x_t, dtype=theano.config.floatX)
             return x_t
 
@@ -1900,8 +1899,8 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5, name = 'fc1')
-        fc2 = theano.shared(0.9, name = 'fc2')
+        fc1 = theano.shared(0.5, name='fc1')
+        fc2 = theano.shared(0.9, name='fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
         y.name = 'y'
         gy = theano.tensor.grad(y, x)
@@ -2554,7 +2553,7 @@ class T_Scan(unittest.TestCase):
         _W = theano.tensor.specify_shape(W, v_W.shape)
         _W.name = '_W'
 
-        [o,_], _ = theano.scan(rnn_fn,
+        [o, _], _ = theano.scan(rnn_fn,
                            sequences=_u,
                            outputs_info=[_h0, None],
                            non_sequences=_W,
@@ -3137,6 +3136,7 @@ class T_Scan(unittest.TestCase):
                                   loss,
                                   no_default_updates=True,
                                   allow_input_downcast=True)
+
         gw, gx = tensor.grad(loss, [w, xinit])
         grad_fn = theano.function([xinit, w], [gx, gw],
                                  allow_input_downcast=True)
@@ -3164,10 +3164,11 @@ class T_Scan(unittest.TestCase):
 
     def test_grad_numeric_shared(self):
         shared_var = theano.shared(numpy.float32(1.))
+
         def inner_fn():
-            return [], {shared_var:shared_var + numpy.float32(1.)}
+            return [], {shared_var: shared_var + numpy.float32(1.)}
         _, updates = theano.scan(inner_fn,
-                                 n_steps = 10,
+                                 n_steps=10,
                                  truncate_gradient=-1,
                                  go_backwards=False)
         cost = updates.values()[0]
@@ -3228,17 +3229,17 @@ class T_Scan(unittest.TestCase):
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
     def test_seq_tap_bug_jeremiah(self):
-        inp = numpy.arange(10).reshape(-1,1).astype(theano.config.floatX)
-        exp_out = numpy.zeros((10,1)).astype(theano.config.floatX)
+        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
 
         def onestep(x, x_tm4):
             return x, x_tm4
 
         seq = tensor.matrix()
-        initial_value = theano.shared(numpy.zeros((4,1),
+        initial_value = theano.shared(numpy.zeros((4, 1),
                                                   dtype=theano.config.floatX))
-        outputs_info = [{'initial' : initial_value, 'taps' : [-4]}, None]
+        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
         results, updates = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
@@ -3248,23 +3249,23 @@ class T_Scan(unittest.TestCase):
 
     def test_borrow_bug_jeremiah(self):
         # This test fails if scan uses wrongly the borrow flag
-        inp = numpy.arange(10).reshape(-1,1).astype(theano.config.floatX)
-        exp_out = numpy.zeros((10,1)).astype(theano.config.floatX)
+        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
 
         def onestep(x, x_tm4):
             return x, x_tm4
 
         seq = tensor.matrix()
-        initial_value = theano.shared(numpy.zeros((4,1),
+        initial_value = theano.shared(numpy.zeros((4, 1),
                                                   dtype=theano.config.floatX))
-        outputs_info = [{'initial' : initial_value, 'taps' : [-4]}, None]
+        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
         results, _ = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
-        sharedvar = theano.shared(numpy.zeros((1,1),
+        sharedvar = theano.shared(numpy.zeros((1, 1),
                                               dtype=theano.config.floatX))
-        updates = {sharedvar : results[0][-1:]}
+        updates = {sharedvar: results[0][-1:]}
 
         f = theano.function([seq], results[1], updates=updates)
         assert numpy.all(exp_out == f(inp))
@@ -3274,18 +3275,18 @@ class T_Scan(unittest.TestCase):
             x_tm1.name = 'x'
             y_tm1.name = 'y'
             z_tm1.name = 'z'
-            return x_tm1**2, x_tm1 + y_tm1, x_tm1+1
+            return x_tm1 ** 2, x_tm1 + y_tm1, x_tm1 + 1
 
         x0 = tensor.vector('X')
         y0 = tensor.vector('y0')
         z0 = tensor.vector('Z')
-        [x,y,z], _ = theano.scan(inner_fn,
-                                 outputs_info=[x0,y0,z0],
+        [x, y, z], _ = theano.scan(inner_fn,
+                                 outputs_info=[x0, y0, z0],
                                  n_steps=10)
-        cost = (x+y+z).sum()
+        cost = (x + y + z).sum()
 
-        gx0 = tensor.grad(cost, x0) #defined
-        gy0 = tensor.grad(cost, y0) #defined
+        gx0 = tensor.grad(cost, x0)  # defined
+        gy0 = tensor.grad(cost, y0)  # defined
         self.assertRaises(ValueError, tensor.grad, cost, z0)
         cost = x.sum()
         self.assertRaises(ValueError, tensor.grad, cost, y0)
@@ -3638,9 +3639,7 @@ if __name__ == '__main__':
 
 
 def test_compute_test_value():
-    """
-    Verify that test values can be used with scan.
-    """
+    # Verify that test values can be used with scan.
     backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'raise'
     try:
@@ -3652,7 +3651,7 @@ def test_compute_test_value():
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
-        z.name='z'
+        z.name = 'z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
