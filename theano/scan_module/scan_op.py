@@ -1390,6 +1390,12 @@ class Scan(PureOp):
                 Xt_placeholder = Xt.type()
                 Xts.append(Xt_placeholder)
             if Xt not in self.inner_nitsot_outs(self_outputs):
+                # What we do here is loop through dC_douts and collect all
+                # those that are connected to the specific one and do an
+                # upcast on all of their dtypes to get the dtype for this
+                # specific output. Deciding if the gradient with this
+                # specific previous step is defined or not is done somewhere
+                # else.
                 dtypes = []
                 states = (self.inner_mitmot(self_inputs) +
                           self.inner_mitsot(self_inputs) +
