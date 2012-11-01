@@ -1493,8 +1493,11 @@ class T_Scan(unittest.TestCase):
                                          truncate_gradient=-1,
                                          go_backwards=False)
         vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
-        params = [u1, u2, x0, y0, W_in1]
+        # y0 is actually not used in the computation of the cost
+        params = [u1, u2, x0, W_in1]
         gparams = theano.tensor.grad(cost, params)
+        gparams = gparams[:3] + [tensor.zeros_like(y0)] + gparams[3:]
+
         grad_fn = theano.function([u1, u2, x0, y0, W_in1],
                                   gparams,
                                   updates=updates,
@@ -3281,30 +3284,11 @@ class T_Scan(unittest.TestCase):
                                  n_steps=10)
         cost = (x+y+z).sum()
 
-        #gx0 = tensor.grad(cost, x0) #defined
-        import ipdb; ipdb.set_trace()
+        gx0 = tensor.grad(cost, x0) #defined
         gy0 = tensor.grad(cost, y0) #defined
-
-        failed = True
-        try:
-            gz0 = tensor.grad(cost, z0) #disconnected
-        except ValueError:
-            failed = False
-        if failed:
-            raise ValueError('grad should have complained about '
-                             'disconnected input')
+        self.assertRaises(ValueError, tensor.grad, cost, z0)
         cost = x.sum()
-        failed = True
-        try:
-            gy0 = tensor.grad(cost, y0) #disconnected
-        except ValueError:
-            failed = False
-        if failed:
-            raise ValueError('grad should have complained about '
-                             'disconnected input')
-
-
-
+        self.assertRaises(ValueError, tensor.grad, cost, y0)
 
 
 def test_speed():
