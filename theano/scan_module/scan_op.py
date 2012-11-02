@@ -1259,7 +1259,7 @@ class Scan(PureOp):
             gmp = {}
             consider_inps = [x for x in theano.gof.graph.inputs([y])
                              if x in diff_inputs]
-            for x in conside_inps:
+            for x in consider_inps:
                 try:
                     _gmp = gradient.grad_sources_inputs(
                         [(y, g_y)],
@@ -1292,7 +1292,7 @@ class Scan(PureOp):
             else:
                 e = len(self.tap_array[0])
             p = iidx
-            if node.inputs[iidx + 1] in self.outer_nitsot(node)
+            if node.inputs[iidx + 1] in self.outer_nitsot(node):
                 return None
             if node.inputs[iidx + 1] in self.outer_non_seqs(node):
                 loc_idx = self.outer_non_seqs(node).index(
