@@ -706,7 +706,7 @@ class TensorType(Type):
         if self.ndim != data.ndim:
             raise TypeError("Wrong number of dimensions: expected %s,"
                             " got %s with shape %s." % (self.ndim, data.ndim,
-                                                        data.shape), data)
+                                                        data.shape))
         if not data.flags.aligned:
             try:
                 msg = "object buffer" + str(data.data)
