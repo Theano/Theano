@@ -23,7 +23,8 @@ from theano import gof
 from theano.gof.python25 import maxsize
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
-from theano.compile import deep_copy_op, optdb
+from theano.compile import optdb
+from theano.compile.function_module import deep_copy_op
 
 import scan_op
 import scan_utils
@@ -221,7 +222,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                  'to move some computation fron scan '
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
-                    outside_ins = [x.type.filter_variable(y) for x,y in
+                    outside_ins = [x.type.filter_variable(y) for x, y in
                                    zip(nd.inputs, outside_ins)]
                     nw_outer_node = nd.op.make_node(*outside_ins)
                     # Step 2. Create variables for replacements
@@ -681,14 +682,18 @@ class ScanSaveMem(gof.Optimizer):
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
                                        tensor.IncSubtensor) and
-                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+                            isinstance(
+                                nw_inputs[offset + idx].owner.op.idx_list[0],
+                                slice)):
+
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             cval = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
                             tmp_idx = tensor.switch(cval < initl,
                                                     cval + initl,
                                                     cval - initl)
-                            tmp = pre_greedy_local_optimizer(list_opt_slice, tmp_idx)
+                            tmp = pre_greedy_local_optimizer(list_opt_slice,
+                                                             tmp_idx)
                             tmp = pre_constant_merge([tmp])[0]
 
                             nw_input = scan_utils.expand(_nw_input, tmp)
