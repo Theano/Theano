@@ -427,17 +427,32 @@ theano.compile.register_view_op_c_code(
 theano.compile.register_deep_copy_op_c_code(
         CudaNdarrayType,
         """
-        Py_XDECREF(%(oname)s);
-
-        %(oname)s = (CudaNdarray*)CudaNdarray_Copy(%(iname)s);
-
-        if (!%(oname)s)
-        {
-            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
-            %(fail)s;
+        int alloc = %(oname)s == NULL;
+        for(int i=0; !alloc && i<CudaNdarray_NDIM(%(oname)s); i++) {
+           if(CudaNdarray_HOST_DIMS(%(iname)s)[i] !=
+              CudaNdarray_HOST_DIMS(%(oname)s)[i]) {
+               alloc = true;
+               break;
+           }
+        }
+        if(alloc) {
+            Py_XDECREF(%(oname)s);
+            %(oname)s = (CudaNdarray*)CudaNdarray_Copy(%(iname)s);
+            if (!%(oname)s)
+            {
+                PyErr_SetString(PyExc_ValueError,
+                                "DeepCopyOp: the copy failed!");
+                %(fail)s;
+            }
+        } else {
+            if(!CudaNdarray_CopyFromCudaNdarray(%(oname)s, %(iname)s)) {
+                PyErr_SetString(PyExc_ValueError,
+            "DeepCopyOp: the copy failed into already allocated space!");
+                %(fail)s;
+            }
         }
         """,
-        version=1)
+        version=2)
 
 
 # THIS WORKS But CudaNdarray instances don't compare equal to one

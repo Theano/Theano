@@ -1092,17 +1092,32 @@ theano.compile.register_view_op_c_code(
 theano.compile.register_deep_copy_op_c_code(
         TensorType,
         """
-        Py_XDECREF(%(oname)s);
-
-        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
-
-        if (!%(oname)s)
-        {
-            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
-            %(fail)s;
+        int alloc = %(oname)s == NULL;
+        for(int i=0; !alloc && i<PyArray_NDIM(%(oname)s); i++) {
+           if(PyArray_DIMS(%(iname)s)[i] != PyArray_DIMS(%(oname)s)[i]) {
+               alloc = true;
+               break;
+           }
+        }
+        if(alloc) {
+            Py_XDECREF(%(oname)s);
+            %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,
+                                                        NPY_ANYORDER);
+            if (!%(oname)s)
+            {
+                PyErr_SetString(PyExc_ValueError,
+                                "DeepCopyOp: the copy failed!");
+                %(fail)s;
+            }
+        } else {
+            if(PyArray_CopyInto(%(oname)s, %(iname)s)){
+                PyErr_SetString(PyExc_ValueError,
+            "DeepCopyOp: the copy failed into already allocated space!");
+                %(fail)s;
+            }
         }
         """,
-        version=1)
+        version=2)
 
 
 # Easy constructors
