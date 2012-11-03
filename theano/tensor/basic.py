@@ -2471,6 +2471,8 @@ def makeKeepDims(x, y, axis):
 
     if axis is None:
         axis = range(x.type.ndim)
+    elif isinstance(axis, int):
+        axis = [axis]
     i = 0
     new_dims = []
     for j, _ in enumerate(x.type.broadcastable):
