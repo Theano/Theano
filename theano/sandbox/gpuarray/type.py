@@ -5,11 +5,10 @@ import numpy
 import theano
 from theano import Type, Variable, tensor, config, scalar
 
-import globals
-
 # Make sure this is importable even if pygpu is absent
 # (it will not work though)
 try:
+    import pygpu
     from pygpu import gpuarray
     from pygpu.elemwise import compare
 except ImportError:
@@ -22,12 +21,21 @@ class GpuArrayType(Type):
     
     @staticmethod
     def value_zeros(*args, **kwargs):
-        pygpu.gpuarray.zeros(*args, **kwargs, kind=globals.kind,
-                             context=globals.context)
+        pygpu.gpuarray.zeros(*args, kind=globals.kind,
+                              context=globals.context, **kwargs)
 
-    def __init__(self, dtype, broadcastable, name=None):
+    def __init__(self, dtype, broadcastable, kind=None, context=None,
+                 name=None):
+        import globals
+        if kind is None:
+            kind = globals.kind
+        if context is None:
+            context = globals.context
         self.dtype = str(dtype)
-        self.broadcastable = tuple(bool(b), for b in broadcastable)
+        self.broadcastable = tuple(bool(b) for b in broadcastable)
+        self.ndim = len(self.broadcastable)
+        self.kind = kind
+        self.context = context
         self.name = name
         try:
             self.typecode = gpuarray.dtype_to_typecode(self.dtype)
@@ -40,6 +48,10 @@ class GpuArrayType(Type):
             if not isinstance(data, gpuarray.GpuArray):
                 raise TypeError("%s expected a GpuArray object." % self,
                                 data, type(data))
+            if self.kind != data.kind:
+                raise TypeError("kind of GpuArray does not match")
+            if self.context != data.context:
+                raise TypeError("context of GpuArray differs")
             if self.typecode != data.typecode:
                 raise TypeError("%s expected typecode %d (dtype %s), "
                                 "got %d (dtype %s)." %
@@ -48,7 +60,7 @@ class GpuArrayType(Type):
             # fallthrough to ndim check
         elif allow_downcast:
             data = gpuarray.array(data, dtype=self.typecode, copy=False,
-                                  kind=globals.kind, context=globals.context,
+                                  kind=self.kind, context=self.context,
                                   ndmin=len(self.broadcastable))
         else:
             if isinstance(data, gpuarray.GpuArray):
@@ -65,12 +77,10 @@ class GpuArrayType(Type):
                             "got %s with shape %s." % (self.ndim, data.ndim,
                                                        data.shape), data)
         shp = data.shape
-        for b in self.broadcastable:
+        for i, b in enumerate(self.broadcastable):
             if b and shp[i] != 1:
                 raise TypeError("Non-unit value on shape on a broadcastable"
                                 " dimension.", shp, self.broadcastable)
-            i += 1
-
         return data
 
     def values_eq(self, a, b):
@@ -83,10 +93,13 @@ class GpuArrayType(Type):
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.typecode == other.typecode and
-                self.broadcastable == other.broadcastable)
+                self.broadcastable == other.broadcastable and
+                self.kind == other.kind and
+                self.context == other.context)
 
     def __hash__(self):
-        return hash(self.typecode) ^ hash(self.broadcastable)
+        return (hash(self.typecode) ^ hash(self.broadcastable) ^
+                hash(self.kind) ^ hash(self.context))
 
     def __str__(self):
         return "GpuArray<%s>" % self.dtype

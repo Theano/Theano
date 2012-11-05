@@ -1,3 +1,5 @@
+import logging
+
 import theano
 from theano.configparser import config, AddConfigVar, StrParam, \
     BoolParam, IntParam
@@ -5,6 +7,8 @@ from theano.configparser import config, AddConfigVar, StrParam, \
 _logger_name = 'theano.sandbox.gpuarray'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
+
+error = _logger.error
 
 try:
     import pygpu.gpuarray
@@ -33,14 +37,13 @@ def init_dev(dev):
         devnum = int(dev[4:])
     elif dev.startswith('opencl'):
         globals.kind = 'opencl'
-        devspec = dev[6:]
+        devspec = dev[7:]
         plat, dev = devspec.split(':')
         devnum = int(dev)|(int(plat)>>16)
     else:
         globals.kind = None
     if globals.kind:
         globals.context = pygpu.gpuarray.init(globals.kind, devnum)
-
 
 if pygpu:
     try:
@@ -53,5 +56,5 @@ if pygpu:
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
     except Exception:
-        print >> sys.stderr, "Could not initialize pygpu, support disabled"
+        error("Could not initialize pygpu, support disabled", exc_info=True)
         pygpu = None

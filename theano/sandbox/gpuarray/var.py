@@ -10,7 +10,7 @@ try:
 except ImportError:
     pass
 
-from var import GpuArrayType
+from type import GpuArrayType
 from basic_ops import host_from_gpu, gpu_from_host
 
 class _operators(tensor.basic._tensor_py_operators):
@@ -61,7 +61,7 @@ class GpuArraySharedVariable(_operators, SharedVariable):
         self.container.value = pygpu.gpuarray.array(value, copy=(not borrow))
 
     def __getitem__(self, *args):
-        retrurn _operators.__getitem__(self, *args)
+        return _operators.__getitem__(self, *args)
 
 
 GpuArrayType.SharedVariable = GpuArraySharedVariable

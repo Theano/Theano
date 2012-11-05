@@ -7,8 +7,7 @@ from theano.scalar import Scalar
 
 from theano.gof.python25 import all, any
 
-from theano.sandbox.cuda.type import CudaNdArrayType
-
+import pygpu
 from pygpu import gpuarray, elemwise
 
 from type import GpuArrayType
@@ -21,8 +20,8 @@ def as_gpuarray_variable(x):
     return gpu_from_host(tensor_x)
 
 
-def as_gpuarray(x):
-    return gpuarray.array(x, copy=False)
+def as_gpuarray(x, kind, context):
+    return gpuarray.array(x, kind=kind, context=context, copy=False)
 
 
 class HostFromGpu(Op):
@@ -73,12 +72,13 @@ class GpuFromHost(Op):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
         return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
-                                              dtype=x.dtype)]())
+                                              dtype=x.dtype)()])
 
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        z[0] = gpuarray.array(x)
+        type = node.outputs[0].type
+        z[0] = gpuarray.array(x, kind=type.kind, context=type.context)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -119,8 +119,8 @@ class GpuFromCuda(Op):
             while hasattr(base, 'base') and base.base is not None:
                 base = base.base
             raise NotImplementedError("How are we going to get a gpudata pointer from here")
-            x[0] = gpuarray.from_gpudata(b, 0, base=base, x.dtype,
-                                         x.shape, kind=globals.kind,
+            x[0] = gpuarray.from_gpudata(b, 0, x.dtype, x.shape,
+                                         base=base, kind=globals.kind,
                                          context=globals.context,
                                          strides=x.strides)
         else:
