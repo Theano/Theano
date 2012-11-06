@@ -103,20 +103,38 @@ def remove_constants_and_unused_inputs_scan(node):
             except TypeError:
                 pass
         elif op_ins[idx] in all_ins:
-            nw_inner += [op_ins[idx]]
-            nw_outer += [node.inputs[idx + 1]]
+            # Check for identical other sequence
+            identical_seqs = [x for x in nw_outer
+                                  if scan_utils.equal_computations(
+                                      [x], [node.inputs[idx + 1]])]
+            if identical_seqs and False:
+                index = node.inputs.index(identical_seqs[0]) - 1
+                if op_ins[index] not in givens.keys():
+                    givens[op_ins[idx]] = op_ins[index]
+                else:
+                    givens[op_ins[idx]] = givens[op_ins[index]]
+            else:
+                nw_inner += [op_ins[idx]]
+                nw_outer += [node.inputs[idx + 1]]
 
     nw_n_seqs = len(nw_inner)
     # Add outputs stuff
     nw_inner += out_stuff_inner
     nw_outer += out_stuff_outer
     # Look through non sequences
-    for nw_in, nw_out in zip(non_seqs, outer_non_seqs):
+    for idx, (nw_in, nw_out) in enumerate(zip(non_seqs, outer_non_seqs)):
         if isinstance(nw_out, tensor.Constant):
             givens[nw_in] = nw_out.clone()
         elif nw_in in all_ins:
-            nw_inner += [nw_in]
-            nw_outer += [nw_out]
+            identical_non_seqs = [x for x in outer_non_seqs[:idx]
+                                  if scan_utils.equal_computations(
+                                      [x], [nw_out])]
+            if identical_non_seqs:
+                index = outer_non_seqs.index(identical_non_seqs[0])
+                givens[nw_in] = non_seqs[index]
+            else:
+                nw_inner += [nw_in]
+                nw_outer += [nw_out]
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
