@@ -147,17 +147,6 @@ def remove_constants_and_unused_inputs_scan(node):
     else:
         return False
 
-scan_seqopt = theano.gof.SequenceDB()
-# We run before blas opt at 1.7 and specialize 2.0
-# but after stabilize at 1.5. Should we put it before stabilize?
-optdb.register('scan_seqopt', scan_seqopt, 1.6, 'fast_run', 'scan')
-scan_seqopt.register('scanOp_remove_constants_and_unused_inputs',
-                     opt.in2out(remove_constants_and_unused_inputs_scan,
-                                ignore_newtrees=True),
-                     5,
-                     'fast_run',
-                     'scan')
-
 
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
@@ -319,11 +308,6 @@ class PushOutNonSeqScan(gof.Optimizer):
             return False
 
 
-scan_seqopt.register('scanOp_pushout_nonseqs_ops',
-                     PushOutNonSeqScan(),
-                     1,
-                     'fast_run',
-                     'scan')
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
 class PushOutSeqScan(gof.Optimizer):
@@ -578,14 +562,6 @@ class ScanInplaceOptimizer(Optimizer):
                 except InconsistencyError, e:
                     # Failed moving output to be comptued inplace
                     pass
-
-optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(typeConstructor=None,
-                                   gpu_flag=False),
-               75,
-               'fast_run',
-               'inplace',
-               'scan')
 
 
 class ScanSaveMem(gof.Optimizer):
@@ -1064,15 +1040,6 @@ class ScanSaveMem(gof.Optimizer):
             if not hasattr(node.op, '_scan_savemem_visited'):
                 self.process_node(fgraph, node)
 
-# Just before specialize to have the other optimization
-# like constant folding being applied
-# This don't introduce inplace.
-scan_seqopt.register('scanOp_save_mem',
-                     ScanSaveMem(),
-                     4,
-                     'fast_run',
-                     'scan')
-
 
 class ScanMerge(gof.Optimizer):
     """ Graph Optimizer that merges different scan ops """
@@ -1252,16 +1219,6 @@ class ScanMerge(gof.Optimizer):
                 fgraph.replace_all_validate_remove(proposal,
                                                    remove=subset,
                                                    reason='scan_merge')
-
-
-# after const merge but before stabilize so that we can have identity
-# for equivalent nodes but we still have the chance to hoist stuff out
-# of the scan later.
-scan_seqopt.register('scanOp_merge',
-                     ScanMerge(),
-                     2,
-                     'fast_run',
-                     'scan')
 
 
 def has_duplicates(l):
@@ -1451,11 +1408,6 @@ def scan_merge_inouts(node):
 
     return na.outer_outputs
 
-scan_seqopt.register('scanOp_merge_inouts',
-                     opt.in2out(scan_merge_inouts, ignore_newtrees=True),
-                     3,
-                     'fast_run',
-                     'scan')
 
 @gof.local_optimizer([None])
 def scan_pushout_dot1(node):
@@ -1671,3 +1623,115 @@ def scan_pushout_dot1(node):
 
     return False
 
+
+# I've added an equilibrium because later scan optimization in the sequence
+# can make it such that earlier optimizations should apply. However, in
+# general I do not expect the sequence to run more then once
+scan_eqopt1 = theano.gof.EquilibriumDB()
+scan_seqopt1 = theano.gof.SequenceDB()
+
+scan_eqopt2 = theano.gof.EquilibriumDB()
+scan_seqopt2 = theano.gof.EquilibriumDB()
+# We run before blas opt at 1.7 and specialize 2.0
+# but after stabilize at 1.5. Should we put it before stabilize?
+optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
+optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
+optdb.register('scanOp_make_inplace',
+               ScanInplaceOptimizer(typeConstructor=None,
+                                   gpu_flag=False),
+               75,
+               'fast_run',
+               'inplace',
+               'scan')
+
+scan_eqopt2.register(
+    'all_scan_opts', scan_seqopt2, 1, 'fast_run', 'scan')
+scan_eqopt1.register(
+    'all_pushout_opt', scan_seqopt1, 1, 'fast_run', 'scan')
+
+
+scan_seqopt1.register('scanOp_remove_constants_and_unused_inputs0',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      1,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scanOp_pushout_nonseqs_ops',
+                      PushOutNonSeqScan(),
+                      2,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scanOp_pushout_seqs_ops',
+                      PushOutSeqScan(),
+                      3,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt1.register('scan_pushout_dot1',
+                      opt.in2out(scan_pushout_dot1, ignore_newtrees=True),
+                      4,
+                      'fast_run',
+                      'more_mem',
+                      'scan')
+
+
+scan_seqopt2.register('constant_folding_for_scan2',
+                      opt.in2out(tensor.opt.constant_folding,
+                                 ignore_newtrees=True),
+                      1,
+                      'fast_run',
+                      'scan')
+
+
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      2,
+                      'fast_run',
+                      'scan')
+
+
+# after const merge but before stabilize so that we can have identity
+# for equivalent nodes but we still have the chance to hoist stuff out
+# of the scan later.
+scan_seqopt2.register('scanOp_merge',
+                      ScanMerge(),
+                      4,
+                      'fast_run',
+                      'scan')
+
+# After Merge optimization
+scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      5,
+                      'fast_run',
+                      'scan')
+
+scan_seqopt2.register('scanOp_merge_inouts',
+                      opt.in2out(scan_merge_inouts, ignore_newtrees=True),
+                      6,
+                      'fast_run',
+                      'scan')
+
+# Just before specialize to have the other optimization
+# like constant folding being applied
+# This don't introduce inplace.
+scan_seqopt2.register('scanOp_save_mem',
+                      ScanSaveMem(),
+                      7,
+                      'fast_run',
+                      'scan')
+
+# After everything else
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
+                      opt.in2out(remove_constants_and_unused_inputs_scan,
+                                 ignore_newtrees=True),
+                      8,
+                      'fast_run',
+                      'scan')
