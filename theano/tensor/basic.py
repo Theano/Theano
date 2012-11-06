@@ -7,6 +7,7 @@ import warnings
 from itertools import izip
 
 import numpy
+import advinc
 #from copy import copy as python_copy
 
 import theano
@@ -6647,7 +6648,7 @@ class AdvancedIncSubtensor(Op):
         # TODO: same thing as in AdvancedSubtensor's perform TODO
         
         a = inputs[0].copy()
-        numpy.inplace_increment(a, tuple(inputs[2:]), inputs[1])
+        advinc.inplace_increment(a, tuple(inputs[2:]), inputs[1])
         out[0] = a
         
         if (numpy.__version__ <= '1.6.1' and
