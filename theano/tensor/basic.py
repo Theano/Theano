@@ -8,6 +8,7 @@ from itertools import izip
 from textwrap import dedent
 
 import numpy
+import advinc
 #from copy import copy as python_copy
 
 import theano
@@ -7382,7 +7383,7 @@ class AdvancedIncSubtensor(Op):
         if not self.inplace:
         
         a = inputs[0].copy()
-        numpy.inplace_increment(a, tuple(inputs[2:]), inputs[1])
+        advinc.inplace_increment(a, tuple(inputs[2:]), inputs[1])
         out[0] = a
         
             out[0][inputs[2:]] = inputs[1]
