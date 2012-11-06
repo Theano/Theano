@@ -18,6 +18,7 @@ except ImportError:
 
 import theano
 from theano import tensor
+from theano.gof.python25 import any
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda_ndarray
