@@ -262,7 +262,9 @@ def scan(fn,
         # makes code much cleaner for those who do not use taps. Otherwise
         # they would always had to shape_padleft the initial state ..
         # which is ugly
-        if init_out['taps'] == [-1]:
+
+        # Note, 'taps' might not be in the dictionary
+        if 'taps' in init_out and init_out['taps'] == [-1]:
 
             actual_arg = init_out['membuf']
             arg = safe_new(init_out['membuf'][0])
@@ -605,6 +607,7 @@ def scan(fn,
     info['truncate_gradient'] = -1
     info['name'] = name
     info['mode'] = mode
+    info['destroy_map'] = {}
     info['inplace'] = False
     info['gpu'] = False
     info['as_while'] = as_while

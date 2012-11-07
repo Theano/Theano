@@ -37,7 +37,7 @@ computation graph in the compilation phase:
 
 
 Step 1 - Create a FunctionGraph
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The subgraph given by the end user is wrapped in a structure called
 *FunctionGraph*. That structure defines several hooks on adding and

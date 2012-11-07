@@ -794,41 +794,41 @@ def ____gemm_code(check_ab, a_init, b_init):
     return """
         const char * error_string = NULL;
 
-        int type_num = _x->descr->type_num;
-        int type_size = _x->descr->elsize; // in bytes
+        int type_num = PyArray_DESCR(_x)->type_num;
+        int type_size = PyArray_DESCR(_x)->elsize; // in bytes
 
-        npy_intp* Nx = _x->dimensions;
-        npy_intp* Ny = _y->dimensions;
-        npy_intp* Nz = _z->dimensions;
+        npy_intp* Nx = PyArray_DIMS(_x);
+        npy_intp* Ny = PyArray_DIMS(_y);
+        npy_intp* Nz = PyArray_DIMS(_z);
 
-        npy_intp* Sx = _x->strides;
-        npy_intp* Sy = _y->strides;
-        npy_intp* Sz = _z->strides;
+        npy_intp* Sx = PyArray_STRIDES(_x);
+        npy_intp* Sy = PyArray_STRIDES(_y);
+        npy_intp* Sz = PyArray_STRIDES(_z);
 
         size_t sx_0, sx_1, sy_0, sy_1, sz_0, sz_1;
 
         int unit = 0;
 
-        if (_x->nd != 2) goto _dot_execute_fallback;
-        if (_y->nd != 2) goto _dot_execute_fallback;
-        if (_z->nd != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_x) != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_y) != 2) goto _dot_execute_fallback;
+        if (PyArray_NDIM(_z) != 2) goto _dot_execute_fallback;
 
         %(check_ab)s
 
-        if ((_x->descr->type_num != PyArray_DOUBLE) 
-            && (_x->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(_x)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_x)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != PyArray_DOUBLE) 
-            && (_y->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(_y)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_y)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_y->descr->type_num != PyArray_DOUBLE) 
-            && (_y->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(_y)->type_num != NPY_DOUBLE) 
+            && (PyArray_DESCR(_y)->type_num != NPY_FLOAT))
             goto _dot_execute_fallback;
 
-        if ((_x->descr->type_num != _y->descr->type_num)
-            ||(_x->descr->type_num != _z->descr->type_num))
+        if ((PyArray_DESCR(_x)->type_num != PyArray_DESCR(_y)->type_num)
+            ||(PyArray_DESCR(_x)->type_num != PyArray_DESCR(_z)->type_num))
             goto _dot_execute_fallback;
 
 
@@ -863,7 +863,7 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         switch (type_num)
         {
-            case PyArray_FLOAT:
+            case NPY_FLOAT:
             {
                 #define REAL float
                 float a = %(a_init)s;
@@ -888,7 +888,7 @@ def ____gemm_code(check_ab, a_init, b_init):
                 #undef REAL
             }
             break;
-            case PyArray_DOUBLE:
+            case NPY_DOUBLE:
             {
                 #define REAL double
                 double a = %(a_init)s;

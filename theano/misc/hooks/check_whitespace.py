@@ -86,10 +86,15 @@ def run_mercurial_command(hg_command):
     hg_executable = os.environ.get("HG", "hg")
     hg_command_tuple = hg_command.split()
     hg_command_tuple.insert(0, hg_executable)
+    #If you install your own mercurial version in your home
+    #hg_executable does not always have execution permission.
+    if not os.access(hg_executable, os.X_OK):
+        hg_command_tuple.insert(0, sys.executable)
     try:
         hg_subprocess = Popen(hg_command_tuple, stdout=PIPE, stderr=PIPE)
-    except OSError:
+    except OSError, e:
         print >> sys.stderr, "Can't find the hg executable!"
+        print e
         sys.exit(1)
 
     hg_out, hg_err = hg_subprocess.communicate()

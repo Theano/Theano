@@ -153,7 +153,7 @@ class CURAND_Base(GpuOp):
                 %(ndim)s, %(size)s->dimensions[0]);
             %(fail)s
         }
-        if (%(size)s->descr->type_num != PyArray_INT32)
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s

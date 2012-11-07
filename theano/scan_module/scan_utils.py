@@ -33,7 +33,7 @@ from theano.tensor.basic import get_constant_value
 _logger = logging.getLogger('theano.scan_utils')
 
 
-def safe_new(x, tag=''):
+def safe_new(x, tag='', dtype=None):
     """
     Internal function that constructs a new variable from x with the same
     type, but with a different name (old name + tag). This function is used
@@ -46,12 +46,18 @@ def safe_new(x, tag=''):
     else:
         nw_name = None
     if isinstance(x, theano.Constant):
-        return x.clone()
+        if dtype and x.dtype != dtype:
+            return x.clone().astype(dtype)
+        else:
+            return x.clone()
     # Note, as_tensor_variable will convert the Scalar into a
     # TensorScalar that will require a ScalarFromTensor op,
     # making the pushout optimization fail
     elif isinstance(x, scalar.ScalarVariable):
-        nw_x = x.type()
+        if dtype:
+            nw_x = scalar.Scalar(dtype=dtype)()
+        else:
+            nw_x = x.type()
         nw_x.name = nw_name
         return nw_x
     else:
@@ -74,6 +80,10 @@ def safe_new(x, tag=''):
         except AttributeError:
             # This means `x` has no test value.
             pass
+
+    if dtype and nw_x.dtype != dtype:
+        nw_x = nw_x.astype(dtype)
+
     return nw_x
 
 
@@ -930,3 +940,34 @@ class scan_args(object):
                          'mit_sot_in_slices')):
                 getattr(res, attr).extend(getattr(other, attr))
         return res
+
+
+def forced_replace(out, x, y):
+    """
+    :param out: Theano Variable
+    :param x: Theano Variable
+    :param y: Theano Variable
+
+    This function checks all internal values of the graph that computes the
+    variable ``out`` for occurances of values identical with ``x``. If such
+    occurances are encountered then they are replaced with variable ``y``.
+    For example:
+        out := sigmoid(wu)*(1-sigmoid(wu))
+        x := sigmoid(wu)
+        forced_replace(out, x, y) := y*(1-y)
+    """
+    if out is None:
+        return None
+
+    def traverse(graph, x):
+        if equal_computations([graph], [x]):
+            return [graph]
+        elif not graph.owner:
+            return []
+        else:
+            rval = []
+            for inp in graph.owner.inputs:
+                rval += traverse(inp, x)
+            return rval
+    to_replace = traverse(out, x)
+    return clone(out, replace=dict((v, y) for v in to_replace))

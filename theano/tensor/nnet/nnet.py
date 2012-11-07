@@ -14,6 +14,8 @@ from theano.compile import optdb
 from theano.gof import Apply
 
 from theano.tensor.nnet.sigm import sigmoid, softplus
+from theano.gradient import DisconnectedType
+from theano.gradient import grad_not_implemented
 
 
 ############
@@ -76,6 +78,10 @@ class SoftmaxWithBias(gof.Op):
     def grad(self, inp, grads):
         x, b = inp
         g_sm, = grads
+
+        if isinstance(g_sm.type, DisconnectedType):
+            return [DisconnectedType()(), DisconnectedType()()]
+
         sm = softmax_with_bias(x, b)
         dx = softmax_grad(g_sm, sm)
         db = tensor.sum(dx, axis=0)
@@ -99,41 +105,41 @@ class SoftmaxWithBias(gof.Op):
 
         #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
-        npy_intp* Nx = %(x)s->dimensions;
+        npy_intp* Nx = PyArray_DIMS(%(x)s);
 
-        if (%(x)s->nd != 2)
+        if (PyArray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (PyArray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if ((%(x)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(x)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(x)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(x)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "a not float");
             %(fail)s;
         }
-        if ((%(b)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(b)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError, "b not float");
             %(fail)s;
         }
-        if ((%(x)s->dimensions[1] != %(b)s->dimensions[0]))
+        if ((PyArray_DIMS(%(x)s)[1] != PyArray_DIMS(%(b)s)[0]))
         {
             PyErr_Format(PyExc_ValueError,
                          "number of columns in x (%%ld) does not match length of b (%%ld)",
-                (long int)%(x)s->dimensions[1], (long int)%(b)s->dimensions[0]);
+                (long int)PyArray_DIMS(%(x)s)[1], (long int)PyArray_DIMS(%(b)s)[0]);
             %(fail)s;
         }
 
         if ((NULL == %(sm)s)
-            || (%(sm)s->dimensions[0] != %(x)s->dimensions[0])
-            || (%(sm)s->dimensions[1] != %(x)s->dimensions[1]))
+            || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
+            || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
         {
             if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
             %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
@@ -153,15 +159,15 @@ class SoftmaxWithBias(gof.Op):
             double sum = 0.0;
             bool  discount_max = false;
 
-            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
-            const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(%(b)s->data);
-            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
+            const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(PyArray_BYTES(%(b)s));
+            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
         """
 
         inside_row_loop = """
-            npy_intp Sx = %(x)s->strides[1]/sizeof(dtype_%(x)s);
-            npy_intp Sb = %(b)s->strides[0]/sizeof(dtype_%(b)s);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            npy_intp Sx = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+            npy_intp Sb = PyArray_STRIDES(%(b)s)[0]/sizeof(dtype_%(b)s);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
             size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0] + b_i[0];
@@ -257,34 +263,34 @@ class SoftmaxGrad(gof.Op):
         dy, sm = inp
         dx, = out
         return '''
-        if ((%(dy)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(dy)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(dy)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dy)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(sm)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "types should be float or float64");
             %(fail)s;
         }
-        if ((%(dy)s->nd != 2)
-            || (%(sm)s->nd != 2))
+        if ((PyArray_NDIM(%(dy)s) != 2)
+            || (PyArray_NDIM(%(sm)s) != 2))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (%(dy)s->dimensions[0] != %(sm)s->dimensions[0])
+        if (PyArray_DIMS(%(dy)s)[0] != PyArray_DIMS(%(sm)s)[0])
         {
             PyErr_SetString(PyExc_ValueError, "dy.shape[0] != sm.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (%(dx)s->dimensions[0] != %(sm)s->dimensions[0])
-            || (%(dx)s->dimensions[1] != %(sm)s->dimensions[1]))
+            || (PyArray_DIMS(%(dx)s)[0] != PyArray_DIMS(%(sm)s)[0])
+            || (PyArray_DIMS(%(dx)s)[1] != PyArray_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
@@ -298,22 +304,22 @@ class SoftmaxGrad(gof.Op):
             }
         }
 
-        for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
+        for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (%(dy)s->data + %(dy)s->strides[0] * i);
-            npy_intp Sdy = %(dy)s->strides[1]/sizeof(dtype_%(dy)s);
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (PyArray_BYTES(%(dy)s) + PyArray_STRIDES(%(dy)s)[0] * i);
+            npy_intp Sdy = PyArray_STRIDES(%(dy)s)[1]/sizeof(dtype_%(dy)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (PyArray_BYTES(%(dx)s) + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
             double sum_dy_times_sm = 0.;
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] = dy_i[j * Sdy] * sm_i[j * Ssm];
                 sum_dy_times_sm += dx_i[j * Sdx];
             }
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] -= sum_dy_times_sm * sm_i[j * Ssm];
             }
@@ -375,6 +381,112 @@ class Softmax(gof.Op):
 
     def infer_shape(self, node, shape):
         return shape
+
+    def c_headers(self):
+        return ['<iostream>', '<cmath>']
+
+    @staticmethod
+    def c_code_template():
+        # this implementation was lifted from
+        # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
+
+        #TODO: put this into a templated function, in the support code
+        #TODO: declare the max of each row as an Op output
+
+        #TODO: set error messages for failures in this code
+
+        #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        init_decl = """
+        npy_intp* Nx = %(x)s->dimensions;
+
+        if (%(x)s->nd != 2)
+        {
+            PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
+            %(fail)s;
+        }
+        if ((%(x)s->descr->type_num != PyArray_DOUBLE) &&
+            (%(x)s->descr->type_num != PyArray_FLOAT))
+        {
+            PyErr_SetString(PyExc_TypeError, "a not float");
+            %(fail)s;
+        }
+
+        if ((NULL == %(sm)s)
+            || (%(sm)s->dimensions[0] != %(x)s->dimensions[0])
+            || (%(sm)s->dimensions[1] != %(x)s->dimensions[1]))
+        {
+            if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
+            %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
+                                                       type_num_%(x)s);
+            if(!%(sm)s) {
+                PyErr_SetString(PyExc_MemoryError,
+                     "failed to alloc sm output");
+                %(fail)s
+            }
+        }
+        """
+
+        begin_row_loop = """
+        for (size_t i = 0; i < Nx[0]; ++i)
+        {
+            size_t j;
+            double sum = 0.0;
+            bool  discount_max = false;
+
+            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(%(x)s->data + %(x)s->strides[0] * i);
+            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
+        """
+
+        inside_row_loop = """
+            npy_intp Sx = %(x)s->strides[1]/sizeof(dtype_%(x)s);
+            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+
+            size_t row_max_j=0;
+            dtype_%(sm)s row_max = x_i[0];
+            //std::cout << "0 " << row_max << "\\n";
+            // Get the maximum value of the row
+            for (j = 1; j < Nx[1]; ++j)
+            {
+                dtype_%(sm)s row_ij = x_i[j * Sx] ;
+                //std::cout << "1 " << row_ij << "\\n";
+                row_max_j = (row_ij > row_max) ? j : row_max_j;
+                row_max   = (row_ij > row_max) ? row_ij : row_max;
+            }
+
+            for (j = 0; j < Nx[1]; ++j)
+            {
+                dtype_%(sm)s row_ij = x_i[j * Sx] ;
+                //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
+                dtype_%(sm)s sm_ij = exp(row_ij - row_max);
+                //std::cout << "3 " << j << " " << sm_ij << "\\n";
+                sum += sm_ij;
+                sm_i[j * Ssm] = sm_ij;
+            }
+
+            //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
+            double sum_inv = 1.0 / sum;
+            for (j = 0; j < Nx[1]; ++j)
+            {
+                sm_i[j * Ssm] *= sum_inv;
+            }
+
+        """
+
+        end_row_loop = """
+        }
+        """
+
+        return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        sm, = out
+        code_template = ''.join(self.c_code_template())
+        return code_template % dict(locals(), **sub)
+
+    @staticmethod
+    def c_code_cache_version():
+        return (1,)
 
 softmax = Softmax()
 
@@ -555,8 +667,8 @@ if 0:
                             axis = ds_input.owner.op.axis
                             sum_input = ds_input.owner.inputs[0]
 
-                        if ((ds_order!=(0,'x')) or
-                            (axis!=(1,)) or
+                        if ((ds_order != (0, 'x')) or
+                            (axis != (1,)) or
                             (sum_input is not prod_term)):
                             rest.append(add_in)
                             #print 'ds_order =', ds_order
@@ -707,24 +819,47 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         am_shp = idx_shp
         return [nll_shp, sm_shp, am_shp]
 
+    def connection_pattern(self, node):
+
+        return [[True, True, True],  # x
+                [True, True, True],  # b
+                [False, False, True]]  # y_idx
+
     def grad(self, inp, grads):
         x, b, y_idx = inp
         g_nll, g_sm, g_am = grads
-        if g_am is not None:
-            raise NotImplementedError()
-        elif g_sm is not None:
-            # There is a gradient w.r.t. the softmax's output itself.
-            if g_nll is not None or g_am is not None:
-                raise NotImplementedError()
-            return softmax_with_bias.grad((x, b, ), (g_sm, )) + (None, )
-        else:
-            # There is a gradient w.r.t. the NLL.
-            assert g_nll is not None
+
+        dx_terms = []
+        db_terms = []
+        d_idx_terms = []
+
+        if not isinstance(g_nll.type, DisconnectedType):
             nll, sm = crossentropy_softmax_1hot_with_bias(x, b, y_idx)
-            #dx = CrossentropySoftmax1HotWithBiasDx()(g_nll, sm, y_idx)
             dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, sm, y_idx)
             db = tensor.sum(dx, axis=[0])
-            return dx, db, None
+            dx_terms.append(dx)
+            db_terms.append(db)
+
+        if not isinstance(g_sm.type, DisconnectedType):
+            dx, db = softmax_with_bias.grad((x, b), (g_sm, ))
+            dx_terms.append(dx)
+            db_terms.append(db)
+
+        if not isinstance(g_am.type, DisconnectedType):
+            dx_terms.append(x.zeros_like())
+            db_terms.append(b.zeros_like())
+            d_idx_terms.append(y_idx.zeros_like())
+
+        def fancy_sum(terms):
+            if len(terms) == 0:
+                return DisconnectedType()()
+            rval = terms[0]
+            for term in terms[1:]:
+                rval = rval + term
+            return rval
+
+        return [fancy_sum(terms) for terms in
+                [dx_terms, db_terms, d_idx_terms]]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']
@@ -744,31 +879,31 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 SoftmaxWithBias.c_code_template()
         return (init_decl,
                 """
-        if (%(y_idx)s->nd != 1)
+        if (PyArray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != PyArray_INT64)
-            && (%(y_idx)s->descr->type_num != PyArray_INT32)
-            && (%(y_idx)s->descr->type_num != PyArray_INT16)
-            && (%(y_idx)s->descr->type_num != PyArray_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
-        if (%(x)s->dimensions[0] != %(y_idx)s->dimensions[0])
+        if (PyArray_DIMS(%(x)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                 "number of rows in x (%%ld) does not match length of y (%%ld)",
-                (long int)%(x)s->dimensions[0],
-                (long int)%(y_idx)s->dimensions[0]);
+                (long int)PyArray_DIMS(%(x)s)[0],
+                (long int)PyArray_DIMS(%(y_idx)s)[0]);
             %(fail)s;
         }
 
         if ((NULL == %(nll)s) //initial condition
-            || (%(nll)s->dimensions[0] != %(y_idx)s->dimensions[0]))
+            || (PyArray_DIMS(%(nll)s)[0] != PyArray_DIMS(%(y_idx)s)[0]))
         {
             if (NULL != %(nll)s) Py_XDECREF(%(nll)s);
             %(nll)s = (PyArrayObject*)PyArray_SimpleNew(1,
@@ -781,7 +916,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             }
         }
         if ((NULL == %(am)s)
-            || (%(am)s->dimensions[0] != %(y_idx)s->dimensions[0]))
+            || (PyArray_DIMS(%(am)s)[0] != PyArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(am)s);
             %(am)s = (PyArrayObject*) PyArray_SimpleNew(1,
@@ -796,13 +931,13 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 """,
                 begin_row_loop,
                 """
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
-            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(%(nll)s->data + %(nll)s->strides[0] * i);
-            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (%(am)s->data + %(am)s->strides[0] * i);
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(PyArray_BYTES(%(y_idx)s) + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
+            dtype_%(nll) s* __restrict__ nll_i = (dtype_%(nll)s*)(PyArray_BYTES(%(nll)s) + PyArray_STRIDES(%(nll)s)[0] * i);
+            %(am_type)s* __restrict__ am_i = (%(am_type)s*) (PyArray_BYTES(%(am)s) + PyArray_STRIDES(%(am)s)[0] * i);
                 """,
                 inside_row_loop,
                 """
-            if ((y_i >= %(x)s->dimensions[1]) || (y_i < 0))
+            if ((y_i >= PyArray_DIMS(%(x)s)[1]) || (y_i < 0))
             {
                 PyErr_SetString(PyExc_ValueError, "y_i value out of bounds");
                 %(fail)s;
@@ -857,6 +992,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             dx[i, y_idx[i]] -= dy[i]  # scalar decrement
         output_storage[0][0] = dx
 
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
+
     def grad(self, inp, grads):
         dy, sm, y_idx = inp
         g_dx, = grads
@@ -866,11 +1004,11 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         # typically we should not need the gradient w.r.t. dy).
         y_idx_range = tensor.arange(y_idx.shape[0])
         g_dy = tensor.sum(
-                g_dx * tensor.AdvancedIncSubtensor((y_idx_range, y_idx))(
+                g_dx * tensor.AdvancedIncSubtensor()(
                     sm, tensor.fill(dy, -1), y_idx_range, y_idx),
                 axis=1)
         g_sm = dy.dimshuffle(0, 'x') * g_dx
-        g_y_idx = None
+        g_y_idx = grad_not_implemented(self, 2, y_idx)
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
@@ -882,55 +1020,55 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
 
-        if ((%(dnll)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(dnll)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(dnll)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(dnll)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "dnll type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(sm)s->descr->type_num != PyArray_DOUBLE) &&
-            (%(sm)s->descr->type_num != PyArray_FLOAT))
+        if ((PyArray_DESCR(%(sm)s)->type_num != NPY_DOUBLE) &&
+            (PyArray_DESCR(%(sm)s)->type_num != NPY_FLOAT))
         {
             PyErr_SetString(PyExc_TypeError,
                  "sm type should be float32 or float64");
             %(fail)s;
         }
-        if ((%(y_idx)s->descr->type_num != PyArray_INT64)
-            && (%(y_idx)s->descr->type_num != PyArray_INT32)
-            && (%(y_idx)s->descr->type_num != PyArray_INT16)
-            && (%(y_idx)s->descr->type_num != PyArray_INT8))
+        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
         {
             PyErr_SetString(PyExc_TypeError,
                  "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
-        if ((%(dnll)s->nd != 1)
-            || (%(sm)s->nd != 2)
-            || (%(y_idx)s->nd != 1))
+        if ((PyArray_NDIM(%(dnll)s) != 1)
+            || (PyArray_NDIM(%(sm)s) != 2)
+            || (PyArray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (%(dnll)s->dimensions[0] != %(sm)s->dimensions[0])
+        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(sm)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != sm.shape[0] (%%ld)",
-                         (long int)%(dnll)s->dimensions[0],
-                         (long int)%(sm)s->dimensions[0]);
+                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)PyArray_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (%(dnll)s->dimensions[0] != %(y_idx)s->dimensions[0])
+        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != y_idx.shape[0] (%%ld)",
-                         (long int)%(dnll)s->dimensions[0],
-                         (long int)%(y_idx)s->dimensions[0]);
+                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)PyArray_DIMS(%(y_idx)s)[0]);
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (%(dx)s->dimensions[0] != %(sm)s->dimensions[0])
-            || (%(dx)s->dimensions[1] != %(sm)s->dimensions[1]))
+            || (PyArray_DIMS(%(dx)s)[0] != PyArray_DIMS(%(sm)s)[0])
+            || (PyArray_DIMS(%(dx)s)[1] != PyArray_DIMS(%(sm)s)[1]))
         {
             if (NULL != %(dx)s) Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
@@ -943,23 +1081,23 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             }
         }
 
-        for (size_t i = 0; i < %(dx)s->dimensions[0]; ++i)
+        for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(%(dnll)s->data + %(dnll)s->strides[0] * i))[0];
+            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(PyArray_BYTES(%(dnll)s) + PyArray_STRIDES(%(dnll)s)[0] * i))[0];
 
-            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(%(y_idx)s->data + %(y_idx)s->strides[0] * i))[0];
+            const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(PyArray_BYTES(%(y_idx)s) + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
 
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(%(sm)s->data + %(sm)s->strides[0] * i);
-            npy_intp Ssm = %(sm)s->strides[1]/sizeof(dtype_%(sm)s);
+            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
 
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(%(dx)s->data + %(dx)s->strides[0] * i);
-            npy_intp Sdx = %(dx)s->strides[1]/sizeof(dtype_%(dx)s);
+            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*)(PyArray_BYTES(%(dx)s) + PyArray_STRIDES(%(dx)s)[0] * i);
+            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
 
-            for (size_t j = 0; j < %(dx)s->dimensions[1]; ++j)
+            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
             {
                 dx_i[j * Sdx] = dnll_i * sm_i[j * Ssm];
             }
-            if (y_i >= %(dx)s->dimensions[1])
+            if (y_i >= PyArray_DIMS(%(dx)s)[1])
             {
                 PyErr_SetString(PyExc_ValueError, "y_i >= dx dimensions[1]");
                 %(fail)s;
@@ -1031,8 +1169,11 @@ class CrossentropyCategorical1HotGrad(gof.Op):
         for i in xrange(len(g_y)):
             g_coding[i, true_one_of_n[i]] = -g_y[i] / coding_dist[i,
                                                         true_one_of_n[i]]
-
         g_coding_strg[0] = g_coding
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[1]]
+
 crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 
@@ -1091,11 +1232,22 @@ class CrossentropyCategorical1Hot(gof.Op):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
+#Enabling this infer_shape method make 2 tests fail:
+#theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
+#     {test_softmax_grad_optimizations,test_softmax_grad_optimizations_vector}
+# This is caused by the local_fill_to_alloc that call broadcast_like
+# that look into the shape feature and return a Rebroadcast instead of an alloc.
+# I disable this infer_shape until we fix the optimizations or determine that
+# this is not needed anymore and we update the tests.
+        # see issue gh-788
+#    def infer_shape(self, node, in_shapes):
+#        return [(in_shapes[0][0],)]
+
     def grad(self, inp, grads):
         coding, one_of_n = inp
         g_y, = grads
         return [crossentropy_categorical_1hot_grad(g_y, coding, one_of_n),
-                None]
+                grad_not_implemented(self, 1, one_of_n)]
 
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 
@@ -1121,7 +1273,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                             one_of_n)
                     fgraph.replace_all_validate([(nll, new_nll), (sm, new_sm)],
-                            reason="crossentropy_to_crossentropy_with_softmax")
+                reason="crossentropy_to_crossentropy_with_softmax_with_bias")
                     return True
 
         return False
@@ -1284,7 +1436,6 @@ def local_advanced_indexing_crossentropy_onehot(node):
             except Exception:
                 pass
 
-
     if sm is not None and sm.owner and sm.owner.op in (softmax,
                                                        softmax_with_bias):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
@@ -1440,7 +1591,8 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
             if adv_subtensor is not None:
                 try:
-                    maybe_sm, maybe_rows, maybe_labels = adv_subtensor.owner.inputs
+                    maybe_sm, maybe_rows, \
+                        maybe_labels = adv_subtensor.owner.inputs
                 except Exception:
                     return
 
@@ -1616,22 +1768,23 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 
     def make_node(self, mat):
         #check type of input
-        if not isinstance(mat,gof.Variable) or not mat.type==tensor.matrix().type:
-            raise TypeError("Expected a matrix as input")
         x = tensor.as_tensor_variable(mat)
+        if not mat.type.broadcastable == (False, False):
+            raise TypeError("Expected a matrix as input")
         y = tensor.as_tensor_variable(self.val)
+        assert y.ndim == 0
         if x.type.dtype != y.type.dtype:
             TypeError(
                 "the value to prepend don't have the same type as the matrix")
 
-        node = Apply(op=self, inputs=[mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[mat], outputs=[mat.type()])
         return node
 
     def perform(self, node, inp, out):
         mat, = inp
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
-        if output[0] == None:
+        if output[0] is None:
             output[0] = numpy.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
@@ -1644,6 +1797,10 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 
         out[:, 0].fill(self.val.data)
         out[:, 1:] = mat
+
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[0][0], in_shapes[0][1] + 1)
+        return [shp]
 
     def grad(self, inp, grads):
         mat, = inp
@@ -1663,25 +1820,25 @@ class Prepend_scalar_to_each_row(gof.Op):
 
     def make_node(self, val, mat):
         #check type of input
+        x = tensor.as_tensor_variable(mat)
         if isinstance(val, float):
             val = scalar.constant(val)
-        if (not isinstance(mat, gof.Variable) or
-            not mat.type == tensor.matrix().type):
+        if not mat.type.broadcastable == (False, False):
             raise TypeError("Expected a matrix as input")
-        x = tensor.as_tensor_variable(mat)
         y = tensor.as_tensor_variable(val)
+        assert y.ndim == 0
         if x.type.dtype != y.type.dtype:
             TypeError(
                 "the value to prepend don't have the same type as the matrix")
 
-        node = Apply(op=self, inputs=[val, mat], outputs=[tensor.matrix()])
+        node = Apply(op=self, inputs=[val, mat], outputs=[mat.type()])
         return node
 
     def perform(self, node, inp, out):
         val, mat = inp
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
-        if output[0] == None:
+        if output[0] is None:
             output[0] = numpy.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
@@ -1694,6 +1851,10 @@ class Prepend_scalar_to_each_row(gof.Op):
         out[:, 0].fill(val)
         out[:, 1:] = mat
 
+    def infer_shape(self, node, in_shapes):
+        shp = (in_shapes[1][0], in_shapes[1][1] + 1)
+        return [shp]
+
     def grad(self, inp, grads):
         val, mat = inp
         goutput, = grads
@@ -1702,3 +1863,24 @@ class Prepend_scalar_to_each_row(gof.Op):
 prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
+
+
+#numerically stabilize log softmax (X)
+# as  X-X.max(axis=1).dimshuffle(0,'x') - log(exp(X-X.max(axis=1).dimshuffle(0,'x')).sum(axis=1)).dimshuffle(0,'x)
+def make_out_pattern(X):
+    stabilized_X = X - X.max(axis=1).dimshuffle(0, 'x')
+    out_var = stabilized_X - tensor.log(tensor.exp(stabilized_X).sum(
+        axis=1)).dimshuffle(0, 'x')
+    #tell DEBUG_MODE that it's OK if the original graph produced NaN and the optimized graph does not
+    out_var.values_eq_approx = out_var.type.values_eq_approx_remove_nan
+    return out_var
+
+
+local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
+                                    out_pattern=(make_out_pattern, 'x'),
+                                   allow_multiple_clients=True)
+
+#don't do register_stabilize, this is to make local_log_softmax run
+#only after another more specific optimization that stabilizes cross entropy
+#opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
+opt.register_specialize(local_log_softmax, name='local_log_softmax')

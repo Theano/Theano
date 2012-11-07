@@ -1,24 +1,36 @@
-import os, logging, sys
+import logging
+import os
+import sys
 
 import theano
 from theano import config
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 
+
 _logger = logging.getLogger('theano.scan_module.scan_perform')
-logging.basicConfig(level=logging.DEBUG)
+_logger.setLevel(logging.WARN)
 
 
-# Ensure the compiledir is in `sys.path` to be able to reload an existing
-# precompiled library.
-if config.compiledir not in sys.path:
-    sys.path.append(config.compiledir)
-
-version = 0.276  # must match constant returned in function get_version()
+version = 0.278  # must match constant returned in function get_version()
 
 need_reload = False
-try:
+
+
+def try_import():
+    global scan_perform
+    sys.path[0:0] = [config.compiledir]
     import scan_perform
+    del sys.path[0]
+
+
+def try_reload():
+    sys.path[0:0] = [config.compiledir]
+    reload(scan_perform)
+    del sys.path[0]
+
+try:
+    try_import()
     need_reload = True
     if version != getattr(scan_perform, '_version', None):
         raise ImportError()
@@ -31,9 +43,9 @@ except ImportError:
             if need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
-                reload(scan_perform)
+                try_reload()
             else:
-                import scan_perform
+                try_import()
                 need_reload = True
             if version != getattr(scan_perform, '_version', None):
                 raise ImportError()
@@ -50,7 +62,7 @@ except ImportError:
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
                 os.mkdir(loc)
-            preargs = ['-pthread', '-fwrapv', '-O2', '-fno-strict-aliasing']
+            preargs = ['-fwrapv', '-O2', '-fno-strict-aliasing']
             preargs += cmodule.GCC_compiler.compile_args()
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
                                              preargs=preargs)
@@ -63,8 +75,9 @@ except ImportError:
             init_pyc = os.path.join(loc, '__init__.pyc')
             if os.path.isfile(init_pyc):
                 os.remove(init_pyc)
-            import scan_perform
-            reload(scan_perform)
+            try_import()
+
+            try_reload()
             from scan_perform import scan_perform as scan_c
             assert (scan_perform._version ==
                     scan_c.get_version())

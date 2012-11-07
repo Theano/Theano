@@ -7,21 +7,39 @@ from theano.gof import cmodule
 
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
-# Ensure the compiledir is in `sys.path` to be able to reload an existing
-# precompiled library.
-if config.compiledir not in sys.path:
-    sys.path.append(config.compiledir)
-
 force_compile = False
-version = 0.17 # must match constant returned in function get_version()
+version = 0.20  # must match constant returned in function get_version()
 
+def try_import():
+    global lazylinker_ext
+    sys.path[0:0] = [config.compiledir]
+    import lazylinker_ext
+    del sys.path[0]
+
+def try_reload():
+    sys.path[0:0] = [config.compiledir]
+    reload(lazylinker_ext)
+    del sys.path[0]
 
 try:
+    # See gh issue #728 for why these lines are here. Summary: compiledir must
+    # be at the beginning of the path to avoid conflicts with any other
+    # lazylinker_ext modules that might exist (this step handled in try_import
+    # and try_reload). An __init__.py file must be created for the same reason.
+    # Note that these lines may seem redundant (they are repeated in
+    # compile_str()) but if another lazylinker_ext does exist then it will be
+    # imported and compile_str won't get called at all.
+    location = os.path.join(config.compiledir, 'lazylinker_ext')
+    if not os.path.exists(location):
+        os.mkdir(location)
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        file(os.path.join(location, '__init__.py'), 'w').close()
+
     _need_reload = False
     if force_compile:
         raise ImportError()
     else:
-        import lazylinker_ext
+        try_import()
         _need_reload = True
         if version != getattr(lazylinker_ext, '_version', None):
             raise ImportError()
@@ -36,9 +54,9 @@ except ImportError:
             if _need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
-                reload(lazylinker_ext)
+                try_reload()
             else:
-                import lazylinker_ext
+                try_import()
                 _need_reload = True
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
@@ -65,8 +83,8 @@ except ImportError:
             init_pyc = os.path.join(loc, '__init__.pyc')
             if os.path.isfile(init_pyc):
                 os.remove(init_pyc)
-            import lazylinker_ext
-            reload(lazylinker_ext)
+            try_import()
+            try_reload()
             from lazylinker_ext import lazylinker_ext as lazy_c
             assert (lazylinker_ext._version ==
                     lazy_c.get_version())

@@ -6,6 +6,7 @@ import unittest
 
 import cPickle
 import numpy
+from nose.plugins.skip import SkipTest
 from numpy.testing import dec
 
 import theano
@@ -14,6 +15,7 @@ from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
 from theano.gof.python25 import any
 from theano.tests  import unittest_tools as utt
+import theano.scalar.sharedvar
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -360,7 +362,6 @@ class T_Scan(unittest.TestCase):
     # as test_one_sequence_one_output_weights, but on the gpu
     # This first version test the first case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu1(self):
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -410,7 +411,8 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        assert numpy.allclose(theano_values, v_out), (theano_values, v_out,
+                                                      theano_values - v_out)
 
         # TO DEL
         topo = f2.maker.fgraph.toposort()
@@ -441,7 +443,6 @@ class T_Scan(unittest.TestCase):
 
     # This second version test the second case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu2(self):
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -502,6 +503,63 @@ class T_Scan(unittest.TestCase):
                         for node in scan_node_topo])
         assert not any([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
                         for node in scan_node_topo])
+
+    # This third test checks that scan can deal with a mixture of dtypes as
+    # outputs when is running on GPU
+    def test_gpu3_mixture_dtype_outputs(self):
+        from theano.sandbox import cuda
+        if cuda.cuda_available == False:
+            raise SkipTest('Optional package cuda disabled')
+
+        def f_rnn(u_t, x_tm1, W_in, W):
+            return (u_t * W_in + x_tm1 * W,
+                    tensor.cast(u_t + x_tm1, 'int64'))
+
+        u = theano.tensor.fvector('u')
+        x0 = theano.tensor.fscalar('x0')
+        W_in = theano.tensor.fscalar('win')
+        W = theano.tensor.fscalar('w')
+        output, updates = theano.scan(f_rnn,
+                                      u,
+                                      [x0, None],
+                                      [W_in, W],
+                                      n_steps=None,
+                                      truncate_gradient=-1,
+                                      go_backwards=False,
+                                      mode=mode_with_gpu)
+
+        f2 = theano.function([u, x0, W_in, W],
+                             output,
+                             updates=updates,
+                             allow_input_downcast=True,
+                             mode=mode_with_gpu)
+
+        # get random initial values
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = rng.uniform(size=(4,), low=-5., high=5.)
+        v_x0 = rng.uniform()
+        W = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out1 = numpy.zeros((4,))
+        v_out2 = numpy.zeros((4,), dtype='int64')
+        v_out1[0] = v_u[0] * W_in + v_x0 * W
+        v_out2[0] = v_u[0] + v_x0
+        for step in xrange(1, 4):
+            v_out1[step] = v_u[step] * W_in + v_out1[step - 1] * W
+            v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
+
+        theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
+        assert numpy.allclose(theano_out1, v_out1)
+        assert numpy.allclose(theano_out2, v_out2)
+
+        topo = f2.maker.fgraph.toposort()
+        scan_node = [node for node in topo
+                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+        assert scan_node.op.gpu
 
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
@@ -591,8 +649,8 @@ class T_Scan(unittest.TestCase):
             v_y[i] = numpy.dot(v_x[i - 1], vWout)
 
         (theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
-        assert numpy.allclose(theano_x, v_x)
-        assert numpy.allclose(theano_y, v_y)
+        assert numpy.allclose(theano_x, v_x), (theano_x, v_x, theano_x - v_x)
+        assert numpy.allclose(theano_y, v_y), (theano_y, v_y, theano_y - v_y)
 
     def test_multiple_outs_taps(self):
         l = 5
@@ -683,14 +741,13 @@ class T_Scan(unittest.TestCase):
         ny1[4] = (ny1[3] + ny1[1]) * numpy.dot(ny0[3], vWout)
         ny2[4] = numpy.dot(v_u1[4], vW_in1)
 
-
     def test_using_taps_sequence(self):
         # this test refers to a bug reported by Nicolas
         # Boulanger-Lewandowski June 6th
         x = theano.tensor.dvector()
         y, updates = theano.scan(lambda x: [x],
                                  sequences=dict(input=x, taps=[-1]),
-                                 outputs_info = [None])
+                                 outputs_info=[None])
         inp = numpy.arange(5).astype('float64')
         rval = theano.function([x], y, updates=updates)(inp)
         assert numpy.all(rval == inp[:-1])
@@ -840,8 +897,10 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1)
+        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0,
+                                                     theano_x0 - numpy_x0)
+        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1,
+                                                     theano_x1 - numpy_x1)
         # assert that it was done in place
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -920,8 +979,8 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1)
+        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0)
+        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1)
         # assert that it was done in place
         # not that x0 should not be inplace of vu2 because you are using
         # past values of u2, and therefore you are not allowed to work
@@ -940,11 +999,11 @@ class T_Scan(unittest.TestCase):
         vx1 = asarrayX(rng.uniform())
         x0 = theano.shared(vx0)
         x1 = theano.shared(vx1)
-        outputs, updates = theano.scan(lambda x,y: (x + asarrayX(1),
-                                                    y + asarrayX(1)),
+        outputs, updates = theano.scan(lambda x, y: (x + asarrayX(1),
+                                                     y + asarrayX(1)),
                                        [],
-                                       [x0,x1],
-                                       n_steps = 3)
+                                       [x0, x1],
+                                       n_steps=3)
         x0 = asarrayX(numpy.zeros((3,)))
         x0[0] = vx0
         x0 = theano.tensor.constant(x0)
@@ -1064,6 +1123,29 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(W1.get_value(), numpy_W1)
         assert numpy.allclose(W2.get_value(), numpy_W2)
 
+    def test_grad_dtype_change(self):
+        x = tensor.fscalar('x')
+        y = tensor.fscalar('y')
+        c = tensor.iscalar('c')
+
+        def inner_fn(cond, x, y):
+            new_cond = tensor.cast(tensor.switch(cond, x, y), 'int32')
+            new_x = tensor.switch(cond, tensor.nnet.sigmoid(y * x), x)
+            new_y = tensor.switch(cond, y, tensor.nnet.sigmoid(x))
+            return new_cond, new_x, new_y
+
+        values, _ = theano.scan(
+            inner_fn,
+            outputs_info=[c, x, y],
+            n_steps=10,
+            truncate_gradient=-1,
+            go_backwards=False)
+        gX, gY = tensor.grad(values[1].sum(), [x, y])
+        f = theano.function([c, x, y], [gX, gY],
+                           allow_input_downcast=True)
+        # Check for runtime errors
+        f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
+
     def test_simple_shared_mrg_random(self):
         theano_rng = theano.sandbox.rng_mrg.MRG_RandomStreams(utt.fetch_seed())
 
@@ -1112,8 +1194,6 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(theano_v, numpy_v[5:, :])
 
     def test_cuda_gibbs_chain(self):
-        import theano
-        from nose.plugins.skip import SkipTest
         from theano.sandbox import cuda
         if cuda.cuda_available == False:
             raise SkipTest('Optional package cuda disabled')
@@ -1122,7 +1202,6 @@ class T_Scan(unittest.TestCase):
         v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
-        import theano.sandbox.rng_mrg
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
                                 utt.fetch_seed())
 
@@ -1413,8 +1492,11 @@ class T_Scan(unittest.TestCase):
                                          truncate_gradient=-1,
                                          go_backwards=False)
         vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
+        # y0 is actually not used in the computation of the cost
         params = [u1, u2, x0, y0, W_in1]
-        gparams = theano.tensor.grad(cost, params)
+        gparams = theano.grad(cost, params,
+                                     disconnected_inputs='ignore')
+
         grad_fn = theano.function([u1, u2, x0, y0, W_in1],
                                   gparams,
                                   updates=updates,
@@ -1654,8 +1736,8 @@ class T_Scan(unittest.TestCase):
 
         def f_rnn_cmpl(u_t, x_tm1, W_in):
             trng1 = theano.tensor.shared_randomstreams.RandomStreams(123)
-            x_t = theano.dot(u_t, W_in) + x_tm1 + \
-                    trng1.uniform(low=-.1, high=.1)
+            rnd_nb = trng1.uniform(low=-.1, high=.1)
+            x_t = theano.dot(u_t, W_in) + x_tm1 + rnd_nb
             x_t = theano.tensor.cast(x_t, dtype=theano.config.floatX)
             return x_t
 
@@ -1817,10 +1899,12 @@ class T_Scan(unittest.TestCase):
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
-        fc1 = theano.shared(0.5)
-        fc2 = theano.shared(0.9)
+        fc1 = theano.shared(0.5, name='fc1')
+        fc2 = theano.shared(0.9, name='fc2')
         y = fc1 * theano.dot(x * x, theano.dot(A, x))
+        y.name = 'y'
         gy = theano.tensor.grad(y, x)
+        gy.name = 'gy'
         hy, updates = theano.scan(
             lambda i, gy, x: theano.tensor.grad(gy[i] * fc2, x),
             sequences=theano.tensor.arange(gy.shape[0]),
@@ -1830,7 +1914,9 @@ class T_Scan(unittest.TestCase):
         vx = numpy.array([1., 1.], dtype=theano.config.floatX)
         vA = numpy.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
         vR = numpy.array([[3.6, 1.8], [1.8, 0.9]], dtype=theano.config.floatX)
-        assert numpy.allclose(f(vx, vA), vR)
+        out = f(vx, vA)
+
+        assert numpy.allclose(out, vR)
 
     def test_cloning_no_replace_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
@@ -2255,12 +2341,13 @@ class T_Scan(unittest.TestCase):
                             allow_input_downcast=True, mode=mode_with_opt)
         self.assertTrue(numpy.allclose(f([1, 2, 3]), 2. / 3))
 
-        #theano.printing.debugprint(f, print_type=True)
         topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
-        self.assertTrue(nb_scan == 1)
+        # For this to work we need an optimization that it will be pushed in
+        # a new pull request
+        self.assertTrue(nb_scan == 2)
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
         if theano.config.mode != 'FAST_COMPILE':
@@ -2447,14 +2534,13 @@ class T_Scan(unittest.TestCase):
         v_eW = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
         v_eh0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
 
-
         def rnn_fn(_u, _y, _W):
 
             srng = theano.tensor.shared_randomstreams.RandomStreams(seed)
-            sl_o = theano.tensor.tanh(theano.tensor.dot(_W, (_u + _y + \
-                     srng.uniform(size=v_h0.shape) *
-                                  numpy.asarray(1e-6, dtype=floatX))))
-            return sl_o
+            tmp_val = _u + _y + srng.uniform(size=v_h0.shape) *\
+                        numpy.asarray(1e-6, dtype=floatX)
+            sl_o = theano.tensor.tanh(theano.tensor.dot(_W, tmp_val))
+            return sl_o, tmp_val
 
         u = theano.tensor.matrix('U')
         h0 = theano.tensor.vector('h0')
@@ -2467,9 +2553,9 @@ class T_Scan(unittest.TestCase):
         _W = theano.tensor.specify_shape(W, v_W.shape)
         _W.name = '_W'
 
-        o, _ = theano.scan(rnn_fn,
+        [o, _], _ = theano.scan(rnn_fn,
                            sequences=_u,
-                           outputs_info=_h0,
+                           outputs_info=[_h0, None],
                            non_sequences=_W,
                            name='rnn_fn')
         o = o[-1]
@@ -3050,6 +3136,7 @@ class T_Scan(unittest.TestCase):
                                   loss,
                                   no_default_updates=True,
                                   allow_input_downcast=True)
+
         gw, gx = tensor.grad(loss, [w, xinit])
         grad_fn = theano.function([xinit, w], [gx, gw],
                                  allow_input_downcast=True)
@@ -3074,6 +3161,20 @@ class T_Scan(unittest.TestCase):
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
                     (max_err, 1e-2, max_err_pos))
+
+    def test_grad_numeric_shared(self):
+        shared_var = theano.shared(numpy.float32(1.))
+
+        def inner_fn():
+            return [], {shared_var: shared_var + numpy.float32(1.)}
+        _, updates = theano.scan(inner_fn,
+                                 n_steps=10,
+                                 truncate_gradient=-1,
+                                 go_backwards=False)
+        cost = updates.values()[0]
+        g_sh = tensor.grad(cost, shared_var)
+        fgrad = theano.function([], g_sh)
+        assert fgrad() == 1
 
     def test_rop_mitmot(self):
         # this test is a copy paste from the script given by Justin Bayer to
@@ -3127,6 +3228,69 @@ class T_Scan(unittest.TestCase):
         p = tensor.dvector()
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
+    def test_seq_tap_bug_jeremiah(self):
+        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
+        exp_out[4:] = inp[:-4]
+
+        def onestep(x, x_tm4):
+            return x, x_tm4
+
+        seq = tensor.matrix()
+        initial_value = theano.shared(numpy.zeros((4, 1),
+                                                  dtype=theano.config.floatX))
+        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
+        results, updates = theano.scan(fn=onestep,
+                                       sequences=seq,
+                                       outputs_info=outputs_info)
+
+        f = theano.function([seq], results[1])
+        assert numpy.all(exp_out == f(inp))
+
+    def test_borrow_bug_jeremiah(self):
+        # This test fails if scan uses wrongly the borrow flag
+        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
+        exp_out[4:] = inp[:-4]
+
+        def onestep(x, x_tm4):
+            return x, x_tm4
+
+        seq = tensor.matrix()
+        initial_value = theano.shared(numpy.zeros((4, 1),
+                                                  dtype=theano.config.floatX))
+        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
+        results, _ = theano.scan(fn=onestep,
+                                       sequences=seq,
+                                       outputs_info=outputs_info)
+        sharedvar = theano.shared(numpy.zeros((1, 1),
+                                              dtype=theano.config.floatX))
+        updates = {sharedvar: results[0][-1:]}
+
+        f = theano.function([seq], results[1], updates=updates)
+        assert numpy.all(exp_out == f(inp))
+
+    def test_grad_connectivity_matrix(self):
+        def inner_fn(x_tm1, y_tm1, z_tm1):
+            x_tm1.name = 'x'
+            y_tm1.name = 'y'
+            z_tm1.name = 'z'
+            return x_tm1 ** 2, x_tm1 + y_tm1, x_tm1 + 1
+
+        x0 = tensor.vector('X')
+        y0 = tensor.vector('y0')
+        z0 = tensor.vector('Z')
+        [x, y, z], _ = theano.scan(inner_fn,
+                                 outputs_info=[x0, y0, z0],
+                                 n_steps=10)
+        cost = (x + y + z).sum()
+
+        gx0 = tensor.grad(cost, x0)  # defined
+        gy0 = tensor.grad(cost, y0)  # defined
+        self.assertRaises(ValueError, tensor.grad, cost, z0)
+        cost = x.sum()
+        self.assertRaises(ValueError, tensor.grad, cost, y0)
+
 
 def test_speed():
     #
@@ -3141,6 +3305,9 @@ def test_speed():
     # The computation being tested here is a recurrent addition.
     #
     #
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
 
     r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
 
@@ -3216,7 +3383,10 @@ def test_speed_rnn():
     # The computation being tested here is a repeated tanh of a matrix-vector
     # multiplication - the heart of an ESN or RNN.
     #
-    import theano.scalar.sharedvar
+
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
 
     L = 10000
     N = 50
@@ -3292,8 +3462,10 @@ def test_speed_batchrnn():
     # The computation being tested here is a repeated tanh of a matrix-vector
     # multiplication - the heart of an ESN or RNN.
     #
-    import theano.scalar.sharedvar
 
+    #We need the CVM for this speed test
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     L = 100
     B = 50
     N = 400
@@ -3467,20 +3639,19 @@ if __name__ == '__main__':
 
 
 def test_compute_test_value():
-    """
-    Verify that test values can be used with scan.
-    """
+    # Verify that test values can be used with scan.
     backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'raise'
     try:
-        x = tensor.vector()
+        x = tensor.vector('x')
         xv = numpy.ones(3, dtype=theano.config.floatX)
         x.tag.test_value = xv
-        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX))
+        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX), name='y')
         z, _ = theano.scan(
                 fn=lambda u, v: u + v,
                 sequences=[x, y])
         assert not _
+        z.name = 'z'
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)

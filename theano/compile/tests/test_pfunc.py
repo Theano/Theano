@@ -335,6 +335,16 @@ class Test_pfunc(unittest.TestCase):
         inc_by_y()
         self.assertTrue(x.get_value() == 1)
 
+    def test_update_err_broadcast(self):
+        # Test that broadcastable dimensions raise error
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = shared(name="output", value=data)
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(numpy.ones((2, 3)))
@@ -607,6 +617,42 @@ class Test_pfunc(unittest.TestCase):
         x = theano.tensor.lscalar('x')
         self.assertRaises(theano.compile.UnusedInputError,
                 theano.function, [x, x, x], x)
+
+    def test_update_same(self):
+        # There was a bug in CVM, triggered when a shared variable
+        # was its own update expression.
+        a = shared(1., 'a')
+        b = shared(numpy.ones((2, 3)), 'b')
+
+        # The order of the variables is not determined, so we try
+        # both shared variables.
+        f = theano.function([], [], updates={a: a, b: (2 * b)})
+        g = theano.function([], [], updates={a: (a * 2), b: b})
+
+        f()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+        g()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+
+    def test_update_equiv(self):
+        # Like test_update_same, but the update expression is simplified until
+        # it is found to be equal to the original variable
+        a = shared(1., 'a')
+        b = shared(numpy.ones((2, 3)), 'b')
+
+        # The order of the variables is not determined, so we try
+        # both shared variables.
+        f = theano.function([], [], updates={a: a, b: (2 * b - b)})
+        g = theano.function([], [], updates={a: (a * 2 - a), b: b})
+
+        f()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+        g()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
 
 
 class Test_aliasing_rules(unittest.TestCase):

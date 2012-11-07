@@ -56,9 +56,15 @@ class RandomStateType(gof.Type):
                 return False
         return True
 
-# Register CudaNdarrayType to the OutputGuard list of known types
-# to have OutputGuard generate C code for this type.
-theano.compile.mode.register_OutputGuard_c_code(RandomStateType)
+# Register RandomStateType's C code for ViewOp.
+theano.compile.register_view_op_c_code(
+        RandomStateType,
+        """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """,
+        1)
 
 random_state_type = RandomStateType()
 
@@ -250,7 +256,9 @@ class RandomFunction(gof.Op):
         out[0] = rval
 
     def grad(self, inputs, outputs):
-        return [None for i in inputs]
+        return [theano.gradient.grad_undefined(self, k, inp,
+                        'No gradient defined through raw random numbers op')
+                for k, inp in enumerate(inputs)]
 
     def R_op(self, inputs, eval_points):
         return [None for i in eval_points]
@@ -454,7 +462,7 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=None):
     """
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
-    if dtype == None:
+    if dtype is None:
         dtype = tensor.scal.upcast(theano.config.floatX, avg.dtype, std.dtype)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, avg, std)
     op = RandomFunction('normal',

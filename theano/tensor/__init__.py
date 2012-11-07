@@ -18,7 +18,7 @@ import shared_randomstreams
 from randomstreams import \
     RandomStreams
 
-random = RandomStreams(seed=0xBAD5EED)
+random = RandomStreams(seed=0xBAD5EED, no_warn = True)
 """Imitate the numpy.random symbol with a tensor.random one"""
 
 from elemwise import \
@@ -55,3 +55,5 @@ from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian
 
 from theano.tensor.sort import sort
+from extra_ops import (DiffOp, bincount, squeeze,
+                       repeat, bartlett, fill_diagonal)

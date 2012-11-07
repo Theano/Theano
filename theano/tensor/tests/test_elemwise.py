@@ -5,9 +5,11 @@ import time
 import unittest
 
 import numpy
+from nose.plugins.skip import SkipTest
 from numpy.testing import dec
 
 import theano
+from theano.gof.python25 import all, any
 from theano.gof import Variable, Op
 from theano import gof, scalar, config
 
@@ -45,7 +47,8 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             #test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
             e = DimShuffle(ib, shuffle)(x)
-            f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
+            f = copy(linker).accept(FunctionGraph([x], [e.
+                shape])).make_function()
             assert all(f(numpy.ones(xsh))) == all(zsh)
 
         # Test when we drop a axis that is not broadcastable
@@ -123,7 +126,8 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.add)(x, y)
-                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x,
+                     y], [e.shape])).make_function()
                 assert tuple(f(xv, yv)) == tuple(zv.shape)
 
     def with_linker_inplace(self, linker):
@@ -152,7 +156,8 @@ class test_Broadcast(unittest.TestCase):
                 x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
                 y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
                 e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
-                f = copy(linker).accept(FunctionGraph([x, y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x,
+                     y], [e.shape])).make_function()
                 xv = numpy.asarray(numpy.random.rand(*xsh))
                 yv = numpy.asarray(numpy.random.rand(*ysh))
                 zv = xv + yv
@@ -165,15 +170,21 @@ class test_Broadcast(unittest.TestCase):
         self.with_linker(gof.PerformLinker())
 
     def test_c(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         self.with_linker(gof.CLinker())
 
     def test_perform_inplace(self):
         self.with_linker_inplace(gof.PerformLinker())
 
     def test_c_inplace(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         self.with_linker_inplace(gof.CLinker())
 
     def test_fill(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         x = TensorType('float64', [0, 0])('x')
         y = TensorType('float64', [1, 1])('y')
         e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
@@ -184,6 +195,8 @@ class test_Broadcast(unittest.TestCase):
         assert (xv == yv).all()
 
     def test_weird_strides(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         x = TensorType('float64', [0, 0, 0, 0, 0])('x')
         y = TensorType('float64', [0, 0, 0, 0, 0])('y')
         e = Elemwise(scalar.add)(x, y)
@@ -194,6 +207,8 @@ class test_Broadcast(unittest.TestCase):
         assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         x = TensorType('float64', [0, 0])('x')
         e = Elemwise(scalar.add)(x, x)
         f = gof.CLinker().accept(FunctionGraph([x], [e])).make_function()
@@ -314,15 +329,18 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 else:
                     self.fail()
             else:
-                #numpy.{all,any} return bool type.
+                # numpy.{all,any} return bool type,
+                # but theano ops return an int8 array instead
                 if scalar_op in [scalar.and_, scalar.or_]:
-                    zv = numpy.asarray(zv, dtype=dtype)
+                    zv = numpy.asarray(zv, dtype='int8')
                 if test_nan:
                     self.assertTrue(theano.tensor.TensorType.values_eq(f(xv),
                                                                        zv),
                                     (f(xv), zv))
                 else:
-                    self.assertTrue(numpy.allclose(f(xv), zv), (f(xv), zv))
+                    f_xv = f(xv)
+                    self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                    self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
 
             #test CAReduce.infer_shape
             #the Shape op don't implement c_code!
@@ -334,7 +352,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     e = tensor_op(x, axis=tosum)
                 if tosum is None:
                     tosum = range(len(xsh))
-                f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph([x],
+                     [e.shape])).make_function()
                 if not(scalar_op in [scalar.maximum, scalar.minimum] and
                        ((xsh == () or numpy.prod(xsh) == 0))):
                     assert all(f(xv) == zv.shape)
@@ -354,10 +373,6 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.PerformLinker(), scalar.xor, dtype=dtype)
 
-    @dec.knownfailureif(
-        True,
-        ("When there is nan in the input of CAReduce,"
-         " we don't have a good output. "))
     def test_perform_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype,
@@ -369,15 +384,14 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.PerformLinker(), scalar.minimum, dtype=dtype,
                              test_nan=True)
             self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), or_, dtype=dtype,
                              test_nan=True, tensor_op=tensor.any)
-            self.with_linker(gof.PerformLinker(), and_, dtype=dtype,
+            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
                              test_nan=True, tensor_op=tensor.all)
 
     def test_c(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
+
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_linker(gof.CLinker(), scalar.add, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype)
@@ -393,11 +407,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
 
-    @dec.knownfailureif(
-        True,
-        ("When there is nan in the input of CAReduce,"
-         " we don't have a good output. "))
     def test_c_nan(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.CLinker(), scalar.add, dtype=dtype,
                              test_nan=True)
@@ -429,9 +441,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))
-            xv = numpy.asarray(numpy.random.rand(*xsh))
+            xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [CAReduce(add, axis=tosum)(x)],
+                            [CAReduce(scalar.add, axis=tosum)(x)],
                             [xv], CAReduce, ["local_cut_useless_reduce"])
 
 
@@ -451,7 +463,8 @@ class test_Prod(unittest.TestCase):
 
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
-        x_val = numpy.asarray([[1,2,3],[4,5,6],[7,8,9]], dtype='float32')
+        x_val = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+             dtype='float32')
         x = theano.tensor.dmatrix()
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
@@ -463,26 +476,28 @@ class test_Prod(unittest.TestCase):
 
         unittest_tools.verify_grad(fn, [x_val], mode=self.mode)
 
-
     def test_verify_grad_with_zeros(self):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
-        x_val = numpy.asarray([[1.,2.,3.],[0.,5.,6.],[0.,0.,9.]], dtype='float32')
+        x_val = numpy.asarray([[1., 2., 3.], [0., 5., 6.], [0., 0., 9.]],
+             dtype='float32')
         x = theano.tensor.dmatrix()
 
         # sanity check
         x2 = theano.tensor.dmatrix()
         p = Prod(axis=1)(x)
         p2 = Prod(axis=1)(x2)
-        fn = theano.function([x,x2],[p-p2], mode=self.mode)
+        fn = theano.function([x, x2], [p - p2], mode=self.mode)
         #print "hand computed diff for each row"
-        x2_val = numpy.asarray([[1., 2., 3.003], [0.003,5.,6], [0.,0.,9.01]])
+        x2_val = numpy.asarray([[1., 2., 3.003], [0.003, 5., 6], [
+            0., 0., 9.01]])
         #print fn(x_val, x2_val)
-        fn2 = theano.function([x],[theano.tensor.grad(p.sum(),x)], mode=self.mode)
+        fn2 = theano.function([x], [theano.tensor.grad(p.sum(), x)],
+             mode=self.mode)
         #print "real grad"
         #print fn2(x_val)
-        fn3 = theano.function([x],[p], mode=self.mode)
-        assert numpy.allclose(fn3(x_val), [6.,0.,0.])
+        fn3 = theano.function([x], [p], mode=self.mode)
+        assert numpy.allclose(fn3(x_val), [6., 0., 0.])
 
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
@@ -503,10 +518,10 @@ class test_Prod(unittest.TestCase):
 
     def test_prod_without_zeros(self):
         x = theano.tensor.dmatrix()
-        x_val = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
+        x_val = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]], dtype='float32')
         pwz = ProdWithoutZeros(axis=1)(x)
         fn = theano.function([x], pwz, mode=self.mode)
-        assert numpy.allclose(fn(x_val), [6,30,9])
+        assert numpy.allclose(fn(x_val), [6, 30, 9])
 
         pwz_a0 = ProdWithoutZeros(axis=0)(x)
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
@@ -514,25 +529,30 @@ class test_Prod(unittest.TestCase):
 
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
-        x_val1 = numpy.array([[1,2,3],[0,5,6],[0,0,9]], dtype='float32')
-        x_val2 = numpy.array([[1,2,0],[0,5,6],[7,8,9],[9,10,0]], dtype='float32')
+        x_val1 = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]],
+             dtype='float32')
+        x_val2 = numpy.array([[1, 2, 0], [0, 5, 6], [7, 8, 9], [9, 10, 0]],
+             dtype='float32')
         rng = rng = numpy.random.RandomState(43)
 
         p = Prod(axis=1)
         grad_p = theano.tensor.grad(p(x).sum(), x)
         grad_fn = theano.function([x], grad_p, mode=self.mode)
-        assert numpy.allclose(grad_fn(x_val1), [[6.,3.,2.],[30.,0.,0.],[0.,0.,0.]])
-        assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30., 0., 0.], [72., 63., 56.], [0., 0., 90.]])
+        assert numpy.allclose(grad_fn(x_val1), [[6., 3., 2.], [30., 0.,
+            0.], [0., 0., 0.]])
+        assert numpy.allclose(grad_fn(x_val2), [[0., 0., 2.], [30.,
+             0., 0.], [72., 63., 56.], [0., 0., 90.]])
 
         p_axis0 = Prod(axis=0)
         grad_p_axis0 = theano.tensor.grad(p_axis0(x).sum(), x)
         grad_fn_axis0 = theano.function([x], grad_p_axis0, mode=self.mode)
-        assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400., 0.],[63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
+        assert numpy.allclose(grad_fn_axis0(x_val2), [[0., 400.,
+             0.], [63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
 
         tensor.verify_grad(p, [x_val1], rng=rng, mode=self.mode)
 
     def test_mul_without_zeros_zeros(self):
-        a = numpy.zeros((3,3))
+        a = numpy.zeros((3, 3))
 
         x = theano.tensor.dmatrix()
 
@@ -636,6 +656,8 @@ class T_sum_dtype(unittest.TestCase):
                     sum_var = x.sum(dtype=output_dtype, axis=axis)
                     assert sum_var.dtype == output_dtype
 
+                    if "complex" in input_dtype:
+                        continue
                     # Check that we can take the gradient
                     grad_var = tensor.grad(sum_var.sum(), x,
                             disconnected_inputs='ignore')
@@ -644,6 +666,7 @@ class T_sum_dtype(unittest.TestCase):
                             x.sum, dtype=output_dtype, axis=axis)
 
                 idx += 1
+
 
 class T_mean_dtype(unittest.TestCase):
     def test_mean_default_dtype(self):
@@ -661,6 +684,7 @@ class T_mean_dtype(unittest.TestCase):
                 assert x.dtype == dtype, (x, x.dtype, dtype)
 
     def test_mean_custom_dtype(self):
+
         """
         Test the ability to provide your own output dtype for a mean.
         """
@@ -681,9 +705,11 @@ class T_mean_dtype(unittest.TestCase):
                     if sum_dtype in tensor.discrete_dtypes:
                         assert mean_var.dtype == 'float64', (mean_var.dtype, sum_dtype)
                     else:
-                        assert mean_var.dtype == sum_dtype, (mean_var.dtype, output_dtype)
+                        assert mean_var.dtype == sum_dtype, (mean_var.dtype, sum_dtype)
 
                     # Check that we can take the gradient, when implemented
+                    if "complex" in mean_var.dtype:
+                        continue
                     try:
                         grad_var = tensor.grad(mean_var.sum(), x,
                                 disconnected_inputs='ignore')
@@ -696,6 +722,7 @@ class T_mean_dtype(unittest.TestCase):
                             raise
 
                 idx += 1
+
 
 class T_prod_dtype(unittest.TestCase):
     def test_prod_default_dtype(self):
@@ -737,6 +764,8 @@ class T_prod_dtype(unittest.TestCase):
                     prod_var = x.prod(dtype=output_dtype, axis=axis)
                     assert prod_var.dtype == output_dtype
 
+                    if "complex" in output_dtype:
+                        continue
                     # Check that we can take the gradient
                     grad_var = tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')
@@ -745,6 +774,7 @@ class T_prod_dtype(unittest.TestCase):
                             x.prod, dtype=output_dtype, axis=axis)
 
                 idx += 1
+
 
 class T_prod_without_zeros_dtype(unittest.TestCase):
     def test_prod_without_zeros_default_dtype(self):
@@ -811,12 +841,37 @@ class TestElemwise(unittest_tools.InferShapeTester):
             dtype = theano.config.floatX
             t_left = TensorType(dtype, [(entry == 1) for entry in s_left])()
             t_right = TensorType(dtype, [(entry == 1) for entry in s_right])()
-            t_left_val = numpy.zeros(s_left)
-            t_right_val = numpy.zeros(s_right)
+            t_left_val = numpy.zeros(s_left, dtype=dtype)
+            t_right_val = numpy.zeros(s_right, dtype=dtype)
             self._compile_and_check([t_left, t_right],
-                            [Elemwise(add)(t_left, t_right)],
+                            [Elemwise(scalar.add)(t_left, t_right)],
                             [t_left_val, t_right_val], Elemwise)
 
+
+def test_gt_grad():
+    """A user test that failed.
+
+    Something about it made Elemwise.grad return something that was
+    too complicated for get_constant_value to recognize as being 0, so
+    gradient.grad reported that it was not a valid gradient of an
+    integer.
+
+    """
+    floatX = config.floatX
+    T = theano.tensor
+
+    input_ = T.vector(dtype=floatX)
+    random_values = numpy.random.RandomState(1234).uniform(low=-1, high=1, size=(2,2))
+    W_values = numpy.asarray(random_values, dtype=floatX)
+    W = theano.shared(value=W_values, name='weights')
+    correct_score = T.dot(input_, W)
+    wrong_input = T.vector(dtype=floatX)
+    wrong_score = theano.clone(correct_score, {input_: wrong_input})
+    # Hinge loss
+
+    scores = T.ones_like(correct_score) - correct_score + wrong_score
+    cost = (scores * (scores > 0)).sum()
+    T.grad(cost, input_)
 
 """
 if __name__ == '__main__':
@@ -828,6 +883,24 @@ if __name__ == '__main__':
     unittest.TextTestRunner().run(suite)
 """
 
+def test_clip_grad():
+
+    # test the gradient of clip
+    def func(x,y,z):
+        return theano.tensor.clip(x,y,z)
+    # use an x value less than y, an x value between y and z, and an x value
+    # greater than z
+    unittest_tools.verify_grad(func,
+            [ numpy.asarray([-1.,0.5,2.]), 0., 1.])
+
+def test_clip_grad_int():
+
+    # test that integers don't crash clip gradient
+    x = tensor.iscalar()
+    y = tensor.iscalar()
+    z = tensor.iscalar()
+    c = tensor.clip(x,y,z)
+    tensor.grad(c, [x, y, z])
 
 
 if __name__ == '__main__':
@@ -835,5 +908,3 @@ if __name__ == '__main__':
     t = TestElemwise('setUp')
     t.setUp()
     t.test_infer_shape()
-
-

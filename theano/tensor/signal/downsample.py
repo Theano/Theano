@@ -83,7 +83,7 @@ class DownsampleFactorMax(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements (rows, cols)')
         r, c = imgshape[-2:]
-        rval = list(imgshape[:-2])+[ r/ds[0], c/ds[1]]
+        rval = list(imgshape[:-2]) + [ r // ds[0], c // ds[1] ]
 
         if not ignore_border:
             if isinstance(r, theano.Variable):
@@ -176,13 +176,13 @@ class DownsampleFactorMax(Op):
         int x_shp0_usable;
         int x_shp1_usable;
         int z_shp0, z_shp1;
-        if(%(x)s->nd!=4)
+        if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
         }
-        z_shp0 = %(x)s->dimensions[2] / %(ds0)s;
-        z_shp1 = %(x)s->dimensions[3] / %(ds1)s;
+        z_shp0 = PyArray_DIMS(%(x)s)[2] / %(ds0)s;
+        z_shp1 = PyArray_DIMS(%(x)s)[3] / %(ds1)s;
         if (%(ignore_border)s)
         {
             x_shp0_usable = z_shp0 * %(ds0)s;
@@ -190,23 +190,23 @@ class DownsampleFactorMax(Op):
         }
         else
         {
-            z_shp0 += (%(x)s->dimensions[2] %% %(ds0)s) ? 1 : 0;
-            z_shp1 += (%(x)s->dimensions[3] %% %(ds1)s) ? 1 : 0;
-            x_shp0_usable = %(x)s->dimensions[2];
-            x_shp1_usable = %(x)s->dimensions[3];
+            z_shp0 += (PyArray_DIMS(%(x)s)[2] %% %(ds0)s) ? 1 : 0;
+            z_shp1 += (PyArray_DIMS(%(x)s)[3] %% %(ds1)s) ? 1 : 0;
+            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
+            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
         }
         if ((!%(z)s)
           || *PyArray_DIMS(%(z)s)!=4
-          ||(%(z)s->dimensions[0] != %(x)s->dimensions[0])
-          ||(%(z)s->dimensions[1] != %(x)s->dimensions[1])
-          ||(%(z)s->dimensions[2] != z_shp0)
-          ||(%(z)s->dimensions[3] != z_shp1)
+          ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0])
+          ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])
+          ||(PyArray_DIMS(%(z)s)[2] != z_shp0)
+          ||(PyArray_DIMS(%(z)s)[3] != z_shp1)
           )
         {
           if (%(z)s) Py_XDECREF(%(z)s);
           npy_intp dims[4] = {0,0,0,0};
-          dims[0]=%(x)s->dimensions[0];
-          dims[1]=%(x)s->dimensions[1];
+          dims[0]=PyArray_DIMS(%(x)s)[0];
+          dims[1]=PyArray_DIMS(%(x)s)[1];
           dims[2]=z_shp0;
           dims[3]=z_shp1;
           %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
@@ -214,8 +214,8 @@ class DownsampleFactorMax(Op):
 
         if (z_shp0 && z_shp1)
         {
-            for(int b=0;b<%(x)s->dimensions[0];b++){
-              for(int k=0;k<%(x)s->dimensions[1];k++){
+            for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
+              for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
                 int mini_i = 0;
                 int zi = 0;
                 for(int i=0;i< x_shp0_usable; i++){
@@ -306,23 +306,23 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "input types must all match");
             %(fail)s;
         }
-        if(%(x)s->nd!=4)
+        if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(z)s->nd!=4)
+        if(PyArray_NDIM(%(z)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "z must be a 4d ndarray");
             %(fail)s;
         }
-        if(%(gz)s->nd!=4)
+        if(PyArray_NDIM(%(gz)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
         }
-        z_shp0 = %(z)s->dimensions[2];
-        z_shp1 = %(z)s->dimensions[3];
+        z_shp0 = PyArray_DIMS(%(z)s)[2];
+        z_shp1 = PyArray_DIMS(%(z)s)[3];
         if (%(ignore_border)s)
         {
             x_shp0_usable = z_shp0 * %(ds0)s;
@@ -330,23 +330,23 @@ class DownsampleFactorMaxGrad(Op):
         }
         else
         {
-            x_shp0_usable = %(x)s->dimensions[2];
-            x_shp1_usable = %(x)s->dimensions[3];
+            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
+            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
         }
         if ((!%(gx)s)
           || *PyArray_DIMS(%(gx)s)!=4
-          ||(%(gx)s->dimensions[0] != %(x)s->dimensions[0])
-          ||(%(gx)s->dimensions[1] != %(x)s->dimensions[1])
-          ||(%(gx)s->dimensions[2] != %(x)s->dimensions[2])
-          ||(%(gx)s->dimensions[3] != %(x)s->dimensions[3])
+          ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
+          ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
+          ||(PyArray_DIMS(%(gx)s)[2] != PyArray_DIMS(%(x)s)[2])
+          ||(PyArray_DIMS(%(gx)s)[3] != PyArray_DIMS(%(x)s)[3])
           )
         {
           Py_XDECREF(%(gx)s);
-          %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, %(x)s->dimensions, x_typenum,0);
+          %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, PyArray_DIMS(%(x)s), x_typenum,0);
         }
 
-        for(int b=0;b<%(x)s->dimensions[0];b++){
-          for(int k=0;k<%(x)s->dimensions[1];k++){
+        for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
+          for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
             int mini_i = 0;
             int zi = 0;
             for(int i=0;i< x_shp0_usable; i++){
@@ -364,14 +364,14 @@ class DownsampleFactorMaxGrad(Op):
               mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
               zi += (mini_i == 0);
 
-              for (int j = x_shp1_usable; j < %(x)s->dimensions[3]; ++j) {
+              for (int j = x_shp1_usable; j < PyArray_DIMS(%(x)s)[3]; ++j) {
                 dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                 gxp[0] = 0;
               }
             }//for i
 
-            for(int i = x_shp0_usable; i < %(x)s->dimensions[2]; i++){
-                for (int j = 0; j < %(x)s->dimensions[3]; ++j) {
+            for(int i = x_shp0_usable; i < PyArray_DIMS(%(x)s)[2]; i++){
+                for (int j = 0; j < PyArray_DIMS(%(x)s)[3]; ++j) {
                     dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
                     gxp[0] = 0;
                 }

@@ -402,8 +402,10 @@ class CLinker(link.Linker):
     associated to it during the computation (to avoid reusing it).
     """
 
-    def __init__(self):
+    def __init__(self, schedule=None):
         self.fgraph = None
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """WRITEME"""
@@ -436,7 +438,7 @@ class CLinker(link.Linker):
         self.temps = list(set(self.variables).difference(
                 self.inputs).difference(self.outputs).difference(self.orphans))
         self.consts = []
-        self.node_order = fgraph.toposort()
+        self.node_order = self.schedule(fgraph)
 
     def code_gen(self):
         """WRITEME
@@ -719,9 +721,11 @@ class CLinker(link.Linker):
                 pass
 
         c_compiler = self.c_compiler()
-        ret += c_compiler.compile_args()
 
         ret = list(set(ret))  # to remove duplicate
+        # The args set by the compiler include the user flags. We do not want
+        # to reorder them
+        ret += c_compiler.compile_args()
         for x in [y.type for y in self.variables] + [
             y.op for y in self.node_order]:
             try:
@@ -992,8 +996,7 @@ class CLinker(link.Linker):
                           c_compiler=self.c_compiler(),
                           )
 
-    @staticmethod
-    def cmodule_key_(fgraph, no_recycling, compile_args=None, libraries=None,
+    def cmodule_key_(self, fgraph, no_recycling, compile_args=None, libraries=None,
                      header_dirs=None, insert_config_md5=True, c_compiler=None):
         """
         Do the actual computation of cmodule_key in a static method
@@ -1005,7 +1008,7 @@ class CLinker(link.Linker):
             libraries = []
         if header_dirs is None:
             header_dirs = []
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         #set of variables that have been computed by nodes we have
         # seen 'so far' in the loop below
         fgraph_computed_set = set()
@@ -1360,7 +1363,8 @@ class _CThunk(object):
                 # this can be used to retrieve the location the Op was declared
                 exc_value.__thunk_trace__ = trace
             except Exception:
-                print >> sys.stderr, 'ERROR retrieving error_storage',
+                print >> sys.stderr, ('ERROR retrieving error_storage.'
+                                      ' Was the error set in the c code?'),
                 print >> sys.stderr, self.error_storage
                 raise
 
@@ -1393,19 +1397,27 @@ class OpWiseCLinker(link.LocalLinker):
 
     def __init__(self,
             fallback_on_perform=True,
-            allow_gc=True,
-            nice_errors=True):
+            allow_gc=None,
+            nice_errors=True,
+            schedule=None):
+        if allow_gc is None:
+            allow_gc = config.allow_gc
         self.fgraph = None
         self.fallback_on_perform = fallback_on_perform
         self.nice_errors = nice_errors
         self.allow_gc = allow_gc
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)(self.fallback_on_perform).accept(fgraph,
-                                                               no_recycling)
+            return type(self)(
+                    fallback_on_perform=self.fallback_on_perform,
+                    allow_gc=self.allow_gc,
+                    nice_errors=self.nice_errors
+                    ).accept(fgraph, no_recycling)
             #raise Exception("Cannot accept from a Linker that is
             #already tied to another FunctionGraph.")
         self.fgraph = fgraph
@@ -1422,7 +1434,7 @@ class OpWiseCLinker(link.LocalLinker):
         try:
 
             fgraph = self.fgraph
-            order = fgraph.toposort()
+            order = self.schedule(fgraph)
             no_recycling = self.no_recycling
 
             input_storage, output_storage, storage_map = link.map_storage(
@@ -1446,7 +1458,8 @@ class OpWiseCLinker(link.LocalLinker):
                 # make_thunk
                 old_value = getattr(node.op, '_op_use_c_code', False)
                 try:
-                    node.op._op_use_c_code = True
+                    if theano.config.cxx:
+                        node.op._op_use_c_code = True
                     thunks += [node.op.make_thunk(node,
                                         storage_map,
                                         compute_map,
@@ -1514,7 +1527,7 @@ class DualLinker(link.Linker):
     function.
     """
 
-    def __init__(self, checker=_default_checker):
+    def __init__(self, checker=_default_checker, schedule=None):
         """
         Initialize a DualLinker.
 
@@ -1539,6 +1552,8 @@ class DualLinker(link.Linker):
         """
         self.fgraph = None
         self.checker = checker
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
@@ -1556,11 +1571,13 @@ class DualLinker(link.Linker):
         fgraph = self.fgraph
         no_recycling = self.no_recycling
 
-        _f, i1, o1, thunks1, order1 = link.PerformLinker().accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs)
+        _f, i1, o1, thunks1, order1 = (
+                link.PerformLinker(schedule=self.schedule).accept(fgraph,
+                                no_recycling=no_recycling).make_all(**kwargs))
         kwargs.pop('input_storage', None)
-        _f, i2, o2, thunks2, order2 = OpWiseCLinker().accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs)
+        _f, i2, o2, thunks2, order2 = (
+                OpWiseCLinker(schedule=self.schedule).accept(fgraph,
+                                no_recycling=no_recycling).make_all(**kwargs))
 
         def f():
             for input1, input2 in izip(i1, i2):

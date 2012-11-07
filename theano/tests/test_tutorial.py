@@ -393,7 +393,7 @@ class T_extending(unittest.TestCase):
 
         class Simplify(gof.Optimizer):
             def add_requirements(self, fgraph):
-                fgraph.extend(toolbox.ReplaceValidate())
+                fgraph.attach_feature(toolbox.ReplaceValidate())
             def apply(self, fgraph):
                 for node in fgraph.toposort():
                     if node.op == div:
@@ -797,20 +797,21 @@ class T_using_gpu(unittest.TestCase):
         rng = numpy.random.RandomState(22)
         x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
         f = function([], T.exp(x))
+        # print f.maker.fgraph.toposort()
         t0 = time.time()
         for i in xrange(iters):
             r = f()
-        print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+        t1 = time.time()
+        print 'Looping %d times took' % iters, t1 - t0, 'seconds'
         print 'Result is', r
-        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+        if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
             print 'Used the cpu'
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
             assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
-            assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
-
+            assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
     def test_using_gpu_2(self):
@@ -828,21 +829,20 @@ class T_using_gpu(unittest.TestCase):
             rng = numpy.random.RandomState(22)
             x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
             f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
-
-
-
+            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
     def test_using_gpu_3(self):
@@ -862,18 +862,20 @@ class T_using_gpu(unittest.TestCase):
             f = function([],
                     Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
                         borrow=True))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
 class T_fibby(unittest.TestCase):
@@ -916,7 +918,7 @@ class T_fibby(unittest.TestCase):
                 return """
                     Py_XDECREF(%(y)s);
                     %(y)s = (PyArrayObject*)PyArray_FromArray(
-                            %(x)s, 0, NPY_ENSURECOPY);
+                            %(x)s, 0, NPY_ARRAY_ENSURECOPY);
                     if (!(%y)s) %(fail)s;
                     dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
                     dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;

@@ -10,7 +10,8 @@ from theano import gof
 from theano.printing import pprint
 import io, sys
 
-from theano.gof.python25 import any, all, defaultdict, partial
+from theano.gof.python25 import all
+import warnings
 
 from itertools import chain
 
@@ -18,7 +19,26 @@ import function_module as F
 import mode as get_mode
 
 
+#This module is imported by other parts of theano, and worse still, other
+#parts of theano do "from module import *"
+#So rather than printing out a warning if you import from this module, we
+#must stick a warning inside all of the components
+
+def deprecation_warning():
+    # Make sure the warning is displayed only once.
+    if deprecation_warning.already_displayed:
+        return
+
+    warnings.warn(
+            "theano modules are deprecated and will be removed in release 0.7",
+            stacklevel=3)
+    deprecation_warning.already_displayed = True
+
+deprecation_warning.already_displayed = False
+
+
 def name_join(*args):
+    deprecation_warning()
     """
     Creates a string representation for the given names:
     join('a', 'b', 'c') => 'a.b.c'
@@ -26,6 +46,7 @@ def name_join(*args):
     return ".".join(arg for arg in args if arg)
 
 def name_split(sym, n=-1):
+    deprecation_warning()
     """
     Gets the names from their joined representation
     split('a.b.c') => ['a', 'b', 'c']
@@ -47,7 +68,9 @@ class Component(object):
     Method, etc.)
     """
 
-    def __init__(self):
+    def __init__(self, no_warn = False):
+        if not no_warn:
+            deprecation_warning()
         self.__dict__['_name'] = ''
         self.__dict__['parent'] = None
 
@@ -140,6 +163,7 @@ class _RComponent(Component):
     """
 
     def __init__(self, r):
+        deprecation_warning()
         super(_RComponent, self).__init__()
         self.r = r
         # If self.owns_name is True, then the name of the variable
@@ -172,6 +196,7 @@ class External(_RComponent):
     """
 
     def allocate(self, memo):
+        deprecation_warning()
         # nothing to allocate
         return None
 
@@ -201,6 +226,7 @@ class Member(_RComponent):
         If the memo does not have a Container associated to this
         Member's Variable, instantiates one and sets it in the memo.
         """
+        deprecation_warning()
         r = self.r
         if memo and r in memo:
             return memo[r]
@@ -283,6 +309,7 @@ class Method(Component):
         :type mode: None or any mode accepted by `compile.function`
 
         """
+        deprecation_warning()
         if updates is None:
             updates = {}
         super(Method, self).__init__()
@@ -529,6 +556,7 @@ class CompositeInstance(object):
     """
 
     def __init__(self, component, __items__):
+        deprecation_warning()
         # The Component that built this CompositeInstance
         self.__dict__['component'] = component
         # Some data structure indexable using []
@@ -618,6 +646,7 @@ class Composite(Component):
         """
         Does allocation for each component in the composite.
         """
+        deprecation_warning()
         for member in self.components():
             member.allocate(memo)
 
@@ -668,6 +697,7 @@ class ComponentListInstance(CompositeInstance):
         return len(self.__items__)
 
     def initialize(self, init):
+        deprecation_warning()
         for i, initv in enumerate(init):
             self[i] = initv
 
@@ -678,6 +708,7 @@ class ComponentList(Composite):
     """
 
     def __init__(self, *_components):
+        deprecation_warning()
         super(ComponentList, self).__init__()
         if len(_components) == 1 and isinstance(_components[0], (list, tuple)):
             _components = _components[0]
@@ -763,6 +794,7 @@ class ComponentList(Composite):
 
 
 def default_initialize(self, init=None, **kwinit):
+    deprecation_warning()
     if init is None:
         init = {}
     for k, initv in dict(init, **kwinit).iteritems():
@@ -795,6 +827,7 @@ class ComponentDictInstance(ComponentDictInstanceNoInit):
     """
 
     def initialize(self, init=None, **kwinit):
+        deprecation_warning()
         if init is None:
             init = {}
         for k, initv in dict(init, **kwinit).iteritems():
@@ -806,6 +839,7 @@ class ComponentDict(Composite):
     InstanceType = ComponentDictInstance # Type used by build() to make the instance
 
     def __init__(self, components=None, **kwcomponents):
+        deprecation_warning()
         if components is None:
             components = {}
         super(ComponentDict, self).__init__()
@@ -872,7 +906,7 @@ class ComponentDict(Composite):
 
 __autowrappers = []
 
-def register_wrapper(condition, wrapper):
+def register_wrapper(condition, wrapper, no_warn = False):
     """
     :type condition: function x -> bool
 
@@ -884,12 +918,15 @@ def register_wrapper(condition, wrapper):
     :param wrapper: this function should convert `x` into an instance of
         a Component subclass.
     """
+    if not no_warn:
+        deprecation_warning()
     __autowrappers.append((condition, wrapper))
 
 def wrapper(x):
     """Returns a wrapper function appropriate for `x`
     Returns None if not appropriate wrapper is found
     """
+    deprecation_warning()
     for condition, wrap_fn in __autowrappers:
         if condition(x):
             return wrap_fn
@@ -905,6 +942,7 @@ def wrap(x):
     `Component.make` to fail.
 
     """
+    deprecation_warning()
     w = wrapper(x)
     if w is not None:
         return w(x)
@@ -912,6 +950,7 @@ def wrap(x):
         return x
 
 def dict_wrap(d):
+    deprecation_warning()
     d_copy = {}
     for k,v in d.iteritems():
         d_copy[k]=wrap(v)
@@ -919,28 +958,29 @@ def dict_wrap(d):
 
 # Component -> itself
 register_wrapper(lambda x: isinstance(x, Component),
-                 lambda x: x)
+                 lambda x: x, no_warn = True)
 
 # Variable -> Member
 register_wrapper(lambda x: isinstance(x, gof.Variable) and not x.owner,
-                 lambda x: Member(x))
+                 lambda x: Member(x), no_warn = True)
 
 # Variable -> External
 register_wrapper(lambda x: isinstance(x, gof.Variable) and x.owner,
-                 lambda x: External(x))
+                 lambda x: External(x), no_warn = True)
 
 # [[Variable1], {Variable2}, Variable3...] -> ComponentList(Member(Variable1), Member(Variable2), ...)
 register_wrapper(lambda x: isinstance(x, (list, tuple)) \
                      and all(wrapper(r) is not None for r in x),
-                 lambda x: ComponentList(*map(wrap, x)))
+                 lambda x: ComponentList(*map(wrap, x)), no_warn = True)
 
 #{ "name1":{Component,Variable,list,tuple,dict},...} -> ComponentDict({Component,Variable,list,tuple,dict},...)
 register_wrapper(lambda x: isinstance(x, dict) \
                      and all(wrapper(r) is not None for r in x.itervalues()),
-                 lambda x: ComponentDict(dict_wrap(x)))
+                 lambda x: ComponentDict(dict_wrap(x)),no_warn = True)
 
 class Curry:
     def __init__(self, obj, name, arg):
+        deprecation_warning()
         self.obj = obj
         self.name = name
         self.meth = getattr(self.obj, self.name)
@@ -989,6 +1029,7 @@ class Module(ComponentDict):
     InstanceType = ModuleInstance # By default, we use build ModuleInstance
 
     def __init__(self, *args, **kw):
+        deprecation_warning()
         super(Module, self).__init__(*args, **kw)
         self.__dict__["local_attr"]={}
         self.__dict__["_components"]={}
@@ -1187,6 +1228,7 @@ def func_to_mod(f):
 
         output <= f(**kwinit)
     """
+    deprecation_warning()
     def make(**kwinit):
         m = Module()
         outputs = f(**kwinit)

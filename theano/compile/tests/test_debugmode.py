@@ -56,30 +56,30 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         a, b = inp
         z, = out
         return """
-        if (%(a)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
-        if (%(b)s->nd != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(a)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 1"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_DOUBLE)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_DOUBLE)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_DOUBLE"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(b)s->dimensions[0])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(b)s)[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a and b have different lengths"); %(fail)s;}
 
         if ((!%(z)s)
-            || (%(z)s->dimensions[0] != %(b)s->dimensions[0])
+            || (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
             )
         {
             {Py_XDECREF(%(z)s);}
             npy_intp dims[] = {0};
-            dims[0] = %(b)s->dimensions[0];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, %(b)s->descr->type_num);
+            dims[0] = PyArray_DIMS(%(b)s)[0];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         {
-            for (npy_intp m = 0; m < %(z)s->dimensions[0]; ++m)
+            for (npy_intp m = 0; m < PyArray_DIMS(%(z)s)[0]; ++m)
             {
                 ((double*)PyArray_GETPTR1(%(z)s, m))[0]
                 = 0.5
@@ -150,13 +150,13 @@ class WeirdBrokenOp(gof.Op):
         else:
             z_code = """
             {Py_XDECREF(%(z)s);}
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, %(a)s->dimensions, %(a)s->descr->type_num);
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(a)s), PyArray_DESCR(%(a)s)->type_num);
             """
         prep_vars = """
             //the output array has size M x N
-            npy_intp M = %(a)s->dimensions[0];
-            npy_intp Sa = %(a)s->strides[0] / %(a)s->descr->elsize;
-            npy_intp Sz = %(z)s->strides[0] / %(z)s->descr->elsize;
+            npy_intp M = PyArray_DIMS(%(a)s)[0];
+            npy_intp Sa = %(a)s->strides[0] / PyArray_DESCR(%(a)s)->elsize;
+            npy_intp Sz = %(z)s->strides[0] / PyArray_DESCR(%(z)s)->elsize;
 
             npy_double * Da = (npy_double*)%(a)s->data;
             npy_double * Dz = (npy_double*)%(z)s->data;
@@ -197,19 +197,22 @@ wb1 = WeirdBrokenOp('times1')
 
 
 def test_badthunkoutput():
-
+# Check if the c and python code is consistent.
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
     f_good = theano.function([a, b],
             off_by_half(a, b),
-            mode=debugmode.DebugMode(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
     f_inconsistent = theano.function([a, b],
             inconsistent(a, b),
-            mode=debugmode.DebugMode(check_c_code=True))
+            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
 
     #this should evaluate with no error
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
     except debugmode.BadThunkOutput, e:
@@ -234,7 +237,7 @@ def test_badoptimization():
     b = theano.tensor.dvector()
 
     f = theano.function([a, b], a + b,
-            mode=debugmode.DebugMode(optimizer=opt, check_c_code=True))
+            mode=debugmode.DebugMode(optimizer=opt))
 
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
@@ -282,6 +285,8 @@ def test_stochasticoptimization():
 
 
 def test_just_c_code():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2(x),
             mode=debugmode.DebugMode(check_py_code=False))
@@ -312,6 +317,8 @@ def test_baddestroymap():
 
 
 def test_baddestroymap_c():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2i(x),
             mode=debugmode.DebugMode(check_py_code=False))
@@ -378,6 +385,8 @@ class Test_ViewMap(unittest.TestCase):
             assert False  # failed to raise error
 
     def test_badviewmap_c(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         x = theano.tensor.dvector()
         f = theano.function([x], wb1i(x),
                 mode=debugmode.DebugMode(check_py_code=False))
@@ -594,22 +603,22 @@ class BrokenCImplementationAdd(gof.Op):
         debug = 0
         return """
         //printf("executing c_code\\n");
-        if (%(a)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
-        if (%(b)s->nd != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(a)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(b)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(b) != 2"); %(fail)s;}
 
-        if (%(a)s->descr->type_num != PyArray_FLOAT)
+        if (PyArray_DESCR(%(a)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "a dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(b)s->descr->type_num != PyArray_FLOAT)
+        if (PyArray_DESCR(%(b)s)->type_num != NPY_FLOAT)
         {PyErr_SetString(PyExc_NotImplementedError, "b's dtype not NPY_FLOAT"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(a)s->dimensions[1])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(a)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "a is not square"); %(fail)s;}
 
-        if (%(b)s->dimensions[0] != %(b)s->dimensions[1])
+        if (PyArray_DIMS(%(b)s)[0] != PyArray_DIMS(%(b)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "b is not square"); %(fail)s;}
 
-        if (%(a)s->dimensions[0] != %(b)s->dimensions[0])
+        if (PyArray_DIMS(%(a)s)[0] != PyArray_DIMS(%(b)s)[0])
         {PyErr_SetString(PyExc_NotImplementedError, "a and b have different dimensions"); %(fail)s;}
 
         // We do not check for c_contiguous property here
@@ -617,32 +626,32 @@ class BrokenCImplementationAdd(gof.Op):
         {
             if (!%(z)s)
                 printf("%(z)s is not there, %%p \\n", %(z)s);
-            else if (%(z)s->dimensions[0] != %(b)s->dimensions[0])
+            else if (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
                 printf("Dimension 0 mismatch for %(z)s and %(b)s\\n");
-            else if (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            else if (PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(b)s)[1])
                 printf("Dimension 1 mismatch for %(z)s and %(b)s\\n");
             else
                 printf("Reusing %(z)s\\n");
         }
 
         if ((!%(z)s)
-            || (%(z)s->dimensions[0] != %(b)s->dimensions[0])
-            || (%(z)s->dimensions[1] != %(b)s->dimensions[1])
+            || (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(b)s)[0])
+            || (PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(b)s)[1])
             )
         {
             Py_XDECREF(%(z)s);
             npy_intp dims[] = {0, 0};
-            dims[0] = %(b)s->dimensions[0];
-            dims[1] = %(b)s->dimensions[1];
-            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, %(b)s->descr->type_num);
+            dims[0] = PyArray_DIMS(%(b)s)[0];
+            dims[1] = PyArray_DIMS(%(b)s)[1];
+            %(z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims, PyArray_DESCR(%(b)s)->type_num);
         }
 
         // Let us assume that %(z)s is c_contiguous
         {
             dtype_%(z)s * z = ((dtype_%(z)s*)(PyArray_GETPTR2(%(z)s,0,0)));
-            for (int i=0; i<%(b)s->dimensions[0]; i++)
+            for (int i=0; i<PyArray_DIMS(%(b)s)[0]; i++)
             {
-                for (int j=0; j<%(b)s->dimensions[1]; j++)
+                for (int j=0; j<PyArray_DIMS(%(b)s)[1]; j++)
                 {
                     *z = ((float*)PyArray_GETPTR2(%(a)s, i, j))[0] +
                          ((float*)PyArray_GETPTR2(%(b)s, i, j))[0] ;
@@ -721,7 +730,12 @@ class Test_preallocated_output(unittest.TestCase):
                 check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+        
+        if theano.config.cxx:
+            self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+        else:
+            # The python code of this op is good.
+            f(a_val, b_val)
 
     def test_output_broadcast_tensor(self):
         v = theano.tensor.fvector('v')
@@ -735,7 +749,16 @@ class Test_preallocated_output(unittest.TestCase):
         from theano.sandbox import cuda
         if not cuda.cuda_available:
             raise SkipTest("Optional package Cuda disabled")
-
+        if cuda.use.device_number is None:
+            # We should normally set VecAsRowAndCol as a GPUOp But we
+            # don't want to do this here as this will disable others
+            # tests in this file.  So we manually init the GPU if
+            # needed to remove warning.
+            cuda.use("gpu",
+                     force=True,
+                     default_to_move_computation_to_gpu=False,
+                     move_shared_float32_to_gpu=False,
+                     enable_cuda=False)
         v = cuda.fvector('v')
         c, r = VecAsRowAndCol()(v)
         f = theano.function([v], [c, r])

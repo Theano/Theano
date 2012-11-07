@@ -34,8 +34,8 @@ Download
 ========
 
 Theano is now `available on PyPI`_, and can be installed via ``easy_install
-Theano``, or by downloading and unpacking the tarball and typing ``python
-setup.py install``.
+Theano``, ``pip install Theano`` or by downloading and unpacking the tarball
+and typing ``python setup.py install``.
 
 Those interested in bleeding-edge features should obtain the latest development
 version, available via::
@@ -48,7 +48,13 @@ directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
+Master Tests Status:
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
+    :target: http://travis-ci.org/Theano/Theano/builds
+
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
+.. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
 
 Citing Theano
 ==============
@@ -85,6 +91,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`internal` -- How to maintain Theano, LISA-specific tips, and more...
 * :ref:`release` -- How our release should work.
 * :ref:`acknowledgement` -- What we took from other projects.
+* `Related Projects`_ -- link to other projects that implement new functionalities on top of Theano
 
 You can download the latest `PDF documentation <http://deeplearning.net/software/theano/theano.pdf>`_, rather than reading it online.
 

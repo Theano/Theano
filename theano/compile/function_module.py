@@ -17,6 +17,7 @@ from theano import gof
 from theano.gof.python25 import partial
 import mode as mode_module
 from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
+from theano.compile.ops import deep_copy_op, view_op
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -131,20 +132,24 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     fgraph = gof.fg.FunctionGraph(inputs, outputs)
 
-    for node in fgraph.nodes:
+    for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
                 raise TypeError("Graph must not contain inplace operations", node, node.op)
             else:
-                fgraph.extend(gof.DestroyHandler())
+                fgraph.attach_feature(gof.DestroyHandler())
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
-    fgraph.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.attach_feature(feature())
     return fgraph, map(SymbolicOutput, updates)
+
+
+std_fgraph.features = [gof.toolbox.PreserveNames]
 
 class AliasedMemoryError(Exception):
     """Memory is aliased that should not be"""
@@ -154,101 +159,6 @@ class AliasedMemoryError(Exception):
 ###
 ### Function
 ###
-
-def register_DeepCopyOp_c_code(typ, code):
-    """ Tell DeepCopyOp how to generate C code for a Theano Type
-
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    """
-    DeepCopyOp.c_codes[typ] = code
-
-
-class DeepCopyOp(theano.gof.Op):
-    c_codes = {}  # Theano Type, code
-
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def make_node(self, x):
-        return theano.gof.Apply(self, [x], [x.type()])
-
-    def perform( self, node, args, outs):
-        if hasattr(args[0],'copy'):
-            #when args[0] is a an ndarray of 0 dimensions,
-            #this return a numpy.dtype and not an ndarray
-            #So when the args have a copy attribute we use it
-            #as this don't have this problem
-            outs[0][0] = args[0].copy()
-        else:
-            outs[0][0] = copy.deepcopy(args[0])
-
-    def c_code_cache_version(self):
-        return (1)
-
-    def c_code(self, node, name, inames, onames, sub):
-        iname = inames[0]
-        oname = onames[0]
-        fail = sub['fail']
-        if isinstance(node.inputs[0].type, theano.tensor.TensorType):
-            return """
-        Py_XDECREF(%(oname)s);
-
-        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,NPY_ANYORDER);
-
-        if (!%(oname)s)
-        {
-            PyErr_SetString(PyExc_ValueError, "DeepCopyOp: the copy failed!");
-            %(fail)s;
-        }
-
-        """%locals()
-        elif node.inputs[0].type.__class__ in self.c_codes:
-            return self.c_codes[node.inputs[0].type.__class__] % locals()
-        else:
-            super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
-
-
-class ViewOp(theano.gof.Op):
-    def __init__(self):
-        self.view_map={0:[0]}
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def make_node(self, x):
-        return theano.gof.Apply(self, [x], [x.type()])
-
-    def perform( self, node, args, outs):
-        outs[0][0] = args[0]
-
-    def infer_shape(self, node, input_shapes):
-        return input_shapes
-
-    def grad(self, args, g_outs):
-        return g_outs
-
-deep_copy_op = DeepCopyOp()
-view_op      = ViewOp()
-
 
 
 DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
@@ -275,6 +185,13 @@ class Function(object):
 
     A Function instance may be serialized using the `pickle` or `cPickle` modules.
     This will save all default inputs, the graph, and *** to the pickle file (WRITEME).
+
+    A Function instance have a ``trust_input`` field that default to
+    False. When True, we don't do extra check of the input to give
+    better error message. In some case, python code will still return
+    the good results if you pass a python or numpy scalar instead of a
+    numpy tensor.  C code should raise an error if you pass an object
+    of the wrong type.
 
     """
 
@@ -347,11 +264,11 @@ class Function(object):
     It maps container -> SymbolicInput
     """
 
-    def __init__(self, fn, input_storage, output_storage, indices, outputs, defaults, unpack_single, return_none, maker):
+    def __init__(self, fn, input_storage, output_storage, indices, outputs,
+                 defaults, unpack_single, return_none, maker):
         """
         Initialize attributes. create finder, inv_finder.
         """
-
 
         self.fn = fn
         self.input_storage = input_storage
@@ -362,7 +279,8 @@ class Function(object):
         self.unpack_single = unpack_single
         self.return_none = return_none
         self.maker = maker
-        self.profile = None # reassigned in FunctionMaker.create
+        self.profile = None  # reassigned in FunctionMaker.create
+        self.trust_input = False  # If True, we don't check the input parameter
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -483,7 +401,8 @@ class Function(object):
                 except KeyError:
                     # Print informative error message.
                     msg = get_info_on_inputs(named_inputs, n_unnamed_inputs)
-                    raise TypeError("Unknown input or state: %s. %s" % (str(item), msg))
+                    raise TypeError("Unknown input or state: %s. %s" %
+                                    (str(item), msg))
                 if s is DUPLICATE:
                     raise TypeError("Ambiguous name: %s - please check the names "\
                         "of the inputs of your function for duplicates." % str(item))
@@ -527,11 +446,12 @@ class Function(object):
     def __setitem__(self, item, value):
         self.value[item] = value
 
-
     def __copy__(self):
         defaults = [default for _1, _2, default in self.defaults]
-        cpy = self.maker.create(defaults, trustme = True)
-        for (input,_1,_2), here, there in zip(self.indices, self.input_storage, cpy.input_storage):
+        cpy = self.maker.create(defaults, trustme=True)
+        for (input, _1, _2), here, there in zip(self.indices,
+                                                self.input_storage,
+                                                cpy.input_storage):
             if input.mutable and here is not None:
                 there.data = copy.copy(here.data)
             else:
@@ -543,54 +463,62 @@ class Function(object):
         t0 = time.time()
 
         # Reinitialize each container's 'provided' counter
-        for c in self.input_storage:
-            c.provided = 0
-
-        if len(args)+len(kwargs)>len(self.input_storage):
-            raise TypeError("Too many parameter passed to theano function")
-
-        # Set positional arguments
-        i = 0
-        for arg in args:
-            #TODO: provide a Param option for skipping the filter if we
-            #      really want speed.
-            s = self.input_storage[i]
-            # see this emails for a discuation about None as input
-            # https://groups.google.com/group/theano-dev/browse_thread/thread/920a5e904e8a8525/4f1b311a28fc27e5
-            if arg is None:
+        if self.trust_input:
+            i = 0
+            for arg in args:
+                s = self.input_storage[i]
                 s.storage[0] = arg
-            else:
-                try:
-                    s.storage[0] = s.type.filter(arg, strict=s.strict,
-                            allow_downcast=s.allow_downcast)
+                i += 1
+        else:
+            for c in self.input_storage:
+                c.provided = 0
 
-                except Exception, e:
-                    function_name="theano function"
-                    if self.name:
-                        function_name += 'with name "'+self.name+'" '
-                    #end if
-                    e.args = tuple(["Bad input argument to " + function_name +
-                                    " at index %d(0-based)" % i] + list(e.args))
-                    raise
-                #end except
-            #end if
-            s.provided += 1
-            i+=1
+            if len(args) + len(kwargs) > len(self.input_storage):
+                raise TypeError("Too many parameter passed to theano function")
 
+            # Set positional arguments
+            i = 0
+            for arg in args:
+                #TODO: provide a Param option for skipping the filter if we
+                #      really want speed.
+                s = self.input_storage[i]
+                # see this emails for a discuation about None as input
+                # https://groups.google.com/group/theano-dev/browse_thread/thread/920a5e904e8a8525/4f1b311a28fc27e5
+                if arg is None:
+                    s.storage[0] = arg
+                else:
+                    try:
+                        s.storage[0] = s.type.filter(arg, strict=s.strict,
+                                allow_downcast=s.allow_downcast)
+
+                    except Exception, e:
+                        function_name = "theano function"
+                        if self.name:
+                            function_name += 'with name "' + self.name + '" '
+                        #end if
+                        e.args = tuple(["Bad input argument to " + function_name +
+                                        " at index %d(0-based)" % i] +
+                                       list(e.args))
+                        raise
+                    #end except
+                #end if
+                s.provided += 1
+                i += 1
 
         # Set keyword arguments
         if kwargs:  # for speed, skip the iteritems for empty kwargs
             for k, arg in kwargs.iteritems():
                 self[k] = arg
 
-        if (not hasattr(self, '_check_for_aliased_inputs') or
+        if not self.trust_input and (
+            not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
             ## Collect aliased inputs among the storage space
             args_share_memory = []
             for i in xrange(len(self.input_storage)):
                 i_var = self.maker.inputs[i].variable
                 i_val = self.input_storage[i].storage[0]
-                if hasattr( i_var.type, 'may_share_memory'):
+                if hasattr(i_var.type, 'may_share_memory'):
                     is_aliased = False
                     for j in xrange(len(args_share_memory)):
 
@@ -599,9 +527,9 @@ class Function(object):
                              in args_share_memory[j]],
                             [self.input_storage[k].storage[0] for k
                              in args_share_memory[j]])
-                        if numpy.any([ (var.type is i_var.type and
-                                        var.type.may_share_memory(val,i_val)
-                                       ) for (var,val) in group_j]):
+                        if numpy.any([(var.type is i_var.type and
+                                        var.type.may_share_memory(val,i_val))
+                                       for (var,val) in group_j]):
 
                             is_aliased = True
                             args_share_memory[j].append(i)
@@ -615,27 +543,30 @@ class Function(object):
                     if len(group) > 1:
                         # see if any of these arguments are mutable
                         mutable = numpy.any([(self.maker.inputs[idx].mutable or
-                                             self.maker.inputs[idx].borrow )
-                                             for idx in group ])
+                                             self.maker.inputs[idx].borrow)
+                                             for idx in group])
                         # copy all but the first
                         for idx in group[1:]:
                             self.input_storage[i].storage[0] = copy.copy(
                                 self.input_storage[i].storage[0])
 
-
-
-
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
-        for c in self.input_storage:
-            if c.required and not c.provided:
-                raise TypeError("Missing required input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
-            if c.provided > 1:
-                raise TypeError("Multiple values for input: %s" % getattr(self.inv_finder[c], 'variable', self.inv_finder[c]))
-            if c.implicit and c.provided > 0:
-                raise TypeError('Tried to provide value for implicit input: %s'
+        if not self.trust_input:
+            for c in self.input_storage:
+                if c.required and not c.provided:
+                    raise TypeError("Missing required input: %s" %
+                                    getattr(self.inv_finder[c], 'variable',
+                                            self.inv_finder[c]))
+                if c.provided > 1:
+                    raise TypeError("Multiple values for input: %s" %
+                                    getattr(self.inv_finder[c], 'variable',
+                                            self.inv_finder[c]))
+                if c.implicit and c.provided > 0:
+                    raise TypeError(
+                        'Tried to provide value for implicit input: %s'
                         % getattr(self.inv_finder[c], 'variable',
-                            self.inv_finder[c]))
+                                  self.inv_finder[c]))
 
         # Do the actual work
         t0_fn = time.time()
@@ -667,11 +598,12 @@ class Function(object):
             if c.required:
                 c.storage[0] = None
 
-        # if we are allowing garbage collection, remove the input and output reference from the internal
-        # storage cells
+        # if we are allowing garbage collection, remove the input and
+        # output reference from the internal storage cells
         if getattr(self.fn, 'allow_gc', False):
             assert len(self.output_storage) == len(self.maker.fgraph.outputs)
-            for o_container, o_variable in zip(self.output_storage, self.maker.fgraph.outputs):
+            for o_container, o_variable in zip(self.output_storage,
+                                               self.maker.fgraph.outputs):
                 if o_variable.owner is not None:
                     # this node is the variable of computation
                     # WARNING: This circumvents the 'readonly' attribute in x
@@ -679,7 +611,8 @@ class Function(object):
 
         if getattr(self.fn, 'need_update_inputs', True):
             # Update the inputs that have an update function
-            for input, storage in reversed(zip(self.maker.expanded_inputs, self.input_storage)):
+            for input, storage in reversed(zip(self.maker.expanded_inputs,
+                                               self.input_storage)):
                 if input.update is not None:
                     storage.data = outputs.pop()
         else:
@@ -714,14 +647,15 @@ class Function(object):
 
     value = property(
         lambda self: self._value,
-        None, # this property itself is not settable
-        doc="""dictionary-like access to the values associated with Variables""")
+        None,  # this property itself is not settable
+        doc="dictionary-like access to the values associated with Variables")
     container = property(
         lambda self: self._container,
-        None, # this property itself is not settable
+        None,  # this property itself is not settable
         doc="""dictionary-like access to the containers associated with Variables""")
 
 # pickling/deepcopy support for Function
+
 
 def _pickle_Function(f):
     #copy of the input storage list
@@ -956,17 +890,17 @@ class FunctionMaker(object):
 
     def env_getter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         return self.fgraph
 
     def env_setter(self,value):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         self.fgraph = value
 
     def env_deleter(self):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel = 2)
+                stacklevel=2)
         del self.fgraph
 
     env = property(env_getter, env_setter, env_deleter)
@@ -1035,13 +969,11 @@ class FunctionMaker(object):
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
 
-
         # Wrap them in In or Out instances if needed.
         #import pudb; pudb.set_trace()
-        inputs, outputs =  map(self.wrap_in, inputs), map(self.wrap_out, outputs)
+        inputs, outputs = map(self.wrap_in, inputs), map(self.wrap_out, outputs)
         _inputs = gof.graph.inputs([o.variable for o in outputs] + [i.update
             for i in inputs if getattr(i, 'update', False)])
-
 
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
@@ -1049,7 +981,7 @@ class FunctionMaker(object):
         #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
         expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
+        assert expanded_inputs == inputs  # JB - I added this to make sure we could delete above
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
         fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
@@ -1079,7 +1011,7 @@ class FunctionMaker(object):
             _logger.debug('Optimizing took %f seconds', opt_time)
 
             #Add deep copy to respect the memory interface
-            insert_deepcopy(fgraph, inputs, outputs+additional_outputs)
+            insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
         finally:
             theano.config.compute_test_value = compute_test_value_orig
             gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
@@ -1090,10 +1022,10 @@ class FunctionMaker(object):
                              "or one of %s" % mode_module.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        assert len(fgraph.outputs) == len(outputs+additional_outputs)
-        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs+additional_outputs) if not spec.borrow]
+        assert len(fgraph.outputs) == len(outputs + additional_outputs)
+        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs + additional_outputs) if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(fgraph, no_recycling = infer_reuse_pattern(fgraph, no_borrow))
+            self.linker = linker.accept(fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
 
@@ -1112,10 +1044,13 @@ class FunctionMaker(object):
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
 
-        self.required = [(i.value == None) for i in self.inputs]
+        self.required = [(i.value is None) for i in self.inputs]
         self.refeed = [
-                (i.value != None and not isinstance(i.value, gof.Container) and i.update == None)
-                    for i in self.inputs]
+                (i.value is not None and
+                 not isinstance(i.value, gof.Container) and
+                 i.update is None)
+                for i in self.inputs
+        ]
 
     def _check_unused_inputs(self, inputs, outputs, on_unused_input):
         if on_unused_input is None:
@@ -1167,8 +1102,8 @@ class FunctionMaker(object):
         """
 
         if input_storage is None:
-            input_storage = [None]*len(self.inputs)
-        input_storage_lists = [] # list of independent one-element lists, will be passed to the linker
+            input_storage = [None] * len(self.inputs)
+        input_storage_lists = []  # list of independent one-element lists, will be passed to the linker
         defaults = []
 
         # The following loop is to fill in the input_storage_lists and defaults lists.
@@ -1221,11 +1156,9 @@ class FunctionMaker(object):
                 refeed,
                 storage))
 
-
-
         # Get a function instance
         start_linker = time.time()
-        _fn, _i, _o = self.linker.make_thunk(input_storage = input_storage_lists)
+        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage_lists)
         end_linker = time.time()
 
         linker_time = end_linker - start_linker
@@ -1235,28 +1168,28 @@ class FunctionMaker(object):
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
 
-
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                 defaults, self.unpack_single, self.return_none, self)
         fn.profile = self.profile
         return fn
 
+
 def _pickle_FunctionMaker(self):
     kwargs = dict(
-                inputs = self.inputs,
-                outputs = self.orig_outputs,
-                mode = self.mode,
-                accept_inplace = self.accept_inplace,
-                function_builder = self.function_builder,
-                profile = self.profile,
+                inputs=self.inputs,
+                outputs=self.orig_outputs,
+                mode=self.mode,
+                accept_inplace=self.accept_inplace,
+                function_builder=self.function_builder,
+                profile=self.profile,
                 )
     return (_constructor_FunctionMaker, (kwargs,))
+
 
 def _constructor_FunctionMaker(kwargs):
     return FunctionMaker(**kwargs)
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
-
 
 
 try:
@@ -1273,6 +1206,7 @@ except TypeError:
 
 __checkers = []
 
+
 def check_equal(x, y):
     for checker in __checkers:
         try:
@@ -1281,6 +1215,7 @@ def check_equal(x, y):
             continue
     return x == y
     #raise Exception('No checker for equality between %s and %s' % (x, y))
+
 
 def register_checker(checker):
     __checkers.insert(0, checker)

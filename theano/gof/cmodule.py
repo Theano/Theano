@@ -83,6 +83,14 @@ METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
 
 
+class MissingGXX(Exception):
+    """
+    This error is raised when we try to generate c code,
+    but g++ is not available
+    """
+    pass
+
+
 def debug_counter(name, every=1):
     """Debug counter to know how often we go through some piece of code.
 
@@ -650,6 +658,12 @@ class ModuleCache(object):
                                     msg='broken cache directory [EOF]',
                                     level=logging.WARNING)
                             continue
+                        except ValueError:
+                            # This can happen when we have bad config value
+                            # in the cuda.nvcc_compiler.py file.
+                            # We should not hide it here, as this will cause
+                            # an unrelated error to appear.
+                            raise
                         except Exception:
                             unpickle_failure()
                             if delete_if_problem:
@@ -1439,6 +1453,22 @@ class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+        #NumPy 1.7 Deprecate the old API. I updated most of the places
+        #to use the new API, but not everywhere. When finished, enable
+        #the following macro to assert that we don't bring new code
+        #that use the old API.
+        #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        # numpy 1.7 deprecated the following macro but the didn't
+        # existed in the past
+        if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
         return cxxflags
 
     @staticmethod
@@ -1467,6 +1497,9 @@ class GCC_compiler(object):
         :returns: dynamically-imported python module of the compiled code.
         """
         #TODO: Do not do the dlimport in this function
+        
+        if not theano.config.cxx:
+            raise MissingGXX("g++ not available! We can't compile c code.")
 
         if include_dirs is None:
             include_dirs = []

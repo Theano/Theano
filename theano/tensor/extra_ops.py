@@ -3,25 +3,13 @@ import numpy
 
 import theano
 import basic
-from theano import gof, tensor, function, scalar
-from theano.sandbox.linalg.ops import diag
+from theano import gof, scalar
+import basic as tensor
+from theano.gradient import DisconnectedType
 
 
 class DiffOp(theano.Op):
-    """Calculate the n-th order discrete difference along given axis.
-
-    The first order difference is given by out[n] = a[n+1] - a[n]
-    along the given axis, higher order differences are calculated by
-    using diff recursively. Wraping of numpy.diff.
-
-    Parameter:
-    x -- Input vector.
-
-    Keywords arguments:
-    n -- The number of times values are differenced, default is 1.
-
-    """
-
+    # See function diff for docstring
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
@@ -78,40 +66,24 @@ class DiffOp(theano.Op):
 def diff(x, n=1, axis=-1):
     """Calculate the n-th order discrete difference along given axis.
 
-    The first order difference is given by out[n] = a[n+1] - a[n]
+    The first order difference is given by out[i] = a[i + 1] - a[i]
     along the given axis, higher order differences are calculated by
     using diff recursively. Wraping of numpy.diff.
 
-    Parameter:
-    x -- Input vector.
+    :param x: Input tensor variable.
 
-    Keywords arguments:
-    n -- The number of times values are differenced, default is 1.
+    :param n: The number of times values are differenced, default is 1.
 
+    :param axis: The axis along which the difference is taken,
+        default is the last axis.
+
+    .. versionadded:: 0.6
     """
     return DiffOp(n=n, axis=axis)(x)
 
 
 class BinCountOp(theano.Op):
-    """Count number of occurrences of each value in array of non-negative ints.
-
-    The number of bins (of size 1) is one larger than the largest
-    value in x. If minlength is specified, there will be at least
-    this number of bins in the output array (though it will be longer
-    if necessary, depending on the contents of x). Each bin gives the
-    number of occurrences of its index value in x. If weights is
-    specified the input array is weighted by it, i.e. if a value n
-    is found at position i, out[n] += weight[i] instead of out[n] += 1.
-    Wraping of numpy.bincount
-
-    Parameter:
-    x -- 1 dimension, nonnegative ints
-
-    Keywords arguments:
-    weights -- Weights, array of the same shape as x.
-    minlength -- A minimum number of bins for the output array.
-
-    """
+    # See function bincount for docstring
 
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
@@ -119,6 +91,12 @@ class BinCountOp(theano.Op):
 
     def __init__(self, minlength=None):
         self.minlength = minlength
+        if minlength is not None:
+            numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+            if not bool(numpy_ver >= [1, 6]):
+                raise NotImplementedError(
+                    "BinCountOp with minlength attribute"
+                    " requires NumPy 1.6 or higher.")
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -132,15 +110,34 @@ class BinCountOp(theano.Op):
 
         if x.dtype not in BinCountOp.compatible_type:
             raise TypeError("Inputs dtype must be an integer.")
+
+        # Some dtypes are not supported by numpy's implementation of bincount.
+        # Until another one is available, we should fail at graph construction
+        # time, not wait for execution.
+        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        if int_bitwidth == 64:
+            numpy_unsupported_dtypes = ('uint64',)
+        if int_bitwidth == 32:
+            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+        intp_bitwidth = theano.gof.cmodule.local_bitwidth()
+        if intp_bitwidth == 32:
+            out_type = basic.ivector()
+        elif intp_bitwidth == 64:
+            out_type = basic.lvector()
+
+        if x.dtype in numpy_unsupported_dtypes:
+            raise TypeError(
+                    ("Input dtypes %s are not supported by numpy.bincount, "
+                    % numpy_unsupported_dtypes), x.dtype)
+
         if x.ndim != 1:
             raise TypeError("Inputs must be of dimension 1.")
 
         if weights is None:
             weights = theano.gof.Constant(theano.gof.Generic(), None)
-            out_type = x.type()
         else:
             weights = basic.as_tensor_variable(weights)
-            out_type = weights.type()
+            out_type = basic.dvector()
             if weights.ndim != 1:
                 raise TypeError("Weights cannot have a number of"
                                 "dimension different of 1.")
@@ -155,15 +152,27 @@ class BinCountOp(theano.Op):
         if weights is not None and weights.shape != x.shape:
             raise TypeError("All inputs must have the same shape.")
 
-        z[0] = np.bincount(x, weights=weights, minlength=self.minlength)
+        # Needed for numpy 1.4.1 compatibility
+        if self.minlength:
+            out = np.bincount(x, weights=weights, minlength=self.minlength)
+        else:
+            out = np.bincount(x, weights=weights)
+
+        z[0] = theano._asarray(out, dtype=node.outputs[0].dtype)
 
     def grad(self, inputs, outputs_gradients):
-        return [None for i in inputs]
+        output = self(*inputs)
+
+        if output.dtype.find('int') != -1:
+            return [inp.zeros_like().astype(theano.config.floatX)
+                    for inp in inputs]
+
+        raise NotImplementedError()
 
     def infer_shape(self, node, ins_shapes):
         x = node.inputs[0]
         m = basic.max(x) + 1
-        if self.minlength != None:
+        if self.minlength is not None:
             m = basic.maximum(m, self.minlength)
         return [[m]]
 
@@ -183,95 +192,39 @@ def bincount(x, weights=None, minlength=None):
     is found at position i, out[n] += weight[i] instead of out[n] += 1.
     Wraping of numpy.bincount
 
-    Parameter:
-    x -- 1 dimension, nonnegative ints
+    :param x: 1 dimension, nonnegative ints
 
-    Keywords arguments:
-    weights -- Weights, array of the same shape as x.
-    minlength -- A minimum number of bins for the output array.
+    :param weights: array of the same shape as x with corresponding weights.
+        Optional.
+    :param minlength: A minimum number of bins for the output array.
+        Optional.
 
+    .. versionadded:: 0.6
     """
     return BinCountOp(minlength=minlength)(x, weights)
 
 
-class SqueezeOp(theano.Op):
-    """Remove single-dimensional entries from the shape of an array.
+def squeeze(x):
+    """Remove broadcastable dimensions from
+    the shape of an array.
 
-    It returns the input array, but with with all or a subset of the
-    dimensions of length 1 removed. This is always x itself or a view
-    into x. Wraping of numpy.squeeze.
+    It returns the input array, but with the
+    broadcastable dimensions removed. This is
+    always `x` itself or a view into `x`.
 
-    Parameter:
-    x -- Input data, tensor variable.
-    out_nd -- Output number of dimension for this op.
+    :param x: Input data, tensor variable.
 
+    :return: `x` without its broadcastable dimensions.
+
+    .. versionadded:: 0.6
     """
-
-    def __init__(self, out_nd):
-        self.view_map = {0: [0]}
-        self.out_nd = out_nd
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.out_nd == other.out_nd)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.out_nd)
-
-    def make_node(self, x):
-        x = basic.as_tensor_variable(x)
-        out_type = theano.tensor.TensorType(dtype=x.dtype,
-                              broadcastable=[False] * self.out_nd)
-        return theano.Apply(self, [x], [out_type()])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        z = output_storage[0]
-        squeezed = np.squeeze(x)
-        if squeezed.ndim != self.out_nd:
-            raise TypeError("The number of dimension specified "
-                            "is different from the one calculated.")
-        z[0] = squeezed
-
-    def grad(self, inputs, outputs_gradients):
-        out = outputs_gradients[0]
-        return [out.reshape(inputs[0].shape)]
-
-    def __str__(self):
-        return self.__class__.__name__
-
-
-def squeeze(x, out_nd):
-    """Remove single-dimensional entries from the shape of an array.
-
-    It returns the input array, but with with all or a subset of the
-    dimensions of length 1 removed. This is always x itself or a view
-    into x. Wraping of numpy.squeeze.
-
-    Parameter:
-    x -- Input data, tensor variable.
-    out_nd -- Output number of dimension for this op.
-
-    """
-    return SqueezeOp(out_nd=out_nd)(x)
+    view = x.dimshuffle([i for i in range(x.ndim)
+                         if not x.broadcastable[i]])
+    return view
 
 
 class RepeatOp(theano.Op):
-    """Repeat elements of an array.
-
-    It returns an array which has the same shape as `x`, except
-    along the given axis. The axis is used to speficy along which
-    axis to repeat values. By default, use the flattened input
-    array, and return a flat output array.
-
-    The number of repetitions for each element is `repeat`.
-    `repeats` is broadcasted to fit the length of the given `axis`.
-
-    :param x: Input data, tensor variable.
-    :param repeats: int, scalar or tensor variable.
-
-    :param axis: int, optional.
-    """
+    # See the repeat function for docstring
 
     def __init__(self, axis=None):
         self.axis = axis
@@ -286,7 +239,26 @@ class RepeatOp(theano.Op):
     def make_node(self, x, repeats):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
-        if self.axis == None:
+
+        if repeats.dtype not in tensor.discrete_dtypes:
+            raise TypeError("repeats.dtype must be an integer.")
+
+        # Some dtypes are not supported by numpy's implementation of repeat.
+        # Until another one is available, we should fail at graph construction
+        # time, not wait for execution.
+        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        if int_bitwidth == 64:
+            numpy_unsupported_dtypes = ('uint64',)
+        if int_bitwidth == 32:
+            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+
+        if repeats.dtype in numpy_unsupported_dtypes:
+            raise TypeError(
+                    ("dtypes %s are not supported by numpy.repeat "
+                     "for the 'repeats' parameter, "
+                     % numpy_unsupported_dtypes), repeats.dtype)
+
+        if self.axis is None:
             out_type = theano.tensor.TensorType(dtype=x.dtype,
                                                 broadcastable=[False])
         else:
@@ -298,6 +270,10 @@ class RepeatOp(theano.Op):
         repeats = inputs[1]
         z = output_storage[0]
         z[0] = np.repeat(x, repeats=repeats, axis=self.axis)
+
+    def connection_pattern(self, node):
+
+        return [[True], [False]]
 
     def grad(self, (x, repeats), (gz, )):
         if repeats.ndim == 0:
@@ -312,7 +288,8 @@ class RepeatOp(theano.Op):
             shape = [x.shape[k] for k in range(x.ndim)]
             shape.insert(axis, repeats)
 
-            return [gz.reshape(shape, x.ndim + 1).sum(axis=axis), None]
+            return [gz.reshape(shape, x.ndim + 1).sum(axis=axis),
+                    DisconnectedType()()]
         elif repeats.ndim == 1:
             # For this implementation, we would need to specify the length
             # of repeats in order to split gz in the right way to sum
@@ -326,7 +303,11 @@ class RepeatOp(theano.Op):
         repeats = node.inputs[1]
         out_shape = list(i0_shapes)
 
-        if self.axis == None:
+        #uint64 shape are not supported.
+        dtype = None
+        if repeats.dtype in ['uint8', 'uint16', 'uint32']:
+            dtype = 'int64'
+        if self.axis is None:
             if repeats.ndim == 0:
                 if len(i0_shapes) == 0:
                     out_shape = [repeats]
@@ -336,12 +317,12 @@ class RepeatOp(theano.Op):
                         res = res * d
                     out_shape = (res * repeats, )
             else:
-                out_shape = [theano.tensor.sum(repeats)]
+                out_shape = [theano.tensor.sum(repeats, dtype=dtype)]
         else:
             if repeats.ndim == 0:
                 out_shape[self.axis] = out_shape[self.axis] * repeats
             else:
-                out_shape[self.axis] = theano.tensor.sum(repeats)
+                out_shape[self.axis] = theano.tensor.sum(repeats, dtype=dtype)
         return [out_shape]
 
     def __str__(self):
@@ -363,26 +344,14 @@ def repeat(x, repeats, axis=None):
     :param repeats: int, scalar or tensor variable.
 
     :param axis: int, optional.
+
+    .. versionadded:: 0.6
     """
     return RepeatOp(axis=axis)(x, repeats)
 
 
 class Bartlett(gof.Op):
-    """
-    An instance of this class returns the Bartlett spectral window in the
-    time-domain. The Bartlett window is very similar to a triangular window,
-    except that the end points are at zero. It is often used in signal
-    processing for tapering a signal, without generating too much ripple in
-    the frequency domain.
-
-    input : (integer scalar) Number of points in the output window. If zero or
-    less, an empty vector is returned.
-
-    output : (vector of doubles) The triangular window, with the maximum value
-    normalized to one (the value one appears only if the number of samples is
-    odd), with the first and last samples equal to zero.
-    """
-
+    # See function bartlett for docstring
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -417,33 +386,33 @@ class Bartlett(gof.Op):
 
     def grad(self, inputs, output_grads):
         return [None for i in inputs]
+bartlett_ = Bartlett()
 
 
-bartlett = Bartlett()
+#I create a function only to have the doc show well.
+def bartlett(M):
+    """An instance of this class returns the Bartlett spectral window in the
+    time-domain. The Bartlett window is very similar to a triangular window,
+    except that the end points are at zero. It is often used in signal
+    processing for tapering a signal, without generating too much ripple in
+    the frequency domain.
+
+    :param M: (integer scalar) Number of points in the output
+        window. If zero or less, an empty vector is returned.
+
+    :return: (vector of doubles) The triangular window, with the
+        maximum value normalized to one (the value one appears only if
+        the number of samples is odd), with the first and last samples
+        equal to zero.
+
+    .. versionadded:: 0.6
+
+    """
+    return bartlett_(M)
 
 
 class FillDiagonal(gof.Op):
-    """
-    An instance of this class returns a copy of an array with all elements of
-    the main diagonal set to a specified scalar value.
-
-    inputs:
-
-    a : Rectangular array of at least two dimensions.
-    val : Scalar value to fill the diagonal whose type must be compatible with
-    that of array 'a' (i.e. 'val' cannot be viewed as an upcast of 'a').
-
-    output:
-
-    An array identical to 'a' except that its main diagonal is filled with
-    scalar 'val'. (For an array 'a' with a.ndim >= 2, the main diagonal is the
-    list of locations a[i, i, ..., i] (i.e. with indices all identical).)
-
-    Support rectangular matrix and tensor with more then 2 dimensions
-    if the later have all dimensions are equals.
-
-    """
-
+    # See function fill_diagonal for docstring
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -500,8 +469,31 @@ class FillDiagonal(gof.Op):
             raise NotImplementedError('%s: gradient is currently implemented'
                             ' for matrices only' % self.__class__.__name__)
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
-        wr_val = diag(grad).sum()  # diag is only valid for matrices
+        # diag is only valid for matrices
+        import theano.sandbox.linalg
+        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
         return [wr_a, wr_val]
+fill_diagonal_ = FillDiagonal()
 
 
-fill_diagonal = FillDiagonal()
+#I create a function only to have the doc show well.
+def fill_diagonal(a, val):
+    """ Returns a copy of an array with all
+    elements of the main diagonal set to a specified scalar value.
+
+    :param a: Rectangular array of at least two dimensions.
+    :param val: Scalar value to fill the diagonal whose type must be
+        compatible with that of array 'a' (i.e. 'val' cannot be viewed
+        as an upcast of 'a').
+
+    :return: An array identical to 'a' except that its main diagonal
+        is filled with scalar 'val'. (For an array 'a' with a.ndim >=
+        2, the main diagonal is the list of locations a[i, i, ..., i]
+        (i.e. with indices all identical).)
+
+    Support rectangular matrix and tensor with more then 2 dimensions
+    if the later have all dimensions are equals.
+
+    .. versionadded:: 0.6
+    """
+    return fill_diagonal_(a, val)

@@ -200,31 +200,6 @@ class TestBlasStridesGpu(TestBlasStrides):
     mode = mode_with_gpu
 
 
-def test_outer():
-    x = tcn.shared_constructor(my_rand(8,), 'x')
-    y = tcn.shared_constructor(my_rand(6,), 'y')
-
-    x_val = x.get_value().copy()
-    y_val = y.get_value().copy()
-
-    f = pfunc([], tensor.outer(x, y), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val, y_val), f())
-
-    f = pfunc([], tensor.outer(x[::2], y), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val[::2], y_val), f())
-
-    f = pfunc([], tensor.outer(x, y[::3]), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val, y_val[::3]), f())
-
-    f = pfunc([], tensor.outer(x[::2], y[::3]), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val[::2], y_val[::3]), f())
-
-    f = pfunc([], tensor.outer(x[::-1], y), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val[::-1], y_val), f())
-
-    f = pfunc([], tensor.outer(x, y[::-1]), mode=mode_with_gpu)
-    assert numpy.allclose(numpy.outer(x_val, y_val[::-1]), f())
-
 if 0:
     # This is commented out because it doesn't make sense...
     # tcn.blas has no op called DownsampleFactorMax
@@ -310,7 +285,7 @@ def test_downsample():
 
                 # The grad is too slow on GT220 GPU
                 # This cause the computer to freeze...
-                # Remove this when it get optimized enought
+                # Remove this when it gets optimized enough
                 # This only bypass the last 2 checks
                 # Those tests where passing in all Mode on a GTX470
                 if shp[0] > 30000 or shp[1] > 30000:

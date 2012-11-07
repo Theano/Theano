@@ -92,6 +92,10 @@ def exp2_inplace(a):
     """2^`a` (inplace on `a`)"""
 
 @_scal_inplace
+def expm1_inplace(a):
+    """e^`a` - 1 (inplace on `a`)"""
+
+@_scal_inplace
 def neg_inplace(a):
     """-a (inplace on a)"""
 
@@ -128,6 +132,10 @@ def floor_inplace(a):
     """floor of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def trunc_inplace(a):
+    """trunc of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def round_half_to_even_inplace(a):
     """round_half_to_even_inplace(a) (inplace on `a`)"""
 
@@ -142,6 +150,14 @@ def sqr_inplace(a):
 @_scal_inplace
 def sqrt_inplace(a):
     """square root of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def deg2rad_inplace(a):
+    """convert degree `a` to radian(inplace on `a`)"""
+
+@_scal_inplace
+def rad2deg_inplace(a):
+    """convert radian `a` to degree(inplace on `a`)"""
 
 @_scal_inplace
 def cos_inplace(a):
@@ -204,6 +220,10 @@ def erfc_inplace(a):
     """complementary error function"""
 
 @_scal_inplace
+def gamma_inplace(a):
+    """gamma function"""
+
+@_scal_inplace
 def gammaln_inplace(a):
     """log gamma function"""
 
@@ -254,6 +274,10 @@ def mod_inplace(a, b):
 @_scal_inplace
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
+
+@_scal_inplace
+def conj_inplace(a):
+    """elementwise conjugate (inplace on `a`)"""
 
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))

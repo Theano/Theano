@@ -4,16 +4,19 @@
 Conditions
 ==========
 
-**IfElse vs switch**
+IfElse vs Switch
+================
 
-- Build condition over symbolic variables.
-- IfElse Op takes a `boolean` condition and two variables to compute as input.
-- Switch take a `tensor` as condition and two variables to compute as input.
-  - Switch is an elementwise operation. It is more general than IfElse.
-- While Switch Op evaluates both 'output' variables, IfElse Op is lazy and only
-  evaluates one variable respect to the condition.
+
+- Both ops build a condition over symbolic variables.
+- ``IfElse`` takes a *boolean* condition and two variables as inputs.
+- ``Switch`` takes a *tensor* as condition and two variables as inputs.
+  ``switch`` is an elementwise operation and is thus more general than ``ifelse``.
+- Whereas ``switch`` evaluates both *output* variables, ``ifelse`` is lazy and only
+  evaluates one variable with respect to the condition.
 
 **Example**
+
 
 .. code-block:: python
 
@@ -21,36 +24,36 @@ Conditions
   from theano.ifelse import ifelse
   import theano, time, numpy
 
-  a,b = T.scalars('a','b')
-  x,y = T.matrices('x','y')
+  a,b = T.scalars('a', 'b')
+  x,y = T.matrices('x', 'y')
   
-  z_switch = T.switch(T.lt(a,b), T.mean(x), T.mean(y))
-  z_lazy = ifelse(T.lt(a,b), T.mean(x), T.mean(y))
+  z_switch = T.switch(T.lt(a, b), T.mean(x), T.mean(y))
+  z_lazy = ifelse(T.lt(a, b), T.mean(x), T.mean(y))
 
-  f_switch = theano.function([a,b,x,y], z_switch, 
+  f_switch = theano.function([a, b, x, y], z_switch,
                       mode=theano.Mode(linker='vm'))
-  f_lazyifelse = theano.function([a,b,x,y], z_lazy,
+  f_lazyifelse = theano.function([a, b, x, y], z_lazy,
                       mode=theano.Mode(linker='vm'))
 
   val1 = 0.
   val2 = 1.
-  big_mat1 = numpy.ones((10000,1000))
-  big_mat2 = numpy.ones((10000,1000))
+  big_mat1 = numpy.ones((10000, 1000))
+  big_mat2 = numpy.ones((10000, 1000))
 
   n_times = 10
 
   tic = time.clock()
   for i in xrange(n_times):
       f_switch(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating both values %f sec'%(time.clock()-tic)
+  print 'time spent evaluating both values %f sec' % (time.clock() - tic)
 
   tic = time.clock()
   for i in xrange(n_times):
       f_lazyifelse(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating one value %f sec'%(time.clock()-tic)
+  print 'time spent evaluating one value %f sec' % (time.clock() - tic)
 
-In this example, IfElse Op spend less time (about an half) than Switch
-since it computes only one variable instead of both.
+In this example, the ``IfElse`` op spends less time (about half as much) than ``Switch``
+since it computes only one variable out of the two.
 
 .. code-block:: python
 
@@ -59,11 +62,10 @@ since it computes only one variable instead of both.
   time spent evaluating one value 0.3500 sec
 
 
-It is actually important to use  ``linker='vm'`` or ``linker='cvm'``,
-otherwise IfElse will compute both variables and take the same computation
-time as the Switch Op. The linker is not currently set by default to 'cvm' but
-it will be in a near future.
+Unless ``linker='vm'`` or ``linker='cvm'`` are used, ``ifelse`` will compute both
+variables and take the same computation time as ``switch``. Although the linker
+is not currently set by default to ``cvm``, it will be in the near future.
 
-There is not an optimization to automatically change a switch with a
-broadcasted scalar to an ifelse, as this is not always the faster. See
+There is no automatic optimization replacing a ``switch`` with a
+broadcasted scalar to an ``ifelse``, as this is not always faster. See
 this `ticket <http://www.assembla.com/spaces/theano/tickets/764>`_.

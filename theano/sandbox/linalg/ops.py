@@ -177,7 +177,7 @@ class HintsOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(HintsFeature())
+        fgraph.attach_feature(HintsFeature())
 
     def apply(self, fgraph):
         pass
@@ -654,6 +654,16 @@ class Solve(Op):
         A, b = inputs
         #TODO: use the A_structure to go faster
         output_storage[0][0] = scipy.linalg.solve(A, b)
+
+    # computes shape of x where x = inv(A) * b
+    def infer_shape(self, node, shapes):
+        Ashape, Bshape = shapes
+        rows = Ashape[1]
+        if len(Bshape) == 1: # b is a Vector
+            return [(rows,)]
+        else:
+            cols = Bshape[1] # b is a Matrix
+            return [(rows, cols)]
 
 solve = Solve()  # general solve
 

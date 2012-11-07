@@ -1,4 +1,5 @@
 import atexit
+import errno
 import logging
 import os
 import shutil
@@ -106,9 +107,9 @@ def try_import():
     try:
         # If we load a previously-compiled version, config.compiledir should
         # be in sys.path.
-        if config.compiledir not in sys.path:
-            sys.path.append(config.compiledir)
+        sys.path[0:0] = [config.compiledir]
         import cuda_ndarray.cuda_ndarray
+        del sys.path[0]
     except ImportError:
         return False
     return True
@@ -127,11 +128,12 @@ compile_cuda_ndarray = True
 if not compile_cuda_ndarray:
     compile_cuda_ndarray = not try_import()
 
-if not nvcc_compiler.is_nvcc_available():
-    # It can happen that there the file cuda_ndarray.so is already compiled
+if not nvcc_compiler.is_nvcc_available() or not theano.config.cxx:
+    # It can happen that the file cuda_ndarray.so is already compiled
     # but nvcc is not available. In that case we need to disable the CUDA
     # back-end as we won't be able to compile any new op and we can't only
     # use already compiled GPU op and not the others.
+    # Also, if cxx is not available, we need to disable all GPU code.
     set_cuda_disabled()
 
 if compile_cuda_ndarray and cuda_available:
@@ -163,7 +165,7 @@ if compile_cuda_ndarray and cuda_available:
                             code,
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path], libs=['cublas'],
-                            preargs=compiler.compile_args())
+                            preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
             except Exception, e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
@@ -269,7 +271,7 @@ if cuda_available:
 
     import basic_ops
     from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
-                           GpuDimShuffle, GpuSum, GpuReshape, GpuContiguous,
+                           GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
                            GpuSubtensor, GpuIncSubtensor,
                            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
                            GpuFlatten, GpuShape, GpuAlloc,
@@ -358,6 +360,7 @@ def use(device,
                 assert isinstance(device, int)
                 gpu_init(device)
                 use.device_number = device
+                assert active_device_number() == device
             else:
                 # This mean the driver should select the GPU.  As we
                 # need to get the device number now, we force the
@@ -371,14 +374,30 @@ def use(device,
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
                 theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
-
+            if device_properties(use.device_number)["warpSize"] != 32:
+                raise ValueError("Your GPU have a warpSize of 32. Currently"
+                                 " we have code that depend on this. Email"
+                                 " Theano mailing list to tell us about"
+                                 " this new GPU as we don't know any with"
+                                 " this properties")
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
 
             if enable_cuda:
                 cuda_enabled = True
-            print >> sys.stderr, "Using gpu device %d: %s" % (
-                active_device_number(), active_device_name())
+
+            if config.print_active_device:
+                print >> sys.stderr, "Using gpu device %d: %s" %(
+                        active_device_number(), active_device_name())
+            if device_properties(use.device_number)['regsPerBlock'] < 16384:
+                # We will try to use too much register per bloc at many places
+                # when there is only 8k register per multi-processor.
+                _logger.warning("You are probably using an old GPU."
+                                " We didn't optimize nor we support those GPU."
+                                " This mean GPU code will be slow AND will"
+                                " crash when we try to use feature/properties"
+                                " that your GPU don't support.")
+
         except (EnvironmentError, ValueError, RuntimeError), e:
             _logger.error(("ERROR: Not using GPU."
                            " Initialisation of device %s failed:\n%s"),

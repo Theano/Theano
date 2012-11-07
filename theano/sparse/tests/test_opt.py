@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 import numpy
 try:
     import scipy.sparse as sp
@@ -36,6 +37,8 @@ def test_local_csm_properties_csm():
 
 
 def test_local_csm_grad_c():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     data = tensor.vector()
     indices, indptr, shape = (tensor.ivector(), tensor.ivector(),
                               tensor.ivector())
@@ -59,6 +62,8 @@ def test_local_csm_grad_c():
 
 
 def test_local_mul_s_d():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_mul_s_d")
 
@@ -75,6 +80,8 @@ def test_local_mul_s_d():
 
 
 def test_local_mul_s_v():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_mul_s_v")
 
@@ -91,6 +98,8 @@ def test_local_mul_s_v():
 
 
 def test_local_structured_add_s_v():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_structured_add_s_v")
 
@@ -107,6 +116,8 @@ def test_local_structured_add_s_v():
 
 
 def test_local_sampling_dot_csr():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_sampling_dot_csr")
 
@@ -119,5 +130,11 @@ def test_local_sampling_dot_csr():
                             sparse.sampling_dot(*inputs),
                             mode=mode)
 
-        assert not any(isinstance(node.op, sparse.SamplingDot) for node
+        if theano.config.blas.ldflags:
+            assert not any(isinstance(node.op, sparse.SamplingDot) for node
+                       in f.maker.fgraph.toposort())
+        else:
+            # SamplingDotCSR's C implementation needs blas, so it should not
+            # be inserted
+            assert not any(isinstance(node.op, sparse.opt.SamplingDotCSR) for node
                        in f.maker.fgraph.toposort())

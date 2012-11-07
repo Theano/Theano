@@ -75,6 +75,90 @@ class Erfc(UnaryScalarOp):
 erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
+class Erfinv(UnaryScalarOp):
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfinv(x)
+        else:
+            super(Erfinv, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+                                dtype=upcast(x.type.dtype, gz.type.dtype))
+            return gz * cst * exp(erfinv(x) ** 2),
+        else:
+            return None,
+
+    # TODO: erfinv() is not provided by the C standard library
+    #def c_code(self, node, name, inp, out, sub):
+    #    x, = inp
+    #    z, = out
+    #    if node.inputs[0].type in complex_types:
+    #        raise NotImplementedError('type not supported', type)
+    #    return "%(z)s = erfinv(%(x)s);" % locals()
+
+erfinv = Erfinv(upgrade_to_float_no_complex, name='erfinv')
+
+
+class Erfcinv(UnaryScalarOp):
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfcinv(x)
+        else:
+            super(Erfcinv, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        elif x.type in float_types:
+            cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+                                dtype=upcast(x.type.dtype, gz.type.dtype))
+            return - gz * cst * exp(erfcinv(x) ** 2),
+        else:
+            return None,
+
+    # TODO: erfcinv() is not provided by the C standard library
+    #def c_code(self, node, name, inp, out, sub):
+    #    x, = inp
+    #    z, = out
+    #    if node.inputs[0].type in complex_types:
+    #        raise NotImplementedError('type not supported', type)
+    #    return "%(z)s = erfcinv(%(x)s);" % locals()
+
+erfcinv = Erfcinv(upgrade_to_float_no_complex, name='erfcinv')
+
+
+class Gamma(UnaryScalarOp):
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.gamma(x)
+
+    def impl(self, x):
+        return Gamma.st_impl(x)
+
+    def grad(self, (x, ), (gz, )):
+        return gz * gamma(x) * psi(x),
+
+    def c_code(self, node, name, (x, ), (z, ), sub):
+        if node.inputs[0].type in float_types:
+            return """%(z)s = tgamma(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+gamma = Gamma(upgrade_to_float, name='gamma')
+
+
 class GammaLn(UnaryScalarOp):
     """
     Log gamma function.

@@ -24,8 +24,10 @@ from theano.compile.function_module import (FunctionMaker,
         infer_reuse_pattern,
         SymbolicInputKit,
         SymbolicOutput,
-        Supervisor)
+        Supervisor,
+        std_fgraph)
 from theano.compile.mode import Mode, register_mode
+from theano.compile.ops import OutputGuard
 
 AddConfigVar('DebugMode.patience',
         "Optimize graph this many times to detect inconsistency",
@@ -34,7 +36,7 @@ AddConfigVar('DebugMode.patience',
 
 AddConfigVar('DebugMode.check_c',
         "Run C implementations where possible",
-        BoolParam(True),
+        BoolParam(bool(theano.config.cxx)),
         in_c_key=False)
 
 AddConfigVar('DebugMode.check_py',
@@ -589,7 +591,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         r_name = getattr(r, 'name', '')
         # normally if the name isn't set, it'll be None, so
-        # r_name == None here
+        # r_name is None here
         if r_name is None:
             r_name = ''
 
@@ -674,18 +676,18 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
             features=[equivalence_tracker])
 
     if not accept_inplace:
-        for node in fgraph.nodes:
+        for node in fgraph.apply_nodes:
             if getattr(node.op, 'destroy_map', None):
                 raise TypeError("Graph must not contain inplace operations",
                                 node)
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.extend(Supervisor(input for spec, input in zip(input_specs, inputs)
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs)
                           if not (spec.mutable or (hasattr(fgraph, 'destroyers')
                                                    and fgraph.destroyers(input)))))
 
-    # If named nodes are replaced, keep the name
-    fgraph.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.attach_feature(feature())
 
     return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
@@ -714,7 +716,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused and destroyed_res_list:
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+            if isinstance(node.op, OutputGuard):
                 # The point of OutputGuard is to be declared as destructive
                 # while not destroying anything
                 continue
@@ -737,7 +739,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             # the version of numpy!
             if getattr(out_var, 'size', 2) <= 1:
                 continue
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+            if isinstance(node.op, OutputGuard):
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
@@ -779,46 +781,40 @@ def _check_viewmap(node, storage_map):
         outstorage = storage_map[onode][0]
         instorage_id = [id(storage_map[i][0]) for i in node.inputs]
 
-        # TODO: investigate ways in which other Types may be aliased
-        # TODO: consider adding a function to Type to detect aliasing
-        danger_flag = id(outstorage) in instorage_id or\
-                      (type(outstorage)==numpy.ndarray and
-                       outstorage.flags['OWNDATA']==False)
+        # first find out which input it aliases
+        view_map = getattr(node.op, 'view_map', {})
+        destroy_map = getattr(node.op, 'destroy_map', {})
 
-        if danger_flag:
-            # first find out which input it aliases
-            view_map = getattr(node.op, 'view_map', {})
-            destroy_map = getattr(node.op, 'destroy_map', {})
+        # In theory, theano's view_map only allows for 1 output to
+        # alias 1 input. Checking for multiple aliases just in
+        # case...
 
-            # In theory, theano's view_map only allows for 1 output to
-            # alias 1 input. Checking for multiple aliases just in
-            # case...
+        for ii, inode in enumerate(node.inputs):
 
-            for ii, inode in enumerate(node.inputs):
+            if _may_share_memory(outstorage, storage_map[inode][0]):
 
-                if _may_share_memory(outstorage, storage_map[inode][0]):
+                nodeid = id(inode)
+                bad_alias[nodeid] = ii
 
-                    nodeid = id(inode)
-                    bad_alias[nodeid] = ii
+                # check that the aliasing was declared in [view|destroy]_map
+                if ([ii] == view_map.get(oi, None) or
+                    [ii] == destroy_map.get(oi, None)):
 
-                    # check that the aliasing was declared in [view|destroy]_map
-                    if ([ii]==view_map.get(oi,None) or\
-                        [ii]==destroy_map.get(oi,None)):
+                    good_alias[nodeid] = bad_alias.pop(nodeid)
 
-                        good_alias[nodeid] = bad_alias.pop(nodeid)
-
-            #TODO: make sure this is correct
-            # According to OB, duplicate inputs are rejected on build graph time
-            # if they cause problems. So if they are here it should be ok.
-            for key, val in good_alias.iteritems():
-                bad_alias.pop(key, None)
-            if bad_alias:
-                raise BadViewMap(node, oi, outstorage, bad_alias.values())
+        #TODO: make sure this is correct
+        # According to OB, duplicate inputs are rejected on build graph time
+        # if they cause problems. So if they are here it should be ok.
+        for key, val in good_alias.iteritems():
+            bad_alias.pop(key, None)
+        if bad_alias:
+            raise BadViewMap(node, oi, outstorage, bad_alias.values())
 
         #if its not aliased to input, check output->output aliasing
         if not good_alias and _is_used_in_graph(onode):
             for other_oi, other_onode in enumerate(node.outputs):
-                if other_oi == oi: continue
+                if other_oi == oi:
+                    continue
 
                 other_storage = storage_map[other_onode][0]
                 # check to see if we share memory with this other output
@@ -870,17 +866,18 @@ def _lessbroken_deepcopy(a):
     """
     :param a: any object
 
-    Returns a copy of `a` that shares no internal storage with the original.  A deep copy.
-    This function handles numpy arrays specially to avoid some bug I had one time... (possibly
-    about copying 0-d arrays?)
+    Returns a copy of `a` that shares no internal storage with the original.
+    A deep copy.
+    This function handles numpy arrays specially, because copy.deepcopy()
+    called on a 0-d array will return a numpy scalar, not an array.
     """
-    # this exists because numpy copies are broken
-    if type(a) is numpy.ndarray:
-        rval = numpy.array(a, copy=True, dtype=a.dtype)
+    # this exists because copy.deepcopy on numpy arrays is broken
+    if type(a) in (numpy.ndarray, numpy.memmap):
+        rval = a.copy()
     else:
         rval = copy.deepcopy(a)
 
-    assert type(rval) == type(a)
+    assert type(rval) == type(a), (type(rval), type(a))
     if isinstance(rval, numpy.ndarray):
         assert rval.dtype == a.dtype
     return rval
@@ -1545,22 +1542,25 @@ class _VariableEquivalenceTracker(object):
 #List of default version of make thunk.
 #This is needed to know if the user overrided it.
 #The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [theano.gof.Op.make_thunk.im_func]
+default_make_thunk = [theano.gof.Op.make_thunk.im_func,
+                      theano.gof.OpenMPOp.make_thunk.im_func]
 
 
 class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
-    def __init__(self, maker):
+    def __init__(self, maker, schedule=None):
         super(gof.LocalLinker, self).__init__()
         self.fgraph = None
         self.maker = maker
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(self.fgraph, self.maker).accept(fgraph, no_recycling)
+            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -1577,7 +1577,7 @@ class _Linker(gof.link.LocalLinker):
         fgraph = self.fgraph
         input_storage_ = input_storage
         output_storage_ = output_storage
-        #order = fgraph.toposort()
+        #order = self.schedule(fgraph)
 
         #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
         #This will be OK, because every thunk is evaluated on a copy of its input.
@@ -1585,7 +1585,7 @@ class _Linker(gof.link.LocalLinker):
         order_outputs.reverse()
         order = graph.io_toposort(fgraph.inputs, order_outputs)
 
-        active_order = fgraph.toposort()  # an ordering of just the active nodes
+        active_order = self.schedule(fgraph) # an ordering of just the active nodes
         active_order_set = set(active_order)
 
         no_recycling = self.no_recycling
@@ -1610,7 +1610,7 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
                 e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes  # WARNING: STOCHASTIC ORDER
+                e.toposort = lambda: e.apply_nodes  # WARNING: STOCHASTIC ORDER
                 #  Specifically... e.nodes is a set, but of only 1 element
 
                 cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
@@ -1992,7 +1992,7 @@ class _Linker(gof.link.LocalLinker):
                     if r.owner is None:
                         assert r in fgraph.inputs
                         #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
-                        if type(dr_vals[r][0]) is numpy.ndarray \
+                        if type(dr_vals[r][0]) in (numpy.ndarray, numpy.memmap) \
                                 and dr_vals[r][0].dtype == storage_map[r][0].dtype \
                                 and dr_vals[r][0].shape == storage_map[r][0].shape:
                             if len(dr_vals[r][0].shape):

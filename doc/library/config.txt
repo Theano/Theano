@@ -13,7 +13,7 @@
 Guide
 =====
 
-The config module contains many attributes that modify Theano's behavior.  Many of these
+The config module contains many ``attributes`` that modify Theano's behavior.  Many of these
 attributes are consulted during the import of the ``theano`` module and many are assumed to be
 read-only.
 
@@ -60,8 +60,8 @@ Environment Variables
 .. envvar:: THEANORC
 
     The location[s] of the .theanorc file[s] in ConfigParser format.
-    It defaults to ``$HOME/.theanorc``. On Windows, it defalt to
-    ``$HOME/.theanorc:$HOME/.theanorc.txt`` to make Windows users life
+    It defaults to ``$HOME/.theanorc``. On Windows, it defaults to
+    ``$HOME/.theanorc:$HOME/.theanorc.txt`` to make Windows users' life
     easier.
 
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
@@ -161,6 +161,14 @@ import theano and print the config variable, as in:
     Theano initialize the GPU device.  Newer version of PyCUDA
     (currently only in the trunk) don't have this restriction.
 
+.. attribute:: config.print_active_device
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    Print active device at when the GPU device is initialized.
+
 .. attribute:: floatX
 
     String value: either 'float64' or 'float32'
@@ -237,6 +245,22 @@ import theano and print the config variable, as in:
     This sets the default compilation mode for theano functions. By default the
     mode Mode is equivalent to FAST_RUN. See Config attribute linker and optimizer.
 
+.. attribute:: profile
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linkers profile the execution of Theano functions?
+
+.. attribute:: profile_optimizer
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
@@ -286,7 +310,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.warn.ignore_bug_before
 
-    String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5'
+    String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6'
 
     Default: 'None'
 
@@ -362,6 +386,21 @@ import theano and print the config variable, as in:
 
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
+
+.. attribute:: config.cxx
+
+
+    Default: 'g++' if g++ is present. '' Otherwise.
+
+    Tell the c++ compiler to use. If empty, don't compile c++ code.
+    We automatically detect if g++ is present and disable it if not
+    present.
+
+    We print a warning if we detect that g++ is not present. It is
+    recommended to run with c++ compilation as Theano will be much
+    slower otherwise.
+
+    Currently only g++ is supported, but supporting others is easy.
 
 .. attribute:: optimizer_excluding
 
@@ -557,49 +596,6 @@ import theano and print the config variable, as in:
               B. log_likelihood_v_given_h
               C. log_likelihood_h
 
-.. attribute:: config.time_seq_optimizer
-
-    Bool value, default: False
-
-    Should each SeqOptimizer object print the time taken by each of its
-    optimizer. Each SeqOptimizer prints something like this::
-
-        SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
-          0.012573s - ('gpu_local_optimizations', 'EquilibriumOptimizer')
-          0.001373s - ('gpu_cut_transfers', 'EquilibriumOptimizer')
-          0.000441s - ('InputToGpuOptimizer', 'InputToGpuOptimizer')
-
-    This prints the name of the SeqOptimizer (gpu_opt), the number of
-    Apply nodes in the graph before (8) and after (9)
-    optimizations. Then a list of lines, one per optimization
-    in this SeqOptimizer. The first element is the time
-    taken by this optimization and then it is a tuple with the name of the
-    optimization and this class. This list is sorted from the sub
-    optimization that takes the most time to the optimization that takes
-    the least time.
-
-.. attribute:: config.time_eq_optimizer
-
-    Bool value, default: False
-
-    Should each EquilibriumOptimizer print the time taken by each of its
-    iterations, the total number of times each of its optimizers is applied,
-    and informations about the total number of nodes in the graph.
-    Here is an example of output::
-
-        EquilibriumOptimizer specialize
-         time 4.760s for 4 passes, 3801 nodes max
-        0 - 1.961s (0.079s in global opts) - 3797 nodes
-        1 - 1.233s (0.080s in global opts) - 3801 nodes
-        2 - 0.857s (0.071s in global opts) - 3203 nodes
-        3 - 0.710s (0.066s in global opts) - 3095 nodes
-
-        times applied - optimizer:
-          384 - dimshuffle_as_view
-          262 - constant_folding
-          216 - local_subtensor_make_vector
-          216 - local_shape_to_shape_i
-          4 - local_mul_specialize
 
 .. attribute:: config.cmodule.warn_no_version
 

@@ -14,14 +14,32 @@ from copy import copy
 import theano
 import warnings
 from theano.gof import utils
-from theano.gof.python25 import deque
+from theano.gof.python25 import any, deque
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None
 equal_computations = None
 
 
-class Apply(utils.object2):
+class Node(utils.object2):
+    """A Node in a theano graph.
+    Graphs contain two kinds of Nodes--
+    Variable and Apply.
+    Edges in the graph are not explicitly represented.
+    Instead each Node keeps track of its parents via
+    Variable.owner / Apply.inputs and its children
+    via Variable.clients / Apply.outputs.
+    """
+
+    def get_parents(self):
+        """ Return a list of the parents of this node.
+        Should return a copy--i.e., modifying the return
+        value should not modify the graph structure."""
+
+        raise NotImplementedError()
+
+
+class Apply(Node):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
     of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
@@ -202,6 +220,9 @@ class Apply(utils.object2):
             new_node.inputs = new_inputs
         return new_node
 
+    def get_parents(self):
+        return list(self.inputs)
+
     #convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
@@ -210,7 +231,7 @@ class Apply(utils.object2):
     """property: Number of outputs"""
 
 
-class Variable(utils.object2):
+class Variable(Node):
     """
     A :term:`Variable` is a node in an expression graph that represents a variable.
 
@@ -239,17 +260,18 @@ class Variable(utils.object2):
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
-    - `TensorVariable` subclass of Variable that represent numpy.ndarray object
+    - `TensorVariable` subclass of Variable that represents a numpy.ndarray object
 
     - `SharedTensorVariable` Shared version of TensorVariable
 
-    - `SparseVariable` subclass of Variable that represent scipy.sparse.{csc,csr}_matrix object
+    - `SparseVariable` subclass of Variable that represents a scipy.sparse.{csc,csr}_matrix object
 
-    - `CudaNdarrayVariable` subclass of Variable that represent our object on the GPU that is a subset of numpy.ndarray
+    - `CudaNdarrayVariable` subclass of Variable that represents our object on the GPU that is a subset of numpy.ndarray
 
     - `RandomVariable`
 
-    A Variable which is the output of a symbolic computation will have an owner != None.
+    A Variable which is the output of a symbolic computation will have an owner
+    not equal to None.
 
     Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
     from an output all the way to the inputs. The opposite direction is not possible until an
@@ -363,6 +385,11 @@ class Variable(utils.object2):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
 
+    def get_parents(self):
+        if self.owner is not None:
+            return [self.owner]
+        return []
+
     def env_getter(self):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
                 stacklevel=2)
@@ -377,6 +404,24 @@ class Variable(utils.object2):
         warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
                 stacklevel=2)
         del self.fgraph
+
+    def eval(self, inputs_to_values=None):
+        """ Evaluates this variable.
+
+        inputs_to_values: a dictionary mapping theano Variables to values.
+        """
+
+        if inputs_to_values is None:
+            inputs_to_values = {}
+
+        if not hasattr(self, '_fn'):
+            self._fn_inputs = inputs_to_values.keys()
+            self._fn = theano.function(self._fn_inputs, self)
+        args = [inputs_to_values[param] for param in self._fn_inputs]
+
+        rval = self._fn(*args)
+
+        return rval
 
     env = property(env_getter, env_setter, env_deleter)
 
@@ -725,13 +770,26 @@ def general_toposort(r_out, deps, debug_print=False):
     return rlist
 
 
-def io_toposort(i, o, orderings=None):
+def io_toposort(inputs, outputs, orderings=None):
     """WRITEME
+
+    inputs: a list or tuple of Variable instances
+    outputs: a list or tuple of Variable instances
+
+    orderings: a dictionary
+                key: Apply instance
+                value: list of Apply instance
+
+                it is important that the value be
+                a container with a deterministic iteration
+                order. no sets allowed!
+
     """
     if orderings is None:
         orderings = {}
+
     #the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(i)
+    iset = set(inputs)
 
     def deps(obj):
         rval = []
@@ -746,7 +804,7 @@ def io_toposort(i, o, orderings=None):
             assert not orderings.get(obj, [])
         return rval
 
-    topo = general_toposort(o, deps)
+    topo = general_toposort(outputs, deps)
     return [o for o in topo if isinstance(o, Apply)]
 
 
@@ -969,3 +1027,12 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+
+
+def list_of_nodes(inputs, outputs):
+    """ Return the apply nodes of the graph between inputs and outputs """
+    return stack_search(
+            deque([o.owner for o in outputs]),
+            lambda o: [inp.owner for inp in o.inputs
+                           if inp.owner
+                           and not any(i in inp.owner.outputs for i in inputs)])

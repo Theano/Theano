@@ -13,19 +13,6 @@ It is also used to load the KnownFailure plugin, in order to hide
 KnownFailureTests error messages. Use --without-knownfailure to
 disable that plugin.
 
-There are two additional local options: '--batch[=n]' and '--time-profile'.
-
-If '--batch[=n]' is used without '--time-profile', this script will call
-run_tests_in_batch.py` in order to run the tests by batches, not all at the
-same time. The batches will comprise 100 elements each by default and
-'n' elements if the option '=n' is specified.
-
-If the '--time-profile' option is used, it will call `run_tests_in_batch.py`
-with the option time_profile=True to conduct time-profiling of the tests.
-(See 'help' function below for details.) If also specified, '--batch[=n]'
-option will be interpreted as an indication of the number of tests to be run
-between notifications of progress to standard output.
-
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
 
@@ -33,12 +20,36 @@ import logging
 _logger = logging.getLogger('theano.bin.theano-nose')
 _logger.setLevel(logging.WARN)
 
+import os
 import nose
 import textwrap
 import sys
 from nose.plugins import Plugin
 
 def main():
+    # Handle the --theano arguments
+    if "--theano" in sys.argv:
+        i = sys.argv.index("--theano")
+        import theano
+        sys.argv[i] = theano.__path__[0]
+
+    # Many Theano tests suppose device=cpu, so we need to raise an
+    # error if device==gpu.
+    # I don't know how to do this check only if we use theano-nose on
+    # Theano tests.  So I make an try..except in case the script get
+    # reused elsewhere.
+    # We should not import theano before call nose.main()
+    # As this cause import problem with nosetests.
+    # Should we find a way to don't modify sys.path?
+    if not os.path.exists('theano/__init__.py'):
+        try:
+            from theano import config
+            if config.device != "cpu":
+                raise ValueError("Theano tests must be run with device=cpu."
+                                 " This will also run GPU tests when possible.")
+        except ImportError:
+            pass
+
     # Handle --batch[=n] arguments
     batch_args = [arg for arg in sys.argv if arg.startswith('--batch')]
     for arg in batch_args:
@@ -55,16 +66,30 @@ def main():
         if len(elems) == 2:
             batch_size = int(elems[1])
 
+    # Handle the --debug-batch argument.
+    display_batch_output = False
+    if '--debug-batch' in sys.argv:
+        if not batch_args:
+            raise AssertionError(
+                'You can only use the --debug-batch argument with the '
+                '--batch[=n] option')
+        while '--debug-batch' in sys.argv:
+            sys.argv.remove('--debug-batch')
+        sys.argv += ['--verbose', '--nocapture', '--detailed-errors']
+        display_batch_output = True
+
     # Handle --time_prof arguments
     time_prof_args = [arg for arg in sys.argv if arg=='--time-profile']
     for arg in time_prof_args:
         sys.argv.remove(arg)
             
     # Time-profiling and batch modes
-    if len(time_prof_args) or len(batch_args):
+    if time_prof_args or batch_args:
         from theano.tests import run_tests_in_batch
-        return run_tests_in_batch.main(batch_size=batch_size,
-                            time_profile=len(time_prof_args) > 0)
+        return run_tests_in_batch.main(
+                batch_size=batch_size,
+                time_profile=bool(time_prof_args),
+                display_batch_output=display_batch_output)
 
     # Non-batch mode.
     addplugins = []
@@ -101,6 +126,8 @@ def help():
 
         Local options:
 
+            --help, -h: Displays this help.
+
             --batch[=n]:
                 If specified without option '--time-profile', do not run all
                 the tests in one run, but split the execution in batches of
@@ -133,9 +160,21 @@ def help():
                 latter may be used to identify duration patterns among the tests
                 numbers. A full log is also saved as 'timeprof_rawlog'.
     
-            --help, -h: Displays this help.
-
             --without-knownfailure: Do not load the KnownFailure plugin.
+
+            --theano: This parameter is replaced with the path to the theano
+                      library. As theano-nose is a wrapper to nosetests, it
+                      expects a path to the tests to run.
+                      If you do not know where theano is installed, use this
+                      option to have it inserted automatically.
+
+            --debug-batch:
+                Use this parameter to run nosetests with options '--verbose',
+                '--nocapture' and '--detailed-errors' and show the output of
+                nosetests during batch execution.  This can be useful to debug
+                situations where re-running only the failed tests after batch
+                execution is not working properly. This option can only be used
+                in conjunction with the '--batch=[n]' argument.
 
         The other options will be passed to nosetests, see ``nosetests -h``.
         """

@@ -53,6 +53,7 @@ from theano.tensor import opt
 from theano import tensor
 from theano import config
 from theano.updates import Updates
+from theano.compile import ops
 
 
 import scan_op
@@ -197,11 +198,12 @@ def scan(fn,
 
         * ``initial`` -- Theano variable that represents the initial
           state of a given output. In case the output is not computed
-          recursively (think of a map) and does not require a initial
-          state this field can be skiped. Given that only the previous
-          time step of the output is used by ``fn`` the initial state
-          should have the same shape as the output. If multiple time
-          taps are used, the initial state should have one extra
+          recursively (think of a map) and does not require an initial
+          state this field can be skipped. Given that (only) the previous
+          time step of the output is used by ``fn``, the initial state
+          **should have the same shape** as the output and **should not
+          involve a downcast** of the data type of the output. If multiple
+          time taps are used, the initial state should have one extra
           dimension that should cover all the possible taps. For example
           if we use ``-5``, ``-2`` and ``-1`` as past taps, at step 0,
           ``fn`` will require (by an abuse of notation) ``output[-5]``,
@@ -842,17 +844,38 @@ def scan(fn,
     shared_scan_inputs = []
     shared_inner_inputs = []
     shared_inner_outputs = []
+    sit_sot_shared = []
     for input in dummy_f.maker.expanded_inputs:
         if isinstance(input.variable, SharedVariable) and input.update:
             new_var = safe_new(input.variable)
             if getattr(input.variable, 'name', None) is not None:
                 new_var.name = input.variable.name + '_copy'
-            shared_inner_inputs.append(new_var)
-            shared_scan_inputs.append(input.variable)
-            shared_inner_outputs.append(input.update)
-            givens[input.variable] = new_var
-            n_shared_outs += 1
+            if isinstance(new_var.type, ops.expandable_types):
+                sit_sot_inner_inputs.append(new_var)
+                sit_sot_scan_inputs.append(
+                    scan_utils.expand(
+                        tensor.unbroadcast(
+                            tensor.shape_padleft(input.variable), 0),
+                        actual_n_steps))
+                sit_sot_inner_outputs.append(input.update)
+                # Not that pos is not a negative index. The sign of pos is used
+                # as a flag to indicate if this output should be part of the
+                # update rules or part of the standard outputs of scan.
+                # If `pos` is positive than it corresponds to the standard
+                # outputs of scan and it refers to output of index `pos`. If `pos`
+                # is negative that it corresponds to update rules of scan and it
+                # refers to update rule of index -1 - `pos`.
+                sit_sot_rightOrder.append(-1 - len(sit_sot_shared))
+                sit_sot_shared.append(input.variable)
+                givens[input.variable] = new_var
 
+            else:
+                shared_inner_inputs.append(new_var)
+                shared_scan_inputs.append(input.variable)
+                shared_inner_outputs.append(input.update)
+                givens[input.variable] = new_var
+                n_shared_outs += 1
+    n_sit_sot = len(sit_sot_inner_inputs)
     ## Step 5.4 Outputs with no taps used in the input
     n_nit_sot = 0
     nit_sot_inner_outputs = []
@@ -1040,10 +1063,20 @@ def scan(fn,
                   nit_sot_rightOrder)
     scan_out_list = [None] * len(rightOrder)
     for idx, pos in enumerate(rightOrder):
-        scan_out_list[pos] = _scan_out_list[idx]
+        if pos >= 0:
+            scan_out_list[pos] = _scan_out_list[idx]
+        else:
+            # Not that pos is not a negative index. The sign of pos is used
+            # as a flag to indicate if this output should be part of the
+            # update rules or part of the standard outputs of scan.
+            # If `pos` is positive than it corresponds to the standard
+            # outputs of scan and it refers to output of index `pos`. If `pos`
+            # is negative that it corresponds to update rules of scan and it
+            # refers to update rule of index -1 - `pos`.
+            update_map[sit_sot_shared[abs(pos) - 1]] = _scan_out_list[idx][-1]
+    scan_out_list = [x for x in scan_out_list if x is not None]
     if len(scan_out_list) == 1:
         scan_out_list = scan_out_list[0]
     elif len(scan_out_list) == 0:
         scan_out_list = None
-
     return (scan_out_list, update_map)

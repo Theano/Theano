@@ -65,8 +65,8 @@ class TestCGer(TestCase, TestOptimizationMixin):
         self.assert_(CGer(False) != Ger(False))
 
         # assert that eq works for non-CGer instances
-        self.assert_(CGer(False) != None)
-        self.assert_(CGer(True) != None)
+        self.assert_(CGer(False) is not None)
+        self.assert_(CGer(True) is not None)
 
     def test_hash(self):
         self.assert_(hash(CGer(True)) == hash(CGer(True)))

@@ -65,31 +65,44 @@ How to Run Unit Tests ?
 
 Two options are available:
 
-Nosetests
-~~~~~~~~~
+theano-nose
+~~~~~~~~~~~
 
-The easiest by far is to use ``nosetests`` which is a command line
+The easiest by far is to use ``theano-nose`` which is a command line
 utility that recurses through a given directory, finds all unittests
 matching a specific criteria and executes them. By default, it will
 find & execute tests case in test*.py files whose method name starts
 with 'test'.
 
+``theano-nose`` is a wrapper around `nosetests
+<http://somethingaboutorange.com/mrl/projects/nose/>`_. You should be
+able to execute it if you installed Theano using pip, or if you ran
+"python setup.py develop" after the installation. If ``theano-nose`` is
+not found by your shell, you will need to add ``Theano/bin`` to your
+``PATH`` environment variable.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose`` in all the examples below.
+
 Running all unit tests ::
 
     cd Theano/theano
-    nosetests
+    theano-nose
 
 Running unit tests with standard out ::
 
-    nosetests -s
+    theano-nose -s
 
 Running unit tests contained in a specific .py file ::
 
-    nosetests <filename>.py
+    theano-nose <filename>.py
 
 Running a specific unit test ::
 
-    nosetests <filename>.py:<classname>.<method_name>
+    theano-nose <filename>.py:<classname>.<method_name>
 
 Using unittest module
 ~~~~~~~~~~~~~~~~~~~~~
@@ -289,7 +302,7 @@ Example:
 
     f = T.function([a,b],[c],mode='FAST_RUN')
     m = theano.Module()
-    minstance = m.make(mode='DEBUG_MODE')
+    minstance = m.make(mode='DebugMode')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.
@@ -304,9 +317,11 @@ type this:
 
 .. code-block:: bash
 
-    THEANO_FLAGS='mode=FAST_COMPILE' nosetests
-    THEANO_FLAGS='mode=FAST_RUN' nosetests
-    THEANO_FLAGS='mode=DEBUG_MODE' nosetests
+    THEANO_FLAGS='mode=FAST_COMPILE' theano-nose
+    THEANO_FLAGS='mode=FAST_RUN' theano-nose
+    THEANO_FLAGS='mode=DebugMode' theano-nose
+
+.. _random_value_in_tests:
 
 Using Random Values in Test Cases
 ---------------------------------
@@ -344,7 +359,7 @@ The behaviour of seed_rng is as follows:
 The main advantage of using unittest_tools.seed_rng is that it allows
 us to change the seed used in the unitests, without having to manually
 edit all the files. For example, this allows the nightly build to run
-nosetests repeatedly, changing the seed on every run (hence achieving
+theano-nose repeatedly, changing the seed on every run (hence achieving
 a higher confidence that the variables are correct), while still
 making sure unittests are deterministic.
 

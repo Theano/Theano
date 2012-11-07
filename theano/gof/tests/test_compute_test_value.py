@@ -1,6 +1,7 @@
 import os, sys, traceback, warnings
 
 import numpy
+from nose.plugins.skip import SkipTest
 import unittest
 
 import theano
@@ -287,7 +288,8 @@ class TestComputeTestValue(unittest.TestCase):
                 # The second is a new message in numpy 1.6.
                 assert (str(e).startswith("shape mismatch") or
                         str(e).startswith("operands could not be broadcast "
-                                          "together with shapes"))
+                                          "together with shapes") or
+                        str(e).startswith("could not broadcast input"))
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
@@ -334,6 +336,8 @@ class TestComputeTestValue(unittest.TestCase):
             theano.config.compute_test_value = orig_compute_test_value
 
     def test_no_perform(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         class IncOneC(Op):
             """An Op with only a C (c_code) implementation"""
 

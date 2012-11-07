@@ -13,7 +13,10 @@ import numpy
 
 try:
     import pydot as pd
-    pydot_imported = True
+    if pd.find_graphviz():
+        pydot_imported = True
+    else:
+        pydot_imported = False
 except ImportError:
     pydot_imported = False
 
@@ -30,7 +33,7 @@ _logger = logging.getLogger("theano.printing")
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False):
-    """Print a computation graph to file
+    """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
     :param obj: symbolic thing to print
@@ -56,12 +59,12 @@ def debugprint(obj, depth=-1, print_type=False,
     The first part of the text identifies whether it is an input
     (if a name or type is printed) or the output of some Apply (in which case
     the Op is printed).
-    The second part of the text is the memory location of the Variable.
+    The second part of the text is an identifier of the Variable.
     If print_type is True, we add a part containing the type of the Variable
 
     If a Variable is encountered multiple times in the depth-first search,
     it is only printed recursively the first time. Later, just the Variable
-    and its memory location are printed.
+    identifier is printed.
 
     If an Apply has multiple outputs, then a '.N' suffix will be appended
     to the Apply's identifier, to indicate which output a line corresponds to.
@@ -461,7 +464,9 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target')
               LeafPrinter())
 
 pp = pprint
-
+"""
+Print to the terminal a math-like expression.
+"""
 
 # colors not used: orange, amber#FFBF00, purple, pink,
 # used by default: green, blue, grey, red
@@ -482,7 +487,8 @@ def pydotprint(fct, outfile=None,
                print_output_file=True,
                assert_nb_all_strings=-1
                ):
-    """print to a file in png format the graph of op of a compile theano fct.
+    """
+    Print to a file (png format) the graph of a compiled theano function's ops.
 
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
@@ -509,10 +515,10 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
-    :param assert_nb_all_strings: Used for tests. This assert the
-                number of uniq string node in the dot graph. This is
-                used in tests to verify that dot won't merge Theano
-                node.
+    :param assert_nb_all_strings: Used for tests. If non-negative, assert that
+                the number of unique string nodes in the dot graph is equal to
+                this number. This is used in tests to verify that dot won't
+                merge Theano nodes.
 
     In the graph, ellipses are Apply Nodes (the execution of an op)
     and boxes are variables.  If variables have names they are used as
@@ -529,7 +535,7 @@ def pydotprint(fct, outfile=None,
     blue boxes are outputs variables of the graph
     grey boxes are variables that are not outputs and are not used
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-       HostFromGpu)
+    HostFromGpu)
 
     """
     if colorCodes is None:
@@ -541,12 +547,14 @@ def pydotprint(fct, outfile=None,
 
     if isinstance(fct, Function):
         mode = fct.maker.mode
-        fct_fgraph = fct.maker.fgraph
+        profile = getattr(fct, "profile", None)
         if (not isinstance(mode, ProfileMode)
             or not fct in mode.profile_stats):
             mode = None
+        fct_fgraph = fct.maker.fgraph
     elif isinstance(fct, gof.FunctionGraph):
         mode = None
+        profile = None
         fct_fgraph = fct
     else:
         raise ValueError(('pydotprint expects as input a theano.function or '
@@ -657,6 +665,14 @@ def pydotprint(fct, outfile=None,
             else:
                 pf = time * 100 / mode.profile_stats[fct].fct_call_time
             prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
+        elif profile:
+            time = profile.apply_time.get(node, 0)
+            #second, %fct time in profiler
+            if profile.fct_callcount == 0:
+                pf = 0
+            else:
+                pf = time * 100 / profile.fct_call_time
+            prof_str = '   (%.3fs,%.3f%%)' % (time, pf)
         applystr = str(node.op).replace(':', '_')
         applystr += prof_str
         if (applystr in all_strings) or with_ids:

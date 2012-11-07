@@ -149,7 +149,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         gof.Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
         nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
@@ -222,7 +222,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                  'to move some computation fron scan '
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
-                    outside_ins = [x.type.filter_variable(y) for x,y in
+                    outside_ins = [x.type.filter_variable(y) for x, y in
                                    zip(nd.inputs, outside_ins)]
                     nw_outer_node = nd.op.make_node(*outside_ins)
                     # Step 2. Create variables for replacements
@@ -279,8 +279,10 @@ class PushOutNonSeqScan(gof.Optimizer):
             # Reconstruct node
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
             nw_node = nwScan.make_node(* (node.inputs + nw_outer))
-            fgraph.replace_all_validate(zip(node.outputs, nw_node.outputs),
-                                     reason='scan_push_computation_out')
+            fgraph.replace_all_validate_remove(
+                zip(node.outputs, nw_node.outputs),
+                remove=[node],
+                reason='scan_push_computation_out')
             return True
         elif to_keep == []:
             # Nothing in the inner graph should be kept
@@ -295,8 +297,11 @@ class PushOutNonSeqScan(gof.Optimizer):
                                                    *shape)
 
             # We need to add one extra dimension to the outputs
-            fgraph.replace_all_validate(replace_with.items(),
-                                     reason='scan_push_computation_out')
+            if replace_with:
+                fgraph.replace_all_validate_remove(
+                    replace_with.items(),
+                    remove=[node],
+                    reason='scan_push_computation_out')
 
         else:
             return False
@@ -317,8 +322,8 @@ class ScanInplaceOptimizer(Optimizer):
         self.gpu_flag = gpu_flag
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
 
@@ -358,8 +363,9 @@ class ScanInplaceOptimizer(Optimizer):
 
                 new_outs = new_op.make_node(*inputs).outputs
                 try:
-                    fgraph.replace_all_validate(
+                    fgraph.replace_all_validate_remove(
                         zip(node.outputs, new_outs),
+                        remove=[node],
                         reason=self.__class__.__name__)
                     op = new_op
                     node = new_outs[0].owner
@@ -382,7 +388,7 @@ class ScanSaveMem(gof.Optimizer):
         gof.Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def process_node(self, fgraph, node):
 
@@ -501,7 +507,7 @@ class ScanSaveMem(gof.Optimizer):
                     # 2.3.1 extract idx list of subtensor
                     this_slice = tensor.basic.get_idx_list(cl.inputs,
                                                      cl.op.idx_list)
-                    if this_slice == None:
+                    if this_slice is None:
                         # if unable to extract idx_list
                         #=> outputs needs all its intermediate values
                         global_nsteps = None
@@ -601,7 +607,7 @@ class ScanSaveMem(gof.Optimizer):
                 else:
                     this_slice = tensor.basic.get_idx_list(cl.inputs,
                                                          cl.op.idx_list)
-                    if this_slice == None:
+                    if this_slice is None:
                         store_steps[i] = 0
                         break
 
@@ -676,14 +682,20 @@ class ScanSaveMem(gof.Optimizer):
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
                                        tensor.IncSubtensor) and
-                            isinstance(nw_inputs[offset+idx].owner.op.idx_list[0], slice)):
+                            isinstance(
+                                nw_inputs[offset + idx].owner.op.idx_list[0],
+                                slice)):
 
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
-                            val = tensor.as_tensor_variable(val)
+                            cval = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
+                            tmp_idx = tensor.switch(cval < initl,
+                                                    cval + initl,
+                                                    cval - initl)
                             tmp = pre_greedy_local_optimizer(list_opt_slice,
-                                    tensor.maximum(val - initl, 0))
+                                                             tmp_idx)
                             tmp = pre_constant_merge([tmp])[0]
+
                             nw_input = scan_utils.expand(_nw_input, tmp)
                         else:
                             tmp = tensor.as_tensor_variable(val)
@@ -826,7 +838,9 @@ class ScanSaveMem(gof.Optimizer):
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
 
-                fgraph.replace_all_validate(old_new, reason='scan_save_mem')
+                fgraph.replace_all_validate_remove(old_new,
+                                                   remove=[node],
+                                                   reason='scan_save_mem')
 
     def apply(self, fgraph):
 
@@ -849,7 +863,7 @@ scan_seqopt.register('scanOp_save_mem',
 class ScanMerge(gof.Optimizer):
     """ Graph Optimizer that merges different scan ops """
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def merge(self, nodes):
 
@@ -1021,7 +1035,9 @@ class ScanMerge(gof.Optimizer):
         for subset in all_sets:
             if len(subset) > 1:
                 proposal = self.merge(subset)
-                fgraph.replace_all_validate(proposal, reason='scan_merge')
+                fgraph.replace_all_validate_remove(proposal,
+                                                   remove=subset,
+                                                   reason='scan_merge')
 
 
 # after const merge but before stabilize so that we can have identity

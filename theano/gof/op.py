@@ -11,8 +11,11 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-
+import copy
 import logging
+import os
+import subprocess
+import tempfile
 import warnings
 
 import theano
@@ -527,10 +530,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
         # existing Ops get a _op_use_c_code attribute
         obj = object.__new__(cls)
         if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = True
+            obj._op_use_c_code = theano.config.cxx
         return obj
 
-    def __init__(self, use_c_code=True):
+    def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
@@ -586,6 +589,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 rval.outputs = node_output_storage
                 rval.lazy = False
                 return rval
+                # the next line does nothing, but pyflakes is too
+                # stupid to realize the def rval below is not a
+                # redefinition unless I include this
+                del rval
             except (NotImplementedError, utils.MethodNotDefined):
                 logger.debug('Falling back on perform')
 
@@ -605,7 +612,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
-
 
 def get_test_value(v):
     """
@@ -731,3 +737,91 @@ We need that to be able not to run debug checks a number of times that is
 exponential in the nesting level of those ops.
 For instance, Scan will be registered here.
 """
+
+
+class OpenMPOp(Op):
+    """All op using OpenMP code should inherit from this Op.
+
+    This op will check that the compiler support correctly OpenMP code.
+    If not, it will print a warning and disable openmp for this Op.
+    Then it will generate the not OpenMP code.
+
+    This is needed as EPD on Windows g++ version spec information tell
+    it support OpenMP, but does not include the OpenMP files.
+
+    We also add the correct compiler flags in c_compile_args.
+
+    """
+    gxx_support_openmp = None
+    """
+    True/False after we tested this.
+    """
+
+    def __init__(self, openmp=None):
+        if openmp is None:
+            openmp = theano.config.openmp
+        self.openmp = openmp
+
+    def c_compile_args(self):
+        if self.openmp:
+            return ['-fopenmp']
+        return []
+
+    @staticmethod
+    def test_gxx_support():
+        try:
+            code = """
+            #include <omp.h>
+    int main( int argc, const char* argv[] )
+    {
+            int res[10];
+
+            for(int i=0; i < 10; i++){
+                res[i] = i;
+            }
+    }
+            """
+            fd, path = tempfile.mkstemp(suffix='.c', prefix='test_omp_')
+            dummy_stdin = open(os.devnull)
+            try:
+                os.write(fd, code)
+                os.close(fd)
+                fd = None
+                proc = subprocess.Popen(['g++', '-fopenmp', path],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        stdin=dummy_stdin.fileno())
+                proc.wait()
+                if proc.returncode != 0:
+                    default_openmp = False
+            finally:
+                del dummy_stdin
+                # Ensure `fd` is closed before we remove the temporary file.
+                try:
+                    if fd is not None:
+                        os.close(fd)
+                finally:
+                    os.remove(path)
+        except OSError, e:
+            return False
+        return True
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        op = self
+        if self.openmp:
+            if OpenMPOp.gxx_support_openmp is None:
+                OpenMPOp.gxx_support_openmp = OpenMPOp.test_gxx_support()
+                if not OpenMPOp.gxx_support_openmp:
+                    #We want to warn only once.
+                    warnings.warn(
+                        "Your g++ compiler fails to compile OpenMP code. We"
+                        " know this happen with some version of the EPD mingw"
+                        " compiler. We disable openmp everywhere in Theano."
+                        " To remove this warning set the theano flags `openmp`"
+                        " to False.")
+            if OpenMPOp.gxx_support_openmp is False:
+                op = copy.copy(self)
+                op.openmp = False
+                theano.config.openmp = False
+        return super(OpenMPOp, op).make_thunk(node, storage_map,
+                                              compute_map, no_recycling)

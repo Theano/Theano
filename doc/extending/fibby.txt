@@ -63,7 +63,7 @@ you should check the strides and alignment.
       return """
         Py_XDECREF(%(y)s);
         %(y)s = (PyArrayObject*)PyArray_FromArray(
-                    %(x)s, 0, NPY_ENSURECOPY);
+                    %(x)s, 0, NPY_ARRAY_ENSURECOPY);
         if (!(%y)s) %(fail)s;
         dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data; 
         dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data; 
@@ -147,7 +147,7 @@ the correct size for the output. This is essentially simulating the line
 
     Py_XDECREF(%(y)s);
     %(y)s = (PyArrayObject*)PyArray_FromArray(
-        %(x)s, 0, NPY_ENSURECOPY);
+        %(x)s, 0, NPY_ARRAY_ENSURECOPY);
 
 The first line reduces the reference count of the data that y originally
 pointed to. The second line allocates the new data and makes y point to it.
@@ -168,7 +168,7 @@ not modify any of the inputs.
 TODO: EXPLAIN DESTROYMAP and VIEWMAP BETTER AND GIVE EXAMPLE.
 
 When developing an Op, you should run computations in DebugMode, by using
-argument ``mode='DEBUG_MODE'`` to ``theano.function``. DebugMode is
+argument ``mode='DebugMode'`` to ``theano.function``. DebugMode is
 slow, but it can catch many common violations of the Op contract.
 
 TODO: Like what? How? Talk about Python vs. C too.

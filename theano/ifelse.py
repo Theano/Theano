@@ -4,8 +4,8 @@ linkers). It resembles the if clause of any programming language, that
 has a `then` and `else` branch, and executes either one or the other
 according to the condition provided.
 
-This op contrast the already existent `switch` op, that will evaluate both
-branches of the clause and afterwards pick (according to the condition)
+This op differs from the already existent `switch` op, that evaluates both
+branches of the clause and afterwards picks (according to the condition)
 which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
@@ -60,7 +60,7 @@ class IfElse(PureOp):
 
     :note:
         Other Linkers then CVM and VM are INCOMPATIBLE with this Op, and
-        will ingnore its lazy characteristic, computing both the True and
+        will ignore its lazy characteristic, computing both the True and
         False branch before picking one.
 
     """
@@ -212,7 +212,14 @@ class IfElse(PureOp):
                                        for t in ts])
         if_false = ([ins[0]] + [theano.tensor.zeros_like(f)
                                 for f in fs] + grads)
-        return ([None] +
+
+        condition = ins[0]
+        # condition does affect the elements of the output so it is connected.
+        # For the sake of making the gradient convenient we assume that
+        # condition + epsilon always triggers the same branch as condition
+        condition_grad = condition.zeros_like().astype(theano.config.floatX)
+
+        return ([condition_grad] +
                 if_true_op.make_node(*if_true).outputs +
                 if_false_op.make_node(*if_false).outputs)
 
@@ -537,7 +544,7 @@ def cond_merge_ifs_false(node):
 class CondMerge(gof.Optimizer):
     """ Graph Optimizer that merges different cond ops """
     def add_requirements(self, fgraph):
-        fgraph.extend(gof.toolbox.ReplaceValidate())
+        fgraph.add_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
         nodelist = list(fgraph.toposort())

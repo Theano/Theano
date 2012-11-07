@@ -18,6 +18,7 @@ from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 from theano.sparse import verify_grad_sparse
+from theano.sparse.tests.test_basic import sparse_random_inputs
 
 
 class TestSP(unittest.TestCase):
@@ -362,121 +363,6 @@ class TestSP(unittest.TestCase):
                     # symbolic stuff
                     utt.verify_grad(d, [kvals])
 
-
-def test_diag():
-    m = theano.sparse.csc_matrix()
-    d = sp.diag(m)
-    f = theano.function([m], d)
-    f2 = theano.function([m], d.shape)
-    for K in 1, 5:
-        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),
-                dtype=theano.config.floatX)
-        diag = numpy.diagonal(np_matrix)
-        sp_matrix = scipy.sparse.csc_matrix(np_matrix)
-
-        assert numpy.all(diag == f(sp_matrix))
-        assert f2(sp_matrix) == diag.shape
-
-def test_square_diagonal():
-    for K in 1, 5:
-        d = tensor.ivector()
-        sd = sp.square_diagonal(d)
-        f = theano.function([d], sd)
-        n = numpy.zeros((K,K), dtype='int32')
-        for i in range(K):
-            n[i,i] = i
-
-        assert numpy.all(n == f(range(K)).toarray())
-
-def test_ensure_sorted_indices():
-    x = 2000
-    y = 2000
-    sparsity = 1000
-    for i in range(2):
-        # testing both csc and csr
-        if i is 0:
-            # csc
-            input_tensor = theano.sparse.csc_dmatrix()
-            sample = scipy.sparse.csc_matrix(random_lil((x,y),'float64',sparsity))
-        else:
-            # csr
-            input_tensor = theano.sparse.csr_dmatrix()
-            sample = scipy.sparse.csr_matrix(random_lil((x,y),'float64',sparsity))
-
-        sort_op = sp.ensure_sorted_indices(input_tensor)
-        f = theano.function([input_tensor], sort_op)
-        sorted_scipy = sample.sorted_indices()
-        sorted_theano = f(sample)
-        assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
-
-def test_square_diagonal_grad():
-    def d(x):
-        return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
-    utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
-
-def test_diag_grad():
-    def d(x):
-        sp_x = theano.sparse.csc_from_dense(x)
-        diag_x = sp.diag(sp_x)
-        return diag_x.sum()
-
-    diag_mat = numpy.zeros((4,4))
-    for idx in xrange(4):
-        diag_mat[idx, idx] += idx * 0.1
-
-    utt.verify_grad(d, [diag_mat],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
-
-
-def test_row_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(R)
-
-    f = theano.function([x, s], sp.row_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense.T * s_val).T
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
-
-    verify_grad_sparse(sp.row_scale, [x_val, s_val], structured=False)
-
-
-def test_col_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(C)
-
-    f = theano.function([x, s], sp.col_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense * s_val)
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
-
-    verify_grad_sparse(sp.col_scale, [x_val, s_val], structured=False)
 
 if __name__ == '__main__':
     if 0:

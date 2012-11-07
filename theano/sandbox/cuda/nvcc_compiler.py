@@ -7,15 +7,20 @@ import subprocess
 import sys
 import warnings
 
+import numpy
+
+import theano
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension, local_bitwidth)
+from theano.gof.python25 import any
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
 
-from theano.configparser import config, AddConfigVar, StrParam, BoolParam
+from theano.configparser import (config, AddConfigVar, StrParam,
+                                 BoolParam, ConfigParam)
 
 AddConfigVar('nvcc.compiler_bindir',
              "If defined, nvcc compiler driver will seek g++ and gcc"
@@ -32,9 +37,21 @@ if config.cuda.nvccflags != '':
             'Please use nvcc.flags instead. You provided value: %s'
             % config.cuda.nvccflags)
 
+
+def filter_nvcc_flags(s):
+    assert isinstance(s, str)
+    flags = [flag for flag in s.split(' ') if flag]
+    if any([f for f in flags if not f.startswith("-")]):
+        raise ValueError(
+            "Theano nvcc.flags support only parameter/value pairs without"
+            " space between them. e.g.: '--machine 64' is not supported,"
+            " but '--machine=64' is supported. Please add the '=' symbol."
+            " nvcc.flags value is '%s'" % s)
+    return ' '.join(flags)
 AddConfigVar('nvcc.flags',
         "Extra compiler flags for nvcc",
-        StrParam(config.cuda.nvccflags))
+        ConfigParam(config.cuda.nvccflags, filter_nvcc_flags))
+
 
 AddConfigVar('nvcc.fastmath',
         "",
@@ -46,14 +63,16 @@ nvcc_version = None
 
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
-    try:
-        p = subprocess.Popen(['nvcc', '--version'], stdout=subprocess.PIPE,
+    def set_version():
+        p = subprocess.Popen([nvcc_path, '--version'], stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.wait()
         s = p.stdout.readlines()[-1].split(',')[1].strip().split()
         assert s[0] == 'release'
         global nvcc_version
         nvcc_version = s[1]
+    try:
+        set_version()
         return True
     except Exception:
         #try to find nvcc into cuda.root
@@ -61,6 +80,10 @@ def is_nvcc_available():
         if os.path.exists(p):
             global nvcc_path
             nvcc_path = p
+            try:
+                set_version()
+            except Exception:
+                return False
             return True
         else:
             return False
@@ -99,6 +122,40 @@ class NVCC_compiler(object):
         cuda_ndarray_cuh_hash = hash_from_file(
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
+
+        # numpy 1.7 deprecated the following macro but the didn't
+        # existed in the past
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if bool(numpy_ver < [1, 7]):
+            flags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            flags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            flags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            flags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+
+        # We compile cuda_ndarray.cu during import.
+        # We should not add device properties at that time.
+        # As the device is not selected yet!
+        # TODO: compile cuda_ndarray when we bind to a GPU?
+        import theano.sandbox.cuda
+        if hasattr(theano.sandbox, 'cuda'):
+            n = theano.sandbox.cuda.use.device_number
+            if n is None:
+                _logger.warn("We try to get compilation arguments for CUDA"
+                             " code, but the GPU device is not initialized."
+                             " This is probably caused by an Op that work on"
+                             " the GPU that don't inherit from GpuOp."
+                             " We Initialize the GPU now.")
+                theano.sandbox.cuda.use("gpu",
+                                        force=True,
+                                        default_to_move_computation_to_gpu=False,
+                                        move_shared_float32_to_gpu=False,
+                                        enable_cuda=False)
+                n = theano.sandbox.cuda.use.device_number
+
+            p = theano.sandbox.cuda.device_properties(n)
+            flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
         return flags
 
     @staticmethod
@@ -197,7 +254,9 @@ class NVCC_compiler(object):
         # '--gpu-code=compute_13',
         #nvcc argument
         preargs1 = [pa for pa in preargs
-                    if pa.startswith('-O') or pa.startswith('--maxrregcount=')]
+                    if pa.startswith('-O') or
+                    pa.startswith('--maxrregcount=') or
+                    pa.startswith('-arch=')]
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 
@@ -210,13 +269,10 @@ class NVCC_compiler(object):
             preargs2.append('/Zi')
             cmd.extend(['-Xlinker', '/DEBUG'])
 
-        if sys.platform != 'win32':
-            if local_bitwidth() == 64:
-                cmd.append('-m64')
-                preargs2.append('-m64')
-            else:
-                cmd.append('-m32')
-                preargs2.append('-m32')
+        if local_bitwidth() == 64:
+            cmd.append('-m64')
+        else:
+            cmd.append('-m32')
 
         if len(preargs2) > 0:
             cmd.extend(['-Xcompiler', ','.join(preargs2)])
@@ -289,10 +345,6 @@ class NVCC_compiler(object):
         finally:
             os.chdir(orig_dir)
 
-        if nvcc_stdout:
-            # this doesn't happen to my knowledge
-            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
-
         for eline in nvcc_stderr.split('\n'):
             if not eline:
                 continue
@@ -306,6 +358,9 @@ class NVCC_compiler(object):
             _logger.info("NVCC: %s", eline)
 
         if p.returncode:
+            for i, l in enumerate(src_code.split('\n')):
+                print >> sys.stderr,  i + 1, l
+            print >> sys.stderr, '==============================='
             # filter the output from the compiler
             for l in nvcc_stderr.split('\n'):
                 if not l:
@@ -320,13 +375,16 @@ class NVCC_compiler(object):
                 except Exception:
                     pass
                 print >> sys.stderr, l
-            print >> sys.stderr, '==============================='
-            for i, l in enumerate(src_code.split('\n')):
-                print >> sys.stderr,  i + 1, l
+            print nvcc_stdout
+            print cmd
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print nvcc_stdout
+
+        if nvcc_stdout:
+            # this doesn't happen to my knowledge
+            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
 
         #touch the __init__ file
         file(os.path.join(location, "__init__.py"), 'w').close()

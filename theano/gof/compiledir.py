@@ -37,7 +37,7 @@ compiledir_format_dict = {"platform": platform.platform(),
                           "python_version": platform.python_version(),
                           "theano_version": theano.__version__,
                           "numpy_version": numpy.__version__,
-                          "g++": gcc_version_str.replace(" ", "_"),
+                          "gxx_version": gcc_version_str.replace(" ", "_"),
                          }
 compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
 default_compiledir_format =\
@@ -58,7 +58,14 @@ def default_compiledirname():
     return safe
 
 
+def filter_base_compiledir(path):
+    # Expand '~' in path
+    return os.path.expanduser(str(path))
+
+
 def filter_compiledir(path):
+    # Expand '~' in path
+    path = os.path.expanduser(path)
     # Turn path into the 'real' path. This ensures that:
     #   1. There is no relative path, which would fail e.g. when trying to
     #      import modules from the compile dir.
@@ -119,13 +126,16 @@ else:
 
 AddConfigVar('base_compiledir',
         "platform-independent root directory for compiled modules",
-        StrParam(default_base_compiledir, allow_override=False))
+        ConfigParam(
+            default_base_compiledir,
+            filter=filter_base_compiledir,
+            allow_override=False))
 
 AddConfigVar('compiledir',
         "platform-dependent cache directory for compiled modules",
         ConfigParam(
             os.path.join(
-                os.path.expanduser(config.base_compiledir),
+                config.base_compiledir,
                 default_compiledirname()),
             filter=filter_compiledir,
             allow_override=False))

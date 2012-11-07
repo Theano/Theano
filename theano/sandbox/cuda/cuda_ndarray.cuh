@@ -27,7 +27,7 @@ typedef float real;
 #define NUM_VECTOR_OP_THREADS_PER_BLOCK     256  //Should be read from device properties. (#10)
 #endif
 
-#if 0
+#if 1
 // Do not wait after every kernel & transfer.
 #define CNDA_THREAD_SYNC
 #else
@@ -75,15 +75,17 @@ struct CudaNdarray
     /* Type-specific fields go here. */
     //GpuTensorType::VoidTensor * vt;
     int nd; //the number of dimensions of the tensor
-    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
+    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES functions
     int * host_structure; //dim0, dim1, ... stride0, stride1, ...
     int data_allocated; //the number of bytes allocated for devdata
 
 
     //device pointers (allocated by cudaMalloc)
     mutable int dev_structure_fresh;
-    //dev_structure should be accessed via macros, otherwise may not be synchronized
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
+    //dev_structure should be accessed via the functions like
+    //CudaNdarray_DEV_DIMS, otherwise may not be
+    //synchronized with host_structure. The accessor functions will allocate it when needed.
+    mutable int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
 };
 
@@ -117,6 +119,12 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self);
  */
 DllExport int cnda_structure_size(int nd);
 
+/*
+ * This describes the shape of the ndarray. The array
+ * of dimensions is itself stored on the host.
+ * If you need to access the dimensions array from inside
+ * a kernel, use CudaNdarray_DEVICE_DIMS.
+ */
 DllExport const int *
 CudaNdarray_HOST_DIMS(const CudaNdarray * self);
 
@@ -126,8 +134,12 @@ CudaNdarray_HOST_STRIDES(const CudaNdarray * self);
 DllExport const int *
 CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self);
 
-DllExport void
-cnda_mark_dev_structure_dirty(CudaNdarray * self);
+DllExport inline void __attribute__((always_inline))
+cnda_mark_dev_structure_dirty(CudaNdarray * self)
+{
+    self->dev_structure_fresh = 0;
+}
+
 
 DllExport int
 CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase);
@@ -139,15 +151,42 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 /****
  *  Set the idx'th dimension to value d.
  *
- *  Updates the log2dim shaddow array.
+ *  Updates the log2dim shadow array.
  *
  *  Does not sync structure to host.
  */
-DllExport void
-CudaNdarray_set_dim(CudaNdarray * self, int idx, int d);
+DllExport inline void __attribute__((always_inline))
+CudaNdarray_set_dim(CudaNdarray * self, int idx, int d) 
+{
+    if ((idx >= self->nd) || (idx < 0) || (d < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: %i %i\n", idx, d);
+    }
 
-DllExport void
-CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
+    if (d != self->host_structure[idx])
+    {
+        self->host_structure[idx] = d;
+        int log2d = (int)log2((double)d);
+        self->host_structure[idx + 2*self->nd] = (d == (1 << log2d)) ? log2d : -1;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
+
+
+DllExport inline void __attribute__((always_inline))
+CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
+{
+    if ((idx >= self->nd) || (idx < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_stride arguments: %i %i\n", idx, s);
+    }
+
+    if (s != CudaNdarray_HOST_STRIDES(self)[idx])
+    {
+        self->host_structure[idx+self->nd] = s;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
 
 /***
  *  Update dependent variables from the contents of CudaNdarray_HOST_DIMS(self) and CudaNdarray_HOST_STRIDES(self)
@@ -156,10 +195,22 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
  */
 DllExport int cnda_copy_structure_to_device(const CudaNdarray * self);
 
+/* CudaNdarray_DEV_DIMS gives the same information as CudaNdarray_HOST_DIMS,
+ * but stored on the GPU. Use this pointer when it needs to be accessed
+ * from inside a CUDA kernel.
+ */
 DllExport const int *CudaNdarray_DEV_DIMS(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_STRIDES(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self);
 DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
+
+// The following 4 macro are here to help make c code generator that work on
+// both PyArray and CudaNdarray.  This is at least used for Subtensor and
+// GpuSubtensor
+#define CudaNdarray_DIMS CudaNdarray_HOST_DIMS
+#define CudaNdarray_NDIM(self) self->nd
+#define CudaNdarray_STRIDES CudaNdarray_HOST_STRIDES
+#define CudaNdarray_BYTES CudaNdarray_DEV_DATA
 
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
@@ -180,7 +231,46 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
  *
  * Note: This does not allocate storage for data.
  */
-DllExport int CudaNdarray_set_nd(CudaNdarray * self, const int nd);
+DllExport inline int __attribute__((always_inline))
+CudaNdarray_set_nd(CudaNdarray * self, const int nd)
+{
+    if (nd != self->nd)
+    {
+        if (self->dev_structure)
+        {
+            if (device_free(self->dev_structure))
+            {
+                return -1;
+            }
+            self->dev_structure = NULL;
+        }
+        if (self->host_structure)
+        {
+            free(self->host_structure);
+            self->host_structure = NULL;
+            self->nd = -1;
+        }
+        if (nd == -1) return 0;
+
+        self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
+        if (NULL == self->host_structure)
+        {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
+            return -1;
+        }
+        //initialize all dimensions and strides to 0
+        for (int i = 0; i < cnda_structure_size(nd); ++i)
+        {
+            self->host_structure[i] = 0;
+        }
+        //The device structure will be created in cnda_copy_structure_to_device
+        //if needed.
+        self->nd = nd;
+        self->dev_structure_fresh = 0;
+    }
+    return 0;
+}
+
 
 /**
  * CudaNdarray_alloc_contiguous
@@ -210,7 +300,7 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         size = size * dim[i];
     }
 
-    if (CudaNdarray_is_c_contiguous(self) && (self->data_allocated == size))
+    if ((self->data_allocated == size) && CudaNdarray_is_c_contiguous(self))
     {
         return 0;
     }
@@ -310,8 +400,21 @@ DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  * Transfer the contents of CudaNdarray `other` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
+ * TODO: WRITEME: what does "if necessary" mean?
+ * TODO: we use this to implement set/inc subtensor, where self is a view of
+ *       the original tensor so that we write only to the subtensor. How
+ *       do we ensure that self is not reallocated in this case?
+ *
+ *  unbroadcast: if true, this means that other is broadcastable in some
+ *               dimensions, and the result, self, is not.
+ *               ie, if unbroadcast=false, we must do the broadcasting
+ *               operation as part of the copy.
+ *               e.g. suppose self and other are 2D matrices and other
+ *               has only one row. Then we need to copy this row several
+ *               times when copying to self.
  */
-DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast = false);
+DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
+        const CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
@@ -325,7 +428,24 @@ CudaNdarray_ZEROS(int n, int * dims);
 /**
  * True iff the strides look like [dim[nd-2], dim[nd-3], ... , dim[0], 1]
  */
-DllExport bool CudaNdarray_is_c_contiguous(const CudaNdarray * self);
+DllExport inline bool  __attribute__((always_inline))
+CudaNdarray_is_c_contiguous(const CudaNdarray * self)
+{
+    bool c_contiguous = true;
+    int size = 1;
+    for (int i = self->nd-1; (i >= 0) && c_contiguous; --i)
+    {
+        if (CudaNdarray_HOST_DIMS(self)[i] == 1)
+            continue;
+        if (CudaNdarray_HOST_STRIDES(self)[i] != size)
+        {
+            c_contiguous = false;
+        }
+        size = size * CudaNdarray_HOST_DIMS(self)[i];
+    }
+    return c_contiguous;
+}
+
 DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
 
 DllExport int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
@@ -341,7 +461,12 @@ DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const
 DllExport PyObject*
 CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
-static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
+int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
+
+
+PyObject * CudaNdarray_View(const CudaNdarray * self);
+PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
+
 
 #endif
 /*

@@ -251,7 +251,9 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         #TODO support broadcast!
         #TODO assert all input have the same shape
         z, = out
-        if z[0] is None or z[0].shape != inputs[0].shape:
+        if (z[0] is None or
+            z[0].shape != inputs[0].shape or
+            not z[0].is_c_contiguous()):
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         if inputs[0].shape != inputs[1].shape:
             raise TypeError("PycudaElemwiseSourceModuleOp:"
@@ -339,7 +341,9 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
 
         def thunk():
             z = outputs[0]
-            if z[0] is None or z[0].shape != inputs[0][0].shape:
+            if (z[0] is None or
+                z[0].shape != inputs[0][0].shape or
+                not z[0].is_c_contiguous()):
                 z[0] = theano.sandbox.cuda.CudaNdarray.zeros(
                     inputs[0][0].shape)
             if inputs[0][0].shape != inputs[1][0].shape:

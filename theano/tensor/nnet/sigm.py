@@ -30,13 +30,20 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if x > 30.0:
             return 1.0
         return 1.0 / (1.0 + numpy.exp(-x))
+
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         y = scalar_sigmoid(x)
-        return [gz * y * (1.0 - y)]
+        rval = gz * y * (1.0 - y)
+
+        assert rval.type.dtype.find('float') != -1
+
+        return [rval]
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -50,6 +57,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
             return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
         else:
             raise NotImplementedError('only floatingpoint is implemented')
+
     def c_code_cache_version(self):
         v = super(ScalarSigmoid, self).c_code_cache_version()
         if v:
@@ -61,7 +69,7 @@ sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
 sigmoid_inplace = elemwise.Elemwise(
         ScalarSigmoid(scalar.transfer_type(0)),
-        inplace_pattern={0:0},
+        inplace_pattern={0: 0},
         name='sigmoid_inplace',
         )
 
@@ -76,12 +84,15 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         if x > 30.0:
             return x
         return numpy.log1p(numpy.exp(x))
+
     def impl(self, x):
         return ScalarSoftplus.static_impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         return [gz * scalar_sigmoid(x)]
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -95,27 +106,29 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
             return """%(z)s = %(x)s < -745.0 ? 0.0 : %(x)s > 16.0 ? %(x)s : log1p(exp(%(x)s));""" % locals()
         else:
             raise NotImplementedError('only floatingpoint is implemented')
+
     def c_code_cache_version(self):
         v = super(ScalarSoftplus, self).c_code_cache_version()
         if v:
             return (2,) + v
         else:
             return v
-scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
+scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name=                                                                                                                                                                                                        'scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
+
 def _skip_mul_1(r):
     if r.owner and r.owner.op == tensor.mul:
-        not_is_1 = [i for i in r.owner.inputs if not _is_1(i) ]
-        if len(not_is_1)==1:
+        not_is_1 = [i for i in r.owner.inputs if not _is_1(i)]
+        if len(not_is_1) == 1:
             return not_is_1[0]
 
 logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
-    allow_multiple_clients = True,
+    allow_multiple_clients=True,
     skip_identities_fn=_skip_mul_1)
 
 
@@ -131,21 +144,22 @@ def _is_1(expr):
 log1msigm_to_softplus = gof.PatternSub(
     (tensor.log,
         (tensor.sub,
-            dict(pattern='y', constraint = _is_1),
+            dict(pattern='y', constraint=_is_1),
             (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
-    allow_multiple_clients = True,
+    allow_multiple_clients=True,
     skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p,
      (tensor.exp, 'x')),
     (softplus, 'x'),
-    allow_multiple_clients = True)
+    allow_multiple_clients=True)
 
-opt.register_stabilize(logsigm_to_softplus, name = 'logsigm_to_softplus')
-opt.register_stabilize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
-opt.register_stabilize(log1pexp_to_softplus, name = 'log1pexp_to_softplus')
+opt.register_stabilize(logsigm_to_softplus, name='logsigm_to_softplus')
+opt.register_stabilize(log1msigm_to_softplus, name='log1msigm_to_softplus')
+opt.register_stabilize(log1pexp_to_softplus, name='log1pexp_to_softplus')
+
 
 def is_1pexp(t):
     """
@@ -239,7 +253,7 @@ def partition_num_or_denom(r, f):
         else:
             neg_t, f_t = f_t
             f_terms.append(f_t)
-            neg ^= neg_t #bit flip if neg_t is true
+            neg ^= neg_t  # bit flip if neg_t is true
     return f_terms, rest, neg
 
 
@@ -291,7 +305,8 @@ def local_exp_over_1_plus_exp(node):
         #find all the exp() terms in the numerator
         num, denom = node.inputs
         num_exp_x, num_rest, num_neg = partition_num_or_denom(num, is_exp)
-        denom_1pexp, denom_rest, denom_neg = partition_num_or_denom(denom, is_1pexp)
+        denom_1pexp, denom_rest, \
+            denom_neg = partition_num_or_denom(denom, is_1pexp)
 
         sigmoids = []
         for t in denom_1pexp:
@@ -303,7 +318,7 @@ def local_exp_over_1_plus_exp(node):
                 # case: 1/(1+exp(x))
                 sigmoids.append(sigmoid(-t))
 
-        if not sigmoids: # we didn't find any.  abort
+        if not sigmoids:  # we didn't find any.  abort
             return
         # put the new numerator together
         new_num = sigmoids + [tensor.exp(t) for t in num_exp_x] + num_rest
@@ -321,6 +336,7 @@ def local_exp_over_1_plus_exp(node):
             return [new_num / denom_rest[0]]
         else:
             return [new_num / tensor.mul(*denom_rest)]
+
 
 def parse_mul_tree(root):
     """
@@ -504,7 +520,7 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
         sigm_minus_x = []
     if full_tree is None:
         full_tree = tree
-    if False: # Debug code.
+    if False:  # Debug code.
         print '<perform_sigm_times_exp>'
         print '  full_tree   = %s' % full_tree
         print '  tree        = %s' % tree
@@ -613,10 +629,13 @@ def local_inv_1_plus_exp(node):
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
                     if scalars and numpy.allclose(numpy.sum(scalars), 1):
                         return opt._fill_chain(
-                                sigmoid(tensor.neg(nonconsts[0].owner.inputs[0])),
+                                sigmoid(
+                                    tensor.neg(nonconsts[0].owner.inputs[0])),
                                 scalar_inputs)
 
 # Registration is below, and conditional.
+
+
 @gof.local_optimizer([tensor.sub])
 def local_1msigmoid(node):
     """
@@ -625,7 +644,7 @@ def local_1msigmoid(node):
     if node.op == tensor.sub:
         sub_l, sub_r = node.inputs
         if len(sub_r.clients) > 1:
-            return # graph is using both sigm and 1-sigm
+            return  # graph is using both sigm and 1-sigm
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
                 val_l = opt.get_constant_value(sub_l)
@@ -678,13 +697,14 @@ if 0:
                         assert t0.owner.op == div
                         t0top, t0bot = t0.owner.inputs
                         t1top, t1bot = t1.owner.inputs
-                        rval.append(div(mul(*(t0top+t1top)), mul(*(t0bot+t1bot))))
+                        rval.append(div(mul(*(
+                            t0top + t1top)), mul(*(t0bot + t1bot))))
 
                         if len(rval) > 100:
                             # This loop can be exponentially long.
                             # aborting
                             return []
-        elif len(node.outputs)>1:
+        elif len(node.outputs) > 1:
             return []
         else:
             return [node.outputs[0]]

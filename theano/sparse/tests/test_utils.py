@@ -1,3 +1,4 @@
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano.sparse

@@ -57,9 +57,19 @@ def compile_cutils():
                                      preargs=args)
 
 try:
-    # Must be at the beginning to ensure no conflict with other project
-    # that would use the same module name.
+    # See gh issue #728 for why these lines are here. Summary: compiledir
+    # must be at the beginning of the path to avoid conflicts with any other
+    # cutils_ext modules that might exist. An __init__.py file must be created
+    # for the same reason. Note that these 5 lines may seem redundant (they are
+    # repeated in compile_str()) but if another cutils_ext does exist then it
+    # will be imported and compile_str won't get called at all.
     sys.path.insert(0, config.compiledir)
+    location = os.path.join(config.compiledir, 'cutils_ext')
+    if not os.path.exists(location):
+        os.mkdir(location)
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        file(os.path.join(location, '__init__.py'), 'w').close()
+
     try:
         from cutils_ext.cutils_ext import *
     except ImportError:
@@ -71,7 +81,7 @@ try:
     # compile the cutils_ext module simultaneously.
         try:
             try:
-                # We must retry to import it as some other processs could
+                # We must retry to import it as some other process could
                 # have been compiling it between the first failed import
                 # and when we receive the lock
                 from cutils_ext.cutils_ext import *

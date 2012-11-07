@@ -9,6 +9,7 @@ from theano import tensor
 import numpy
 import theano
 import theano.tensor as T
+from numpy.testing.noseclasses import KnownFailureTest
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -41,7 +42,15 @@ def tes_use():
     tcn.use()
 
 
-def test_sum():
+def tensor_pattern_to_gpu_pattern(shape, pattern):
+    gpu_pattern = [0 for elem in shape]
+    for idx in pattern:
+        gpu_pattern[idx] = 1
+    gpu_pattern = tuple(gpu_pattern)
+    return gpu_pattern
+
+
+def test_careduce():
     """
     test sum pattern 1, 11, 10, 01, 001, 010, 100, 110, 011, 111,
     0011, 0101, 0111, 1011, 1111
@@ -55,71 +64,116 @@ def test_sum():
 
     TODO: test with broadcast
     """
-    for shape, pattern in [((100,3,1300),[1]),
-                           ((0,),[0]),((5,),[0]),
-                           ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
-                           ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
-                           ((0,0,0,0),[0,1,2,3]),
-                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
-                           ((5,4,3,10,11),[1,2]),
-                           ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+    for scalar_op in [theano.scalar.add, theano.scalar.maximum]:
+        for shape, pattern in [((1,1),(1,)),
+                               ((1,0),(1,)),
+                               ((0,1),(1,)),
+                               ((0,0),(1,)),
+                               ((0,0,0),(1,2)),
+                               ((0,0,0,0),(1,2,3)),
+                               ((2,1),(1,)),
+                               ((1,2),(1,)),
+                               ((100,3,1300),[1]),
+                               ((0,),[0]),((5,),[0]),
+                               ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
+                               ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
+                               ((0,0,0,0),[0,1,2,3]),
+                               ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+                               ((5,4,3,10,11),[1,2]),
+                               ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
 
-                           #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enought thread/block in each dimensions
-                           ((4100,3),[0]),((3,4101),[0]),#10
-                           ((1024,33),[0]),((33,1024),[0]),#10
-                           ((1025,33),[0]),((33,1025),[0]),#10
+                               #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
+                               ((4100,3),[0]),((3,4101),[0]),#10
+                               ((1024,33),[0]),((33,1024),[0]),#10
+                               ((1025,33),[0]),((33,1025),[0]),#10
 
-                           ((4100,3),[1]),((3,4101),[1]),#01
-                           ((1024,33),[1]),((33,1024),[1]),#01
-                           ((1025,33),[1]),((33,1025),[1]),#01
+                               ((4100,3),[1]),((3,4101),[1]),#01
+                               ((1024,33),[1]),((33,1024),[1]),#01
+                               ((1025,33),[1]),((33,1025),[1]),#01
 
-                           ((4100,3),[0,1]),((3,4101),[0,1]),#11
-                           ((1024,33),[0,1]),((33,1024),[0,1]),#01
-                           ((1025,33),[0,1]),((33,1025),[0,1]),#01
+                               ((4100,3),[0,1]),((3,4101),[0,1]),#11
+                               ((1024,33),[0,1]),((33,1024),[0,1]),#01
+                               ((1025,33),[0,1]),((33,1025),[0,1]),#01
 
-                           ((4100,4,3),[0]),((5,4100,3),[0]),((5,4,4100),[0]),#100
-                           ((4100,4,3),[1]),((5,4100,3),[1]),((5,4,4100),[1]),#010
-                           ((4100,4,3),[2]),((5,4100,3),[2]),((5,4,4100),[2]),#001
-                           ((4100,4,3),[0,1]),((5,4100,3),[0,1]),((5,4,4100),[0,1]),#110
-                           ((4100,4,3),[1,2]),((5,4100,3),[1,2]),((5,4,4100),[1,2]),#011
-                           #((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
-                           ((4100,4,3),[0,1,2]),((5,4100,3),[0,1,2]),((5,4,4100),[0,1,2]),#111
+                               ((4100,4,3),[0]),((5,4100,3),[0]),((5,4,4100),[0]),#100
+                               ((4100,4,3),[1]),((5,4100,3),[1]),((5,4,4100),[1]),#010
+                               ((4100,4,3),[2]),((5,4100,3),[2]),((5,4,4100),[2]),#001
+                               ((4100,4,3),[0,1]),((5,4100,3),[0,1]),((5,4,4100),[0,1]),#110
+                               ((4100,4,3),[1,2]),((5,4100,3),[1,2]),((5,4,4100),[1,2]),#011
+                               #((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
+                               ((4100,4,3),[0,1,2]),((5,4100,3),[0,1,2]),((5,4,4100),[0,1,2]),#111
 
-                           ((4100,4,3,2),[2,3]),((4,4100,3,2),[2,3]),((4,3,4100,2),[2,3]),((4,3,2,4100),[2,3]),#0011
-                           ((4100,4,3,2),[1,3]),((4,4100,3,2),[1,3]),((4,3,4100,2),[1,3]),((4,3,2,4100),[1,3]),#0101
-                           ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
-                           ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
-                           ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),#1111
+                               ((4100,4,3,2),[2,3]),((4,4100,3,2),[2,3]),((4,3,4100,2),[2,3]),((4,3,2,4100),[2,3]),#0011
+                               ((4100,4,3,2),[1,3]),((4,4100,3,2),[1,3]),((4,3,4100,2),[1,3]),((4,3,2,4100),[1,3]),#0101
+                               ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
+                               ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
+                               ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),#1111
 
 
-                           #test pattern implemented by reshape
-                           ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
-                           ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
-                           ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
-                           ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
-                           ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
+                               #test pattern implemented by reshape
+                               ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
+                               ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
+                               ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
+                               ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
+                               ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
 
-                           ]:
-        a = tensor.TensorType('float32', (False,) * len(shape))()
-        b = T.Sum(pattern)(a)
-        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
-#        val = numpy.ones(shape)
-#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
-        val = theano._asarray(val, dtype='float32')
-        f = theano.function([a], b, mode=mode_with_gpu)
-        f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
-        if val.size == 0:
-            assert f2(val) == f(val), ('shape', shape, 'pattern', pattern)
-        else:
+                               ]:
+
+            op = tensor.CAReduce(scalar_op, axis=pattern)
+            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            #GpuCAReduce{maximum} support only those patterns
+            if scalar_op is theano.scalar.maximum and pat not in [
+                (0, 1), (0, 1, 1), (0, 1, 1)]:
+                continue
+
+            a = tensor.TensorType('float32', (False,) * len(shape))()
+            b = op(a)
+            val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+    #        val = numpy.ones(shape)
+    #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+            val = theano._asarray(val, dtype='float32')
+            f = theano.function([a], b, mode=mode_with_gpu)
+            f2 = theano.function([a], b, mode=mode_without_gpu)
+            assert tcn.GpuCAReduce in [x.op.__class__
+                                       for x in f.maker.fgraph.toposort()]
+            assert op.__class__ in [x.op.__class__
+                                    for x in f2.maker.fgraph.toposort()]
+            f_caused_value_error = False
+            try:
+                f_out = f(val)
+            except ValueError, e:
+                exc = e
+                f_caused_value_error = True
+
+            f2_caused_value_error = False
+            try:
+                f2_out = f2(val)
+            except ValueError, e:
+                exc2 = e
+                f2_caused_value_error = True
+
+            if f_caused_value_error != f2_caused_value_error:
+                if f_caused_value_error:
+                    print 'f caused this value error:'
+                    print exc
+                else:
+                    print 'f did not raise a value error, but should have'
+                if f2_caused_value_error:
+                    print 'f2 caused this value error:'
+                    print exc2
+                else:
+                    print 'f should not have raised a value error'
+                print 'shape was: ', shape
+                print 'pattern was: ', pattern
+                assert False
+
             try:
                 #We raise the error threashold as we sum big matrix
                 #and this cause small rounding difference with some seed
                 #example in debug mode with unittests.rseed=9275
                 orig_rtol = theano.tensor.basic.float32_rtol
                 theano.tensor.basic.float32_rtol = 2e-5
-                assert _allclose(f2(val), f(val)), ('shape', shape,
+                assert _allclose(f_out, f2_out), ('shape', shape,
                                                     'pattern', pattern,
                                                     sum([shape[i] for i in pattern]),
                                                     f2(val), f(val), val)
@@ -127,65 +181,81 @@ def test_sum():
                 theano.tensor.basic.float32_rtol = orig_rtol
 
 
-        #test with dimshuffle
-        #we shuffle the 2 outer dims.
-    for shape, pattern in [#((5,),[0]),
-                           ((5,4),[0,1]),((5,4),[0]),
-                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
-                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
-        a = tensor.TensorType('float32', (False,) * len(shape))()
-        dim_pattern = range(len(shape))
-        dim_pattern[0] = 1
-        dim_pattern[1] = 0
-        a = a.dimshuffle(dim_pattern)
-        b = T.Sum(pattern)(a)
-        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
-#        val = numpy.ones(shape)
-#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
-        val = theano._asarray(val, dtype='float32')
-        f = theano.function([a], b, mode=mode_with_gpu)
-        f2 = theano.function([a], b, mode=mode_without_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
-        assert _allclose(f2(val), f(val)), ('shape', shape,
-                                            'pattern', pattern,
-                                            sum([shape[i] for i in pattern]))
+            #test with dimshuffle
+            #we shuffle the 2 outer dims.
+        for shape, pattern in [#((5,),[0]),
+                               ((5,4),[0,1]),((5,4),[0]),
+                               ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
+                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+            op = tensor.CAReduce(scalar_op, axis=pattern)
+            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            #GpuCAReduce{maximum} support only those patterns
+            if scalar_op is theano.scalar.maximum and pat not in [
+                (0, 1), (0, 1, 1), (0, 1, 1)]:
+                continue
+            a = tensor.TensorType('float32', (False,) * len(shape))()
+            dim_pattern = range(len(shape))
+            dim_pattern[0] = 1
+            dim_pattern[1] = 0
+            a = a.dimshuffle(dim_pattern)
+            b = op(a)
+            val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+    #        val = numpy.ones(shape)
+    #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+            val = theano._asarray(val, dtype='float32')
+            f = theano.function([a], b, mode=mode_with_gpu)
+            f2 = theano.function([a], b, mode=mode_without_gpu)
+            assert tcn.GpuCAReduce in [x.op.__class__
+                                       for x in f.maker.fgraph.toposort()]
+            assert op.__class__ in [x.op.__class__
+                                    for x in f2.maker.fgraph.toposort()]
+            assert _allclose(f2(val), f(val)), ('shape', shape,
+                                                'pattern', pattern,
+                                                sum([shape[i] for i in pattern]))
 
-
-        #test with broadcast
-    for shape, pattern in [((5,),[0]),
-                           ((5,4),[0,1]),((5,4),[0]),
-                           ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
-                           ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
-        shape = numpy.asarray(shape) * 2
-        a = tensor.TensorType('float32', (False,) * len(shape))()
-        a2 = tcn.CudaNdarrayType((False,) * len(shape))()
-        b = T.Sum(pattern)(a)
-        b2 = T.Sum(pattern)(a2)
-        val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
-#        val = numpy.ones(shape)
-#        val = numpy.arange(numpy.prod(shape)).reshape(shape)
-        val = theano._asarray(val, dtype='float32')
-        val2 = cuda.CudaNdarray(val)
-        if len(shape) == 1:
-            val = val[::2]
-            val2 = val2[::2]
-        elif len(shape) == 2:
-            val = val[::2, ::2]
-            val2 = val2[::2, ::2]
-        elif len(shape) == 3:
-            val = val[::2, ::2, ::2]
-            val2 = val2[::2, ::2, ::2]
-        elif len(shape) == 4:
-            val = val[::2, ::2, ::2, ::2]
-            val2 = val2[::2, ::2, ::2, ::2]
-        f = theano.function([a], b, mode=mode_without_gpu)
-        f2 = theano.function([a2], b2, mode=mode_with_gpu)
-        assert tcn.GpuSum in [x.op.__class__ for x in f2.maker.fgraph.toposort()]
-        assert T.Sum in [x.op.__class__ for x in f.maker.fgraph.toposort()]
-        assert _allclose(f2(val2), f(val)), ('shape', shape,
-                                             'pattern', pattern,
-                                             sum([shape[i] for i in pattern]))
+            #test with broadcast
+        for shape, pattern in [((5,),[0]),
+                               ((5,4),[0,1]),((5,4),[0]),
+                               ((5,4,3),[0]),((5,4,3),[0,1]),
+                               ((5,4,3),[2]),((5,4,3),[0,1,2]),
+                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+            op = tensor.CAReduce(scalar_op, axis=pattern)
+            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            #GpuCAReduce{maximum} support only those patterns
+            if scalar_op is theano.scalar.maximum and pat not in [
+                (0, 1), (0, 1, 1), (0, 1, 1)]:
+                continue
+            shape = numpy.asarray(shape) * 2
+            a = tensor.TensorType('float32', (False,) * len(shape))()
+            a2 = tcn.CudaNdarrayType((False,) * len(shape))()
+            b = op(a)
+            b2 = op(a2)
+            val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
+    #        val = numpy.ones(shape)
+    #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
+            val = theano._asarray(val, dtype='float32')
+            val2 = cuda.CudaNdarray(val)
+            if len(shape) == 1:
+                val = val[::2]
+                val2 = val2[::2]
+            elif len(shape) == 2:
+                val = val[::2, ::2]
+                val2 = val2[::2, ::2]
+            elif len(shape) == 3:
+                val = val[::2, ::2, ::2]
+                val2 = val2[::2, ::2, ::2]
+            elif len(shape) == 4:
+                val = val[::2, ::2, ::2, ::2]
+                val2 = val2[::2, ::2, ::2, ::2]
+            f = theano.function([a], b, mode=mode_without_gpu)
+            f2 = theano.function([a2], b2, mode=mode_with_gpu)
+            assert tcn.GpuCAReduce in [x.op.__class__
+                                       for x in f2.maker.fgraph.toposort()]
+            assert op.__class__ in [x.op.__class__
+                                    for x in f.maker.fgraph.toposort()]
+            assert _allclose(f2(val2), f(val)), ('shape', shape,
+                                                 'pattern', pattern,
+                                                 sum([shape[i] for i in pattern]))
 
 
 def test_flatten():
@@ -456,7 +526,7 @@ def test_elemwise_composite_support_code():
     P = T.exp(-(Y - U) ** 2)
     epsilon = numpy.asarray(0.001, dtype="float32")
     NLL = -T.mean(T.log(P + epsilon))  # SupportCodeError
-    G = T.grad(NLL, wrt=[W])
+    G = theano.gradient.grad(NLL, wrt=[W])
 
     backup = theano.config.warn.identify_1pexp_bug
     theano.config.warn.identify_1pexp_bug = False
@@ -468,6 +538,7 @@ def test_elemwise_composite_support_code():
 
     topo = f_grad.maker.fgraph.toposort()
     assert sum([isinstance(node.op, T.Elemwise) for node in topo]) == 1
+    #I suspect this was failing in the original branch too
     assert sum([isinstance(node.op, tcn.GpuElemwise) for node in topo]) == 1
 
 
@@ -774,11 +845,11 @@ def test_gpujoin_gpualloc():
 
     assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
     assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
-    assert sum([node.op == B.gpu_alloc
+    assert sum([isinstance(node.op, B.GpuAlloc)
                 for node in f_gpu.maker.fgraph.toposort()]) == 2
     assert sum([node.op == B.gpu_join
                 for node in f_gpu.maker.fgraph.toposort()]) == 1
-    assert sum([node.op == B.gpu_alloc
+    assert sum([isinstance(node.op, B.GpuAlloc)
                 for node in f_gpu2.maker.fgraph.toposort()]) == 2
     assert sum([node.op == B.gpu_join
                 for node in f_gpu2.maker.fgraph.toposort()]) == 1
@@ -833,6 +904,12 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
 
 # This is to don't duplicate test.
 class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
+
+    # This prevents nose from printing method docstrings instead of method
+    # names
+    def shortDescription(self):
+        return None
+
     shared = staticmethod(cuda.shared_constructor)
     sub = cuda.GpuSubtensor
     inc_sub = cuda.GpuIncSubtensor
@@ -850,6 +927,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
                      self).__init__(name)
 
     def test_adv_sub1_fast(self):
+
         """We check that the special cases of advanced indexing that
         use CudaNdarrayTakeFrom are handled correctly
 
@@ -858,28 +936,38 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
         # The variable fast is used to set the member perform_using_take of
         # the Op.  It is only useful for testing that we use the fast
         # version when we should. Users should not use it.
-        for data, idx, fast in [(rand(70000), range(70000), True),
-                                (rand(70000, 5), range(70000), True),
-                                (rand(70000, 2, 3), range(70000), True),
-                                (rand(1025, 1025), [5, 10], True),
-                                (rand(3, 1025, 1026), [1, 2], True),
-                                (rand(1025, 67000), [5, 10], True),
-                                (rand(3, 10, 68000), [1, 2], True),
-                                (rand(3, 69000, 11), [1, 2], True),
-                                # use too much memory to enable by default.
-                                #(rand(2*10e7), [-1, 199999999], True),
-                                (rand(4, 5), [2, 3], True),
-                                (rand(4, 2, 3), [0, 3], True),
-                                (rand(4, 2, 3), [3, 3, 1, 1, 2,
-                                                 2, 0, 0], True),
-                                (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0,
-                                                 0, -1, -2, -3, -4], True),
-                                # Test 4 dims as gpu. code use another algo
-                                # in that case. This new algo is not as much
-                                # optimized for that case.
-                                (rand(4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
-                                                    -1, -2, -3, -4], False),
-                            ]:
+        for shape, idx, fast in [((70000,), range(70000), True),
+                                 ((70000, 5), range(70000), True),
+                                 ((70000, 2, 3), range(70000), True),
+                                 ((1025, 1025), [5, 10], True),
+                                 ((3, 1025, 1026), [1, 2], True),
+                                 ((1025, 67000), [5, 10], True),
+                                 ((3, 10, 68000), [1, 2], True),
+                                 ((3, 69000, 11), [1, 2], True),
+                                 # much memory, will be disabled if needed
+                                 ((2*10e7,), [-1, 199999999], True),
+                                 ((4, 5), [2, 3], True),
+                                 ((4, 2, 3), [0, 3], True),
+                                 ((4, 2, 3), [3, 3, 1, 1, 2,
+                                              2, 0, 0], True),
+                                 ((4, 2, 3), [3, 3, 1, 1, 2, 2, 0,
+                                              0, -1, -2, -3, -4], True),
+                                 # Test 4 dims as gpu. code use another algo
+                                 # in that case. This new algo is not as much
+                                 # optimized for that case.
+                                 ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
+                                                 -1, -2, -3, -4], False),
+                             ]:
+            # If there is not enough memory on the GPU, skip the test
+            size_needed = numpy.prod(shape) * (4 + 1)
+            if isinstance(theano.compile.get_default_mode(),
+                          theano.compile.DebugMode):
+                size_needed = numpy.prod(shape) * 4 * 4
+
+            if size_needed >= theano.sandbox.cuda.mem_info()[0]:
+                #print "skip", shape
+                continue
+            data = rand(*shape)
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data, borrow=True)
 
@@ -895,7 +983,10 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
-            t.owner.op.perform_using_take = fast
+            #DebugMode does a copy of the input, so we lose the strides.
+            if not isinstance(theano.compile.get_default_mode(),
+                              theano.compile.DebugMode):
+                t.owner.op.perform_using_take = fast
             val = theano.function([], t, mode=self.mode)()
 
             val = numpy.asarray(val)
@@ -988,7 +1079,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.fgraph.nodes])
+                                    for node in f.maker.fgraph.apply_nodes])
 
                     #test the optijmization local_gpu_elemwise_1
                     f = theano.function(
@@ -999,7 +1090,7 @@ def test_many_arg_elemwise():
                     #assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
-                                    for node in f.maker.fgraph.nodes])
+                                    for node in f.maker.fgraph.apply_nodes])
                     assert numpy.allclose(out, outputs[-1])
 
                 results_gpu, results_cpu = outputs

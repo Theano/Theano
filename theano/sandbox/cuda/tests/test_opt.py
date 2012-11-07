@@ -44,11 +44,11 @@ def test_int_pow():
     f = theano.function([a], (a*4).sum(), mode=mode_with_gpu)
 
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
-    assert op_names == ['GpuSum', 'GpuElemwise', 'HostFromGpu']
+    assert op_names == ['GpuCAReduce', 'GpuElemwise', 'HostFromGpu']
 
     f = theano.function([a], tensor.pow(a,4).sum(), mode=mode_with_gpu)
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
-    assert op_names == ['GpuElemwise', 'GpuSum', 'HostFromGpu']
+    assert op_names == ['GpuElemwise', 'GpuCAReduce', 'HostFromGpu']
 
     #theano.printing.debugprint(f)
 
@@ -68,6 +68,39 @@ def test_gpualloc():
     f = theano.function([], v+x)
     l = f.maker.fgraph.toposort()
     assert numpy.any(ininstance(x.op, cuda.GpuAlloc) for x in l )
+
+
+def test_alloc_memset_0():
+    i = tensor.iscalar()
+    z = numpy.zeros((1,), dtype='float32')
+    o = numpy.ones((1,), dtype='float32')
+    ones = numpy.ones((2,), dtype='float32')
+
+    # Test with 0
+    a = basic_ops.gpu_alloc(cuda.gpu_from_host(tensor.constant(z)), i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, basic_ops.GpuAlloc) and topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 0).all()
+
+    # Test with 1
+    a = basic_ops.gpu_alloc(cuda.gpu_from_host(tensor.constant(o)), i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, basic_ops.GpuAlloc)
+    assert not topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 1).all()
+
+    # Test with 1, 1
+    a = basic_ops.gpu_alloc(cuda.gpu_from_host(tensor.constant(ones)), i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, basic_ops.GpuAlloc)
+    assert not topo[0].op.memset_0
+    assert (numpy.asarray(f(2)) == 1).all()
 
 
 def test_gpuspecifyshape():
@@ -343,6 +376,29 @@ class TestIfElse(theano.tests.test_ifelse.test_ifelse):
 
     def get_ifelse(self, n):
         return theano.ifelse.IfElse(n, gpu=True, as_view=True)
+
+def test_incsubtensor_mixed():
+
+    # This catches a bug that occurred when incrementing
+    # a float32 tensor by a float64 tensor.
+    # The result is defined to be float32, so it is OK
+    # to downcast the float64 increment in order to
+    # transfer it to the GPU.
+    # The bug was that the optimization called GpuFromHost
+    # without casting first, causing the optimization to
+    # fail.
+    X = tensor.fmatrix()
+    Y = tensor.dmatrix()
+    Z = tensor.inc_subtensor(X[0:1,0:1],Y)
+    f = theano.function([X,Y], Z, mode=mode_with_gpu)
+    packed, = f.maker.fgraph.inputs[1].clients
+    client, idx = packed
+    print client
+    assert isinstance(client.op, tensor.Elemwise)
+    assert isinstance(client.op.scalar_op, theano.scalar.Cast)
+    packed ,= client.outputs[0].clients
+    client, idx = packed
+    assert isinstance(client.op, cuda.GpuFromHost)
 
 if __name__ == '__main__':
     test_gpualloc()

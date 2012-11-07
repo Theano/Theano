@@ -403,7 +403,7 @@ class TestEquilibrium(object):
                  PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
                  PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
                  ],
-                max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
+                max_use_ratio = 1. / len(g.apply_nodes)) # each opt can only be applied once
             opt.optimize(g)
         finally:
             _logger.setLevel(oldlevel)

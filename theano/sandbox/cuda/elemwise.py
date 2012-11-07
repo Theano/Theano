@@ -36,8 +36,14 @@ class SupportCodeError(Exception):
 
 class NaiveAlgo(object):
     verbose = 0 # 1, 2 or 3 for more verbose output.
-    #cache_version = ()
-    cache_version = (15, verbose)
+
+    @property
+    def cache_version(self):
+        ver = self.scalar_op.c_code_cache_version()
+        if ver:
+            return (16, self.verbose, self.sync, ver)
+        else:
+            return ver
 
     def __init__(self, scalar_op, sync=True, inplace_pattern=None):
         """
@@ -899,20 +905,26 @@ nd_collapse_[i]=0;
         //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
         if (%(nd)s != %(iname)s->nd)
         {
-            PyErr_Format(PyExc_TypeError, "need %(nd)s dims, not %%i", %(iname)s->nd);
+            PyErr_Format(PyExc_TypeError,
+                         "need %(nd)s dims, not %%i", %(iname)s->nd);
             %(fail)s;
         }
         for (int i = 0; i< %(nd)s; ++i)
         {
             dims[i] = (dims[i] == 1) ? CudaNdarray_HOST_DIMS(%(iname)s)[i] : dims[i];
-            if ((!(broadcasts_%(iname)s[i] && CudaNdarray_HOST_DIMS(%(iname)s)[i] == 1))&& (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
+            if ((!(broadcasts_%(iname)s[i] &&
+                 CudaNdarray_HOST_DIMS(%(iname)s)[i] == 1)) &&
+                (dims[i] != CudaNdarray_HOST_DIMS(%(iname)s)[i]))
             {
                 //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
-                PyErr_Format(PyExc_ValueError, "GpuElemwise. Input dimension mis-match. One of your inputs has shape[%%i] == %%i, but the output's size on that axis is %%i.",
-                    i,
-                    CudaNdarray_HOST_DIMS(%(iname)s)[i],
-                    dims[i]
-                    );
+                PyErr_Format(PyExc_ValueError,
+                             "GpuElemwise. Input dimension mis-match. Input"
+                             " %(id)d (indices start at 0) has shape[%%i] == %%i"
+                             ", but the output's size on that axis is %%i.",
+                             i,
+                             CudaNdarray_HOST_DIMS(%(iname)s)[i],
+                             dims[i]
+                            );
                 %(fail)s;
             }
         }

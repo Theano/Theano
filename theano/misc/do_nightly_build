@@ -18,8 +18,8 @@ if [ "$1" == "--buildbot" ]; then
     FLAGS=compiledir=$COMPILEDIR
     cd ${ROOT_CWD}/Theano
     git rev-parse HEAD
-    cd ..
-    ARGS="Theano"
+    #Run tests from inside the Theano directory to prevent import problem.
+    ARGS=""
     PROFILING="--with-coverage --cover-package=theano"
     NOSETESTS=${ROOT_CWD}/Theano/bin/theano-nose
     export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
@@ -53,8 +53,8 @@ if [ "$RELEASE" ]; then
     ls ${COMPILEDIR}|wc -l
 fi
 
-echo "Executing nosetests with mode=FAST_COMPILE"
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
+echo "Executing nosetests with mode=FAST_COMPILE with --batch=1000"
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
@@ -65,6 +65,11 @@ ls ${COMPILEDIR}|wc -l
 
 echo "Executing nosetests with mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
+echo "Number of elements in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+
+echo "Executing nosetests with linker=vm,vm.lazy=True,floatX=float32"
+THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 

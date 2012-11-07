@@ -1,3 +1,5 @@
+import numpy
+
 import theano
 from theano import Op, Apply
 import theano.tensor as T
@@ -53,31 +55,31 @@ class MultinomialFromUniform(Op):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
         }
 
-        if (%(unis)s->dimensions[0] != %(pvals)s->dimensions[0])
+        if (PyArray_DIMS(%(unis)s)[0] != PyArray_DIMS(%(pvals)s)[0])
         {
             PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0]");
             %(fail)s;
         }
 
         if ((NULL == %(z)s)
-            || ((%(z)s->dimensions)[0] != (%(pvals)s->dimensions)[0])
-            || ((%(z)s->dimensions)[1] != (%(pvals)s->dimensions)[1])
+            || ((PyArray_DIMS(%(z)s))[0] != (PyArray_DIMS(%(pvals)s))[0])
+            || ((PyArray_DIMS(%(z)s))[1] != (PyArray_DIMS(%(pvals)s))[1])
         )
         {
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
-                %(pvals)s->dimensions,
+                PyArray_DIMS(%(pvals)s),
                 type_num_%(z)s,
                 0);
             if (!%(z)s)
@@ -89,8 +91,8 @@ class MultinomialFromUniform(Op):
 
         { // NESTED SCOPE
 
-        const int nb_multi = %(pvals)s->dimensions[0];
-        const int nb_outcomes = %(pvals)s->dimensions[1];
+        const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
+        const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
 
         //
         // For each multinomial, loop over each possible outcome
@@ -119,6 +121,33 @@ class MultinomialFromUniform(Op):
         }
         } // END NESTED SCOPE
         """ % locals()
+    def perform(self, node, ins, outs):
+        (pvals, unis) = ins
+        (z,) = outs
+
+        if unis.shape[0] != pvals.shape[0]:
+            raise ValueError("unis.shape[0] != pvals.shape[0]",
+                             unis.shape[0], pvals.shape[0])
+        if not z[0] or z[0].shape != pvals.shape:
+            z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+
+        nb_multi = pvals.shape[0]
+        nb_outcomes = pvals.shape[1]
+
+        # For each multinomial, loop over each possible outcome
+        for n in range(nb_multi):
+            waiting = True
+            cummul = 0
+            unis_n = unis[n]
+
+            for m in range(nb_outcomes):
+                z_nm = z[0][n, m]
+                cummul += pvals[n, m]
+                if (waiting and (cummul > unis_n)):
+                    z[0][n, m] = 1
+                    waiting = False
+                else:
+                    z[0][n, m] = 0
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
@@ -145,6 +174,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
                     'GpuMultinomialFromUniform works only if '
                     'self.odtype == pvals.dtype', odtype, pvals.dtype)
         return Apply(self, [pvals, unis], [pvals.type()])
+
+    def perform(self, node, ins, outs):
+        #The perform from parent don't work with CudaNdarray.  We
+        #don't need it as DebugMode will test again it as an
+        #optimization insert the GPU op.
+        return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
         return (8,)
@@ -198,12 +233,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;

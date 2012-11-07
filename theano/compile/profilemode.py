@@ -520,7 +520,7 @@ class ProfileMode(Mode):
             print "Profile of Theano functions memory:"
             print "(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)"
             nb_skipped = 0
-            for fgraph,nodes_mem in fct_memory.iteritems():
+            for fgraph, nodes_mem in fct_memory.iteritems():
                 size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
                 if size_sum < min_memory_size:
                     nb_skipped += 1
@@ -538,7 +538,7 @@ class ProfileMode(Mode):
                 items.sort(key=lambda a: a[1])
                 items.reverse()
 
-                order = fgraph.toposort()
+                order = self.linker.schedule(fgraph)
                 computed, last_user = gof.link.gc_helper(order)
                 for node in order:
                     post_thunk_old_storage.append([ input_idx

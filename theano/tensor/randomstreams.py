@@ -4,12 +4,27 @@ graphs.
 """
 __docformat__ = "restructuredtext en"
 
-import sys
 import numpy
 
-from theano.compile import module, In, Component
+from theano.compile import In, Component
 from theano.gof import Container
 from theano.tensor import raw_random
+import warnings
+
+
+def deprecation_warning():
+    # Make sure the warning is displayed only once.
+    if deprecation_warning.already_displayed:
+        return
+
+    warnings.warn((
+        "RandomStreams is deprecated and will be removed in release 0.7. "
+        "Use shared_randomstreams.RandomStreams or "
+        "MRG_RandomStreams instead."),
+        stacklevel=3)
+    deprecation_warning.already_displayed = True
+
+deprecation_warning.already_displayed = False
 
 
 class RandomStreamsInstance(object):
@@ -121,7 +136,7 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
 
     """
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, no_warn=False):
         """:type seed: None or int
 
         :param seed: a default seed to initialize the RandomState
@@ -129,7 +144,9 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
         for more details.
 
         """
-        super(RandomStreams, self).__init__()
+        if not no_warn:
+            deprecation_warning()
+        super(RandomStreams, self).__init__(no_warn=True)
         self.random_state_variables = []
         self.default_instance_seed = seed
 
@@ -147,7 +164,6 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
     def build(self, mode, memo):
         """override `Component.build` """
         if self not in memo:
-            print 'creating RandomStreamsInstance'
             memo[self] = RandomStreamsInstance(self, memo,
                                                self.default_instance_seed)
         return memo[self]

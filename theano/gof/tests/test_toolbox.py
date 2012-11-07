@@ -69,7 +69,8 @@ class TestNodeFinder:
         e0 = dot(y, z)
         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), e0))
         g = Env([x, y, z], [e])
-        g.extend(NodeFinder())
+        g.attach_feature(NodeFinder())
+
         assert hasattr(g, 'get_nodes')
         for type, num in ((add, 3), (sigmoid, 3), (dot, 2)):
             if not len([x for x in g.get_nodes(type)]) == num:

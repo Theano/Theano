@@ -62,7 +62,7 @@ purpose, you would set the ``view_map`` field as follows:
 
 What this means is that the first output (position 0) is a view of the
 first input (position 0). Even though the interface allows a list of
-inputs that are a view of a given output, this feature is currently
+inputs that are viewed by a given output, this feature is currently
 unsupported. Here are more examples:
 
 
@@ -210,7 +210,7 @@ if it introduce cycle into the graph.
 
 To allow using DebugMode more often, we can pre-check that our optimization will
 get rejected in many case.(not the cycle reason). For this you can use the 
-theano.gof.destroyhandler.fast_inplace_check() function that will tell you witch 
+theano.gof.destroyhandler.fast_inplace_check() function that will tell you which 
 op can be used.
 
 

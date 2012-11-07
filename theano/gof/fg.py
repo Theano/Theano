@@ -10,7 +10,8 @@ import utils
 import toolbox
 from python25 import all
 from theano import config
-
+import warnings
+NullType = None
 
 class InconsistencyError(Exception):
     """
@@ -19,12 +20,12 @@ class InconsistencyError(Exception):
     """
     pass
 
+
 class MissingInputError(Exception):
     """
     A symbolic input needed to compute the outputs is missing.
     """
     pass
-
 
 
 class FunctionGraph(utils.object2):
@@ -46,54 +47,17 @@ class FunctionGraph(utils.object2):
     The .clients field combined with the .owner field and the Apply nodes'
     .inputs field allows the graph to be traversed in both directions.
 
-    It can also be "extended" using function_graph.extend(some_object). See the
-    toolbox and ext modules for common extensions.
-
-    Features added with the`extend` function can handle the following events:
-
-    - feature.on_attach(function_graph)
-        Called by extend. The feature has great freedom in what
-        it can do with the function_graph: it may, for example, add methods
-        to it dynamically.
-
-    - feature.on_detach(function_graph)
-        Called by remove_feature(feature).  Should remove any dynamically-added
-        functionality that it installed into the function_graph.
-
-    - feature.on_import(function_graph, node)*
-        Called whenever a node is imported into function_graph, which is
-        just before the node is actually connected to the graph.
-
-    - feature.on_prune(function_graph, node)*
-        Called whenever a node is pruned (removed) from the function_graph,
-        after it is disconnected from the graph.
-
-    - feature.on_change_input(function_graph, node, i, r, new_r, [reason=None])*
-        Called whenever node.inputs[i] is changed from r to new_r.
-        At the moment the callback is done, the change has already
-        taken place.
-
-    - feature.orderings(function_graph)
-        Called by toposort. It should return a dictionary of
-        {node: predecessors} where predecessors is a list of
-        nodes that should be computed before the key node.
-
-        * If you raise an exception in the functions marked with an
-          asterisk, the state of the graph might be inconsistent.
-
-    - feature.on_setup_node(function_graph, node):
-        WRITEME
-
-    - feature.on_setup_variable(function_graph, variable):
-        WRITEME
+    It can also be extended with new features using
+    FunctionGraph.attach_feature(<toolbox.Feature instance>).
+    See toolbox.Feature for event types and documentation.
+    Extra features allow the FunctionGraph to verify new properties of
+    a graph as it is optimized.
+    # TODO: are there other things features can do to the fgraph?
 
     Historically, the FunctionGraph was called an Env. Keep this in mind
     while reading out-of-date documentation, e-mail support threads, etc.
 
     """
-
-    ### Special ###
-    # TODO: document which things that features can do to the fgraph
 
     def __init__(self, inputs, outputs, features=None):
         """
@@ -115,18 +79,18 @@ class FunctionGraph(utils.object2):
         # so I probably am) this should be a set.
         self._features = []
 
-        # All nodes in the subgraph defined by inputs and outputs are cached in nodes
-        self.nodes = set()
+        # All apply nodes in the subgraph defined by inputs and outputs are cached in this field
+        self.apply_nodes = set()
 
-        # Ditto for variables
+        # Ditto for variable nodes
         self.variables = set()
 
         self.inputs = list(inputs)
         self.outputs = outputs
 
         for f in features:
-            self.extend(f)
-        self.extend(toolbox.ReplaceValidate())
+            self.attach_feature(f)
+        self.attach_feature(toolbox.ReplaceValidate())
 
         for input in self.inputs:
             if input.owner is not None:
@@ -187,13 +151,13 @@ class FunctionGraph(utils.object2):
         nodes and variables. If there are no features, this should set
         them back to what they were originally.
         """
-        for node in self.nodes:
-            del node.fgraph
-            del node.deps
+        for apply_node in self.apply_nodes:
+            del apply_node.fgraph
+            del apply_node.deps
         for variable in self.variables:
             del variable.fgraph
             del variable.clients
-        self.nodes = set()
+        self.apply_nodes = set()
         self.variables = set()
         self.inputs = None
         self.outputs = None
@@ -247,20 +211,27 @@ class FunctionGraph(utils.object2):
     ### import ###
 
     def __import_r__(self, variables):
+        global NullType
+        if NullType is None:
+            from null_type import NullType
         # Imports the owners of the variables
-        r_owner_done = set(self.nodes)
-        for node in [r.owner for r in variables if r.owner is not None]:
-            if node not in r_owner_done:
-                r_owner_done.add(node)
-                self.__import__(node)
+        r_owner_done = set(self.apply_nodes)
+        for apply_node in [r.owner for r in variables if r.owner is not None]:
+            if apply_node not in r_owner_done:
+                r_owner_done.add(apply_node)
+                self.__import__(apply_node)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
+                if isinstance(r.type,NullType):
+                    raise TypeError("Computation graph contains a NaN. "+r.type.why_null)
                 raise MissingInputError("Undeclared input", r)
             if not getattr(r, 'fgraph', None) is self:
                 self.__setup_r__(r)
             self.variables.add(r)
 
-    def __import__(self, node, check = True):
+    def __import__(self, apply_node, check = True):
+        node = apply_node
+
         # We import the nodes in topological order. We only are interested
         # in new nodes, so we use all variables we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
@@ -342,9 +313,9 @@ class FunctionGraph(utils.object2):
                             r)
 
         for node in new_nodes:
-            assert node not in self.nodes
+            assert node not in self.apply_nodes
             self.__setup_node__(node)
-            self.nodes.add(node)
+            self.apply_nodes.add(node)
             for output in node.outputs:
                 self.__setup_r__(output)
                 self.variables.add(output)
@@ -367,8 +338,9 @@ class FunctionGraph(utils.object2):
             if not r.clients and r in self.variables:
                 self.variables.remove(r)
 
-    def __prune__(self, node):
-        if node not in self.nodes:
+    def __prune__(self, apply_node):
+        node = apply_node
+        if node not in self.apply_nodes:
             raise Exception("%s does not belong to this FunctionGraph and cannot be pruned." % node)
         assert node.fgraph is self
         # If node's outputs have no clients, removes it from the graph
@@ -379,7 +351,7 @@ class FunctionGraph(utils.object2):
             # Cannot prune an op which is an output or used somewhere
             if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):
                 return
-        self.nodes.remove(node)
+        self.apply_nodes.remove(node)
         self.variables.difference_update(node.outputs)
         self.execute_callbacks('on_prune', node)
 
@@ -466,25 +438,40 @@ class FunctionGraph(utils.object2):
             self.replace(r, new_r, reason=reason)
 
 
-    ### features ###
 
-    # XXX: This is terribly named. The "extend" method of a list
-    # takes a sequence, and since this is a kind of container you
-    # would expect it to do similarly.
     def extend(self, feature):
-        """WRITEME
-        Adds a feature to this function_graph. The feature may define one
-        or more of the following methods:
+        warnings.warn("FunctionGraph.extend is deprecatd. It has been "
+                "renamed to FunctionGraph.attach_feature")
+        return self.attach_feature(feature)
 
+    def attach_feature(self, feature):
         """
+        Adds a gof.toolbox.Feature to this function_graph
+        and triggers its on_attach callback
+        """
+
+        # Filter out literally identical features
         if feature in self._features:
             return # the feature is already present
+
+        # Filter out functionally identical features.
+        # Features may use their on_attach method to raise
+        # toolbox.AlreadyThere if they detect that some
+        # installed feature does the same thing already
         attach = getattr(feature, 'on_attach', None)
         if attach is not None:
             try:
                 attach(self)
             except toolbox.AlreadyThere:
                 return
+
+        #it would be nice if we could require a specific class instead of
+        #a "workalike" so we could do actual error checking
+        #if not isinstance(feature, toolbox.Feature):
+        #    raise TypeError("Expected gof.toolbox.Feature instance, got "+\
+        #            str(type(feature)))
+
+        # Add the feature
         self._features.append(feature)
 
     def remove_feature(self, feature):
@@ -514,6 +501,9 @@ class FunctionGraph(utils.object2):
             try:
                 fn = getattr(feature, name)
             except AttributeError:
+                # this is safe because there is no work done inside the
+                # try; the AttributeError reall must come from feature.${name}
+                # not existing
                 continue
 
             #####HORRIBLE OPTIONAL ARGUMENT HACK
@@ -556,14 +546,16 @@ class FunctionGraph(utils.object2):
         {node: predecessors} where predecessors is a list of nodes
         that should be computed before the key node.
         """
-        if len(self.nodes) < 2:
+        if len(self.apply_nodes) < 2:
             # optimization
             # when there are 0 or 1 nodes, no sorting is necessary
             # This special case happens a lot because the OpWiseCLinker produces
             # 1-element graphs.
-            return list(self.nodes)
+            return list(self.apply_nodes)
         fg = self
+
         ords = self.orderings()
+
         order = graph.io_toposort(fg.inputs, fg.outputs, ords)
         return order
 
@@ -574,6 +566,10 @@ class FunctionGraph(utils.object2):
 
         This is used primarily by the destroy_handler feature to ensure that all
         clients of any destroyed inputs have already computed their outputs.
+
+        :note: This only calls the orderings() fct on all features. It does not
+               take care of computing dependencies by itself.
+
         """
         ords = {}
         for feature in self._features:
@@ -589,26 +585,31 @@ class FunctionGraph(utils.object2):
         """WRITEME Same as len(self.clients(r))."""
         return len(self.clients(r))
 
-#     def edge(self, r):
-#         return r in self.inputs or r in self.orphans
+    def nodes_getter(self):
+        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
+                stacklevel=2)
+        return self.apply_nodes
 
-#     def follow(self, r):
-#         node = r.owner
-#         if self.edge(r):
-#             return None
-#         else:
-#             if node is None:
-#                 raise Exception("what the fuck")
-#             return node.inputs
+    def nodes_setter(self, value):
+        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
+                stacklevel=2)
+        self.apply_nodes = value
+
+    def nodes_deleter(self):
+        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
+                stacklevel=2)
+        del self.apply_nodes
+
+    nodes = property(nodes_getter, nodes_setter, nodes_deleter)
 
     def check_integrity(self):
         """WRITEME
         Call this for a diagnosis if things go awry.
         """
         nodes = graph.ops(self.inputs, self.outputs)
-        if self.nodes != nodes:
-            missing = nodes.difference(self.nodes)
-            excess = self.nodes.difference(nodes)
+        if self.apply_nodes != nodes:
+            missing = nodes.difference(self.apply_nodes)
+            excess = self.apply_nodes.difference(nodes)
             raise Exception("The nodes are inappropriately cached. missing, in excess: ", missing, excess)
         for node in nodes:
             if node.fgraph is not self:
@@ -659,5 +660,5 @@ class FunctionGraph(utils.object2):
                 [equiv[o] for o in self.outputs])
         e.check_integrity()
         for feature in self._features:
-            e.extend(feature)
+            e.attach_feature(feature)
         return e, equiv

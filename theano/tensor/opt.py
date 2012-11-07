@@ -176,7 +176,7 @@ def inplace_elemwise_optimizer_op(OP):
         # We execute `validate` after this number of change.
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
-            if len(fgraph.nodes) > 500:
+            if len(fgraph.apply_nodes) > 500:
                 check_each_change = 10
             else:
                 check_each_change = 1
@@ -426,8 +426,11 @@ def dimshuffle_as_view(node):
     new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
-
-register_specialize(dimshuffle_as_view, 'inplace')
+#Step 60 is the inplace optimization stage.
+compile.optdb.register('dimshuffle_as_view',
+                       TopoOptimizer(dimshuffle_as_view,
+    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
@@ -535,19 +538,16 @@ class MakeVector(T.Op):
 
     def infer_shape(self, node, ishapes):
         return [(len(ishapes),)]
-            
+
     def grad(self, inputs, output_gradients):
         # If the output is of an integer dtype, no gradient shall pass
         if 'int' in self.dtype:
-            return [None] * len(inputs)
+            return [ipt.zeros_like().astype(theano.config.floatX)
+                    for ipt in inputs]
 
         grads = []
         for i, inp in enumerate(inputs):
-            if 'int' in inp.dtype:
-                # No gradient wrt integer inputs
-                grads.append(None)
-            else:
-                grads.append(output_gradients[0][i])
+            grads.append(output_gradients[0][i])
         return grads
 
     def R_op(self, inputs, eval_points):
@@ -619,15 +619,15 @@ class Shape_i(T.Op):
         if isinstance(node.inputs[0].type, T.TensorType):
             return """
             if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
-            ((npy_int64*)PyArray_DATA(%(out)s))[0]=%(x)s->dimensions[%(i)s];
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+            ((npy_int64*)PyArray_DATA(%(out)s))[0]=PyArray_DIMS(%(x)s)[%(i)s];
             """ % locals()
 
         elif node.inputs[0].type.__class__.__name__ == "CudaNdarrayType":
             #Don't want to import cuda stuff here.
             return """
             if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, PyArray_INT64, 0);
+            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
             ((npy_int64*)PyArray_DATA(%(out)s))[0]=
                             CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
             """ % locals()
@@ -960,6 +960,9 @@ class ShapeFeature(object):
         for sh_idx, sh in enumerate(o_shapes):
             if sh is None:
                 continue
+            if not isinstance(sh, (list, tuple)):
+                raise ValueError("infer_shape of %s didn't return a list of"
+                                 " list. It returned '%s'" % (str(node), str(o_shapes)))
             for i, d in enumerate(sh):
                 # Note: we ignore any shape element that is not typed (i.e.,
                 # does not have a 'dtype' attribute). This means there may
@@ -967,7 +970,8 @@ class ShapeFeature(object):
                 # but this works with `local_useless_subtensor`, so for now we
                 # keep it this way. See #266 for a better long-term fix.
                 if getattr(d, 'dtype', 'int64') != 'int64':
-                    assert d.dtype in theano.tensor.int_dtypes
+                    assert d.dtype in theano.tensor.discrete_dtypes, d.dtype
+                    assert str(d.dtype) != 'uint64'
                     new_shape += sh[len(new_shape):i + 1]
                     new_shape[i] = theano.tensor.cast(d, 'int64')
             if new_shape:
@@ -1032,7 +1036,7 @@ class ShapeOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.extend(ShapeFeature())
+        fgraph.attach_feature(ShapeFeature())
 
     def apply(self, fgraph):
         pass
@@ -1907,6 +1911,8 @@ def local_subtensor_of_alloc(node):
 
     nw_val = val[tuple(val_slices)]
     nw_dims += dims[len(slices):]
+    if nw_val.ndim > len(nw_dims):
+        return False
     rval = T.alloc(nw_val, *nw_dims)
     if type(rval) not in (list, tuple):
         rval = [rval]
@@ -2825,16 +2831,16 @@ class Canonizer(gof.LocalOptimizer):
         # this canonized graph...  if so, we do nothing and wait for
         # them to be transformed.
         def _bypass_dimshuffle(n):
-            if isinstance(n.op, DimShuffle) and len(n.outputs[0].clients) <= 1:
-                return _bypass_dimshuffle(n.outputs[0].clients.__iter__(
-                        ).next()[0])
+            if (isinstance(getattr(n, 'op', None), DimShuffle) and
+                len(n.outputs[0].clients) <= 1):
+                return _bypass_dimshuffle(n.outputs[0].clients[0][0])
             else:
                 return n
         for c, c_idx in out.clients:
             if c == 'output':
                 continue
-            if _bypass_dimshuffle(c).op in [self.main, self.inverse,
-                                            self.reciprocal]:
+            if getattr(_bypass_dimshuffle(c), 'op', '') in [
+                self.main, self.inverse, self.reciprocal]:
                 return False
 
         # Here we make the canonical version of the graph around this node
@@ -3142,9 +3148,14 @@ def local_cut_useless_reduce(node):
             return [summed]
 
 
-@register_canonicalize
+#Enabling this optimization at canonicalization step break this test:
+#theano/tensor/tests/test_opt.py:T_local_reduce.test_local_reduce_broadcast_some_0
+# see gh-790 issue.
+#
+#@register_canonicalize
+@register_specialize
 @gof.local_optimizer([])
-def local_sum_broadcastable(node):
+def local_reduce_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
     if isinstance(node.op, T.CAReduce):
         reduced, = node.inputs
@@ -3169,11 +3180,17 @@ def local_sum_broadcastable(node):
                         ii += 1
                 new_reduced = reduced.dimshuffle(*pattern)
                 if new_axis:
-                    new_op = node.op.__class__(axis=new_axis)
+                    if type(node.op) == theano.tensor.elemwise.CAReduce:
+                        # This happen for tensor.max(), tensor.min()
+                        new_op = node.op.__class__(node.op.scalar_op,
+                                                   axis=new_axis)
+                    else:
+                        new_op = node.op.__class__(axis=new_axis)
                     return [new_op(new_reduced)]
                 else:
                     # -- in this case we can remove the reduction completely
                     return [new_reduced.astype(odtype)]
+
 
 @register_specialize
 @gof.local_optimizer([])
@@ -4568,8 +4585,8 @@ class FusionOptimizer(Optimizer):
         self.optimizer = local_optimizer
 
     def add_requirements(self, fgraph):
-        fgraph.extend(toolbox.ReplaceValidate())
-        fgraph.extend(DestroyHandler())
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True
@@ -4579,7 +4596,7 @@ class FusionOptimizer(Optimizer):
             did_something = False
             for node in nodelist:
                 # Don't try to fuse node that have already been fused.
-                if node in fgraph.nodes:
+                if node in fgraph.apply_nodes:
                     new_outputs = self.optimizer(node)
                     if new_outputs:
                         assert len(new_outputs) == len(node.outputs)

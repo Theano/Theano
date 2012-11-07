@@ -3,16 +3,18 @@ VMs that run Theano graph computations.
 A VM is not actually different from a Linker, we just decided
 VM was a better name at some point
 """
+import link
 import logging
 import sys
 import time
-import link
+import warnings
+
 from theano.gof.python25 import all
 
 import theano
 config = theano.config
 
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,25 @@ AddConfigVar('profile',
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
         BoolParam(False))
+
+
+def filter_vm_lazy(val):
+    if val == 'False' or val is False:
+        return False
+    elif val == 'True' or val is True:
+        return True
+    elif val == 'None':
+        return None
+    else:
+        raise ValueError('Valid values for an vm.lazy parameter '
+                        'should be None, False or True, not `%s`.' % val)
+
+AddConfigVar('vm.lazy',
+             "Useful only for the vm linkers. When lazy is None,"
+             " auto detect if lazy evaluation is needed and use the apropriate"
+             " version. If lazy is True/False, force the version used between"
+             " Loop/LoopGC and Stack.",
+         ConfigParam('None', filter_vm_lazy))
 
 raise_with_op = link.raise_with_op
 
@@ -369,7 +390,27 @@ class Stack(VM):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = 0
+                                    #DO NOT set compute_map to 0
+
+                                    #If values become False and the
+                                    #current_apply is still in the
+                                    #stack, this will cause it to be
+                                    #recomputed! This can cause wrong value
+                                    #with some combination of inplace op.
+                                    compute_map[i][0] = 2
+                                    if (config.warn.vm_gc_bug and
+                                        current_apply in apply_stack and
+                                        getattr(current_apply.op,
+                                                'destroy_map',
+                                                False)):
+                                        warnings.warn(
+        "There was a bug that existed in the default Theano configuration,"
+        " only in the development version between July 5th 2012"
+        " and July 30th 2012. This was not in a released version."
+        " The bug was affecting this script.",
+        #The stack level is not good when inside a Scan.
+        stacklevel=3
+                                        )
                 elif not computed_ins:
                     # -- Non-lazy case, need inputs
                     apply_stack.append(current_apply)
@@ -410,7 +451,7 @@ class Stack(VM):
                             if not hasattr(o[0], 'size'):
                                 size.append(-1)
                                 continue
-                            s=o[0].size
+                            s = o[0].size
                             dtype = str(o[0].dtype)
                             dtype2 = dtype[-2:]
                             # KeyError here: couldn't determine the
@@ -429,7 +470,9 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
-                                    compute_map[i][0] = None
+                                    #See the not lazy gc code for explanations
+                                    #of compute_map change
+                                    compute_map[i][0] = 2
 
         # Hacky coarse gc final pass
         # This is required until we have a proper gc algorithm for graphs with
@@ -449,11 +492,11 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
-except OSError:
-    #OSError happen when g++ is not installed.  In that case, we
-    #alread changed the default linker to something else then CVM.
-    #Currently this is the py linker.
-    #Here we assert that the default linker is not cvm.
+except (OSError, theano.gof.cmodule.MissingGXX):
+    # OSError happens when g++ is not installed.  In that case, we
+    # already changed the default linker to something else then CVM.
+    # Currently this is the py linker.
+    # Here we assert that the default linker is not cvm.
     assert not [x for x in theano.configparser._config_var_list
                 if x.fullname == 'linker'][0].default.startswith('cvm')
     pass
@@ -464,11 +507,13 @@ class VM_Linker(link.LocalLinker):
     Class that satisfies the Linker interface by acting as a VM factory.
     """
 
-    def __init__(self, allow_gc=True, use_cloop=False, callback=None):
+    def __init__(self, allow_gc=None, use_cloop=False, callback=None,
+                 lazy=None, schedule=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
             intermediate values during computation of a function.
+            If None use as default the value of the Theano flag allow_gc.
 
         use_cloop - use the C-based virtual machine if possible
 
@@ -476,26 +521,49 @@ class VM_Linker(link.LocalLinker):
             the virtual machine.  It will be called with four arguments called
             'node', 'thunk', 'storage_map', and 'compute_map'.
 
+        lazy - Useful only when use_cloop is False. When lazy is None, use the
+            theano flag vm.lazy value. Then if we have a None (default) we auto
+            detect if lazy evaluation is needed and use the apropriate
+            version. If lazy is True or False, we force the version used
+            between Loop/LoopGC and Stack.
+
         """
+        # Note: if more parameters are added to __init__, make sure to forward
+        # them in the "type(self)(...)" call in the "accept" method below.
+        if allow_gc is None:
+            allow_gc = config.allow_gc
         self.fgraph = None
         self.allow_gc = allow_gc
         self.use_cloop = use_cloop
         self.callback = callback
+        self.lazy = lazy
         self.updated_vars = {}
+        if schedule:
+            self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
-        :param fgraph: a PerformLinker can have accepted one FunctionGraph instance
-            at a time.
+        :param fgraph: a PerformLinker can have accepted one FunctionGraph
+            instance at a time.
 
         :param no_recycling: WRITEME
 
-        :returns: self (TODO: WHY? Who calls this function?)
+        :returns: self if fgraph is the first FunctionGraph that has ever been
+            associated to self, else, a new VM_Linker associated to fgraph.
         """
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)().accept(fgraph, no_recycling)
+            # Build a new VM_Linker, and call accept on that one.
+            # Warning: make sure to forward the correct values of
+            # all parameters to __init__ here.
+            return type(self)(
+                    allow_gc=self.allow_gc,
+                    use_cloop=self.use_cloop,
+                    callback=self.callback,
+                    lazy=self.lazy,
+                    schedule=self.schedule
+                    ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -597,7 +665,7 @@ class VM_Linker(link.LocalLinker):
                 assert type(compute_map_list[0]) is list
 
             if self.allow_gc:
-                dependency_map=self.compute_gc_dependencies(storage_map)
+                dependency_map = self.compute_gc_dependencies(storage_map)
                 dependency_map_list = [
                     [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
                     for i in xrange(len(vars_idx_inv))]
@@ -643,11 +711,18 @@ class VM_Linker(link.LocalLinker):
                 prereq_var_idxs.sort()  # TODO: why sort?
                 node_prereqs.append(prereq_var_idxs)
 
+            # Builds the list of input storage to update (according to update
+            # rules) when the outputs are computed.
+            # They are in the same order as the second part of output_vars
+            # (output_vars contains first the returned outputs, then the
+            # values of the update expressions).
             update_storage = []
+            update_in_from_out = {}
             for (ivar, ovar) in updated_vars.items():
-                if ivar != ovar:
-                    update_storage.append(vars_idx[ivar])  # dst
-                    update_storage.append(vars_idx[ovar])  # src
+                update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
+            for oidx in output_vars:
+                if oidx in update_in_from_out:
+                    update_storage.append(update_in_from_out[oidx])
 
             c0 = sys.getrefcount(node_n_inputs)
             vm = CVM(
@@ -674,7 +749,12 @@ class VM_Linker(link.LocalLinker):
                     )
             assert c0 == sys.getrefcount(node_n_inputs)
         else:
-            if all([(not th.lazy) for th in thunks]):
+            lazy = self.lazy
+            if lazy is None:
+                lazy = config.vm.lazy
+            if lazy is None:
+                lazy = not all([(not th.lazy) for th in thunks])
+            if not lazy:
                 # there is no conditional in the graph
                 if self.allow_gc:
                     vm = LoopGC(
@@ -700,10 +780,10 @@ class VM_Linker(link.LocalLinker):
         return vm
 
     def make_all(self, profiler=None, input_storage=None,
-            output_storage = None,
-            ):
+                 output_storage=None,
+                ):
         fgraph = self.fgraph
-        order = list(fgraph.toposort())
+        order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
@@ -742,8 +822,8 @@ class VM_Linker(link.LocalLinker):
 
         return (vm,
                 [link.Container(input, storage)
-                    for input, storage in zip(fgraph.inputs, input_storage)],
+                 for input, storage in zip(fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True)
-                    for output, storage in zip(fgraph.outputs, output_storage)],
+                 for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)

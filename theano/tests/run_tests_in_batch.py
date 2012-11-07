@@ -32,7 +32,7 @@ If 'time_profile=True', this script conducts time-profiling of the tests:
        - test name
        - name of class to which test belongs (if any), otherwise full
          information is contained in test name
-       - test outcome ('OK', 'SKIPPED TESTS', 'FAILED TEST' or 'FAILED PARSING')
+       - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or 'FAILED PARSING')
        In 'timeprof_sort', test records are sorted according to run-time
        whereas in 'timeprof_nosort' records are reported according to
        sequential number. The former classification is the main information
@@ -63,7 +63,7 @@ import theano
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
-         batch_size=None, time_profile=False):
+         batch_size=None, time_profile=False, display_batch_output=False):
     """
     Run tests with optional output redirection.
 
@@ -77,6 +77,9 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     Theano/bin to call nosetests. Otherwise we call the provided script.
 
     If batch_size is None, we use a default value of 100.
+
+    If display_batch_output is False, then the output of nosetests during batch
+    execution is hidden.
     """
 
     if stdout is None:
@@ -86,8 +89,18 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     if argv is None:
         argv = sys.argv
     if theano_nose is None:
-        theano_nose = os.path.join(theano.__path__[0], '..',
-                                   'bin', 'theano-nose')
+    #If Theano is installed with pip/easy_install, it can be in the
+    #*/lib/python2.7/site-packages/theano, but theano-nose in */bin
+        for i in range(1, 5):
+            path = theano.__path__[0]
+            for _ in range(i):
+                path = os.path.join(path, '..')
+            path = os.path.join(path, 'bin', 'theano-nose')
+            if os.path.exists(path):
+                theano_nose = path
+                break
+    if theano_nose is None:
+        raise Exception("Not able to find theano_nose")
     if batch_size is None:
         batch_size = 100
     stdout_backup = sys.stdout
@@ -95,25 +108,21 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     try:
         sys.stdout = stdout
         sys.stderr = stderr
-        run(stdout, stderr, argv, theano_nose, batch_size, time_profile)
+        run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
+            display_batch_output)
     finally:
         sys.stdout = stdout_backup
         sys.stderr = stderr_backup
 
 
-def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
+def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
+        display_batch_output):
 
     # Setting aside current working directory for later saving
     sav_dir = os.getcwd()
-    if len(argv) == 1:
-        tests_dir = theano.__path__[0]
-        other_args = []
-    else:
-        # tests_dir should be at the end of argv, there can be other arguments
-        tests_dir = argv[-1]
-        other_args = argv[1:-1]
-        assert os.path.isdir(tests_dir)
-    os.chdir(tests_dir)
+    # The first argument is the called script.
+    argv = argv[1:]
+
     # It seems safer to fully regenerate the list of tests on each call.
     if os.path.isfile('.noseids'):
         os.remove('.noseids')
@@ -132,7 +141,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
     python = sys.executable
     rval = subprocess.call(
         ([python, theano_nose, '--collect-only', '--with-id']
-         + other_args),
+         + argv),
         stdin=dummy_in.fileno(),
         stdout=stdout.fileno(),
         stderr=stderr.fileno())
@@ -152,20 +161,26 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 ###################################
 # RUNNING TESTS IN BATCHES OF %s #
 ###################################""" % batch_size
-        # We suppress all output because we want the user to focus only on
-        # the failed tests, which are re-run (with output) below.
+        # When `display_batch_output` is False, we suppress all output because
+        # we want the user to focus only on the failed tests, which are re-run
+        # (with output) below.
         dummy_out = open(os.devnull, 'w')
         for test_id in xrange(1, n_tests + 1, batch_size):
             stdout.flush()
             stderr.flush()
             test_range = range(test_id, min(test_id + batch_size, n_tests + 1))
-            rval = subprocess.call(
-                ([python, theano_nose, '-q', '--with-id']
-                 + map(str, test_range)
-                 + other_args),
-                stdout=dummy_out.fileno(),
-                stderr=dummy_out.fileno(),
-                stdin=dummy_in.fileno())
+            cmd = ([python, theano_nose, '--with-id'] +
+                   map(str, test_range) +
+                   argv)
+            subprocess_extra_args = dict(stdin=dummy_in.fileno())
+            if not display_batch_output:
+                # Use quiet mode in nosetests.
+                cmd.append('-q')
+                # Suppress all output.
+                subprocess_extra_args.update(dict(
+                    stdout=dummy_out.fileno(),
+                    stderr=dummy_out.fileno()))
+            subprocess.call(cmd, **subprocess_extra_args)
             # Recover failed test indices from the 'failed' field of the
             # '.noseids' file. We need to do it after each batch because
             # otherwise this field may get erased. We use a set because it
@@ -188,7 +203,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
             subprocess.call(
                 ([python, theano_nose, '-v', '--with-id']
                  + failed
-                 + other_args),
+                 + argv),
                 stdin=dummy_in.fileno(),
                 stdout=stdout.fileno(),
                 stderr=stderr.fileno())
@@ -230,7 +245,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
                                                  n_tests + 1)):
                 proc = subprocess.Popen(
                     ([python, theano_nose, '-v', '--with-id']
-                    + [str(test_id)] + other_args +
+                    + [str(test_id)] + argv +
                      ['--disabdocstring']),
                     # the previous option calls a custom Nosetests plugin
                     # precluding automatic sustitution of doc. string for
@@ -320,5 +335,3 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile):
 
 if __name__ == '__main__':
     sys.exit(main())
-
-    
