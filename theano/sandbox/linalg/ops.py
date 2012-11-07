@@ -567,16 +567,16 @@ class MatrixInverse(Op):
             raise
 
     def grad(self, inputs, g_outputs):
-        """The gradient function should return:
+        r"""The gradient function should return
 
-            :math:`V\\frac{\partial X^{-1}}{\partial X}`
+            .. math:: V\frac{\partial X^{-1}}{\partial X},
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
         ``inputs``. Using the `matrix cookbook
         <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to :
+        once can deduce that the relation corresponds to
 
-            :math:`(X^{-1} \cdot V^{T} \cdot X^{-1})^T`
+            .. math:: (X^{-1} \cdot V^{T} \cdot X^{-1})^T.
 
         """
         x, = inputs
@@ -586,16 +586,16 @@ class MatrixInverse(Op):
         return [-matrix_dot(xi, gz.T, xi).T]
 
     def R_op(self, inputs, eval_points):
-        """The gradient function should return:
+        r"""The gradient function should return
 
-            :math:`\\frac{\partial X^{-1}}{\partial X}V`
+            .. math:: \frac{\partial X^{-1}}{\partial X}V,
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
         ``inputs``.  Using the `matrix cookbook
         <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to :
+        once can deduce that the relation corresponds to
 
-            :math:`X^{-1} \cdot V \cdot X^{-1}`
+            .. math:: X^{-1} \cdot V \cdot X^{-1}.
 
         """
         x, = inputs
