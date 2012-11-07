@@ -192,7 +192,7 @@ theano.compile.mode.optdb.register('HintsOpt',
 def psd(v):
     """
     Apply a hint that the variable `v` is positive semi-definite, i.e.
-    it is a symmetric matrix and x^T A x >= for any vector x.
+    it is a symmetric matrix and :math:`x^T A x \ge 0` for any vector x.
     """
     return Hint(psd=True, symmetric=True)(v)
 
@@ -572,8 +572,8 @@ class MatrixInverse(Op):
             :math:`V\\frac{\partial X^{-1}}{\partial X}`
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``. Using the matrix cookbook
-        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        ``inputs``. Using the `matrix cookbook
+        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
         once can deduce that the relation corresponds to :
 
             :math:`(X^{-1} \cdot V^{T} \cdot X^{-1})^T`
@@ -591,8 +591,8 @@ class MatrixInverse(Op):
             :math:`\\frac{\partial X^{-1}}{\partial X}V`
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``. Using the matrix cookbook
-        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
+        ``inputs``.  Using the `matrix cookbook
+        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
         once can deduce that the relation corresponds to :
 
             :math:`X^{-1} \cdot V \cdot X^{-1}`
