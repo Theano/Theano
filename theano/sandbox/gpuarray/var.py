@@ -7,11 +7,11 @@ from theano.compile import SharedVariable
 try:
     # Let this be importable for documentation purposes
     import pygpu.gpuarray
+    from basic_ops import host_from_gpu, gpu_from_host
 except ImportError:
     pass
 
 from type import GpuArrayType
-from basic_ops import host_from_gpu, gpu_from_host
 
 class _operators(tensor.basic._tensor_py_operators):
 
