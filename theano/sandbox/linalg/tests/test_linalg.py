@@ -1,5 +1,6 @@
 import numpy
 import numpy.linalg
+from numpy.testing import assert_array_almost_equal
 
 import theano
 from theano import tensor, function
@@ -26,6 +27,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        matrix_dot,
                                        spectral_radius_bound,
                                        imported_scipy,
+                                       Eig,
                                        )
 
 from nose.plugins.skip import SkipTest
@@ -467,3 +469,31 @@ class test_Solve(utt.InferShapeTester):
                                  numpy.asarray(rng.rand(5),
                                                dtype=config.floatX)],
                                 self.op_class)
+
+class test_Eig(utt.InferShapeTester):
+    def setUp(self):
+        super(test_Eig, self).setUp()
+        self.op_class = Eig
+        self.op = Eig()
+
+    def test_infer_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = theano.tensor.matrix()
+        X = numpy.asarray(rng.rand(5, 5),
+                          dtype=config.floatX)
+        self._compile_and_check([A],  # theano.function inputs
+                                self.op(A),  # theano.function outputs
+                                # A must be square
+                                [X.dot(X.T)],
+                                self.op_class)
+    def test_eval(self):
+        import math
+        A = theano.tensor.matrix()
+        self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
+                          [[1.0], [[1.0]]])
+
+        w, v = [e.eval({A: [[0, 1], [1, 0]]}) 
+                for e in self.op(A)]
+        assert_array_almost_equal(w, [1, -1])
+        x = math.sqrt(2)/2
+        assert_array_almost_equal(v, [[x, -x], [x, x]])
