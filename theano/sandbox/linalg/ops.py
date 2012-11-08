@@ -875,3 +875,41 @@ class A_Xinv_b(Op):
         gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
         gb = matrix_dot(ix.T, a.T, gz)
         return [ga, gX, gb]
+
+class Eig(Op):
+    """Compute the eigenvalues and right eigenvectors of a square array.
+
+    """
+
+    def __init__(self):
+        pass
+
+    def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``Eig`` op, there are no properties to be exposed.
+        """
+        return ()
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        return Apply(self, [x], [x.type(), x.type()])
+
+    def perform(self, node, (x,), (w, v)):
+        try:
+            w[0], v[0] = [z.astype(x.dtype) for z in numpy.linalg.eig(x)]
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to find eig of %s' % str(node.inputs[0]))
+            raise
+
+    def __str__(self):
+        return "Eig"
+
+eig = Eig()
