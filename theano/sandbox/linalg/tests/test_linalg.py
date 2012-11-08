@@ -485,3 +485,7 @@ class test_Eig(utt.InferShapeTester):
                                 # A must be square
                                 [X.dot(X.T)],
                                 self.op_class)
+    def test_eval(self):
+        A = theano.tensor.matrix()
+        self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
+                          [[1.0], [[1.0]]])
