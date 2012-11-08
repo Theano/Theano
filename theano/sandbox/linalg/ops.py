@@ -192,7 +192,7 @@ theano.compile.mode.optdb.register('HintsOpt',
 def psd(v):
     """
     Apply a hint that the variable `v` is positive semi-definite, i.e.
-    it is a symmetric matrix and x^T A x >= for any vector x.
+    it is a symmetric matrix and :math:`x^T A x \ge 0` for any vector x.
     """
     return Hint(psd=True, symmetric=True)(v)
 
@@ -567,16 +567,16 @@ class MatrixInverse(Op):
             raise
 
     def grad(self, inputs, g_outputs):
-        """The gradient function should return:
+        r"""The gradient function should return
 
-            :math:`V\\frac{\partial X^{-1}}{\partial X}`
+            .. math:: V\frac{\partial X^{-1}}{\partial X},
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``. Using the matrix cookbook
-        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
-        once can deduce that the relation corresponds to :
+        ``inputs``. Using the `matrix cookbook
+        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
+        once can deduce that the relation corresponds to
 
-            :math:`(X^{-1} \cdot V^{T} \cdot X^{-1})^T`
+            .. math:: (X^{-1} \cdot V^{T} \cdot X^{-1})^T.
 
         """
         x, = inputs
@@ -586,16 +586,16 @@ class MatrixInverse(Op):
         return [-matrix_dot(xi, gz.T, xi).T]
 
     def R_op(self, inputs, eval_points):
-        """The gradient function should return:
+        r"""The gradient function should return
 
-            :math:`\\frac{\partial X^{-1}}{\partial X}V`
+            .. math:: \frac{\partial X^{-1}}{\partial X}V,
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``. Using the matrix cookbook
-        ``http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274``,
-        once can deduce that the relation corresponds to :
+        ``inputs``.  Using the `matrix cookbook
+        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
+        once can deduce that the relation corresponds to
 
-            :math:`X^{-1} \cdot V \cdot X^{-1}`
+            .. math:: X^{-1} \cdot V \cdot X^{-1}.
 
         """
         x, = inputs
@@ -875,3 +875,47 @@ class A_Xinv_b(Op):
         gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
         gb = matrix_dot(ix.T, a.T, gz)
         return [ga, gX, gb]
+
+class Eig(Op):
+    """Compute the eigenvalues and right eigenvectors of a square array.
+
+    """
+
+    def __init__(self):
+        pass
+
+    def props(self):
+        """Function exposing different properties of each instance of the
+        op.
+
+        For the ``Eig`` op, there are no properties to be exposed.
+        """
+        return ()
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        w = theano.tensor.vector(dtype=x.dtype)
+        v = theano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [w, v])
+
+    def perform(self, node, (x,), (w, v)):
+        try:
+            w[0], v[0] = [z.astype(x.dtype) for z in numpy.linalg.eig(x)]
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to find eig of %s' % str(node.inputs[0]))
+            raise
+
+    def infer_shape(self, node, shapes):
+        n = shapes[0][0]
+        return [(n,), (n,n)]
+
+    def __str__(self):
+        return "Eig"
+
+eig = Eig()
