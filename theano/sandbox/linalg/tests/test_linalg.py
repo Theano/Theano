@@ -26,6 +26,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        matrix_dot,
                                        spectral_radius_bound,
                                        imported_scipy,
+                                       Eig,
                                        )
 
 from nose.plugins.skip import SkipTest
@@ -466,4 +467,21 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX),
                                  numpy.asarray(rng.rand(5),
                                                dtype=config.floatX)],
+                                self.op_class)
+
+class test_Eig(utt.InferShapeTester):
+    def setUp(self):
+        super(test_Eig, self).setUp()
+        self.op_class = Eig
+        self.op = Eig()
+
+    def test_infer_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = theano.tensor.matrix()
+        X = numpy.asarray(rng.rand(5, 5),
+                          dtype=config.floatX)
+        self._compile_and_check([A],  # theano.function inputs
+                                self.op(A),  # theano.function outputs
+                                # A must be square
+                                [X.dot(X.T)],
                                 self.op_class)

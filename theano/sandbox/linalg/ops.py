@@ -900,7 +900,9 @@ class Eig(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        return Apply(self, [x], [x.type(), x.type()])
+        w = theano.tensor.vector(x.dtype)
+        v = theano.tensor.matrix(x.dtype)
+        return Apply(self, [x], [w, v])
 
     def perform(self, node, (x,), (w, v)):
         try:
@@ -908,6 +910,10 @@ class Eig(Op):
         except numpy.linalg.LinAlgError:
             logger.debug('Failed to find eig of %s' % str(node.inputs[0]))
             raise
+
+    def infer_shape(self, node, shapes):
+        n = shapes[0][0]
+        return [(n,), (n,n)]
 
     def __str__(self):
         return "Eig"
