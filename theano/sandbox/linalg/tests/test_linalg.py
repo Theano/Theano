@@ -1,5 +1,6 @@
 import numpy
 import numpy.linalg
+from numpy.testing import assert_array_almost_equal
 
 import theano
 from theano import tensor, function
@@ -486,6 +487,13 @@ class test_Eig(utt.InferShapeTester):
                                 [X.dot(X.T)],
                                 self.op_class)
     def test_eval(self):
+        import math
         A = theano.tensor.matrix()
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])
+
+        w, v = [e.eval({A: [[0, 1], [1, 0]]}) 
+                for e in self.op(A)]
+        assert_array_almost_equal(w, [1, -1])
+        x = math.sqrt(2)/2
+        assert_array_almost_equal(v, [[x, -x], [x, x]])
