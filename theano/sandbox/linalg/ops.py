@@ -900,8 +900,8 @@ class Eig(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        w = theano.tensor.vector(x.dtype)
-        v = theano.tensor.matrix(x.dtype)
+        w = theano.tensor.vector(dtype=x.dtype)
+        v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
 
     def perform(self, node, (x,), (w, v)):
