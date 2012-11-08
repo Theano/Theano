@@ -19,10 +19,9 @@ class GpuArrayType(Type):
     Constant = None
     SharedVariable = None
     
-    @staticmethod
-    def value_zeros(*args, **kwargs):
-        pygpu.gpuarray.zeros(*args, kind=globals.kind,
-                              context=globals.context, **kwargs)
+    def value_zeros(self, shape):
+        return pygpu.gpuarray.zeros(shape, dtype=self.typecode, kind=self.kind,
+                                    context=self.context)
 
     def __init__(self, dtype, broadcastable, kind=None, context=None,
                  name=None):
