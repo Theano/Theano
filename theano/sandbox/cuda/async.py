@@ -15,6 +15,21 @@ To use this, you need to import this file AND enable the gpu_async
 optimization flag (possible with the Theano flag
 optimier_including=gpu_asynx).
 
+There is a GPU scheduler that is needed to get the good function
+evalution when using c|py linker. So this don't work well with the CVM
+or the VM when there is lazy op. See the tests/test_async.py file to
+know how to use it.
+
+We didn't check if in the current version this bring a final speed up.
+
+
+Optional TODO:
+
+the optimization that insert the async transfer op should insert them
+if there is no computation that can execute during that time. This
+happen in particular at then end of the function when we return
+results to the CPU. This would remove an op from the graph.
+
 """
 
 import copy
