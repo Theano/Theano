@@ -95,6 +95,7 @@ class GpuAsyncTransferOp(GpuOp):
         if cuda_root:
             ret.append(os.path.join(cuda_root, 'include'))
         return ret
+
     def c_lib_dirs(self):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
         cuda_root = config.cuda.root
@@ -130,7 +131,8 @@ class HostFromGpuSend(GpuAsyncTransferOp):
         eventName = "%s_event" % out
         return """
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
-        %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
+        %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s),
+                                                   &free_cudaEvent);
         cudaEventCreate(%(eventName)s);
         Py_XDECREF(%(out)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
@@ -176,6 +178,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
             %(fail)s;
         }
         """ % locals()
+
 
 class GpuFromHostSend(GpuAsyncTransferOp):
     """
@@ -251,6 +254,7 @@ class GpuFromHostWait(GpuAsyncTransferOp):
         Py_INCREF(%(inp)s);
         """ % locals()
 
+
 @theano.gof.local_optimizer([host_from_gpu, gpu_from_host])
 def local_async_gpu(node):
     if isinstance(node.op, HostFromGpu):
@@ -267,6 +271,7 @@ gpu_seqopt.register('local_async_gpu',
 
 # GPU Scheduling Comparators
 
+
 def send_wait(a):
     """ Wait as long as possible on Waits. Start Send/Recvs early """
     if isinstance(a.op, (GpuFromHostWait, HostFromGpuWait)):
@@ -275,11 +280,13 @@ def send_wait(a):
         return -1
     return 0
 
+
 def gpu_ops_first(a):
     """ Do GpuOps first. They don't block. """
     if isinstance(a.op, GpuOp):
         return -1
     return 0
+
 
 def send_in_order(a, b):
     """ Send variables in the order in which they are needed """
@@ -289,6 +296,7 @@ def send_in_order(a, b):
         (isinstance(a, HostFromGpuSend) and isinstance(b, HostFromGpuSend))):
         return dependence(a.inputs[0].owner, b.inputs[0].owner)
     return 0
+
 
 def tiebreaker(a):
     """
