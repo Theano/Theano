@@ -9,8 +9,10 @@ _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
 
 error = _logger.error
+info = _logger.info
 
 try:
+    import pygpu
     import pygpu.gpuarray
 except ImportError:
     pygpu = None
@@ -39,7 +41,7 @@ def init_dev(dev):
         globals.kind = 'opencl'
         devspec = dev[7:]
         plat, dev = devspec.split(':')
-        devnum = int(dev)|(int(plat)>>16)
+        devnum = int(dev)|(int(plat)<<16)
     else:
         globals.kind = None
     if globals.kind:
@@ -55,6 +57,14 @@ if pygpu:
             theano.compile.shared_constructor(gpuarray_shared_constructor)
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
+        else:
+            info("pygpu support not configured, disabling")
+            pygpu = None
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
         pygpu = None
+else:
+    if (config.gpuarray.init_device != '' or
+        config.device.startswith('opencl') or
+        config.device.startswith('cuda')):
+        error("pygpu was configured but could not be imported", exc_info=True)
