@@ -128,7 +128,9 @@ def test_send_order():
     b = theano.tensor.fmatrix('b')
     c = theano.tensor.fmatrix('c')
     d = theano.tensor.dot(a, b)
+    d.name = 'd'
     e = theano.tensor.dot(d, c)
+    e.name = 'e'
 
     mode = theano.Mode(linker=gpu_linker, optimizer=full_opt)
     f = theano.function((a, b, c), e, mode=mode)
