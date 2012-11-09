@@ -72,7 +72,7 @@ Deprecation:
    This was a predecessor of SharedVariable with a less pythonic philosophy.
 
 Interface changes:
- * Now the base version requirements are numpy >= 1.5.0 and the optional scipy >= 0.8.
+ * Now the base version requirements are numpy >= 1.5.0 and the optional scipy >= 0.7.2.
  * In Theano 0.5, we removed the deprecated sharedvar.value property.
    Now we raise an error if you access it. (Frederic B.)
  * theano.function does not accept duplicate inputs, so function([x, x], ...)

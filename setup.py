@@ -177,7 +177,7 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.5.0', 'scipy>=0.8.0'],
+          install_requires=['numpy>=1.5.0', 'scipy>=0.7.2'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh',
                    'ChangeLog'],
