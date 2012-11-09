@@ -1,3 +1,22 @@
+"""This file is a first implementation that allow using GPU async transfer
+
+WARNING: IF YOU USE THEANO GC, THIS FILE COULD CAUSE BAD RESULTS. MORE
+         THOUGHT IS NEEDED FOR THIS.
+
+This do not remove all the time from the transfer, as currently all
+data is allocated without page-locked memory. So this ask to copy the
+input data on the GPU to special region. Then the transfer in
+async. See http://stackoverflow.com/questions/6500905/techniques-to-reduce-cpu-to-gpu-data-transfer-latency for more detail.
+
+Also, you need to update macrom ASYNC in the file cuda_ndarray.cuh to
+True to use the right function call.
+
+To use this, you need to import this file AND enable the gpu_async
+optimization flag (possible with the Theano flag
+optimier_including=gpu_asynx).
+
+"""
+
 import copy
 import logging
 import StringIO
