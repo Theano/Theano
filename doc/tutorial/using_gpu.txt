@@ -342,7 +342,7 @@ Consider again the logistic regression:
     #print w.get_value(), b.get_value()
 
     # Construct Theano expression graph
-    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probabily of having a one
+    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
     prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
     xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
     cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
@@ -400,7 +400,7 @@ What can be done to further increase the speed of the GPU version? Put your idea
    * Use the Theano flag ``device=gpu`` to require use of the GPU device.
    * Use ``device=gpu{0, 1, ...}`` to specify which GPU if you have more than one.
  
-   * Apply the Theano flag ``floatX=float32`` through (``theano.config.floatX``) in your code.
+   * Apply the Theano flag ``floatX=float32`` (through ``theano.config.floatX``) in your code.
    * ``Cast`` inputs before storing them into a ``shared`` variable.
    * Circumvent the automatic cast of *int32* with *float32* to *float64*:
     
@@ -623,5 +623,4 @@ only applicable to computations involving a single output. Hence, to gain
 efficiency over the basic solution that is asked here, the two operations would
 have to be jointly optimized explicitly in the code.)
 
-Modify and execute to support *stride* (i.e. so as not constrain the input to be *C-contiguous*).
-
+Modify and execute to support *stride* (i.e. to avoid constraining the input to be *C-contiguous*).

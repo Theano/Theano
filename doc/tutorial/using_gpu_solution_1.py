@@ -38,7 +38,7 @@ y.tag.test_value = D[1]
 #print w.get_value(), b.get_value()
 
 # Construct Theano expression graph
-p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))  # Probabily of having a one
+p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))  # Probability of having a one
 prediction = p_1 > 0.5  # The prediction that is done: 0 or 1
 xent = -y * tt.log(p_1) - (1 - y) * tt.log(1 - p_1)  # Cross-entropy
 cost = tt.cast(xent.mean(), 'float32') + \
