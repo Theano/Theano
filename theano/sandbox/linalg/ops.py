@@ -922,13 +922,21 @@ class Eig(Op):
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
 
-           .. math:: W\frac{\partial\,\mbox{eig}(X)[0]}
+           .. math:: \sum_n\left( W_n\frac{\partial\,\lambda_n}
                            {\partial X} +
-                     V\frac{\partial\,\mbox{eig}(X)[1]}
-                           {\partial X},
+                     \sum_k V_{nk}\frac{\partial\,\Psi_{nk}}
+                           {\partial X}\right),
                         
-        where [:math:`W`, :math:`V`] corresponds to ``g_outputs`` and
-        :math:`X` to ``inputs``.
+        where [:math:`W`, :math:`V`] corresponds to ``g_outputs``,
+        :math:`X` to ``inputs``, and  :math:`(\lambda, \Psi)=\mbox{eig}(X)`.
+
+           .. math:: \frac{\partial\,\lambda_n}
+                           {\partial X_{ij}} = \Psi_{ni}\,\Psi_{nj}
+
+
+           .. math:: \frac{\partial\,\Psi_{ni}}
+                {\partial X_{jk}} = 
+                \left((X-\lambda_n)^{-1}(\Psi_n\otimes\Psi_n-1)\right)_{ij}\Psi_{nk}
         """
         return [grad_not_implemented(self, 0, x, "Work in progress.")]
 
