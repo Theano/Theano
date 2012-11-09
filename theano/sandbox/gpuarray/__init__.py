@@ -27,9 +27,8 @@ AddConfigVar('gpuarray.init_device',
 
 
 # This is for documentation not to depend on the availability of pygpu
-from type import GpuArrayType
-from var import (GpuArrayVariable, GpuArrayConstant, GpuArraySharedVariable,
-                 gpuarray_shared_constructor)
+from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
+                  GpuArraySharedVariable, gpuarray_shared_constructor)
 
 
 def init_dev(dev):

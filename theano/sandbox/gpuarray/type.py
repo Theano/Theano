@@ -1,9 +1,8 @@
-import copy_reg
-
 import numpy
 
 import theano
-from theano import Type, Variable, tensor, config, scalar
+from theano import Type, Variable, Constant, tensor, config, scalar
+from theano.compile import SharedVariable
 
 # Make sure this is importable even if pygpu is absent
 # (it will not work though)
@@ -11,14 +10,11 @@ try:
     import pygpu
     from pygpu import gpuarray
     from pygpu.elemwise import compare
+    from basic_ops import host_from_gpu, gpu_from_host
 except ImportError:
     pass
 
 class GpuArrayType(Type):
-    Variable = None
-    Constant = None
-    SharedVariable = None
-    
     def value_zeros(self, shape):
         return pygpu.gpuarray.zeros(shape, dtype=self.typecode, kind=self.kind,
                                     context=self.context)
@@ -30,6 +26,9 @@ class GpuArrayType(Type):
             kind = globals.kind
         if context is None:
             context = globals.context
+        # In case this was not provided and no global value is available
+        if kind is None:
+            raise RuntimeError("pygpu is not initialized")
         self.dtype = str(dtype)
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.ndim = len(self.broadcastable)
@@ -103,3 +102,76 @@ class GpuArrayType(Type):
     def __str__(self):
         return "GpuArray<%s>" % self.dtype
 
+
+
+class _operators(tensor.basic._tensor_py_operators):
+    def _as_TensorVariable(self):
+        return host_from_gpu(self)
+
+    def _as_GpuArrayVariable(self):
+        return self
+
+    dtype = property(lambda s: s.type.dtype)
+    broadcastable = property(lambda s: s.type.broadcastable)
+    ndim = property(lambda s: s.type.ndim)
+
+
+class GpuArrayVariable(_operators, Variable):
+    pass
+
+
+GpuArrayType.Variable = GpuArrayVariable
+
+
+class GpuArraySignature(tensor.basic.TensorConstantSignature):
+    pass  # might do something better if we can run the sum on the
+          # GPU, but for now this will suffice.
+
+
+class GpuArrayConstant(_operators, Constant):
+    def signature(self):
+        return GpuArraySignature((self.type, numpy.asarray(self.data)))
+
+    def __str__(self):
+        if self.name is not None:
+            return self.name
+        return "GpuArrayConstant{%s}" % numpy.asarray(self.data)
+
+
+GpuArrayType.Constant = GpuArrayConstant
+
+
+class GpuArraySharedVariable(_operators, SharedVariable):
+    def get_value(self, borrow=False, return_internal_type=False):
+        if return_internal_type:
+            if borrow:
+                return self.container.value
+            else:
+                return self.container.value.copy()
+        else:
+            return numpy.asarray(self.container.value)
+
+    def set_value(self, value, borrow=False):
+        self.container.value = pygpu.gpuarray.array(value, copy=(not borrow))
+
+    def __getitem__(self, *args):
+        return _operators.__getitem__(self, *args)
+
+
+GpuArrayType.SharedVariable = GpuArraySharedVariable
+
+
+def gpuarray_shared_constructor(value, name=None, strict=False,
+                                allow_downcast=None, borrow=False,
+                                broadcastable=None, kind=None, context=None):
+    """SharedVariable constructor for GpuArrayType"""
+    if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
+        raise TypeError('ndarray or GpuArray required')
+
+    if broadcastable is None:
+        broadcastable = (False,) * value.ndim
+    type = GpuArrayType(value.dtype, broadcastable, kind=kind, context=context)
+    deviceval = pygpu.gpuarray.array(value, copy=(not borrow), kind=type.kind,
+                                     context=type.context)
+    return GpuArraySharedVariable(type=type, value=deviceval, name=name,
+                                  strict=strict)
