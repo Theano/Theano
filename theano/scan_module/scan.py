@@ -130,7 +130,7 @@ def scan(fn,
         The list of ``non_sequences`` can also contain shared variables
         used in the function, though ``scan`` is able to figure those
         out on its own so they can be skipped. For the clarity of the
-        code we recommand though to provide them to scan. To some extend
+        code we recommend though to provide them to scan. To some extend
         ``scan`` can also figure out other ``non sequences`` (not shared)
         even if not passed to scan (but used by `fn`). A simple example of
         this would be :
