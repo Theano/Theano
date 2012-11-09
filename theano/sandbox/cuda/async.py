@@ -228,7 +228,7 @@ def local_async_gpu(node):
 async_optimizer = theano.gof.TopoOptimizer(local_async_gpu)
 
 gpu_seqopt.register('local_async_gpu',
-                    theano.tensor.opt.in2out(local_async_gpu),
+                    async_optimizer,
                     3, 'async', 'gpu_async')
 
 # GPU Scheduling Comparators
