@@ -936,7 +936,7 @@ class Eig(Op):
 
            .. math:: \frac{\partial\,\Psi_{ni}}
                 {\partial X_{jk}} = 
-                \left((X-\lambda_n)^{-1}(\Psi_n\otimes\Psi_n-1)\right)_{ij}\Psi_{nk}
+                \left((X-\lambda_n)^{+}\right)_{ij}\Psi_{nk}
         """
         return [grad_not_implemented(self, 0, x, "Work in progress.")]
 
