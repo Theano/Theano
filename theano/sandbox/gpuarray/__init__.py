@@ -34,11 +34,13 @@ from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
 def init_dev(dev):
     import globals
     if dev.startswith('cuda'):
+        # format is cuda<devnum>
         globals.kind = 'cuda'
         devnum = int(dev[4:])
     elif dev.startswith('opencl'):
+        # format is opencl<platnum>:<devnum>
         globals.kind = 'opencl'
-        devspec = dev[7:]
+        devspec = dev[6:]
         plat, dev = devspec.split(':')
         devnum = int(dev)|(int(plat)<<16)
     else:
@@ -51,7 +53,7 @@ if pygpu:
         if (config.device.startswith('cuda') or
             config.device.startswith('opencl')):
             init_dev(config.device)
-            # XXX add optimization tags here (when we will have some)
+            # TODO add optimization tags here (when we will have some)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
         elif config.gpuarray.init_device != '':

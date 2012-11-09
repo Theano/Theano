@@ -61,14 +61,14 @@ class GpuArrayType(Type):
                                   kind=self.kind, context=self.context,
                                   ndmin=len(self.broadcastable))
         else:
-            if isinstance(data, gpuarray.GpuArray):
-                up_dtype = scalar.upcast(self.dtype, data.dtype)
-                if up_dtype == self.dtype:
-                    data = data.astype(self.dtype)
-                else:
-                    raise TypeError("%s cannot store a value of dtype %s "
-                                    "without risking loss of precision." %
-                                    (self, data.dtype))
+            up_dtype = scalar.upcast(self.dtype, data.dtype)
+            if up_dtype == self.dtype:
+                data = gpuarray.array(data, dtype=self.typecode, copy=False,
+                                      kind=self.kind, context=self.context)
+            else:
+                raise TypeError("%s cannot store a value of dtype %s "
+                                "without risking loss of precision." %
+                                (self, data.dtype))
 
         if self.ndim != data.ndim:
             raise TypeError("Wrong number of dimensions: expected %s, "

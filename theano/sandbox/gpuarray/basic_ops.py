@@ -15,7 +15,7 @@ from type import GpuArrayType
 def as_gpuarray_variable(x):
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable()
-    # XXX: we need to have the cuda -> gpu path taken care of.
+    # TODO we need to have the cuda -> gpu path taken care of.
     tensor_x = tensor.as_tensor_variable(x)
     return gpu_from_host(tensor_x)
 
