@@ -919,11 +919,16 @@ class Eig(Op):
     def __str__(self):
         return "Eig"
 
-    def grad(self, (x,), g_outputs):
-        """The gradient function should return :math:`dw, dv`, where
+    def grad(self, inputs, g_outputs):
+        r"""The gradient function should return
 
-            .. math:: dw = ...
-            .. math:: dv = ...
+           .. math:: W\frac{\partial\,\mbox{eig}(X)[0]}
+                           {\partial X} +
+                     V\frac{\partial\,\mbox{eig}(X)[1]}
+                           {\partial X},
+                        
+        where [:math:`W`, :math:`V`] corresponds to ``g_outputs`` and
+        :math:`X` to ``inputs``.
         """
         return [grad_not_implemented(self, 0, x, "Work in progress.")]
 
