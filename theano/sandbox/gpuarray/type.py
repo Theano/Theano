@@ -88,6 +88,17 @@ class GpuArrayType(Type):
             return False
         return numpy.asarray(compare(a, '==', b)).all()
 
+    def values_eq_approx(self, a, b):
+        if a.shape != b.shape or a.dtype != b.dtype:
+            return False
+        if 'int' in str(a.dtype):
+            return self.values_eq(a, b)
+        else:
+            res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
+                            op_tmpl="res[i] = ((%(a)s - %(b)s) <" \
+                                "(1e-8 + 1e-5 * fabs(%(b)s)))")
+            return numpy.asarray(res).all()
+
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.typecode == other.typecode and
