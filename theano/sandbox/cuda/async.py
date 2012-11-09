@@ -98,7 +98,11 @@ class HostFromGpuSend(GpuAsyncTransferOp):
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
         %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
         cudaEventCreate(%(eventName)s);
+        %(out)s = %(inp)s;
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
+        if(%(out)s == NULL){
+            %(fail)s;
+        }
         cudaEventRecord(*%(eventName)s, 0);
         """ % locals()
 
@@ -131,7 +135,7 @@ class HostFromGpuWait(GpuAsyncTransferOp):
         if(err != cudaSuccess){
             %(fail)s;
         }
-
+        Py_XDECREF(%(out)s);
         %(out)s = %(inp)s;
         Py_INCREF(%(inp)s);
         if(!%(out)s){
@@ -158,9 +162,10 @@ class GpuFromHostSend(GpuAsyncTransferOp):
         return """
         int err = 0;
         cudaEvent_t *%(eventName)s = (cudaEvent_t*)malloc(sizeof(cudaEvent_t));
-        %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s), &free_cudaEvent);
+        %(event)s = PyCObject_FromVoidPtr((void *)(%(eventName)s),
+                                                   &free_cudaEvent);
         cudaEventCreate(%(eventName)s);
-        // Py_XDECREF(%(out)s);
+        Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*) CudaNdarray_New();
         if(!%(out)s){
             %(fail)s;
@@ -207,6 +212,7 @@ class GpuFromHostWait(GpuAsyncTransferOp):
             %(fail)s;
         }
 
+        Py_XDECREF(%(out)s);
         %(out)s = %(inp)s;
         Py_INCREF(%(inp)s);
         """ % locals()
