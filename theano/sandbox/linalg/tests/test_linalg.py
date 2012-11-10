@@ -29,7 +29,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        )
-from theano.sandbox.linalg import eig
+from theano.sandbox.linalg import eig, eigh
 from nose.plugins.skip import SkipTest
 
 
@@ -471,10 +471,10 @@ class test_Solve(utt.InferShapeTester):
                                 self.op_class)
 
 class test_Eig(utt.InferShapeTester):
+    op_class = Eig
+    op = eig
     def setUp(self):
         super(test_Eig, self).setUp()
-        self.op_class = Eig
-        self.op = Eig()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix()
         X = numpy.asarray(self.rng.rand(5, 5),
@@ -494,16 +494,15 @@ class test_Eig(utt.InferShapeTester):
         A = theano.tensor.matrix()
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])
+        x = [[0, 1], [1, 0]] 
+        w, v = [e.eval({A: x}) for e in self.op(A)]
+        assert_array_almost_equal(numpy.dot(x,v), w * v)
 
-        w, v = [e.eval({A: [[0, 1], [1, 0]]}) 
-                for e in self.op(A)]
-        assert_array_almost_equal(w, [1, -1])
-        x = math.sqrt(2)/2
-        assert_array_almost_equal(v, [[x, -x], [x, x]])
-
+class test_Eigh(test_Eig):
+    op = eigh
     def test_grad(self):
         S = self.S
         def fun(x):
-            w, v = eig(x)
+            w, v = self.op(x)
             return w.sum() + v.sum()*0
         utt.verify_grad(fun, [S], rng=self.rng)
