@@ -1082,7 +1082,7 @@ class UnaryBitOp(UnaryScalarOp):
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
-        return [None]
+        return [inputs[0].zeros_like().astype(theano.config.floatX)]
 
 
 class BinaryBitOp(BinaryScalarOp):
@@ -1095,7 +1095,8 @@ class BinaryBitOp(BinaryScalarOp):
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
-        return [None, None]
+        a,b = inputs
+        return [a.zeros_like().astype(theano.config.floatX), b.zeros_like().astype(theano.config.floatX)]
 
 
 class OR(BinaryBitOp):

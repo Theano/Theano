@@ -737,8 +737,6 @@ class Elemwise(Op):
             scalar_ograds = [Scalar(dtype=ograd.type.dtype)()
                     for ograd in ograds]
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
-            for igrad in scalar_igrads:
-                assert igrad is not None
 
         finally:
 
