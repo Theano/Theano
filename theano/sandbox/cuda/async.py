@@ -1,27 +1,54 @@
-"""This file is a first implementation that allow using GPU async transfer
+""" GPU Asynchronous transfer - first implementation
 
 WARNING: IF YOU USE THEANO GC, THIS FILE COULD CAUSE BAD RESULTS. MORE
          THOUGHT IS NEEDED FOR THIS.
 
-This do not remove all the time from the transfer, as currently all
-data is allocated without page-locked memory. So this ask to copy the
-input data on the GPU to special region. Then the transfer in
-async. See http://stackoverflow.com/questions/6500905/techniques-to-reduce-cpu-to-gpu-data-transfer-latency for more detail.
+This file contains operations and optimizations to logically represent
+asynchronous transfer between the CPU and GPU in a safe manner that attempts to
+overlap communication and computation. It splits the HostFromGpu and
+GpuFromHost into two operations each
 
-Also, you need to update macrom ASYNC in the file cuda_ndarray.cuh to
-True to use the right function call.
+1.  an instantaneous SendOp which asynchronously starts a communicaiton
+2.  a blocking WaitOp which waits until the communication terminates
 
-To use this, you need to import this file AND enable the gpu_async
-optimization flag (possible with the Theano flag
-optimier_including=gpu_asynx).
+It is not currently very effective on most architectures. This is because CUDA
+first performs a CPU-CPU copy into page-locked memory before transferring to the
+GPU. This takes the majority of the copy time. See the following for details
+http://stackoverflow.com/questions/6500905/techniques-to-reduce-cpu-to-gpu-data-transfer-latency
 
-There is a GPU scheduler that is needed to get the good function
-evalution when using c|py linker. So this don't work well with the CVM
-or the VM when there is lazy op. See the tests/test_async.py file to
-know how to use it.
+Usage
+-----
 
-We didn't check if in the current version this bring a final speed up.
+To use asynchronous calls you need to do the following
 
+1.  Update the macro ASYNC in the file cuda_ndarray.cuh to True
+2.  Import this file
+3.  Enable the gpu_async optimization flag
+    (possible with the Theano flag optimier_including=gpu_asynx).
+
+To achieve good communication/computaiton overlap the apply nodes must be
+arranged so that unrelated computation occurs between send and wait operations
+like the following.
+
+SendOp - Some computation - WaitOp
+
+To order apply nodes to separate asynchronous sends and waits you need to use a
+scheduler function. This is done in test/test_async.py. Schedulers do not
+currently work with CVM or the VM when there is lazy op. You should use the
+c|py linker.
+
+Future work
+-----------
+
+We should be able to overlap on all of the memory transfer including both the
+GPU-CPU transfer and the CPU-CPU-page-locked transfer by using threads. CUDA
+performs the CPU-CPU copy synchronously because it does not have the ability
+to do it asynchronously in a safe way. Thanks to Theano's graph model and the
+asynchronous SendOp/WaitOp split we do have the ability to perform this
+transfer safely. It should be straight-forward to set up a lock and start a
+thread to perform the transfer in the SendOp, and then wait on that lock in the
+WaitOp. In my test computation (Kalman Filter) this would result in a ~20%
+speedup.
 
 Optional TODO:
 
