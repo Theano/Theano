@@ -938,6 +938,51 @@ class Eig(Op):
                 {\partial X_{jk}} = 
                 \left((X-\lambda_n)^{+}\right)_{ij}\Psi_{nk}
         """
-        return [grad_not_implemented(self, 0, x, "Work in progress.")]
+        x, = inputs
+        w, v = self(x)
+        gw, gv = g_outputs
+        return [EigGrad()(x, w, v, gw, gv)]
 
 eig = Eig()
+
+class EigGrad(Op):
+    """Gradient of an eigensystem.
+
+    """
+    def props(self):
+        return ()
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def __str__(self):
+        return 'EigGrad'
+    
+
+    def make_node(self, x, w, v, gw, gv):
+        x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
+        return Apply(self, [x, w, v, gw, gv], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        """
+        """
+        x, w, v, gw, gv = inputs
+        N = x.shape[0]
+        if imported_scipy:
+            pinv = scipy.linalg.pinv
+        else:
+            pinv = numpy.linalg.pinv
+        diag = numpy.diag
+        outer = numpy.outer
+        gx = sum(gw[n]*outer(v[:,n], v[:,n]) +
+                 sum(gv[m,n]*outer(pinv(diag(w)-x)[m,:],v[:,n])
+                     for m in xrange(N))
+                 for n in xrange(N))
+        outputs[0][0] = gx
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
