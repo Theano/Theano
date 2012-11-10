@@ -882,8 +882,8 @@ class Eig(Op):
 
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, numop):
+        self._numop = numop
 
     def props(self):
         """Function exposing different properties of each instance of the
@@ -907,9 +907,10 @@ class Eig(Op):
 
     def perform(self, node, (x,), (w, v)):
         try:
-            w[0], v[0] = [z.astype(x.dtype) for z in numpy.linalg.eig(x)]
+            w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
         except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find eig of %s' % str(node.inputs[0]))
+            logger.debug('Failed to find %s of %s' % (node.inputs[0], 
+                                                      self._numop.__name__))
             raise
 
     def infer_shape(self, node, shapes):
@@ -917,7 +918,7 @@ class Eig(Op):
         return [(n,), (n,n)]
 
     def __str__(self):
-        return "Eig"
+        return self._numop.__name__.capitalize()
 
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
@@ -943,7 +944,8 @@ class Eig(Op):
         gw, gv = g_outputs
         return [EigGrad()(x, w, v, gw, gv)]
 
-eig = Eig()
+eig = Eig(numpy.linalg.eig)
+eigh = Eig(numpy.linalg.eigh)
 
 class EigGrad(Op):
     """Gradient of an eigensystem.
@@ -968,6 +970,16 @@ class EigGrad(Op):
 
     def perform(self, node, inputs, outputs):
         """
+        Implements the "reverse-mode" gradient for the eigensystem of
+        a square matrix.
+
+        Let
+
+            .. math:: w, v = \mbox{eig}(x).
+
+        By definition of the eigensystem,
+
+            .. math:: \sum_j x_{ij}\,v_{jn} = w_n\,v_{in}.
         """
         x, w, v, gw, gv = inputs
         N = x.shape[0]
