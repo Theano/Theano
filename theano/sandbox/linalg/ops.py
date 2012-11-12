@@ -12,7 +12,7 @@ from theano.tensor.opt import (register_stabilize,
         register_specialize, register_canonicalize)
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
-from theano.gradient import grad_not_implemented
+from theano.gradient import grad_not_implemented, DisconnectedType
 1
 try:
     import scipy.linalg
@@ -922,6 +922,11 @@ class Eig(Op):
 
 eig = Eig()
 
+def _zero_disconnected(outputs, grads):
+    return [o.zeros_like()
+            if isinstance(g.type, DisconnectedType) else g
+            for o, g in zip(outputs, grads)]
+
 class Eigh(Eig):
     """
     Return the eigenvalues and eigenvectors of a Hermitian or symmetric matrix.
@@ -963,7 +968,9 @@ class Eigh(Eig):
         """
         x, = inputs
         w, v = self(x)
-        gw, gv = g_outputs
+        # Replace gradients wrt disconnected variables with
+        # zeros. This is a work-around for issue #1063.
+        gw, gv = _zero_disconnected([w, v], g_outputs)
         return [EighGrad()(x, w, v, gw, gv)]
 
 eigh = Eigh()
