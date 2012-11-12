@@ -283,6 +283,7 @@ if cuda_available:
     import opt
     import cuda_ndarray
     from rng_curand import CURAND_RandomStreams
+    import async
 
 
 def use(device,

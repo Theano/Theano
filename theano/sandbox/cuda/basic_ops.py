@@ -159,7 +159,6 @@ class GpuFromHost(GpuOp):
 
 gpu_from_host = GpuFromHost()
 
-
 class GpuElemwise(GpuOp):
     """
     Implement a generic elemwise on the gpu.
