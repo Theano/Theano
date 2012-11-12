@@ -43,6 +43,45 @@ class HostFromGpu(Op):
         z, = out
         z[0] = numpy.asarray(x)
 
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp = inputs[0]
+        out = outputs[0]
+        fail = sub['fail']
+        return """{
+        GpuArray %(name)s_ga_s;
+        GpuArray *%(name)s_ga;
+        int %(name)serr;
+        PyArray_Descr *%(name)s_dtype;
+        if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
+            if (GpuArray_copy(&%(name)s_ga_s, &%(inp)s->ga, GA_C_ORDER) != GA_NO_ERROR) {
+                %(fail)s;
+            }
+            %(name)s_ga = &%(name)s_ga_s;
+        } else {
+            %(name)s_ga = &%(inp)s->ga;
+        }
+        %(name)s_dtype = typecode_to_dtype(%(inp)s->ga.typecode);
+        // PyArray_Empty below steals a reference to the dtype we pass it
+        // so we need an extra one to spare.
+        Py_INCREF(%(name)s_dtype);
+        %(out)s = (PyArrayObject *)PyArray_Empty(%(inp)s->ga.nd,
+                                (npy_intp *)%(inp)s->ga.dimensions,
+                                %(name)s_dtype,
+                                (%(inp)s->ga.flags & GA_F_CONTIGUOUS) &&
+                                !(%(inp)s->ga.flags & GA_C_CONTIGUOUS));
+        if (%(out)s == NULL) {
+            if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
+            %(fail)s
+        }
+        %(name)serr = GpuArray_read(PyArray_DATA(%(out)s),
+                                    PyArray_NBYTES(%(out)s),
+                                    %(name)s_ga);
+        if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
+        if (%(name)serr != GA_NO_ERROR) {
+            %(fail)s
+        }
+        }""" % {'name': name, 'fail': sub['fail'], 'inp': inp, 'out': out}
+
     def grad(self, inputs, grads):
         gz, = grads
         return [gpu_from_host(gz)]

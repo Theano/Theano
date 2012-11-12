@@ -114,8 +114,59 @@ class GpuArrayType(Type):
                 hash(self.kind) ^ hash(self.context))
 
     def __str__(self):
-        return "GpuArray<%s>" % self.dtype
+        return "GpuArray[%s, %s]<%s>" % (self.kind, self.context, self.dtype)
 
+    def c_declare(self, name, sub):
+        return "GpuArrayObject *%s;" % (name,)
+
+    def c_init(self, name, sub):
+        return "%s = NULL;" % (name,)
+
+    def c_extract(self, name, sub):
+        # TODO I don't check broadcast stuff for now.
+        return """
+        %(name)s = NULL;
+        if (py_%(name)s == Py_None) {
+            PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
+            %(fail)s
+        }
+        if (py_%(name)s->ob_type != &GpuArrayType &&
+            !PyObject_TypeCheck(py_%(name)s, &GpuArrayType)) {
+            PyErr_SetString(PyExc_ValueError, "expected a GpuArray");
+            %(fail)s
+        }
+        %(name)s = (GpuArrayObject *)py_%(name)s;
+        Py_INCREF(%(name)s);
+        """ % {'name': name, 'fail': sub['fail']}
+
+    def c_cleanup(self, name, sub):
+        return ""
+
+    def c_sync(self, name, sub):
+        return """
+        if (!%(name)s) {
+            Py_XDECREF(py_%(name)s);
+            Py_INCREF(Py_None);
+            py_%(name)s = Py_None;
+        } else if ((void *)py_%(name)s != (void *)%(name)s) {
+            Py_XDECREF(py_%(name)s);
+            py_%(name)s = (PyObject *)%(name)s;
+            Py_INCREF(py_%(name)s);
+        }
+        """ % {'name': name}
+
+    def c_headers(self):
+        return ['pygpu/gpuarray.h', 'compyte/array.h', 'compyte/kernel.h',
+                'compyte/error.h']
+
+    def c_libraries(self):
+        return ['compyte']
+
+    def c_header_dirs(self):
+        return [pygpu.get_include()]
+
+    def c_code_cache_version(self):
+        return () # TODO: This is temporary
 
 
 class _operators(tensor.basic._tensor_py_operators):
