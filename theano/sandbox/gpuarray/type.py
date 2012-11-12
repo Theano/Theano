@@ -15,10 +15,6 @@ except ImportError:
     pass
 
 class GpuArrayType(Type):
-    def value_zeros(self, shape):
-        return pygpu.gpuarray.zeros(shape, dtype=self.typecode, kind=self.kind,
-                                    context=self.context)
-
     def __init__(self, dtype, broadcastable, kind=None, context=None,
                  name=None):
         import globals
@@ -98,6 +94,13 @@ class GpuArrayType(Type):
                             op_tmpl="res[i] = ((%(a)s - %(b)s) <" \
                                 "(1e-8 + 1e-5 * fabs(%(b)s)))")
             return numpy.asarray(res).all()
+
+    def value_zeros(self, shape):
+        return pygpu.gpuarray.zeros(shape, dtype=self.typecode, kind=self.kind,
+                                    context=self.context)
+
+    def make_variable(self, name=None):
+        return self.Variable(self, name=name)
 
     def __eq__(self, other):
         return (type(self) == type(other) and
