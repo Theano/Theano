@@ -344,8 +344,8 @@ def Lop(f, wrt, eval_points, consider_constant=None,
 
     known = dict(zip(f, eval_points))
 
-    gmap = grad(cost=None, known_grads=known,
-            consider_constant=wrt, wrt=wrt)
+    gmap = dict(zip(wrt, grad(cost=None, known_grads=known,
+            consider_constant=wrt, wrt=wrt)))
 
     # Note : If p is not in gmap there can be several reasons, among which
     # is the fact that p might not be part of the computational graph. A
