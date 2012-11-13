@@ -341,12 +341,10 @@ def Lop(f, wrt, eval_points, consider_constant=None,
     if not isinstance(wrt, (list, tuple)):
         wrt = [wrt]
 
-    arg1 = zip(f, eval_points)
-    arg2 = list(wrt)
+    known = dict(zip(f, eval_points))
 
-    gmap = grad_sources_inputs(
-        arg1,
-        arg2)
+    gmap = grad(cost=None, known_grads=known,
+            consider_constant=wrt, wrt=wrt)
 
     # Note : If p is not in gmap there can be several reasons, among which
     # is the fact that p might not be part of the computational graph. A
