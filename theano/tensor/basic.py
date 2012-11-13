@@ -121,7 +121,7 @@ def as_tensor_variable(x, name=None, ndim=None):
     This function is often used by `make_node` methods of `Op`
     subclasses to turn ndarrays, numbers, `Scalar` instances, `Apply`
     instances and `TensorType` instances into valid input list
-    elemnts.
+    elements.
 
     :Parameters:
      - `x`: Apply instance, Variable instance, numpy.ndarray, or number
