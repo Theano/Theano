@@ -9,7 +9,7 @@ from theano.compile import SharedVariable
 try:
     import pygpu
     from pygpu import gpuarray
-    from pygpu.elemwise import compare
+    from pygpu.elemwise import compare, elemwise2
     from basic_ops import host_from_gpu, gpu_from_host
 except ImportError:
     pass
@@ -77,18 +77,20 @@ class GpuArrayType(Type):
                                 " dimension.", shp, self.broadcastable)
         return data
 
-    def values_eq(self, a, b):
+    @classmethod
+    def values_eq(cls, a, b):
         if a.shape != b.shape:
             return False
         if a.typecode != b.typecode:
             return False
         return numpy.asarray(compare(a, '==', b)).all()
 
-    def values_eq_approx(self, a, b):
+    @classmethod
+    def values_eq_approx(cls, a, b):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
         if 'int' in str(a.dtype):
-            return self.values_eq(a, b)
+            return cls.values_eq(a, b)
         else:
             res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
                             op_tmpl="res[i] = ((%(a)s - %(b)s) <" \

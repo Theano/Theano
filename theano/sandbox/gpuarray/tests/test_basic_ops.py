@@ -24,7 +24,7 @@ def test_transfer():
     
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
-    assert numpy.allclose(fv, gv)
+    assert GpuArrayType.values_eq_approx(fv, gv)
 
     f = theano.function([g], host_from_gpu(g))
     fv = f(gv)
