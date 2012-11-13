@@ -511,5 +511,7 @@ class test_Eigh(test_Eig):
             
     def test_grad(self):
         S = self.S
-        utt.verify_grad(lambda x: self.op(x + x.T)[0], [S], rng=self.rng)
-        utt.verify_grad(lambda x: self.op(x + x.T)[1], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
