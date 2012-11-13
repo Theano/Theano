@@ -369,17 +369,6 @@ class test_grad(unittest.TestCase):
         # If we made it to here without an exception, then the
         # connection_pattern functionality worked correctly
 
-    def test_sum_disconnected(self):
-
-        # Tests that we can add DisconnectedType to other terms correctly
-        x = theano.tensor.scalar()
-        y = x * 2.
-        z = x + 1.
-        cost = y + z
-        theano.tensor.grad(cost, x, consider_constant=[y, z])
-        # In an earlier version of theano, the above line would have failed
-        # while trying to add two DisconnectedTypes
-
     def test_output_grad_on_int(self):
         # If the g_cost argument is specified when x has a discrete dtype,
         # g_cost should be equivalent to 0.
