@@ -503,6 +503,6 @@ class test_Eigh(test_Eig):
     def test_grad(self):
         S = self.S
         def fun(x):
-            w, v = self.op(x)
-            return w.sum() + (v*v).sum()
+            w, v = self.op(x + x.T)
+            return w.sum() + v.sum()
         utt.verify_grad(fun, [S], rng=self.rng)
