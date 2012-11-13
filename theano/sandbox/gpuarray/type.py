@@ -159,9 +159,6 @@ class GpuArrayType(Type):
         return ['pygpu/gpuarray.h', 'compyte/array.h', 'compyte/kernel.h',
                 'compyte/error.h']
 
-    def c_libraries(self):
-        return ['compyte']
-
     def c_header_dirs(self):
         return [pygpu.get_include()]
 
