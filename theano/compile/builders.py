@@ -55,9 +55,8 @@ class OpFromGraph(gof.Op):
 
         if grad_depth > 0:
             output_grads = [t() for t in self.output_types]
-            gd = G.grad_sources_inputs(zip(self.outputs, output_grads),
-                    self.inputs)
-            gs = map(gd.get, self.inputs)
+            gs = G.grad(cost=None, known_grads=dict(zip(self.outputs, output_grads)),
+                    wrt=self.inputs)
             self.grad_ops = []
             for g in gs:
                 if g is None:
