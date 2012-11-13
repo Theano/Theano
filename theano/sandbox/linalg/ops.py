@@ -991,7 +991,13 @@ class EighGrad(Op):
     """
     def __init__(self, UPLO='L'):
         self.UPLO = UPLO
-
+        if UPLO == 'L':
+            self.tri0 = numpy.tril
+            self.tri1 = lambda a: numpy.triu(a, 1)
+        else:
+            self.tri0 = numpy.triu
+            self.tri1 = lambda a: numpy.tril(a, -1)
+            
     def props(self):
         return ()
 
@@ -1043,11 +1049,9 @@ class EighGrad(Op):
 
         G = lambda n: sum(v[:,m]*V.T[n].dot(v[:,m])/(w[n]-w[m])
                           for m in xrange(N) if m != n)
-        tri = numpy.tri(N)
-        if self.UPLO == 'U':
-            tri = tri.T
-        outputs[0][0] = sum(outer(v[:,n], v[:,n]*W[n] + G(n))
-                            for n in xrange(N))#*tri
+        g = sum(outer(v[:,n], v[:,n]*W[n] + G(n))
+                for n in xrange(N))
+        outputs[0][0] = self.tri0(g) + self.tri1(g).T
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
