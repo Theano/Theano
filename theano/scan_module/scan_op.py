@@ -221,7 +221,8 @@ class Scan(PureOp):
                     'following error has been encountered: The '
                     '%s %s (argument number %d) has dtype '
                     '%s and %d dimension(s). The corresponding slice %s '
-                    'however has dtype %s and %d dimension(s). This '
+                    'however has dtype %s and %d dimension(s) (it should '
+                    'have the same dtype and one fewer dimensions). This '
                     'should never happen, please '
                     'report to theano-dev mailing list'
                    )
