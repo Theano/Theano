@@ -6,7 +6,6 @@ import unittest
 import theano
 from theano import gof
 
-from theano.gradient import grad_sources_inputs
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
@@ -15,6 +14,16 @@ from theano.gof.null_type import NullType
 
 one = theano.tensor.as_tensor_variable(1.)
 
+
+def grad_sources_inputs(sources, inputs):
+    """
+    This implements the old grad_sources_inputs function in terms of
+    the new interface so the tests don't need to be rewritten.
+    """
+    if inputs is None:
+        inputs = theano.gof.graph.inputs([source[0] for source in sources])
+    return dict(zip(inputs,theano.gradient.grad(cost=None, known_grads=dict(sources),
+        wrt=inputs, consider_constant=inputs)))
 
 class testgrad_sources_inputs(unittest.TestCase):
 
