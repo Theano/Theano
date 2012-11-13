@@ -753,6 +753,11 @@ def _populate_var_to_node_to_idx(outputs, wrt, consider_constant):
 
     return var_to_app_to_idx
 
+class NullTypeGradError(TypeError):
+    """
+    Raised when grad encounters a NullType.
+    """
+    pass
 
 def _populate_grad_dict(var_to_node_to_idx,
         grad_dict, wrt, cost_name=None):
@@ -1010,7 +1015,7 @@ def _populate_grad_dict(var_to_node_to_idx,
                                         type(term)))
 
                         if isinstance(term.type, NullType):
-                            raise TypeError("tensor.grad "
+                            raise NullTypeGradError("tensor.grad "
                                 "encountered a NaN. " +\
                                     term.type.why_null)
 

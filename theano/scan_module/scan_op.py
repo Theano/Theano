@@ -1261,11 +1261,10 @@ class Scan(PureOp):
                              if x in diff_inputs]
             for x in consider_inps:
                 try:
-                    _gmp = gradient.grad_sources_inputs(
-                        [(y, g_y)],
-                        [x])
-                    gmp[x] = _gmp[x]
-                except TypeError:
+                    gmp[x] = gradient.grad(cost=None,
+                            known_grads={y: g_y},
+                        wrt=x)
+                except gradient.NullTypeGradError:
                     # It means the gradient is undefined (which implies
                     # is connected)
                     gmp[x] = x
