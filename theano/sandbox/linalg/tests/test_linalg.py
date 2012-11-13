@@ -499,7 +499,16 @@ class test_Eig(utt.InferShapeTester):
         assert_array_almost_equal(numpy.dot(x,v), w * v)
 
 class test_Eigh(test_Eig):
-    op = eigh
+    op = staticmethod(eigh)
+    def test_uplo(self):
+        S = self.S
+        a = theano.tensor.matrix()
+        wu, vu = [out.eval({a: S}) for out in self.op(a, 'U')]
+        wl, vl = [out.eval({a: S}) for out in self.op(a, 'L')]
+        assert_array_almost_equal(wu, wl)
+        assert_array_almost_equal(vu*numpy.sign(vu[0,:]),
+                                  vl*numpy.sign(vl[0,:]))
+            
     def test_grad(self):
         S = self.S
         utt.verify_grad(lambda x: self.op(x + x.T)[0], [S], rng=self.rng)
