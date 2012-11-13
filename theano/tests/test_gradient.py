@@ -407,6 +407,27 @@ class test_grad(unittest.TestCase):
         # be downcasted to float32, so dc_dx should also be float32
         assert dc_dx.dtype == 'float32'
 
+    def test_grad_constant(self):
+
+        # Test that the gradient handles Constants and consider_constant variables
+        # consistently
+
+        x = theano.tensor.scalar()
+        y = theano.tensor.scalar()
+        z_x = x + y
+        z_one = one + y
+        g_x = theano.tensor.grad(z_x, x, consider_constant=[x])
+        g_one = theano.tensor.grad(z_one, one)
+
+        f = theano.function([x, y],[g_x, g_one])
+
+        g_x, g_one = f(1, .5)
+
+        if not np.allclose(g_x, g_one):
+            raise ValueError("Gradient using consider constant is " + str(g_x)\
+                    + " but gradient with respect to the same Constant is " + \
+                    str(g_one))
+
 
 if __name__ == '__main__':
     unittest.main()
