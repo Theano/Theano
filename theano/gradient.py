@@ -487,10 +487,6 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
 
     grad_dict[cost] = g_cost
 
-    # the gradient of the constants is 0
-    for const in consider_constant:
-        grad_dict[const] = DisconnectedType()()
-
     # variables that do not influence the cost have zero gradient.
     # if wrt is such a variable, populate the grad_dict with this info
     # so that wrt not being in var_to_node_to_idx won't cause an error below
