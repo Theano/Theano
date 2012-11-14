@@ -965,7 +965,7 @@ class Eigh(Eig):
                            {\partial a_{ij}}\right),
                         
         where [:math:`W`, :math:`V`] corresponds to ``g_outputs``,
-        :math:`X` to ``inputs``, and  :math:`(w, v)=\mbox{eig}(a)`.
+        :math:`a` to ``inputs``, and  :math:`(w, v)=\mbox{eig}(a)`.
 
         Analytic formulae for eigensystem gradients are well-known in
         perturbation theory:
