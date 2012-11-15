@@ -350,7 +350,7 @@ def Lop(f, wrt, eval_points, consider_constant=None,
 
 def grad(cost, wrt, g_cost=None, consider_constant=None,
         disconnected_inputs='raise', add_names=True,
-        known_grads=None):
+        known_grads=None, return_disconnected='zero'):
     """
     :type cost: Scalar (0-dimensional) Variable.
         May optionally be None if known_grads is provided.
@@ -379,6 +379,14 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
             gradients. This is useful in the case where you know the
             gradient on some variables but do not know the original
             cost.
+
+    :type return_disconnected: string
+    :param return_disconnected:
+        'zero' : If wrt[i] is disconnected, return value i will be
+                 wrt[i].zeros_like()
+        'None' : If wrt[i] is disconnected, return value i will be
+                 None
+        'Disconnected' : returns variables of type DisconnectedType
 
     :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
 
@@ -532,7 +540,12 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
 
     for i in xrange(len(rval)):
         if isinstance(rval[i].type, DisconnectedType):
-            rval[i] = _float_zeros_like(wrt[i])
+            if return_disconnected == 'zero':
+                rval[i] = _float_zeros_like(wrt[i])
+            elif return_disconnected == 'None':
+                rval[i] = None
+            else:
+                assert return_disconnected == 'Disconnected'
 
     if using_tuple:
         rval = tuple(rval)
