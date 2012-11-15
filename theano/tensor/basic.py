@@ -3838,6 +3838,17 @@ class Subtensor(Op):
 
     @staticmethod
     def collapse(idxs, cond):
+        """
+
+        idxs: a list of indices or slices.
+        cond: a callable that returns a bool
+
+        returns: idxs, with the slices flattened out into a list.
+                if cond is true for an entry, does not flatten it.
+
+        """
+
+
         ret = []
 
         def helper(entry):
@@ -3850,10 +3861,17 @@ class Subtensor(Op):
 
         for idx in idxs:
             helper(idx)
+
+
         return ret
 
     @staticmethod
     def convert(entry, slice_ok=True):
+        """
+        TODO: WRITEME
+        TODO: In particular, wtf does it mean to have a Type instead of a Variable
+            in here?
+        """
         invalid_scal_types = [scal.float64, scal.float32]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
         tensor_types = [lscalar, iscalar, wscalar, bscalar]
