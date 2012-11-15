@@ -506,7 +506,8 @@ def grad(cost, wrt, g_cost=None, consider_constant=None,
     # so that wrt not being in var_to_node_to_idx won't cause an error below
     # according to the flag, possibly raise an error if wrt is disconnected
     for elem in wrt:
-        if elem not in var_to_node_to_idx and elem is not cost:
+        if elem not in var_to_node_to_idx and elem is not cost \
+                and elem not in grad_dict:
             message = ("grad method was asked to compute the gradient "
                     "with respect to a variable that is not part of "
                     "the computational graph of the cost, or is used "
