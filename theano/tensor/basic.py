@@ -530,9 +530,17 @@ def get_constant_value(v):
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
         if isinstance(v.owner.op, Subtensor) and v.ndim == 0:
-            if isinstance(v.owner.inputs[0], TensorConstant):
-                return v.owner.inputs[0].data.__getitem__(
+            # This condition depends on Subtensor always embedding constant
+            # indices in the Op rather than making them inputs to the Apply node
+            if isinstance(v.owner.inputs[0], TensorConstant) and \
+                len(v.owner.inputs) == 1:
+                try:
+                    return v.owner.inputs[0].data.__getitem__(
                     tuple(v.owner.op.idx_list))
+                except IndexError:
+                    raise IndexError(str(tuple(v.owner.op.idx_list))+" is not a valid index into " + \
+                            str(v.owner.inputs[0].data))
+
 
             # The index list 'idx_list' should have length the same
             # shape as the input.
