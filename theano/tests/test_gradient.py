@@ -479,6 +479,24 @@ def test_known_grads():
                     print v,':',theano.function(inputs,known[v])(*values)
                 assert False
 
+def test_dxdx():
+
+
+    # Tests that the gradient of a scalar with respect to itself is 1
+    # I use an integer in this case because people keep changing this
+    # gradient to be 0 on integers but according to our interpretation
+    # of the gradient as defined in the Op contract, it should be 1.
+    # If you feel the need to change this unit test you are probably
+    # modifying the Op contract and should definitely get the approval
+    # of multiple people on theano-dev.
+
+    x = theano.tensor.iscalar()
+    g = theano.tensor.grad(x, x)
+
+    g = g.eval({ x : 12 })
+
+    assert np.allclose(g,1.)
+
 
 if __name__ == '__main__':
     unittest.main()
