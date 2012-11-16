@@ -952,8 +952,9 @@ class Eigh(Eig):
         try:
             w[0], v[0] = self._numop(x, self.UPLO)
         except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (node.inputs[0], 
-                                                      self._numop.__name__))
+            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
+                                                      node.inputs[0])
+                                                      
             raise
         
     def grad(self, inputs, g_outputs):
