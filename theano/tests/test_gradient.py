@@ -420,5 +420,65 @@ class test_grad(unittest.TestCase):
                     str(g_one))
 
 
+def test_known_grads():
+
+    # Tests that the grad method with no known_grads
+    # matches what happens if you put its own known_grads
+    # in for each variable
+
+    full_range = theano.tensor.arange(10)
+    x = theano.tensor.scalar('x')
+    t = theano.tensor.iscalar('t')
+    ft = full_range[t]
+    ft.name = 'ft'
+    coeffs = theano.tensor.vector('c')
+    ct = coeffs[t]
+    ct.name = 'ct'
+    p = x ** ft
+    p.name = 'p'
+    y = ct * p
+    y.name = 'y'
+    cost = theano.tensor.sqr(y)
+    cost.name = 'cost'
+
+    layers = [
+            [cost],
+            [y],
+            [ct,p],
+            [ct, x, ft],
+            [coeffs, t, full_range, x]
+            ]
+
+    inputs = [coeffs, t, x]
+
+    rng = np.random.RandomState([2012, 11, 15])
+    values = [rng.randn(10), rng.randint(10), rng.randn() ]
+    values = [np.cast[ipt.dtype](value) for ipt, value in zip(inputs, values)]
+
+    true_grads = theano.tensor.grad(cost, inputs, disconnected_inputs='ignore')
+    true_grads = theano.function(inputs, true_grads)
+    true_grads = true_grads(*values)
+
+    for layer in layers:
+        print 'Testing by separately computing ',layer
+        first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
+        known = dict(zip(layer, first))
+        full = theano.tensor.grad(cost=None,
+                known_grads=known,wrt=inputs, disconnected_inputs='ignore')
+        full = theano.function(inputs, full)
+        full = full(*values)
+        assert len(true_grads) == len(full)
+        for a, b, var in zip(true_grads, full, inputs):
+            if not np.allclose(a, b):
+                print 'Failure'
+                print a
+                print b
+                print var
+                print layer
+                for v in known:
+                    print v,':',theano.function(inputs,known[v])(*values)
+                assert False
+
+
 if __name__ == '__main__':
     unittest.main()
