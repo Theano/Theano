@@ -473,12 +473,13 @@ class test_Solve(utt.InferShapeTester):
 class test_Eig(utt.InferShapeTester):
     op_class = Eig
     op = eig
+    dtype = 'float64'
     def setUp(self):
         super(test_Eig, self).setUp()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix()
         X = numpy.asarray(self.rng.rand(5, 5),
-                          dtype=config.floatX)
+                          dtype=self.dtype)
         self.S = X.dot(X.T)
         
     def test_infer_shape(self):
@@ -491,7 +492,7 @@ class test_Eig(utt.InferShapeTester):
                                 self.op_class)
     def test_eval(self):
         import math
-        A = theano.tensor.matrix()
+        A = theano.tensor.matrix(dtype=self.dtype)
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])
         x = [[0, 1], [1, 0]] 
@@ -515,3 +516,6 @@ class test_Eigh(test_Eig):
         utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
+
+class test_Eigh_float32(test_Eigh):
+    dtype = 'float32'
