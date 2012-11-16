@@ -1374,11 +1374,21 @@ class Scan(PureOp):
                         self.inner_nitsot_outs(self_outputs))
 
         def compute_gradient(y, g_y):
-            gmp = gradient.grad_sources_inputs(
-                    [(y, g_y)],
-                    [x for x in theano.gof.graph.inputs([y])
-                     if x in diff_inputs])
-            return [gmp.get(p, None) for p in diff_inputs]
+            if 'int' in str(g_y.dtype):
+                raise TypeError("Gradients may never be integers but g_y "
+                        "has type "+str(g_y.type))
+
+            wrt  = [x for x in theano.gof.graph.inputs([y])
+                    if x in diff_inputs]
+            grads =  gradient.grad(
+                    cost = None,
+                    known_grads = {y : g_y },
+                    wrt=wrt, consider_constant=wrt,
+                    disconnected_inputs='ignore',
+                    return_disconnected='None')
+            gmp = dict(zip(wrt, grads))
+            rval =  [gmp.get(p, None) for p in diff_inputs]
+            return rval
         dC_dinps_t = [None for inp in diff_inputs]
         disconnected_dC_dinps_t = [True for inp in diff_inputs]
         dC_dXts = []
