@@ -626,7 +626,9 @@ def _populate_var_to_node_to_idx(outputs, wrt, consider_constant):
         # this is important, if someone accidentally passes a nested data
         # structure with theano variables at the leaves, only the root will
         # be properly considered constant
-        if not hasattr(consider_constant, '__iter__'):
+        try:
+            iter(consider_constant)
+        except TypeError:
             raise TypeError('consider_constant must be an iterable collection,'
                     ' got ' + str(type(consider_constant)))
         for elem in consider_constant:
