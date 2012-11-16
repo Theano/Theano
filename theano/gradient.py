@@ -816,7 +816,7 @@ def _populate_grad_dict(var_to_node_to_idx,
                 # If an output is of an integer dtype, then we just leave it
                 # alone.
                 # DO NOT force integer variables to have zero grad. This causes
-                # bugs where we fail to detect disconected or undefined gradients.
+                # bugs where we fail to detect disconnected or undefined gradients.
                 # DO NOT force integer variables to have integer dtype. This is
                 # a violation of the op contract.
                 new_output_grads = []
