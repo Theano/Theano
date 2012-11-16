@@ -214,7 +214,7 @@ def is_positive(v):
     if v.owner and v.owner.op == tensor.pow:
         try:
             exponent = tensor.get_constant_value(v.owner.inputs[1])
-        except TypeError:
+        except tensor.basic.NotConstantError:
             return False
         if 0 == exponent % 2:
             return True

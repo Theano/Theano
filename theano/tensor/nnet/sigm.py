@@ -138,7 +138,7 @@ def _is_1(expr):
     try:
         v = opt.get_constant_value(expr)
         return numpy.allclose(v, 1)
-    except TypeError:
+    except tensor.NotConstantError:
         return False
 
 log1msigm_to_softplus = gof.PatternSub(

@@ -462,17 +462,10 @@ def _allclose(a, b, rtol=None, atol=None):
     return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
 
 
-class NotConstantError(TypeError):
+class NotConstantError(Exception):
     """
     Raised by get_constant_value if called on something that is
     not constant.
-    For now it is a TypeError, to maintain the old interface
-    that get_constant_value should raise a TypeError in this
-    situation. However, this is unsafe because get_constant_value
-    could inadvertently raise a TypeError if it has a bug.
-    So we should eventually make NotConstantError derive
-    from Exception directly, and modify all code that uses
-    get_constant_value to catch this more specific exception.
     """
     pass
 
@@ -2292,7 +2285,7 @@ class SpecifyShape(Op):
                 s = get_constant_value(node.inputs[1][dim])
                 s = as_tensor_variable(s)
                 new_shape.append(s)
-            except TypeError:
+            except NotConstantError:
                 new_shape.append(node.inputs[1][dim])
 
         assert len(new_shape) == len(xshape)
@@ -2549,7 +2542,7 @@ def max(x, axis=None, keepdims=False):
         try:
             const = get_constant_value(axis)
             out = CAReduce(scal.maximum, list(const))(x)
-        except Exception:
+        except NotConstantError:
             out = max_and_argmax(x, axis)[0]
 
     if keepdims:
@@ -3159,7 +3152,7 @@ class Alloc(gof.Op):
             # if s is constant 1, then we're broadcastable in that dim
             try:
                 const_shp = get_constant_value(s)
-            except TypeError:
+            except NotConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = TensorType(dtype=v.dtype, broadcastable=bcast)
@@ -3703,7 +3696,7 @@ def extract_constant(x):
     '''
     try:
         x = get_constant_value(x)
-    except Exception:
+    except NotConstantError:
         pass
     if (isinstance(x, scal.ScalarVariable) or
         isinstance(x, scal.sharedvar.ScalarSharedVariable)):
@@ -5305,7 +5298,7 @@ class Join(Op):
                     # int
                     axis = int(get_constant_value(axis))
 
-                except TypeError:
+                except NotConstantError:
                     pass
             if isinstance(axis, int):
                 # Basically, broadcastable -> length 1, but the
@@ -5674,7 +5667,7 @@ class Reshape(Op):
                 try:
                     bcasts[index] = (hasattr(y, 'get_constant_value') and
                                      y.get_constant_value() == 1)
-                except TypeError:
+                except NotConstantError:
                     pass
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
 
@@ -5750,7 +5743,7 @@ class Reshape(Op):
                     os_i = get_constant_value(node.inputs[1][i]).item()
                     if os_i == -1:
                         os_i = default_os_i
-                except TypeError:
+                except NotConstantError:
                     os_i = default_os_i
                 oshape.append(os_i)
             return [tuple(oshape)]
@@ -6032,7 +6025,7 @@ class ARange(Op):
             try:
                 v = get_constant_value(var)
                 return numpy.all(v == value)
-            except Exception:
+            except NotConstantError:
                 pass
             return False
 

@@ -171,7 +171,8 @@ def get_constant_value(v):
 
     If theano.sparse is also there, we will look over CSM op.
 
-    If `v` is not some view of constant data, then raise a TypeError.
+    If `v` is not some view of constant data, then raise a
+    tensor.basic.NotConstantError.
     """
     if hasattr(theano, 'sparse') and isinstance(v.type,
                                                 theano.sparse.SparseType):

@@ -1575,7 +1575,7 @@ def _is_zero(x):
     try:
         constant_value = theano.get_constant_value(x)
         no_constant_value = False
-    except TypeError:
+    except theano.tensor.basic.NotConstantError:
         pass
 
     if no_constant_value:
