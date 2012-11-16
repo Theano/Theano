@@ -3802,7 +3802,7 @@ class AdvancedIndexingError(TypeError):
 class Subtensor(Op):
     """Return a subtensor view
 
-    The inputs array is the tensor x, followed by scalar integer variables.
+    The inputs array is the tensor x, followed by scalar integer types.
     TODO: WRITEME: how are the scalar integer variables formatted?
 
     This class uses a relatively complex internal representation of the inputs
@@ -3811,7 +3811,7 @@ class Subtensor(Op):
     idx_list: instance variable TODO: WRITEME: is this a list or a tuple?
                                         (old docstring gives two conflicting
                                         descriptions)
-              elements are either integers, theano scalars, or slices.
+              elements are either integers, theano scalar types, or slices.
               one element per "explicitly named dimension"
                 TODO: WRITEME: what is an "explicitly named dimension" ?
 
@@ -3820,7 +3820,11 @@ class Subtensor(Op):
               if slice:
                   start/stop/step members of each slice are integer indices
                   into the inputs array or None
-                  integer indices be actual integers or theano scalars
+                  integer indices be actual integers or theano scalar types
+
+    Note that the idx_list defines the Op, so two Subtensor instances are
+    considered to be different Ops if they have different idx_list fields.
+    This means that the entries in it are theano Types, not theano Variables.
 
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
@@ -3868,9 +3872,12 @@ class Subtensor(Op):
     @staticmethod
     def convert(entry, slice_ok=True):
         """
-        TODO: WRITEME
-        TODO: In particular, wtf does it mean to have a Type instead of a Variable
-            in here?
+        The "idx_list" field is unique to each Subtensor instance.
+        It is not unique to each Apply node, so it should not refer to
+        specific Variables. This method changes references to Variables
+        into references to Types.
+        TODO: WRITEME: This method also accepts "entry" already being a Type;
+            when would that happen?
         """
         invalid_scal_types = [scal.float64, scal.float32]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
