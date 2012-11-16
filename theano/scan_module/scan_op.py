@@ -221,7 +221,8 @@ class Scan(PureOp):
                     'following error has been encountered: The '
                     '%s %s (argument number %d) has dtype '
                     '%s and %d dimension(s). The corresponding slice %s '
-                    'however has dtype %s and %d dimension(s). This '
+                    'however has dtype %s and %d dimension(s) (it should '
+                    'have the same dtype and one fewer dimensions). This '
                     'should never happen, please '
                     'report to theano-dev mailing list'
                    )
@@ -1261,11 +1262,9 @@ class Scan(PureOp):
                              if x in diff_inputs]
             for x in consider_inps:
                 try:
-                    _gmp = gradient.grad_sources_inputs(
-                        [(y, g_y)],
-                        [x])
-                    gmp[x] = _gmp[x]
-                except TypeError:
+                    gmp[x] = gradient.grad(cost=None,
+                                           known_grads={y: g_y}, wrt=x)
+                except gradient.NullTypeGradError:
                     # It means the gradient is undefined (which implies
                     # is connected)
                     gmp[x] = x
@@ -1374,11 +1373,21 @@ class Scan(PureOp):
                         self.inner_nitsot_outs(self_outputs))
 
         def compute_gradient(y, g_y):
-            gmp = gradient.grad_sources_inputs(
-                    [(y, g_y)],
-                    [x for x in theano.gof.graph.inputs([y])
-                     if x in diff_inputs])
-            return [gmp.get(p, None) for p in diff_inputs]
+            if 'int' in str(g_y.dtype):
+                raise TypeError("Gradients may never be integers but g_y "
+                        "has type "+str(g_y.type))
+
+            wrt  = [x for x in theano.gof.graph.inputs([y])
+                    if x in diff_inputs]
+            grads =  gradient.grad(
+                    cost = None,
+                    known_grads = {y : g_y },
+                    wrt=wrt, consider_constant=wrt,
+                    disconnected_inputs='ignore',
+                    return_disconnected='None')
+            gmp = dict(zip(wrt, grads))
+            rval =  [gmp.get(p, None) for p in diff_inputs]
+            return rval
         dC_dinps_t = [None for inp in diff_inputs]
         disconnected_dC_dinps_t = [True for inp in diff_inputs]
         dC_dXts = []
