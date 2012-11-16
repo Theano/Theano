@@ -468,7 +468,7 @@ def grad(cost, wrt, consider_constant=None,
                 'Ambiguous whether %s should be made into tensor'
                 ' or sparse theano variable' % str(type(g_var)))
 
-        if g_var.type not in [NullType, DisconnectedType] and 'float' \
+        if not isinstance(g_var.type, (NullType, DisconnectedType)) and 'float' \
             not in str(g_var.type.dtype):
             raise TypeError("Gradients must always be NullType, "
                     "DisconnectedType, or continuous, but grad was "
