@@ -17,6 +17,7 @@ np = numpy
 
 import theano
 
+from itertools import izip
 from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import all
@@ -335,7 +336,7 @@ def Lop(f, wrt, eval_points, consider_constant=None,
         wrt = [wrt]
 
     assert len(f) == len(grads)
-    known = dict(zip(f, grads))
+    known = dict(izip(f, grads))
 
     ret = grad(cost=None, known_grads=known,
             consider_constant=consider_constant, wrt=wrt,
