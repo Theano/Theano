@@ -13,7 +13,7 @@ from theano.tensor.opt import (register_stabilize,
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import grad_not_implemented, DisconnectedType
-1
+
 try:
     import scipy.linalg
     imported_scipy = True
