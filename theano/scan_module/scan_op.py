@@ -1263,8 +1263,7 @@ class Scan(PureOp):
             for x in consider_inps:
                 try:
                     gmp[x] = gradient.grad(cost=None,
-                            known_grads={y: g_y},
-                        wrt=x)
+                                           known_grads={y: g_y}, wrt=x)
                 except gradient.NullTypeGradError:
                     # It means the gradient is undefined (which implies
                     # is connected)
