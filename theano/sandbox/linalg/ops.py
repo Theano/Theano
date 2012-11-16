@@ -944,7 +944,13 @@ class Eigh(Eig):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        w = theano.tensor.vector(dtype='float64')
+        # Numpy's linalg.eigh may return either double or single
+        # presision eigenvalues depending on installed version of
+        # LAPACK.  Rather than trying to reproduce the (rather
+        # involved) logic, we just probe linalg.eigh with a trivial
+        # input.
+        w_dtype = self._numop([[numpy.dtype(x.dtype).type()]])[0].dtype.name
+        w = theano.tensor.vector(dtype=w_dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
 
