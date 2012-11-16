@@ -581,7 +581,7 @@ def get_constant_value(v):
                     v.owner.op.idx_list[0]]:
                     return numpy.asarray(1)
 
-    raise TypeError(v)
+    raise NotConstantError(v)
 
 
 class TensorType(Type):
