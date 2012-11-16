@@ -901,6 +901,7 @@ class Eig(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
+        assert x.ndim == 2
         w = theano.tensor.vector(dtype=x.dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
@@ -944,6 +945,7 @@ class Eigh(Eig):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
+        assert x.ndim == 2
         # Numpy's linalg.eigh may return either double or single
         # presision eigenvalues depending on installed version of
         # LAPACK.  Rather than trying to reproduce the (rather
