@@ -497,6 +497,25 @@ def test_dxdx():
 
     assert np.allclose(g,1.)
 
+def test_known_grads_integers():
+
+    # Tests that known_grads works on integers
+
+    x = theano.tensor.iscalar()
+    g_expected = theano.tensor.scalar()
+
+    g_grad = theano.gradient.grad(cost=None,
+            known_grads={x : g_expected},
+            wrt=x)
+
+    f = theano.function([g_expected],g_grad)
+
+    x = -3
+    gv = np.cast[theano.config.floatX](.6)
+
+    g_actual = f(gv)
+
+    assert np.allclose(g_actual, gv)
 
 if __name__ == '__main__':
     unittest.main()
