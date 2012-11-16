@@ -136,7 +136,7 @@ def scan(fn,
     else:
         try:
             n_fixed_steps = opt.get_constant_value(n_steps)
-        except (TypeError, AttributeError):
+        except tensor.basic.NotConstantError:
             n_fixed_steps = None
 
     # Check n_steps is an int

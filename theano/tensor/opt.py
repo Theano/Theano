@@ -33,7 +33,7 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_constant_value, ShapeError
+from basic import get_constant_value, ShapeError, NotConstantError
 
 
 theano.configparser.AddConfigVar('on_shape_error',
@@ -95,7 +95,7 @@ def scalarconsts_rest(inputs):
             v = get_constant_value(i)
             consts.append(v)
             origconsts.append(i)
-        except Exception:
+        except NotConstantError:
             nonconsts.append(i)
     return consts, origconsts, nonconsts
 
@@ -324,13 +324,13 @@ def local_0_dot_x(node):
     try:
         if get_constant_value(x) == 0:
             replace = True
-    except TypeError:
+    except NotConstantError:
         pass
 
     try:
         if get_constant_value(y) == 0:
             replace = True
-    except TypeError:
+    except NotConstantError:
         pass
 
     if replace:
@@ -1179,7 +1179,7 @@ def local_subtensor_make_vector(node):
                 try:
                     v = get_constant_value(idx)
                     return [x.owner.inputs[v]]
-                except Exception:
+                except NotConstantError:
                     pass
             else:
                 # it is a slice of ints and/or Variables
@@ -1321,7 +1321,7 @@ def local_remove_useless_assert(node):
                     #Should we raise an error here? How to be sure it
                     #is not catched?
                     cond.append(c)
-            except TypeError:
+            except NotConstantError:
                 cond.append(c)
 
         if len(cond) == 0:
@@ -1551,7 +1551,7 @@ def local_useless_subtensor(node):
             length_pos = shape_of[node.inputs[0]][pos]
             try:
                 length_pos_data = get_constant_value(length_pos)
-            except TypeError:
+            except NotConstantError:
                 pass
 
             if isinstance(idx.stop, int):
@@ -2034,7 +2034,7 @@ def local_incsubtensor_of_allocs(node):
         try:
             if get_constant_value(y) == 0:
                 replace = True
-        except TypeError:
+        except NotConstantError:
             pass
 
         if replace:
@@ -2060,12 +2060,12 @@ def local_setsubtensor_of_allocs(node):
 
         try:
             replace_x = get_constant_value(x)
-        except TypeError:
+        except NotConstantError:
             pass
 
         try:
             replace_y = get_constant_value(y)
-        except TypeError:
+        except NotConstantError:
             pass
 
         if (replace_x == replace_y and
@@ -2260,7 +2260,7 @@ def local_mul_switch_sink(node):
                     fct[0].values_eq_approx = fct[
                         0].type.values_eq_approx_remove_nan
                     return fct
-            except TypeError:
+            except NotConstantError:
                 pass
             try:
                 if get_constant_value(switch.inputs[2]) == 0.:
@@ -2270,7 +2270,7 @@ def local_mul_switch_sink(node):
                     fct[0].values_eq_approx = fct[
                         0].type.values_eq_approx_remove_nan
                     return fct
-            except TypeError:
+            except NotConstantError:
                 pass
     return False
 
@@ -2301,7 +2301,7 @@ def local_div_switch_sink(node):
                 fct[0].values_eq_approx = fct[
                     0].type.values_eq_approx_remove_nan
                 return fct
-        except TypeError:
+        except NotConstantError:
             pass
         try:
             if get_constant_value(switch.inputs[2]) == 0.:
@@ -2310,7 +2310,7 @@ def local_div_switch_sink(node):
                 fct[0].values_eq_approx = fct[
                     0].type.values_eq_approx_remove_nan
                 return fct
-        except TypeError:
+        except NotConstantError:
             pass
     return False
 
@@ -2703,7 +2703,7 @@ class Canonizer(gof.LocalOptimizer):
         if isinstance(v, Variable):
             try:
                 return get_constant_value(v)
-            except TypeError:
+            except NotConstantError:
                 return None
         else:
             return v
@@ -3208,7 +3208,7 @@ def local_sum_alloc(node):
                     assert val.size == 1
                     val = val.reshape(1)[0] * T.mul(*shapes)
                     return [T.cast(val, dtype=node.outputs[0].dtype)]
-                except TypeError:
+                except NotConstantError:
                     pass
             else:
                 try:
@@ -3222,7 +3222,7 @@ def local_sum_alloc(node):
                     return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
                                     *[shapes[i] for i in xrange(len(shapes))
                                       if i not in node.op.axis])]
-                except TypeError:
+                except NotConstantError:
                     pass
 
 
@@ -3283,7 +3283,7 @@ def local_mul_zero(node):
         for i in node.inputs:
             try:
                 value = get_constant_value(i)
-            except TypeError:
+            except NotConstantError:
                 continue
             #print 'MUL by value', value, node.inputs
             if N.all(value == 0):
@@ -3521,7 +3521,7 @@ def local_add_specialize(node):
         for input in node.inputs:
             try:
                 y = get_constant_value(input)
-            except TypeError:
+            except NotConstantError:
                 y = input
             if numpy.all(y == 0.0):
                 continue
@@ -3882,7 +3882,7 @@ def _is_1(expr):
     try:
         v = get_constant_value(expr)
         return numpy.allclose(v, 1)
-    except TypeError:
+    except NotConstantError:
         return False
 
 
@@ -3892,7 +3892,7 @@ def _is_minus1(expr):
     try:
         v = get_constant_value(expr)
         return numpy.allclose(v, -1)
-    except TypeError:
+    except NotConstantError:
         return False
 
 #1+erf(x)=>erfc(-x)
@@ -4133,7 +4133,7 @@ def local_grad_log_erfc_neg(node):
 
         try:
             cst2 = get_constant_value(mul_neg.owner.inputs[0])
-        except TypeError:
+        except NotConstantError:
             return False
 
         if len(mul_neg.owner.inputs) == 2:
@@ -4160,7 +4160,7 @@ def local_grad_log_erfc_neg(node):
             x = erfc_x
             try:
                 cst = get_constant_value(erfc_x.owner.inputs[0])
-            except TypeError:
+            except NotConstantError:
                 return False
             if cst2 != -cst * 2:
                 return False

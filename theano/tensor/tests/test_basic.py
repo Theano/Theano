@@ -6176,7 +6176,7 @@ class T_get_constant_value(unittest.TestCase):
 
         b = tensor.iscalar()
         a = tensor.stack(b, 2, 3)
-        self.assertRaises(TypeError, get_constant_value, a[0])
+        self.assertRaises(tensor.basic.NotConstantError, get_constant_value, a[0])
         assert get_constant_value(a[1]) == 2
         assert get_constant_value(a[2]) == 3
 
