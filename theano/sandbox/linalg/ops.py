@@ -910,7 +910,7 @@ class Eig(Op):
             w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
         except numpy.linalg.LinAlgError:
             logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0])
+                                                      node.inputs[0]))
             raise
 
     def infer_shape(self, node, shapes):
@@ -953,7 +953,7 @@ class Eigh(Eig):
             w[0], v[0] = self._numop(x, self.UPLO)
         except numpy.linalg.LinAlgError:
             logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0])
+                                                      node.inputs[0]))
                                                       
             raise
         
