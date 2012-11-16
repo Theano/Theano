@@ -415,7 +415,7 @@ class test_grad(unittest.TestCase):
         g_x, g_one = f(1, .5)
 
         if not np.allclose(g_x, g_one):
-            raise ValueError("Gradient using consider constant is " + str(g_x)\
+            raise AssertionError("Gradient using consider constant is " + str(g_x)\
                     + " but gradient with respect to the same Constant is " + \
                     str(g_one))
 
