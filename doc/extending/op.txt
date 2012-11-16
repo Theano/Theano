@@ -249,6 +249,8 @@ following methods:
   1) They must be Variable instances.
   2) When they are types that have dtypes, they must never have an integer dtype.
 
+  The output gradients passed *to* Op.grad will also obey these constraints.
+
   Integers are a tricky subject. Integers are the main reason for having DisconnectedType,
   NullType or zero gradient. When you have an integer as an argument to your grad method,
   recall the definition of a derivative to help you decide what value to return:
