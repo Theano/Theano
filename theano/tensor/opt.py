@@ -125,7 +125,13 @@ def broadcast_like(value, template, fgraph, dtype=None):
                                      if rval.broadcastable[i]
             and not template.broadcastable[i]])
     assert rval.type.dtype == dtype
-    assert rval.type.broadcastable == template.broadcastable
+
+    if rval.type.broadcastable != template.broadcastable:
+        raise AssertionError("rval.type.broadcastable is " +
+                str(rval.type.broadcastable) +
+                " but template.broadcastable is" +
+                str(template.broadcastable))
+
     return rval
 
 
