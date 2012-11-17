@@ -2679,7 +2679,9 @@ def max(x, axis=None, keepdims=False):
     else:
         try:
             const = get_scalar_constant_value(axis)
-            out = CAReduce(scal.maximum, list(const))(x)
+            assert const.dtype in discrete_dtypes
+            const = int(const)
+            out = CAReduce(scal.maximum, [const])(x)
         except NotScalarConstantError:
             out = max_and_argmax(x, axis)[0]
 
