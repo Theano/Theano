@@ -481,6 +481,11 @@ def get_scalar_constant_value(v):
         code, but I'm not sure where it is.
     """
 
+    if v is None:
+        # None is not a scalar (and many uses of this function seem to depend
+        # on passing it None)
+        raise NotScalarConstantError()
+
     if isinstance(v, Constant):
         if getattr(v.tag, 'unique_value', None) is not None:
             data = v.tag.unique_value
