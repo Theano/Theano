@@ -15,7 +15,7 @@ import logging
 import numpy
 
 import theano
-from theano.tensor import (as_tensor_variable, blas, get_constant_value,
+from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast)
 from theano import OpenMPOp, config
 from theano.gof import Apply
@@ -90,7 +90,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         image_shape = list(image_shape)
         for i in xrange(len(image_shape)):
             if image_shape[i] is not None:
-                image_shape[i] = get_constant_value(
+                image_shape[i] = get_scalar_constant_value(
                     as_tensor_variable(image_shape[i]))
                 assert str(image_shape[i].dtype).startswith('int')
                 image_shape[i] = int(image_shape[i])
@@ -98,7 +98,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         filter_shape = list(filter_shape)
         for i in xrange(len(filter_shape)):
             if filter_shape[i] is not None:
-                filter_shape[i] = get_constant_value(
+                filter_shape[i] = get_scalar_constant_value(
                     as_tensor_variable(filter_shape[i]))
                 assert str(filter_shape[i].dtype).startswith('int')
                 filter_shape[i] = int(filter_shape[i])

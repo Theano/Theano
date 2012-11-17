@@ -30,10 +30,10 @@ class TestConv2D(utt.InferShapeTester):
                  verify_grad=True, should_raise=False):
 
         if N_image_shape is None:
-            N_image_shape = [T.get_constant_value(T.
+            N_image_shape = [T.get_scalar_constant_value(T.
                 as_tensor_variable(x)) for x in image_shape]
         if N_filter_shape is None:
-            N_filter_shape = [T.get_constant_value(T.
+            N_filter_shape = [T.get_scalar_constant_value(T.
                 as_tensor_variable(x)) for x in filter_shape]
 
         if input is None:
