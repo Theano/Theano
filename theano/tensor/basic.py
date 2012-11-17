@@ -486,11 +486,14 @@ def get_scalar_constant_value(v):
         # on passing it None)
         raise NotScalarConstantError()
 
-    if isinstance(v, Constant):
-        if getattr(v.tag, 'unique_value', None) is not None:
-            data = v.tag.unique_value
-        else:
-            data = v.data
+    if isinstance(v, (int, float)):
+        return v
+
+    def numpy_scalar(n):
+        """ Return a scalar stored in a numpy ndarray, or raise
+        NotScalarConstantError if the numpy ndarray is not a scalar
+        """
+
         # handle case where data is numpy.array([])
         if hasattr(data, 'shape') and len(data.shape) == 0 or \
             __builtins__['max'](data.shape) == 0:
@@ -502,7 +505,18 @@ def get_scalar_constant_value(v):
         except Exception:
             raise NotScalarConstantError(
                 'v.data is non-numeric, non-scalar, or has more than one'
-                ' unique value', v)
+                ' unique value', n)
+
+    if isinstance(v, numpy.ndarray):
+        return numpy_scalar(v)
+
+
+    if isinstance(v, Constant):
+        if getattr(v.tag, 'unique_value', None) is not None:
+            data = v.tag.unique_value
+        else:
+            data = v.data
+        return numpy_scalar(data)
 
     if v.owner:
         if isinstance(v.owner.op, Alloc):
