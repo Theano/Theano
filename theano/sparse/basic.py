@@ -1710,6 +1710,12 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
+    
+    def __init__(self, inplace=False, *args, **kwargs):
+        gof.Op.__init__(self, *args, **kwargs)
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -1735,21 +1741,31 @@ class AddSD(gof.op.Op):
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
-#        # The asarray is needed as in some case, this return a
-#        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
-#        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
-
-        coo_x = x.tocoo(copy=False)
-        for row, col, data in izip(coo_x.row, coo_x.col, coo_x.data):
-          y[(row,col)] += data
-        out[0] = y
-
-#        rows, cols = x.nonzero()
-#        for row, col in izip(*x.nonzero()):
-#          y[(row,col)] += x[(row,col)]
-#        out[0] = y
-       
-
+        self.inplace = True
+        if self.inplace:
+          if x.format == 'csc':
+            for c in xrange(x.shape[1]):
+              low = x.indptr[c]
+              high = x.indptr[c+1]
+              for ind in xrange(low, high):
+                y[(x.indices[ind], c)] += x.data[ind]
+          elif x.format == 'csr':
+            for r in xrange(x.shape[0]):
+              low = x.indptr[r]
+              high = x.indptr[r+1]
+              for ind in xrange(low, high):
+                y[(r, x.indices[ind])] += x.data[ind]
+          else:
+            coo_x = x.tocoo(copy=False)
+            for row, col, data in izip(coo_x.row, coo_x.col, coo_x.data):
+              y[(row,col)] += data
+              
+          out[0] = y
+        else:
+          # The asarray is needed as in some case, this return a
+          # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
+          out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+            
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
