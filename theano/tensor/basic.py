@@ -7,6 +7,7 @@ import warnings
 from itertools import izip
 
 import numpy
+import scipy.sparse as ssparse
 #from copy import copy as python_copy
 
 import theano
@@ -6329,10 +6330,12 @@ class AdvancedSubtensor1(Op):
         return rval
 
     def grad(self, inputs, grads):
-
         gz, = grads
+
         assert len(inputs) == 2
-        rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
+#        rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
+        rval1 = [ConstructSparse()(inputs[0], gz, inputs[1])]
+
         return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):
@@ -6343,6 +6346,111 @@ class AdvancedSubtensor1(Op):
     def infer_shape(self, node, ishapes):
         x, ilist = ishapes
         return [ilist + x[1:]]
+
+class ConstructSparse(Op):
+    """Increments a subtensor using advanced slicing (list of index)"""
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        self.inplace = inplace
+        self.set_instead_of_inc = set_instead_of_inc
+        if inplace:
+            self.destroy_map = {0: [0]}
+        self.row = []
+        self.col = []
+        self.data = []
+        print "Sparse Adv Indexing solution"
+
+    def __hash__(self):
+        return hash((type(self), self.inplace, self.set_instead_of_inc))
+
+    def __eq__(self, other):
+        return (type(self) == type(other)
+                and self.inplace == other.inplace
+                and self.set_instead_of_inc == other.set_instead_of_inc)
+
+    def __str__(self):
+        if self.inplace:
+            msg = "inplace"
+        else:
+            msg = "no_inplace"
+        if self.set_instead_of_inc:
+            msg += ",set"
+        else:
+            msg += ",inc"
+
+        return self.__class__.__name__ + "{%s}" % msg
+
+    def make_node(self, x, y, ilist):
+
+        x_sparse = ssparse.csc_matrix(tuple(x.shape.eval()), dtype=x.dtype)
+        x__ = theano.sparse.as_sparse_variable(x_sparse)
+
+        x_ = as_tensor_variable(x)
+        y_ = as_tensor_variable(y)
+        ilist_ = as_tensor_variable(ilist)
+
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.ndim != 1:
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if y_.type.ndim > x_.type.ndim:
+            if self.set_instead_of_inc:
+                opname = 'set'
+            else:
+                opname = 'increment'
+            raise TypeError('cannot %s x subtensor with ndim=%s'
+            ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                opname, x_.type.ndim, y_.type.ndim))
+
+        return Apply(self, [x_, y_, ilist_], [x__.type()])
+
+    def perform(self, node, inp, out_):
+        x, values, idx = inp
+        out, = out_
+        row_ = self.row
+        data_ = self.data
+        width = len(values[0])
+        row_ = []
+        data_ = []
+        col = range(width) * len(idx)
+        i = 0
+        for j in idx:
+          row_.extend([j]*width)
+          data_.extend(values[i])
+          i += 1
+        sparse_values = ssparse.coo_matrix((data_, (row_, col)), shape=x.shape, dtype=x.dtype)
+        out[0] = sparse_values.tocsc()
+
+    def infer_shape(self, node, ishapes):
+        x, y, ilist = ishapes
+        return [x]
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1],
+                              *inputs[2:]).outputs
+
+    def connection_pattern(self, node):
+
+        rval = [[True], [True]]
+
+        for ipt in node.inputs[2:]:
+            rval.append([False])
+
+        return rval
+
+    def grad(self, inputs, grads):
+        g_output, = grads
+        x, y = inputs[:2]
+        idx_list = inputs[2:]
+
+        gx = g_output
+        gy = advanced_subtensor1(g_output, *idx_list)
+
+        return [gx, gy] + [DisconnectedType()()] * len(idx_list)
+
 
 advanced_subtensor1 = AdvancedSubtensor1()
 

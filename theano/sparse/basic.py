@@ -8,7 +8,7 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 # Automatic methods for determining best sparse format?
 
 import sys
-
+from itertools import izip
 import numpy
 import theano
 import scipy.sparse
@@ -1735,9 +1735,20 @@ class AddSD(gof.op.Op):
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
-        # The asarray is needed as in some case, this return a
-        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
-        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+#        # The asarray is needed as in some case, this return a
+#        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
+#        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+
+        coo_x = x.tocoo(copy=False)
+        for row, col, data in izip(coo_x.row, coo_x.col, coo_x.data):
+          y[(row,col)] += data
+        out[0] = y
+
+#        rows, cols = x.nonzero()
+#        for row, col in izip(*x.nonzero()):
+#          y[(row,col)] += x[(row,col)]
+#        out[0] = y
+       
 
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
