@@ -86,7 +86,7 @@ The line ``|x [@C`` means the variable named ``x`` with debugprint identifier
 your graph, their different debugprint identifier will be your clue.
 
 The line ``|TensorConstant{2.0} [@B]`` means that there is a constant 2.0
-wit this debugprint identifier.
+with this debugprint identifier.
 
 The line ``Elemwise{mul,no_inplace} [@A] ''`` is indented less than
 the other ones, because it means there is a variable computed by multiplying
