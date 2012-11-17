@@ -465,9 +465,14 @@ def _allclose(a, b, rtol=None, atol=None):
 class NotScalarConstantError(Exception):
     """
     Raised by get_scalar_constant_value if called on something that is
-    not constant.
+    not a scalar constant.
     """
-    pass
+
+class EmptyConstantError(NotScalarConstantError):
+    """
+    Raised by get_scalar_const_value if called on something that is a
+    zero dimensional constant.
+    """
 
 def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
@@ -487,7 +492,7 @@ def get_scalar_constant_value(v):
         raise NotScalarConstantError()
 
     if isinstance(v, (int, float)):
-        return v
+        return numpy.asarray(v)
 
     def numpy_scalar(n):
         """ Return a scalar stored in a numpy ndarray, or raise
@@ -495,10 +500,10 @@ def get_scalar_constant_value(v):
         """
 
         # handle case where data is numpy.array([])
-        if hasattr(data, 'shape') and len(data.shape) == 0 or \
-            __builtins__['max'](data.shape) == 0:
+        if data.ndim > 0 and  (len(data.shape) == 0 or
+            __builtins__['max'](data.shape) == 0):
             assert numpy.all(numpy.array([]) == data)
-            return data
+            raise EmptyConstantError()
         try:
             numpy.complex(data)  # works for all numeric scalars
             return data
