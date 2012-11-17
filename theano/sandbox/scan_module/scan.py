@@ -335,7 +335,7 @@ def scan(fn,
         T_value = int(n_steps)
     else:
         try:
-            T_value = opt.get_constant_value(n_steps)
+            T_value = opt.get_scalar_constant_value(n_steps)
         except (TypeError, AttributeError):
             T_value = None
 
