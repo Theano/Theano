@@ -9,7 +9,7 @@ Theano Graphs
 =============
 
 - Theano works with symbolic graphs.
-- Those graphs are bi-partite graphs (graph with 2 types of nodes).
+- Those graphs are bi-partite graphs (graphs with 2 types of nodes).
 - The two types of nodes are ``Apply`` and ``Variable`` nodes.
 - Each ``Apply`` node has a link to the op that it executes.
 
@@ -359,7 +359,7 @@ file containing a specific test of interest and run the file. In this example, t
        t.setUp()
        t.test_double_rop()
 
-We recommand that when we execute a file, we run all tests in that
+We recommend that when we execute a file, we run all tests in that
 file. This can be done by adding this at the end of your test files:
 
 .. code-block:: python

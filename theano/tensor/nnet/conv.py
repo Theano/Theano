@@ -801,10 +801,9 @@ class ConvOp(OpenMPOp):
 
             # mimic what happens inside theano.grad: get the input gradient
             # of the final cost wrt all variables involved.
-            tmp_gmap = theano.gradient.grad_sources_inputs(
-                [(node, gz)], [inputs, kerns])
+            return theano.gradient.grad(cost=None,
+                    known_grads={node: gz}, wrt=[inputs, kerns])
 
-            return [tmp_gmap[inputs], tmp_gmap[kerns]]
 
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError(

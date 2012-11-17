@@ -121,7 +121,7 @@ def as_tensor_variable(x, name=None, ndim=None):
     This function is often used by `make_node` methods of `Op`
     subclasses to turn ndarrays, numbers, `Scalar` instances, `Apply`
     instances and `TensorType` instances into valid input list
-    elemnts.
+    elements.
 
     :Parameters:
      - `x`: Apply instance, Variable instance, numpy.ndarray, or number
@@ -462,13 +462,27 @@ def _allclose(a, b, rtol=None, atol=None):
     return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
 
 
+class NotConstantError(TypeError):
+    """
+    Raised by get_constant_value if called on something that is
+    not constant.
+    For now it is a TypeError, to maintain the old interface
+    that get_constant_value should raise a TypeError in this
+    situation. However, this is unsafe because get_constant_value
+    could inadvertently raise a TypeError if it has a bug.
+    So we should eventually make NotConstantError derive
+    from Exception directly, and modify all code that uses
+    get_constant_value to catch this more specific exception.
+    """
+    pass
+
 def get_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
     this function digs through them.
 
-    If `v` is not some view of constant data, then raise a TypeError.
+    If `v` is not some view of constant data, then raise a NotConstantError.
 
     :note: There may be another function similar to this one in the
         code, but I'm not sure where it is.
@@ -488,7 +502,7 @@ def get_constant_value(v):
             numpy.complex(data)  # works for all numeric scalars
             return data
         except Exception:
-            raise TypeError(
+            raise NotConstantError(
                 'v.data is non-numeric, non-scalar, or has more than one'
                 ' unique value', v)
     if v.owner:
@@ -516,9 +530,17 @@ def get_constant_value(v):
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
         if isinstance(v.owner.op, Subtensor) and v.ndim == 0:
-            if isinstance(v.owner.inputs[0], TensorConstant):
-                return v.owner.inputs[0].data.__getitem__(
+            # This condition depends on Subtensor always embedding constant
+            # indices in the Op rather than making them inputs to the Apply node
+            if isinstance(v.owner.inputs[0], TensorConstant) and \
+                len(v.owner.inputs) == 1:
+                try:
+                    return v.owner.inputs[0].data.__getitem__(
                     tuple(v.owner.op.idx_list))
+                except IndexError:
+                    raise IndexError(str(tuple(v.owner.op.idx_list))+" is not a valid index into " + \
+                            str(v.owner.inputs[0].data))
+
 
             # The index list 'idx_list' should have length the same
             # shape as the input.
@@ -2685,6 +2707,7 @@ where = switch
 # Bit-wise
 ##########################
 
+
 @_scal_elemwise_with_nfunc('bitwise_and', 2, 1)
 def and_(a, b):
     """bitwise a & b"""
@@ -3779,7 +3802,7 @@ class AdvancedIndexingError(TypeError):
 class Subtensor(Op):
     """Return a subtensor view
 
-    The inputs array is the tensor x, followed by scalar integer variables.
+    The inputs array is the tensor x, followed by scalar integer types.
     TODO: WRITEME: how are the scalar integer variables formatted?
 
     This class uses a relatively complex internal representation of the inputs
@@ -3788,7 +3811,7 @@ class Subtensor(Op):
     idx_list: instance variable TODO: WRITEME: is this a list or a tuple?
                                         (old docstring gives two conflicting
                                         descriptions)
-              elements are either integers, theano scalars, or slices.
+              elements are either integers, theano scalar types, or slices.
               one element per "explicitly named dimension"
                 TODO: WRITEME: what is an "explicitly named dimension" ?
 
@@ -3797,7 +3820,11 @@ class Subtensor(Op):
               if slice:
                   start/stop/step members of each slice are integer indices
                   into the inputs array or None
-                  integer indices be actual integers or theano scalars
+                  integer indices be actual integers or theano scalar types
+
+    Note that the idx_list defines the Op, so two Subtensor instances are
+    considered to be different Ops if they have different idx_list fields.
+    This means that the entries in it are theano Types, not theano Variables.
 
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
@@ -3815,6 +3842,17 @@ class Subtensor(Op):
 
     @staticmethod
     def collapse(idxs, cond):
+        """
+
+        idxs: a list of indices or slices.
+        cond: a callable that returns a bool
+
+        returns: idxs, with the slices flattened out into a list.
+                if cond is true for an entry, does not flatten it.
+
+        """
+
+
         ret = []
 
         def helper(entry):
@@ -3827,10 +3865,20 @@ class Subtensor(Op):
 
         for idx in idxs:
             helper(idx)
+
+
         return ret
 
     @staticmethod
     def convert(entry, slice_ok=True):
+        """
+        The "idx_list" field is unique to each Subtensor instance.
+        It is not unique to each Apply node, so it should not refer to
+        specific Variables. This method changes references to Variables
+        into references to Types.
+        TODO: WRITEME: This method also accepts "entry" already being a Type;
+            when would that happen?
+        """
         invalid_scal_types = [scal.float64, scal.float32]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
         tensor_types = [lscalar, iscalar, wscalar, bscalar]
@@ -4334,8 +4382,10 @@ class Subtensor(Op):
         while (inner_ii < %(c_prefix)s_NDIM(%(xview)s))
         {
             assert (outer_ii < %(c_prefix)s_NDIM(%(x)s));
-            %(set_dim)s(%(xview)s, inner_ii, %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
-            %(set_stride)s(%(xview)s, inner_ii, %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
+            %(set_dim)s(%(xview)s, inner_ii,
+                        %(c_prefix)s_DIMS(%(x)s)[outer_ii]);
+            %(set_stride)s(%(xview)s, inner_ii,
+                           %(c_prefix)s_STRIDES(%(x)s)[outer_ii]);
             inner_ii += 1;
             outer_ii += 1;
         }
@@ -4464,19 +4514,20 @@ def set_subtensor(x, y, inplace=False,
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
 
+
 def batched_dot(x, y):
     """
     :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
     :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
-    This function computes the dot product between the two tensors, by iterating
-    over the first dimension using scan.
+    This function computes the dot product between the two tensors, by
+    iterating over the first dimension using scan.
     Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
     Example:
     >>> first = T.tensor3('first')
     >>> second = T.tensor3('second')
     >>> result = batched_dot(first, second)
     :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower then dot or tensordot:
+    But numpy einsum is slower than dot or tensordot:
     http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
     """
     result, updates = theano.scan(fn=lambda x_mat, y_mat:
@@ -4485,6 +4536,7 @@ def batched_dot(x, y):
             sequences=[x, y],
             non_sequences=None)
     return result
+
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         tolerate_inplace_aliasing=False):
@@ -5725,7 +5777,8 @@ class Reshape(Op):
                 // -- will err if this will downcast. This could happen if the
                 // -- user pass an int64 dtype, but npy_intp endup being int32.
                 new_dims[ii] = ((dtype_%(shp)s*)(
-                        PyArray_BYTES(%(shp)s) + ii * PyArray_STRIDES(%(shp)s)[0]))[0];
+                        PyArray_BYTES(%(shp)s) +
+                        ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
@@ -5937,8 +5990,8 @@ def tile(x, reps, ndim=None):
         ndim = len(reps)
 
     # backport
-    # ndim = len(reps) if ndim is None else ndim # not sure if len(shp) is going
-    # to work.
+    # ndim = len(reps) if ndim is None else ndim
+    # not sure if len(shp) is going to work.
     if ndim not in tile.op:
         tile.op[ndim] = Tile(ndim)
     return tile.op[ndim](x, reps)

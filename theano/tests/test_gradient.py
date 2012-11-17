@@ -6,7 +6,6 @@ import unittest
 import theano
 from theano import gof
 
-from theano.gradient import grad_sources_inputs
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
@@ -15,6 +14,16 @@ from theano.gof.null_type import NullType
 
 one = theano.tensor.as_tensor_variable(1.)
 
+
+def grad_sources_inputs(sources, inputs):
+    """
+    This implements the old grad_sources_inputs function in terms of
+    the new interface so the tests don't need to be rewritten.
+    """
+    if inputs is None:
+        inputs = theano.gof.graph.inputs([source[0] for source in sources])
+    return dict(zip(inputs,theano.gradient.grad(cost=None, known_grads=dict(sources),
+        wrt=inputs, consider_constant=inputs)))
 
 class testgrad_sources_inputs(unittest.TestCase):
 
@@ -369,35 +378,6 @@ class test_grad(unittest.TestCase):
         # If we made it to here without an exception, then the
         # connection_pattern functionality worked correctly
 
-    def test_sum_disconnected(self):
-
-        # Tests that we can add DisconnectedType to other terms correctly
-        x = theano.tensor.scalar()
-        y = x * 2.
-        z = x + 1.
-        cost = y + z
-        theano.tensor.grad(cost, x, consider_constant=[y, z])
-        # In an earlier version of theano, the above line would have failed
-        # while trying to add two DisconnectedTypes
-
-    def test_output_grad_on_int(self):
-        # If the g_cost argument is specified when x has a discrete dtype,
-        # g_cost should be equivalent to 0.
-        x = theano.tensor.iscalar('x')
-        y = x * 2
-
-        # Should work:
-        c0 = theano.tensor.constant(0)
-        theano.grad(y, x, g_cost=c0)
-        theano.grad(y, x, g_cost=y.zeros_like())
-        theano.grad(y, x, g_cost=y.zeros_like().astype('float64'))
-
-        # Should raise ValueError
-        c1 = theano.tensor.constant(1)
-        self.assertRaises(ValueError, theano.grad, y, x, g_cost=c1)
-        s0 = theano.shared(np.zeros((), dtype='int8'))
-        self.assertRaises(ValueError, theano.grad, y, x, g_cost=s0)
-
     def test_downcast_dtype(self):
         # Test that the gradient of a cost wrt a float32 variable does not
         # get upcasted to float64.
@@ -418,6 +398,124 @@ class test_grad(unittest.TestCase):
         # be downcasted to float32, so dc_dx should also be float32
         assert dc_dx.dtype == 'float32'
 
+    def test_grad_constant(self):
+
+        # Test that the gradient handles Constants and consider_constant variables
+        # consistently
+
+        x = theano.tensor.scalar()
+        y = theano.tensor.scalar()
+        z_x = x + y
+        z_one = one + y
+        g_x = theano.tensor.grad(z_x, x, consider_constant=[x])
+        g_one = theano.tensor.grad(z_one, one)
+
+        f = theano.function([x, y],[g_x, g_one])
+
+        g_x, g_one = f(1, .5)
+
+        if not np.allclose(g_x, g_one):
+            raise AssertionError("Gradient using consider constant is " + str(g_x)\
+                    + " but gradient with respect to the same Constant is " + \
+                    str(g_one))
+
+
+def test_known_grads():
+
+    # Tests that the grad method with no known_grads
+    # matches what happens if you put its own known_grads
+    # in for each variable
+
+    full_range = theano.tensor.arange(10)
+    x = theano.tensor.scalar('x')
+    t = theano.tensor.iscalar('t')
+    ft = full_range[t]
+    ft.name = 'ft'
+    coeffs = theano.tensor.vector('c')
+    ct = coeffs[t]
+    ct.name = 'ct'
+    p = x ** ft
+    p.name = 'p'
+    y = ct * p
+    y.name = 'y'
+    cost = theano.tensor.sqr(y)
+    cost.name = 'cost'
+
+    layers = [
+            [cost],
+            [y],
+            [ct,p],
+            [ct, x, ft],
+            [coeffs, t, full_range, x]
+            ]
+
+    inputs = [coeffs, t, x]
+
+    rng = np.random.RandomState([2012, 11, 15])
+    values = [rng.randn(10), rng.randint(10), rng.randn() ]
+    values = [np.cast[ipt.dtype](value) for ipt, value in zip(inputs, values)]
+
+    true_grads = theano.tensor.grad(cost, inputs, disconnected_inputs='ignore')
+    true_grads = theano.function(inputs, true_grads)
+    true_grads = true_grads(*values)
+
+    for layer in layers:
+        print 'Testing by separately computing ',layer
+        first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
+        known = dict(zip(layer, first))
+        full = theano.tensor.grad(cost=None,
+                known_grads=known,wrt=inputs, disconnected_inputs='ignore')
+        full = theano.function(inputs, full)
+        full = full(*values)
+        assert len(true_grads) == len(full)
+        for a, b, var in zip(true_grads, full, inputs):
+            if not np.allclose(a, b):
+                print 'Failure'
+                print a
+                print b
+                print var
+                print layer
+                for v in known:
+                    print v,':',theano.function(inputs,known[v])(*values)
+                assert False
+
+def test_dxdx():
+
+
+    # Tests that the gradient of a scalar with respect to itself is 1
+    # I use an integer in this case because people keep changing this
+    # gradient to be 0 on integers but according to our interpretation
+    # of the gradient as defined in the Op contract, it should be 1.
+    # If you feel the need to change this unit test you are probably
+    # modifying the Op contract and should definitely get the approval
+    # of multiple people on theano-dev.
+
+    x = theano.tensor.iscalar()
+    g = theano.tensor.grad(x, x)
+
+    g = g.eval({ x : 12 })
+
+    assert np.allclose(g,1.)
+
+def test_known_grads_integers():
+
+    # Tests that known_grads works on integers
+
+    x = theano.tensor.iscalar()
+    g_expected = theano.tensor.scalar()
+
+    g_grad = theano.gradient.grad(cost=None,
+            known_grads={x : g_expected},
+            wrt=x)
+
+    f = theano.function([g_expected],g_grad)
+
+    x = -3
+    gv = np.cast[theano.config.floatX](.6)
+
+    g_actual = f(gv)
+
+    assert np.allclose(g_actual, gv)
 
 if __name__ == '__main__':
     unittest.main()
