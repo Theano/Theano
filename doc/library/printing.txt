@@ -121,7 +121,7 @@ Elemwise{mul} [@A] ''
  |Elemwise{mul} [@B] ''   
  |Elemwise{pow} [@C] ''   
 
-If the depth parameter is provided, it limits the nuber of levels that are
+If the depth parameter is provided, it limits the number of levels that are
 shown.
 
 
