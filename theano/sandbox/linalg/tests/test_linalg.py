@@ -29,7 +29,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        )
-
+from theano.sandbox.linalg import eig, eigh
 from nose.plugins.skip import SkipTest
 
 
@@ -471,29 +471,51 @@ class test_Solve(utt.InferShapeTester):
                                 self.op_class)
 
 class test_Eig(utt.InferShapeTester):
+    op_class = Eig
+    op = eig
+    dtype = 'float64'
     def setUp(self):
         super(test_Eig, self).setUp()
-        self.op_class = Eig
-        self.op = Eig()
-
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.A = theano.tensor.matrix()
+        X = numpy.asarray(self.rng.rand(5, 5),
+                          dtype=self.dtype)
+        self.S = X.dot(X.T)
+        
     def test_infer_shape(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        A = theano.tensor.matrix()
-        X = numpy.asarray(rng.rand(5, 5),
-                          dtype=config.floatX)
+        A = self.A
+        S = self.S
         self._compile_and_check([A],  # theano.function inputs
                                 self.op(A),  # theano.function outputs
-                                # A must be square
-                                [X.dot(X.T)],
+                                # S must be square
+                                [S],
                                 self.op_class)
     def test_eval(self):
         import math
-        A = theano.tensor.matrix()
+        A = theano.tensor.matrix(dtype=self.dtype)
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])
+        x = [[0, 1], [1, 0]] 
+        w, v = [e.eval({A: x}) for e in self.op(A)]
+        assert_array_almost_equal(numpy.dot(x,v), w * v)
 
-        w, v = [e.eval({A: [[0, 1], [1, 0]]}) 
-                for e in self.op(A)]
-        assert_array_almost_equal(w, [1, -1])
-        x = math.sqrt(2)/2
-        assert_array_almost_equal(v, [[x, -x], [x, x]])
+class test_Eigh(test_Eig):
+    op = staticmethod(eigh)
+    def test_uplo(self):
+        S = self.S
+        a = theano.tensor.matrix()
+        wu, vu = [out.eval({a: S}) for out in self.op(a, 'U')]
+        wl, vl = [out.eval({a: S}) for out in self.op(a, 'L')]
+        assert_array_almost_equal(wu, wl)
+        assert_array_almost_equal(vu*numpy.sign(vu[0,:]),
+                                  vl*numpy.sign(vl[0,:]))
+            
+    def test_grad(self):
+        S = self.S
+        utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
+
+class test_Eigh_float32(test_Eigh):
+    dtype = 'float32'
