@@ -140,10 +140,9 @@ class GpuFromHost(Op):
         if (%(name)s_tmp == NULL) {
             %(fail)s
         }
-        Py_DECREF(%(inp)s);
-        %(inp)s = %(name)s_tmp;
         %(out)s = new_GpuArray((PyObject *)&GpuArrayType);
         if (%(out)s == NULL) {
+            Py_DECREF(%(name)s_tmp);
             %(fail)s
         }
         %(name)serr = GpuArray_empty(&%(out)s->ga, compyte_get_ops("%(kind)s"),
@@ -152,13 +151,16 @@ class GpuFromHost(Op):
                                      (size_t *)PyArray_DIMS(%(inp)s),
                                      GA_C_ORDER);
         if (%(name)serr != GA_NO_ERROR) {
+            Py_DECREF(%(name)s_tmp);
             Py_DECREF(%(out)s);
             %(fail)s
         }
-        %(name)serr = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(inp)s),
-                                     PyArray_NBYTES(%(inp)s));
+        %(name)serr = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
+                                     PyArray_NBYTES(%(name)s_tmp));
+        Py_DECREF(%(name)s_tmp);
         if (%(name)serr != GA_NO_ERROR) {
             Py_DECREF(%(out)s);
+            PyErr_SetString(PyExc_RuntimeError, "Could not copy array data to device");
             %(fail)s
         }
         """ % {'name': name, 'kind': type.kind, 'ctx': hex(type.context),

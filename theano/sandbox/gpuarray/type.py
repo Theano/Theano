@@ -77,20 +77,20 @@ class GpuArrayType(Type):
                                 " dimension.", shp, self.broadcastable)
         return data
 
-    @classmethod
-    def values_eq(cls, a, b):
+    @staticmethod
+    def values_eq(a, b):
         if a.shape != b.shape:
             return False
         if a.typecode != b.typecode:
             return False
         return numpy.asarray(compare(a, '==', b)).all()
 
-    @classmethod
-    def values_eq_approx(cls, a, b):
+    @staticmethod
+    def values_eq_approx(a, b):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
         if 'int' in str(a.dtype):
-            return cls.values_eq(a, b)
+            return GpuArrayType.values_eq(a, b)
         else:
             res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
                             op_tmpl="res[i] = ((%(a)s - %(b)s) <" \
@@ -129,9 +129,11 @@ class GpuArrayType(Type):
         return """
         %(name)s = NULL;
         if (py_%(name)s == Py_None) {
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
+            PyErr_SetString(PyExc_ValueError, "expected a GpuArray, not None");
             %(fail)s
         }
+        /* First check if we are the base type exactly (the most common case),
+           then do the full subclass check if needed. */
         if (py_%(name)s->ob_type != &GpuArrayType &&
             !PyObject_TypeCheck(py_%(name)s, &GpuArrayType)) {
             PyErr_SetString(PyExc_ValueError, "expected a GpuArray");
