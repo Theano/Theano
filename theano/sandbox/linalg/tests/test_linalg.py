@@ -533,8 +533,11 @@ class test_eigvals(test_Eig):
     def test_eval(self):
         import math
         A = theano.tensor.matrix(dtype=self.dtype)
-        x = [[0, 1], [1, 0]] 
+        x = [[0.0, 1], [1, 0]] 
         w = self.op(A).eval({A: x})
+        w.sort()
+        assert_array_almost_equal(w, [-1, 1])
+        w = self.op(x).eval()
         w.sort()
         assert_array_almost_equal(w, [-1, 1])
 
