@@ -14,7 +14,7 @@ from theano.compile import optdb
 from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint, debugprint
 from theano.tensor import basic as tensor
-from theano.tensor import elemwise, opt
+from theano.tensor import elemwise, opt, NotScalarConstantError
 
 
 ############
@@ -277,7 +277,7 @@ def is_neg(var):
             try:
                 constant = opt.get_scalar_constant_value(mul_input)
                 is_minus_1 = numpy.allclose(constant, -1)
-            except TypeError:
+            except NotScalarConstantError:
                 is_minus_1 = False
             if is_minus_1:
                 # Found a multiplication by -1.
