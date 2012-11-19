@@ -1732,6 +1732,8 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
+    dot = __dot__
+    
     def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)

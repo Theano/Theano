@@ -7001,7 +7001,19 @@ class TestInferShape(utt.InferShapeTester):
                                 [tile(adtens4, aivec_val, ndim)],
                                 [adtens4_val], Tile)
 
+class TestTensorInstanceMethods(unittest.TestCase):
+    def setUp(self):
+        self.vars = matrices('X', 'Y')
+        self.vals = [rand(2,2),rand(2,2)]
 
+    def test_dot(self):
+        X, Y = self.vars
+        x, y = self.vals
+        self.assertTrue(numpy.all(x.dot(y) == X.dot(Y).eval({X: x, Y: y})))
+        Z = X.dot(Y)
+        z = x.dot(y)
+        self.assertTrue(numpy.all(x.dot(z) == X.dot(Z).eval({X: x, Z: z})))
+        
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
