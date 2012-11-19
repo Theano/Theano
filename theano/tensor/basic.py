@@ -1758,6 +1758,10 @@ class _tensor_py_operators:
         """See `theano.tensor.var`"""
         return var(self, axis, keepdims=keepdims)
 
+    def std(self, axis=None, keepdims=False):
+        """See `theano.tensor.std`"""
+        return std(self, axis, keepdims=keepdims)
+
     def min(self, axis=None, keepdims=False):
         """See `theano.tensor.min`"""
         return min(self, axis, keepdims=keepdims)
@@ -1765,6 +1769,35 @@ class _tensor_py_operators:
     def max(self, axis=None, keepdims=False):
         """See `theano.tensor.max`"""
         return max(self, axis, keepdims=keepdims)
+
+    def argmin(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmin`"""
+        return argmin(self, axis, keepdims=keepdims)
+
+    def argmax(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmax`"""
+        return argmax(self, axis, keepdims=keepdims)
+
+    def clip(self, a_min, a_max):
+        "Clip (limit) the values in an array."
+        return clip(self, a_min, a_max)
+
+    def conj(self):
+        """See `theano.tensor.conj`"""
+        return conj(self)
+
+    def repeat(self, repeats, axis=None):
+        """See `theano.tensor.repeat`"""
+        from theano.tensor.extra_ops import repeat
+        return repeat(self, repeats, axis)
+
+    def round(self, mode="half_away_from_zero"):
+        """See `theano.tensor.round`"""
+        return round(self, mode)
+
+    def trace(self):
+        from theano.sandbox.linalg import trace
+        return trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -2971,12 +3004,12 @@ def psi(a):
 @_scal_elemwise_with_nfunc('real', 1, -1)
 def real(z):
     """Return real component of complex-valued tensor `z`"""
-
+_tensor_py_operators.real = property(real)
 
 @_scal_elemwise_with_nfunc('imag', 1, -1)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
-
+_tensor_py_operators.imag = property(imag)
 
 @_scal_elemwise_with_nfunc('angle', 1, -1)
 def angle(z):

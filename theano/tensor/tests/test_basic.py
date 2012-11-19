@@ -7006,6 +7006,23 @@ class TestTensorInstanceMethods(unittest.TestCase):
         self.vars = matrices('X', 'Y')
         self.vals = [rand(2,2),rand(2,2)]
 
+    def test_argmin(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.argmin().eval({X: x}) == x.argmin()))
+
+    def test_argmax(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.argmax().eval({X: x}) == x.argmax()))
+
+    def test_dot(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X.clip(0.5 - Y, 0.5 + Y)
+        z = x.clip(0.5 - y, 0.5 + y)
+        self.assertTrue(numpy.all(Z.eval({X: x, Y: y}) == z))
+
     def test_dot(self):
         X, Y = self.vars
         x, y = self.vals
@@ -7013,7 +7030,43 @@ class TestTensorInstanceMethods(unittest.TestCase):
         Z = X.dot(Y)
         z = x.dot(y)
         self.assertTrue(numpy.all(x.dot(z) == X.dot(Z).eval({X: x, Z: z})))
-        
+
+    def test_real_imag(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        self.assertTrue(numpy.all(Z.real.eval({Z: z}) == x))
+        self.assertTrue(numpy.all(Z.imag.eval({Z: z}) == y))
+
+    def test_conj(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        self.assertTrue(numpy.all(Z.conj().eval({Z: z}) == z.conj()))
+
+    def test_round(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.round().eval({X: x}) == x.round()))
+
+    def test_std(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.std().eval({X: x}) == x.std()))
+
+    def test_repeat(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.repeat(2).eval({X: x}) == x.repeat(2)))
+
+    def test_trace(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.trace().eval({X: x}) == x.trace()))
+
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
