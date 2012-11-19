@@ -1634,6 +1634,9 @@ class _tensor_py_operators:
     def flatten(self, ndim=1):
         return flatten(self, ndim)
 
+    def ravel(self):
+        return flatten(self)
+
     # CASTING
     def astype(self, dtype):
         return cast(self, dtype)

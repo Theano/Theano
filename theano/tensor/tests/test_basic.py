@@ -7066,6 +7066,11 @@ class TestTensorInstanceMethods(unittest.TestCase):
         x, _ = self.vals
         self.assertTrue(numpy.all(X.trace().eval({X: x}) == x.trace()))
 
+    def test_ravel(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.ravel().eval({X: x}) == x.ravel()))
+
 
 if __name__ == '__main__':
 
