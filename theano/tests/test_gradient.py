@@ -517,5 +517,22 @@ def test_known_grads_integers():
 
     assert np.allclose(g_actual, gv)
 
+def test_undefined_cost_grad():
+
+        # Tests that if we say the cost is not differentiable via the
+        # known_grads mechanism, it is treated as such by the rest of the
+        # system.
+
+        x = theano.tensor.iscalar()
+        y = theano.tensor.iscalar()
+        cost = x + y
+        assert cost.dtype in theano.tensor.discrete_dtypes
+        try:
+            grads = theano.tensor.grad(cost, [x, y], known_grads = {cost: NullType()() })
+        except theano.gradient.NullTypeGradError:
+            return
+        raise AssertionError("An undefined gradient has been ignored.")
+
+
 if __name__ == '__main__':
     unittest.main()
