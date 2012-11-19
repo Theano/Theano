@@ -2686,7 +2686,7 @@ class GpuAlloc(GpuOp):
             # if s is constant 1, then we're broadcastable in that dim
             try:
                 const_shp = tensor.get_scalar_constant_value(s)
-            except TypeError:
+            except tensor.NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
