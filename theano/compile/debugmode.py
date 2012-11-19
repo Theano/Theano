@@ -147,7 +147,7 @@ class BadThunkOutput(DebugModeError):
     val2 = None
     """The value computed by `thunk2`"""
 
-    def __init__(self, r, thunk1, val1, thunk2, val2):
+    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=None):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
@@ -155,6 +155,7 @@ class BadThunkOutput(DebugModeError):
         self.val1 = val1
         self.thunk2 = thunk2
         self.val2 = val2
+        self.inputs_val = None
 
     def offending_op(self):
         """Return the Op class whose c_code and perform
@@ -171,7 +172,11 @@ class BadThunkOutput(DebugModeError):
         print >> sio, "BadThunkOutput"
         print >> sio, "  variable    :", self.r
         print >> sio, "  Outputs Type:", self.r.type
-        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs]
+        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs],
+        print >> sio, "  Inputs Shape:", [getattr(val, 'shape', None)
+                                          for val in self.inputs_val]
+        print >> sio, "  Inputs Strides:", [getattr(val, 'strides', None)
+                                            for val in self.inputs_val]
         print >> sio, "  Apply   :", self.r.owner
         print >> sio, "  thunk1  :", self.thunk1
         print >> sio, "  thunk2  :", self.thunk2
@@ -1331,9 +1336,11 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
+                    inputs_val = [storage_map[inp] for inp in r.owner.inputs]
                     raise BadThunkOutput(r,
                             thunk1='Reference value', val1=r_vals[r],
-                            thunk2=thunk_name, val2=storage_map[r][0])
+                            thunk2=thunk_name, val2=storage_map[r][0],
+                            inputs_val=inputs_val)
 
             # Clear storage_map
             for r in node.outputs:
@@ -1911,9 +1918,11 @@ class _Linker(gof.link.LocalLinker):
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     #import pdb; pdb.set_trace()
                                     #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
+                                    inputs_val = [storage_map[inp] for inp in r.owner.inputs]
                                     raise BadThunkOutput(r,
                                             thunk1='perform', val1=r_vals[r],
-                                            thunk2='c_code', val2=storage_map[r][0])
+                                            thunk2='c_code', val2=storage_map[r][0],
+                                            inputs_val=inputs_val)
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 #retrieve each output from the storage_map
