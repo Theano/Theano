@@ -985,13 +985,13 @@ class ScanMerge(gof.Optimizer):
         nsteps = node.inputs[0]
         try:
             nsteps = int(get_scalar_constant_value(nsteps))
-        except TypeError:
+        except tensor.NotScalarConstantError:
             pass
 
         rep_nsteps = rep.inputs[0]
         try:
             rep_nsteps = int(get_scalar_constant_value(rep_nsteps))
-        except TypeError:
+        except tensor.NotScalarConstantError:
             pass
 
         # Check to see if it is an input of a different node
