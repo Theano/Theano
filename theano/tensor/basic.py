@@ -44,7 +44,9 @@ complex_dtypes = map(str, scal.complex_types)
 continuous_dtypes = map(str, scal.continuous_types)
 float_dtypes = map(str, scal.float_types)
 discrete_dtypes = map(str, scal.discrete_types)
+all_dtypes = map(str, scal.all_types)
 int_dtypes = map(str, scal.int_types)
+uint_dtypes = map(str, scal.uint_types)
 
 
 
@@ -1640,7 +1642,15 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            return AdvancedSubtensor()(self, *args)
+            if (len(args) == 1
+                    and isinstance(args[0], (
+                        list,
+                        TensorVariable,
+                        TensorConstant,
+                        theano.tensor.sharedvar.TensorSharedVariable))):
+                return advanced_subtensor1(self, *args)
+            else:
+                return AdvancedSubtensor()(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
