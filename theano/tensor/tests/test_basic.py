@@ -14,7 +14,7 @@ builtin_min = __builtin__.min
 
 from nose.plugins.skip import SkipTest
 import numpy
-from numpy.testing import dec, assert_array_equal
+from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
@@ -7060,7 +7060,10 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_std(self):
         X, _ = self.vars
         x, _ = self.vals
-        assert_array_equal(X.std().eval({X: x}), x.std())
+        # std() is implemented as theano tree and does not pass its
+        # args directly to numpy. This sometimes results in small
+        # difference, so we use allclose test.
+        assert_allclose(X.std().eval({X: x}), x.std())
 
     def test_repeat(self):
         X, _ = self.vars
