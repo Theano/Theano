@@ -482,18 +482,11 @@ def grad(cost, wrt, consider_constant=None,
         grad_dict[var] = g_var
 
 
-
-    # variables that do not influence the cost have zero gradient.
-    # if wrt is such a variable, populate the grad_dict with this info
-    # so that wrt not being in var_to_node_to_idx won't cause an error below
-    # according to the flag, possibly raise an error if wrt is disconnected
-    for elem in wrt:
-        if elem not in var_to_node_to_idx and elem is not cost \
-                and elem not in grad_dict:
+    def handle_disconnected(var):
             message = ("grad method was asked to compute the gradient "
                     "with respect to a variable that is not part of "
                     "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % elem)
+                    "only by a non-differentiable operator: %s" % var)
             if disconnected_inputs == 'ignore':
                 pass
             elif disconnected_inputs == 'warn':
@@ -504,6 +497,16 @@ def grad(cost, wrt, consider_constant=None,
                 raise ValueError("Invalid value for keyword "
                         "'disconnected_inputs', valid values are "
                         "'ignore', 'warn' and 'raise'.")
+
+
+    # variables that do not influence the cost have zero gradient.
+    # if wrt is such a variable, populate the grad_dict with this info
+    # so that wrt not being in var_to_node_to_idx won't cause an error below
+    # according to the flag, possibly raise an error if wrt is disconnected
+    for elem in wrt:
+        if elem not in var_to_node_to_idx and elem is not cost \
+                and elem not in grad_dict:
+            handle_disconnected(elem)
             grad_dict[elem] = DisconnectedType()()
 
     cost_name = None
@@ -523,6 +526,7 @@ def grad(cost, wrt, consider_constant=None,
 
     for i in xrange(len(rval)):
         if isinstance(rval[i].type, DisconnectedType):
+            handle_disconnected(rval[i])
             if return_disconnected == 'zero':
                 rval[i] = _float_zeros_like(wrt[i])
             elif return_disconnected == 'None':
