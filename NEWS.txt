@@ -35,7 +35,7 @@ abalkin
 
 Regression in 0.6rc1 fixed:
  * Fix the scan gradient dtype issue. In 0.6rc1, some upcast where inserted. (Razvan P.)
- * Now grad() will do as before the 0.6rc1, i.e. the grad dtype will be the same as the inputs inside the graph. If you ask for the direct grad, it will return the computed dtype. (Pascal L.)
+ * Now grad() will do as before the 0.6rc1 for float, i.e. the grad dtype will be the same as the inputs inside the graph. If you ask for the direct grad, it will return the computed dtype. (Pascal L.)
 
 Wrong results fix:
  * Scan fix in some case didn't returned the good results. (Razvan P., reported by Jeremiah L.)
@@ -43,14 +43,15 @@ Wrong results fix:
    If you have multiple state, there was no problem.
  * Fixed bug in Scan with multiple outputs,
    where one output would sometimes overwrite another one. (Razvan P.)
+ * Clip.grad treated the gradient with respect to the clipping boundary as always 0. (Ian G.)
 
 Interface change:
  * Now we do not support unaligned ndarray in python code. (Frederic B.)
    We did not support it in c code and supporting it in python code made
    the detection harder.
  * Now we only support officialy scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
-   We wheren't and aren't testing with older version.
- * The theano.sparse.SparseType is available event when scipy is not (Frederic B.)
+   We weren't and aren't testing with older version.
+ * The theano.sparse.SparseType is available even when scipy is not (Frederic B.)
  * Fixes issue where members of consider_constant grad parameter
    were treated differently from Constant variables. (Ian G.)
  * Remove the parameter g_cost to theano.grad(). (Ian G.)
@@ -72,7 +73,7 @@ Speed up:
 
 New Feature:
  * Added a monitoring mode "MonitorMode" as a debugging tool. (Olivier D.)
- * Allow interger axes when keepdims==True (Jeremiah Lowin)
+ * Allow integer axes when keepdims==True (Jeremiah Lowin)
  * Add erfinv and erfcinv op. (Jey Kottalam)
  * Added tensor.batched_dot(). (Caglar Gulcehre)
    It use scan behind the scene, but making doing this easier.
