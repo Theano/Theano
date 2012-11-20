@@ -1781,6 +1781,11 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
+    def argsort(self,  axis=-1, kind='quicksort', order=None):
+        """See `theano.tensor.sort.argsort`"""
+        from theano.tensor.sort import argsort
+        return argsort(self, axis, kind, order)
+        
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
         return clip(self, a_min, a_max)

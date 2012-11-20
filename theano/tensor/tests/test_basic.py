@@ -7016,6 +7016,12 @@ class TestTensorInstanceMethods(unittest.TestCase):
         x, _ = self.vals
         self.assertTrue(numpy.all(X.argmax().eval({X: x}) == x.argmax()))
 
+    def test_argsort(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        self.assertTrue(numpy.all(X.argsort().eval({X: x}) == x.argsort()))
+        self.assertTrue(numpy.all(X.argsort(1).eval({X: x}) == x.argsort(1)))
+
     def test_dot(self):
         X, Y = self.vars
         x, y = self.vals
