@@ -57,6 +57,11 @@ Interface change:
  * Remove the parameter g_cost to theano.grad(). (Ian G.)
    Use the new more powerfull parameter known_grads instead.
 
+NumPy interface support:
+ * theano.tensor.where is an alias for theano.tensor.switch to support NumPy semantic. (Ian G.)
+ * TensorVariable objects now have dot, argmin, argmax, clip, conj, repeat, trace, std, round,
+   ravel and argsort functions and the real and imag properties as numpy.ndarray object.
+   The functionality was already available in Theano. (abalkin)
 
 Speed up:
  * A C version of the SoftMax op (Razvan P.)
@@ -81,7 +86,6 @@ New Feature:
    This try to do have x as a constant int.
    This do some constant folding to try to convert x into an int.
    Used by some optimization.
- * theano.tensor.where is an alias for theano.tensor.switch to support NumPy semantic.
  * Add theano.tensor.io.{MPIRecv,MPIRecvWait,MPISend,MPISendWait} (Matthew Rocklin)
    Theano do not automatically use them. It is up to you to use them and split your computation.
  * Added theano.sandbox.linalg.eig (abalkin)
