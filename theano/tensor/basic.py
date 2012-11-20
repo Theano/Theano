@@ -3239,7 +3239,7 @@ class Alloc(gof.Op):
             # It makes optimization difficult when useless allocs are thrown
             # into the graph at every stage of optimization.  This little logic
             # tries to help at least in some cases.
-            if hasattr(val, 'env') and (val.type == ret.type):
+            if hasattr(val, 'fgraph') and (val.type == ret.type):
                 return val
         except AttributeError:
             pass
