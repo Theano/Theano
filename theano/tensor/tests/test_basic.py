@@ -7022,7 +7022,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.argsort().eval({X: x}), x.argsort())
         assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
 
-    def test_dot(self):
+    def test_clip(self):
         X, Y = self.vars
         x, y = self.vals
         Z = X.clip(0.5 - Y, 0.5 + Y)
