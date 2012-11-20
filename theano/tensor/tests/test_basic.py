@@ -14,7 +14,7 @@ builtin_min = __builtin__.min
 
 from nose.plugins.skip import SkipTest
 import numpy
-from numpy.testing import dec
+from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
@@ -7000,6 +7000,85 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens4],
                                 [tile(adtens4, aivec_val, ndim)],
                                 [adtens4_val], Tile)
+
+class TestTensorInstanceMethods(unittest.TestCase):
+    def setUp(self):
+        self.vars = matrices('X', 'Y')
+        self.vals = [rand(2,2),rand(2,2)]
+
+    def test_argmin(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argmin().eval({X: x}), x.argmin())
+
+    def test_argmax(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argmax().eval({X: x}), x.argmax())
+
+    def test_argsort(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argsort().eval({X: x}), x.argsort())
+        assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
+
+    def test_dot(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X.clip(0.5 - Y, 0.5 + Y)
+        z = x.clip(0.5 - y, 0.5 + y)
+        assert_array_equal(Z.eval({X: x, Y: y}), z)
+
+    def test_dot(self):
+        X, Y = self.vars
+        x, y = self.vals
+        assert_array_equal(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
+        Z = X.dot(Y)
+        z = x.dot(y)
+        assert_array_equal(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
+
+    def test_real_imag(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        assert_array_equal(Z.real.eval({Z: z}), x)
+        assert_array_equal(Z.imag.eval({Z: z}), y)
+
+    def test_conj(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        assert_array_equal(Z.conj().eval({Z: z}), z.conj())
+
+    def test_round(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.round().eval({X: x}), x.round())
+
+    def test_std(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        # std() is implemented as theano tree and does not pass its
+        # args directly to numpy. This sometimes results in small
+        # difference, so we use allclose test.
+        assert_allclose(X.std().eval({X: x}), x.std())
+
+    def test_repeat(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.repeat(2).eval({X: x}), x.repeat(2))
+
+    def test_trace(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.trace().eval({X: x}), x.trace())
+
+    def test_ravel(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.ravel().eval({X: x}), x.ravel())
 
 
 if __name__ == '__main__':
