@@ -4,7 +4,7 @@ Updates in the Trunk since the last release:
 
 https://github.com/Theano/Theano/wiki/Devnews
 git log rel-0.6rc1.. | grep --color=auto -i merge | less
-done up to PR 1066
+done up to PR 1074
 
 
 =============
@@ -22,15 +22,16 @@ Highlight:
  * Crash fix
 
 Commiters for this rc2 only:
-Razvan P.
-Pascal L.
-Fred
-Ian G.
+Razvan Pascanu
+Pascal Lamblin
+Frederic Bastien
+Ian Goodfellow
 Jeremiah Lowin
 Caglar Gulcehre
 Jey Kottalam
 Matthew Rocklin
 abalkin
+
 
 Regression in 0.6rc1 fixed:
  * Fix the scan gradient dtype issue. In 0.6rc1, some upcast where inserted. (Razvan P.)
@@ -50,6 +51,11 @@ Interface change:
  * Now we only support officialy scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
    We wheren't and aren't testing with older version.
  * The theano.sparse.SparseType is available event when scipy is not (Frederic B.)
+ * Fixes issue where members of consider_constant grad parameter
+   were treated differently from Constant variables. (Ian G.)
+ * Remove the parameter g_cost to theano.grad(). (Ian G.)
+   Use the new more powerfull parameter known_grads instead.
+
 
 Speed up:
  * A C version of the SoftMax op (Razvan P.)
@@ -65,6 +71,7 @@ Speed up:
  * C code for the View Op (Razvan P., Pascal L.)
 
 New Feature:
+ * Added a monitoring mode "MonitorMode" as a debugging tool. (Olivier D.)
  * Allow interger axes when keepdims==True (Jeremiah Lowin)
  * Add erfinv and erfcinv op. (Jey Kottalam)
  * Added tensor.batched_dot(). (Caglar Gulcehre)
@@ -102,7 +109,12 @@ Crash Fix:
  * Fix import problem on PiCloud (Jeremiah Lowin)
     * You need to use the c|py linker with the default
       environment. Otherwise, you need to create your own environment.
+ * Fix a crash during optimization when we take a subtensor of a constant with a non constant index. (Ian G.)
+ * Better handling and error message of gradients on integer. (Ian G.)
+ * Fixes a crash where Scan assumed all TypeErrors raised by the grad function were due to undefined gradients (Ian G.)
 
+Other:
+ * Doc typo fixes, Doc updates, Better error messages: Olivier D., David W.F., Frederic B., James B., Matthew Rocklin, Ian G., abalkin.
 
 =============
 Release Notes
