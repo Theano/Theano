@@ -52,6 +52,9 @@ complex_dtypes = map(str, scal.complex_types)
 continuous_dtypes = map(str, scal.continuous_types)
 discrete_dtypes = map(str, scal.discrete_types)
 all_dtypes = map(str, scal.all_types)
+int_dtypes = map(str, scal.int_types)
+uint_dtypes = map(str, scal.uint_types)
+
 
 # Do a lazy import of the sparse module
 sparse_module_ref = None
