@@ -4,7 +4,7 @@ Updates in the Trunk since the last release:
 
 https://github.com/Theano/Theano/wiki/Devnews
 git log rel-0.6rc1.. | grep --color=auto -i merge | less
-done up to PR 1074
+done up to PR 1084
 
 
 =============
