@@ -1794,6 +1794,8 @@ class _tensor_py_operators:
         """See `theano.tensor.conj`"""
         return conj(self)
 
+    conjugate = conj
+    
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
         from theano.tensor.extra_ops import repeat

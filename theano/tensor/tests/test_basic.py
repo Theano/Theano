@@ -7051,6 +7051,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         Z = X + Y * 1j
         z = x + y * 1j
         assert_array_equal(Z.conj().eval({Z: z}), z.conj())
+        assert_array_equal(Z.conjugate().eval({Z: z}), z.conj())
 
     def test_round(self):
         X, _ = self.vars
