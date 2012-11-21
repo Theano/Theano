@@ -1,12 +1,5 @@
 .. _NEWS:
 
-Updates in the Trunk since the last release:
-
-https://github.com/Theano/Theano/wiki/Devnews
-git log rel-0.6rc1.. | grep --color=auto -i merge | less
-done up to PR 1084
-
-
 =============
 Release Notes
 =============
@@ -72,8 +65,8 @@ Speed up:
    * The bug was introduced in 0.6rc1.
  * Enable inc_subtensor on the GPU when updating it with a float64 dtype. (Ian G.)
    It was causing an optimization warning.
- * Make DeepCopy reuse preallocated memory. (Frédéric B.)
- * Move then convolution to the GPU when the image shape and logical image shape differ. (Frédéric Bastien)
+ * Make DeepCopy reuse preallocated memory. (Frederic B.)
+ * Move then convolution to the GPU when the image shape and logical image shape differ. (Frederic Bastien)
  * C code for the View Op (Razvan P., Pascal L.)
 
 New Feature:
