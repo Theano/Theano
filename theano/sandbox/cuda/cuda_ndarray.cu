@@ -4529,7 +4529,7 @@ void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 }
 
 
-int CudaNdarray_ensure_contiguous(CudaNdarray ** arr, int nd,
+int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims)
 {
     bool allocated = false;

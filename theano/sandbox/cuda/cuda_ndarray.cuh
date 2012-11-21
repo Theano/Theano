@@ -472,7 +472,7 @@ static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 // *arr may initially be NULL, a pointer to an ndarray of the wrong size,
 // or a pointer to an ndarray of the right size. In the last case it will
 // not change.
-int CudaNdarray_ensure_contiguous(CudaNdarray ** arr, int nd,
+int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims);
 
 #endif
