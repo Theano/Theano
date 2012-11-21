@@ -8,11 +8,11 @@ done up to PR 1084
 
 
 =============
-Release Notes (DRAFT)
+Release Notes
 =============
 
-Theano 0.6rc2 (November ?st, 2012)
-=================================
+Theano 0.6rc2 (November 21th, 2012)
+===================================
 
 Highlight:
  * Fix a few regression inserted in 0.6rc1
