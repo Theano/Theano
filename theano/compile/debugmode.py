@@ -147,7 +147,7 @@ class BadThunkOutput(DebugModeError):
     val2 = None
     """The value computed by `thunk2`"""
 
-    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=None):
+    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=inputs_val):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
@@ -155,7 +155,7 @@ class BadThunkOutput(DebugModeError):
         self.val1 = val1
         self.thunk2 = thunk2
         self.val2 = val2
-        self.inputs_val = None
+        self.inputs_val = inputs_val
 
     def offending_op(self):
         """Return the Op class whose c_code and perform
