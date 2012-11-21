@@ -153,6 +153,13 @@ short name        Full constructor                                              
 ``ProfileMode``   ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
+.. Note::
+
+    For debugging purpose, there also exists a ``MonitorMode`` (which has no
+    short name). It can be used to step through the execution of a function:
+    see :ref:`the debugging FAQ<faq_monitormode>` for details.
+
+
 Linkers
 =======
 

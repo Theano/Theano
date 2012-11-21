@@ -40,7 +40,7 @@ def debugprint(obj, depth=-1, print_type=False,
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
     :type print_type: boolean
-    :param print_type: wether to print the type of printed objects
+    :param print_type: whether to print the type of printed objects
     :type file: None, 'str', or file-like object
     :param file: print to this file ('str' means to return a string)
     :type ids: str
@@ -531,11 +531,11 @@ def pydotprint(fct, outfile=None,
     label each edge between an input and the Apply node with the
     input's index.
 
-    green boxes are inputs variables to the graph
-    blue boxes are outputs variables of the graph
-    grey boxes are variables that are not outputs and are not used
+    Green boxes are inputs variables to the graph,
+    blue boxes are outputs variables of the graph,
+    grey boxes are variables that are not outputs and are not used,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-    HostFromGpu)
+    HostFromGpu).
 
     """
     if colorCodes is None:
