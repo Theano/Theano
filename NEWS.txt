@@ -8,11 +8,12 @@ Theano 0.6rc2 (November 21th, 2012)
 ===================================
 
 Highlight:
- * Fix a few regression inserted in 0.6rc1
+ * Fix a few regression inserted in 0.6rc1.
  * A few new features.
  * Speed up.
  * Scan fix.
- * Crash fix
+ * Crash fix.
+ * A few small interface change.
 
 Commiters for this rc2 only:
 Razvan Pascanu
