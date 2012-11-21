@@ -1732,16 +1732,50 @@ class AddSD(gof.op.Op):
             raise NotImplementedError()
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
+        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
         assert y.type.ndim == 2
         return gof.Apply(self,
-                         [x, y],
+                         [indices, indptr, data, y],
                          [tensor.TensorType(dtype=y.type.dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
-        assert _is_sparse(x) and _is_dense(y)
+    def c_code(self, node, name, (_indices, _indptr, _data, y), (z, ), sub):
+      code = """
+                npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
+
+                const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
+                const npy_int32 * __restrict__ indices = (npy_int32*)%(_indices)s->data;
+                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)%(_data)s->data;
+
+                dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+                int Yi = PyArray_STRIDES(%(y)s)[0]/PyArray_DESCR(%(y)s)->elsize;
+                int Yj = PyArray_STRIDES(%(y)s)[1]/PyArray_DESCR(%(y)s)->elsize;
+
+                npy_int32 pos;
+                for (npy_int32 col = 0; col < N; ++col){
+                  for (npy_int32 ind = indptr[col]; ind < indptr[col+1]; ++ind){
+                    npy_int32 row = indices[ind];
+                    pos = row * Yi + col * Yj;
+                    ydata[pos] = ydata[pos] + data[ind];
+                  }
+                }
+                if(%(z)s) {Py_XDECREF(%(z)s);}
+                %(z)s = %(y)s;
+                Py_XINCREF(%(z)s);
+             """ % dict(locals(), **sub)
+      return code
+    
+    def perform(self, node, (indices, indptr, data, y), (out, )):
+        format = 'csc'
         self.inplace = True
+        assert _is_dense(y)
+        if format == 'csc':
+          x = scipy.sparse.csc_matrix( (data,indices,indptr), shape=y.shape)
+        elif format == 'csr':
+          x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
+        else:
+          x = scipy.sparse.coo_matrix( (data,indices,indptr), shape=y.shape)
         if self.inplace:
           if x.format == 'csc':
             for c in xrange(x.shape[1]):
@@ -1759,7 +1793,6 @@ class AddSD(gof.op.Op):
             coo_x = x.tocoo(copy=False)
             for row, col, data in izip(coo_x.row, coo_x.col, coo_x.data):
               y[(row,col)] += data
-              
           out[0] = y
         else:
           # The asarray is needed as in some case, this return a
@@ -1772,7 +1805,7 @@ class AddSD(gof.op.Op):
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
-        return [shapes[0]]
+        return [shapes[3]]
 
 add_s_d = AddSD()
 
