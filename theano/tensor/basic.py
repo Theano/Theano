@@ -7191,6 +7191,11 @@ class Diagonal(Op):
 
     :return: A vector representing the diagonal elements.
     """
+    
+    def __init__(self, offset=0, axis1=0, axis2=1):
+        self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
  
     def __eq__(self, other):
         return (type(self) == type(other))
@@ -7198,22 +7203,28 @@ class Diagonal(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x, offset=0, axis1=0, axis2=1):
+    def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim >= 2
-        offset, axis1, axis2 = map(scal.as_scalar, (offset, axis1, axis2))
-        return Apply(self, [x, offset, axis1, axis2], [tensor(dtype=x.dtype,
-                                                              broadcastable=[False] * (x.ndim -1))])
+        return Apply(self, [x], [tensor(dtype=x.dtype,
+                                        broadcastable=[False] * (x.ndim -1))])
 
-    def perform(self, node, (x, off, ax1, ax2), (z,)):
-        z[0] = x.diagonal(off, ax1, ax2)
+    def perform(self, node, (x,), (z,)):
+        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
 
     def grad(self, (x,), (gz,)):
         return [square_diagonal(gz)]
 
-    def infer_shape(self, nodes, shapes):
-        return [(minimum(*shapes[0]), )]
+    def infer_shape(self, node, shapes):
+        xdims = list(shapes[0])
+        d0 = minimum(xdims[self.axis1], xdims[self.axis2])
+        xdims = [d for i,d in enumerate(shapes[0])
+                 if i not in (self.axis1, self.axis2)]
+        xdims.append(d0)
+        return [tuple(xdims)]
 
     def __str__(self):
         return self.__class__.__name__
-diagonal = Diagonal()
+
+def diagonal(a, offset=0, axis1=0, axis2=1):
+     return Diagonal(offset, axis1, axis2)(a)
