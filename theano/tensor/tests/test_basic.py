@@ -6327,7 +6327,12 @@ def test_transpose():
 
 
 class TestSpecifyShape(unittest.TestCase):
+    def shortDescription(self):
+        return None
+
     def test_bad_shape(self):
+        """ Test that at run time we raise an exception when the shape
+        is not the one specified"""
         specify_shape = SpecifyShape()
 
         x = vector()
@@ -6346,6 +6351,7 @@ class TestSpecifyShape(unittest.TestCase):
             self.assertRaises(AssertionError, f, xval)
 
     def test_bad_number_of_shape(self):
+        """ Test that the number of dimensions provided is good"""
         specify_shape = SpecifyShape()
 
         x = vector()

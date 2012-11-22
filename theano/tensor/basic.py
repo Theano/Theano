@@ -2370,6 +2370,9 @@ class SpecifyShape(Op):
 
     def c_code(self, node, nodename, inp, out, sub):
         if not isinstance(node.inputs[0], TensorVariable):
+            # The c code bellow support only Tensor.  super.c_code
+            # will raise an exception to tell that there isn't c code
+            # for the other cases.
             return super(SpecifyShape, self).c_code(node, nodename,
                                                     inp, out, sub)
         iname, shape = inp
