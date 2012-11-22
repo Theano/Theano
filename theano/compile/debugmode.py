@@ -147,7 +147,7 @@ class BadThunkOutput(DebugModeError):
     val2 = None
     """The value computed by `thunk2`"""
 
-    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=[]):
+    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=()):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
