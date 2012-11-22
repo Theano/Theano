@@ -2329,6 +2329,7 @@ class SpecifyShape(Op):
     def perform(self, node, inp, out_):
         x, shape = inp
         out, = out_
+        assert x.ndim == shape.size
         assert numpy.all(x.shape == shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
