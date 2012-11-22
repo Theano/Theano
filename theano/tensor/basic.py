@@ -7216,12 +7216,21 @@ class Diagonal(Op):
         return [square_diagonal(gz)]
 
     def infer_shape(self, node, shapes):
-        xdims = list(shapes[0])
-        d0 = minimum(xdims[self.axis1], xdims[self.axis2])
-        xdims = [d for i,d in enumerate(shapes[0])
-                 if i not in (self.axis1, self.axis2)]
-        xdims.append(d0)
-        return [tuple(xdims)]
+        in_shape, = shapes
+        dim1 = in_shape[self.axis1]
+        dim2 = in_shape[self.axis2]
+        out_shape = [d for i,d in enumerate(in_shape)
+                     if i not in (self.axis1, self.axis2)]
+        # The following logic is inspired by C code of PyArray_Diagonal().
+        offset = self.offset
+        if offset > 0:
+            diag_size = clip(dim2 - offset, 0, dim1)
+        elif offset < 0:
+            diag_size = clip(dim1 + offset, 0, dim2) 
+        else:
+            diag_size = minimum(dim1, dim2)
+        out_shape.append(diag_size)
+        return [tuple(out_shape)]
 
     def __str__(self):
         return self.__class__.__name__

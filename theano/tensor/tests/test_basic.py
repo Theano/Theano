@@ -6548,6 +6548,15 @@ class TestInferShape(utt.InferShapeTester):
         atens3_diag = Diagonal()(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(-1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,0,2)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
         # elements of shape
