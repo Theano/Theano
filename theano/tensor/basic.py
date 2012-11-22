@@ -25,6 +25,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 ### set up the external interface
@@ -7213,7 +7214,7 @@ class Diagonal(Op):
         z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
 
     def grad(self, (x,), (gz,)):
-        return [square_diagonal(gz)]
+        return [grad_not_implemented(self, 0, x)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
