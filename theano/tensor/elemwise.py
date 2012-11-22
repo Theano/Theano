@@ -340,6 +340,7 @@ class DimShuffle(Op):
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
                             '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
+                'if (%(res)s == NULL) %(fail)s;',
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
