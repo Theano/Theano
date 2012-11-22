@@ -7238,3 +7238,39 @@ class Diagonal(Op):
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
      return Diagonal(offset, axis1, axis2)(a)
+
+class Diag(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, diag):
+        diag = as_tensor_variable(diag)
+        if diag.type.ndim != 1:
+            raise TypeError('data argument must be a vector', diag.type)
+
+        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+
+    def perform(self, node, inputs, (z,)):
+        z[0] = numpy.diag(inputs[0])
+
+    def grad(self, inputs, (gz,)):
+        return [diagonal(gz)]
+
+    def infer_shape(self, nodes, shapes):
+        return [(shapes[0][0],) * 2]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+def diag(v, k=0):
+    if v.ndim == 1:
+        assert k == 0, "diagonals other than main are not implemented"
+        return Diag()(v)
+    elif v.ndim == 2:
+        return diagonal(v, k)
+    else:
+        raise ValueError("Input must be 1- or 2-d.")

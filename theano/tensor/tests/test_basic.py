@@ -40,7 +40,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal)
+        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6557,6 +6557,13 @@ class TestInferShape(utt.InferShapeTester):
         atens3_diag = Diagonal(1,0,2)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
+
+        # Diag
+        advec = dvector()
+        advec_val = rand(4)
+        self._compile_and_check([advec], [Diag()(advec)],
+                                [advec_val], Diag)
+
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
         # elements of shape
