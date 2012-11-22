@@ -7085,6 +7085,8 @@ class TestTensorInstanceMethods(unittest.TestCase):
         X, _ = self.vars
         x, _ = self.vals
         assert_array_equal(X.diagonal().eval({X: x}), x.diagonal())
+        assert_array_equal(X.diagonal(1).eval({X: x}), x.diagonal(1))
+        assert_array_equal(X.diagonal(-1).eval({X: x}), x.diagonal(-1))
 
 
 if __name__ == '__main__':

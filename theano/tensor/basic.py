@@ -1637,8 +1637,8 @@ class _tensor_py_operators:
     def ravel(self):
         return flatten(self)
 
-    def diagonal(self):
-        return diagonal(self)
+    def diagonal(self, offset=0, axis1=0, axis2=1):
+        return diagonal(self, offset, axis1, axis2)
 
     # CASTING
     def astype(self, dtype):
@@ -7191,19 +7191,22 @@ class Diagonal(Op):
 
     :return: A vector representing the diagonal elements.
     """
-
+ 
     def __eq__(self, other):
         return (type(self) == type(other))
 
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x):
-        return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim -1))])
+    def make_node(self, x, offset=0, axis1=0, axis2=1):
+        x = as_tensor_variable(x)
+        assert x.ndim >= 2
+        offset, axis1, axis2 = map(scal.as_scalar, (offset, axis1, axis2))
+        return Apply(self, [x, offset, axis1, axis2], [tensor(dtype=x.dtype,
+                                                              broadcastable=[False] * (x.ndim -1))])
 
-    def perform(self, node, (x,), (z,)):
-        z[0] = x.diagonal()
+    def perform(self, node, (x, off, ax1, ax2), (z,)):
+        z[0] = x.diagonal(off, ax1, ax2)
 
     def grad(self, (x,), (gz,)):
         return [square_diagonal(gz)]
