@@ -163,7 +163,7 @@ def dot(l, r):
     return rval
 
 
-def get_constant_value(v):
+def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
@@ -171,12 +171,13 @@ def get_constant_value(v):
 
     If theano.sparse is also there, we will look over CSM op.
 
-    If `v` is not some view of constant data, then raise a TypeError.
+    If `v` is not some view of constant data, then raise a
+    tensor.basic.NotScalarConstantError.
     """
     if hasattr(theano, 'sparse') and isinstance(v.type,
                                                 theano.sparse.SparseType):
         if v.owner is not None and isinstance(v.owner.op,
                                                  theano.sparse.CSM):
             data = v.owner.inputs[0]
-            return tensor.get_constant_value(data)
-    return tensor.get_constant_value(v)
+            return tensor.get_scalar_constant_value(data)
+    return tensor.get_scalar_constant_value(v)

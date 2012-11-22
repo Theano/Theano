@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, tensordot_grad,  TensorType, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
-        get_constant_value, ivector, reshape, scalar_from_tensor, scal,
+        get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
@@ -2129,7 +2129,7 @@ class T_max_and_argmax(unittest.TestCase):
         cost = argmax(x, axis=0).sum()
         value_error_raised = False
         gx = grad(cost, x)
-        val = tensor.get_constant_value(gx)
+        val = tensor.get_scalar_constant_value(gx)
         assert val == 0.0
 
     def test_grad(self):
@@ -6156,40 +6156,40 @@ def test_dimshuffle_duplicate():
     assert success
 
 
-class T_get_constant_value(unittest.TestCase):
-    def test_get_constant_value(self):
+class T_get_scalar_constant_value(unittest.TestCase):
+    def test_get_scalar_constant_value(self):
         a = tensor.stack(1, 2, 3)
-        assert get_constant_value(a[0]) == 1
-        assert get_constant_value(a[1]) == 2
-        assert get_constant_value(a[2]) == 3
+        assert get_scalar_constant_value(a[0]) == 1
+        assert get_scalar_constant_value(a[1]) == 2
+        assert get_scalar_constant_value(a[2]) == 3
 
         b = tensor.iscalar()
         a = tensor.stack(b, 2, 3)
-        self.assertRaises(TypeError, get_constant_value, a[0])
-        assert get_constant_value(a[1]) == 2
-        assert get_constant_value(a[2]) == 3
+        self.assertRaises(tensor.basic.NotScalarConstantError, get_scalar_constant_value, a[0])
+        assert get_scalar_constant_value(a[1]) == 2
+        assert get_scalar_constant_value(a[2]) == 3
 
-        # For now get_constant_value goes through only MakeVector and Join of
+        # For now get_scalar_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
         a = tensor.stack(v, 2, 3)
-        self.assertRaises(TypeError, get_constant_value, a[0])
-        self.assertRaises(TypeError, get_constant_value, a[1])
-        self.assertRaises(TypeError, get_constant_value, a[2])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[0])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[1])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[2])
 
         # Test the case SubTensor(Shape(v)) when the dimensions
         # is broadcastable.
         v = tensor.row()
-        assert get_constant_value(v.shape[0]) == 1
+        assert get_scalar_constant_value(v.shape[0]) == 1
 
     def test_subtensor_of_constant(self):
         c = constant(rand(5))
         for i in range(c.value.shape[0]):
-            assert get_constant_value(c[i]) == c.value[i]
+            assert get_scalar_constant_value(c[i]) == c.value[i]
         c = constant(rand(5, 5))
         for i in range(c.value.shape[0]):
             for j in range(c.value.shape[1]):
-                assert get_constant_value(c[i, j]) == c.value[i, j]
+                assert get_scalar_constant_value(c[i, j]) == c.value[i, j]
 
 
 class T_as_tensor_variable(unittest.TestCase):

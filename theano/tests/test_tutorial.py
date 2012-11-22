@@ -936,7 +936,7 @@ class T_fibby(unittest.TestCase):
             if node.op == fibby:
                 x = node.inputs[0]
                 try:
-                    if numpy.all(0 == get_constant_value(x)):
+                    if numpy.all(0 == get_scalar_constant_value(x)):
                         return [x]
                 except TypeError:
                     pass

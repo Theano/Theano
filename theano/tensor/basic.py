@@ -462,70 +462,88 @@ def _allclose(a, b, rtol=None, atol=None):
     return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
 
 
-class NotConstantError(TypeError):
+class NotScalarConstantError(Exception):
     """
-    Raised by get_constant_value if called on something that is
-    not constant.
-    For now it is a TypeError, to maintain the old interface
-    that get_constant_value should raise a TypeError in this
-    situation. However, this is unsafe because get_constant_value
-    could inadvertently raise a TypeError if it has a bug.
-    So we should eventually make NotConstantError derive
-    from Exception directly, and modify all code that uses
-    get_constant_value to catch this more specific exception.
+    Raised by get_scalar_constant_value if called on something that is
+    not a scalar constant.
     """
-    pass
 
-def get_constant_value(v):
+class EmptyConstantError(NotScalarConstantError):
+    """
+    Raised by get_scalar_const_value if called on something that is a
+    zero dimensional constant.
+    """
+
+def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
     this function digs through them.
 
-    If `v` is not some view of constant data, then raise a NotConstantError.
+    If `v` is not some view of constant scalar data, then raise a NotScalarConstantError.
 
     :note: There may be another function similar to this one in the
         code, but I'm not sure where it is.
     """
+
+    if v is None:
+        # None is not a scalar (and many uses of this function seem to depend
+        # on passing it None)
+        raise NotScalarConstantError()
+
+    if isinstance(v, (int, float)):
+        return numpy.asarray(v)
+
+    def numpy_scalar(n):
+        """ Return a scalar stored in a numpy ndarray, or raise
+        NotScalarConstantError if the numpy ndarray is not a scalar
+        """
+
+        # handle case where data is numpy.array([])
+        if data.ndim > 0 and  (len(data.shape) == 0 or
+            __builtins__['max'](data.shape) == 0):
+            assert numpy.all(numpy.array([]) == data)
+            raise EmptyConstantError()
+        try:
+            numpy.complex(data)  # works for all numeric scalars
+            return data
+        except Exception:
+            raise NotScalarConstantError(
+                'v.data is non-numeric, non-scalar, or has more than one'
+                ' unique value', n)
+
+    if isinstance(v, numpy.ndarray):
+        return numpy_scalar(v)
+
 
     if isinstance(v, Constant):
         if getattr(v.tag, 'unique_value', None) is not None:
             data = v.tag.unique_value
         else:
             data = v.data
-        # handle case where data is numpy.array([])
-        if hasattr(data, 'shape') and len(data.shape) == 0 or \
-            __builtins__['max'](data.shape) == 0:
-            assert numpy.all(numpy.array([]) == data)
-            return data
-        try:
-            numpy.complex(data)  # works for all numeric scalars
-            return data
-        except Exception:
-            raise NotConstantError(
-                'v.data is non-numeric, non-scalar, or has more than one'
-                ' unique value', v)
+        return numpy_scalar(data)
+
     if v.owner:
         if isinstance(v.owner.op, Alloc):
-            return get_constant_value(v.owner.inputs[0])
+            return get_scalar_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, DimShuffle):
-            return get_constant_value(v.owner.inputs[0])
+            return get_scalar_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Rebroadcast):
-            return get_constant_value(v.owner.inputs[0])
+            return get_scalar_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Elemwise) and \
                 isinstance(v.owner.op.scalar_op, scal.Second):
             shape, val = v.owner.inputs
-            return get_constant_value(val)
+            return get_scalar_constant_value(val)
         if isinstance(v.owner.op, scal.Second):
             x, y = v.owner.inputs
-            return get_constant_value(y)
+            return get_scalar_constant_value(y)
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
         # mess with the stabilization optimization.
         if (isinstance(v.owner.op, Elemwise) and isinstance(
             v.owner.op.scalar_op, scal.Cast)) or \
             isinstance(v.owner.op, scal.Cast):
-            const = get_constant_value(v.owner.inputs[0])
+            const = get_scalar_constant_value(v.owner.inputs[0])
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
@@ -562,7 +580,7 @@ def get_constant_value(v):
                 # axis.
                 ret = v.owner.inputs[0].owner.inputs[
                     v.owner.op.idx_list[0] + 1]
-                ret = get_constant_value(ret)
+                ret = get_scalar_constant_value(ret)
                 # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
             if (v.owner.inputs[0].owner and
@@ -575,7 +593,7 @@ def get_constant_value(v):
                 len(v.owner.op.idx_list) == 1):
 
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
-                ret = get_constant_value(ret)
+                ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
 
@@ -588,7 +606,7 @@ def get_constant_value(v):
                     v.owner.op.idx_list[0]]:
                     return numpy.asarray(1)
 
-    raise TypeError(v)
+    raise NotScalarConstantError(v)
 
 
 class TensorType(Type):
@@ -1810,8 +1828,8 @@ class _tensor_py_operators:
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
 
-    def get_constant_value(self):
-        return get_constant_value(self)
+    def get_scalar_constant_value(self):
+        return get_scalar_constant_value(self)
 
     def zeros_like(model):
         return zeros_like(model)
@@ -2339,10 +2357,10 @@ class SpecifyShape(Op):
         new_shape = []
         for dim in xrange(node.inputs[0].ndim):
             try:
-                s = get_constant_value(node.inputs[1][dim])
+                s = get_scalar_constant_value(node.inputs[1][dim])
                 s = as_tensor_variable(s)
                 new_shape.append(s)
-            except TypeError:
+            except NotScalarConstantError:
                 new_shape.append(node.inputs[1][dim])
 
         assert len(new_shape) == len(xshape)
@@ -2634,14 +2652,22 @@ def max(x, axis=None, keepdims=False):
     :note: we return an error as numpy when we reduce a dim with a shape of 0
     """
 
-    if isinstance(axis, (list, tuple)) and len(axis) > 1:
+    # We have a choice of implementing this call with the
+    # CAReduce op or the MaxAndArgmax op.
+
+    # MaxAndArgmax supports grad and Rop, so we prefer to use that.
+    # CAReduce is faster, but optimizations will replace MaxAndArgmax[0]
+    # with CAReduce at compile time, so at this stage the important
+    # thing is supporting all user interface features, not speed.
+    # Some cases can be implemented only with CAReduce.
+
+    # We thus prefer to use MaxAndArgmax, if possible. It does not
+    # support all axis arguments, so we may need to fall back to CAReduce.
+
+    try:
+        out = max_and_argmax(x, axis)[0]
+    except:
         out = CAReduce(scal.maximum, axis)(x)
-    else:
-        try:
-            const = get_constant_value(axis)
-            out = CAReduce(scal.maximum, list(const))(x)
-        except Exception:
-            out = max_and_argmax(x, axis)[0]
 
     if keepdims:
         out = makeKeepDims(x, out, axis)
@@ -3249,8 +3275,8 @@ class Alloc(gof.Op):
                                 (i, s_as_str))
             # if s is constant 1, then we're broadcastable in that dim
             try:
-                const_shp = get_constant_value(s)
-            except TypeError:
+                const_shp = get_scalar_constant_value(s)
+            except NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = TensorType(dtype=v.dtype, broadcastable=bcast)
@@ -3785,16 +3811,16 @@ def get_idx_list(inputs, idx_list):
 
 def extract_constant(x):
     '''
-     This function is basically a call to tensor.get_constant_value. The
+     This function is basically a call to tensor.get_scalar_constant_value. The
      main difference is the behaviour in case of failure. While
-     get_constant_value raises an TypeError, this function returns x,
+     get_scalar_constant_value raises an TypeError, this function returns x,
      as a tensor if possible. If x is a ScalarVariable from a
      scalar_from_tensor, we remove the conversion. If x is just a
      ScalarVariable, we convert it to a tensor with tensor_from_scalar.
     '''
     try:
-        x = get_constant_value(x)
-    except Exception:
+        x = get_scalar_constant_value(x)
+    except NotScalarConstantError:
         pass
     if (isinstance(x, scal.ScalarVariable) or
         isinstance(x, scal.sharedvar.ScalarSharedVariable)):
@@ -5392,11 +5418,11 @@ class Join(Op):
             # Axis can also be a constant
             if not isinstance(axis, int):
                 try:
-                    # Note : `get_constant_value` returns a ndarray not a
+                    # Note : `get_scalar_constant_value` returns a ndarray not a
                     # int
-                    axis = int(get_constant_value(axis))
+                    axis = int(get_scalar_constant_value(axis))
 
-                except TypeError:
+                except NotScalarConstantError:
                     pass
             if isinstance(axis, int):
                 # Basically, broadcastable -> length 1, but the
@@ -5763,9 +5789,9 @@ class Reshape(Op):
                 # Try to see if we can infer that y has a constant value of 1.
                 # If so, that dimension should be broadcastable.
                 try:
-                    bcasts[index] = (hasattr(y, 'get_constant_value') and
-                                     y.get_constant_value() == 1)
-                except TypeError:
+                    bcasts[index] = (hasattr(y, 'get_scalar_constant_value') and
+                                     y.get_scalar_constant_value() == 1)
+                except NotScalarConstantError:
                     pass
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
 
@@ -5838,10 +5864,10 @@ class Reshape(Op):
             for i in xrange(self.ndim):
                 default_os_i = theano.tensor.opt.Shape_i(i)(node.outputs[0])
                 try:
-                    os_i = get_constant_value(node.inputs[1][i]).item()
+                    os_i = get_scalar_constant_value(node.inputs[1][i]).item()
                     if os_i == -1:
                         os_i = default_os_i
-                except TypeError:
+                except NotScalarConstantError:
                     os_i = default_os_i
                 oshape.append(os_i)
             return [tuple(oshape)]
@@ -6121,9 +6147,9 @@ class ARange(Op):
 
         def is_constant_value(var, value):
             try:
-                v = get_constant_value(var)
+                v = get_scalar_constant_value(var)
                 return numpy.all(v == value)
-            except Exception:
+            except NotScalarConstantError:
                 pass
             return False
 
