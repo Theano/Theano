@@ -1378,7 +1378,21 @@ def local_argmax_pushdown(node):
 
 
 def _check_rows_is_arange_len_labels(rows, labels):
-    '''Check that 'rows' is the same node as T.arange(labels.shape[0])'''
+    '''Check that 'rows' is the same node as T.arange(labels.shape[0])
+
+    Also considers the case where labels.shape[0] is constant and equal
+    to 1, and T.arange(labels.shape[0]) has been constant-folded into 0.
+    '''
+
+    if labels.owner and hasattr(labels.owner.fgraph, 'shape_feature'):
+        shape_of = labels.owner.fgraph.shape_feature.shape_of
+        # TODO: consider cases where shape_of[labels] is constant, and
+        # has a value different from 1.
+        # This case is harder, as _is_const only accepts a scalar value
+        # as second argument, so checking for
+        # _is_const(rows, numpy.arange(...)) does not work for the moment.
+        if len(shape_of[labels]) == 1 and _is_const(shape_of[labels][0], 1):
+            return _is_const(rows, 0)
 
     if rows.owner and isinstance(rows.owner.op, tensor.ARange):
         start, stop, step = rows.owner.inputs
