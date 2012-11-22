@@ -14,7 +14,7 @@ own Theano code, and even (it happens) in Theano's internals, in
 Isolating the Problem/Testing Theano Compiler
 ---------------------------------------------
 
-You can run your Theano function in a :ref:`DebugMode<using_debugmode>`. 
+You can run your Theano function in a :ref:`DebugMode<using_debugmode>`.
 This tests the Theano optimizations and helps to find where NaN, inf and other problems come from.
 
 
@@ -56,12 +56,12 @@ following example.
     # compile and call the actual function
     f = theano.function([x], h2)
     f(numpy.random.rand(5, 10))
-   
+
 Running the above code generates the following error message:
 
 .. code-block:: bash
 
-    Definition in: 
+    Definition in:
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 1102, in apply
         lopt_change = self.process_node(fgraph, node, lopt)
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 882, in process_node
@@ -83,8 +83,8 @@ Running the above code generates the following error message:
         thunk()
       File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/cc.py", line 1111, in execute
         raise exc_type, exc_value, exc_trace
-    ValueError: ('Shape mismatch: x has 10 cols but y has 20 rows', 
-    _dot22(x, <TensorType(float64, matrix)>), [_dot22.0], 
+    ValueError: ('Shape mismatch: x has 10 cols but y has 20 rows',
+    _dot22(x, <TensorType(float64, matrix)>), [_dot22.0],
     _dot22(x, InplaceDimShuffle{1,0}.0), 'Sequence id of Apply node=4')
 
 Needless to say, the above is not very informative and does not provide much in
@@ -114,7 +114,7 @@ following error message, which properly identifies *line 23* as the culprit.
 
     Traceback (most recent call last):
       File "test2.py", line 23, in <module>
-        h1 = T.dot(x,func_of_W1)  
+        h1 = T.dot(x,func_of_W1)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/op.py", line 360, in __call__
         node.op.perform(node, input_vals, output_storage)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/basic.py", line 4458, in perform
@@ -167,8 +167,8 @@ Theano provides a 'Print' op to do this.
 
 Since Theano runs your program in a topological order, you won't have precise
 control over the order in which multiple ``Print()`` ops are evaluted.  For a more
-precise inspection of what's being computed where, when, and how, see the discussion 
-:ref:`faq_wraplinker`.
+precise inspection of what's being computed where, when, and how, see the discussion
+:ref:`faq_monitormode`.
 
 .. warning::
 
@@ -196,7 +196,7 @@ You can read about them in :ref:`libdoc_printing`.
 "The Function I Compiled is Too Slow, what's up?"
 -------------------------------------------------
 
-First, make sure you're running in ``FAST_RUN`` mode. Even though 
+First, make sure you're running in ``FAST_RUN`` mode. Even though
 ``FAST_RUN`` is the default mode, insist by passing ``mode='FAST_RUN'``
 to ``theano.function`` (or ``theano.make``) or by setting :attr:`config.mode`
 to ``FAST_RUN``.
@@ -206,7 +206,7 @@ Second, try the Theano :ref:`using_profilemode`.  This will tell you which
 
 Tips:
 
-* Use the flags ``floatX=float32`` to require type *float32* instead of *float64*; 
+* Use the flags ``floatX=float32`` to require type *float32* instead of *float64*;
   Use the Theano constructors matrix(),vector(),... instead of dmatrix(), dvector(),...
   since they respectively involve the default types *float32* and *float64*.
 * Check in the ``profile`` mode that there is no ``Dot`` op in the post-compilation
@@ -216,48 +216,79 @@ Tips:
   of type *float64*.
 
 
-.. _faq_wraplinker:
+.. _faq_monitormode:
 
-"How do I Step through a Compiled Function with the WrapLinker?"
-----------------------------------------------------------------
+"How do I Step through a Compiled Function?"
+--------------------------------------------
 
-This is not exactly a FAQ, but the doc is here for now...
-It's pretty easy to roll-your-own evaluation mode.
-Check out this one:
+You can use ``MonitorMode`` to inspect the inputs and outputs of each
+node being executed when the function is called. The code snipped below
+shows how to print all inputs and outputs:
 
 .. code-block:: python
 
-    class PrintEverythingMode(Mode):
-        def __init__(self):
-            def print_eval(i, node, fn):
-                print i, node, [input[0] for input in fn.inputs],
-                fn()
-                print [output[0] for output in fn.outputs]
-            wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [print_eval])
-            super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
+    import theano
 
-When you use ``mode=PrintEverythingMode()`` as the mode for ``Function`` or ``Method``,
-then you should see [potentially a lot of] output.  Every ``Apply`` node will be printed out,
+    def inspect_inputs(i, node, fn):
+        print i, node, [input[0] for input in fn.inputs],
+
+    def inspect_outputs(i, node, fn):
+        print [output[0] for output in fn.outputs]
+
+    x = theano.tensor.dscalar('x')
+    f = theano.function([x], [5 * x],
+                        mode=theano.compile.MonitorMode(
+                            pre_func=inspect_inputs,
+                            post_func=inspect_outputs))
+    f(3)
+
+    # The code will print the following:
+    #   0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) [array(5.0), array(3.0)] [array(15.0)]
+
+When using these ``inspect_inputs`` and ``inspect_outputs`` functions
+with ``MonitorMode``, you should see [potentially a lot of] printed output.
+Every ``Apply`` node will be printed out,
 along with its position in the graph, the arguments to the functions ``perform`` or
-``c_code`` and the output it computed.  
-
->>> x = T.dscalar('x')
->>> f = function([x], [5 * x], mode=PrintEverythingMode())
->>> f(3)
->>> # print: 0 Elemwise{mul,no_inplace}(5, x) [array(5, dtype=int8), array(3.0)] [array(15.0)]
->>> # print: [array(15.0)]
-
+``c_code`` and the output it computed.
 Admittedly, this may be a huge amount of
 output to read through if you are using big tensors... but you can choose to
-put logic inside of the *print_eval* function that would, for example, print 
+add logic that would, for instance, print
 something out only if a certain kind of op were used, at a certain program
 position, or only if a particular value showed up in one of the inputs or outputs.
-Use your imagination :)
+A typical example is to detect when NaN values are added into computations, which
+can be achieved as follows:
+
+.. code-block:: python
+
+    import numpy
+
+    import theano
+
+    def detect_nan(i, node, fn):
+        for output in fn.outputs:
+            if numpy.isnan(output[0]).any():
+                print '*** NaN detected ***'
+                theano.printing.debugprint(node)
+                print 'Inputs : %s' % [input[0] for input in fn.inputs]
+                print 'Outputs: %s' % [output[0] for output in fn.outputs]
+                break
+
+    x = theano.tensor.dscalar('x')
+    f = theano.function([x], [theano.tensor.log(x) * x],
+                        mode=theano.compile.MonitorMode(
+                            post_func=detect_nan))
+    f(0)  # log(0) * 0 = -inf * 0 = NaN
+
+    # The code above will print:
+    #   *** NaN detected ***
+    #   Elemwise{Composite{[mul(log(i0), i0)]}} [@A] ''
+    #    |x [@B]
+    #   Inputs : [array(0.0)]
+    #   Outputs: [array(nan)]
+
 
 .. TODO: documentation for link.WrapLinkerMany
 
-This can be a really powerful debugging tool. Note the call to *fn* inside the call to
-*print_eval*; without it, the graph wouldn't get computed at all!
 
 How to Use pdb
 --------------

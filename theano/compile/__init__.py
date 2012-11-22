@@ -21,6 +21,8 @@ from module import *
 import debugmode   # register DEBUG_MODE
 from debugmode import DebugMode
 
+from monitormode import MonitorMode
+
 from profilemode import ProfileMode
 
 from theano.compile.sharedvalue import shared, shared_constructor, SharedVariable
