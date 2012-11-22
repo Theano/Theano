@@ -43,13 +43,13 @@ Interface change:
  * Now we do not support unaligned ndarray in python code. (Frederic B.)
    We did not support it in c code and supporting it in python code made
    the detection harder.
- * Now we only support officialy scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
-   We weren't and aren't testing with older version.
+ * Now we only officially support scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
+   We weren't and aren't testing with older versions.
  * The theano.sparse.SparseType is available even when scipy is not (Frederic B.)
  * Fixes issue where members of consider_constant grad parameter
    were treated differently from Constant variables. (Ian G.)
- * Remove the parameter g_cost to theano.grad(). (Ian G.)
-   Use the new more powerfull parameter known_grads instead.
+ * Remove the parameter g_cost from theano.grad(). (Ian G.)
+   Use the new more powerful parameter known_grads instead.
 
 NumPy interface support:
  * theano.tensor.where is an alias for theano.tensor.switch to support NumPy semantic. (Ian G.)
@@ -75,23 +75,23 @@ New Feature:
  * Allow integer axes when keepdims==True (Jeremiah Lowin)
  * Add erfinv and erfcinv op. (Jey Kottalam)
  * Added tensor.batched_dot(). (Caglar Gulcehre)
-   It use scan behind the scene, but making doing this easier.
+   It uses scan behind the scenes, but makes doing this easier.
  * theano.get_constant_value(x) (Frederic B.)
-   This try to do have x as a constant int.
-   This do some constant folding to try to convert x into an int.
-   Used by some optimization.
+   This tries to have x as a constant int.
+   This does some constant folding to try to convert x into an int.
+   Used by some optimizations.
  * Add theano.tensor.io.{MPIRecv,MPIRecvWait,MPISend,MPISendWait} (Matthew Rocklin)
-   Theano do not automatically use them. It is up to you to use them and split your computation.
+   Theano does not automatically use them. It is up to you to use them and split your computation.
  * Added theano.sandbox.linalg.eig (abalkin)
  * Started some support for Python3 (abalkin)
-   setup.py support python3 now.
-   It call 2to3 during the setup.
-   Python3 not fully supported as we didn't update the c code.
+   setup.py supports python3 now.
+   It calls 2to3 during the setup.
+   Python3 is not fully supported as we didn't update the c code.
 
 
 Crash Fix:
  * Fix a crash related to scan.grad due to the new mechanism. (Ian G.)
- * Fix an optimization warning. Now it get optimized. (Frederic B.)
+ * Fix an optimization warning. Now it gets optimized. (Frederic B.)
  * Fix crash introduced in 0.6rc1 in theano.grad (Ian G.)
  * Fix crash introduced in 0.6rc1 in the grad of scan (Razvan P.)
  * Fix crash introduced in 0.6rc1 in the grad of clip (Ian G.)
@@ -125,7 +125,7 @@ Theano 0.6rc1 (October 1st, 2012)
 Highlights:
  * Bug fixes, crash fixes, CPU and GPU speed up.
  * theano_var.eval({other_var: val[,...]} to simplify the usage of Theano (Ian G.)
- * New default linker `cvm`. This is the execution engine that tells what op to run in which order.
+ * New default linker `cvm`. This is the execution engine that tells ops to run in certain orders.
    It is now implemented in C and enables lazy evaluation of ifelse op.
  * Faster theano.function compilation. (Pascal L., Ian G.)
  * Big sparse submodule update and documentation of it. (Nicolas Bouchard)
@@ -153,7 +153,7 @@ Bug fixes:
    with those defaults then stuck at old values if the config variables were
    changed during program execution. (David W-F)
  * Fixed many subtle bugs involving mutable default arguments which may have
-   led to unexpected behaviour, such as objects sharing instance variables
+   led to unexpected behavior, such as objects sharing instance variables
    they were not supposed to share. (David W-F)
  * Correctly record the GPU device number used when we let the driver select it.
    (Frederic B.)
@@ -408,7 +408,7 @@ Documentation:
    (Frederic B.)
  * New installation instructions for Windows using EPD (Pascal L.)
  * New installation on Windows by using a Linux VM from ContinuumIO (Frederic B.)
- * Revisions of Theano tutorial and addition of exercices to it. (Eric L.)
+ * Revisions of Theano tutorial and addition of exercises to it. (Eric L.)
  * New tutorial on Sparse variable. (Nicolas B., Sebastien Lemieux, Frederic Bastien
    http://www.deeplearning.net/software/theano/tutorial/sparse.html
  * Installation documentation for CentOS6 (Frederic B.)
