@@ -6326,6 +6326,48 @@ def test_transpose():
     assert tensor.transpose(tensor.dmatrix()).name is None
 
 
+class TestSpecifyShape(unittest.TestCase):
+    def test_bad_shape(self):
+        specify_shape = SpecifyShape()
+
+        x = vector()
+        xval = numpy.random.rand(2)
+        f = theano.function([x], specify_shape(x, [2]))
+        f(xval)
+        xval = numpy.random.rand(3)
+        self.assertRaises(AssertionError, f, xval)
+
+        x = matrix()
+        xval = numpy.random.rand(2, 3)
+        f = theano.function([x], specify_shape(x, [2, 3]))
+        f(xval)
+        for shape in [(1, 3), (2, 2), (5, 5)]:
+            xval = numpy.random.rand(*shape)
+            self.assertRaises(AssertionError, f, xval)
+
+    def test_bad_number_of_shape(self):
+        specify_shape = SpecifyShape()
+
+        x = vector()
+        shape_vec = ivector()
+        xval = numpy.random.rand(2)
+        self.assertRaises(AssertionError, specify_shape, x, [])
+        self.assertRaises(AssertionError, specify_shape, x, [2, 2])
+
+        f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+        self.assertRaises(AssertionError, f, xval, [])
+        self.assertRaises(AssertionError, f, xval, [2, 2])
+
+        x = matrix()
+        xval = numpy.random.rand(2, 3)
+        for shape in [(),
+                      (1,),
+                      (2, 3, 4)]:
+            self.assertRaises(AssertionError, specify_shape, x, shape)
+            f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+            self.assertRaises(AssertionError, f, xval, shape)
+
+
 class TestInferShape(utt.InferShapeTester):
 
     def test_infer_shape(self):
