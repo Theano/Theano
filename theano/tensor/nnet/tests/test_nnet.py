@@ -326,13 +326,6 @@ class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
 
 
 class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
-    def print_graph(self, func):
-        # Helper function used in different tests
-        for i, node in enumerate(func.maker.fgraph.toposort()):
-            print i, node
-        # Last node should be the output
-        print i, printing.pprint(node.outputs[0])
-        print
 
     def test_grad(self):
         x = tensor.matrix('x')
@@ -794,7 +787,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, y], expr, mode=mode)
             if verbose:
-                self.print_graph(f)
+                printing.debugprint(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 assert len(ops) == 5
@@ -807,7 +800,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 raise
             g = theano.function([x, y], T.grad(expr, x), mode=mode)
             if verbose:
-                self.print_graph(g)
+                printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) == 4
@@ -843,7 +836,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
             if verbose:
-                self.print_graph(f)
+                printing.debugprint(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle]
@@ -864,7 +857,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 config.warn.sum_div_dimshuffle_bug = backup
 
             if verbose:
-                self.print_graph(g)
+                printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) <= 6
@@ -904,7 +897,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, b, y_], expr, mode=mode)
             if verbose:
-                self.print_graph(f)
+                printing.debugprint(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle, flatten]
@@ -925,7 +918,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 config.warn.sum_div_dimshuffle_bug = backup
 
             if verbose:
-                self.print_graph(g)
+                printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) <= 6
@@ -966,7 +959,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, b, y_], expr, mode=mode)
             if verbose:
-                self.print_graph(f)
+                printing.debugprint(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle, specify_shape]
@@ -987,7 +980,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 config.warn.sum_div_dimshuffle_bug = backup
 
             if verbose:
-                self.print_graph(g)
+                printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) <= 6
