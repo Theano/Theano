@@ -7285,7 +7285,10 @@ class Diagonal(Op):
         return self.__class__.__name__
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
-     return Diagonal(offset, axis1, axis2)(a)
+    if (offset, axis1, axis2) == (0, 0, 1):
+        from theano.sandbox.linalg import extract_diag
+        return extract_diag(a)
+    return Diagonal(offset, axis1, axis2)(a)
 
 class Diag(Op):
 
