@@ -6336,18 +6336,18 @@ class TestSpecifyShape(unittest.TestCase):
         specify_shape = SpecifyShape()
 
         x = vector()
-        xval = numpy.random.rand(2)
+        xval = numpy.random.rand(2).astype(floatX)
         f = theano.function([x], specify_shape(x, [2]))
         f(xval)
-        xval = numpy.random.rand(3)
+        xval = numpy.random.rand(3).astype(floatX)
         self.assertRaises(AssertionError, f, xval)
 
         x = matrix()
-        xval = numpy.random.rand(2, 3)
+        xval = numpy.random.rand(2, 3).astype(floatX)
         f = theano.function([x], specify_shape(x, [2, 3]))
         f(xval)
         for shape in [(1, 3), (2, 2), (5, 5)]:
-            xval = numpy.random.rand(*shape)
+            xval = numpy.random.rand(*shape).astype(floatX)
             self.assertRaises(AssertionError, f, xval)
 
     def test_bad_number_of_shape(self):
@@ -6356,7 +6356,7 @@ class TestSpecifyShape(unittest.TestCase):
 
         x = vector()
         shape_vec = ivector()
-        xval = numpy.random.rand(2)
+        xval = numpy.random.rand(2).astype(floatX)
         self.assertRaises(AssertionError, specify_shape, x, [])
         self.assertRaises(AssertionError, specify_shape, x, [2, 2])
 
@@ -6365,7 +6365,7 @@ class TestSpecifyShape(unittest.TestCase):
         self.assertRaises(AssertionError, f, xval, [2, 2])
 
         x = matrix()
-        xval = numpy.random.rand(2, 3)
+        xval = numpy.random.rand(2, 3).astype(floatX)
         for shape in [(),
                       (1,),
                       (2, 3, 4)]:
