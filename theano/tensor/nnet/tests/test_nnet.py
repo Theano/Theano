@@ -326,6 +326,13 @@ class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
 
 
 class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
+    def print_graph(self, func):
+        # Helper function used in different tests
+        for i, node in enumerate(func.maker.fgraph.toposort()):
+            print i, node
+        # Last node should be the output
+        print i, printing.pprint(node.outputs[0])
+        print
 
     def test_grad(self):
         x = tensor.matrix('x')
@@ -779,13 +786,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         x = T.vector('x')
         y = T.lvector('y')
 
-        def print_graph(func):
-            for i, node in enumerate(func.maker.fgraph.toposort()):
-                print i, node
-            # Last node should be the output
-            print i, printing.pprint(node.outputs[0])
-            print
-
         ## Test that a biased softmax is optimized correctly
         bias_expressions = [
                 T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
@@ -794,7 +794,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, y], expr, mode=mode)
             if verbose:
-                print_graph(f)
+                self.print_graph(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 assert len(ops) == 5
@@ -807,7 +807,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 raise
             g = theano.function([x, y], T.grad(expr, x), mode=mode)
             if verbose:
-                print_graph(g)
+                self.print_graph(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) == 4
@@ -833,13 +833,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         b = T.vector('b')
         y = T.lvector('y')
 
-        def print_graph(func):
-            for i, node in enumerate(func.maker.fgraph.toposort()):
-                print i, node
-            # Last node should be the output
-            print i, printing.pprint(node.outputs[0])
-            print
-
         ## Test that a biased softmax is optimized correctly
         bias_expressions = [
                 T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
@@ -850,7 +843,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
             if verbose:
-                print_graph(f)
+                self.print_graph(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle]
@@ -871,7 +864,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 config.warn.sum_div_dimshuffle_bug = backup
 
             if verbose:
-                print_graph(g)
+                self.print_graph(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) <= 6
@@ -885,7 +878,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
     def test_optimize_xent_vector3(self):
         # Same as test_optimize_xent_vector2, but y is the result of
-        # a "flatten", and it somehow makes the constant-folding
+        # a "flatten", and it used to make the constant-folding
         # of arange(y.shape[0]) happen before the xent optimization
         verbose = 0
         mode = theano.compile.mode.get_default_mode()
@@ -901,13 +894,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         y_ = T.lvector('y_')
         y = y_.flatten()
 
-        def print_graph(func):
-            for i, node in enumerate(func.maker.fgraph.toposort()):
-                print i, node
-            # Last node should be the output
-            print i, printing.pprint(node.outputs[0])
-            print
-
         ## Test that a biased softmax is optimized correctly
         bias_expressions = [
                 T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
@@ -918,7 +904,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in bias_expressions:
             f = theano.function([x, b, y_], expr, mode=mode)
             if verbose:
-                print_graph(f)
+                self.print_graph(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
                 # [big_op, sum, dim_shuffle, flatten]
@@ -963,12 +949,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         x = T.matrix('x')
         y = T.lvector('y')
         a = T.scalar('a')
-
-        def print_graph(func):
-            for i, node in enumerate(func.maker.fgraph.toposort()):
-                print i, node
-            # Last node should be the output
-            print i, pprint(node.outputs[0])
 
         def validate_fn_graph(func):
             # The graph of the function should not have softmax anymore
