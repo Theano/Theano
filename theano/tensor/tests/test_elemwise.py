@@ -95,7 +95,11 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                             [DimShuffle(ib, shuffle)(adtens)],
                             [adtens_val], DimShuffle)
 
-
+    def test_too_big_rank(self):
+        x = tensor.dscalar()
+        y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
+        self.assertRaises(ValueError, y.eval, {x: 0})
+                          
 class test_Broadcast(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
