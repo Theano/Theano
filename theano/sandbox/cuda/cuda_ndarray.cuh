@@ -278,38 +278,12 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
     int size = 1; //set up the strides for contiguous tensor
     assert (nd >= 0);
 
-    // check if by any chance our current dims are correct,
-    // and strides already contiguous
-    // in that case we can return right here.
-    if (self->nd == nd)
-    {
-        const int * cur_dims = CudaNdarray_HOST_DIMS(self);
-        const int * cur_strides = CudaNdarray_HOST_STRIDES(self);
-        bool good = true;
-        for (int i = nd -1; i >= 0; --i)
-        {
-            if (cur_strides[i] != (dim[i] == 1) ? 0 : size)
-            {
-                good = false;
-                break;
-            }
-            if (cur_dims[i] != dim[i])
-            {
-                good = false;
-                break;
-            }
-            size *= dim[i];
-        }
-        if (good)
-            return 0;
-        size = 1;
-    }
-
+    // Here we modify the host structure to have the desired shape and
+    // strides. This does not cause the storage to be freed or reallocated.
     if (CudaNdarray_set_nd(self, nd))
     {
         return -1;
     }
-
     for (int i = nd-1; i >= 0; --i)
     {
         CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
@@ -317,7 +291,11 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         size = size * dim[i];
     }
 
-    if ((self->data_allocated == size) && CudaNdarray_is_c_contiguous(self))
+    // If the allocated buffer is already of the right size, we don't need to
+    // do anything else.
+    // Note: self->data_allocated is 0 for a view, so views will fail this
+    // check and be turned into independent arrays below.
+    if (self->data_allocated == size)
     {
         return 0;
     }
