@@ -142,11 +142,11 @@ DllExport int
 CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 
 /****
- *  Set the idx'th dimension to value d.
+ *  Set the dimension[idx] to value d.
  *
- *  Updates the log2dim shaddow array.
+ *  Updates the log2dim shadow array.
  *
- *  Does not sync structure to host.
+ *  Does not sync structure to device.
  */
 DllExport inline void __attribute__((always_inline))
 CudaNdarray_set_dim(CudaNdarray * self, int idx, int d) 
@@ -218,7 +218,8 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
 /**
  * [Re]allocate a CudaNdarray with access to 'nd' dimensions.
  *
- * Note: This does not allocate storage for data.
+ * Note: This does not allocate storage for data, or free
+ *       pre-existing storage.
  */
 DllExport inline int __attribute__((always_inline))
 CudaNdarray_set_nd(CudaNdarray * self, const int nd)
