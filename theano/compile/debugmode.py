@@ -172,7 +172,9 @@ class BadThunkOutput(DebugModeError):
         print >> sio, "BadThunkOutput"
         print >> sio, "  variable    :", self.r
         print >> sio, "  Outputs Type:", self.r.type
-        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs],
+        print >> sio, "  Outputs Shape:", getattr(self.val1, 'shape', None)
+        print >> sio, "  Outputs Strides:", getattr(self.val1, 'strides', None)
+        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs]
         print >> sio, "  Inputs Shape:", [getattr(val, 'shape', None)
                                           for val in self.inputs_val]
         print >> sio, "  Inputs Strides:", [getattr(val, 'strides', None)
@@ -1336,7 +1338,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
-                    inputs_val = [storage_map[inp] for inp in r.owner.inputs]
+                    inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
                     raise BadThunkOutput(r,
                             thunk1='Reference value', val1=r_vals[r],
                             thunk2=thunk_name, val2=storage_map[r][0],
@@ -1918,7 +1920,7 @@ class _Linker(gof.link.LocalLinker):
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     #import pdb; pdb.set_trace()
                                     #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
-                                    inputs_val = [storage_map[inp] for inp in r.owner.inputs]
+                                    inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
                                     raise BadThunkOutput(r,
                                             thunk1='perform', val1=r_vals[r],
                                             thunk2='c_code', val2=storage_map[r][0],
