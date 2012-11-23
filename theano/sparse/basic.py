@@ -1715,16 +1715,19 @@ class AddSD(gof.op.Op):
         gof.Op.__init__(self, *args, **kwargs)
         self.inplace = inplace
         if self.inplace:
-            self.destroy_map = {0: [0]}
+            self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return (type(self) == type(other)) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
+        if self.inplace:
+          return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
+        
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -1733,14 +1736,15 @@ class AddSD(gof.op.Op):
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
+        self.format = x.format
         assert y.type.ndim == 2
         return gof.Apply(self,
-                         [indices, indptr, data, y],
+                         [data, indices, indptr, y],
                          [tensor.TensorType(dtype=y.type.dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def c_code(self, node, name, (_indices, _indptr, _data, y), (z, ), sub):
+    def cc_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
       code = """
                 npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
 
@@ -1766,35 +1770,27 @@ class AddSD(gof.op.Op):
              """ % dict(locals(), **sub)
       return code
     
-    def perform(self, node, (indices, indptr, data, y), (out, )):
-        format = 'csc'
-        self.inplace = True
+    def perform(self, node, (data, indices, indptr,  y), (out, )):
         assert _is_dense(y)
-        if format == 'csc':
-          x = scipy.sparse.csc_matrix( (data,indices,indptr), shape=y.shape)
-        elif format == 'csr':
-          x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
-        else:
-          x = scipy.sparse.coo_matrix( (data,indices,indptr), shape=y.shape)
         if self.inplace:
-          if x.format == 'csc':
-            for c in xrange(x.shape[1]):
-              low = x.indptr[c]
-              high = x.indptr[c+1]
+          if self.format == 'csc':
+            for c in xrange(y.shape[1]):
+              low = indptr[c]
+              high = indptr[c+1]
               for ind in xrange(low, high):
-                y[(x.indices[ind], c)] += x.data[ind]
-          elif x.format == 'csr':
-            for r in xrange(x.shape[0]):
-              low = x.indptr[r]
-              high = x.indptr[r+1]
+                y[(indices[ind], c)] += data[ind]
+          elif self.format == 'csr':
+            for r in xrange(y.shape[0]):
+              low = indptr[r]
+              high = indptr[r+1]
               for ind in xrange(low, high):
-                y[(r, x.indices[ind])] += x.data[ind]
-          else:
-            coo_x = x.tocoo(copy=False)
-            for row, col, data in izip(coo_x.row, coo_x.col, coo_x.data):
-              y[(row,col)] += data
+                y[(r, indices[ind])] += data[ind]
           out[0] = y
         else:
+          if self.format == 'csr':
+            x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
+          elif self.format == 'csc':
+            x = scipy.sparse.csc_matrix( (data,indices,indptr), shape=y.shape)
           # The asarray is needed as in some case, this return a
           # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
           out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
