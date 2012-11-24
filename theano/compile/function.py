@@ -30,7 +30,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     :type mode: string or `Mode` instance.
     :param mode: compilation mode
 
-    :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or dict.
+    :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or OrderedDict.
     :param updates: update the values for SharedVariable inputs according to these expressions
 
     :type givens: iterable over pairs (Var1, Var2) of Variables. List, tuple or dict.  The Var1
@@ -128,7 +128,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                  def opt_log1p(node):
                     if not isinstance(node.op,Elemwise):
                        return
-                    if not isinstance(node.op.scalar_op, log,):
+                    if not isinstance(node.op.scalar_op, log):
                        return
                     inp = node.inputs[0]
                     if not inp.owner:
@@ -159,10 +159,18 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-    #tuple are used in some tests, as we accepted them in the past
-    #I prefer to allow it as they act the same as list for what they are used.
     if updates is None:
         updates = []
+
+    # I use the string value of the type to do type checking here since
+    # OrderedDict is not available in python2.4
+    if isinstance(updates, dict) and 'Ordered' not in str(type(updates)):
+        raise TypeError("Using a standard dictionary here results in "
+            "non-deterministic behavior. You should use an OrderedDict"
+            "if you are using python2.7 or use a list of (shared, update)"
+            "pairs. Do not just convert your dictionary to this type before"
+            "the call as the conversion will still be non-deterministic.")
+
     if givens is None:
         givens = []
     if not isinstance(inputs, (list, tuple)):
