@@ -112,7 +112,7 @@ def scan(fn,
                    , outputs_info = [ dict(initial =  Output1, taps = [-3,-5])
                                     , dict(initial = Output2, taps = None)
                                     , Output3 ]
-                   , non_sequences = [ Argument1, Argument 2])
+                   , non_sequences = [ Argument1, Argument2])
 
         ``fn`` should expect the following arguments in this given order:
 
