@@ -525,8 +525,8 @@ def grad(cost, wrt, consider_constant=None,
         if hasattr(g.type, 'dtype'):
             assert g.type.dtype in tensor.float_dtypes
 
-            grad_dict, wrt, cost_name)
     rval = _populate_grad_dict(var_to_app_to_idx,
+            grad_dict, wrt, cost_name)
 
     for i in xrange(len(rval)):
         if isinstance(rval[i].type, DisconnectedType):
