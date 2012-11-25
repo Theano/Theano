@@ -167,8 +167,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     if isinstance(updates, dict) and 'Ordered' not in str(type(updates)):
         raise TypeError("Using a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"
-            "if you are using python2.7 or use a list of (shared, update)"
-            "pairs. Do not just convert your dictionary to this type before"
+            " if you are using python2.7 or use a list of (shared, update)"
+            " pairs. Do not just convert your dictionary to this type before"
             "the call as the conversion will still be non-deterministic.")
 
     if givens is None:
