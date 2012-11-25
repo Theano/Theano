@@ -8,6 +8,7 @@ import logging
 import os
 import StringIO
 import sys
+import hashlib
 
 import numpy
 
@@ -1069,3 +1070,57 @@ def min_informative_str(obj, indent_level=0,
     rval = indent + prefix + name
 
     return rval
+
+
+
+
+def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
+    """
+    Returns a string, with no endlines, fully specifying
+    how a variable is computed. Does not include any memory
+    location dependent information such as the id of a node.
+    """
+
+    if _prev_obs is None:
+        _prev_obs = {}
+
+    if id(obj) in _prev_obs:
+        tag = _prev_obs[id(obj)]
+
+        return '<' + tag + '>'
+
+    if _tag_generator is None:
+        _tag_generator = _TagGenerator()
+
+    cur_tag = _tag_generator.get_tag()
+
+    _prev_obs[id(obj)] = cur_tag
+
+    if hasattr(obj, '__array__'):
+        # hashlib hashes only the contents of the buffer, but
+        # it can have different semantics depending on the strides
+        # of the ndarray
+        name = '<ndarray:'
+        name += 'strides=['+','.join(str(stride) for stride in obj.strides)+']'
+        name += ',digest='+hashlib.md5(obj).hexdigest()+'>'
+    elif hasattr(obj, 'name') and obj.name is not None:
+        name = obj.name
+    elif hasattr(obj, 'owner') and obj.owner is not None:
+        name = str(obj.owner.op) + '('
+        name += ','.join(var_descriptor(ipt,
+                    _prev_obs=_prev_obs, _tag_generator=_tag_generator) for ipt
+                    in obj.owner.inputs)
+        name += ')'
+    else:
+        name = str(obj)
+
+    prefix = cur_tag + '='
+
+    rval = prefix + name
+
+    return rval
+
+
+
+
+
