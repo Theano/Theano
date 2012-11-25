@@ -741,8 +741,8 @@ class DisconnectedInputError(ValueError):
     disconnected_inputs='raise'.
     """
 
-        grad_dict, wrt, cost_name=None):
 def _populate_grad_dict(var_to_app_to_idx,
+        grad_dict, wrt, cost_name=None):
     """
         Helper function for grad function.
 
