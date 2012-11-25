@@ -145,6 +145,9 @@ class DisconnectedType(theano.gof.type.Type):
                 " a symbolic placeholder."
             ))
 
+    def __str__(self):
+        return 'DisconnectedType'
+
 
 ########################
 # R Operator
