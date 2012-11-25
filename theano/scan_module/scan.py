@@ -912,7 +912,7 @@ def scan(fn,
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
                             not arg.update)]
-    givens.update(OrdereDict(zip(other_shared_scan_args,
+    givens.update(OrderedDict(zip(other_shared_scan_args,
                            other_shared_inner_args)))
 
     ##
