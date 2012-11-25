@@ -1113,10 +1113,25 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
         name += ')'
     else:
         name = str(obj)
+        if ' at 0x' in name:
+            # The __str__ method is encoding the object's id in its str
+            name = position_independent_str(obj)
+            if ' at 0x' in name:
+                print name
+                assert False
 
     prefix = cur_tag + '='
 
     rval = prefix + name
+
+    return rval
+
+def position_independent_str(obj):
+    if isinstance(obj, theano.gof.graph.Variable):
+        rval = 'theano_var'
+        rval += '{type='+str(obj.type)+'}'
+    else:
+        raise NotImplementedError()
 
     return rval
 
