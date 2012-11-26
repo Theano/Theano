@@ -185,8 +185,8 @@ class t_gemm(TestCase):
         l2_reg = T.constant(0.0001).astype(config.floatX)
 
         #test constant merge with gemm
-        f = theano.function([a, b], updates={s: lr1 * T.dot(a, b) +
-                                                l2_reg * lr2 * s},
+        f = theano.function([a, b], updates=[(s, lr1 * T.dot(a, b) +
+                                                l2_reg * lr2 * s)],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
@@ -195,8 +195,8 @@ class t_gemm(TestCase):
         assert f[0].op == gemm_inplace
 
         #test factored scalar with merge
-        f = theano.function([a, b], updates={s: lr1 * (T.dot(a, b) -
-                                                        l2_reg * s)},
+        f = theano.function([a, b], updates=[(s, lr1 * (T.dot(a, b) -
+                                                        l2_reg * s))],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
@@ -206,7 +206,7 @@ class t_gemm(TestCase):
 
         #test factored scalar with merge and neg
         f = theano.function([a, b],
-                            updates={s: s - lr1 * (s * .0002 + T.dot(a, b))},
+                            updates=[(s, s - lr1 * (s * .0002 + T.dot(a, b)))],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
         #[Gemm{inplace}(<TensorType(float64, matrix)>, -0.01,
         # <TensorType(float64, matrix)>, <TensorType(float64, matrix)>,
@@ -368,7 +368,7 @@ class t_gemm(TestCase):
                 tz_i = gemm_no_inplace(tz[:, :, i], ta, tx[
                     :, :, i], ty[:, :, i], tb)
                 g_i = theano.function([], tz_i,
-                        updates={tz: T.set_subtensor(tz[:, :, i], tz_i)},
+                        updates=[(tz, T.set_subtensor(tz[:, :, i], tz_i))],
                         mode=compile.Mode(optimizer=None, linker=l))
                 for j in xrange(3):
                     g_i()
@@ -801,7 +801,7 @@ def test_gemm_unrolled():
             cur_V = update_V(cur_H)
             cur_H = update_H(cur_V)
 
-        unrolled_theano = theano.function([], updates={V: cur_V, H: cur_H},
+        unrolled_theano = theano.function([], updates=[(V, cur_V), (H, cur_H)],
                                    name='unrolled_theano')
         nb_dot = sum([1 for node in unrolled_theano.maker.fgraph.toposort()
                       if isinstance(node.op, (theano.tensor.Dot,
@@ -1032,7 +1032,7 @@ def test_dot_w_self():
     p = T.dot(A, A) * B
 
     grad = T.grad(T.mean(p), A)
-    f = theano.function([B], p, updates={A: A - grad})
+    f = theano.function([B], p, updates=[(A, A - grad)])
 
     # tests correctness in debugmode
     f(numpy.asarray([[0, 1], [2, 3]], dtype=config.floatX))
@@ -1119,7 +1119,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert topo[0].op.inplace == False
 
         #test the inplace version
-        g = theano.function([], [], updates={v2: v2 + theano.dot(m, v1)},
+        g = theano.function([], [], updates=[(v2, v2 + theano.dot(m, v1))],
                             mode=mode_blas_opt)
 
         # Assert they produce the same output
@@ -1169,7 +1169,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert topo[-1].op.inplace == False
 
         #test the inplace version
-        g = theano.function([], [], updates={v2: v2 + theano.dot(v1, m)},
+        g = theano.function([], [], updates=[(v2, v2 + theano.dot(v1, m))],
                             mode=mode_blas_opt)
 
         # Assert they produce the same output
@@ -1575,7 +1575,7 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
 
     def function(self, inputs, outputs, updates=None):
         if updates is None:
-            updates = {}
+            updates = []
         return theano.function(inputs, outputs, self.mode, updates=updates)
 
     def b(self, bval):
@@ -1691,8 +1691,8 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
     def test_inplace(self):
         A = self.shared(numpy.random.rand(4, 5).astype(self.dtype))
         f = self.function([self.x, self.y], [],
-                          updates={A: A + T.constant(0.1, dtype=self.dtype) *
-                                   T.outer(self.x, self.y)})
+                          updates=[(A, A + T.constant(0.1, dtype=self.dtype) *
+                                   T.outer(self.x, self.y))])
         self.assertFunctionContains(f, self.ger_destructive)
         f(numpy.random.rand(4).astype(self.dtype),
           numpy.random.rand(5).astype(self.dtype))
@@ -1731,15 +1731,15 @@ class TestBlasStrides(TestCase):
         bt_dev = b_t.get_value(borrow=False, return_internal_type=True)
         ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
 
-        f_nn = theano.function([], [], updates={a: tensor.dot(b, c)},
+        f_nn = theano.function([], [], updates=[(a, tensor.dot(b, c))],
                 mode=self.mode)
         #print 'class name:', self.__class__.__name__
         #theano.printing.debugprint(f_nn)
-        f_nt = theano.function([], [], updates={a: tensor.dot(b, c_t.T)},
+        f_nt = theano.function([], [], updates=[(a, tensor.dot(b, c_t.T))],
                 mode=self.mode)
-        f_tn = theano.function([], [], updates={a: tensor.dot(b_t.T, c)},
+        f_tn = theano.function([], [], updates=[(a, tensor.dot(b_t.T, c))],
                 mode=self.mode)
-        f_tt = theano.function([], [], updates={a: tensor.dot(b_t.T, c_t.T)},
+        f_tt = theano.function([], [], updates=[(a, tensor.dot(b_t.T, c_t.T))],
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
@@ -1802,14 +1802,14 @@ class TestBlasStrides(TestCase):
         bt_dev = b_t.get_value(borrow=False, return_internal_type=True)
         ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
 
-        f_nn = theano.function([], [], updates={a: l * tensor.dot(b, c)},
+        f_nn = theano.function([], [], updates=[(a, l * tensor.dot(b, c))],
                 mode=self.mode)
-        f_nt = theano.function([], [], updates={a: l * tensor.dot(b, c_t.T)},
+        f_nt = theano.function([], [], updates=[(a, l * tensor.dot(b, c_t.T))],
                 mode=self.mode)
-        f_tn = theano.function([], [], updates={a: l * tensor.dot(b_t.T, c)},
+        f_tn = theano.function([], [], updates=[(a, l * tensor.dot(b_t.T, c))],
                 mode=self.mode)
         f_tt = theano.function([], [],
-                updates={a: l * tensor.dot(b_t.T, c_t.T)},
+                updates=[(a, l * tensor.dot(b_t.T, c_t.T))],
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
@@ -1875,28 +1875,28 @@ class TestBlasStrides(TestCase):
         ct_dev = c_t.get_value(borrow=False, return_internal_type=True)
 
         f_nnn = theano.function([], [],
-                updates={a: (l * a + tensor.dot(b, c))},
+                updates=[(a, (l * a + tensor.dot(b, c)))],
                 mode=self.mode)
         f_nnt = theano.function([], [],
-                updates={a: (l * a + tensor.dot(b, c_t.T))},
+                updates=[(a, (l * a + tensor.dot(b, c_t.T)))],
                 mode=self.mode)
         f_ntn = theano.function([], [],
-                updates={a: (l * a + tensor.dot(b_t.T, c))},
+                updates=[(a, (l * a + tensor.dot(b_t.T, c)))],
                 mode=self.mode)
         f_ntt = theano.function([], [],
-                updates={a: (l * a + tensor.dot(b_t.T, c_t.T))},
+                updates=[(a, (l * a + tensor.dot(b_t.T, c_t.T)))],
                 mode=self.mode)
         f_tnn = theano.function([], [],
-                updates={a_t: (l * a_t + tensor.dot(b, c).T)},
+                updates=[(a_t, (l * a_t + tensor.dot(b, c).T))],
                 mode=self.mode)
         f_tnt = theano.function([], [],
-                updates={a_t: (l * a_t + tensor.dot(b, c_t.T).T)},
+                updates=[(a_t, (l * a_t + tensor.dot(b, c_t.T).T))],
                 mode=self.mode)
         f_ttn = theano.function([], [],
-                updates={a_t: (l * a_t + tensor.dot(b_t.T, c).T)},
+                updates=[(a_t, (l * a_t + tensor.dot(b_t.T, c).T))],
                 mode=self.mode)
         f_ttt = theano.function([], [],
-                updates={a_t: (l * a_t + tensor.dot(b_t.T, c_t.T).T)},
+                updates=[(a_t, (l * a_t + tensor.dot(b_t.T, c_t.T).T))],
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
@@ -1985,11 +1985,11 @@ class TestBlasStrides(TestCase):
         b_dev = b.get_value(borrow=False, return_internal_type=True)
         c_dev = c.get_value(borrow=False, return_internal_type=True)
 
-        f_n = theano.function([], [], updates={a: (a + l * tensor.dot(b, c))},
+        f_n = theano.function([], [], updates=[(a, (a + l * tensor.dot(b, c)))],
                 mode=self.mode)
 
         f_t = theano.function([], [],
-                updates={a: (a + l * tensor.dot(b_t.T, c))},
+                updates=[(a, (a + l * tensor.dot(b_t.T, c)))],
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed pattern
@@ -2041,11 +2041,11 @@ class TestBlasStrides(TestCase):
         c_dev = c.get_value(borrow=False, return_internal_type=True)
 
         f_n = theano.function([], [],
-                updates={a: (a + l * tensor.outer(b, c))},
+                updates=[(a, (a + l * tensor.outer(b, c)))],
                 mode=self.mode)
 
         f_t = theano.function([], [],
-                updates={a_t: (a_t + l * tensor.outer(b, c).T)},
+                updates=[(a_t, (a_t + l * tensor.outer(b, c).T))],
                 mode=self.mode)
 
         # Try with all stride patterns, and all transposed patterns
