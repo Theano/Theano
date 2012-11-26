@@ -106,7 +106,7 @@ def test_alloc_memset_0():
 def test_gpuspecifyshape():
     x = cuda.shared_constructor(numpy.ones(3,dtype='float32'), 'x')
     m = theano.tensor.specify_shape(x + numpy.float32(1), (3,))
-    f = theano.function([], updates={x:m * numpy.float32(2)},
+    f = theano.function([], updates=[(x, m * numpy.float32(2))],
                         mode=mode_with_gpu)
     l = f.maker.fgraph.toposort()
     assert not numpy.any([isinstance(x.op, cuda.HostFromGpu) for x in l])

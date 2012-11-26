@@ -111,11 +111,11 @@ class T_updates(unittest.TestCase):
 
         up = tensor.unbroadcast(output_var.sum().dimshuffle('x', 'x'), 0, 1)
         output_func = theano.function(inputs=[], outputs=[],
-                                      updates={output_var: up})
+                                      updates=[(output_var, up)])
         output_func()
 
         up = tensor.patternbroadcast(output_var.sum().dimshuffle('x', 'x'),
                                      output_var.type.broadcastable)
         output_func = theano.function(inputs=[], outputs=[],
-                                      updates={output_var: up})
+                                      updates=[(output_var, up)])
         output_func()
