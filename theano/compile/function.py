@@ -165,11 +165,12 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     # I use the string value of the type to do type checking here since
     # OrderedDict is not available in python2.4
     if isinstance(updates, dict) and 'Ordered' not in str(type(updates)):
-        raise TypeError("Using a standard dictionary here results in "
+        raise TypeError("Expected OrderedDict, got "+str(type(updates))+ "Using "
+        "a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"
             " if you are using python2.7 or use a list of (shared, update)"
             " pairs. Do not just convert your dictionary to this type before"
-            "the call as the conversion will still be non-deterministic.")
+            " the call as the conversion will still be non-deterministic.")
 
     if givens is None:
         givens = []

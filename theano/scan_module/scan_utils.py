@@ -203,7 +203,9 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            assert 'Ordered' in str(type(elem))
+            if 'Ordered' not in str(type(elem)):
+                raise TypeError("Expected OrderedDict or OrderedUpdates, got "\
+                        +str(type(elem)))
             return True
         # Dictionaries can be given as lists of tuples
         if (isinstance(elem, (list, tuple)) and
