@@ -88,7 +88,7 @@ from printing import \
 import scan_module
 from scan_module import scan, map, reduce, foldl, foldr, clone
 
-from updates import OrderedUpdates
+from updates import Updates, OrderedUpdates
 
 import tensor
 import scalar
