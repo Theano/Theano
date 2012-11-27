@@ -15,6 +15,7 @@ import logging
 logger = logging.getLogger('theano.updates')
 import warnings
 
+
 # Must be an OrderedDict or updates will be applied in a non-deterministic order
 class OrderedUpdates(OrderedDict):
     """
