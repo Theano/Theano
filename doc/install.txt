@@ -769,34 +769,10 @@ You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_e
 Alternative: Anaconda 0.8.3 (Linux VM on Windows)
 #################################################
 
-ContinuumIO_ provides a free Windows VM with Theano install. The VM is the CentOS6.2 64 bit OS.
-
-- If you do not have VMWare installed, install VMWare player(free): http://www.vmware.com/products/player/
-- Download the VM: http://continuum.io/downloads.html
-- Follow the instruction on the ContinuumIO website to start the VM
-- Configure Theano by executing this:
-
-.. code-block:: bash
-
-    echo "[blas]" >> ~/.theanorc
-    echo "ldflags=" >> ~/.theanorc
-
-- [Optional] To enable the network, go into the VMWare setting for the vm and set the networking to NAT. Start the VM. In the VM, comment all lines in the file /etc/udev/rules.d/70-persistent-net.rules and restart the VM.
-- [Optional] to install easy_install:
-
-.. code-block:: bash
-
-    wget -c http://pypi.python.org/packages/source/s/setuptools/setuptools-0.6c11.tar.gz#md5=7df2a529a074f613b509fb44feefe74e
-    tar -zxf setuptools-0.6c11.tar.gz
-    cd setuptools-0.6c11
-    sudo /opt/anaconda/bin/python setup.py install
-
-- [Optional] To install pip
-
-.. code-block:: bash
-
-    #install setuptools
-    sudo /opt/anaconda/bin/easy_install pip
+ContinuumIO_ was providing a free VM with Theano installed. Now they
+provide a new installation system that install itself on Windows. We
+don't have the time now to update the docs, so we remove the old
+documentations that don't work.
 
 .. _ContinuumIO: http://continuum.io
 

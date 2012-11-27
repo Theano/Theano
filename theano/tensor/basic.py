@@ -1634,6 +1634,9 @@ class _tensor_py_operators:
     def flatten(self, ndim=1):
         return flatten(self, ndim)
 
+    def ravel(self):
+        return flatten(self)
+
     # CASTING
     def astype(self, dtype):
         return cast(self, dtype)
@@ -1732,6 +1735,8 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
+    dot = __dot__
+    
     def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
@@ -1756,6 +1761,10 @@ class _tensor_py_operators:
         """See `theano.tensor.var`"""
         return var(self, axis, keepdims=keepdims)
 
+    def std(self, axis=None, keepdims=False):
+        """See `theano.tensor.std`"""
+        return std(self, axis, keepdims=keepdims)
+
     def min(self, axis=None, keepdims=False):
         """See `theano.tensor.min`"""
         return min(self, axis, keepdims=keepdims)
@@ -1763,6 +1772,40 @@ class _tensor_py_operators:
     def max(self, axis=None, keepdims=False):
         """See `theano.tensor.max`"""
         return max(self, axis, keepdims=keepdims)
+
+    def argmin(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmin`"""
+        return argmin(self, axis, keepdims=keepdims)
+
+    def argmax(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmax`"""
+        return argmax(self, axis, keepdims=keepdims)
+
+    def argsort(self,  axis=-1, kind='quicksort', order=None):
+        """See `theano.tensor.sort.argsort`"""
+        from theano.tensor.sort import argsort
+        return argsort(self, axis, kind, order)
+        
+    def clip(self, a_min, a_max):
+        "Clip (limit) the values in an array."
+        return clip(self, a_min, a_max)
+
+    def conj(self):
+        """See `theano.tensor.conj`"""
+        return conj(self)
+
+    def repeat(self, repeats, axis=None):
+        """See `theano.tensor.repeat`"""
+        from theano.tensor.extra_ops import repeat
+        return repeat(self, repeats, axis)
+
+    def round(self, mode="half_away_from_zero"):
+        """See `theano.tensor.round`"""
+        return round(self, mode)
+
+    def trace(self):
+        from theano.sandbox.linalg import trace
+        return trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -2259,6 +2302,8 @@ class SpecifyShape(Op):
 
     @note:     Maybe in the future we will never do the assert!
     @note:     We currently don't support specifying partial shape information.
+
+    @todo:     test this op with sparse and cuda ndarray. Do c code for them too.
     """
     view_map = {0: [0]}
 
@@ -2275,11 +2320,16 @@ class SpecifyShape(Op):
         if not isinstance(x, Variable):
             x = as_tensor_variable(x)
         shape = as_tensor_variable(shape)
+        assert shape.ndim == 1
+        assert "int" in shape.dtype
+        if isinstance(shape, TensorConstant):
+            assert shape.data.size == x.ndim
         return Apply(self, [x, shape], [x.type()])
 
     def perform(self, node, inp, out_):
         x, shape = inp
         out, = out_
+        assert x.ndim == shape.size
         assert numpy.all(x.shape == shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
@@ -2318,6 +2368,47 @@ class SpecifyShape(Op):
             # path
             return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
+
+    def c_code(self, node, nodename, inp, out, sub):
+        if not isinstance(node.inputs[0], TensorVariable):
+            # The c code bellow support only Tensor.  super.c_code
+            # will raise an exception to tell that there isn't c code
+            # for the other cases.
+            return super(SpecifyShape, self).c_code(node, nodename,
+                                                    inp, out, sub)
+        iname, shape = inp
+        oname, = out
+        fail = sub['fail']
+
+        return """
+        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape have %%d element,"
+                         " but the input have %%d dimensions.",
+                         PyArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input have shape %%d,"
+                             " expected %%d.",
+                             i, PyArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
 
 specify_shape = SpecifyShape()
 
@@ -2969,12 +3060,12 @@ def psi(a):
 @_scal_elemwise_with_nfunc('real', 1, -1)
 def real(z):
     """Return real component of complex-valued tensor `z`"""
-
+_tensor_py_operators.real = property(real)
 
 @_scal_elemwise_with_nfunc('imag', 1, -1)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
-
+_tensor_py_operators.imag = property(imag)
 
 @_scal_elemwise_with_nfunc('angle', 1, -1)
 def angle(z):
