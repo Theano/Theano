@@ -40,7 +40,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile, AdvancedIncSubtensor, switch)
+        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6590,6 +6590,34 @@ class TestInferShape(utt.InferShapeTester):
                                 [Eye()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Eye)
 
+        # Diagonal
+        atens3 = tensor3()
+        atens3_val = rand(4, 5, 3)
+        atens3_diag = Diagonal()(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(-1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,0,2)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,1,2)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,2,0)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+
+        # Diag
+        advec = dvector()
+        advec_val = rand(4)
+        self._compile_and_check([advec], [Diag()(advec)],
+                                [advec_val], Diag)
+
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
         # elements of shape
@@ -7070,7 +7098,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.argsort().eval({X: x}), x.argsort())
         assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
 
-    def test_dot(self):
+    def test_clip(self):
         X, Y = self.vars
         x, y = self.vals
         Z = X.clip(0.5 - Y, 0.5 + Y)
@@ -7099,6 +7127,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         Z = X + Y * 1j
         z = x + y * 1j
         assert_array_equal(Z.conj().eval({Z: z}), z.conj())
+        assert_array_equal(Z.conjugate().eval({Z: z}), z.conj())
 
     def test_round(self):
         X, _ = self.vars
@@ -7127,6 +7156,16 @@ class TestTensorInstanceMethods(unittest.TestCase):
         X, _ = self.vars
         x, _ = self.vals
         assert_array_equal(X.ravel().eval({X: x}), x.ravel())
+
+    def test_diagonal(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.diagonal().eval({X: x}), x.diagonal())
+        assert_array_equal(X.diagonal(1).eval({X: x}), x.diagonal(1))
+        assert_array_equal(X.diagonal(-1).eval({X: x}), x.diagonal(-1))
+        for offset, axis1, axis2 in [(1,0,1), (-1,0,1), (0,1,0), (-2,1,0)]:
+            assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
+                               x.diagonal(offset, axis1, axis2))
 
 
 if __name__ == '__main__':
