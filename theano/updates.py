@@ -45,7 +45,9 @@ class OrderedUpdates(OrderedDict):
             raise TypeError('OrderedUpdates keys must inherit from SharedVariable',
                     key)
 
-    def update(self, other):
+    def update(self, other=None):
+        if other is None:
+            return
         for key, val in dict(other).iteritems():
             if key in self:
                 if self[key] == val:
