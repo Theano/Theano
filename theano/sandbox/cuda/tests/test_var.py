@@ -60,11 +60,11 @@ class T_updates(unittest.TestCase):
         data = numpy.float32([1, 2, 3, 4])
         x = f32sc(data)
         y = x ** 2
-        f = theano.function([], y, updates={x: x + 1})
+        f = theano.function([], y, updates=[(x, x + 1)])
         f()
 
         # Test that we can update with a CudaVariable
-        f = theano.function([], y, updates={x: cuda.gpu_from_host(x + 1)})
+        f = theano.function([], y, updates=[(x, cuda.gpu_from_host(x + 1))])
         f()
 
     def test_2(self):
@@ -74,7 +74,7 @@ class T_updates(unittest.TestCase):
                 value=numpy.zeros((10, 10), 'float32'))
 
         x = tensor.fmatrix('x')
-        output_updates = {output_var: x ** 2}
+        output_updates = [(output_var, x ** 2)]
         output_givens = {x: data}
         output_func = theano.function(inputs=[], outputs=[],
                 updates=output_updates, givens=output_givens)
@@ -89,8 +89,8 @@ class T_updates(unittest.TestCase):
         # the update_var has type matrix, and the update expression
         # is a broadcasted scalar, and that should not be allowed.
         self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
-                          updates={output_var:
-                                   output_var.sum()})
+                          updates=[(output_var,
+                                   output_var.sum())])
 
     def test_err_broadcast(self):
         # Test that we raise a good error message when we don't
@@ -101,8 +101,8 @@ class T_updates(unittest.TestCase):
         # the update_var has type matrix, and the update expression
         # is a broadcasted scalar, and that should not be allowed.
         self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
-                          updates={output_var:
-                                   output_var.sum().dimshuffle('x', 'x')})
+                          updates=[(output_var,
+                                   output_var.sum().dimshuffle('x', 'x'))])
 
     def test_broadcast(self):
         # Test that we can rebroadcast
