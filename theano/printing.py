@@ -8,7 +8,8 @@ import logging
 import os
 import StringIO
 import sys
-import hashlib
+# Not available on all platforms
+hashlib = None
 
 import numpy
 
@@ -1080,6 +1081,12 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
     how a variable is computed. Does not include any memory
     location dependent information such as the id of a node.
     """
+
+    if hashlib is None:
+        try:
+            import hashlib
+        except ImportError:
+            raise RuntimeError("Can't run var_descriptor because hashlib is not available.")
 
     if _prev_obs is None:
         _prev_obs = {}
