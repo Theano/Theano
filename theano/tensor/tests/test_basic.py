@@ -14,7 +14,7 @@ builtin_min = __builtin__.min
 
 from nose.plugins.skip import SkipTest
 import numpy
-from numpy.testing import dec
+from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
@@ -40,7 +40,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile, AdvancedIncSubtensor, switch)
+        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -6326,6 +6326,54 @@ def test_transpose():
     assert tensor.transpose(tensor.dmatrix()).name is None
 
 
+class TestSpecifyShape(unittest.TestCase):
+    def shortDescription(self):
+        return None
+
+    def test_bad_shape(self):
+        """ Test that at run time we raise an exception when the shape
+        is not the one specified"""
+        specify_shape = SpecifyShape()
+
+        x = vector()
+        xval = numpy.random.rand(2).astype(floatX)
+        f = theano.function([x], specify_shape(x, [2]))
+        f(xval)
+        xval = numpy.random.rand(3).astype(floatX)
+        self.assertRaises(AssertionError, f, xval)
+
+        x = matrix()
+        xval = numpy.random.rand(2, 3).astype(floatX)
+        f = theano.function([x], specify_shape(x, [2, 3]))
+        f(xval)
+        for shape in [(1, 3), (2, 2), (5, 5)]:
+            xval = numpy.random.rand(*shape).astype(floatX)
+            self.assertRaises(AssertionError, f, xval)
+
+    def test_bad_number_of_shape(self):
+        """ Test that the number of dimensions provided is good"""
+        specify_shape = SpecifyShape()
+
+        x = vector()
+        shape_vec = ivector()
+        xval = numpy.random.rand(2).astype(floatX)
+        self.assertRaises(AssertionError, specify_shape, x, [])
+        self.assertRaises(AssertionError, specify_shape, x, [2, 2])
+
+        f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+        self.assertRaises(AssertionError, f, xval, [])
+        self.assertRaises(AssertionError, f, xval, [2, 2])
+
+        x = matrix()
+        xval = numpy.random.rand(2, 3).astype(floatX)
+        for shape in [(),
+                      (1,),
+                      (2, 3, 4)]:
+            self.assertRaises(AssertionError, specify_shape, x, shape)
+            f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+            self.assertRaises(AssertionError, f, xval, shape)
+
+
 class TestInferShape(utt.InferShapeTester):
 
     def test_infer_shape(self):
@@ -6541,6 +6589,34 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([aiscal, biscal, ciscal],
                                 [Eye()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Eye)
+
+        # Diagonal
+        atens3 = tensor3()
+        atens3_val = rand(4, 5, 3)
+        atens3_diag = Diagonal()(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(-1)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,0,2)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,1,2)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        atens3_diag = Diagonal(1,2,0)(atens3)
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+
+        # Diag
+        advec = dvector()
+        advec_val = rand(4)
+        self._compile_and_check([advec], [Diag()(advec)],
+                                [advec_val], Diag)
 
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
@@ -7000,6 +7076,96 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens4],
                                 [tile(adtens4, aivec_val, ndim)],
                                 [adtens4_val], Tile)
+
+class TestTensorInstanceMethods(unittest.TestCase):
+    def setUp(self):
+        self.vars = matrices('X', 'Y')
+        self.vals = [rand(2,2),rand(2,2)]
+
+    def test_argmin(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argmin().eval({X: x}), x.argmin())
+
+    def test_argmax(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argmax().eval({X: x}), x.argmax())
+
+    def test_argsort(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argsort().eval({X: x}), x.argsort())
+        assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
+
+    def test_clip(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X.clip(0.5 - Y, 0.5 + Y)
+        z = x.clip(0.5 - y, 0.5 + y)
+        assert_array_equal(Z.eval({X: x, Y: y}), z)
+
+    def test_dot(self):
+        X, Y = self.vars
+        x, y = self.vals
+        assert_array_equal(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
+        Z = X.dot(Y)
+        z = x.dot(y)
+        assert_array_equal(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
+
+    def test_real_imag(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        assert_array_equal(Z.real.eval({Z: z}), x)
+        assert_array_equal(Z.imag.eval({Z: z}), y)
+
+    def test_conj(self):
+        X, Y = self.vars
+        x, y = self.vals
+        Z = X + Y * 1j
+        z = x + y * 1j
+        assert_array_equal(Z.conj().eval({Z: z}), z.conj())
+        assert_array_equal(Z.conjugate().eval({Z: z}), z.conj())
+
+    def test_round(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.round().eval({X: x}), x.round())
+
+    def test_std(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        # std() is implemented as theano tree and does not pass its
+        # args directly to numpy. This sometimes results in small
+        # difference, so we use allclose test.
+        assert_allclose(X.std().eval({X: x}), x.std())
+
+    def test_repeat(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.repeat(2).eval({X: x}), x.repeat(2))
+
+    def test_trace(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.trace().eval({X: x}), x.trace())
+
+    def test_ravel(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.ravel().eval({X: x}), x.ravel())
+
+    def test_diagonal(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.diagonal().eval({X: x}), x.diagonal())
+        assert_array_equal(X.diagonal(1).eval({X: x}), x.diagonal(1))
+        assert_array_equal(X.diagonal(-1).eval({X: x}), x.diagonal(-1))
+        for offset, axis1, axis2 in [(1,0,1), (-1,0,1), (0,1,0), (-2,1,0)]:
+            assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
+                               x.diagonal(offset, axis1, axis2))
 
 
 if __name__ == '__main__':

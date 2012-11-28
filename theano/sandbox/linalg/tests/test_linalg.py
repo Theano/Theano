@@ -477,7 +477,7 @@ class test_Eig(utt.InferShapeTester):
     def setUp(self):
         super(test_Eig, self).setUp()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
-        self.A = theano.tensor.matrix()
+        self.A = theano.tensor.matrix(dtype=self.dtype)
         X = numpy.asarray(self.rng.rand(5, 5),
                           dtype=self.dtype)
         self.S = X.dot(X.T)

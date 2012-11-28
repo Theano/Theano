@@ -340,6 +340,7 @@ class DimShuffle(Op):
                             #borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
                             '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
+                'if (%(res)s == NULL) %(fail)s;',
                 #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
@@ -722,20 +723,19 @@ class Elemwise(Op):
     def _bgrad(self, inputs, ograds):
         # returns grad, with respect to broadcasted versions of inputs
 
-        # Gradients (especially on the final costs) don't have to be symbolic
-        # e.g., ograds will be [ 1. ] if your objective is c and the output
-        # of the current apply node is c
-        ograds = map(as_tensor_variable, ograds)
-
         prev_setting = theano.config.compute_test_value
 
         try:
 
             theano.config.compute_test_value = 'off'
 
-            scalar_inputs = [Scalar(dtype=t.type.dtype)() for t in inputs]
-            scalar_ograds = [Scalar(dtype=ograd.type.dtype)()
-                    for ograd in ograds]
+            def as_scalar(t):
+                if isinstance(t.type, (NullType, DisconnectedType)):
+                    return t
+                return Scalar(t.type.dtype)()
+
+            scalar_inputs = map(as_scalar, inputs)
+            scalar_ograds = map(as_scalar, ograds)
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None

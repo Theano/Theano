@@ -25,6 +25,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 ### set up the external interface
@@ -1634,6 +1635,12 @@ class _tensor_py_operators:
     def flatten(self, ndim=1):
         return flatten(self, ndim)
 
+    def ravel(self):
+        return flatten(self)
+
+    def diagonal(self, offset=0, axis1=0, axis2=1):
+        return diagonal(self, offset, axis1, axis2)
+
     # CASTING
     def astype(self, dtype):
         return cast(self, dtype)
@@ -1732,6 +1739,8 @@ class _tensor_py_operators:
     def __rdot__(right, left):
         return dot(left, right)
 
+    dot = __dot__
+    
     def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
@@ -1756,6 +1765,10 @@ class _tensor_py_operators:
         """See `theano.tensor.var`"""
         return var(self, axis, keepdims=keepdims)
 
+    def std(self, axis=None, keepdims=False):
+        """See `theano.tensor.std`"""
+        return std(self, axis, keepdims=keepdims)
+
     def min(self, axis=None, keepdims=False):
         """See `theano.tensor.min`"""
         return min(self, axis, keepdims=keepdims)
@@ -1763,6 +1776,42 @@ class _tensor_py_operators:
     def max(self, axis=None, keepdims=False):
         """See `theano.tensor.max`"""
         return max(self, axis, keepdims=keepdims)
+
+    def argmin(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmin`"""
+        return argmin(self, axis, keepdims=keepdims)
+
+    def argmax(self, axis=None, keepdims=False):
+        """See `theano.tensor.argmax`"""
+        return argmax(self, axis, keepdims=keepdims)
+
+    def argsort(self,  axis=-1, kind='quicksort', order=None):
+        """See `theano.tensor.sort.argsort`"""
+        from theano.tensor.sort import argsort
+        return argsort(self, axis, kind, order)
+        
+    def clip(self, a_min, a_max):
+        "Clip (limit) the values in an array."
+        return clip(self, a_min, a_max)
+
+    def conj(self):
+        """See `theano.tensor.conj`"""
+        return conj(self)
+
+    conjugate = conj
+    
+    def repeat(self, repeats, axis=None):
+        """See `theano.tensor.repeat`"""
+        from theano.tensor.extra_ops import repeat
+        return repeat(self, repeats, axis)
+
+    def round(self, mode="half_away_from_zero"):
+        """See `theano.tensor.round`"""
+        return round(self, mode)
+
+    def trace(self):
+        from theano.sandbox.linalg import trace
+        return trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -2259,6 +2308,8 @@ class SpecifyShape(Op):
 
     @note:     Maybe in the future we will never do the assert!
     @note:     We currently don't support specifying partial shape information.
+
+    @todo:     test this op with sparse and cuda ndarray. Do c code for them too.
     """
     view_map = {0: [0]}
 
@@ -2275,11 +2326,16 @@ class SpecifyShape(Op):
         if not isinstance(x, Variable):
             x = as_tensor_variable(x)
         shape = as_tensor_variable(shape)
+        assert shape.ndim == 1
+        assert "int" in shape.dtype
+        if isinstance(shape, TensorConstant):
+            assert shape.data.size == x.ndim
         return Apply(self, [x, shape], [x.type()])
 
     def perform(self, node, inp, out_):
         x, shape = inp
         out, = out_
+        assert x.ndim == shape.size
         assert numpy.all(x.shape == shape), ("got shape", x.shape,
                                            "expected", shape)
         out[0] = x
@@ -2318,6 +2374,47 @@ class SpecifyShape(Op):
             # path
             return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
+
+    def c_code(self, node, nodename, inp, out, sub):
+        if not isinstance(node.inputs[0], TensorVariable):
+            # The c code bellow support only Tensor.  super.c_code
+            # will raise an exception to tell that there isn't c code
+            # for the other cases.
+            return super(SpecifyShape, self).c_code(node, nodename,
+                                                    inp, out, sub)
+        iname, shape = inp
+        oname, = out
+        fail = sub['fail']
+
+        return """
+        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape have %%d element,"
+                         " but the input have %%d dimensions.",
+                         PyArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input have shape %%d,"
+                             " expected %%d.",
+                             i, PyArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
 
 specify_shape = SpecifyShape()
 
@@ -2969,12 +3066,12 @@ def psi(a):
 @_scal_elemwise_with_nfunc('real', 1, -1)
 def real(z):
     """Return real component of complex-valued tensor `z`"""
-
+_tensor_py_operators.real = property(real)
 
 @_scal_elemwise_with_nfunc('imag', 1, -1)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
-
+_tensor_py_operators.imag = property(imag)
 
 @_scal_elemwise_with_nfunc('angle', 1, -1)
 def angle(z):
@@ -7135,3 +7232,96 @@ def all(x, axis=None, keepdims=False):
     if keepdims:
         out = makeKeepDims(x, out, axis)
     return out
+
+class Diagonal(Op):
+    """Return specified diagonals.
+
+    :param x: A tensor variable with x.ndim >= 2.
+
+    :return: A vector representing the diagonal elements.
+    """
+    
+    def __init__(self, offset=0, axis1=0, axis2=1):
+        self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
+ 
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim >= 2
+        return Apply(self, [x], [tensor(dtype=x.dtype,
+                                        broadcastable=[False] * (x.ndim -1))])
+
+    def perform(self, node, (x,), (z,)):
+        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+
+    def grad(self, (x,), (gz,)):
+        return [grad_not_implemented(self, 0, x)]
+
+    def infer_shape(self, node, shapes):
+        in_shape, = shapes
+        dim1 = in_shape[self.axis1]
+        dim2 = in_shape[self.axis2]
+        out_shape = [d for i,d in enumerate(in_shape)
+                     if i not in (self.axis1, self.axis2)]
+        # The following logic is inspired by C code of PyArray_Diagonal().
+        offset = self.offset
+        if offset > 0:
+            diag_size = clip(dim2 - offset, 0, dim1)
+        elif offset < 0:
+            diag_size = clip(dim1 + offset, 0, dim2) 
+        else:
+            diag_size = minimum(dim1, dim2)
+        out_shape.append(diag_size)
+        return [tuple(out_shape)]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+def diagonal(a, offset=0, axis1=0, axis2=1):
+    if (offset, axis1, axis2) == (0, 0, 1):
+        from theano.sandbox.linalg import extract_diag
+        return extract_diag(a)
+    return Diagonal(offset, axis1, axis2)(a)
+
+class Diag(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, diag):
+        diag = as_tensor_variable(diag)
+        if diag.type.ndim != 1:
+            raise TypeError('data argument must be a vector', diag.type)
+
+        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+
+    def perform(self, node, inputs, (z,)):
+        z[0] = numpy.diag(inputs[0])
+
+    def grad(self, inputs, (gz,)):
+        return [diagonal(gz)]
+
+    def infer_shape(self, nodes, shapes):
+        return [(shapes[0][0],) * 2]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+def diag(v, k=0):
+    if v.ndim == 1:
+        assert k == 0, "diagonals other than main are not implemented"
+        return Diag()(v)
+    elif v.ndim == 2:
+        return diagonal(v, k)
+    else:
+        raise ValueError("Input must be 1- or 2-d.")
