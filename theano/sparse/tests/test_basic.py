@@ -1219,7 +1219,7 @@ class UsmmTests(unittest.TestCase):
             mode = theano.compile.mode.get_default_mode().excluding('fusion')
 
             if inplace:
-                updates = {z: z - a * theano.sparse.dot(x, y)}
+                updates = [(z, z - a * theano.sparse.dot(x, y))]
                 f_a = theano.function([a, x, y], [],
                                       updates=updates,
                                       mode=mode)

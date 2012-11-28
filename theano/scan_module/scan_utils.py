@@ -18,12 +18,13 @@ import logging
 from itertools import izip
 
 import numpy
+import warnings
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
-from theano.gof.python25 import all
+from theano.gof.python25 import all, OrderedDict
 from theano.tensor.basic import get_constant_value
 
 
@@ -181,12 +182,17 @@ def clone(output,
 
 def get_updates_and_outputs(ls):
     """
-    This function tries to recognize the updates dictionary, the
+    This function tries to recognize the updates OrderedDict, the
     list of outputs and the stopping condition returned by the
     lambda expression and arrange them in a predefined order
 
+    WRITEME: what is the type of ls? how is it formatted?
+            if it's not in the predefined order already, how does
+            this function know how to put it in that order?
 
     """
+
+
     def is_outputs(elem):
         if (isinstance(elem, (list, tuple)) and
             all([isinstance(x, theano.Variable) for x in elem])):
@@ -197,6 +203,11 @@ def get_updates_and_outputs(ls):
 
     def is_updates(elem):
         if isinstance(elem, dict):
+            # Make sure the updates will be applied in a deterministic order
+            if not isinstance(elem, gof.python25.OrderedDict):
+                warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
+                        +str(type(elem))+". This can make your script non-"
+                        "deterministic.")
             return True
         # Dictionaries can be given as lists of tuples
         if (isinstance(elem, (list, tuple)) and
@@ -240,12 +251,13 @@ def get_updates_and_outputs(ls):
                 'variables (or `theano.scan_module.until` objects for '
                 'conditions). In particular if you need to use constant '
                 'values, you can use `tensor.constant` to turn them into '
-                'Theano variables.')
+                 'Theano variables.')
+
 
     if is_outputs(ls):
-        return None, _list(ls), {}
+        return None, _list(ls), OrderedDict()
     if is_updates(ls):
-        return None, [], dict(ls)
+        return None, [], OrderedDict(ls)
     error_msg = ('Scan cannot parse the return value of your lambda '
                  'expression, which is: %s' % (ls,))
     if not isinstance(ls, (list, tuple)):
@@ -258,16 +270,16 @@ def get_updates_and_outputs(ls):
     if len(ls) == 2:
         if is_outputs(ls[0]):
             if is_updates(ls[1]):
-                return (None, _list(ls[0]), dict(ls[1]))
+                return (None, _list(ls[0]), OrderedDict(ls[1]))
             elif is_condition(ls[1]):
-                return (ls[1].condition, _list(ls[0]), {})
+                return (ls[1].condition, _list(ls[0]), OrderedDict())
             else:
                 raise ValueError(error_msg)
         elif is_updates(ls[0]):
             if is_outputs(ls[1]):
                 raise ValueError(deprecation_msg)
             elif is_condition(ls[1]):
-                return (ls[1].condition, [], dict(ls[0]))
+                return (ls[1].condition, [], OrderedDict(ls[0]))
             else:
                 raise ValueError(error_msg)
         else:
@@ -276,7 +288,7 @@ def get_updates_and_outputs(ls):
         if is_outputs(ls[0]):
             if is_updates(ls[1]):
                 if is_condition(ls[2]):
-                    return (ls[2].condition, _list(ls[0]), dict(ls[1]))
+                    return (ls[2].condition, _list(ls[0]), OrderedDict(ls[1]))
                 else:
                     raise ValueError(error_msg)
             else:
