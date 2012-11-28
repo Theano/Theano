@@ -149,11 +149,11 @@ DllExport int
 CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 
 /****
- *  Set the idx'th dimension to value d.
+ *  Set the dimension[idx] to value d.
  *
  *  Updates the log2dim shadow array.
  *
- *  Does not sync structure to host.
+ *  Does not sync structure to device.
  */
 DllExport inline void __attribute__((always_inline))
 CudaNdarray_set_dim(CudaNdarray * self, int idx, int d) 
@@ -229,7 +229,8 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
 /**
  * [Re]allocate a CudaNdarray with access to 'nd' dimensions.
  *
- * Note: This does not allocate storage for data.
+ * Note: This does not allocate storage for data, or free
+ *       pre-existing storage.
  */
 DllExport inline int __attribute__((always_inline))
 CudaNdarray_set_nd(CudaNdarray * self, const int nd)
@@ -276,6 +277,7 @@ CudaNdarray_set_nd(CudaNdarray * self, const int nd)
  * CudaNdarray_alloc_contiguous
  *
  * Allocate storage space for a tensor of rank 'nd' and given dimensions.
+ * (No-op if self already has a contiguous tensor of the right dimensions)
  *
  * Note: CudaNdarray_alloc_contiguous is templated to work for both int dimensions and npy_intp dimensions
  */
@@ -286,13 +288,13 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
     // return 0 on success
     int size = 1; //set up the strides for contiguous tensor
     assert (nd >= 0);
+
+    // Here we modify the host structure to have the desired shape and
+    // strides. This does not cause the storage to be freed or reallocated.
     if (CudaNdarray_set_nd(self, nd))
     {
         return -1;
     }
-    //TODO: check if by any chance our current dims are correct,
-    //      and strides already contiguous
-    //      in that case we can return right here.
     for (int i = nd-1; i >= 0; --i)
     {
         CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
@@ -300,7 +302,11 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         size = size * dim[i];
     }
 
-    if ((self->data_allocated == size) && CudaNdarray_is_c_contiguous(self))
+    // If the allocated buffer is already of the right size, we don't need to
+    // do anything else.
+    // Note: self->data_allocated is 0 for a view, so views will fail this
+    // check and be turned into independent arrays below.
+    if (self->data_allocated == size)
     {
         return 0;
     }
@@ -467,6 +473,15 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 PyObject * CudaNdarray_View(const CudaNdarray * self);
 PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 
+
+
+// Ensures that *arr is a pointer to a contiguous ndarray of the specified
+// dimensions.
+// *arr may initially be NULL, a pointer to an ndarray of the wrong size,
+// or a pointer to an ndarray of the right size. In the last case it will
+// not change.
+int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
+        const int * dims);
 
 #endif
 /*

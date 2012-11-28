@@ -526,8 +526,8 @@ def makeSharedTester(shared_constructor_,
             s = self.cast_value(s)
             s_shared = self.shared_constructor(s)
             f = theano.function([],
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared})
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared)])
             topo=f.maker.fgraph.toposort()
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
@@ -541,8 +541,8 @@ def makeSharedTester(shared_constructor_,
 
             #now test with the specify shape op in the output
             f = theano.function([], s_shared.shape,
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared_specify})
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared_specify)])
             topo=f.maker.fgraph.toposort()
             shp=f()
             assert numpy.all(shp == (40,40))
@@ -557,8 +557,8 @@ def makeSharedTester(shared_constructor_,
                     b_shared.get_value(borrow=True).shape)
 
             f = theano.function([], s_shared.shape,
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared_specify})
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared_specify)])
             topo=f.maker.fgraph.toposort()
             shp=f()
             assert numpy.all(shp == (40,40))

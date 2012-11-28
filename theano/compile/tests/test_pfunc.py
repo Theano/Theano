@@ -626,8 +626,15 @@ class Test_pfunc(unittest.TestCase):
 
         # The order of the variables is not determined, so we try
         # both shared variables.
-        f = theano.function([], [], updates={a: a, b: (2 * b)})
-        g = theano.function([], [], updates={a: (a * 2), b: b})
+        # TODO: explain the above comment. By "not determined" does
+        # this mean "not deterministic"?
+        # This test originally wrote the updates using dictionaries,
+        # and iterating over the dictionary was not deterministic.
+        # Is that all the comment above meant, or is the CVM intended
+        # to add extra non-determinism? Or is the CVM meant to
+        # deterministically but arbitrarily pick an order for the updates?
+        f = theano.function([], [], updates=[(a, a), (b, (2 * b))])
+        g = theano.function([], [], updates=[(a, (a * 2)), (b, b)])
 
         f()
         assert a.get_value(borrow=True).shape == (), a.get_value()
@@ -642,10 +649,10 @@ class Test_pfunc(unittest.TestCase):
         a = shared(1., 'a')
         b = shared(numpy.ones((2, 3)), 'b')
 
-        # The order of the variables is not determined, so we try
-        # both shared variables.
-        f = theano.function([], [], updates={a: a, b: (2 * b - b)})
-        g = theano.function([], [], updates={a: (a * 2 - a), b: b})
+        # See comment in test_update_same about why we try both
+        # shared variables.
+        f = theano.function([], [], updates=[(a, a), (b, (2 * b - b))])
+        g = theano.function([], [], updates=[(a, (a * 2 - a)), (b, b)])
 
         f()
         assert a.get_value(borrow=True).shape == (), a.get_value()

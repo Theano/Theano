@@ -12,6 +12,8 @@ from function_module import orig_function
 from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any  # to work in python 2.4
+import warnings
+from theano import gof
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -30,7 +32,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     :type mode: string or `Mode` instance.
     :param mode: compilation mode
 
-    :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or dict.
+    :type updates: iterable over pairs (shared_variable, new_expression). List, tuple or OrderedDict.
     :param updates: update the values for SharedVariable inputs according to these expressions
 
     :type givens: iterable over pairs (Var1, Var2) of Variables. List, tuple or dict.  The Var1
@@ -128,7 +130,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                  def opt_log1p(node):
                     if not isinstance(node.op,Elemwise):
                        return
-                    if not isinstance(node.op.scalar_op, log,):
+                    if not isinstance(node.op.scalar_op, log):
                        return
                     inp = node.inputs[0]
                     if not inp.owner:
@@ -159,10 +161,18 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-    #tuple are used in some tests, as we accepted them in the past
-    #I prefer to allow it as they act the same as list for what they are used.
     if updates is None:
         updates = []
+
+    if isinstance(updates, dict) and \
+            not isinstance(updates, gof.python25.OrderedDict):
+        warnings.warn("Expected OrderedDict, got "+str(type(updates))+ "Using "
+        "a standard dictionary here results in "
+            "non-deterministic behavior. You should use an OrderedDict"
+            " if you are using python2.7 or use a list of (shared, update)"
+            " pairs. Do not just convert your dictionary to this type before"
+            " the call as the conversion will still be non-deterministic.")
+
     if givens is None:
         givens = []
     if not isinstance(inputs, (list, tuple)):

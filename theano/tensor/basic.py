@@ -27,6 +27,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
+from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 ### set up the external interface
@@ -1639,6 +1640,9 @@ class _tensor_py_operators:
     def ravel(self):
         return flatten(self)
 
+    def diagonal(self, offset=0, axis1=0, axis2=1):
+        return diagonal(self, offset, axis1, axis2)
+
     # CASTING
     def astype(self, dtype):
         return cast(self, dtype)
@@ -1796,6 +1800,8 @@ class _tensor_py_operators:
         """See `theano.tensor.conj`"""
         return conj(self)
 
+    conjugate = conj
+    
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
         from theano.tensor.extra_ops import repeat
@@ -7310,3 +7316,96 @@ def all(x, axis=None, keepdims=False):
     if keepdims:
         out = makeKeepDims(x, out, axis)
     return out
+
+class Diagonal(Op):
+    """Return specified diagonals.
+
+    :param x: A tensor variable with x.ndim >= 2.
+
+    :return: A vector representing the diagonal elements.
+    """
+    
+    def __init__(self, offset=0, axis1=0, axis2=1):
+        self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
+ 
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim >= 2
+        return Apply(self, [x], [tensor(dtype=x.dtype,
+                                        broadcastable=[False] * (x.ndim -1))])
+
+    def perform(self, node, (x,), (z,)):
+        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+
+    def grad(self, (x,), (gz,)):
+        return [grad_not_implemented(self, 0, x)]
+
+    def infer_shape(self, node, shapes):
+        in_shape, = shapes
+        dim1 = in_shape[self.axis1]
+        dim2 = in_shape[self.axis2]
+        out_shape = [d for i,d in enumerate(in_shape)
+                     if i not in (self.axis1, self.axis2)]
+        # The following logic is inspired by C code of PyArray_Diagonal().
+        offset = self.offset
+        if offset > 0:
+            diag_size = clip(dim2 - offset, 0, dim1)
+        elif offset < 0:
+            diag_size = clip(dim1 + offset, 0, dim2) 
+        else:
+            diag_size = minimum(dim1, dim2)
+        out_shape.append(diag_size)
+        return [tuple(out_shape)]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+def diagonal(a, offset=0, axis1=0, axis2=1):
+    if (offset, axis1, axis2) == (0, 0, 1):
+        from theano.sandbox.linalg import extract_diag
+        return extract_diag(a)
+    return Diagonal(offset, axis1, axis2)(a)
+
+class Diag(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, diag):
+        diag = as_tensor_variable(diag)
+        if diag.type.ndim != 1:
+            raise TypeError('data argument must be a vector', diag.type)
+
+        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+
+    def perform(self, node, inputs, (z,)):
+        z[0] = numpy.diag(inputs[0])
+
+    def grad(self, inputs, (gz,)):
+        return [diagonal(gz)]
+
+    def infer_shape(self, nodes, shapes):
+        return [(shapes[0][0],) * 2]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+def diag(v, k=0):
+    if v.ndim == 1:
+        assert k == 0, "diagonals other than main are not implemented"
+        return Diag()(v)
+    elif v.ndim == 2:
+        return diagonal(v, k)
+    else:
+        raise ValueError("Input must be 1- or 2-d.")

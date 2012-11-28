@@ -185,7 +185,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
         #test the inplace version
         g = theano.function([], [],
-                updates={v2: v2 + theano.dot(m, v1)},
+                updates=[(v2, v2 + theano.dot(m, v1))],
                 mode=self.mode)
 
         # Assert they produce the same output

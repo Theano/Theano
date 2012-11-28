@@ -52,8 +52,9 @@ from theano import gof
 from theano.tensor import opt
 from theano import tensor
 from theano import config
-from theano.updates import Updates
+from theano.updates import OrderedUpdates
 from theano.compile import ops
+from theano.gof.python25 import OrderedDict
 
 
 import scan_op
@@ -112,7 +113,7 @@ def scan(fn,
                    , outputs_info = [ dict(initial =  Output1, taps = [-3,-5])
                                     , dict(initial = Output2, taps = None)
                                     , Output3 ]
-                   , non_sequences = [ Argument1, Argument 2])
+                   , non_sequences = [ Argument1, Argument2])
 
         ``fn`` should expect the following arguments in this given order:
 
@@ -376,11 +377,11 @@ def scan(fn,
     n_seqs = len(seqs)
     n_outs = len(outs_info)
 
-    return_steps = {}
+    return_steps = OrderedDict()
     # wrap sequences in a dictionary if they are not already dictionaries
     for i in xrange(n_seqs):
         if not isinstance(seqs[i], dict):
-            seqs[i] = dict(input=seqs[i], taps=[0])
+            seqs[i] = OrderedDict([('input', seqs[i]), ('taps', [0])])
         elif seqs[i].get('taps', None):
             seqs[i]['taps'] = wrap_into_list(seqs[i]['taps'])
         elif seqs[i].get('taps', True) is None:
@@ -402,7 +403,7 @@ def scan(fn,
 
             if not isinstance(outs_info[i], dict):
                 # by default any output has a tap value of -1
-                outs_info[i] = dict(initial=outs_info[i], taps=[-1])
+                outs_info[i] = OrderedDict([('initial', outs_info[i]), ('taps', [-1])])
             elif (not outs_info[i].get('initial', None) and
                     outs_info[i].get('taps', None)):
                 # ^ no initial state but taps provided
@@ -421,8 +422,8 @@ def scan(fn,
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
-            # with an empty dict() to simplify handling
-            outs_info[i] = dict()
+            # with an empty OrdereDict() to simplify handling
+            outs_info[i] = OrderedDict()
 
     ##
     ###   Step 2. Generate inputs and outputs of the inner functions
@@ -565,7 +566,7 @@ def scan(fn,
     mit_sot_inner_inputs = []
     mit_sot_inner_slices = []
     mit_sot_inner_outputs = []
-    mit_sot_return_steps = {}
+    mit_sot_return_steps = OrderedDict()
     mit_sot_tap_array = []
     mit_sot_rightOrder = []
 
@@ -574,7 +575,7 @@ def scan(fn,
     sit_sot_inner_inputs = []
     sit_sot_inner_slices = []
     sit_sot_inner_outputs = []
-    sit_sot_return_steps = {}
+    sit_sot_return_steps = OrderedDict()
     sit_sot_rightOrder = []
 
     # go through outputs picking up time slices as needed
@@ -777,7 +778,7 @@ def scan(fn,
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
     fake_outputs = scan_utils.clone(outputs,
-                                    replace=dict(zip(non_seqs,
+                                    replace=OrderedDict(zip(non_seqs,
                                                      fake_nonseqs)))
     all_inputs = itertools.ifilter(
         lambda x: (isinstance(x, gof.Variable) and
@@ -825,7 +826,7 @@ def scan(fn,
         n_outs = len(dummy_f.maker.outputs)
         if as_while:
             n_outs = n_outs - 1
-        outs_info = [dict() for x in xrange(n_outs)]
+        outs_info = [OrderedDict() for x in xrange(n_outs)]
 
     ## Step 5.1 Outputs with taps different then -1
 
@@ -839,7 +840,7 @@ def scan(fn,
             sit_sot_inner_outputs.append(outputs[i])
 
     ## Step 5.3 Outputs that correspond to update rules of shared variables
-    givens = {}
+    givens = OrderedDict()
     n_shared_outs = 0
     shared_scan_inputs = []
     shared_inner_inputs = []
@@ -879,7 +880,7 @@ def scan(fn,
     ## Step 5.4 Outputs with no taps used in the input
     n_nit_sot = 0
     nit_sot_inner_outputs = []
-    nit_sot_return_steps = {}
+    nit_sot_return_steps = OrderedDict()
     nit_sot_rightOrder = []
     for i, out in enumerate(outs_info):
         if not 'taps' in out:
@@ -902,7 +903,7 @@ def scan(fn,
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    givens.update(dict(zip(other_scan_args, other_inner_args)))
+    givens.update(OrderedDict(zip(other_scan_args, other_inner_args)))
     other_shared_scan_args = [arg.variable for arg
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
@@ -911,7 +912,7 @@ def scan(fn,
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
                             not arg.update)]
-    givens.update(dict(zip(other_shared_scan_args,
+    givens.update(OrderedDict(zip(other_shared_scan_args,
                            other_shared_inner_args)))
 
     ##
@@ -943,7 +944,7 @@ def scan(fn,
         # replace w with w_copy, where w is CudaNdarray
         # and w_copy is TensorType. This is caused because shared
         # variables are put on GPU right aways >:| ,
-        new_givens = {}
+        new_givens = OrderedDict()
 
         for w, w_copy in givens.iteritems():
             if (isinstance(w.type, cuda.CudaNdarrayType)
@@ -962,7 +963,7 @@ def scan(fn,
     ##
 
     tap_array = mit_sot_tap_array + [[-1] for x in xrange(n_sit_sot)]
-    info = {}
+    info = OrderedDict()
 
     info['tap_array'] = tap_array
     info['n_seqs'] = n_seqs
@@ -976,7 +977,7 @@ def scan(fn,
     info['truncate_gradient'] = truncate_gradient
     info['name'] = name
     info['mode'] = mode
-    info['destroy_map'] = {}
+    info['destroy_map'] = OrderedDict()
     info['gpu'] = False
     info['as_while'] = as_while
     info['profile'] = profile
@@ -1012,7 +1013,7 @@ def scan(fn,
     ###         and so on ...
     ##
 
-    update_map = Updates()
+    update_map = OrderedUpdates()
 
     def remove_dimensions(outs, steps_return, offsets=None):
         out_ls = []

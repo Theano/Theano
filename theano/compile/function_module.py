@@ -1337,6 +1337,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
         profile.compile_time += t2 - t1
 
     fn.name = name
+    fn.maker.fgraph.name = name
     return fn
 
 
