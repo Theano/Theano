@@ -703,7 +703,7 @@ class ExtractDiag(Op):
 
         # zero-dimensional matrices ...
         if x.shape[0] == 0 or x.shape[1] == 0:
-            z[0] = numpy.zeros(0)
+            z[0] = numpy.zeros(0, dtype=x.dtype)
             return
 
         if x.shape[0] < x.shape[1]:

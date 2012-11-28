@@ -332,6 +332,7 @@ def test_diag():
     assert ok
 
 
+# not testing the view=True case since it is not used anywhere.
 def test_extract_diag():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = theano.tensor.matrix()
@@ -370,7 +371,10 @@ def test_extract_diag_grad():
     tensor.verify_grad(extract_diag, [x], rng=rng)
 
 
-# not testing the view=True case since it is not used anywhere.
+def test_extract_diag_empty():
+    c = theano.tensor.constant(numpy.array([[], []], 'int32'))
+    extract_diag(c).eval()
+
 
 def test_trace():
     rng = numpy.random.RandomState(utt.fetch_seed())
