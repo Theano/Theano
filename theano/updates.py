@@ -24,13 +24,12 @@ class OrderedUpdates(OrderedDict):
     This mapping supports the use of the "+" operator for the union of updates.
     """
     def __init__(self, *key, **kwargs):
-        ret = super(OrderedUpdates, self).__init__(*key, **kwargs)
+        super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):
                 raise TypeError(
                     'OrderedUpdates keys must inherit from SharedVariable',
                     key)
-        return ret
 
     def __setitem__(self, key, value):
         if isinstance(key, SharedVariable):
