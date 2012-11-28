@@ -18,6 +18,7 @@ import logging
 from itertools import izip
 
 import numpy
+import warnings
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
@@ -203,9 +204,10 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            if 'Ordered' not in str(type(elem)):
-                raise TypeError("Expected OrderedDict or OrderedUpdates, got "\
-                        +str(type(elem)))
+            if not isinstance(elem, gof.python25.OrderedDict):
+                warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
+                        +str(type(elem))+". This can make your script non-"
+                        "deterministic.")
             return True
         # Dictionaries can be given as lists of tuples
         if (isinstance(elem, (list, tuple)) and

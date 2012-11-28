@@ -13,6 +13,7 @@ from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
+from theano import gof
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -163,9 +164,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     if updates is None:
         updates = []
 
-    # I use the string value of the type to do type checking here since
-    # OrderedDict is not available in python2.4
-    if isinstance(updates, dict) and 'Ordered' not in str(type(updates)):
+    if isinstance(updates, dict) and \
+            not isinstance(updates, gof.python25.OrderedDict):
         warnings.warn("Expected OrderedDict, got "+str(type(updates))+ "Using "
         "a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"

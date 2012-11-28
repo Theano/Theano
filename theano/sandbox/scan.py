@@ -13,6 +13,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
+import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -468,8 +469,10 @@ def scan(fn,
         dummy_outs.append(condition)
 
     # If we use a regular dict here, the results are non-deterministic
-    assert isinstance(updates, (list, tuple)) or (isinstance(updates, dict) and \
-            'Ordered' in str(type(updates)))
+    if not isinstance(updates, (list, tuple)):
+        if isinstance(updates, dict) and \
+            not isinstance(updates, gof.python25.OrderedDict):
+                warnings.warn("Using non-deterministic dictionary.")
 
     dummy_f = function(dummy_args,
                        dummy_outs,
