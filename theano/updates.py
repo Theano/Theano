@@ -24,6 +24,12 @@ class OrderedUpdates(OrderedDict):
     This mapping supports the use of the "+" operator for the union of updates.
     """
     def __init__(self, *key, **kwargs):
+        if (len(key) >= 1 and
+            isinstance(key[0], dict) and
+            len(key[0]) > 1 and
+            not isinstance(key[0], OrderedDict)):
+            # Warn when using as input a non-ordered dictionary.
+            raise AssertionError('WILL BE TURNED INTO WARNING BEFORE MERGING 1')
         super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):
@@ -49,7 +55,11 @@ class OrderedUpdates(OrderedDict):
     def update(self, other=None):
         if other is None:
             return
-        for key, val in dict(other).iteritems():
+        if (isinstance(other, dict) and
+            len(other) > 1 and
+            not isinstance(other, OrderedDict)):
+            raise AssertionError('WILL BE TURNED INTO WARNING BEFORE MERGING 2')
+        for key, val in OrderedDict(other).iteritems():
             if key in self:
                 if self[key] == val:
                     continue
