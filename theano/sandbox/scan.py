@@ -685,5 +685,5 @@ def scan(fn,
     elif len(scan_out_list) == 0:
         scan_out_list = None
 
-    assert isinstance(update_map, dict) and 'Ordered' in str(type(update_map))
+    assert isinstance(update_map, OrderedDict)
     return (scan_out_list, update_map)
