@@ -16,7 +16,8 @@ logger = logging.getLogger('theano.updates')
 import warnings
 
 
-# Must be an OrderedDict or updates will be applied in a non-deterministic order
+# Must be an OrderedDict or updates will be applied in a non-deterministic
+# order.
 class OrderedUpdates(OrderedDict):
     """
     Dict-like mapping from SharedVariable keys to their new values.
@@ -49,8 +50,8 @@ class OrderedUpdates(OrderedDict):
 
             return super(OrderedUpdates, self).__setitem__(key, value)
         else:
-            raise TypeError('OrderedUpdates keys must inherit from SharedVariable',
-                    key)
+            raise TypeError('OrderedUpdates keys must inherit from '
+                            'SharedVariable', key)
 
     def update(self, other=None):
         if other is None:
@@ -77,6 +78,7 @@ class OrderedUpdates(OrderedDict):
         rval.update(other)
         rval.update(self)
         return rval
+
 
 def Updates(*key, **kwargs):
     warnings.warn("Updates is deprecated. Switch to OrderedUpdates.")
