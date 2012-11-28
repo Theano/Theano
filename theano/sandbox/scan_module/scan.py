@@ -46,17 +46,12 @@ from itertools import izip
 import logging
 import numpy
 
-from theano.compile import SharedVariable, function
-from theano import compile
 from theano import gof
 from theano.tensor import opt, TensorVariable
 from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor
-from theano import config
-from theano.updates import Updates
 from theano.scalar.sharedvar import shared as scalar_shared
 from theano.compile.pfunc import rebuild_collect_shared
-import theano
 
 import scan_op
 import scan_utils

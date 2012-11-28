@@ -162,7 +162,7 @@ else:
 
 if sys.version_info[:2] < (2, 7):
     # The following implementation of OrderedDict compatible with python 2.4
-    # was taked from http://pypi.python.org/pypi/ordereddict/1.1
+    # was taken from http://pypi.python.org/pypi/ordereddict/1.1
     # It is under the MIT license.
 
     # Copyright (c) 2009 Raymond Hettinger

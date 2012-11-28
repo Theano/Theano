@@ -1,22 +1,22 @@
 import unittest
 
 import theano
-from theano.updates import Updates
+from theano.updates import OrderedUpdates
 import theano.tensor as T
 
 
 class test_ifelse(unittest.TestCase):
 
     def test_updates_init(self):
-        self.assertRaises(TypeError, Updates, dict(d=3))
+        self.assertRaises(TypeError, OrderedUpdates, dict(d=3))
 
         sv = theano.shared('asdf')
-        Updates({sv:3})
+        OrderedUpdates({sv:3})
 
     def test_updates_setitem(self):
         ok = True
 
-        up = Updates()
+        up = OrderedUpdates()
         sv = theano.shared('asdf')
 
         # keys have to be SharedVariables
@@ -27,8 +27,8 @@ class test_ifelse(unittest.TestCase):
 
     def test_updates_add(self):
 
-        up1 = Updates()
-        up2 = Updates()
+        up1 = OrderedUpdates()
+        up2 = OrderedUpdates()
 
         a = theano.shared('a')
         b = theano.shared('b')
