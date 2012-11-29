@@ -1082,6 +1082,7 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
     location dependent information such as the id of a node.
     """
 
+    global hashlib
     if hashlib is None:
         try:
             import hashlib
