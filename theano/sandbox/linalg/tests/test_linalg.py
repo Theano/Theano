@@ -185,6 +185,7 @@ def test_inverse_grad():
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
 
+
 def test_rop_lop():
     mx = tensor.matrix('mx')
     mv = tensor.matrix('mv')
@@ -442,6 +443,7 @@ def test_spectral_radius_bound():
         ok = True
     assert ok
 
+
 class test_Solve(utt.InferShapeTester):
     def setUp(self):
         super(test_Solve, self).setUp()
@@ -474,10 +476,12 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX)],
                                 self.op_class)
 
+
 class test_Eig(utt.InferShapeTester):
     op_class = Eig
     op = eig
     dtype = 'float64'
+
     def setUp(self):
         super(test_Eig, self).setUp()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
@@ -485,7 +489,7 @@ class test_Eig(utt.InferShapeTester):
         X = numpy.asarray(self.rng.rand(5, 5),
                           dtype=self.dtype)
         self.S = X.dot(X.T)
-        
+
     def test_infer_shape(self):
         A = self.A
         S = self.S
@@ -494,32 +498,36 @@ class test_Eig(utt.InferShapeTester):
                                 # S must be square
                                 [S],
                                 self.op_class)
+
     def test_eval(self):
         import math
         A = theano.tensor.matrix(dtype=self.dtype)
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])
-        x = [[0, 1], [1, 0]] 
+        x = [[0, 1], [1, 0]]
         w, v = [e.eval({A: x}) for e in self.op(A)]
-        assert_array_almost_equal(numpy.dot(x,v), w * v)
+        assert_array_almost_equal(numpy.dot(x, v), w * v)
+
 
 class test_Eigh(test_Eig):
     op = staticmethod(eigh)
+
     def test_uplo(self):
         S = self.S
         a = theano.tensor.matrix(dtype=self.dtype)
         wu, vu = [out.eval({a: S}) for out in self.op(a, 'U')]
         wl, vl = [out.eval({a: S}) for out in self.op(a, 'L')]
         assert_array_almost_equal(wu, wl)
-        assert_array_almost_equal(vu*numpy.sign(vu[0,:]),
-                                  vl*numpy.sign(vl[0,:]))
-            
+        assert_array_almost_equal(vu * numpy.sign(vu[0, :]),
+                                  vl * numpy.sign(vl[0, :]))
+
     def test_grad(self):
         S = self.S
         utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
+
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
