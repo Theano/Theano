@@ -30,7 +30,9 @@ class OrderedUpdates(OrderedDict):
             len(key[0]) > 1 and
             not isinstance(key[0], OrderedDict)):
             # Warn when using as input a non-ordered dictionary.
-            raise AssertionError('WILL BE TURNED INTO WARNING BEFORE MERGING 1')
+            warnings.warn('Initializing an `OrderedUpdates` from a '
+                          'non-ordered dictionary with 2+ elements could '
+                          'make your code non-deterministic')
         super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):
@@ -59,7 +61,10 @@ class OrderedUpdates(OrderedDict):
         if (isinstance(other, dict) and
             len(other) > 1 and
             not isinstance(other, OrderedDict)):
-            raise AssertionError('WILL BE TURNED INTO WARNING BEFORE MERGING 2')
+            # Warn about non-determinism.
+            warnings.warn('Updating an `OrderedUpdates` with a '
+                          'non-ordered dictionary with 2+ elements could '
+                          'make your code non-deterministic')
         for key, val in OrderedDict(other).iteritems():
             if key in self:
                 if self[key] == val:
