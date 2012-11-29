@@ -926,9 +926,13 @@ eig = Eig()
 
 
 def _zero_disconnected(outputs, grads):
-    return [o.zeros_like()
-            if isinstance(g.type, DisconnectedType) else g
-            for o, g in zip(outputs, grads)]
+    l = []
+    for o, g in zip(outputs, grads):
+        if isinstance(g.type, DisconnectedType):
+            l.append(o.zeros_like())
+        else:
+            l.append(g)
+    return l
 
 
 class Eigh(Eig):
