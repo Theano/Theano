@@ -129,7 +129,7 @@ shown.
 3) The function :func:`theano.printing.pydotprint` will print a compiled theano function to a png file.
 
 
-In the image, Apply nodes (the applications of ops) are shown as boxes and variables are shown as ovals.
+In the image, Apply nodes (the applications of ops) are shown as ellipses and variables are shown as boxes.
 The number at the end of each label indicates graph position.  
 Boxes and ovals have their own set of positions, so you can have apply #1 and also a
 variable #1.

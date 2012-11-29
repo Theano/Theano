@@ -9,7 +9,7 @@ import numpy
 
 import theano
 import theano.tensor as T
-from theano.gof.python25 import any
+from theano.gof.python25 import any, OrderedDict
 
 def gen_data():
 
@@ -293,7 +293,7 @@ def test_mlp():
     # TODO: refine that and include only those
     mode = theano.compile.get_default_mode().including('fast_run')
 
-    updates2 = {}
+    updates2 = OrderedDict()
 
     updates2[classifier.hiddenLayer.params[0]]=T.grad(cost,classifier.hiddenLayer.params[0])
     train_model =theano.function( inputs = [index],

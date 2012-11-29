@@ -8,8 +8,8 @@ import numpy.random
 from theano.tests  import unittest_tools as utt
 
 '''
-  Different tests that are not connected to any particular Op, or functionality of 
-  Theano. Here will go for example code that we will publish in papers, that we 
+  Different tests that are not connected to any particular Op, or functionality of
+  Theano. Here will go for example code that we will publish in papers, that we
   should ensure that it will remain operational
 '''
 
@@ -55,7 +55,7 @@ class T_scipy(unittest.TestCase):
         train = function(
             inputs=[x,y],
             outputs=[prediction, xent],
-            updates={w:w-0.1*gw, b:b-0.1*gb})
+            updates=[(w, w-0.1*gw), (b, b-0.1*gb)])
         predict = function(inputs=[x], outputs=prediction)
 
         N = 4

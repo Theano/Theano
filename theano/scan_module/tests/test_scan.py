@@ -16,6 +16,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano.gof.python25 import any
 from theano.tests  import unittest_tools as utt
 import theano.scalar.sharedvar
+from theano.gof.python25 import OrderedDict
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -1009,7 +1010,7 @@ class T_Scan(unittest.TestCase):
         x0 = theano.tensor.constant(x0)
         to_replace = outputs[0].owner.inputs[0].owner.inputs[1]
         outputs = theano.clone(outputs,
-                               replace={to_replace: x0})
+                               replace=[(to_replace, x0)])
         mode = theano.compile.mode.get_mode(None).including('inplace')
         f9 = theano.function([],
                              outputs,
@@ -1299,7 +1300,7 @@ class T_Scan(unittest.TestCase):
         state = theano.shared(v_state, 'vstate')
 
         def f_2():
-            return {state: 2 * state}
+            return OrderedDict([(state, 2 * state)])
         n_steps = theano.tensor.iscalar('nstep')
         output, updates = theano.scan(f_2,
                                       [],
@@ -1829,7 +1830,7 @@ class T_Scan(unittest.TestCase):
         X = theano.shared(numpy.array(1))
 
         out, updates = theano.scan(
-            lambda: {X: X + 1},
+            lambda: OrderedDict([(X, (X + 1))]),
             outputs_info=[],
             non_sequences=[],
             sequences=[],
@@ -1844,7 +1845,7 @@ class T_Scan(unittest.TestCase):
         y = theano.shared(numpy.array(1))
 
         out, updates = theano.scan(
-            lambda: {x: x + 1, y: x},
+            lambda: OrderedDict([(x, x + 1), (y, x)]),
             outputs_info=[],
             non_sequences=[],
             sequences=[],
@@ -1880,11 +1881,11 @@ class T_Scan(unittest.TestCase):
         b = theano.shared(numpy.random.rand(5, 4))
 
         def inner_func(a):
-            return a + 1, {b: 2 * b}
+            return a + 1, OrderedDict([(b, 2 * b)])
 
         out, updates = theano.scan(
             inner_func,
-            outputs_info=[{'initial': init_a}],
+            outputs_info=[OrderedDict([('initial', init_a)])],
             n_steps=1)
         out = out[-1]
         assert out.type.ndim == a.type.ndim
@@ -1967,7 +1968,7 @@ class T_Scan(unittest.TestCase):
 
         f1 = z * (x + y) ** 2 + 5
         f2 = theano.clone(f1,
-                          replace={y: y2},
+                          replace=OrderedDict([(y, y2)]),
                           strict=True,
                           copy_inputs=True)
         f2_inp = theano.gof.graph.inputs([f2])
@@ -1986,7 +1987,7 @@ class T_Scan(unittest.TestCase):
 
         f1 = z * (x + y) ** 2 + 5
         f2 = theano.clone(f1,
-                          replace={y: y2},
+                          replace=OrderedDict([(y, y2)]),
                           strict=False,
                           copy_inputs=True)
         f2_inp = theano.gof.graph.inputs([f2])
@@ -2005,7 +2006,7 @@ class T_Scan(unittest.TestCase):
 
         f1 = z * (x + y) ** 2 + 5
         f2 = theano.clone(f1,
-                          replace={y: y2},
+                          replace=[(y, y2)],
                           strict=True,
                           copy_inputs=False)
         f2_inp = theano.gof.graph.inputs([f2])
@@ -2024,7 +2025,7 @@ class T_Scan(unittest.TestCase):
 
         f1 = z * (x + y) ** 2 + 5
         f2 = theano.clone(f1,
-                          replace={y: y2},
+                          replace=[(y, y2)],
                           strict=False,
                           copy_inputs=False)
         f2_inp = theano.gof.graph.inputs([f2])
@@ -2204,15 +2205,15 @@ class T_Scan(unittest.TestCase):
         v2 = theano.shared(numpy.ones((5, 5), dtype=theano.config.floatX))
         shapef = theano.function([W],
                                  expr,
-                                 givens={initial: v1,
-                                         inpt: v2})
+                                 givens=OrderedDict([(initial, v1),
+                                         (inpt, v2)]))
         # First execution to cache n_steps
         shapef(numpy.ones((5, 5), dtype=theano.config.floatX))
 
         cost = expr.sum()
         d_cost_wrt_W = tensor.grad(cost, [W])
         f = theano.function([W, inpt], d_cost_wrt_W,
-                             givens={initial: theano.shared(numpy.zeros(5))})
+                             givens=OrderedDict([(initial, theano.shared(numpy.zeros(5)))]))
 
         rval = numpy.asarray([[5187989] * 5] * 5, dtype=theano.config.floatX)
         arg1 = numpy.ones((5, 5), dtype=theano.config.floatX)
@@ -3166,7 +3167,7 @@ class T_Scan(unittest.TestCase):
         shared_var = theano.shared(numpy.float32(1.))
 
         def inner_fn():
-            return [], {shared_var: shared_var + numpy.float32(1.)}
+            return [], OrderedDict([(shared_var, shared_var + numpy.float32(1.))])
         _, updates = theano.scan(inner_fn,
                                  n_steps=10,
                                  truncate_gradient=-1,
@@ -3239,7 +3240,7 @@ class T_Scan(unittest.TestCase):
         seq = tensor.matrix()
         initial_value = theano.shared(numpy.zeros((4, 1),
                                                   dtype=theano.config.floatX))
-        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
+        outputs_info = [OrderedDict([('initial', initial_value), ('taps', [-4])]), None]
         results, updates = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
@@ -3259,13 +3260,13 @@ class T_Scan(unittest.TestCase):
         seq = tensor.matrix()
         initial_value = theano.shared(numpy.zeros((4, 1),
                                                   dtype=theano.config.floatX))
-        outputs_info = [{'initial': initial_value, 'taps': [-4]}, None]
+        outputs_info = [OrderedDict([('initial', initial_value), ('taps', [-4])]), None]
         results, _ = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
         sharedvar = theano.shared(numpy.zeros((1, 1),
                                               dtype=theano.config.floatX))
-        updates = {sharedvar: results[0][-1:]}
+        updates = OrderedDict([(sharedvar, results[0][-1:])])
 
         f = theano.function([seq], results[1], updates=updates)
         assert numpy.all(exp_out == f(inp))
@@ -3354,9 +3355,9 @@ def test_speed():
         theano.printing.debugprint(s_rinc)
         f = theano.function([],
                             [],
-                            updates={
-                                s_i: s_i + 1,
-                                shared_r: s_rinc},
+                            updates=OrderedDict([
+                                (s_i, s_i + 1),
+                                (shared_r, s_rinc)]),
                            mode=theano.Mode(linker='cvm'))
         f._check_for_aliased_inputs = False
         t2 = time.time()
@@ -3430,9 +3431,9 @@ def test_speed_rnn():
                         w)),
                 tolerate_inplace_aliasing=True)
         f = theano.function([], [],
-                updates={
-                    s_i: s_i + 1,
-                    shared_r: s_rinc},
+                updates=OrderedDict([
+                    (s_i, s_i + 1),
+                    (shared_r, s_rinc)]),
                 mode=theano.Mode(linker='cvm'))
         #theano.printing.debugprint(f)
         f_fn = f.fn
@@ -3495,9 +3496,9 @@ def test_speed_batchrnn():
                 tolerate_inplace_aliasing=True)
         f = theano.function([],
                             [],
-                            updates={
-                                s_i: s_i + 1,
-                                shared_r: s_rinc},
+                            updates=[
+                                (s_i, s_i + 1),
+                                (shared_r, s_rinc)],
                 mode=theano.Mode(linker='cvm'))
         #theano.printing.debugprint(f)
         f_fn = f.fn

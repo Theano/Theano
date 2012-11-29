@@ -35,3 +35,6 @@ class NullType(Type):
 
     def __hash__(self, other):
         return hash(type(self))
+
+    def __str__(self):
+        return 'NullType'
