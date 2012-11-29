@@ -16,7 +16,8 @@ logger = logging.getLogger('theano.updates')
 import warnings
 
 
-# Must be an OrderedDict or updates will be applied in a non-deterministic order
+# Must be an OrderedDict or updates will be applied in a non-deterministic
+# order.
 class OrderedUpdates(OrderedDict):
     """
     Dict-like mapping from SharedVariable keys to their new values.
@@ -24,13 +25,20 @@ class OrderedUpdates(OrderedDict):
     This mapping supports the use of the "+" operator for the union of updates.
     """
     def __init__(self, *key, **kwargs):
-        ret = super(OrderedUpdates, self).__init__(*key, **kwargs)
+        if (len(key) >= 1 and
+            isinstance(key[0], dict) and
+            len(key[0]) > 1 and
+            not isinstance(key[0], OrderedDict)):
+            # Warn when using as input a non-ordered dictionary.
+            warnings.warn('Initializing an `OrderedUpdates` from a '
+                          'non-ordered dictionary with 2+ elements could '
+                          'make your code non-deterministic')
+        super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):
                 raise TypeError(
                     'OrderedUpdates keys must inherit from SharedVariable',
                     key)
-        return ret
 
     def __setitem__(self, key, value):
         if isinstance(key, SharedVariable):
@@ -44,13 +52,20 @@ class OrderedUpdates(OrderedDict):
 
             return super(OrderedUpdates, self).__setitem__(key, value)
         else:
-            raise TypeError('OrderedUpdates keys must inherit from SharedVariable',
-                    key)
+            raise TypeError('OrderedUpdates keys must inherit from '
+                            'SharedVariable', key)
 
     def update(self, other=None):
         if other is None:
             return
-        for key, val in dict(other).iteritems():
+        if (isinstance(other, dict) and
+            len(other) > 1 and
+            not isinstance(other, OrderedDict)):
+            # Warn about non-determinism.
+            warnings.warn('Updating an `OrderedUpdates` with a '
+                          'non-ordered dictionary with 2+ elements could '
+                          'make your code non-deterministic')
+        for key, val in OrderedDict(other).iteritems():
             if key in self:
                 if self[key] == val:
                     continue
@@ -68,6 +83,7 @@ class OrderedUpdates(OrderedDict):
         rval.update(other)
         rval.update(self)
         return rval
+
 
 def Updates(*key, **kwargs):
     warnings.warn("Updates is deprecated. Switch to OrderedUpdates.")
