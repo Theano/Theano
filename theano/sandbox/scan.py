@@ -167,10 +167,11 @@ def scan(fn,
                 # ^ initial state but taps not provided
                 if 'taps' in outs_info[i]:
                     # ^ explicitly provided a None for taps
-                    _logger.warning('Output %s ( index %d) has a memory '
-                                    'buffer but taps is explicitly set to None ',
-                             getattr(outs_info[i]['membuf'], 'name', 'None'),
-                             i)
+                    _logger.warning(
+                            'Output %s (index %d) has a memory '
+                            'buffer but taps is explicitly set to None ',
+                            getattr(outs_info[i]['membuf'], 'name', 'None'),
+                            i)
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
@@ -213,7 +214,7 @@ def scan(fn,
 
         nw_slice = _seq_val_slice.type()
         if seq.name:
-            nw_slice.name=seq.name + '[t]'
+            nw_slice.name = seq.name + '[t]'
         scan_seqs.append(_seq_val)
         inner_seqs.append(nw_slice)
         inner_slices.append(actual_slice)
@@ -354,7 +355,6 @@ def scan(fn,
         else:
             pass
 
-
     # Re-order args
     max_mit_sot = numpy.max([-1] + mit_sot_rightOrder) + 1
     max_sit_sot = numpy.max([-1] + sit_sot_rightOrder) + 1
@@ -401,7 +401,8 @@ def scan(fn,
     # when we apply the lambda expression we get a mixture of update rules
     # and outputs that needs to be separated
     lambda_result = fn(*args)
-    condition, outputs, updates = scan_utils.get_updates_and_outputs(lambda_result)
+    condition, outputs, updates = scan_utils.get_updates_and_outputs(
+                                                                lambda_result)
     if condition is not None:
         as_while = True
     else:
@@ -685,5 +686,5 @@ def scan(fn,
     elif len(scan_out_list) == 0:
         scan_out_list = None
 
-    assert isinstance(update_map, dict) and 'Ordered' in str(type(update_map))
+    assert isinstance(update_map, OrderedDict)
     return (scan_out_list, update_map)
