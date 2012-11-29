@@ -507,7 +507,7 @@ class test_Eigh(test_Eig):
     op = staticmethod(eigh)
     def test_uplo(self):
         S = self.S
-        a = theano.tensor.matrix()
+        a = theano.tensor.matrix(dtype=self.dtype)
         wu, vu = [out.eval({a: S}) for out in self.op(a, 'U')]
         wl, vl = [out.eval({a: S}) for out in self.op(a, 'L')]
         assert_array_almost_equal(wu, wl)
