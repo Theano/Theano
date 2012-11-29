@@ -317,12 +317,12 @@ the following:
 
 
 Note that if we use shared variables ( ``W``, ``bvis``, ``bhid``) but
-we do not iterate over them ( so scan doesn't really need to know
+we do not iterate over them (so scan doesn't really need to know
 anything in particular about them, just that they are used inside the
 function applied at each step) you do not need to pass them as
-arguments. Scan will find them on its on and add them to the graph. Of
+arguments. Scan will find them on its own and add them to the graph. Of
 course, if you wish to (and it is good practice) you can add them, when
-you call scan (they would be in the list of non sequence inputs).
+you call scan (they would be in the list of non-sequence inputs).
 
 The second, and probably most crucial observation is that the updates
 dictionary becomes important in this case. It links a shared variable
