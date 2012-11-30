@@ -737,6 +737,9 @@ def general_toposort(r_out, deps, debug_print=False):
         if io not in deps_cache:
             d = deps(io)
             if d:
+                if not isinstance(d, (list, OrderedSet)):
+                    raise TypeError("Non-deterministic collections here make"
+                            " toposort non-deterministic.")
                 deps_cache[io] = list(d)
             else:
                 deps_cache[io] = d
