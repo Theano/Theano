@@ -3659,3 +3659,18 @@ def test_compute_test_value():
         #print f(xv)
     finally:
         theano.config.compute_test_value = backup
+
+
+def test_constant_folding_n_steps():
+    # The following code used to crash at revision 2060b8f, in the constant
+    # folding optimization step.
+    res, _ = theano.scan(lambda x: x * 2,
+                         outputs_info=tensor.ones(()),
+                         # The constant `n_steps` was causing the crash.
+                         n_steps=10)
+    on_opt_error = theano.config.on_opt_error
+    theano.config.on_opt_error = 'raise'
+    try:
+        theano.function([], res)()
+    finally:
+        theano.config.on_opt_error = on_opt_error
