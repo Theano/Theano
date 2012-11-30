@@ -211,8 +211,14 @@ returns the right answer. If you detect an error, you must raise an
             inp = numpy.asarray(numpy.random.rand(5, 4), dtype=config.floatX)
             out = f(inp)
             # Compare the result computed to the expected value.
-            assert numpy.allclose(inp * 2, out)
+            utt.assert_allclose(inp * 2, out)
 
+We call ``utt.assert_allclose(expected_value, value)`` to compare
+NumPy ndarray.This raise an error message with more information. Also,
+we change change the tolerance with the Theano flags
+``config.tensor.cmp_sloppy`` that take values in 0, 1 and 2. The
+defaul value do the most strict comparison, 1 and 2 make less strict
+comparison.
 
 Testing the infer_shape
 -----------------------
