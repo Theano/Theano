@@ -644,7 +644,6 @@ class WrapLinker(Linker):
                     raise_with_op(node)
         f.thunk_groups = thunk_groups
 
-        print 'WrapLinker make_thunk returning: ',id(f)
         return f, inputs0, outputs0
 
 def WrapLinkerMany(linkers, wrappers):
