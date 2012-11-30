@@ -1111,14 +1111,17 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
         name = '<ndarray:'
         name += 'strides=['+','.join(str(stride) for stride in obj.strides)+']'
         name += ',digest='+hashlib.md5(obj).hexdigest()+'>'
-    elif hasattr(obj, 'name') and obj.name is not None:
-        name = obj.name
     elif hasattr(obj, 'owner') and obj.owner is not None:
         name = str(obj.owner.op) + '('
         name += ','.join(var_descriptor(ipt,
                     _prev_obs=_prev_obs, _tag_generator=_tag_generator) for ipt
                     in obj.owner.inputs)
         name += ')'
+    elif hasattr(obj, 'name') and obj.name is not None:
+        # Only print the name if there is no owner.
+        # This way adding a name to an intermediate node can't make
+        # a deeper graph get the same descriptor as a shallower one
+        name = obj.name
     else:
         name = str(obj)
         if ' at 0x' in name:
