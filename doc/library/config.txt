@@ -179,6 +179,21 @@ import theano and print the config variable, as in:
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
 
+.. attribute:: allow_gc
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    This sets the default for the use of the Theano garbage collector
+    for intermediate results. To use less memory, Theano frees the
+    intermediate results as soon as they are no longer needed.
+    Disabling Theano garbage collection allows Theano to reuse buffers
+    for intermediate results between function calls. This speeds up
+    Theano by no longer spending time reallocating space. This gives
+    significant speed up on functions with many ops that are fast to
+    execute, but this increases Theano's memory usage.
+
 .. attribute:: openmp
 
     Bool value: either True or False
