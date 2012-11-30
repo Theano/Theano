@@ -644,27 +644,28 @@ class DestroyHandler(toolbox.Bookkeeper):
         <unknown>
     """
 
-    """maps every variable in the graph to its "foundation" (deepest
-    ancestor in view chain)
-    TODO: change name to var_to_vroot"""
-    droot = {}
-
-    """maps a variable to all variables that are indirect or direct views of it
-     (including itself)
-     essentially the inverse of droot
-    TODO: do all variables appear in this dict, or only those that are foundations?
-    TODO: do only destoryed variables go in here? one old docstring said so
-    TODO: rename to x_to_views after reverse engineering what x is"""
-    impact = {}
-
-    """if a var is destroyed, then this dict will map
-    droot[var] to the apply node that destroyed var
-    TODO: rename to vroot_to_destroyer"""
-    root_destroyer = {}
 
     def __init__(self, do_imports_on_attach=True):
         self.fgraph = None
         self.do_imports_on_attach = do_imports_on_attach
+
+        """maps every variable in the graph to its "foundation" (deepest
+        ancestor in view chain)
+        TODO: change name to var_to_vroot"""
+        self.droot = OrderedDict()
+
+        """maps a variable to all variables that are indirect or direct views of it
+         (including itself)
+         essentially the inverse of droot
+        TODO: do all variables appear in this dict, or only those that are foundations?
+        TODO: do only destroyed variables go in here? one old docstring said so
+        TODO: rename to x_to_views after reverse engineering what x is"""
+        self.impact = OrderedDict()
+
+        """if a var is destroyed, then this dict will map
+        droot[var] to the apply node that destroyed var
+        TODO: rename to vroot_to_destroyer"""
+        self.root_destroyer = OrderedDict()
 
     def on_attach(self, fgraph):
         """
