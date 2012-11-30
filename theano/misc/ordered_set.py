@@ -6,7 +6,7 @@ try:
     from collections import MutableSet
 except ImportError:
     # Python 2.4
-    MutableSet = object
+    from sets import Set as MutableSet
 
 
 class OrderedSet(MutableSet):
