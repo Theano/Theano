@@ -3370,7 +3370,7 @@ class Alloc(gof.Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def do_constant_folding(self, node):
-        if not hasattr(node.outputs[0], 'clients'):
+        if not getattr(node.outputs[0], 'clients', []):
             # If there are no clients then there is no point doing constant
             # folding.
             return False
