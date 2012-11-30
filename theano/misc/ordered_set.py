@@ -1,10 +1,15 @@
 # From http://code.activestate.com/recipes/576694/
 
-import collections
-
 KEY, PREV, NEXT = range(3)
 
-class OrderedSet(collections.MutableSet):
+try:
+    from collections import MutableSet
+except ImportError:
+    # Python 2.4
+    MutableSet = object
+
+
+class OrderedSet(MutableSet):
 
     def update(self, container):
         # only allowed ordered containers
