@@ -617,6 +617,11 @@ class FunctionGraph(utils.object2):
                     raise TypeError("Non-deterministic return value from " \
                             +str(feature.orderings) \
                             +". Nondeterministic object is "+str(orderings))
+                for node, prereqs in orderings.items():
+                    if not isinstance(prereqs, (list, OrderedSet)):
+                        raise TypeError("prereqs must be a type with a "
+                                "deterministic iteration order, or toposort "
+                                " will be non-deterministic.")
                     ords.setdefault(node, []).extend(prereqs)
         # eliminate duplicate prereqs
         for (node,prereqs) in ords.items():
