@@ -112,6 +112,12 @@ else:
             if key in self.data:
                 del self.data[key]
 
+        def remove(self, key):
+            if key in self.data:
+                del self.data[key]
+            else:
+                raise KeyError(key)
+
         def __iter__(self):
             return self.data.__iter__()
 
