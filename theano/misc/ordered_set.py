@@ -8,9 +8,10 @@ from theano.gof.python25 import OrderedDict
 import types
 
 def check_deterministic(iterable, known_deterministic):
-    if not isinstance(iterable, (list, tuple, OrderedSet)) or \
-        (isinstance(iterable, types.GeneratorType and known_deterministic)):
-        raise TypeError((type(iterable), known_deterministic))
+    if not isinstance(iterable, (list, tuple, OrderedSet)):
+        if not isinstance(iterable, types.GeneratorType) and \
+                known_deterministic:
+            raise TypeError((type(iterable), known_deterministic))
 
 if MutableSet is not None:
     # From http://code.activestate.com/recipes/576694/
