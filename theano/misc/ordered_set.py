@@ -102,7 +102,7 @@ else:
         def add(self, key):
             self.data[key] = None
 
-        def __len__(self, key):
+        def __len__(self):
             return len(self.data)
 
         def __contains__(self, key):
