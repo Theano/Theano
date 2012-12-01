@@ -95,7 +95,9 @@ else:
 
         def update(self, container):
             # only allowed ordered containers
-            assert isinstance(container, (list, OrderedSet))
+            if not isinstance(container, (list, tuple, OrderedSet)):
+                raise TypeError("OrderedSet can only be ordered if updated "
+                        " with ordered containers. Got "+str(type(container)))
             for elem in container:
                 self.add(elem)
 
