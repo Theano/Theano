@@ -130,7 +130,7 @@ else:
                 raise KeyError(key)
 
         def __iter__(self):
-            return self.data.__iter__()
+            return self.data.keys().__iter__()
 
         def __reversed__(self):
             return self.data.__reversed__()
