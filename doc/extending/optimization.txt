@@ -30,7 +30,7 @@ Global and local optimizations
 
 First, let's lay out the way optimizations work in Theano. There are
 two types of optimizations: *global* optimizations and *local*
-optimizations. A global optimization takes an ``FunctionGraph`` object (an
+optimizations. A global optimization takes a ``FunctionGraph`` object (a
 FunctionGraph is a wrapper around a whole computation graph, you can see its
 :class:`documentation <FunctionGraph>` for more details) and navigates through it
 in a suitable way, replacing some Variables by others in the process. A
@@ -60,13 +60,13 @@ methods:
 
     .. method:: apply(fgraph)
 
-      This method takes an FunctionGraph object which contains the computation graph
+      This method takes a FunctionGraph object which contains the computation graph
       and does modifications in line with what the optimization is meant
       to do. This is one of the main methods of the optimizer.
 
     .. method:: add_requirements(fgraph)
 
-      This method takes an FunctionGraph object and adds :ref:`features
+      This method takes a FunctionGraph object and adds :ref:`features
       <libdoc_gof_fgraphfeature>` to it. These features are "plugins" that are needed
       for the ``apply`` method to do its job properly.
 
