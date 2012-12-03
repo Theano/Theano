@@ -1038,12 +1038,9 @@ class EighGrad(Op):
         assert v.ndim == 2
         assert gw.ndim == 1
         assert gv.ndim == 2
-        if x.dtype == "float32":
-            # The call to self.tri0 in perform upcast from float32 to
-            # float64.
-            out = theano.tensor.matrix(dtype="float64")
-        else:
-            out = x.type()
+        out_dtype = theano.scalar.upcast(x.dtype, w.dtype, v.dtype,
+                                         gw.dtype, gv.dtype)
+        out = theano.tensor.matrix(dtype=out_dtype)
         return Apply(self, [x, w, v, gw, gv], [out])
 
     def perform(self, node, inputs, outputs):
@@ -1068,7 +1065,13 @@ class EighGrad(Op):
         # opposite triangle contributes to variation of two elements
         # of Hermitian (symmetric) matrix. The following line
         # implements the necessary logic.
-        outputs[0][0] = self.tri0(g) + self.tri1(g).T
+        out = self.tri0(g) + self.tri1(g).T
+
+        # The call to self.tri0 in perform upcast from float32 to
+        # float64 or from int* to int64 in numpy 1.6.1 but not in
+        # 1.6.2. We do not want version dependent dtype in Theano.
+        # We think it should be the same as the output.
+        outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
