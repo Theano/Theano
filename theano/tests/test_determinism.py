@@ -1,6 +1,6 @@
 from theano.tests.record import RecordMode
 from theano.tests.record import Record
-from collections import OrderedDict
+from theano.gof.python25 import OrderedDict
 from theano.tests import disturb_mem
 import numpy as np
 import theano
