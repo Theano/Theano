@@ -2,8 +2,10 @@ import sys
 import time
 
 from theano.gof.python25 import partial
+from theano.gof.python25 import OrderedDict
 
 import graph
+
 
 
 class AlreadyThere(Exception):
@@ -89,7 +91,7 @@ class Feature(object):
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
         """
-        return {}
+        return OrderedDict()
 
 
 class Bookkeeper(Feature):
