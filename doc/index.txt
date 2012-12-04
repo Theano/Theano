@@ -17,11 +17,13 @@ Theano has been powering large-scale computationally intensive scientific invest
 since 2007.  But it is also approachable enough to be used in the classroom
 (IFT6266 at the University of Montreal).
 
+**NEW!** New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_. Please cite the other paper bellow.
+
+`HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
+
 .. image:: images/talk2010.png
     :scale: 75%
     :align: left
-
-**NEW!** `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
 
 You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
 
