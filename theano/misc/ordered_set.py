@@ -121,10 +121,10 @@ else:
         An implementation of OrderedSet based on the keys of
         an OrderedDict.
         """
-        def __init__(self, iterable=None):
+        def __init__(self, iterable=None, known_deterministic=False):
             self.data = OrderedDict()
             if iterable is not None:
-                self.update(iterable)
+                self.update(iterable, known_deterministic)
 
         def update(self, container, known_deterministic=False):
             check_deterministic(container, known_deterministic)
