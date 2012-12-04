@@ -576,12 +576,14 @@ if 0:
                         #CHECK FOR INPUT ALIASING
                         # OPT: pre-compute this on import
                         tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
-                        tolerated = OrderedSet(idx1 for idx0, idx1 in tolerate_same
-                                if idx0 == destroyed_idx)
+                        assert isinstance(tolerate_same, list)
+                        tolerated = OrderedSet((idx1 for idx0, idx1 in tolerate_same
+                                if idx0 == destroyed_idx), known_deterministic=True)
                         tolerated.add(destroyed_idx)
                         tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
-                        ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
-                                if idx0 == destroyed_idx)
+                        assert isinstance(tolerate_aliased, list)
+                        ignored = OrderedSet((idx1 for idx0, idx1 in tolerate_aliased
+                                if idx0 == destroyed_idx), known_deterministic=True)
                         #print 'tolerated', tolerated
                         #print 'ignored', ignored
                         for i, input in enumerate(app.inputs):
@@ -963,8 +965,9 @@ class DestroyHandler(toolbox.Bookkeeper):
                             if idx0 == destroyed_idx), known_deterministic=True)
                     tolerated.add(destroyed_idx)
                     tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
-                    ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
-                            if idx0 == destroyed_idx)
+                    assert isinstance(tolerate_aliased, list)
+                    ignored = OrderedSet((idx1 for idx0, idx1 in tolerate_aliased
+                            if idx0 == destroyed_idx), known_deterministic=True)
                     #print 'tolerated', tolerated
                     #print 'ignored', ignored
                     for i, input in enumerate(app.inputs):
