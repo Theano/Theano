@@ -7,9 +7,17 @@ except ImportError:
 from theano.gof.python25 import OrderedDict
 import types
 
-def check_deterministic(iterable):
-    if not isinstance(iterable, (list, tuple, OrderedSet, types.GeneratorType)):
-        raise TypeError(type(iterable))
+def check_deterministic(iterable, known_deterministic):
+    # Most places where OrderedSet is used, theano interprets any exception
+    # whatsoever as a problem that an optimization introduced into the graph.
+    # If I raise a TypeError when the DestoryHandler tries to do something
+    # non-deterministic, it will just result in optimizations getting ignored.
+    # So I must use an assert here. In the long term we should fix the rest of
+    # theano to use exceptions correctly, so that this can be a TypeError.
+    if iterable is not None:
+        assert isinstance(iterable, (list, tuple, OrderedSet, types.GeneratorType))
+    if isinstance(iterable, types.GeneratorType):
+        assert known_deterministic
 
 if MutableSet is not None:
     # From http://code.activestate.com/recipes/576694/
@@ -39,13 +47,13 @@ if MutableSet is not None:
 
         # Added by IG-- pre-existing theano code expected sets
         #   to have this method
-        def update(self, iterable):
-            check_deterministic(iterable)
+        def update(self, iterable, known_deterministic = False):
+            check_deterministic(iterable, known_deterministic)
             self |= iterable
 
-        def __init__(self, iterable=None):
+        def __init__(self, iterable=None, known_deterministic=False):
             # Checks added by IG
-            check_deterministic(iterable)
+            check_deterministic(iterable, known_deterministic)
             self.end = end = []
             end += [None, end, end]         # sentinel node for doubly linked list
             self.map = {}                   # key --> [key, prev, next]
@@ -118,7 +126,7 @@ else:
             if iterable is not None:
                 self.update(iterable)
 
-        def update(self, container):
+        def update(self, container, known_deterministic=False):
             check_deterministic(container)
             for elem in container:
                 self.add(elem)

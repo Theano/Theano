@@ -72,3 +72,6 @@ def test_determinism_1():
     # (Sometimes you sample the same outcome twice in a row)
     for i in xrange(10):
         run(1, log)
+
+if __name__ == '__main__':
+    test_determinism_1()

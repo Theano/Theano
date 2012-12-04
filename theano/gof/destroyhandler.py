@@ -960,7 +960,7 @@ class DestroyHandler(toolbox.Bookkeeper):
                     tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
                     assert isinstance(tolerate_same, list)
                     tolerated = OrderedSet((idx1 for idx0, idx1 in tolerate_same
-                            if idx0 == destroyed_idx))
+                            if idx0 == destroyed_idx), known_deterministc=True)
                     tolerated.add(destroyed_idx)
                     tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
                     ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
