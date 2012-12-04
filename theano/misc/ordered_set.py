@@ -127,7 +127,7 @@ else:
                 self.update(iterable)
 
         def update(self, container, known_deterministic=False):
-            check_deterministic(container)
+            check_deterministic(container, known_deterministic)
             for elem in container:
                 self.add(elem)
 
