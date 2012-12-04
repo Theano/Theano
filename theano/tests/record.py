@@ -7,7 +7,7 @@ __email__ = "goodfeli@iro"
 
 from theano.compile import Mode
 import theano
-from pylearn2.utils import hex_digest
+from theano.printing import hex_digest
 
 class MismatchError(Exception):
     """

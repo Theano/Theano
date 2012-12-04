@@ -12,6 +12,7 @@ import sys
 hashlib = None
 
 import numpy
+np = numpy
 
 try:
     import pydot as pd
@@ -1147,6 +1148,17 @@ def position_independent_str(obj):
     return rval
 
 
+def hex_digest(x):
+    """
+    Returns a short, mostly hexadecimal hash of a numpy ndarray
+    """
 
-
-
+    assert isinstance(x, np.ndarray)
+    rval = hashlib.md5(x.tostring()).hexdigest()
+    # hex digest must be annotated with strides to avoid collisions
+    # because the buffer interface only exposes the raw data, not
+    # any info about the semantics of how that data should be arranged
+    # into a tensor
+    rval = rval + '|strides=[' + ','.join(str(stride) for stride in x.strides) + ']'
+    rval = rval + '|shape=[' + ','.join(str(s) for s in x.shape) + ']'
+    return rval
