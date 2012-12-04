@@ -1012,7 +1012,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -1037,10 +1037,14 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
             && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
             && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_UINT64)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_UINT32)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_UINT16)
+            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_UINT8))
         {
             PyErr_SetString(PyExc_TypeError,
-                 "y_idx not int8, int16, int32, or int64");
+                 "y_idx not [u]int8, [u]int16, [u]int32, or [u]int64");
             %(fail)s;
         }
         if ((PyArray_NDIM(%(dnll)s) != 1)
