@@ -7,7 +7,7 @@ except ImportError:
 from theano.gof.python25 import OrderedDict
 import types
 
-def check_deterministic(iterable, known_deterministic):
+def check_deterministic(iterable):
     # Most places where OrderedSet is used, theano interprets any exception
     # whatsoever as a problem that an optimization introduced into the graph.
     # If I raise a TypeError when the DestoryHandler tries to do something
@@ -16,8 +16,6 @@ def check_deterministic(iterable, known_deterministic):
     # theano to use exceptions correctly, so that this can be a TypeError.
     if iterable is not None:
         assert isinstance(iterable, (list, tuple, OrderedSet, types.GeneratorType))
-    if isinstance(iterable, types.GeneratorType):
-        assert known_deterministic
 
 if MutableSet is not None:
     # From http://code.activestate.com/recipes/576694/
@@ -47,13 +45,13 @@ if MutableSet is not None:
 
         # Added by IG-- pre-existing theano code expected sets
         #   to have this method
-        def update(self, iterable, known_deterministic = False):
-            check_deterministic(iterable, known_deterministic)
+        def update(self, iterable):
+            check_deterministic(iterable)
             self |= iterable
 
-        def __init__(self, iterable=None, known_deterministic=False):
+        def __init__(self, iterable=None):
             # Checks added by IG
-            check_deterministic(iterable, known_deterministic)
+            check_deterministic(iterable)
             self.end = end = []
             end += [None, end, end]         # sentinel node for doubly linked list
             self.map = {}                   # key --> [key, prev, next]
@@ -121,13 +119,13 @@ else:
         An implementation of OrderedSet based on the keys of
         an OrderedDict.
         """
-        def __init__(self, iterable=None, known_deterministic=False):
+        def __init__(self, iterable=None):
             self.data = OrderedDict()
             if iterable is not None:
-                self.update(iterable, known_deterministic)
+                self.update(iterable)
 
-        def update(self, container, known_deterministic=False):
-            check_deterministic(container, known_deterministic)
+        def update(self, container):
+            check_deterministic(container)
             for elem in container:
                 self.add(elem)
 

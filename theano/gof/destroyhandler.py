@@ -577,13 +577,13 @@ if 0:
                         # OPT: pre-compute this on import
                         tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
                         assert isinstance(tolerate_same, list)
-                        tolerated = OrderedSet((idx1 for idx0, idx1 in tolerate_same
-                                if idx0 == destroyed_idx), known_deterministic=True)
+                        tolerated = OrderedSet(idx1 for idx0, idx1 in tolerate_same
+                                if idx0 == destroyed_idx)
                         tolerated.add(destroyed_idx)
                         tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
                         assert isinstance(tolerate_aliased, list)
-                        ignored = OrderedSet((idx1 for idx0, idx1 in tolerate_aliased
-                                if idx0 == destroyed_idx), known_deterministic=True)
+                        ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
+                                if idx0 == destroyed_idx)
                         #print 'tolerated', tolerated
                         #print 'ignored', ignored
                         for i, input in enumerate(app.inputs):
@@ -961,13 +961,13 @@ class DestroyHandler(toolbox.Bookkeeper):
                     # OPT: pre-compute this on import
                     tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
                     assert isinstance(tolerate_same, list)
-                    tolerated = OrderedSet((idx1 for idx0, idx1 in tolerate_same
-                            if idx0 == destroyed_idx), known_deterministic=True)
+                    tolerated = OrderedSet(idx1 for idx0, idx1 in tolerate_same
+                            if idx0 == destroyed_idx)
                     tolerated.add(destroyed_idx)
                     tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
                     assert isinstance(tolerate_aliased, list)
-                    ignored = OrderedSet((idx1 for idx0, idx1 in tolerate_aliased
-                            if idx0 == destroyed_idx), known_deterministic=True)
+                    ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
+                            if idx0 == destroyed_idx)
                     #print 'tolerated', tolerated
                     #print 'ignored', ignored
                     for i, input in enumerate(app.inputs):
