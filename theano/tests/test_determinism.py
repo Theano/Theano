@@ -4,9 +4,16 @@ from theano.gof.python25 import OrderedDict
 from theano.tests import disturb_mem
 import numpy as np
 import theano
-from pylearn2.utils import sharedX
 from theano.printing import var_descriptor
 from cStringIO import StringIO
+from theano import config
+from theano import shared
+
+def sharedX(x, name=None):
+    x = np.cast[config.floatX](x)
+    return shared(x, name)
+
+
 
 
 def test_determinism_1():
