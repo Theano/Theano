@@ -7251,10 +7251,14 @@ class Diagonal(Op):
         self.axis2 = axis2
  
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return (type(self) == type(other) and
+                self.offset == other.offset and
+                self.axis1 == other.axis1 and
+                self.axis2 == other.axis2)
 
     def __hash__(self):
-        return hash(type(self))
+        return (hash(type(self)) ^ hash(self.offset) ^
+                hash(self.axis1) ^ hash(self.axis2))
 
     def make_node(self, x):
         x = as_tensor_variable(x)
