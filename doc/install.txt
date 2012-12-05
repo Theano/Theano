@@ -770,9 +770,9 @@ Alternative: Anaconda 0.8.3 (Linux VM on Windows)
 #################################################
 
 ContinuumIO_ was providing a free VM with Theano installed. Now they
-provide a new installation system that install itself on Windows. We
-don't have the time now to update the docs, so we remove the old
-documentations that don't work.
+provide a new installation system that installs itself on Windows.
+Since we lack time to update this part of the documentation, it has been
+removed for now. Check back later!
 
 .. _ContinuumIO: http://continuum.io
 
