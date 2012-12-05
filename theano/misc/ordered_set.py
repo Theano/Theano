@@ -15,7 +15,8 @@ def check_deterministic(iterable):
     # So I must use an assert here. In the long term we should fix the rest of
     # theano to use exceptions correctly, so that this can be a TypeError.
     if iterable is not None:
-        assert isinstance(iterable, (list, tuple, OrderedSet, types.GeneratorType))
+        assert isinstance(iterable, (
+            list, tuple, OrderedSet, types.GeneratorType, basestring))
 
 if MutableSet is not None:
     # From http://code.activestate.com/recipes/576694/
@@ -106,9 +107,21 @@ if MutableSet is not None:
             return '%s(%r)' % (self.__class__.__name__, list(self))
 
         def __eq__(self, other):
+            # Note that we implement only the comparison to another
+            # `OrderedSet`, and not to a regular `set`, because otherwise we
+            # could have a non-symmetric equality relation like:
+            #       my_ordered_set == my_set and my_set != my_ordered_set
             if isinstance(other, OrderedSet):
                 return len(self) == len(other) and list(self) == list(other)
-            return set(self) == set(other)
+            elif isinstance(other, set):
+                # Raise exception to avoid confusion.
+                raise TypeError(
+                        'Cannot compare an `OrderedSet` to a `set` because '
+                        'this comparison cannot be made symmetric: please '
+                        'manually cast your `OrderedSet` into `set` before '
+                        'performing this comparison.')
+            else:
+                return NotImplemented
 
         def __del__(self):
             self.clear()                    # remove circular references
@@ -149,7 +162,7 @@ else:
                 raise KeyError(key)
 
         def __iter__(self):
-            return self.data.keys().__iter__()
+            return self.data.__iter__()
 
         def __reversed__(self):
             return self.data.__reversed__()
@@ -158,18 +171,32 @@ else:
             raise NotImplementedError()
 
         def __eq__(self, other):
-            return type(self) == type(other) and \
-                    self.data == other.data
+            # Note that we implement only the comparison to another
+            # `OrderedSet`, and not to a regular `set`, because otherwise we
+            # could have a non-symmetric equality relation like:
+            #       my_ordered_set == my_set and my_set != my_ordered_set
+            if isinstance(other, OrderedSet):
+                return len(self) == len(other) and list(self) == list(other)
+            elif isinstance(other, set):
+                # Raise exception to avoid confusion.
+                raise TypeError(
+                        'Cannot compare an `OrderedSet` to a `set` because '
+                        'this comparison cannot be made symmetric: please '
+                        'manually cast your `OrderedSet` into `set` before '
+                        'performing this comparison.')
+            else:
+                return NotImplemented
 
-        def __del__(self):
-            # Remove circular references
-            self.data.clear()
-
-
-
-
+        # NB: Contrary to the other implementation above, we do not override
+        # the `__del__` method. On one hand, this is not needed since this
+        # implementation does not add circular references. Moreover, one should
+        # not clear the underlying dictionary holding the data as soon as the
+        # ordered set is cleared from memory, because there may still be
+        # pointers to this dictionary.
 
 
 if __name__ == '__main__':
-    print(OrderedSet('abracadaba'))
-    print(OrderedSet('simsalabim'))
+    print list(OrderedSet('abracadaba'))
+    print list(OrderedSet('simsalabim'))
+    print OrderedSet('boom') == OrderedSet('moob')
+    print OrderedSet('boom') == 'moob'
