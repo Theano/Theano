@@ -491,7 +491,7 @@ def fill_diagonal(a, val):
         2, the main diagonal is the list of locations a[i, i, ..., i]
         (i.e. with indices all identical).)
 
-    Support rectangular matrix and tensor with more then 2 dimensions
+    Support rectangular matrix and tensor with more than 2 dimensions
     if the later have all dimensions are equals.
 
     .. versionadded:: 0.6
