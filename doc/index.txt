@@ -17,9 +17,14 @@ Theano has been powering large-scale computationally intensive scientific invest
 since 2007.  But it is also approachable enough to be used in the classroom
 (IFT6266 at the University of Montreal).
 
-**NEW!** New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_. Please cite the other paper bellow.
+News
+====
 
-`HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
+* New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_. Please cite the other paper bellow.
+
+* Theano 0.6rc2 was released. Everybody is encouraged to update.
+
+* `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
 
 .. image:: images/talk2010.png
     :scale: 75%
