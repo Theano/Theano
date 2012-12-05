@@ -141,7 +141,7 @@ def _contains_cycle(fgraph, orderings):
         # IG: I tried using a shared empty_list = [] constructed
         # outside of the for loop to avoid constructing multiple
         # lists, but this was not any faster.
-        parents.extend(orderings.get(a_n,[]))
+        parents.extend(orderings.get(a_n, []))
 
         if parents:
             for parent in parents:
@@ -982,8 +982,8 @@ class DestroyHandler(toolbox.Bookkeeper):
                     # depend on destroyed_input
                     root_clients = OrderedSet()
                     for r in root_impact:
-                        assert not [a for a,c in self.clients[r].items() if not c]
-                        root_clients.update([a for a,c in self.clients[r].items() if c])
+                        assert not [a for a, c in self.clients[r].items() if not c]
+                        root_clients.update([a for a, c in self.clients[r].items() if c])
                     root_clients.remove(app)
                     if root_clients:
                         rval[app] = root_clients
