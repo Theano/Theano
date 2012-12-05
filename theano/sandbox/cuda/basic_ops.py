@@ -2304,7 +2304,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         x, idx = inp
         out, = out_
         x_orig = x
-        #TODO: if more then 3 dims, reshape the inputs even if not all
+        #TODO: if more than 3 dims, reshape the inputs even if not all
         #dimensions are c contiguous
         if x.ndim > 3 and x.is_c_contiguous():
             x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
