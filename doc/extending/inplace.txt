@@ -202,9 +202,9 @@ Inplace optimization and DebugMode
 ==================================
 
 It is recommended that during the graph construction, all Ops are not inplace. 
-Then an optimization replace them with inplace ones. Currently DebugMode checks
-all optimizations that can be tried even if they got rejected. One reason an inplace
-optimization can get rejected is that there is another Op that already performed
+Then an optimization replaces them with inplace ones. Currently DebugMode checks
+all optimizations that were tried even if they got rejected. One reason an inplace
+optimization can get rejected is that there is another Op that is already being applied
 inplace on the same input. Another reason to reject an inplace optimization is
 if it would introduce a cycle into the graph.
 
