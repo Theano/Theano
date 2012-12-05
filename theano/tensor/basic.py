@@ -2377,8 +2377,8 @@ class SpecifyShape(Op):
 
     def c_code(self, node, nodename, inp, out, sub):
         if not isinstance(node.inputs[0], TensorVariable):
-            # The c code bellow support only Tensor.  super.c_code
-            # will raise an exception to tell that there isn't c code
+            # The C code below supports only Tensor.  super.c_code
+            # will raise an exception to tell that there is no C code
             # for the other cases.
             return super(SpecifyShape, self).c_code(node, nodename,
                                                     inp, out, sub)
@@ -2389,8 +2389,8 @@ class SpecifyShape(Op):
         return """
         if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
             PyErr_Format(PyExc_AssertionError,
-                         "SpecifyShape: vector of shape have %%d element,"
-                         " but the input have %%d dimensions.",
+                         "SpecifyShape: vector of shape has %%d elements,"
+                         " but the input has %%d dimensions.",
                          PyArray_NDIM(%(iname)s),
                          PyArray_DIMS(%(shape)s)[0]);
             %(fail)s;
@@ -2400,7 +2400,7 @@ class SpecifyShape(Op):
                                                                      i))[0];
             if (PyArray_DIMS(%(iname)s)[i] != shp) {
                 PyErr_Format(PyExc_AssertionError,
-                             "SpecifyShape: dim %%d of input have shape %%d,"
+                             "SpecifyShape: dim %%d of input has shape %%d,"
                              " expected %%d.",
                              i, PyArray_DIMS(%(iname)s)[i],
                              shp);
