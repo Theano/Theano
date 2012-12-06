@@ -1153,6 +1153,12 @@ def hex_digest(x):
     Returns a short, mostly hexadecimal hash of a numpy ndarray
     """
 
+    global hashlib
+    if hashlib is None:
+        try:
+            import hashlib
+        except ImportError:
+            raise RuntimeError("Can't run hex_digest because hashlib is not available.")
     assert isinstance(x, np.ndarray)
     rval = hashlib.md5(x.tostring()).hexdigest()
     # hex digest must be annotated with strides to avoid collisions
