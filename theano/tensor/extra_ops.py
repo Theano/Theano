@@ -259,10 +259,13 @@ class RepeatOp(theano.Op):
                      % numpy_unsupported_dtypes), repeats.dtype)
 
         if self.axis is None:
-            out_type = theano.tensor.TensorType(dtype=x.dtype,
-                                                broadcastable=[False])
+            broadcastable=[False]
         else:
-            out_type = x.type
+            broadcastable = list(x.broadcastable)
+            broadcastable[self.axis] = False
+            
+        out_type = theano.tensor.TensorType(x.dtype, broadcastable)
+
         return theano.Apply(self, [x, repeats], [out_type()])
 
     def perform(self, node, inputs, output_storage):
