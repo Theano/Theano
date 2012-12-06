@@ -9,10 +9,12 @@ def filter_output(fd_in):
         if len(toks):
             if toks[0] == "File" and toks[-1].startswith('test'):
                 s += line
-            if toks[0].startswith("ImportError"):
+            elif toks[0].startswith("ImportError"):
                 s += line
-            if toks[0] in ["KnownFailureTest:", "Exception:", "Failure:",
+            elif toks[0] in ["KnownFailureTest:", "Exception:", "Failure:",
                            "AssertionError", "AssertionError:"]:
+                s += line
+            elif toks[0] == "Executing" and toks[1] in ["tests", 'nosetests']:
                 s += line
     return s
 
