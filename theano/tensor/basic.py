@@ -6848,6 +6848,17 @@ class Take(Op):
             
 
 def take(a, indices, axis=None, mode='raise'):
+    a = as_tensor_variable(a)
+    indices = as_tensor_variable(indices)
+    # Reuse advanced indexing in supported cases.
+    if axis is None:
+        if indices.ndim == 1:
+            return a.flatten[indices]
+    else:
+        if indices.ndim == 0:
+            item = [slice(None)] * a.ndim
+            item[axis] = indices
+            return a[tuple(item)]
     return Take(axis, mode)(a, indices)
     
 #########################
