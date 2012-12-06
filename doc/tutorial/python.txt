@@ -12,4 +12,4 @@ tutorials/exercises if you need to learn it or only need a refresher:
   * `Dive into Python <http://diveintopython.net/>`__
   * `Google Python Class <http://code.google.com/edu/languages/google-python-class/index.html>`__
 
-We have a tutorial on how :ref:`python manage its memory <python-memory-management>`
+We have a tutorial on how :ref:`Python manages its memory <python-memory-management>`.
