@@ -47,35 +47,35 @@ FLAGS=${FLAGS},device=cpu,floatX=float64
 
 
 if [ "$RELEASE" ]; then
-    echo "Executing nosetests with default mode and compute_test_value"
+    echo "Executing tests with default mode and compute_test_value"
     THEANO_FLAGS=${FLAGS},compute_test_value=ignore ${NOSETESTS} ${ARGS}
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
 fi
 
-echo "Executing nosetests with mode=FAST_COMPILE with --batch=1000"
+echo "Executing tests with mode=FAST_COMPILE with --batch=1000"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
-echo "Executing nosetests with mode=FAST_RUN"
+echo "Executing tests with mode=FAST_RUN"
 THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
-echo "Executing nosetests with mode=FAST_RUN,floatX=float32"
+echo "Executing tests with mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
-echo "Executing nosetests with linker=vm,vm.lazy=True,floatX=float32"
+echo "Executing tests with linker=vm,vm.lazy=True,floatX=float32"
 THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
-echo "Executing nosetests with mode=DEBUG_MODE with seed of the day $seed"
+echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"
 THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}
 
 echo "Number of elements in the compiledir:"
