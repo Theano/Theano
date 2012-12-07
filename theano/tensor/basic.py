@@ -6833,7 +6833,14 @@ class Take(Op):
     def make_node(self, a, indices):
         a = as_tensor_variable(a)
         indices = as_tensor_variable(indices)
-        return gof.Apply(self, (a, indices), [a.type()])
+        if self.axis is None:
+            broadcastable = [False]
+        else:
+            broadcastable = (a.broadcastable[:self.axis] +
+                             indices.broadcastable +
+                             a.broadcastable[self.axis+1:])
+        return gof.Apply(self, (a, indices),
+                         [TensorType(a.dtype, broadcastable)()])
  
     def perform(self, node, inputs, outputs):
         a, indices = inputs
@@ -6854,14 +6861,9 @@ def take(a, indices, axis=None, mode='raise'):
     a = as_tensor_variable(a)
     indices = as_tensor_variable(indices)
     # Reuse advanced indexing in supported cases.
-    if axis is None:
+    if axis is None and mode == 'raise':
         if indices.ndim == 1:
             return a.flatten()[indices]
-    else:
-        if indices.ndim == 0:
-            item = [slice(None)] * a.ndim
-            item[axis] = indices
-            return a[tuple(item)]
     return Take(axis, mode)(a, indices)
     
 #########################

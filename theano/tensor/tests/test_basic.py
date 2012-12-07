@@ -7170,8 +7170,13 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_take(self):
         X, _ = self.vars
         x, _ = self.vals
-        assert_array_equal(X.take([1,0,3]).eval({X: x}), x.take([1,0,3]))
-        
+        indices = [1,0,3]
+        assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
+        indices = [1,0,1]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        indices = [[1,0,1], [0,1,1]]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
