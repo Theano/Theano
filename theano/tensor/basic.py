@@ -1705,6 +1705,9 @@ class _tensor_py_operators:
                 return Subtensor(args)(self, *Subtensor.collapse(args,
                     lambda entry: isinstance(entry, Variable)))
 
+    def take(self, indices, axis=None, mode='raise'):
+        return take(self, indices, axis, mode)
+        
     # COPYING
     def copy(self):
         return tensor_copy(self)
@@ -6853,7 +6856,7 @@ def take(a, indices, axis=None, mode='raise'):
     # Reuse advanced indexing in supported cases.
     if axis is None:
         if indices.ndim == 1:
-            return a.flatten[indices]
+            return a.flatten()[indices]
     else:
         if indices.ndim == 0:
             item = [slice(None)] * a.ndim

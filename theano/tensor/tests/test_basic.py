@@ -7167,7 +7167,11 @@ class TestTensorInstanceMethods(unittest.TestCase):
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
-
+    def test_take(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.take([1,0,3]).eval({X: x}), x.take([1,0,3]))
+        
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
