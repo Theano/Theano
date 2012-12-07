@@ -263,7 +263,7 @@ class RepeatOp(theano.Op):
         else:
             try:
                 const_reps = basic.get_constant_value(repeats)
-            except TypeError:
+            except basic.NotConstantError:
                 const_reps = None
             if const_reps == 1:
                 broadcastable = x.broadcastable
