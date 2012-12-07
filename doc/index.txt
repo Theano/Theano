@@ -20,7 +20,7 @@ since 2007.  But it is also approachable enough to be used in the classroom
 News
 ====
 
-* New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_. Please cite the other paper bellow.
+* New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_. Please cite the other paper below.
 
 * Theano 0.6rc2 was released. Everybody is encouraged to update.
 
