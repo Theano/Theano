@@ -54,10 +54,10 @@ class SoftmaxWithBias(gof.Op):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
         if x.type.ndim != 2 \
-                or x.type.dtype not in ['float32', 'float64']:
+                or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats')
         if b.type.ndim != 1 \
-                or x.type.dtype not in ['float32', 'float64']:
+                or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats')
 
         sm = x.type.make_variable()
@@ -351,7 +351,7 @@ class Softmax(gof.Op):
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
         if x.type.ndim not in (1, 2) \
-                or x.type.dtype not in ['float32', 'float64']:
+                or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 1-d or 2-d tensor of floats')
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
@@ -746,14 +746,14 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         b = tensor.as_tensor_variable(b)
         y_idx = tensor.as_tensor_variable(y_idx)
         if x.type.ndim != 2 \
-                or x.type.dtype not in ['float32', 'float64']:
+                or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats', x.type)
         if b.type.ndim != 1 \
-                or x.type.dtype not in ['float32', 'float64']:
+                or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats', b.type)
         if y_idx.type.ndim != 1 \
-                or y_idx.type.dtype not in ['int8', 'int16', 'int32', 'int64']:
-            raise ValueError('y_idx must be 1-d tensor of ints', y_idx.type)
+                or y_idx.type.dtype not in tensor.discrete_dtypes:
+            raise ValueError('y_idx must be 1-d tensor of [u]ints', y_idx.type)
 
 #       TODO: Is this correct? It used to be y, not y_idx
         nll = tensor.TensorType(x.type.dtype,
@@ -884,15 +884,6 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
-        {
-            PyErr_SetString(PyExc_TypeError,
-                 "y_idx not int8, int16, int32, or int64");
-            %(fail)s;
-        }
         if (PyArray_DIMS(%(x)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
@@ -982,6 +973,15 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         y_idx = tensor.as_tensor_variable(y_idx)
+        if (dy.type.ndim != 1 or
+            dy.type.dtype not in tensor.float_dtypes):
+            raise ValueError('dy must be 1-d tensor of floats', dy.type)
+        if (sm.type.ndim != 2 or
+            sm.type.dtype not in tensor.float_dtypes):
+            raise ValueError('sm must be 2-d tensor of floats', sm.type)
+        if (y_idx.type.ndim != 1 or
+            y_idx.type.dtype not in tensor.discrete_dtypes):
+            raise ValueError('y_idx must be 1-d tensor of [u]ints', y_idx.type)
         return Apply(self, [dy, sm, y_idx], [sm.type.make_variable()])
 
     def perform(self, node, input_storage, output_storage):
@@ -1012,7 +1012,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -1032,15 +1032,6 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         {
             PyErr_SetString(PyExc_TypeError,
                  "sm type should be float32 or float64");
-            %(fail)s;
-        }
-        if ((PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT64)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT32)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT16)
-            && (PyArray_DESCR(%(y_idx)s)->type_num != NPY_INT8))
-        {
-            PyErr_SetString(PyExc_TypeError,
-                 "y_idx not int8, int16, int32, or int64");
             %(fail)s;
         }
         if ((PyArray_NDIM(%(dnll)s) != 1)
