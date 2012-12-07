@@ -282,6 +282,14 @@ class TestRepeatOp(utt.InferShapeTester):
             for axis in self._possible_axis(ndim):
                 utt.verify_grad(lambda x: RepeatOp(axis=axis)(x, 3), [a])
 
+    def test_broadcastable(self):
+        x = T.TensorType(config.floatX, [False, True, False])()
+        r = RepeatOp(axis=1)(x, 2)
+        self.assertEqual(r.broadcastable, (False, False, False))
+        r =  RepeatOp(axis=1)(x, 1)
+        self.assertEqual(r.broadcastable, (False, True, False))
+        r =  RepeatOp(axis=0)(x, 2)
+        self.assertEqual(r.broadcastable, (False, True, False))
 
 class TestBartlett(utt.InferShapeTester):
 

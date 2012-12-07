@@ -261,8 +261,15 @@ class RepeatOp(theano.Op):
         if self.axis is None:
             broadcastable=[False]
         else:
-            broadcastable = list(x.broadcastable)
-            broadcastable[self.axis] = False
+            try:
+                const_reps = basic.get_constant_value(repeats)
+            except TypeError:
+                const_reps = None
+            if const_reps == 1:
+                broadcastable = x.broadcastable
+            else:
+                broadcastable = list(x.broadcastable)
+                broadcastable[self.axis] = False
             
         out_type = theano.tensor.TensorType(x.dtype, broadcastable)
 
