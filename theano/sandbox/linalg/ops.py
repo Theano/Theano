@@ -1020,7 +1020,7 @@ class EighGrad(Op):
             self.tri1 = lambda a: numpy.tril(a, -1)
 
     def props(self):
-        return ()
+        return (self.UPLO,)
 
     def __hash__(self):
         return hash((type(self), self.props()))
