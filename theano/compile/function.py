@@ -168,18 +168,18 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             not isinstance(updates, gof.python25.OrderedDict):
         warnings.warn(
             "The parameter 'updates' of theano.function()"
-            " expect an OrderedDict,"
-            " got " + str(type(updates)) + "Using "
+            " expects an OrderedDict,"
+            " got " + str(type(updates)) + ". Using "
             "a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"
-            " if you are using python2.7 or use a list of (shared, update)"
+            " if you are using Python 2.7, or use a list of (shared, update)"
             " pairs. Do not just convert your dictionary to this type before"
             " the call as the conversion will still be non-deterministic.")
 
     if givens is None:
         givens = []
     if not isinstance(inputs, (list, tuple)):
-        raise Exception("Inputs variable of a Theano function should be"
+        raise Exception("Input variables of a Theano function should be"
                         " contained in a list, even when there is a single input.")
 
     # compute some features of the arguments:
