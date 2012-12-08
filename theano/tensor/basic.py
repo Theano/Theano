@@ -736,7 +736,7 @@ class TensorType(Type):
             except AttributeError:
                 msg = ""
             raise TypeError("The numpy.ndarray object is not aligned."
-                            " Theano c code do not support that.",
+                            " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
                             "object strides", data.strides)
