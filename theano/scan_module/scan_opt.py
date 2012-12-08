@@ -837,6 +837,11 @@ class ScanSaveMem(gof.Optimizer):
                     if not (idx in replaced_outs) and not idx in not_required:
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
+                # Check if the new outputs depend on the old scan node
+                old_scan_is_used = [scan_utils.find_up(new.owner, node)
+                                    for old, new in old_new]
+                if any(old_scan_is_used):
+                    return False
                 remove = [ old.owner for (old, new) in old_new]
                 fgraph.replace_all_validate_remove(old_new,
                                                    remove,
