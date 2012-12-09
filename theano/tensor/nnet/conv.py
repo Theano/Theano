@@ -162,7 +162,7 @@ class ConvOp(OpenMPOp):
 #It is an Intel(R) Xeon(R) CPU E5430 @ 2.66GHz. It is computer with theano/tensor/nnet/tests/speed_test_conv.py
 # and took 5 minutes to run.
 #TODO: we should compute this table for each computer/os as this can change.
-#      I saw on one computer that the speed with the shape can be slower then without!
+#      I saw on one computer that the speed with the shape can be slower than without!
 #      using the real shape and the same dtype could also help.
 
 #unroll_batch, unroll_kern, valid time, full time
