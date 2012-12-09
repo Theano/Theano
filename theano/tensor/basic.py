@@ -6855,15 +6855,28 @@ class Take(Op):
             shape = a_shape[:self.axis] + indices_shape + a_shape[self.axis+1:]
         return [shape]
 
-            
-
 def take(a, indices, axis=None, mode='raise'):
     a = as_tensor_variable(a)
     indices = as_tensor_variable(indices)
-    # Reuse advanced indexing in supported cases.
-    if axis is None and mode == 'raise':
-        if indices.ndim == 1:
-            return a.flatten()[indices]
+    # Reuse advanced_subtensor1 if indices is a vector
+    if indices.ndim == 1:
+        if mode == 'clip':
+            indices = clip(indices, 0, a.shape[axis]-1)
+        elif mode == 'wrap':
+            indices = indices % a.shape[axis]
+        if axis is None:
+            return advanced_subtensor1(a.flatten(), indices)
+        elif axis == 0:
+            return advanced_subtensor1(a, indices)
+        else:
+            if axis < 0:
+                axis += a.ndim
+            assert axis >= 0
+            shuffle = range(a.ndim)
+            shuffle[0] = axis
+            shuffle[axis] = 0
+            return advanced_subtensor1(
+                a.dimshuffle(shuffle), indices).dimshuffle(shuffle)
     return Take(axis, mode)(a, indices)
     
 #########################
