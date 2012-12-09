@@ -1229,7 +1229,7 @@ Linear Algebra
     >>> result = batched_dot(first, second)
 
     :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower then dot or tensordot:
+    But numpy einsum is slower than dot or tensordot:
     http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
 
     :param X: left term
