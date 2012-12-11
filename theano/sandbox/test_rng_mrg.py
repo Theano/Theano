@@ -680,20 +680,12 @@ class T_MRG(unittest.TestCase):
 
 def test_multiple_rng():
     """
-    Test that we can have multiple random number generators in parallel, and
-    that we can replicate the stream of one with another. This is meant to fix a
-    previous bug in rng_mrg.MRG_RandomStreams where state_updates was
-    initialized as a class variable, instead of in the __init__ method. This
-    would cause all MRG_RandomStreams objects to share the same state.
+    Test that when we have multiple random number generators, we do not alias
+    the state_updates member. `state_updates` can be useful when attempting to
+    copy the (random) state between two similar theano graphs. The test is
+    meant to detect a previous bug where state_updates was initialized as a
+    class-attribute, instead of the __init__ function.
     """
     rng1 = MRG_RandomStreams(1234)
-    var1 = theano.shared(numpy.ones(1))
-    out1 = rng1.uniform(size=(1,))
-    f1 = theano.function([], out1, updates={var1: out1})
-    assert len(rng1.state_updates) == 1
-    
-    rng2 = MRG_RandomStreams(1234)
-    out2 = rng2.uniform(size=(1,))
-    f2 = theano.function([], out2, updates={var1: out2})
-    assert len(rng1.state_updates) == 1
-    assert len(rng2.state_updates) == 1
+    rng2 = MRG_RandomStreams(2392)
+    assert rng1.state_updates is not rng2.state_updates
