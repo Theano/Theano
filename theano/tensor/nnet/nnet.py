@@ -109,7 +109,7 @@ class SoftmaxWithBias(gof.Op):
 
         if (PyArray_NDIM(%(x)s) != 2)
         {
-            PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
+            PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
             %(fail)s;
         }
         if (PyArray_NDIM(%(b)s) != 1)
@@ -120,7 +120,7 @@ class SoftmaxWithBias(gof.Op):
         if ((PyArray_DESCR(%(x)s)->type_num != NPY_DOUBLE) &&
             (PyArray_DESCR(%(x)s)->type_num != NPY_FLOAT))
         {
-            PyErr_SetString(PyExc_TypeError, "a not float");
+            PyErr_SetString(PyExc_TypeError, "not a float");
             %(fail)s;
         }
         if ((PyArray_DESCR(%(b)s)->type_num != NPY_DOUBLE) &&
@@ -401,13 +401,13 @@ class Softmax(gof.Op):
 
         if (%(x)s->nd != 2)
         {
-            PyErr_SetString(PyExc_ValueError, "a not 2d tensor");
+            PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
             %(fail)s;
         }
         if ((%(x)s->descr->type_num != PyArray_DOUBLE) &&
             (%(x)s->descr->type_num != PyArray_FLOAT))
         {
-            PyErr_SetString(PyExc_TypeError, "a not float");
+            PyErr_SetString(PyExc_TypeError, "not a float");
             %(fail)s;
         }
 
