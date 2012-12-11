@@ -35,27 +35,9 @@ def randomstate_constructor(value, name=None, strict=False,
 
 
 class RandomStreams(raw_random.RandomStreamsBase):
-    """Module component with similar interface to numpy.random
+    """
+    Module component with similar interface to numpy.random
     (numpy.random.RandomState)
-
-    """
-
-    state_updates = []
-    """A list of pairs of the form (input_r, output_r).  This will be
-    over-ridden by the module instance to contain stream
-    generators.
-
-    """
-
-    default_instance_seed = None
-    """Instance variable should take None or integer value.  Used to
-    seed the random number generator that provides seeds for member
-    streams
-
-    """
-
-    gen_seedgen = None
-    """numpy.RandomState instance that gen() uses to seed new streams.
     """
 
     def updates(self):
@@ -71,8 +53,13 @@ class RandomStreams(raw_random.RandomStreamsBase):
 
         """
         super(RandomStreams, self).__init__()
+        # A list of pairs of the form (input_r, output_r).  This will be
+        # over-ridden by the module instance to contain stream generators.
         self.state_updates = []
+        # Instance variable should take None or integer value. Used to seed the
+        # random number generator that provides seeds for member streams.
         self.default_instance_seed = seed
+        # numpy.RandomState instance that gen() uses to seed new streams.
         self.gen_seedgen = numpy.random.RandomState(seed)
 
     def seed(self, seed=None):
