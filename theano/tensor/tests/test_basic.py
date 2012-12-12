@@ -7167,6 +7167,26 @@ class TestTensorInstanceMethods(unittest.TestCase):
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
+    def test_take(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        indices = [1,0,3]
+        assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
+        indices = [1,0,1]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        indices = [-10,5,12]
+        assert_array_equal(X.take(indices, 1, mode='wrap').eval({X: x}),
+                           x.take(indices, 1, mode='wrap'))
+        assert_array_equal(X.take(indices, -1, mode='wrap').eval({X: x}),
+                           x.take(indices, -1, mode='wrap'))
+        assert_array_equal(X.take(indices, 1, mode='clip').eval({X: x}),
+                           x.take(indices, 1, mode='clip'))
+        assert_array_equal(X.take(indices, -1, mode='clip').eval({X: x}),
+                           x.take(indices, -1, mode='clip'))
+        indices = [[1,0,1], [0,1,1]]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        # Test equivalent advanced indexing
+        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 
