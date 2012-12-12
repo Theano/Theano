@@ -107,12 +107,9 @@ def remove_constants_and_unused_inputs_scan(node):
             identical_seqs = [x for x in nw_outer
                                   if scan_utils.equal_computations(
                                       [x], [node.inputs[idx + 1]])]
-            if identical_seqs and False:
+            if identical_seqs:
                 index = node.inputs.index(identical_seqs[0]) - 1
-                if op_ins[index] not in givens.keys():
-                    givens[op_ins[idx]] = op_ins[index]
-                else:
-                    givens[op_ins[idx]] = givens[op_ins[index]]
+                givens[op_ins[idx]] = op_ins[index]
             else:
                 nw_inner += [op_ins[idx]]
                 nw_outer += [node.inputs[idx + 1]]
