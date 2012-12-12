@@ -1349,7 +1349,7 @@ def scan_merge_inouts(node):
                 try:
                     vsh = int(opt.get_constant_value(sh))
                     vssh = int(opt.get_constant_value(ssh))
-                except:
+                except TypeError:
                     return o
                 if vsh == vssh:
                     return so
