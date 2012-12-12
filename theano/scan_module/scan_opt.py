@@ -842,7 +842,10 @@ class ScanSaveMem(gof.Optimizer):
                                     for old, new in old_new]
                 if any(old_scan_is_used):
                     return False
-                remove = [ old.owner for (old, new) in old_new]
+                remove = [old.owner for (old, new) in old_new]
+                # As Fred suggested assert that also the old node is not in
+                # the Graph as that will make things suboptimal
+                remove.append(node)
                 fgraph.replace_all_validate_remove(old_new,
                                                    remove,
                                                    reason='scan_save_mem')
