@@ -7269,7 +7269,8 @@ def adv_broadcastable(a, idx):
     
     newidx = tuple(map(replace_slice, idx))
     
-    fakeshape = [bc + 1 for bc in a.broadcastable] 
+    #2 - True = 1; 2 - False = 2
+    fakeshape = [2 - bc for bc in a.broadcastable] 
     retshape = numpy.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
     
@@ -7341,7 +7342,6 @@ class AdvancedSubtensor(Op):
         return [advanced_inc_subtensor(zeros_like(x), gz,
                                        *rest)] + \
             [DisconnectedType()()] * len(rest)
-
 
 class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
