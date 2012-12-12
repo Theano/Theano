@@ -1496,28 +1496,7 @@ def scan_pushout_dot1(node):
                     inner_sitsot_outs = inner_sitsot_outs[:idx] +\
                             inner_sitsot_outs[idx + 1:]
                     # add n_steps as the length
-                    #outer_nitsot.append(node.inputs[0])
                     inner_nitsot_outs.append(new_scan_out)
-                    shape_of = node.fgraph.shape_feature.shape_of
-                    input_shapes = [shape_of[x] for x in node.inputs]
-                    seqs_shape = [x[1:] for x in input_shapes[1:1 + op.n_seqs]]
-
-                    # mit_mot, mit_sot, sit_sot
-                    n_outs = op.n_mit_mot + op.n_mit_sot + op.n_sit_sot
-                    outs_shape = []
-                    for _idx in xrange(n_outs):
-                        for k in op.tap_array[_idx]:
-                            outs_shape += [input_shapes[_idx + op.n_seqs + 1][1:]]
-
-                    # shared_outs
-                    offset = 1 + op.n_seqs + n_outs
-                    for _idx in xrange(op.n_shared_outs):
-                        outs_shape += [input_shapes[_idx + offset]]
-
-                    # non_sequences
-                    offset += op.n_nit_sot + op.n_shared_outs
-                    inner_ins_shapes = seqs_shape + outs_shape + input_shapes[offset:]
-                    assert len(inner_ins_shapes) == len(op.inputs)
 
                     _new_inner_inps = (inner_seqs +
                                        inner_mitmot +
