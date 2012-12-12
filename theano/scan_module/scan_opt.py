@@ -1418,8 +1418,11 @@ def scan_pushout_dot1(node):
     if not isinstance(node.op, scan_op.Scan):
         return False
     # Replace pattern of the form
-    # x[t] = x[t-1] + dot(seq[t], value[t])
+    # x[t] = x[t-1] + dot(seq[t], value)
     # with Sequence.reshape((-1, seq.shape[2])) \dot Value
+    # When seq[t] is a vector/matrix  and `value` is a matrix
+    # Note that this works when only you need X[-1] in the end
+    # and assumes dimshuffle are applied to vectors before calling dot
     op = node.op
     sitsot_ins = op.inner_sitsot(op.inputs)
     sitsot_outs = op.inner_sitsot_outs(op.outputs)
