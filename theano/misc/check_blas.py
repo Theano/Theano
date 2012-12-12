@@ -205,6 +205,8 @@ if __name__ == "__main__":
         C2075/4.2         0.25s
         GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
 
+        GTX460/4.0        0.45s
+
         GTX580/3.2        0.203s
         GTX680/3.2        0.218s
         GTX480/3.2        0.237s
