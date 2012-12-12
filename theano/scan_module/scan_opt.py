@@ -295,6 +295,8 @@ class PushOutNonSeqScan(gof.Optimizer):
                                                    *shape)
 
             # We need to add one extra dimension to the outputs
+            # because the scan op expects for a tensor3, to which an
+            # subtensor is apllied that takes only the last element
             if replace_with:
                 fgraph.replace_all_validate_remove(
                     replace_with.items(),
