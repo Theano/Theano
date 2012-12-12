@@ -6,6 +6,8 @@ import numpy as np
 import theano
 from theano.printing import var_descriptor
 from cStringIO import StringIO
+from nose.plugins.skip import SkipTest
+
 from theano import config
 from theano import shared
 
@@ -23,6 +25,11 @@ def test_determinism_1():
     # change.
     # This specific script is capable of catching a bug where
     # FunctionGraph.toposort was non-deterministic.
+    try:
+        import hashlib
+    except ImportError:
+        raise SkipTest('python version too old to do this test')
+
     def run(replay, log=None):
 
         if not replay:
