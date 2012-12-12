@@ -1366,9 +1366,14 @@ def scan_merge_inouts(node):
     shapes = []
     for x in na.outer_in_nit_sot:
         if x.ndim > 0:
-            shapes.append(
-                node.fgraph.shape_feature.shape_of[x][0])
+            if hasattr(node.fgraph, 'shape_feature'):
+                shapes.append(
+                    node.fgraph.shape_feature.shape_of[x][0])
+            else:
+                shapes.append(x.shape[0])
         else:
+            # If x is a scalar, than it means its value is the number of
+            # items scan is suppose to store for this nit_sot sequence
             shapes.append(x)
     tmp = [map_nitsot_out(i, o, sh, seen)
                             for i, o, sh in zip(na.inner_out_nit_sot,
