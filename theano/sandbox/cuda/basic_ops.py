@@ -59,7 +59,9 @@ class HostFromGpu(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "CudaNdarrayType. Got %s with type %s" % (x,
+                                                                      x.type))
         return Apply(self, [x], [tensor.TensorType(dtype=x.dtype,
                                     broadcastable=x.broadcastable)()])
 
@@ -113,7 +115,9 @@ class GpuFromHost(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "TensorType. Got %s with type %s" % (x,
+                                                                 x.type))
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
                                                  dtype=x.dtype)()])
 
