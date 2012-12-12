@@ -677,3 +677,36 @@ class T_MRG(unittest.TestCase):
             self.assertRaises(ValueError, R.binomial, size)
             self.assertRaises(ValueError, R.multinomial, size, 1, [])
             self.assertRaises(ValueError, R.normal, size)
+
+
+def test_multiple_rng_aliasing():
+    """
+    Test that when we have multiple random number generators, we do not alias
+    the state_updates member. `state_updates` can be useful when attempting to
+    copy the (random) state between two similar theano graphs. The test is
+    meant to detect a previous bug where state_updates was initialized as a
+    class-attribute, instead of the __init__ function.
+    """
+    rng1 = MRG_RandomStreams(1234)
+    rng2 = MRG_RandomStreams(2392)
+    assert rng1.state_updates is not rng2.state_updates
+
+
+def test_random_state_transfer():
+    """
+    Test that random state can be transferred from one theano graph to another.
+    """
+    class Graph():
+        def __init__(self, seed=123):
+            self.rng = MRG_RandomStreams(seed)
+            self.y = self.rng.uniform(size=(1,))
+    g1 = Graph(seed=123)
+    f1 = theano.function([], g1.y)
+    g2 = Graph(seed=987)
+    f2 = theano.function([], g2.y)
+
+    g2.rng.rstate = g1.rng.rstate
+    for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+        su2[0].set_value(su1[0].get_value())
+
+    numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
