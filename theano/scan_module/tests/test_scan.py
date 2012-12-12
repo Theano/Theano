@@ -3292,6 +3292,18 @@ class T_Scan(unittest.TestCase):
         cost = x.sum()
         self.assertRaises(ValueError, tensor.grad, cost, y0)
 
+    def test_savemem_does_not_duplicate_number_of_scan_nodes(self):
+        var = tensor.ones(())
+        values, _ = theano.scan(lambda x: ([x], (), theano.scan_module.until(x)),
+                                          outputs_info=[var], n_steps=2)
+
+        tmp_fn = theano.function([var], values)
+        scan_nodes = [x for x in tmp_fn.maker.fgraph.toposort()
+                      if isinstance(x.op,
+                                    theano.scan_module.scan_op.Scan)]
+        assert len(scan_nodes) == 1
+
+
 
 def test_speed():
     #
