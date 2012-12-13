@@ -40,12 +40,9 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-int_dtypes = map(str, scal.int_types)
-uint_dtypes = map(str, scal.uint_types)
-float_dtypes = map(str, scal.float_types)
 complex_dtypes = map(str, scal.complex_types)
-
 continuous_dtypes = map(str, scal.continuous_types)
+float_dtypes = map(str, scal.float_types)
 discrete_dtypes = map(str, scal.discrete_types)
 all_dtypes = map(str, scal.all_types)
 int_dtypes = map(str, scal.int_types)
@@ -6560,7 +6557,7 @@ class AdvancedSubtensor(Op):
 
     def make_node(self, x, *index):
         x = as_tensor_variable(x)
-        
+
         index = tuple(map(as_index_variable, index))
         
         
@@ -6568,7 +6565,7 @@ class AdvancedSubtensor(Op):
                         (x,) + index,
                          [tensor(dtype = x.type.dtype, 
                                  broadcastable = adv_broadcastable(x, index) )])
-        
+              
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -6576,6 +6573,18 @@ class AdvancedSubtensor(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def infer_shape(self, node, ishapes):
+        # Really special case
+        if len(ishapes) == 3:
+            xshp, ind1shp, ind2shp = ishapes
+            if len(xshp) == 2 and len(ind1shp) == 1 and len(ind2shp) == 1:
+                # if the graph is correct, we can assume ind1shp[0] and
+                # ind2shp[0] will have the same value.
+                # Try to return the one closest to the graph input.
+                if node.inputs[2].owner is None:
+                    return [ind2shp]
+                else:
+                    return [ind1shp]
+        # Default case, we don't know
         return node.fgraph.shape_feature.default_infer_shape(node, ishapes)
 
     def perform(self, node, inputs, out_):
@@ -6653,6 +6662,9 @@ class AdvancedIncSubtensor(Op):
                             broadcastable=x.type.broadcastable)])
 
     def perform(self, node, inputs, out_):
+        # TODO: 1. opt to make this in place 2. generalize as described in
+        # AdvancedSubtensor's perform TODO
+
         out, = out_
         # TODO: same thing as in AdvancedSubtensor's perform TODO
         
