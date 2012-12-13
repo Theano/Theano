@@ -290,8 +290,8 @@ if sys.version_info[:2] < (2, 7):
                 return True
             return dict.__eq__(self, other)
 
-    def __ne__(self, other):
-        return not self == other
+        def __ne__(self, other):
+            return not self == other
 
 else:
     try:
