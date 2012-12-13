@@ -197,6 +197,8 @@ if __name__ == "__main__":
         Test time in float32
         (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
+        M2050(Amazon)/5.0 0.25s
+
         gpu/cuda version
         GTX680/4.2        0.154s
         GTX580/4.2        0.164s
