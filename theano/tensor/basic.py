@@ -6673,7 +6673,13 @@ class AdvancedIncSubtensor(Op):
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
         else:
-            gof.cutils_ext.inplace_increment(out[0], tuple(inputs[2:]), inputs[1])
+            try : 
+                increment = gof.cutils_ext.inplace_increment
+            except: 
+                raise NotImplementedError("Couldn't find
+                inplace_increment, update numpy.") 
+
+            increment(out[0], tuple(inputs[2:]), inputs[1])
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
