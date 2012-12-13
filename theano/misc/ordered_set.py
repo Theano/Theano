@@ -62,6 +62,8 @@ if MutableSet is not None:
             self |= iterable
 
         def __init__(self, iterable=None):
+            # Checks added by IG
+            check_deterministic(iterable)
             self.__root = root = Link()         # sentinel node for doubly linked list
             root.prev = root.next = root
             self.__map = {}                     # key --> link
@@ -110,7 +112,10 @@ if MutableSet is not None:
         def pop(self, last=True):
             if not self:
                 raise KeyError('set is empty')
-            key = next(reversed(self)) if last else next(iter(self))
+            if last:
+                key = next(reversed(self))
+            else:
+                key = next(iter(self))
             self.discard(key)
             return key
 
