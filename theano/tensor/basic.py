@@ -8,7 +8,6 @@ from itertools import izip
 from textwrap import dedent
 
 import numpy
-import advinc
 #from copy import copy as python_copy
 
 import theano
@@ -7368,11 +7367,21 @@ class AdvancedIncSubtensor(Op):
 
         out, = out_
         if not self.inplace:
-        
-        a = inputs[0].copy()
-        advinc.inplace_increment(a, tuple(inputs[2:]), inputs[1])
-        out[0] = a
-        
+            out[0] = inputs[0].copy()
+        else:
+            raise NotImplementedError('In place computation is not'
+                                      ' implemented')
+        if self.set_instead_of_inc:
+            out[0][inputs[2:]] = inputs[1]
+        else:
+            try : 
+                increment = gof.cutils_ext.inplace_increment
+            except: 
+                raise NotImplementedError("Couldn't find
+                inplace_increment, update numpy.") 
+
+            increment(out[0], tuple(inputs[2:]), inputs[1])
+
             out[0][inputs[2:]] = inputs[1]
         else:
 
