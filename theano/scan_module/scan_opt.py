@@ -20,7 +20,7 @@ import theano
 from theano import tensor
 from theano.tensor import opt, get_constant_value
 from theano import gof
-from theano.gof.python25 import maxsize
+from theano.gof.python25 import maxsize, any
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
