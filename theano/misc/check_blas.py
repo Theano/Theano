@@ -198,6 +198,8 @@ if __name__ == "__main__":
         (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
         gpu/cuda version
+        M2050(Amazon)/5.0 0.25s
+
         GTX680/4.2        0.154s
         GTX580/4.2        0.164s
         GTX480/4.2        0.192s

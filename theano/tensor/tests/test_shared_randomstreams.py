@@ -732,7 +732,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         """
         Test that random state can be transferred from one theano graph to another.
         """
-        class Graph():
+        class Graph:
             def __init__(self, seed=123):
                 self.rng = RandomStreams(seed)
                 self.y = self.rng.uniform(size=(1,))
