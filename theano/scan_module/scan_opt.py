@@ -1342,7 +1342,7 @@ def scan_merge_inouts(node):
         return o
 
     def map_nitsot_out(i, o, sh, seen):
-        for p,(si, so, ssh) in enumerate(seen):
+        for p, (si, so, ssh) in enumerate(seen):
             if equal_computations([i], [si], left, right):
                 if equal_computations([sh], [ssh]):
                     return so
@@ -1354,7 +1354,7 @@ def scan_merge_inouts(node):
                 if vsh == vssh:
                     return so
                 elif vsh > vssh:
-                    seen[p] = (i,o,sh)
+                    seen[p] = (i, o, sh)
                     return o
                 else:
                     return so[:vsh]
@@ -1383,9 +1383,6 @@ def scan_merge_inouts(node):
                             for i, o, sh in zip(na.inner_out_nit_sot,
                                             na.outer_out_nit_sot,
                                             shapes)]
-
-
-
 
     seen = []
     na.outer_out_sit_sot = [map_out(i, o, seen)

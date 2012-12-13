@@ -191,8 +191,6 @@ def get_updates_and_outputs(ls):
             this function know how to put it in that order?
 
     """
-
-
     def is_outputs(elem):
         if (isinstance(elem, (list, tuple)) and
             all([isinstance(x, theano.Variable) for x in elem])):
@@ -206,7 +204,7 @@ def get_updates_and_outputs(ls):
             # Make sure the updates will be applied in a deterministic order
             if not isinstance(elem, gof.python25.OrderedDict):
                 warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
-                        +str(type(elem))+". This can make your script non-"
+                        + str(type(elem)) + ". This can make your script non-"
                         "deterministic.")
             return True
         # Dictionaries can be given as lists of tuples
@@ -252,7 +250,6 @@ def get_updates_and_outputs(ls):
                 'conditions). In particular if you need to use constant '
                 'values, you can use `tensor.constant` to turn them into '
                  'Theano variables.')
-
 
     if is_outputs(ls):
         return None, _list(ls), OrderedDict()
