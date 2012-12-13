@@ -7,7 +7,6 @@ import warnings
 from itertools import izip
 
 import numpy
-import advinc
 #from copy import copy as python_copy
 
 import theano
@@ -6666,12 +6665,22 @@ class AdvancedIncSubtensor(Op):
         # AdvancedSubtensor's perform TODO
 
         out, = out_
-        # TODO: same thing as in AdvancedSubtensor's perform TODO
-        
-        a = inputs[0].copy()
-        advinc.inplace_increment(a, tuple(inputs[2:]), inputs[1])
-        out[0] = a
-        
+        if not self.inplace:
+            out[0] = inputs[0].copy()
+        else:
+            raise NotImplementedError('In place computation is not'
+                                      ' implemented')
+        if self.set_instead_of_inc:
+            out[0][inputs[2:]] = inputs[1]
+        else:
+            try : 
+                increment = gof.cutils_ext.inplace_increment
+            except: 
+                raise NotImplementedError("Couldn't find
+                inplace_increment, update numpy.") 
+
+            increment(out[0], tuple(inputs[2:]), inputs[1])
+
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
