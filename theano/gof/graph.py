@@ -67,6 +67,8 @@ class Apply(Node):
 
     """
 
+    __slots__ = ['op', 'inputs', 'outputs', 'tag', 'fgraph', 'deps']
+
     def __init__(self, op, inputs, outputs):
         """Initialize attributes
 
