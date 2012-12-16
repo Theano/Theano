@@ -1796,6 +1796,11 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
+    def sort(self,  axis=-1, kind='quicksort', order=None):
+        """See `theano.tensor.sort`"""
+        from theano.tensor.sort import sort
+        return sort(self, axis, kind, order)
+
     def argsort(self,  axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.argsort`"""
         from theano.tensor.sort import argsort
