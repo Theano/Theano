@@ -1715,7 +1715,7 @@ class _tensor_py_operators:
 
     def take(self, indices, axis=None, mode='raise'):
         return take(self, indices, axis, mode)
-        
+
     # COPYING
     def copy(self):
         return tensor_copy(self)
@@ -1751,7 +1751,7 @@ class _tensor_py_operators:
         return dot(left, right)
 
     dot = __dot__
-    
+
     def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
@@ -1805,7 +1805,7 @@ class _tensor_py_operators:
         """See `theano.tensor.argsort`"""
         from theano.tensor.sort import argsort
         return argsort(self, axis, kind, order)
-        
+
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
         return clip(self, a_min, a_max)
@@ -1815,7 +1815,7 @@ class _tensor_py_operators:
         return conj(self)
 
     conjugate = conj
-    
+
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
         from theano.tensor.extra_ops import repeat
@@ -6856,7 +6856,7 @@ def take(a, indices, axis=None, mode='raise'):
         shape = concatenate([a.shape[:axis], indices.shape, a.shape[axis+1:]])
         ndim = a.ndim + indices.ndim - 1
     return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)
-    
+
 #########################
 # Linalg : Dot
 #########################
@@ -7290,12 +7290,12 @@ class Diagonal(Op):
 
     :return: A vector representing the diagonal elements.
     """
-    
+
     def __init__(self, offset=0, axis1=0, axis2=1):
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
- 
+
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.offset == other.offset and
@@ -7329,7 +7329,7 @@ class Diagonal(Op):
         if offset > 0:
             diag_size = clip(dim2 - offset, 0, dim1)
         elif offset < 0:
-            diag_size = clip(dim1 + offset, 0, dim2) 
+            diag_size = clip(dim1 + offset, 0, dim2)
         else:
             diag_size = minimum(dim1, dim2)
         out_shape.append(diag_size)
