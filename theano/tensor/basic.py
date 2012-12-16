@@ -1443,7 +1443,7 @@ class _tensor_py_operators:
 
     def __sub__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return sub(self, other)
         except (NotImplementedError, TypeError):
@@ -1451,7 +1451,7 @@ class _tensor_py_operators:
 
     def __mul__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return mul(self, other)
         except (NotImplementedError, TypeError):
@@ -1459,7 +1459,7 @@ class _tensor_py_operators:
 
     def __div__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return div_proxy(self, other)
         except IntegerDivisionError:
