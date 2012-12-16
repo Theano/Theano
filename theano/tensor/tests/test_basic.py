@@ -1074,12 +1074,23 @@ ExpInplaceTester = makeBroadcastTester(op=inplace.exp_inplace,
                                        grad=_grad_broadcast_unary_normal,
                                        inplace=True)
 
+
+def _numpy_exp2_round_int(x):
+    # Make sure exp2 on an int returns a value that can be correctly casted
+    # to an int. For instance, numpy.exp2(4) sometimes returns
+    # 15.999999999999998, we make sure we return 16. instead.
+    # This is used in Exp2InplaceTester.
+    out = numpy.exp2(x)
+    if x.dtype in tensor.discrete_dtypes:
+        out = numpy.round(out)
+    return out
+
 Exp2Tester = makeBroadcastTester(op=tensor.exp2,
                                  expected=numpy.exp2,
                                  good=_good_broadcast_unary_normal,
                                  grad=_grad_broadcast_unary_normal)
 Exp2InplaceTester = makeBroadcastTester(op=inplace.exp2_inplace,
-                                        expected=numpy.exp2,
+                                        expected=_numpy_exp2_round_int,
                                          good=_good_broadcast_unary_normal,
                                          grad=_grad_broadcast_unary_normal,
                                          inplace=True)
