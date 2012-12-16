@@ -3279,8 +3279,7 @@ class T_Scan(unittest.TestCase):
             x_tm1.name = 'x'
             y_tm1.name = 'y'
             z_tm1.name = 'z'
-            return x_tm1 ** 2, x_tm1 + y_tm1, x_tm1 + 1
-
+            return x_tm1 ** 2, y_tm1, x_tm1 + 1
         x0 = tensor.vector('X')
         y0 = tensor.vector('y0')
         z0 = tensor.vector('Z')
