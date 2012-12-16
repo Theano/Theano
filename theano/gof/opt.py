@@ -1685,10 +1685,13 @@ def pre_greedy_local_optimizer(list_optimizations, out):
                 else:
                     break
         return results, optimized_vars
-
+    if out.owner:
+        out_index = out.owner.outputs.index(out)
+    else:
+        out_index = 0
     final_outs, optimized_nodes = local_recursive_function(
         list_optimizations, out, {}, 0)
-    return final_outs[0]
+    return final_outs[out_index]
 
 
 ############

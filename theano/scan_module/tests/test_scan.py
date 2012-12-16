@@ -3295,6 +3295,20 @@ class T_Scan(unittest.TestCase):
         cost = x.sum()
         self.assertRaises(ValueError, tensor.grad, cost, y0)
 
+
+    def test_pregreedy_optimizer(self):
+        W = tensor.zeros((5, 4))
+        bv = tensor.zeros((5,))
+        bh = tensor.zeros((4,))
+        v = tensor.matrix('v')
+        (bv_t, bh_t), _ = theano.scan(lambda _: [bv, bh], sequences=v,
+                                      outputs_info=[None, None])
+        chain, _ = theano.scan(
+            lambda x: tensor.dot(tensor.dot(x, W) + bh_t, W.T) + bv_t,
+            outputs_info=v,
+            n_steps=2)
+        theano.function([v], chain)(numpy.zeros((3, 5)))
+
     def test_savemem_does_not_duplicate_number_of_scan_nodes(self):
         var = tensor.ones(())
         values, _ = theano.scan(lambda x: ([x], (), theano.scan_module.until(x)),
