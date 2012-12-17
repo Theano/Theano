@@ -495,7 +495,6 @@ class DownsampleFactorMaxRop(Op):
                             fake_zz[n, k, zi, zj] = x[n, k, i, j]
                             zz[n, k, zi, zj] = ex[n, k, i, j]
 
-    '''
     def c_code(self, node, name, inp, out, sub):
         x, ex = inp
         z, = out
@@ -535,6 +534,7 @@ class DownsampleFactorMaxRop(Op):
           )
         {
           if (%(z)s) Py_XDECREF(%(z)s);
+
           npy_intp dims[4] = {0,0,0,0};
           dims[0]=%(x)s->dimensions[0];
           dims[1]=%(x)s->dimensions[1];
@@ -543,9 +543,15 @@ class DownsampleFactorMaxRop(Op):
           %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
         }
 
-        fake_z = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum, 0)
+
         if (z_shp0 && z_shp1)
         {
+            npy_intp fake_dims[4] = {0,0,0,0};
+            fake_dims[0]=%(x)s->dimensions[0];
+            fake_dims[1]=%(x)s->dimensions[1];
+            fake_dims[2]=z_shp0;
+            fake_dims[3]=z_shp1;
+            PyArrayObject * fake_z = (PyArrayObject*) PyArray_ZEROS(4, fake_dims, typenum, 0);
             for(int b=0;b<%(x)s->dimensions[0];b++){
               for(int k=0;k<%(x)s->dimensions[1];k++){
                 int mini_i = 0;
@@ -554,14 +560,14 @@ class DownsampleFactorMaxRop(Op):
                   int mini_j = 0;
                   int zj = 0;
                   for(int j=0; j<x_shp1_usable; j++){
-                    dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)))[0];
-                    dtype_%(ex)s b = ((dtype_%(ex)s*)(PyArray_GETPTR4(%(ex)s,b,k,i,j)))[0];
+                    dtype_%(x)s  a = ((dtype_%(x)s  *)(PyArray_GETPTR4(%(x)s ,b,k,i,j)))[0];
+                    dtype_%(ex)s fa = ((dtype_%(ex)s *)(PyArray_GETPTR4(%(ex)s,b,k,i,j)))[0];
                     dtype_%(z)s * __restrict__ z = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
-                    dtype_%(z)s * __restrict__ fz = ((dtype_fake_z*)(PyArray_GETPTR4(fake_z,b,k,zi,zj)));
-                    if ((mini_j| mini_i) == 0) || fz[0] < a)
+                    dtype_%(z)s * __restrict__ fz = ((dtype_%(z)s*)(PyArray_GETPTR4(fake_z,b,k,zi,zj)));
+                    if (((mini_j| mini_i) == 0) || fz[0] < a)
                     {
-                      fz[0] = a
-                      z[0] = b
+                      fz[0] = a;
+                      z[0] = fa;
                     }
                     mini_j = ((mini_j + 1) == %(ds1)s) ? 0 : mini_j+1;
                     zj += (mini_j == 0);
@@ -571,9 +577,10 @@ class DownsampleFactorMaxRop(Op):
                 }
               }
             }
+            Py_XDECREF(fake_z);
+            //free(fake_z)
         }
         """ % locals()
 
     def c_code_cache_version(self):
         return (0, 1)
-    '''
