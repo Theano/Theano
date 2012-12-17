@@ -375,11 +375,11 @@ def use(device,
                 import theano.sandbox.cuda.tests.test_driver
                 theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
             if device_properties(use.device_number)["warpSize"] != 32:
-                raise ValueError("Your GPU have a warpSize of 32. Currently"
-                                 " we have code that depend on this. Email"
-                                 " Theano mailing list to tell us about"
+                raise ValueError("Your GPU has a warpSize != 32. Currently"
+                                 " we have code that depends on this. Email"
+                                 " the Theano mailing list to tell us about"
                                  " this new GPU as we don't know any with"
-                                 " this properties")
+                                 " this property")
             if move_shared_float32_to_gpu:
                 handle_shared_float32(True)
 
