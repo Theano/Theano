@@ -269,26 +269,24 @@ class test_RopLop(RopLop_checker):
         maxpoolshps = ((1,1),(3,2),(2,3))
         vx = (rng.rand(2,3,3,4) * 2.0).astype(theano.config.floatX)
         vv = (rng.rand(2,3,3,4) * 2.0).astype(theano.config.floatX)
-        input = tensor.tensor4(dtype=theano.config.floatX)
-        eval_p = tensor.tensor4(dtype=theano.config.floatX)
+        input = theano.shared(vx)
+        eval_p = theano.shared(vv)
         for maxpoolshp in maxpoolshps:
-            for ignore_border in [True,False]:
-                print 'maxpoolshp =', maxpoolshp
-                print 'ignore_border =', ignore_border
+            for ignore_border in [False, True]:
                 nwOp = DownsampleFactorMax(maxpoolshp,
                                            ignore_border=ignore_border)
                 out = nwOp(input).flatten()
                 yv = tensor.Rop(out, input, eval_p)
-                rop_f = function([input, eval_p], yv,
+                rop_f = function([], yv,
                                  on_unused_input='ignore')
                 sy, _ = theano.scan(lambda i, y, x, v:
                                     (tensor.grad(y[i], x) * v).sum(),
                                     sequences=tensor.arange(out.shape[0]),
                                     non_sequences=[out, input, eval_p])
-                scan_f = function([input, eval_p], sy,
+                scan_f = function([], sy,
                                   on_unused_input='ignore')
-                v1 = rop_f(vx, vv)
-                v2 = scan_f(vx, vv)
+                v1 = rop_f()
+                v2 = scan_f()
                 assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
                                                 (v1,v2))
 

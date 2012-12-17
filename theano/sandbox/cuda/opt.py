@@ -27,7 +27,7 @@ from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
-        GpuDownsampleFactorMaxGrad)
+        GpuDownsampleFactorMaxGrad, GpuDownsampleFactorMaxRop)
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
@@ -1103,6 +1103,25 @@ def local_gpu_downsample_factor_max_grad(node):
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
                                               gpu_from_host(z),
                                               gpu_from_host(gz)))]
+@register_opt()
+@local_optimizer([])
+def local_gpu_downsample_factor_max_rop(node):
+    if isinstance(node.op, downsample.DownsampleFactorMaxRop):
+        x, ex = node.inputs
+        if (isinstance(x.type, CudaNdarrayType) or
+            isinstance(ex.type, CudaNdarrayType) or
+            (x.owner and x.owner.op == host_from_gpu) or
+            (ex.owner and ex.owner.op == host_from_gpu)):
+            nwx = x
+            if not isinstance(x.type, CudaNdarrayType):
+                nwx = gpu_from_host(x)
+            nwex = ex
+            if not isinstance(ex.type, CudaNdarrayType):
+                nwex = gpu_from_host(ex)
+            gpu_ds_grad = GpuDownsampleFactorMaxRop(node.op.ds,
+                                                     node.op.ignore_border)
+            rval = node.outputs[0].type.filter_variable(gpu_ds_grad(nwx, nwex))
+            return [rval]
 
 
 from theano.sandbox.cuda.basic_ops import gpu_join
