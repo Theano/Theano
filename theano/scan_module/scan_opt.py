@@ -471,7 +471,7 @@ class PushOutSeqScan(gof.Optimizer):
               not op.as_while and
               not op.outer_mitmot(node)):
             # Nothing in the inner graph should be kept
-            replace_with = {}
+            replace_with = gof.python25.OrderedDict()
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
                     x = node.outputs[local_fgraph.outputs.index(out)]
