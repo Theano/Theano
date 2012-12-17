@@ -769,6 +769,7 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
+        default_openmp = True
         try:
             code = """
             #include <omp.h>
@@ -804,7 +805,7 @@ class OpenMPOp(Op):
                     os.remove(path)
         except OSError, e:
             return False
-        return True
+        return default_openmp
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         op = self
