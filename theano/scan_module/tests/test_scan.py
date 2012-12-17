@@ -3295,6 +3295,17 @@ class T_Scan(unittest.TestCase):
         cost = x.sum()
         self.assertRaises(ValueError, tensor.grad, cost, y0)
 
+    def test_disconnected_gradient(self):
+        v = tensor.vector('v')
+        m = tensor.matrix('m')
+        u0 = tensor.zeros((7,))
+
+        [u, m2], _ = theano.scan(lambda _, u: [u, v],
+                                 sequences=m,
+                                 outputs_info=[u0, None])
+        # This used to raise an exception with older versions becasue for a
+        # disconnected gradient a non disconnected type was returned
+        tensor.grad((m * m2).sum(), v)
 
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
