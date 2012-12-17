@@ -1375,18 +1375,18 @@ class Scan(PureOp):
         def compute_gradient(y, g_y):
             if 'int' in str(g_y.dtype):
                 raise TypeError("Gradients may never be integers but g_y "
-                        "has type "+str(g_y.type))
+                        "has type " + str(g_y.type))
 
-            wrt  = [x for x in theano.gof.graph.inputs([y])
+            wrt = [x for x in theano.gof.graph.inputs([y])
                     if x in diff_inputs]
-            grads =  gradient.grad(
-                    cost = None,
-                    known_grads = {y : g_y },
+            grads = gradient.grad(
+                    cost=None,
+                    known_grads={y: g_y},
                     wrt=wrt, consider_constant=wrt,
                     disconnected_inputs='ignore',
                     return_disconnected='None')
             gmp = dict(zip(wrt, grads))
-            rval =  [gmp.get(p, None) for p in diff_inputs]
+            rval = [gmp.get(p, None) for p in diff_inputs]
             return rval
         dC_dinps_t = [None for inp in diff_inputs]
         disconnected_dC_dinps_t = [True for inp in diff_inputs]
@@ -1727,7 +1727,7 @@ class Scan(PureOp):
         node = outs[0].owner
         for idx in xrange(self.n_shared_outs):
             disconnected = True
-            connected_flags = self.connection_pattern(node)[idx+start]
+            connected_flags = self.connection_pattern(node)[idx + start]
             for dC_dout, connected in zip(dC_douts, connected_flags):
                 if (not isinstance(dC_dout.type, DisconnectedType) and
                         connected):
