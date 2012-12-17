@@ -1087,9 +1087,14 @@ import theano.tensor.signal.downsample as downsample
 def local_gpu_downsample_factor_max(node):
     if isinstance(node.op, downsample.DownsampleFactorMax):
         x, = node.inputs
-        if (x.owner and x.owner.op == host_from_gpu):
+        if ((x.owner and x.owner.op == host_from_gpu) or
+            isinstance(x.type, CudaNdarrayType)):
+            nwx = x
+            if not isinstance(x.type, CudaNdarrayType):
+                nwx = gpu_from_host(x)
             gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
-            return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
+            rval = node.outputs[0].type.filter_variable(gpu_ds(nwx))
+            return [rval]
 
 
 @register_opt()
@@ -1097,12 +1102,27 @@ def local_gpu_downsample_factor_max(node):
 def local_gpu_downsample_factor_max_grad(node):
     if isinstance(node.op, downsample.DownsampleFactorMaxGrad):
         x, z, gz = node.inputs
-        if (x.owner and x.owner.op == host_from_gpu):
+        if ((x.owner and x.owner.op == host_from_gpu) or
+            isinstance(x.type, CudaNdarrayType) or
+            (z.owner and z.owner.op == host_from_gpu) or
+            isinstance(z.type, CudaNdarrayType) or
+            (gz.owner and gz.owner.op == host_from_gpu) or
+            isinstance(gz.type, CudaNdarrayType)):
+            nwx = x
+            nwz = z
+            nwgz = gz
+            if not isinstance(x.type, CudaNdarrayType):
+                nwx = gpu_from_host(x)
+            if not isinstance(z.type, CudaNdarrayType):
+                nwz = gpu_from_host(z)
+            if not isinstance(gz.type, CudaNdarrayType):
+                nwgz = gpu_from_host(gz)
             gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds,
                                                      node.op.ignore_border)
-            return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
-                                              gpu_from_host(z),
-                                              gpu_from_host(gz)))]
+            rval = gpu_ds_grad(nwx, nwz, nwgz)
+            return [node.outputs[0].type.filter_variable(rval)]
+
+
 @register_opt()
 @local_optimizer([])
 def local_gpu_downsample_factor_max_rop(node):
