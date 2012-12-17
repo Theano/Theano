@@ -1334,7 +1334,9 @@ class Scan(PureOp):
                             tmp = ils
                         if any([x is not None for x in tmp]):
                             connection_pattern[iidx + 1][oidx] = True
-        old_conn = [ [v for v in cp] for cp in connection_pattern]
+        # Applying Floyd-Warshall to find all paths connecting inputs to
+        # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
+        # input to `z_t` then `x` is an input to `z_t`.
         n_outs = len(node.outputs)
         for steps in xrange(n_outs):
             for iidx in xrange(n_outs):
