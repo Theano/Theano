@@ -808,7 +808,6 @@ class OpenMPOp(Op):
         return default_openmp
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        op = self
         if self.openmp:
             if OpenMPOp.gxx_support_openmp is None:
                 OpenMPOp.gxx_support_openmp = OpenMPOp.test_gxx_support()
@@ -821,8 +820,7 @@ class OpenMPOp(Op):
                         " To remove this warning set the theano flags `openmp`"
                         " to False.")
             if OpenMPOp.gxx_support_openmp is False:
-                op = copy.copy(self)
-                op.openmp = False
+                self.openmp = False
                 theano.config.openmp = False
-        return super(OpenMPOp, op).make_thunk(node, storage_map,
-                                              compute_map, no_recycling)
+        return super(OpenMPOp, self).make_thunk(node, storage_map,
+                                                compute_map, no_recycling)
