@@ -270,14 +270,18 @@ class test_RopLop(RopLop_checker):
             filter_shape = (2, 2, 2, 3)
             image_dim = len(image_shape)
             filter_dim = len(filter_shape)
-            input      = tensor.TensorType('float64', [False] *
-                                           image_dim)(name='input')
-            filters    = tensor.TensorType('float64', [False] *
-                                           filter_dim)(name='filter')
-            ev_input   = tensor.TensorType('float64', [False] *
-                                           image_dim)(name='ev_input')
-            ev_filters = tensor.TensorType('float64', [False] *
-                                           filter_dim)(name='ev_filters')
+            input      = tensor.TensorType(
+                theano.config.floatX,
+                [False] * image_dim)(name='input')
+            filters    = tensor.TensorType(
+                theano.config.floatX,
+                [False] * filter_dim)(name='filter')
+            ev_input   = tensor.TensorType(
+                theano.config.floatX,
+                [False] * image_dim)(name='ev_input')
+            ev_filters = tensor.TensorType(
+                theano.config.floatX,
+                [False] * filter_dim)(name='ev_filters')
 
             bsize = image_shape[0]
             if image_dim != 3:
