@@ -283,13 +283,6 @@ class test_RopLop(RopLop_checker):
                 theano.config.floatX,
                 [False] * filter_dim)(name='ev_filters')
 
-            bsize = image_shape[0]
-            if image_dim != 3:
-                bsize = 1
-            nkern = filter_shape[0]
-            if filter_dim != 3:
-                nkern = 1
-
             def sym_conv2d(input, filters):
                 return conv.conv2d(input, filters, border_mode=border_mode)
             output = sym_conv2d(input, filters).flatten()
