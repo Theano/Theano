@@ -165,18 +165,17 @@ class DownsampleFactorMax(Op):
         maxout = self(x)
         return [DownsampleFactorMaxGrad(self.ds, ignore_border=self.ignore_border)(x, maxout, gz)]
 
-    # BEGIN CODE CHANGE
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
         # That mean there is no diferientiable path through that input
         # If this imply that you cannot compute some outputs,
         # return None for those.
         if eval_points[0] is None:
+            return [None]
             return eval_points
-        return [DownsampleFactorMaxRop(self.ds,
-                                       ignore_border=self.ignore_border)(inputs[0],
-                                                                         eval_points[0])]
-    # END CODE CHANGE
+        rop = DownsampleFactorMaxRop(self, ds,
+                                     ignore_border=self.ignore_border)
+        return [rop(input[0], eval_points[0])]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -399,7 +398,7 @@ class DownsampleFactorMaxGrad(Op):
 
 class DownsampleFactorMaxRop(Op):
     """
-    TODO
+    Implements the R-operator for the downsample operation.
     """
 
     @staticmethod
