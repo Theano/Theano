@@ -7,6 +7,7 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 #This file should move along with conv.py
 
 from theano import gof, Op, tensor, Variable, Apply
+from theano.tensor import as_tensor_variable
 import numpy, theano
 import __builtin__
 
@@ -121,13 +122,12 @@ class DownsampleFactorMax(Op):
 
     def make_node(self, x):
         if x.type.ndim != 4:
-            raise TypeError()
+            raise TypeError('Expected tensor 4')
         # TODO: consider restrucing the dtype?
+        x = as_tensor_variable(x)
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, inp, out):
-        """
-        """
         x, = inp
         z, = out
         if len(x.shape)!=4:
@@ -273,7 +273,9 @@ class DownsampleFactorMaxGrad(Op):
         assert isinstance(x, Variable) and x.ndim==4
         assert isinstance(maxout, Variable) and maxout.ndim==4
         assert isinstance(gz, Variable) and gz.ndim==4
-
+        x = as_tensor_variable(x)
+        maxout = as_tensor_variable(maxout)
+        gz = as_tensor_variable(gz)
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
@@ -455,11 +457,15 @@ class DownsampleFactorMaxRop(Op):
     def __str__(self):
         return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
 
-    def make_node(self, x, ex):
+    def make_node(self, x, eval_point):
         if x.type.ndim != 4:
-            raise TypeError()
+            raise TypeError('Expected tensor4')
+        if x.type.ndim != 4:
+            return TypeError('Expected tensor4')
         # TODO: consider restrucing the dtype?
-        return gof.Apply(self, [x, ex], [x.type()])
+        x = as_tensor_variable(x)
+        eval_point = as_tensor_variable(eval_point)
+        return gof.Apply(self, [x, eval_point], [x.type()])
 
     def perform(self, node, inp, out):
         x, ex = inp
