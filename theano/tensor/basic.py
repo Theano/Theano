@@ -6924,7 +6924,13 @@ class Dot(Op):
             # the asarray is here because dot between two vectors
             # gives a numpy float object but we need to return a 0d
             # ndarray
-            z[0] = numpy.asarray(numpy.dot(x, y))
+            if x.ndim == 0 or y.ndim == 0:
+                z[0] = numpy.asarray(x * y)
+            elif x.ndim > 2  or y.ndim > 2:
+                axes = [x.ndim - 1, y.ndim - 2]
+                z[0] = numpy.asarray(numpy.tensordot(x, y, axes))
+            else:
+                z[0] = numpy.asarray(numpy.dot(x, y))
         except ValueError, e:
             # The error raised by numpy has no shape information, we mean to
             # add that
