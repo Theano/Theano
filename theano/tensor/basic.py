@@ -6870,11 +6870,7 @@ class Dot(Op):
     """
     Computes the dot product of two variables. For two matrices, this is
     equivalent to matrix multiplication. For two vectors, this is the inner
-    product. When one variable is a scalar, it is like elementwise
-    multiplication. For N dimensions, it is a sum product over the last axis
-    of the first array and the second-to-last axis of the second array:
-
-        dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
+    product.
 
     :note: matrix-matrix products are sometimes optimized to Dot22 ops
         (see tensor.blas)
