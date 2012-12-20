@@ -1531,11 +1531,11 @@ class Dot22(GemmRelated):
 _dot22 = Dot22()
 
 
-@local_optimizer([T.dot])
+@local_optimizer([T._dot])
 def local_dot_to_dot22(node):
     # This works for tensor.outer too because basic.outer is a macro that
     # produces a dot(dimshuffle,dimshuffle) of form 4 below
-    if node.op != T.dot:
+    if not isinstance(node.op, T.Dot):
         return
 
     x, y = node.inputs
