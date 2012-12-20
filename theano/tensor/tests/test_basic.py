@@ -4262,6 +4262,31 @@ class t_dot(unittest.TestCase):
         self.assertTrue(tz.shape == nz.shape)
         self.assertTrue(_approx_eq(nz, tz))
 
+    def test_Op_dims(self):
+        # _dot is a Dot op instance
+        _dot = theano.tensor.basic._dot
+        d0 = scalar()
+        d1 = vector()
+        d2 = matrix()
+        d3 = tensor3()
+
+        self.assertRaises(TypeError, _dot, d0, d0)
+        self.assertRaises(TypeError, _dot, d0, d1)
+        self.assertRaises(TypeError, _dot, d0, d2)
+        self.assertRaises(TypeError, _dot, d0, d3)
+        self.assertRaises(TypeError, _dot, d1, d0)
+        _dot(d1, d1)
+        _dot(d1, d2)
+        self.assertRaises(TypeError, _dot, d1, d3)
+        self.assertRaises(TypeError, _dot, d2, d0)
+        _dot(d2, d1)
+        _dot(d2, d2)
+        self.assertRaises(TypeError, _dot, d2, d3)
+        self.assertRaises(TypeError, _dot, d3, d0)
+        self.assertRaises(TypeError, _dot, d3, d1)
+        self.assertRaises(TypeError, _dot, d3, d2)
+        self.assertRaises(TypeError, _dot, d3, d3)
+
     def test_dot_0d_0d(self):
         self.cmp_dot(1.1, 2.2)
 
