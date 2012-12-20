@@ -6871,7 +6871,7 @@ class Dot(Op):
     Computes the dot product of two variables. For two matrices, this is
     equivalent to matrix multiplication. For two vectors, this is the inner
     product. When one variable is a scalar, it is like elementwise
-    multiplication.  For N dimensions, it is a sum product over the last axis
+    multiplication. For N dimensions, it is a sum product over the last axis
     of the first array and the second-to-last axis of the second array:
 
         dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
@@ -7114,25 +7114,28 @@ def dot(a, b):
     """
     Computes the dot product of two variables. For two matrices, this is
     equivalent to matrix multiplication. For two vectors, this is the inner
-    product. When one variable is a scalar, it is like elementwise
-    multiplication.  For N dimensions, it is a sum product over the last axis
+    product. When one variable is a scalar, this is like elementwise
+    multiplication.  For N dimensions, this is a sum product over the last axis
     of the first array and the second-to-last axis of the second array:
 
         dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
 
-    Note that this dot function will do one of three things, in this sequence:
-        1. If either a or b is scalar, it returns the elementwise product
-           without calling the Dot op.
+    Note that this dot function does one of three things, in the following
+    sequence:
 
-        2. If either a or b has more than 2 dimensions, it calls the tensordot
-           function instead of the Dot op. Tensordot expresses high-dimensional
-           dot products as matrix multiplication and is faster than using a
-           high-dimensional Dot op.
+        1.  If either a or b is scalar, it returns the elementwise product
+            without calling the Theano Dot op.
 
-        3. Otherwise, calls the Dot op on a and b.
+        2.  If either a or b has more than 2 dimensions, it calls Theano's
+            tensordot function with appropriate axes. The tensordot function
+            expresses high-dimensional dot products in terms of 2D matrix
+            multiplications, so it may be possible to futherize optimize for
+            performance.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 ops
-        (see tensor.blas)
+        3.  If both a and b have either 1 or 2 dimensions, it calls Theano's
+            Dot op on a and b.
+
+    :note: matrix-matrix products are sometimes optimized to Dot22 ops.
 
     :note: non matrix-matrix products (including matrix-vector
         products) are handled by numpy.  Ensure that you have linked numpy
