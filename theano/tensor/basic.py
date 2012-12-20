@@ -7089,6 +7089,8 @@ def dot(a, b):
         with a fast BLAS.
 
     """
+    a, b = as_tensor_variable(a), as_tensor_variable(b)
+
     if a.ndim == 0 or b.ndim == 0:
         return a * b
     elif a.ndim > 2 or b.ndim > 2:
@@ -7188,7 +7190,7 @@ def tensordot(a, b, axes = 2):
 
     See the documentation of np.tensordot for more examples.
     """
-    a, b = map(as_tensor_variable, (a, b))
+    a, b = as_tensor_variable(a), as_tensor_variable(b)
 
     # axes must be a scalar or list/tuple of length 2
     if not numpy.isscalar(axes) and len(axes) != 2:
