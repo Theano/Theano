@@ -1,8 +1,8 @@
 import numpy
 import unittest
+
 import theano
 from theano.tensor import Tensor, TensorType
-
 from theano.compile.sharedvalue import *
 
 
@@ -305,3 +305,7 @@ class Test_SharedVariable(unittest.TestCase):
 
         b = shared(numpy.zeros((5, 5), dtype='float32'))
         self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
+
+    def test_err_symbolic_variable(self):
+        self.assertRaises(TypeError, shared, theano.tensor.ones((2, 3)))
+        shared(numpy.ones((2, 4)))
