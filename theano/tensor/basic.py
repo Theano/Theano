@@ -7112,13 +7112,15 @@ def dot(a, b):
 def tensordot(a, b, axes = 2):
     """
     Given two tensors a and b,tensordot computes a generalized dot product over
-    the provided axes. This implementation reduces all expressions to matrix or
-    vector dot products and is based on code from Tijmen Tieleman's gnumpy
-    (http://www.cs.toronto.edu/~tijmen/gnumpy.html).
+    the provided axes. Theano's implementation reduces all expressions to
+    matrix or vector dot products and is based on code from Tijmen Tieleman's
+    gnumpy (http://www.cs.toronto.edu/~tijmen/gnumpy.html).
 
     :param a: the first tensor variable
+    :type a: symbolic tensor
 
     :param b: the second tensor variable
+    :type b: symbolic tensor
 
     :param axes: an integer or array. If an integer, the number of axes
                  to sum over. If an array, it must have two array
@@ -7142,10 +7144,12 @@ def tensordot(a, b, axes = 2):
                  (Remember axes are zero-indexed!) The 2nd axis of a and the
                  3rd axis of b must have the same shape; the same is true for
                  the 3rd axis of a and the 1st axis of b.
+    :type axes: int or array-like of length 2
 
     :returns: a tensor with shape equal to the concatenation of a's shape
               (less any dimensions that were summed over) and b's shape
               (less any dimensions that were summed over).
+    :rtype: symbolic tensor
 
     It may be helpful to consider an example to see what tensordot does.
     Theano's implementation is identical to NumPy's. Here a has shape (2, 3, 4)
@@ -7192,7 +7196,7 @@ def tensordot(a, b, axes = 2):
         print(b.shape) #(5,6,4,3)
         print(c.shape) #(2,3,4,5,6,4,3)
 
-    See the documentation of np.tensordot for more examples.
+    See the documentation of numpy.tensordot for more examples.
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
 
