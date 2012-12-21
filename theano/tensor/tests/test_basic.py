@@ -5520,39 +5520,19 @@ class test_tensordot(unittest.TestCase):
         bvec = vector()
 
         # Test invalid length for axes
-        try:
-            c = tensordot(amat, bmat, (0, 1, 2))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, tensordot, amat, bmat, (0, 1, 2))
 
         # Test axes of uneven length
-        try:
-            c = tensordot(amat, bmat, ((0, 1), (0)))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, tensordot, amat, bmat, ((0, 1), (0)))
 
         # Test invalid len(axes) given inputs are matrices
-        try:
-            c = tensordot(amat, bmat, ((0, 1, 2), (0, 1, 2)))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, tensordot, amat, bmat, ((0,1,2),(0,1,2)))
 
         # Test invalid axes[1] given that y is a vector
-        try:
-            c = tensordot(amat, bvec, (0, 1))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, tensordot, amat, bvec, (0, 1))
 
         # Test invalid scalar axes given inputs are matrices
-        try:
-            c = tensordot(amat, bvec, 2)
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, tensordot, amat, bvec, 2)
 
     def test_weird_valid_axes(self):
         # Test matrix-matrix
