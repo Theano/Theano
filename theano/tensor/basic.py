@@ -7208,13 +7208,15 @@ def tensordot(a, b, axes = 2):
     # if 'axes' is a number of axes to multiply and sum over (trailing axes
     # of a, leading axes of b), we can just reshape and use dot.
     elif numpy.isscalar(axes):
+        axes = int(axes)
+
         # check if axes is valid given the dimension of a and b
         if axes > a.ndim:
-            raise ValueError('axes should be smaller than the dimension of '
+            raise ValueError('axes can not be larger than the dimension of '
                     'a (a.ndim=%i, axes=%i)' % (a.ndim, axes))
         if axes > b.ndim:
-            raise ValueError('axes should be smaller than the dimension of '
-                    'b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
+            raise ValueError('axes can not be larger than than the dimension '
+                             'of b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
 
         outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
         outndim = a.ndim + b.ndim - (2 * axes)
