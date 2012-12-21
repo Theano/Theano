@@ -7202,8 +7202,8 @@ def tensordot(a, b, axes = 2):
 
     # axes must be a scalar or list/tuple of length 2
     if not numpy.isscalar(axes) and len(axes) != 2:
-        raise ValueError('Axes should be scalar valued or a '
-                         'list/tuple of len 2 (%r was provided)' % axes)
+        raise ValueError('Axes should be an integer or a '
+                         'list/tuple of len 2 (%s was provided)' % repr(axes))
 
     # if 'axes' is a number of axes to multiply and sum over (trailing axes
     # of a, leading axes of b), we can just reshape and use dot.
