@@ -6872,12 +6872,14 @@ class Dot(Op):
     equivalent to matrix multiplication. For two vectors, this is the inner
     product.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 ops
-        (see tensor.blas)
+    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
+    (see tensor.blas)
 
-    :note: non matrix-matrix products (including matrix-vector
-        products) are handled by numpy.  Ensure that you have linked numpy
-        with a fast BLAS.
+    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
+    tensor.blas)
+
+    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas)
 
     """
 
@@ -7082,11 +7084,14 @@ def dot(a, b):
         3.  If both a and b have either 1 or 2 dimensions, it calls Theano's
             Dot op on a and b.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 ops.
+    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
+    (see tensor.blas)
 
-    :note: non matrix-matrix products (including matrix-vector
-        products) are handled by numpy.  Ensure that you have linked numpy
-        with a fast BLAS.
+    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
+    tensor.blas)
+
+    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas)
 
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
@@ -7103,7 +7108,6 @@ def dot(a, b):
 #########################
 # Linalg : TensorDot
 #########################
-# TODO: tensordot should be function as described in rst docs.
 
 def tensordot(a, b, axes = 2):
     """
@@ -7195,15 +7199,18 @@ def tensordot(a, b, axes = 2):
     # axes must be a scalar or list/tuple of length 2
     if not numpy.isscalar(axes) and len(axes) != 2:
         raise ValueError('Axes should be scalar valued or a '
-                         'list/tuple of len 2.')
+                         'list/tuple of len 2 (%r was provided)' % axes)
 
     # if 'axes' is a number of axes to multiply and sum over (trailing axes
     # of a, leading axes of b), we can just reshape and use dot.
     elif numpy.isscalar(axes):
         # check if axes is valid given the dimension of a and b
-        if axes > a.ndim or axes > b.ndim:
+        if axes > a.ndim:
             raise ValueError('axes should be smaller than the dimension of '
-                    'a and b (a.ndim=%i, b.ndim=%i)' % (a.ndim, b.ndim))
+                    'a (a.ndim=%i, axes=%i)' % (a.ndim, axes))
+        if axes > b.ndim:
+            raise ValueError('axes should be smaller than the dimension of '
+                    'b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
 
         outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
         outndim = a.ndim + b.ndim - (2 * axes)

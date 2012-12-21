@@ -4310,19 +4310,11 @@ class t_dot(unittest.TestCase):
 
     #numpy return matrix not aligned...
     def test_dot_1d_1d0(self):
-        try:
-            self.cmp_dot(rand(5), rand(0))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, self.cmp_dot, rand(5), rand(0))
 
     #numpy return matrix not aligned...
     def test_dot_1d0_1d(self):
-        try:
-            self.cmp_dot(rand(0), rand(5))
-            assert False
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, self.cmp_dot, rand(0), rand(5))
 
     def test_dot_1d_2d(self):
         self.cmp_dot(rand(6), rand(6, 7))
