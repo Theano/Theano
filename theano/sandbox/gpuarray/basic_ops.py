@@ -188,6 +188,7 @@ class GpuFromCuda(Op):
         return hash(type(self))
 
     def make_node(self, x):
+        from theano.sandbox.cuda import CudaNdArrayType
         if not isinstance(x.type, CudaNdArrayType):
             raise TypeError(x)
         return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
@@ -196,20 +197,8 @@ class GpuFromCuda(Op):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        if globals.kind == 'cuda':
-            base = x
-            while hasattr(base, 'base') and base.base is not None:
-                base = base.base
-            # TODO: I know how to do this in C, but I don't know about python.
-            #       Is perform() actually required to work?
-            raise NotImplementedError("How are we going to get a gpudata pointer from here")
-            x[0] = gpuarray.from_gpudata(b, 0, x.dtype, x.shape,
-                                         base=base, kind=globals.kind,
-                                         context=globals.context,
-                                         strides=x.strides)
-        else:
-            z[0] = gpuarray.array(numpy.asarray(x), kind=globals.kind,
-                                  context=globals.context)
+        z[0] = gpuarray.array(numpy.asarray(x), kind=globals.kind,
+                              context=globals.context)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -224,3 +213,105 @@ class GpuFromCuda(Op):
 
     def infer_shape(self, node, xshp):
         return xshp
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', 'compyte/extension.h', 'cuda.h']
+
+    def c_header_dirs(self):
+        import cuda_ndarray
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'include'))
+        return ret
+
+    def c_lib_dirs(self):
+        import cuda_ndarray
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'lib'))
+        return ret
+
+    def c_libraries(self):
+        return ['cudart', 'cublas', 'cuda']
+
+    def c_conpiler(self):
+        from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+        return NVCC_compiler
+
+    def c_support_code(self):
+        return """
+        void (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
+        void (*cuda_make_buf)(void *c, CUdeviceptr p, size_t sz) = compyte_get_extension('cuda_make_buf');
+        """
+
+    def c_code(self, node, name, input, output, sub):
+        type = node.outputs[0].type
+        if type.kind != "cuda":
+            raise RuntimeError("GpuFromCuda for non-cuda dest")
+        return """
+        int %(name)serr;
+        gpudata *%(name)sdata;
+        CUcontext *%(name)scur;
+        size_t *%(name)sdims;
+        ssize_t *%(name)sstr;
+
+        cuCtxGetCurrent(&%(name)scur);
+        if (%(name)scur != cuda_get_ctx((void *)%(ctx)s)) {
+            PyErr_SetString(PyErr_ValueError, "Ambient context is not the same as output context.");
+            %(fail)s
+        }
+        %(name)sdims = (size_t *)calloc(%(in)s->nd, sizeof(size_t));
+        if (%(name)sdims == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Can't allocate dimensions.");
+            %(fail)s
+        }
+        %(name)sstr = (ssize_t *)calloc(%(in)s->nd, sizeof(ssize_t));
+        if (%(name)sstr == NULL) {
+            free(%(name)sdims);
+            PyErr_SetString(PyExc_MemoryError, "Can't allocate strides.");
+            %(fail)s
+        }
+
+        for (unsigned int i = 0; i < %(in)s->nd; i++) {
+            %(name)sdims[i] = (size_t)CudaNdArray_HOST_DIMS(%(in)s)[i];
+            %(name)sstr[i] = (ssize_t)CudaNdArray_HOST_STRIDES(%(in)s)[i];
+        }
+
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType);
+        if (%(out)s == NULL) {
+            free(%(name)sdims);
+            free(%(name)sstr);
+            %(fail)s
+        }
+
+        %(name)sdata = cuda_make_buf((void *)%(ctx)s, (CUdeviceptr)%(in)s->devdata,
+                                     (size_t)%(in)s->data_allocated);
+        if (%(name)sdata == NULL) {
+            Py_DECREF(%(out)s);
+            free(%(name)sdims);
+            free(%(name)sstr);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate gpudata structure.");
+            %(fail)s
+        }
+        %(name)serr = GpuArray_fromdata(&%(out)s->ga, compyte_get_ops("cuda"),
+                                        %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
+                                        %(name)sdims, %(name)sstr, 1);
+        free(%(name)sdims);
+        free(%(name)sstr);
+        if (%(name)serr != GA_NO_ERROR) {
+            Py_DECREF(%(out)s);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate GpuArray structure.");
+            %(fail)s
+        }
+        Py_INCREF(%(in)s);
+        %(out)s->base = %(in)s;
+        """ % {'name':name, 'ctx': hex(type.context), 'in': inputs[0],
+               'out': outputs[0], 'fail': sub['fail']}
+
+    # Don't implement c_code_cache_version since we harcode the ctx address
+    # in the code block and this will not work across processes
+
+
+gpu_from_cuda = GpuFromCuda()
