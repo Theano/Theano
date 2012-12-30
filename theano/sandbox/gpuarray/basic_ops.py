@@ -51,6 +51,7 @@ class HostFromGpu(Op):
         PyArray_Descr *%(name)s_dtype;
         if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
             if (GpuArray_copy(&%(name)s_ga_s, &%(inp)s->ga, GA_C_ORDER) != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't make contiguous copy");
                 %(fail)s;
             }
             %(name)s_ga = &%(name)s_ga_s;
@@ -75,10 +76,14 @@ class HostFromGpu(Op):
                                     %(name)s_ga);
         if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
         if (%(name)serr != GA_NO_ERROR) {
+            PyErr_SetSring(PyExc_RuntimeError, "Could not read device data.");
             %(fail)s
         }
         """ % {'name': name, 'fail': sub['fail'], 'inp': inputs[0],
                 'out': outputs[0]}
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -153,6 +158,8 @@ class GpuFromHost(Op):
         if (%(name)serr != GA_NO_ERROR) {
             Py_DECREF(%(name)s_tmp);
             Py_DECREF(%(out)s);
+            %(out)s = NULL;
+            PyErr_SetString(PyExc_MemoryError, "Can't allocate device memory for result.");
             %(fail)s
         }
         %(name)serr = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
@@ -166,6 +173,8 @@ class GpuFromHost(Op):
         """ % {'name': name, 'kind': type.kind, 'ctx': hex(type.context),
                'inp': inputs[0], 'out': outputs[0], 'fail': sub['fail'],
                'typecode': type.typecode}
+    # Don't implement c_code_cache_version since we harcode the ctx address
+    # in the code block and this will not work across processes
 
 
 gpu_from_host = GpuFromHost()
