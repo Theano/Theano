@@ -1,4 +1,3 @@
-
 .. _debug_faq:
 
 =========================================
@@ -230,7 +229,7 @@ shows how to print all inputs and outputs:
     import theano
 
     def inspect_inputs(i, node, fn):
-        print i, node, [input[0] for input in fn.inputs],
+        print i, node, [input[0] for input in fn.inputs]
 
     def inspect_outputs(i, node, fn):
         print [output[0] for output in fn.outputs]
