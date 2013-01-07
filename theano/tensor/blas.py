@@ -142,7 +142,7 @@ from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
 import theano.scalar
-import basic as T
+from theano.tensor import basic as T
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.opt import local_dimshuffle_lift
 
@@ -150,16 +150,22 @@ _logger = logging.getLogger('theano.tensor.blas')
 
 try:
     import scipy.linalg.blas
-    _have_fblas = True
+    have_fblas = True
+    try:
+        fblas = scipy.linalg.blas.fblas
+    except AttributeError:
+        # In more recent versions of Scipy, `scipy.linalg.blas.fblas` has been
+        # replaced with `scipy.linalg.blas`.
+        fblas = scipy.linalg.blas
     _blas_gemv_fns = {
-            numpy.dtype('float32'): scipy.linalg.blas.fblas.sgemv,
-            numpy.dtype('float64'): scipy.linalg.blas.fblas.dgemv,
-            numpy.dtype('complex64'): scipy.linalg.blas.fblas.cgemv,
-            numpy.dtype('complex128'): scipy.linalg.blas.fblas.zgemv,
+            numpy.dtype('float32'): fblas.sgemv,
+            numpy.dtype('float64'): fblas.dgemv,
+            numpy.dtype('complex64'): fblas.cgemv,
+            numpy.dtype('complex128'): fblas.zgemv,
             }
 except ImportError, e:
-    _have_fblas = False
-    _logger.warning('Failed to import scipy.linalg.blas.fblas. '
+    have_fblas = False
+    _logger.warning('Failed to import scipy.linalg.blas. '
             'Falling back on slower implementations (%s)', str(e))
 
 
@@ -216,7 +222,7 @@ class Gemv(Op):
 
     def perform(self, node, inputs, out_storage):
         y, alpha, A, x, beta = inputs
-        if _have_fblas and y.shape[0] != 0 and x.shape[0] != 0:
+        if have_fblas and y.shape[0] != 0 and x.shape[0] != 0:
             gemv = _blas_gemv_fns[y.dtype]
 
             if (A.shape[0] != y.shape[0] or A.shape[1] != x.shape[0]):
