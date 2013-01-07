@@ -154,8 +154,9 @@ try:
     try:
         fblas = scipy.linalg.blas.fblas
     except AttributeError:
-        # In more recent versions of Scipy, `scipy.linalg.blas.fblas` has been
-        # replaced with `scipy.linalg.blas`.
+        # A change merged in Scipy development version on 2012-12-02 replaced
+        # `scipy.linalg.blas.fblas` with `scipy.linalg.blas`.
+        # See http://github.com/scipy/scipy/pull/358
         fblas = scipy.linalg.blas
     _blas_gemv_fns = {
             numpy.dtype('float32'): fblas.sgemv,
