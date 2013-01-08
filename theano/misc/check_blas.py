@@ -67,9 +67,8 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
                                  order=order))
     c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
                                  order=order))
-    f = theano.function([], updates={c: 0.4 * c + .8 * T.dot(a, b)},
+    f = theano.function([], updates=[(c, 0.4 * c + .8 * T.dot(a, b))],
                         mode=theano.compile.ProfileMode())
-
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
             f.maker.fgraph.toposort()]):
@@ -206,6 +205,8 @@ if __name__ == "__main__":
         GTX470/4.2        0.238s
         C2075/4.2         0.25s
         GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
+        GT520/4.2         2.68s
+        GTX560/4.2        0.30s
 
         GTX460/4.0        0.45s
 
