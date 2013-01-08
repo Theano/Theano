@@ -1220,6 +1220,7 @@ Linear Algebra
 
     :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
     :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+
     This function computes the dot product between the two tensors, by iterating
     over the first dimension using scan.
     Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
@@ -1229,8 +1230,8 @@ Linear Algebra
     >>> result = batched_dot(first, second)
 
     :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower than dot or tensordot:
-    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+        But numpy einsum is slower than dot or tensordot:
+        http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
 
     :param X: left term
     :param Y: right term
