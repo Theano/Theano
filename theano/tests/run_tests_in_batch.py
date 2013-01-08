@@ -258,6 +258,12 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         for test_floor in xrange(1, n_tests + 1, batch_size):
             for test_id in xrange(test_floor, min(test_floor + batch_size,
                                                  n_tests + 1)):
+                # Print the test we will start in the raw log to help
+                # debug tests that are too long.
+                f_rawlog.write("\nWill run test #%d %s\n" % (test_id,
+                                                         data["ids"][test_id]))
+                f_rawlog.flush()
+
                 proc = subprocess.Popen(
                     ([python, theano_nose, '-v', '--with-id']
                     + [str(test_id)] + argv +
