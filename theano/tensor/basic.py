@@ -4971,9 +4971,10 @@ class IncSubtensor(Op):
 
     def copy_of_x(self, x):
         """
-            x: a string giving the name of a C variable pointing to an array
+            :param x: a string giving the name of a C variable
+                pointing to an array
 
-            Returns C code expression to make a copy of x.
+            :return: C code expression to make a copy of x
 
             Base class uses PyArrayObject *, subclasses may override for
             different types of arrays.
@@ -4991,9 +4992,9 @@ class IncSubtensor(Op):
 
     def make_view_array(self, x, view_ndim):
         """
-            x: a string identifying an array to be viewed
-            view_ndim: a string specifying the number of dimensions
-                     to have in the view
+            :param x: a string identifying an array to be viewed
+            :param view_ndim: a string specifying the number of dimensions
+                to have in the view
 
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.

@@ -433,12 +433,12 @@ to another is shown below.
 
 This gives the following output:
 
-.. code-block:: shell
+.. code-block:: bash
 
-    By default, the two functions are out of sync.
+    # By default, the two functions are out of sync.
     f1() returns  [ 0.72803009]
     f2() returns  [ 0.55056769]
-    We now copy the state of the theano random number generators.
+    # We now copy the state of the theano random number generators.
     f1() returns  [ 0.59044123]
     f2() returns  [ 0.59044123]
 

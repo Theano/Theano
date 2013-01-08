@@ -384,11 +384,11 @@ def grad(cost, wrt, consider_constant=None,
 
     :type return_disconnected: string
     :param return_disconnected:
-        'zero' : If wrt[i] is disconnected, return value i will be
-                 wrt[i].zeros_like()
-        'None' : If wrt[i] is disconnected, return value i will be
-                 None
-        'Disconnected' : returns variables of type DisconnectedType
+        - 'zero' : If wrt[i] is disconnected, return value i will be
+                   wrt[i].zeros_like()
+        - 'None' : If wrt[i] is disconnected, return value i will be
+                   None
+        - 'Disconnected' : returns variables of type DisconnectedType
 
     :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
 

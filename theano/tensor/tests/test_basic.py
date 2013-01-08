@@ -7119,10 +7119,12 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_dot(self):
         X, Y = self.vars
         x, y = self.vals
-        assert_array_equal(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
+        # Use allclose comparison as a user reported on the mailing
+        # list failure otherwise with array that print exactly the same.
+        assert_allclose(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
         Z = X.dot(Y)
         z = x.dot(y)
-        assert_array_equal(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
+        assert_allclose(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
 
     def test_real_imag(self):
         X, Y = self.vars

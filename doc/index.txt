@@ -135,7 +135,7 @@ Community
 
 * We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
   (however, some old tickets can still be found on
-  ``Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
+  `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
 * Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
 

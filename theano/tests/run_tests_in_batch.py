@@ -240,9 +240,30 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         prof_master_nosort = []
         prof_rawlog = []
         dummy_out = open(os.devnull, 'w')
+        path_rawlog = os.path.join(sav_dir, 'timeprof_rawlog')
+        stamp = str(datetime.datetime.now()) + '\n\n'
+        f_rawlog = open(path_rawlog, 'w')
+        f_rawlog.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
+                       ' (raw log)\n\n' + stamp)
+        f_rawlog.flush()
+
+        stamp = str(datetime.datetime.now()) + '\n\n'
+        fields = ('Fields: computation time; nosetests sequential id;'
+                  ' test name; parent class (if any); outcome\n\n')
+        path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
+        f_nosort = open(path_nosort, 'w')
+        f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
+                       ' (by sequential id)\n\n' + stamp + fields)
+        f_nosort.flush()
         for test_floor in xrange(1, n_tests + 1, batch_size):
             for test_id in xrange(test_floor, min(test_floor + batch_size,
                                                  n_tests + 1)):
+                # Print the test we will start in the raw log to help
+                # debug tests that are too long.
+                f_rawlog.write("\nWill run test #%d %s\n" % (test_id,
+                                                         data["ids"][test_id]))
+                f_rawlog.flush()
+
                 proc = subprocess.Popen(
                     ([python, theano_nose, '-v', '--with-id']
                     + [str(test_id)] + argv +
@@ -257,8 +278,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
 
                 # recovering and processing data from pipe
                 err = proc.stderr.read()
-                # building the raw log
-                prof_rawlog.append(err)
+                # print the raw log
+                f_rawlog.write(err)
+                f_rawlog.flush()
+
                 # parsing the output
                 l_err = err.split()
                 try:
@@ -292,34 +315,31 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                                  ' on test')
                     prof_pass = ''
                 prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
+
                 # appending tuple to master list
                 prof_master_nosort.append(prof_tuple)
+
+                # write the no sort file
+                s_nosort = ((str(prof_tuple[0]) + 's').ljust(10) +
+                 " " + prof_tuple[1].ljust(7) + " " +
+                 prof_tuple[2] + prof_tuple[3] +
+                 "\n")
+                f_nosort.write(s_nosort)
+                f_nosort.flush()
+
             print '%s%% time-profiled' % ((test_id * 100) // n_tests)
+        f_rawlog.close()
 
         # sorting tests according to running-time
         prof_master_sort = sorted(prof_master_nosort,
                                   key=lambda test: test[0], reverse=True)
 
         # saving results to readable files
-        path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
         path_sort = os.path.join(sav_dir, 'timeprof_sort')
-        path_rawlog = os.path.join(sav_dir, 'timeprof_rawlog')
-        f_nosort = open(path_nosort, 'w')
         f_sort = open(path_sort, 'w')
-        f_rawlog = open(path_rawlog, 'w')
-        stamp = str(datetime.datetime.now()) + '\n\n'
-        fields = ('Fields: computation time; nosetests sequential id;'
-                  ' test name; parent class (if any); outcome\n\n')
-        f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
-                       ' (by sequential id)\n\n' + stamp + fields)
         f_sort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
                      ' (sorted by computation time)\n\n' + stamp + fields)
         for i in xrange(len(prof_master_nosort)):
-            s_nosort = ((str(prof_master_nosort[i][0]) + 's').ljust(10) +
-                 " " + prof_master_nosort[i][1].ljust(7) + " " +
-                 prof_master_nosort[i][2] + prof_master_nosort[i][3] +
-                 "\n")
-            f_nosort.write(s_nosort)
             s_sort = ((str(prof_master_sort[i][0]) + 's').ljust(10) +
                  " " + prof_master_sort[i][1].ljust(7) + " " +
                  prof_master_sort[i][2] + prof_master_sort[i][3] +
@@ -327,11 +347,6 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             f_sort.write(s_sort)
         f_nosort.close()
         f_sort.close()
-        f_rawlog.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
-                ' (raw log)\n\n' + stamp)
-        for i in xrange(len(prof_rawlog)):
-            f_rawlog.write(prof_rawlog[i])
-        f_rawlog.close()
 
 if __name__ == '__main__':
     sys.exit(main())
