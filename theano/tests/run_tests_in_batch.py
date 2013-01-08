@@ -246,6 +246,15 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         f_rawlog.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
                        ' (raw log)\n\n' + stamp)
         f_rawlog.flush()
+
+        stamp = str(datetime.datetime.now()) + '\n\n'
+        fields = ('Fields: computation time; nosetests sequential id;'
+                  ' test name; parent class (if any); outcome\n\n')
+        path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
+        f_nosort = open(path_nosort, 'w')
+        f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
+                       ' (by sequential id)\n\n' + stamp + fields)
+        f_nosort.flush()
         for test_floor in xrange(1, n_tests + 1, batch_size):
             for test_id in xrange(test_floor, min(test_floor + batch_size,
                                                  n_tests + 1)):
@@ -300,8 +309,18 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                                  ' on test')
                     prof_pass = ''
                 prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
+
                 # appending tuple to master list
                 prof_master_nosort.append(prof_tuple)
+
+                # write the no sort file
+                s_nosort = ((str(prof_tuple[0]) + 's').ljust(10) +
+                 " " + prof_tuple[1].ljust(7) + " " +
+                 prof_tuple[2] + prof_tuple[3] +
+                 "\n")
+                f_nosort.write(s_nosort)
+                f_nosort.flush()
+
             print '%s%% time-profiled' % ((test_id * 100) // n_tests)
         f_rawlog.close()
 
@@ -310,22 +329,11 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                                   key=lambda test: test[0], reverse=True)
 
         # saving results to readable files
-        path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
         path_sort = os.path.join(sav_dir, 'timeprof_sort')
-        f_nosort = open(path_nosort, 'w')
         f_sort = open(path_sort, 'w')
-        fields = ('Fields: computation time; nosetests sequential id;'
-                  ' test name; parent class (if any); outcome\n\n')
-        f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
-                       ' (by sequential id)\n\n' + stamp + fields)
         f_sort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
                      ' (sorted by computation time)\n\n' + stamp + fields)
         for i in xrange(len(prof_master_nosort)):
-            s_nosort = ((str(prof_master_nosort[i][0]) + 's').ljust(10) +
-                 " " + prof_master_nosort[i][1].ljust(7) + " " +
-                 prof_master_nosort[i][2] + prof_master_nosort[i][3] +
-                 "\n")
-            f_nosort.write(s_nosort)
             s_sort = ((str(prof_master_sort[i][0]) + 's').ljust(10) +
                  " " + prof_master_sort[i][1].ljust(7) + " " +
                  prof_master_sort[i][2] + prof_master_sort[i][3] +
