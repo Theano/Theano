@@ -2820,7 +2820,7 @@ class T_Scan(unittest.TestCase):
         o, _ = theano.scan(lambda_fn, x)
         o2, _ = theano.scan(lambda x_t: x_t + 2, x)
 
-        f = theano.function([x], [o, o2])
+        f = theano.function([x], [o, o2], mode=mode_with_opt)
         vx = numpy.zeros((50,), dtype=theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
@@ -3321,7 +3321,8 @@ class T_Scan(unittest.TestCase):
             lambda x: tensor.dot(tensor.dot(x, W) + bh_t, W.T) + bv_t,
             outputs_info=v,
             n_steps=2)
-        theano.function([v], chain)(numpy.zeros((3, 5)))
+        theano.function([v], chain)(numpy.zeros((3, 5),
+                                                dtype=theano.config.floatX))
 
     def test_savemem_does_not_duplicate_number_of_scan_nodes(self):
         var = tensor.ones(())
