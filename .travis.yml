@@ -25,3 +25,8 @@ script:
   - python --version
   - echo $PART
   - theano-nose $PART
+
+
+#after_script:
+#after_failure:
+#after_success:
