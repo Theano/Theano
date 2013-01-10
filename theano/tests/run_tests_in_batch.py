@@ -60,6 +60,7 @@ import subprocess
 import sys
 import datetime
 import theano
+from theano.misc.windows import call_subprocess_Popen
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
@@ -264,7 +265,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                                                          data["ids"][test_id]))
                 f_rawlog.flush()
 
-                proc = subprocess.Popen(
+                proc = call_subprocess_Popen(
                     ([python, theano_nose, '-v', '--with-id']
                     + [str(test_id)] + argv +
                      ['--disabdocstring']),

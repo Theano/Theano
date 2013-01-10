@@ -20,6 +20,7 @@ import warnings
 
 import theano
 from theano import config
+from theano.misc.windows import call_subprocess_Popen
 
 import cc
 import graph
@@ -788,10 +789,10 @@ class OpenMPOp(Op):
                 os.write(fd, code)
                 os.close(fd)
                 fd = None
-                proc = subprocess.Popen(['g++', '-fopenmp', path],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        stdin=dummy_stdin.fileno())
+                proc = call_subprocess_Popen(['g++', '-fopenmp', path],
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             stdin=dummy_stdin.fileno())
                 proc.wait()
                 if proc.returncode != 0:
                     default_openmp = False
