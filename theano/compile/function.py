@@ -174,7 +174,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             "non-deterministic behavior. You should use an OrderedDict"
             " if you are using Python 2.7, or use a list of (shared, update)"
             " pairs. Do not just convert your dictionary to this type before"
-            " the call as the conversion will still be non-deterministic.")
+            " the call as the conversion will still be non-deterministic.",
+            stacklevel=2)
 
     if givens is None:
         givens = []
