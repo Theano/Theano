@@ -715,7 +715,36 @@ class T_SharedRandomStreams(unittest.TestCase):
         s_rng.set_value(rr, borrow=True)
         assert rr is s_rng.container.storage[0]
 
+    def test_multiple_rng_aliasing(self):
+        """
+        Test that when we have multiple random number generators, we do not alias
+        the state_updates member. `state_updates` can be useful when attempting to
+        copy the (random) state between two similar theano graphs. The test is
+        meant to detect a previous bug where state_updates was initialized as a
+        class-attribute, instead of the __init__ function.
+        """
+        rng1 = RandomStreams(1234)
+        rng2 = RandomStreams(2392)
+        assert rng1.state_updates is not rng2.state_updates
+        assert rng1.gen_seedgen is not rng2.gen_seedgen
 
+    def test_random_state_transfer(self):
+        """
+        Test that random state can be transferred from one theano graph to another.
+        """
+        class Graph:
+            def __init__(self, seed=123):
+                self.rng = RandomStreams(seed)
+                self.y = self.rng.uniform(size=(1,))
+        g1 = Graph(seed=123)
+        f1 = function([], g1.y)
+        g2 = Graph(seed=987)
+        f2 = function([], g2.y)
+
+        for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+            su2[0].set_value(su1[0].get_value())
+
+        numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
 
 
 if __name__ == '__main__':

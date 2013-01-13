@@ -1334,6 +1334,18 @@ class Scan(PureOp):
                             tmp = ils
                         if any([x is not None for x in tmp]):
                             connection_pattern[iidx + 1][oidx] = True
+        # Applying Floyd-Warshall to find all paths connecting inputs to
+        # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
+        # input to `z_t` then `x` is an input to `z_t`.
+        n_outs = len(node.outputs)
+        for steps in xrange(n_outs):
+            for iidx in xrange(n_outs):
+                for jidx in xrange(n_outs):
+                    j_inp_idx = self.get_input_pos(jidx) + 1
+                    if connection_pattern[j_inp_idx][iidx] == True:
+                        for k in xrange(len(connection_pattern)):
+                            if connection_pattern[k][iidx]:
+                                connection_pattern[k][jidx] = True
         return connection_pattern
 
     ### GRAD FUNCTION
@@ -1371,14 +1383,50 @@ class Scan(PureOp):
                         self.inner_mitsot_outs(self_outputs) +
                         self.inner_sitsot_outs(self_outputs) +
                         self.inner_nitsot_outs(self_outputs))
+        scan_node = outs[0].owner
+        connection_pattern = self.connection_pattern(scan_node)
+        def get_inp_idx(iidx):
+            if iidx < self.n_seqs:
+                return 1 + iidx
+            oidx = 1 + self.n_seqs
+            iidx = iidx - self.n_seqs
+            for taps in self.mitmot_taps():
+                if len(taps) > iidx:
+                    return oidx
+                else:
+                    oidx += 1
+                    iidx -= len(taps)
+            for taps in self.mitsot_taps():
+                if len(taps) > iidx:
+                    return oidx
+                else:
+                    oidx += 1
+                    iidx -= len(taps)
+
+            if iidx < self.info['n_sit_sot']:
+                return oidx + iidx
+            else:
+                return oidx + iidx + self.info['n_nit_sot']
+
+        def get_out_idx(iidx):
+            oidx = 0
+            for taps in self.mitmot_out_taps():
+                if len(taps) > iidx:
+                    return oidx
+                else:
+                    oidx += 1
+                    iidx -= len(taps)
+            return oidx + iidx
 
         def compute_gradient(y, g_y):
             if 'int' in str(g_y.dtype):
                 raise TypeError("Gradients may never be integers but g_y "
-                        "has type "+str(g_y.type))
+                        "has type " + str(g_y.type))
 
-            wrt  = [x for x in theano.gof.graph.inputs([y])
-                    if x in diff_inputs]
+            odx = get_out_idx(self_outputs.index(y))
+            wrt  = [x for  x in theano.gof.graph.inputs([y])
+                    if (x in diff_inputs) and
+                    (connection_pattern[get_inp_idx(self_inputs.index(x))][odx])]
             grads =  gradient.grad(
                     cost = None,
                     known_grads = {y : g_y },
@@ -1386,7 +1434,7 @@ class Scan(PureOp):
                     disconnected_inputs='ignore',
                     return_disconnected='None')
             gmp = dict(zip(wrt, grads))
-            rval =  [gmp.get(p, None) for p in diff_inputs]
+            rval = [gmp.get(p, None) for p in diff_inputs]
             return rval
         dC_dinps_t = [None for inp in diff_inputs]
         disconnected_dC_dinps_t = [True for inp in diff_inputs]
@@ -1727,7 +1775,7 @@ class Scan(PureOp):
         node = outs[0].owner
         for idx in xrange(self.n_shared_outs):
             disconnected = True
-            connected_flags = self.connection_pattern(node)[idx+start]
+            connected_flags = self.connection_pattern(node)[idx + start]
             for dC_dout, connected in zip(dC_douts, connected_flags):
                 if (not isinstance(dC_dout.type, DisconnectedType) and
                         connected):
@@ -1757,6 +1805,20 @@ class Scan(PureOp):
                                    'Depends on a shared variable'))
             else:
                 gradients.append(x[-1])
+        # Mask disconnected gradients
+        # Ideally we would want to assert that the gradients we are
+        # replacing do indeed evaluate to 0, though that is not practical
+        # from a computational point of view
+        # The gradients of scan are computed replacing Disconnected with 0,
+        # because through the recurrence they can become nonzero
+        for idx in xrange(len(gradients)):
+            disconnected = True
+            for kdx in xrange(len(node.outputs)):
+                if connection_pattern[idx][kdx] and \
+                   not isinstance(dC_douts[kdx].type, DisconnectedType):
+                    disconnected = False
+            if disconnected:
+                gradients[idx] = DisconnectedType()()
         return gradients
 
     def R_op(self, inputs, eval_points):

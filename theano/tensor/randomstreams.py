@@ -122,20 +122,6 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
 
     """
 
-    random_state_variables = []
-    """A list of pairs of the form (input_r, output_r).  This will be
-    over-ridden by the module instance to contain stream
-    generators.
-
-    """
-
-    default_instance_seed = None
-    """Instance variable should take None or integer value.  Used to
-    seed the random number generator that provides seeds for member
-    streams
-
-    """
-
     def __init__(self, seed=None, no_warn=False):
         """:type seed: None or int
 
@@ -147,7 +133,13 @@ class RandomStreams(Component, raw_random.RandomStreamsBase):
         if not no_warn:
             deprecation_warning()
         super(RandomStreams, self).__init__(no_warn=True)
+
+        # A list of pairs of the form (input_r, output_r).  This will be
+        # over-ridden by the module instance to contain stream generators.
         self.random_state_variables = []
+
+        # Instance variable should take None or integer value.  Used to seed the
+        # random number generator that provides seeds for member streams
         self.default_instance_seed = seed
 
     def allocate(self, memo):

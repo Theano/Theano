@@ -736,7 +736,7 @@ class TensorType(Type):
             except AttributeError:
                 msg = ""
             raise TypeError("The numpy.ndarray object is not aligned."
-                            " Theano c code do not support that.",
+                            " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
                             "object strides", data.strides)
@@ -1443,7 +1443,7 @@ class _tensor_py_operators:
 
     def __sub__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return sub(self, other)
         except (NotImplementedError, TypeError):
@@ -1451,7 +1451,7 @@ class _tensor_py_operators:
 
     def __mul__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return mul(self, other)
         except (NotImplementedError, TypeError):
@@ -1459,7 +1459,7 @@ class _tensor_py_operators:
 
     def __div__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return div_proxy(self, other)
         except IntegerDivisionError:
@@ -1662,21 +1662,29 @@ class _tensor_py_operators:
         # standard indexing is used; if it fails with
         # AdvancedIndexingError, advanced indexing
         advanced = False
-        for arg in args:
+        axis = None
+        for i, arg in enumerate(args):
             try:
                 arg == numpy.newaxis or Subtensor.convert(arg)
             except AdvancedIndexingError:
-                advanced = True
-                break
+                if advanced:
+                    axis = None
+                    break
+                else:
+                    advanced = True
+                    axis = i
 
         if advanced:
-            if (len(args) == 1
-                    and isinstance(args[0], (
+            if (axis is not None
+                and numpy.all(a == slice(None) for a in args[:axis])
+                and numpy.all(a == slice(None) for a in args[axis+1:])
+                and isinstance(args[axis], (
+                        numpy.ndarray,
                         list,
                         TensorVariable,
                         TensorConstant,
                         theano.tensor.sharedvar.TensorSharedVariable))):
-                return advanced_subtensor1(self, *args)
+                return self.take(arg, axis)
             else:
                 return AdvancedSubtensor()(self, *args)
         else:
@@ -1704,6 +1712,9 @@ class _tensor_py_operators:
             else:
                 return Subtensor(args)(self, *Subtensor.collapse(args,
                     lambda entry: isinstance(entry, Variable)))
+
+    def take(self, indices, axis=None, mode='raise'):
+        return take(self, indices, axis, mode)
 
     # COPYING
     def copy(self):
@@ -1740,7 +1751,7 @@ class _tensor_py_operators:
         return dot(left, right)
 
     dot = __dot__
-    
+
     def sum(self, axis=None, dtype=None, keepdims=False):
         """See `theano.tensor.sum`"""
         return sum(self, axis=axis, dtype=dtype, keepdims=keepdims)
@@ -1785,11 +1796,16 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
+    def sort(self,  axis=-1, kind='quicksort', order=None):
+        """See `theano.tensor.sort`"""
+        from theano.tensor.sort import sort
+        return sort(self, axis, kind, order)
+
     def argsort(self,  axis=-1, kind='quicksort', order=None):
-        """See `theano.tensor.sort.argsort`"""
+        """See `theano.tensor.argsort`"""
         from theano.tensor.sort import argsort
         return argsort(self, axis, kind, order)
-        
+
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
         return clip(self, a_min, a_max)
@@ -1799,7 +1815,7 @@ class _tensor_py_operators:
         return conj(self)
 
     conjugate = conj
-    
+
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
         from theano.tensor.extra_ops import repeat
@@ -4955,9 +4971,10 @@ class IncSubtensor(Op):
 
     def copy_of_x(self, x):
         """
-            x: a string giving the name of a C variable pointing to an array
+            :param x: a string giving the name of a C variable
+                pointing to an array
 
-            Returns C code expression to make a copy of x.
+            :return: C code expression to make a copy of x
 
             Base class uses PyArrayObject *, subclasses may override for
             different types of arrays.
@@ -4975,9 +4992,9 @@ class IncSubtensor(Op):
 
     def make_view_array(self, x, view_ndim):
         """
-            x: a string identifying an array to be viewed
-            view_ndim: a string specifying the number of dimensions
-                     to have in the view
+            :param x: a string identifying an array to be viewed
+            :param view_ndim: a string specifying the number of dimensions
+                to have in the view
 
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
@@ -6811,6 +6828,38 @@ class AdvancedIncSubtensor(Op):
                               *inputs[2:]).outputs
 advanced_inc_subtensor = AdvancedIncSubtensor()
 
+def take(a, indices, axis=None, mode='raise'):
+    a = as_tensor_variable(a)
+    indices = as_tensor_variable(indices)
+    # Reuse advanced_subtensor1 if indices is a vector
+    if indices.ndim == 1:
+        if mode == 'clip':
+            indices = clip(indices, 0, a.shape[axis] - 1)
+        elif mode == 'wrap':
+            indices = indices % a.shape[axis]
+        if axis is None:
+            return advanced_subtensor1(a.flatten(), indices)
+        elif axis == 0:
+            return advanced_subtensor1(a, indices)
+        else:
+            if axis < 0:
+                axis += a.ndim
+            assert axis >= 0
+            shuffle = range(a.ndim)
+            shuffle[0] = axis
+            shuffle[axis] = 0
+            return advanced_subtensor1(
+                a.dimshuffle(shuffle), indices).dimshuffle(shuffle)
+    if axis is None:
+        shape = indices.shape
+        ndim = indices.ndim
+    else:
+        shape = concatenate(
+                        [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
+        ndim = a.ndim + indices.ndim - 1
+    return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)
+
+
 #########################
 # Linalg : Dot
 #########################
@@ -7237,6 +7286,7 @@ def all(x, axis=None, keepdims=False):
         out = makeKeepDims(x, out, axis)
     return out
 
+
 class Diagonal(Op):
     """Return specified diagonals.
 
@@ -7244,12 +7294,12 @@ class Diagonal(Op):
 
     :return: A vector representing the diagonal elements.
     """
-    
+
     def __init__(self, offset=0, axis1=0, axis2=1):
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
- 
+
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.offset == other.offset and
@@ -7264,7 +7314,7 @@ class Diagonal(Op):
         x = as_tensor_variable(x)
         assert x.ndim >= 2
         return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim -1))])
+                                        broadcastable=[False] * (x.ndim - 1))])
 
     def perform(self, node, (x,), (z,)):
         z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
@@ -7276,14 +7326,14 @@ class Diagonal(Op):
         in_shape, = shapes
         dim1 = in_shape[self.axis1]
         dim2 = in_shape[self.axis2]
-        out_shape = [d for i,d in enumerate(in_shape)
+        out_shape = [d for i, d in enumerate(in_shape)
                      if i not in (self.axis1, self.axis2)]
         # The following logic is inspired by C code of PyArray_Diagonal().
         offset = self.offset
         if offset > 0:
             diag_size = clip(dim2 - offset, 0, dim1)
         elif offset < 0:
-            diag_size = clip(dim1 + offset, 0, dim2) 
+            diag_size = clip(dim1 + offset, 0, dim2)
         else:
             diag_size = minimum(dim1, dim2)
         out_shape.append(diag_size)
@@ -7292,11 +7342,13 @@ class Diagonal(Op):
     def __str__(self):
         return self.__class__.__name__
 
+
 def diagonal(a, offset=0, axis1=0, axis2=1):
     if (offset, axis1, axis2) == (0, 0, 1):
         from theano.sandbox.linalg import extract_diag
         return extract_diag(a)
     return Diagonal(offset, axis1, axis2)(a)
+
 
 class Diag(Op):
 
@@ -7324,6 +7376,7 @@ class Diag(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
 
 def diag(v, k=0):
     if v.ndim == 1:

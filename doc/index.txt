@@ -133,9 +133,11 @@ Community
 
 * Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
 
-* We try to stay organized with `Assembla's tickets <http://www.assembla.com/spaces/theano/tickets>`__
+* We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
+  (however, some old tickets can still be found on
+  `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
-* Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
+* Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
 
 .. toctree::
    :maxdepth: 1

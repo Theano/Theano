@@ -59,7 +59,9 @@ class HostFromGpu(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "CudaNdarrayType. Got %s with type %s" % (x,
+                                                                      x.type))
         return Apply(self, [x], [tensor.TensorType(dtype=x.dtype,
                                     broadcastable=x.broadcastable)()])
 
@@ -113,7 +115,9 @@ class GpuFromHost(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "TensorType. Got %s with type %s" % (x,
+                                                                 x.type))
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
                                                  dtype=x.dtype)()])
 
@@ -2439,9 +2443,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
     def copy_of_x(self, x):
         """
-            x: a string giving the name of a C variable pointing to an array
+            :param x: a string giving the name of a C variable
+                pointing to an array
 
-            Returns C code expression to make a copy of x.
+            :return: C code expression to make a copy of x
 
             Base class uses PyArrayObject *, subclasses may override for
             different types of arrays.
@@ -2450,9 +2455,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
     def make_view_array(self, x, view_ndim):
         """
-            x: a string identifying an array to be viewed
-            view_ndim: a string specifying the number of dimensions
-                     to have in the view
+            :param x: a string identifying an array to be viewed
+            :param view_ndim: a string specifying the number of dimensions
+                to have in the view
 
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.

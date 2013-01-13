@@ -1074,12 +1074,23 @@ ExpInplaceTester = makeBroadcastTester(op=inplace.exp_inplace,
                                        grad=_grad_broadcast_unary_normal,
                                        inplace=True)
 
+
+def _numpy_exp2_round_int(x):
+    # Make sure exp2 on an int returns a value that can be correctly casted
+    # to an int. For instance, numpy.exp2(4) sometimes returns
+    # 15.999999999999998, we make sure we return 16. instead.
+    # This is used in Exp2InplaceTester.
+    out = numpy.exp2(x)
+    if x.dtype in tensor.discrete_dtypes:
+        out = numpy.round(out)
+    return out
+
 Exp2Tester = makeBroadcastTester(op=tensor.exp2,
                                  expected=numpy.exp2,
                                  good=_good_broadcast_unary_normal,
                                  grad=_grad_broadcast_unary_normal)
 Exp2InplaceTester = makeBroadcastTester(op=inplace.exp2_inplace,
-                                        expected=numpy.exp2,
+                                        expected=_numpy_exp2_round_int,
                                          good=_good_broadcast_unary_normal,
                                          grad=_grad_broadcast_unary_normal,
                                          inplace=True)
@@ -7108,10 +7119,12 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_dot(self):
         X, Y = self.vars
         x, y = self.vals
-        assert_array_equal(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
+        # Use allclose comparison as a user reported on the mailing
+        # list failure otherwise with array that print exactly the same.
+        assert_allclose(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
         Z = X.dot(Y)
         z = x.dot(y)
-        assert_array_equal(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
+        assert_allclose(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
 
     def test_real_imag(self):
         X, Y = self.vars
@@ -7167,6 +7180,26 @@ class TestTensorInstanceMethods(unittest.TestCase):
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
+    def test_take(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        indices = [1,0,3]
+        assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
+        indices = [1,0,1]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        indices = [-10,5,12]
+        assert_array_equal(X.take(indices, 1, mode='wrap').eval({X: x}),
+                           x.take(indices, 1, mode='wrap'))
+        assert_array_equal(X.take(indices, -1, mode='wrap').eval({X: x}),
+                           x.take(indices, -1, mode='wrap'))
+        assert_array_equal(X.take(indices, 1, mode='clip').eval({X: x}),
+                           x.take(indices, 1, mode='clip'))
+        assert_array_equal(X.take(indices, -1, mode='clip').eval({X: x}),
+                           x.take(indices, -1, mode='clip'))
+        indices = [[1,0,1], [0,1,1]]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        # Test equivalent advanced indexing
+        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 
