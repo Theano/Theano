@@ -22,6 +22,7 @@ import theano
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
+from theano.misc.windows import call_subprocess_Popen
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 import compilelock
@@ -1592,7 +1593,7 @@ class GCC_compiler(object):
             print >> sys.stderr, ' '.join(cmd)
 
         try:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+            p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
             compile_stderr = p.communicate()[1]
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
