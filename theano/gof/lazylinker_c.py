@@ -1,3 +1,4 @@
+import errno
 import os, logging, sys
 
 import theano
@@ -40,7 +41,7 @@ try:
             # Note: we can't check if it exists before making it, because we are not holding
             # the lock right now, so we could race another process and get error 17 if we lose
             # the race
-            assert e.errno == 17
+            assert e.errno == errno.EEXIST
             assert os.path.isdir(location)
 
     if not os.path.exists(os.path.join(location, '__init__.py')):
