@@ -657,9 +657,9 @@ Theano dependencies is easy, but be aware that it will take a long time
 Homebrew
 ~~~~~~~~
 
-There is some :ref:`instruction
-<https://github.com/samueljohn/homebrew-python>` on how to install
-Theano dependencies with Homebrew instead of MacPort by Samuel John.
+There are some :ref:`instructions
+<https://github.com/samueljohn/homebrew-python>` by Samuel John on how to install
+Theano dependencies with Homebrew instead of MacPort.
 
 
 .. _gpu_macos:
