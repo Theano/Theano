@@ -782,6 +782,10 @@ class GpuCAReduce(GpuOp):
             print >> sio, """
                     ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
             """ % locals()
+
+        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
+        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
+                                for i in range(node.inputs[0].ndim)])
         print >> sio, """
                     );
             CNDA_THREAD_SYNC;
@@ -790,14 +794,16 @@ class GpuCAReduce(GpuOp):
             {
                 PyErr_Format(PyExc_RuntimeError,
                     "Cuda error: %%s: %%s."
-                    " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    " (grid: %%i x %%i; block: %%i x %%i x %%i)"
+                    " %(shapes_format)s \\n",
                     "kernel_reduce_%(pattern)s_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
                     n_threads.x,
                     n_threads.y,
-                    n_threads.z);
+                    n_threads.z,
+                    %(shapes_data)s);
                 %(fail)s;
             }
         """ % locals()
@@ -1382,7 +1388,7 @@ class GpuCAReduce(GpuOp):
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
+            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], NUM_VECTOR_OP_BLOCKS));
             while (n_blocks.x * (n_blocks.y+1) <= NUM_VECTOR_OP_BLOCKS && n_blocks.y <= CudaNdarray_HOST_DIMS(%(x)s)[2])
             {
                 n_blocks.y += 1;
@@ -1559,7 +1565,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [6]  # the version corresponding to the c code in this Op
+        version = [7]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
