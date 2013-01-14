@@ -40,7 +40,7 @@ try:
             # Note: we can't check if it exists before making it, because we are not holding
             # the lock right now, so we could race another process and get error 17 if we lose
             # the race
-            assert 'Errno 17' in str(e)
+            assert e.errno == 17
             assert os.path.isdir(location)
 
     if not os.path.exists(os.path.join(location, '__init__.py')):
