@@ -1410,7 +1410,7 @@ def _check_rows_is_arange_len_labels(rows, labels):
 def _is_const(z, val, approx=False):
     try:
         maybe = opt.get_scalar_constant_value(z)
-    except TypeError:
+    except tensor.NotScalarConstantError:
         return False
     if approx:
         return numpy.allclose(maybe, val)
