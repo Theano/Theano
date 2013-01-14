@@ -281,6 +281,7 @@ class Function(object):
         self.maker = maker
         self.profile = None  # reassigned in FunctionMaker.create
         self.trust_input = False  # If True, we don't check the input parameter
+        self.name = None
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
