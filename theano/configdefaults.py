@@ -6,6 +6,7 @@ from theano.configparser import (
         AddConfigVar, BoolParam, ConfigParam, EnumStr, IntParam,
         TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
+from theano.misc.windows import call_subprocess_Popen
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -99,8 +100,9 @@ enum = EnumStr("g++", "")
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
 dummy_stdin = open(os.devnull)
 try:
-    subprocess.Popen('g++', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                     stdin=dummy_stdin.fileno())
+    call_subprocess_Popen('g++', stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          stdin=dummy_stdin.fileno())
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
