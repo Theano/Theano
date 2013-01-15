@@ -2688,7 +2688,7 @@ def max(x, axis=None, keepdims=False):
 
     try:
         out = max_and_argmax(x, axis)[0]
-    except:
+    except Exception:
         out = CAReduce(scal.maximum, axis)(x)
 
     if keepdims:
