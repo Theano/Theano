@@ -14,7 +14,7 @@ from theano.compile import optdb
 from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint, debugprint
 from theano.tensor import basic as tensor
-from theano.tensor import elemwise, opt
+from theano.tensor import elemwise, opt, NotScalarConstantError
 
 
 ############
@@ -136,9 +136,9 @@ def _is_1(expr):
     """rtype bool. True iff expr is a constant close to 1
     """
     try:
-        v = opt.get_constant_value(expr)
+        v = opt.get_scalar_constant_value(expr)
         return numpy.allclose(v, 1)
-    except TypeError:
+    except tensor.NotScalarConstantError:
         return False
 
 log1msigm_to_softplus = gof.PatternSub(
@@ -275,9 +275,9 @@ def is_neg(var):
     if apply.op == tensor.mul and len(apply.inputs) >= 2:
         for idx, mul_input in enumerate(apply.inputs):
             try:
-                constant = opt.get_constant_value(mul_input)
+                constant = opt.get_scalar_constant_value(mul_input)
                 is_minus_1 = numpy.allclose(constant, -1)
-            except TypeError:
+            except NotScalarConstantError:
                 is_minus_1 = False
             if is_minus_1:
                 # Found a multiplication by -1.
@@ -647,7 +647,7 @@ def local_1msigmoid(node):
             return  # graph is using both sigm and 1-sigm
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
-                val_l = opt.get_constant_value(sub_l)
+                val_l = opt.get_scalar_constant_value(sub_l)
             except Exception, e:
                 return
             if numpy.allclose(numpy.sum(val_l), 1):

@@ -214,8 +214,8 @@ def is_positive(v):
     logger.debug('is_positive: %s' % str(v))
     if v.owner and v.owner.op == tensor.pow:
         try:
-            exponent = tensor.get_constant_value(v.owner.inputs[1])
-        except TypeError:
+            exponent = tensor.get_scalar_constant_value(v.owner.inputs[1])
+        except tensor.basic.NotScalarConstantError:
             return False
         if 0 == exponent % 2:
             return True

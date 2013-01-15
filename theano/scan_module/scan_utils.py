@@ -25,7 +25,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
 from theano.gof.python25 import all, OrderedDict
-from theano.tensor.basic import get_constant_value
+from theano.tensor.basic import get_scalar_constant_value
 
 
 ################ Utility Functions and Classes #######################
@@ -308,7 +308,7 @@ def isNaN_or_Inf_or_None(x):
         isStr = False
     if not isNaN and not isInf:
         try:
-            val = get_constant_value(x)
+            val = get_scalar_constant_value(x)
             isInf = numpy.isinf(val)
             isNaN = numpy.isnan(val)
         except Exception:
