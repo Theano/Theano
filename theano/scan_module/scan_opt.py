@@ -18,7 +18,7 @@ import numpy
 
 import theano
 from theano import tensor
-from theano.tensor import opt, get_constant_value
+from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
 from theano.gof.python25 import maxsize, any
 from theano.gof.opt import Optimizer
@@ -1164,14 +1164,14 @@ class ScanMerge(gof.Optimizer):
 
         nsteps = node.inputs[0]
         try:
-            nsteps = int(get_constant_value(nsteps))
-        except TypeError:
+            nsteps = int(get_scalar_constant_value(nsteps))
+        except tensor.NotScalarConstantError:
             pass
 
         rep_nsteps = rep.inputs[0]
         try:
-            rep_nsteps = int(get_constant_value(rep_nsteps))
-        except TypeError:
+            rep_nsteps = int(get_scalar_constant_value(rep_nsteps))
+        except tensor.NotScalarConstantError:
             pass
 
         # Check to see if it is an input of a different node

@@ -24,7 +24,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
 from theano.gof.python25 import all
-from theano.tensor.basic import get_constant_value
+from theano.tensor.basic import get_scalar_constant_value
 
 
 # Logging function for sending warning or info
