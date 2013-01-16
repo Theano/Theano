@@ -495,7 +495,7 @@ class Function(object):
                     except Exception, e:
                         function_name = "theano function"
                         if self.name:
-                            function_name += 'with name "' + self.name + '" '
+                            function_name += ' with name "' + self.name + '" '
                         #end if
                         e.args = tuple(["Bad input argument to " + function_name +
                                         " at index %d(0-based)" % i] +
