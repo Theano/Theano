@@ -6535,8 +6535,14 @@ class AdvancedSubtensor1(Op):
         x, ilist = ishapes
         return [ilist + x[1:]]
 
-advanced_subtensor1 = AdvancedSubtensor1()
+    def c_code(self, node, name, input_names, output_names, sub):
+        a_name, i_name = input_names[0], input_names[1]
+        output_name = output_names[0]
+        return """
+            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0, %(output_name)s, NPY_RAISE);
+        """ % locals()
 
+advanced_subtensor1 = AdvancedSubtensor1()
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
