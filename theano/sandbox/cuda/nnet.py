@@ -351,7 +351,7 @@ class GpuSoftmax (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (6,) + inline_softmax.code_version
+        return (7,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -384,33 +384,36 @@ class GpuSoftmax (GpuOp):
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
 
-            kSoftmax_%(nodename)s
-                <<<
-                    n_blocks,
-                    n_threads,
-                    n_shared_bytes
-                >>>(
-                        CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1],
-
-                        CudaNdarray_DEV_DATA(%(x)s),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
-
-                        CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
-                );
-            CNDA_THREAD_SYNC;
-            cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err)
+            if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %%s: %%s.\\n Used %%d blocks,"
-                             " %%d threads %%d bytes of shared memory",
-                             "kSoftmax_%(nodename)s", cudaGetErrorString(err),
-                             n_blocks, n_threads, n_shared_bytes);
-                %(fail)s;
+                kSoftmax_%(nodename)s
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        n_shared_bytes
+                    >>>(
+                            CudaNdarray_HOST_DIMS(%(x)s)[0],
+                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(x)s),
+                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(z)s),
+                            CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %%s: %%s.\\n Used %%d blocks,"
+                                 " %%d threads %%d bytes of shared memory",
+                                 "kSoftmax_%(nodename)s", cudaGetErrorString(err),
+                                 n_blocks, n_threads, n_shared_bytes);
+                    %(fail)s;
+                }
             }
         }
         assert(%(z)s);

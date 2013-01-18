@@ -228,7 +228,10 @@ def test_softmax():
 
     def cmp(n, m, catch=False):
         """Some old card won't accept the configuration arguments of
-        this implementation. For those cases set catch=True to skip those errors."""
+        this implementation. For those cases set catch=True to skip
+        those errors.
+
+        """
         try:
             #print "test_softmax",n,m
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
@@ -238,6 +241,7 @@ def test_softmax():
         except RuntimeError, e:
             if not catch:
                 raise
+            # Different CUDA driver have different error message
             assert (e.args[0].startswith(
               'Cuda error: kSoftmax_node_0: invalid configuration argument.\n') or
             e.args[0].startswith('Cuda error: kSoftmax_node_0: invalid argument.\n'))
@@ -246,6 +250,7 @@ def test_softmax():
     cmp(2, 5)
     cmp(2 << 15, 5)
     cmp(4074, 400)
+    cmp(0, 10)
     cmp(784, 784)
     cmp(4, 1000)
     cmp(4, 1024)
