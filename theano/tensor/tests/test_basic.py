@@ -7196,6 +7196,11 @@ class TestTensorInstanceMethods(unittest.TestCase):
                            x.take(indices, 1, mode='clip'))
         assert_array_equal(X.take(indices, -1, mode='clip').eval({X: x}),
                            x.take(indices, -1, mode='clip'))
+        # Test error handling
+        self.assertRaises(IndexError, X.take(indices).eval, {X: x})
+        self.assertRaises(IndexError, (2 * X.take(indices)).eval, {X: x})
+        self.assertRaises(TypeError, X.take, [0.0])
+
         indices = [[1,0,1], [0,1,1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         # Test equivalent advanced indexing
