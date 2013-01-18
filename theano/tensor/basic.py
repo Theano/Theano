@@ -6538,8 +6538,10 @@ class AdvancedSubtensor1(Op):
     def c_code(self, node, name, input_names, output_names, sub):
         a_name, i_name = input_names[0], input_names[1]
         output_name = output_names[0]
+        fail = sub['fail']
         return """
             %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0, %(output_name)s, NPY_RAISE);
+            if (%(output_name)s == NULL) %(fail)s;
         """ % locals()
 
 advanced_subtensor1 = AdvancedSubtensor1()
