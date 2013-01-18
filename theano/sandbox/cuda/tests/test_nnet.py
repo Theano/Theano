@@ -210,7 +210,7 @@ def test_softmax_with_bias():
     cmp(4, 1024)
     cmp(4, 2000)
     cmp(4, 2024)
-    #GTX285 don't have enought shared mem for this case.
+    #GTX285 don't have enough shared mem for this case.
     cmp(4, 4074, True)
 
 
@@ -262,5 +262,5 @@ def test_softmax():
     cmp(4, 1024)
     cmp(4, 2000)
     cmp(4, 2024)
-    #GTX285 don't have enought shared mem for this case.
+    #GTX285 don't have enough shared mem for this case.
     cmp(4, 4074, True)
