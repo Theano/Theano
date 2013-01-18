@@ -470,7 +470,7 @@ class GpuSoftmaxWithBias (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (6,) + inline_softmax.code_version
+        return (7,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -510,7 +510,7 @@ class GpuSoftmaxWithBias (GpuOp):
         {
             int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024);
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 1024);
+            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
