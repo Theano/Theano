@@ -227,8 +227,8 @@ def test_softmax():
                       cuda.nnet.GpuSoftmax)
 
     def cmp(n, m, catch=False):
-        """Some old card won't accet the configuration arguments of
-        this implementation."""
+        """Some old card won't accept the configuration arguments of
+        this implementation. For those cases set catch=True to skip those errors."""
         try:
             #print "test_softmax",n,m
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)

@@ -405,7 +405,11 @@ class GpuSoftmax (GpuOp):
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
-                PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n", "kSoftmax_%(nodename)s", cudaGetErrorString(err));
+                PyErr_Format(PyExc_RuntimeError,
+                             "Cuda error: %%s: %%s.\\n Used %%d blocks,"
+                             " %%d threads %%d bytes of shared memory",
+                             "kSoftmax_%(nodename)s", cudaGetErrorString(err),
+                             n_blocks, n_threads, n_shared_bytes);
                 %(fail)s;
             }
         }
