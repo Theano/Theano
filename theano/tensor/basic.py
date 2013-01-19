@@ -6540,9 +6540,13 @@ class AdvancedSubtensor1(Op):
         output_name = output_names[0]
         fail = sub['fail']
         return """
-            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0, %(output_name)s, NPY_RAISE);
+            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0,
+                                                               %(output_name)s, NPY_RAISE);
             if (%(output_name)s == NULL) %(fail)s;
         """ % locals()
+
+    def c_code_cache_version(self):
+        return (0, 0, 0)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
