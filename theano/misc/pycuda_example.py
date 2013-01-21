@@ -40,8 +40,7 @@ from pycuda.compiler import SourceModule
 from pycuda.tools import VectorArg
 import pycuda.gpuarray
 
-
-def theano_parse_c_arg(c_arg):
+def _replace_npy_types(c_arg):
     c_arg = c_arg.replace('npy_float32', 'float')
     c_arg = c_arg.replace('npy_float64', 'double')
     c_arg = c_arg.replace('npy_int32', 'int')
@@ -50,6 +49,10 @@ def theano_parse_c_arg(c_arg):
     c_arg = c_arg.replace('npy_uint32', 'unsigned int')
     c_arg = c_arg.replace('npy_uint16', 'unsigned short')
     c_arg = c_arg.replace('npy_uint8', 'unsigned char')
+    return c_arg
+
+def theano_parse_c_arg(c_arg):
+    c_arg = _replace_npy_types(c_arg)
     return pycuda.tools.parse_c_arg(c_arg)
 
 """
@@ -227,14 +230,12 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         c_code = self.scalar_op.c_code(out_node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([var.type.dtype_specs()[1] + " *" + name
+        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
                                   for var, name in (zip(inputs, in_name) +
                                                     zip(out_node.outputs,
                                                         out_name))] +
                                  ["int size"])
         mod = SourceModule("""
-#include<Python.h>
-#include <numpy/arrayobject.h>
   __global__ void %s(%s)
   {
     int i = (blockIdx.x+blockIdx.y*gridDim.x)*(blockDim.x*blockDim.y);
@@ -319,13 +320,11 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         c_code = self.scalar_op.c_code(node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([var.type.dtype_specs()[1] + " *" + name
+        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
                                   for var, name in
                                   zip(node.inputs, in_name) +
                                   zip(node.outputs, out_name)] + ["int size"])
         mod = SourceModule("""
-#include<Python.h>
-#include <numpy/arrayobject.h>
   __global__ void %s(%s)
   {
     int i = (blockIdx.x+blockIdx.y*gridDim.x)*(blockDim.x*blockDim.y);

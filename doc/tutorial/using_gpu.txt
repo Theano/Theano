@@ -284,6 +284,14 @@ Tips for Improving Performance on GPU
   Check the line similar to *Spent Xs(X%) in cpu op, Xs(X%) in gpu op and Xs(X%) in transfer op*.
   This can tell you if not enough of your graph is on the GPU or if there
   is too much memory transfer.
+* Use nvcc options. nvcc support those options to speed up some
+  computations: `-ftz=true` to `flush denormals values to
+  zeros. <https://developer.nvidia.com/content/cuda-pro-tip-flush-denormals-confidence>`_,
+  `--prec-div=false` and `--prec-sqrt=false` option to speed up
+  division and square root operation by being less precise. You can
+  enable all of them with with the `nvcc.flags=--use_fast_math` Theano
+  flags or you can enable them individually as in this example
+  `nvcc.flags=-ftz=true --prec-div=false`.
 
 .. _gpu_async:
 

@@ -255,10 +255,15 @@ class NVCC_compiler(object):
         # compute capability? '--gpu-architecture=compute_13',
         # '--gpu-code=compute_13',
         #nvcc argument
-        preargs1 = [pa for pa in preargs
-                    if pa.startswith('-O') or
-                    pa.startswith('--maxrregcount=') or
-                    pa.startswith('-arch=')]
+        preargs1 = []
+        for pa in preargs:
+            for pattern in ['-O', '-arch=',
+                            '--fmad', '--ftz', '--maxrregcount',
+                            '--prec-div', '--prec-sqrt',  '--use_fast_math',
+                            '-fmad', '-ftz', '-maxrregcount',
+                            '-prec-div', '-prec-sqrt', '-use_fast_math']:
+                if pa.startswith(pattern):
+                    preargs1.append(pa)
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 
