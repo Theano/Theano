@@ -6569,7 +6569,7 @@ class AdvancedSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return ()#(0, 0, 1)
+        return (0, 0, 1)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
