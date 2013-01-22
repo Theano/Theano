@@ -7184,7 +7184,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         X, _ = self.vars
         x, _ = self.vals
         indices = [1,0,3]
-        assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
+        assert_array_equal(X.take(indices).sum().eval({X: x}), x.take(indices).sum())
         indices = [1,0,1]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         indices = [-10,5,12]

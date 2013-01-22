@@ -6540,13 +6540,36 @@ class AdvancedSubtensor1(Op):
         output_name = output_names[0]
         fail = sub['fail']
         return """
+            if (%(output_name)s != NULL) {
+                PyArrayObject *out = %(output_name)s;
+                npy_intp nd, i, n, m, chunk;
+                npy_intp shape[NPY_MAXDIMS];
+                n = m = chunk = 1;
+                nd = PyArray_NDIM(%(a_name)s) + PyArray_NDIM(%(i_name)s) - 1;
+                for (i = 0; i < nd; i++) {
+                        if (i < PyArray_NDIM(%(i_name)s)) {
+                            shape[i] = PyArray_DIMS(%(i_name)s )[i];
+                            m *= shape[i];
+                        }
+                        else {
+                            shape[i] = PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(%(i_name)s)+1];
+                            chunk *= shape[i];
+                        }
+                }
+                if ((PyArray_NDIM(out) != nd) ||
+                     !PyArray_CompareLists(PyArray_DIMS(out), shape, nd)) {
+                         PyErr_SetString(PyExc_ValueError,
+                             "output array does not match result of ndarray.take");
+                     %(fail)s;
+                }
+            }
             %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0,
                                                                %(output_name)s, NPY_RAISE);
             if (%(output_name)s == NULL) %(fail)s;
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 0, 0)
+        return ()#(0, 0, 1)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
