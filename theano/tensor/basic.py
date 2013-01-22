@@ -6479,6 +6479,7 @@ class AdvancedSubtensor1(Op):
 
         assert len(inputs) == 2
 #        rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
+        #Construct a sparse matrix to boost performance of gradient
         rval1 = [ConstructSparse()(inputs[0], gz, inputs[1])]
 
         return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
@@ -6493,7 +6494,7 @@ class AdvancedSubtensor1(Op):
         return [ilist + x[1:]]
 
 class ConstructSparse(Op):
-    """Construct a sparse matrix out of a list of 2-D matrix rows"""
+    """Construct a sparse CSC matrix out of a list of 2-D matrix rows"""
 
     def __hash__(self):
         return hash((type(self)))
@@ -6504,9 +6505,16 @@ class ConstructSparse(Op):
     def __str__(self):
         return self.__class__.__name__
 
+    # self: this object
+    #  x: x is a dense matrix
+    #  y: y is a dense matrix (small) which has data
+    #  ilist is the list of rows to which we want to copy rows of y into x
+    #  Output must be a sparse representation of x 
     def make_node(self, x, y, ilist):
 
+        #Convert to a sparse matrix, the shape is what is needed
         x_sparse = ssparse.csc_matrix(tuple(x.shape.eval()), dtype=x.dtype)
+        # Wrap into a Theano variable
         x__ = theano.sparse.as_sparse_variable(x_sparse)
 
         x_ = as_tensor_variable(x)
@@ -6528,30 +6536,44 @@ class ConstructSparse(Op):
             ' by y with ndim=%s to x subtensor with ndim=%s ' % (
                 opname, x_.type.ndim, y_.type.ndim))
 
+         # Return the Apply instance
         return Apply(self, [x_, y_, ilist_], [x__.type()])
 
+    # Inp: Will contain x, values: that is y, and list of row indices of X,
+    # we want to copy the rows of y 
     def perform(self, node, inp, out_):
-        x, values, idx = inp
-        out, = out_
-        rows, cols = values.shape
-        assert rows == len(idx)
+        x, values, idx = inp #Get all the 3 inputs
+        out, = out_ #get the output
+        rows, cols = values.shape #Get the shape of Y
+        assert rows == len(idx) #Each row is copied to a row in X.
+
+        # Setup the index pointer array
         indptr = numpy.arange(cols+1) * rows
+
+        #Set up the indices array
         indices = as_strided(idx,
                              strides=(0, idx.strides[0]),
                              shape=(cols, idx.shape[0])).flatten()
+
+        #The data values we need to construct the sparse matrix from
         data = values.T.flatten()
+
+        #Construct the sparse CSC matrix using data, indices and index pointer
         out[0] = ssparse.csc_matrix((data,indices,indptr), shape=x.shape, dtype=x.dtype)
 
+    #Same as advancedIncSubTensor
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
         return [x]
 
+    #Same as advancedIncSubTensor
     def R_op(self, inputs, eval_points):
         if None in eval_points[:2]:
             return [None]
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
 
+    #Same as advancedIncSubTensor
     def connection_pattern(self, node):
 
         rval = [[True], [True]]
@@ -6561,6 +6583,7 @@ class ConstructSparse(Op):
 
         return rval
 
+    #Same as advancedIncSubTensor
     def grad(self, inputs, grads):
         g_output, = grads
         x, y = inputs[:2]

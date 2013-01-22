@@ -21,9 +21,13 @@ import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented
 from theano.sparse.type import SparseType, _is_sparse
 
+#Column compressed (CSC)
+#Row compressed (CSR)
 sparse_formats = ['csc', 'csr']
 
 
+#Register an optimization that does a specialization
+#Does the same thing but better
 # TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
@@ -1710,33 +1714,55 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-    
+   
+    #Constructor of the object 
     def __init__(self, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
-        self.inplace = inplace
+        #Should we do inplace addition or not ?
+        self.inplace = inplace 
         if self.inplace:
-            self.destroy_map = {0: [3]}
+            #This is a hint to the local optimizer that says that the first
+            #output is the same as the 3rd input and no intermdiate storage
+            #needs to be allocated
+            self.destroy_map = {0: [3]} 
 
     def __eq__(self, other):
+        #Compare the inplace flag as well
         return (type(self) == type(other)) and self.inplace == other.inplace
 
     def __hash__(self):
+        #Now use the hash of inplace as well
         return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
+        #If we are running the inplace version, display that 
+        # so that it is useful for debugging
         if self.inplace:
           return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
         
 
+    # Op Contract implementation: make_node:
+    # Should return a Apply object that specifies what:
+    #   1. Input variables type are etc for the operation
+    #   2. What are the types of the output variables
+    #      These should be Theano variables
     def make_node(self, x, y):
+        # x is a sparse matrix, y is a dense one
+        # Wrap them around theano variables as this must be symbolic
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        # If the types of both variables are of different types
+        # this is bad as theres a type mismatch
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
+        #Obtains the indices, indpt, data of NNZ sparse matrix x
+        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
+
+        # We either use CSC or CSR depending on the format of input
+        self.format = x.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
-        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
-        self.format = x.format
         assert y.type.ndim == 2
         return gof.Apply(self,
                          [data, indices, indptr, y],
@@ -1789,21 +1815,25 @@ class AddSD(gof.op.Op):
     
     def perform(self, node, (data, indices, indptr,  y), (out, )):
         assert _is_dense(y)
-        if self.inplace:
-          if self.format == 'csc':
-            for c in xrange(y.shape[1]):
-              low = indptr[c]
+        if self.inplace:  #inplace enabled
+          if self.format == 'csc': #column compressed
+            for c in xrange(y.shape[1]): #Loop through each column
+              low = indptr[c] #indptr will pint to slice of indices array for column  
               high = indptr[c+1]
               for ind in xrange(low, high):
-                y[(indices[ind], c)] += data[ind]
+                y[(indices[ind], c)] += data[ind] #Add that data element
           elif self.format == 'csr':
+            #Case for row's. Symmetric to what was done for columns
             for r in xrange(y.shape[0]):
               low = indptr[r]
               high = indptr[r+1]
               for ind in xrange(low, high):
                 y[(r, indices[ind])] += data[ind]
-          out[0] = y
+
+          out[0] = y #Output storage cell is y
         else:
+          #If in place is not enabled, create back the sparse matrix and 
+          # and just add them normally.
           if self.format == 'csr':
             x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
           elif self.format == 'csc':
@@ -1818,6 +1848,7 @@ class AddSD(gof.op.Op):
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
+        #Shape of output is the shape of y
         return [shapes[3]]
 
 add_s_d = AddSD()
