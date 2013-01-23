@@ -89,6 +89,7 @@ class HostFromGpu(GpuOp):
         out = outputs[0]
         fail = sub['fail']
         return """
+        Py_XDECREF(%(out)s);
         %(out)s = (PyArrayObject *) CudaNdarray_CreateArrayObj(%(inp)s);
         if(!%(out)s){
             %(fail)s;
@@ -96,7 +97,7 @@ class HostFromGpu(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 host_from_gpu = HostFromGpu()
 
 
