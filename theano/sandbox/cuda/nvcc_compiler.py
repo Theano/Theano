@@ -15,6 +15,7 @@ from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension, local_bitwidth)
 from theano.gof.python25 import any
+from theano.misc.windows import call_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
@@ -64,8 +65,9 @@ nvcc_version = None
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
     def set_version():
-        p = subprocess.Popen([nvcc_path, '--version'], stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+        p = call_subprocess_Popen([nvcc_path, '--version'],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
         p.wait()
         s = p.stdout.readlines()[-1].split(',')[1].strip().split()
         assert s[0] == 'release'
@@ -253,10 +255,15 @@ class NVCC_compiler(object):
         # compute capability? '--gpu-architecture=compute_13',
         # '--gpu-code=compute_13',
         #nvcc argument
-        preargs1 = [pa for pa in preargs
-                    if pa.startswith('-O') or
-                    pa.startswith('--maxrregcount=') or
-                    pa.startswith('-arch=')]
+        preargs1 = []
+        for pa in preargs:
+            for pattern in ['-O', '-arch=',
+                            '--fmad', '--ftz', '--maxrregcount',
+                            '--prec-div', '--prec-sqrt',  '--use_fast_math',
+                            '-fmad', '-ftz', '-maxrregcount',
+                            '-prec-div', '-prec-sqrt', '-use_fast_math']:
+                if pa.startswith(pattern):
+                    preargs1.append(pa)
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 

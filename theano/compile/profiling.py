@@ -824,7 +824,7 @@ if 0: # old code still to be ported from ProfileMode
 
         #tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and a.inputs[0].dtype=='float32' for i,a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
+            print "  - With the default gcc libm, exp in float32 is slower than in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True"
 
         #tip 4
         for a, t in apply_time.iteritems():

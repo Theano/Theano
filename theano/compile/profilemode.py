@@ -671,7 +671,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
                                            for i, a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
+            print "  - With the default gcc libm, exp in float32 is slower than in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
             printed_tip = True
 
         #tip 4

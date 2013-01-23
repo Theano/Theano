@@ -182,6 +182,8 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     """
 
     try:
+        if isinstance(value, Variable):
+            raise TypeError(" Shared variable constructor needs numeric values and not symbolic variables.")
 
         for ctor in reversed(shared.constructors):
             try:

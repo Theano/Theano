@@ -35,8 +35,8 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   k = T.iscalar("k")
   A = T.vector("A")
 
-  def inner_fct(prior_result, A):
-      return prior_result * A
+  def inner_fct(prior_result, B):
+      return prior_result * B
 
   # Symbolic description of the result
   result, updates = theano.scan(fn=inner_fct,

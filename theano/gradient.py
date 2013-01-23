@@ -384,11 +384,11 @@ def grad(cost, wrt, consider_constant=None,
 
     :type return_disconnected: string
     :param return_disconnected:
-        'zero' : If wrt[i] is disconnected, return value i will be
-                 wrt[i].zeros_like()
-        'None' : If wrt[i] is disconnected, return value i will be
-                 None
-        'Disconnected' : returns variables of type DisconnectedType
+        - 'zero' : If wrt[i] is disconnected, return value i will be
+                   wrt[i].zeros_like()
+        - 'None' : If wrt[i] is disconnected, return value i will be
+                   None
+        - 'Disconnected' : returns variables of type DisconnectedType
 
     :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
 
@@ -975,7 +975,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                             msg += "%s."
 
                             msg % (str(node.op), str(term), str(type(term)),
-                                    i, str(theano.get_constant_value(term)))
+                                    i, str(theano.get_scalar_constant_value(term)))
 
                             raise ValueError(msg)
 
@@ -1616,9 +1616,9 @@ def _is_zero(x):
 
     no_constant_value = True
     try:
-        constant_value = theano.get_constant_value(x)
+        constant_value = theano.get_scalar_constant_value(x)
         no_constant_value = False
-    except TypeError:
+    except theano.tensor.basic.NotScalarConstantError:
         pass
 
     if no_constant_value:

@@ -59,7 +59,9 @@ class HostFromGpu(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "CudaNdarrayType. Got %s with type %s" % (x,
+                                                                      x.type))
         return Apply(self, [x], [tensor.TensorType(dtype=x.dtype,
                                     broadcastable=x.broadcastable)()])
 
@@ -113,7 +115,9 @@ class GpuFromHost(GpuOp):
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
-            raise TypeError(x)
+            raise TypeError("Expected a Theano variable with type "
+                            "TensorType. Got %s with type %s" % (x,
+                                                                 x.type))
         return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
                                                  dtype=x.dtype)()])
 
@@ -778,6 +782,10 @@ class GpuCAReduce(GpuOp):
             print >> sio, """
                     ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
             """ % locals()
+
+        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
+        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
+                                for i in range(node.inputs[0].ndim)])
         print >> sio, """
                     );
             CNDA_THREAD_SYNC;
@@ -786,14 +794,16 @@ class GpuCAReduce(GpuOp):
             {
                 PyErr_Format(PyExc_RuntimeError,
                     "Cuda error: %%s: %%s."
-                    " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    " (grid: %%i x %%i; block: %%i x %%i x %%i)"
+                    " %(shapes_format)s \\n",
                     "kernel_reduce_%(pattern)s_%(name)s",
                     cudaGetErrorString(sts),
                     n_blocks.x,
                     n_blocks.y,
                     n_threads.x,
                     n_threads.y,
-                    n_threads.z);
+                    n_threads.z,
+                    %(shapes_data)s);
                 %(fail)s;
             }
         """ % locals()
@@ -1378,7 +1388,7 @@ class GpuCAReduce(GpuOp):
             dim3 n_threads(
                     std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(CudaNdarray_HOST_DIMS(%(x)s)[1]);
+            dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], NUM_VECTOR_OP_BLOCKS));
             while (n_blocks.x * (n_blocks.y+1) <= NUM_VECTOR_OP_BLOCKS && n_blocks.y <= CudaNdarray_HOST_DIMS(%(x)s)[2])
             {
                 n_blocks.y += 1;
@@ -1555,7 +1565,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [6]  # the version corresponding to the c code in this Op
+        version = [7]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -2304,7 +2314,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         x, idx = inp
         out, = out_
         x_orig = x
-        #TODO: if more then 3 dims, reshape the inputs even if not all
+        #TODO: if more than 3 dims, reshape the inputs even if not all
         #dimensions are c contiguous
         if x.ndim > 3 and x.is_c_contiguous():
             x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
@@ -2439,9 +2449,10 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
     def copy_of_x(self, x):
         """
-            x: a string giving the name of a C variable pointing to an array
+            :param x: a string giving the name of a C variable
+                pointing to an array
 
-            Returns C code expression to make a copy of x.
+            :return: C code expression to make a copy of x
 
             Base class uses PyArrayObject *, subclasses may override for
             different types of arrays.
@@ -2450,9 +2461,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
     def make_view_array(self, x, view_ndim):
         """
-            x: a string identifying an array to be viewed
-            view_ndim: a string specifying the number of dimensions
-                     to have in the view
+            :param x: a string identifying an array to be viewed
+            :param view_ndim: a string specifying the number of dimensions
+                to have in the view
 
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
@@ -2680,8 +2691,8 @@ class GpuAlloc(GpuOp):
                 raise TypeError('Shape arguments must be integers', s)
             # if s is constant 1, then we're broadcastable in that dim
             try:
-                const_shp = tensor.get_constant_value(s)
-            except TypeError:
+                const_shp = tensor.get_scalar_constant_value(s)
+            except tensor.NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)

@@ -363,8 +363,8 @@ def scan(fn,
         n_fixed_steps = int(n_steps)
     else:
         try:
-            n_fixed_steps = opt.get_constant_value(n_steps)
-        except (TypeError, AttributeError):
+            n_fixed_steps = opt.get_scalar_constant_value(n_steps)
+        except tensor.basic.NotScalarConstantError:
             n_fixed_steps = None
 
     # Check n_steps is an int

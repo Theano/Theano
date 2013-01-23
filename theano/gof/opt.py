@@ -52,10 +52,10 @@ class Optimizer(object):
 
     def apply(self, fgraph):
         """WRITEME
-        Applies the optimization to the provided L{FunctionGraph}. It may use all
-        the methods defined by the L{FunctionGraph}. If the L{Optimizer} needs
-        to use a certain tool, such as an L{InstanceFinder}, it can do
-        so in its L{add_requirements} method.
+        Applies the optimization to the provided L{FunctionGraph}. It may
+        use all the methods defined by the L{FunctionGraph}. If the
+        L{Optimizer} needs to use a certain tool, such as an
+        L{InstanceFinder}, it can do so in its L{add_requirements} method.
         """
         pass
 
@@ -208,7 +208,6 @@ class SeqOptimizer(Optimizer, list):
          nb_node_after, sub_profs) = prof
         blanc = ('    ' * level)
 
-
         print >> stream, blanc, "SeqOptimizer",
         if hasattr(opts, "name"):
             print >> stream, blanc, opts.name,
@@ -217,7 +216,8 @@ class SeqOptimizer(Optimizer, list):
         print >> stream, (" time %.3fs for %d/%d nodes"
                           " before/after optimization" % (
                               sum(prof), nb_node_before, nb_node_after))
-        print >> stream, blanc, "  %.3fs for fgraph.validate()" % (validate_time)
+        print >> stream, \
+                blanc, "  %.3fs for fgraph.validate()" % (validate_time)
         if level == 0:
             print >> stream, blanc, "  time      - (name, class, index)"
         ll = []
@@ -289,7 +289,8 @@ class SeqOptimizer(Optimizer, list):
                         p = prof2
                     new_t[idx] += p[1][p[0].index(l)]
                     if hasattr(l, 'merge_profile'):
-                        assert len(p[5][p[0].index(l)]) == len(new_sub_profile[idx])
+                        assert len(p[5][p[0].index(l)]) == \
+                                len(new_sub_profile[idx])
                         new_sub_profile[idx] = l.merge_profile(
                             new_sub_profile[idx], p[5][p[0].index(l)])
                     else:
@@ -468,7 +469,8 @@ class MergeFeature(object):
         if node in self.nodes_seen:
             return
 
-        # These asserts ensure that the fgraph has set the clients field properly.
+        # These asserts ensure that the fgraph has set the clients field
+        # properly.
         # The clients should at least contain `node` itself!
         if node.inputs:
             assert len(node.inputs[0].clients) > 0
@@ -677,7 +679,8 @@ class LocalOptimizer(object):
 
     def add_requirements(self, fgraph):
         """
-        If this local optimization wants to add some requirements to the fgraph,
+        If this local optimization wants to add some requirements to the
+        fgraph,
         This is the place to do it.
         """
         # Added by default
@@ -755,7 +758,8 @@ class _LocalOpKeyOptGroup(LocalOptGroup):
 
     def __init__(self, optimizers):
         if any(not hasattr(opt, 'op_key'), optimizers):
-            raise TypeError("All LocalOptimizers passed here must have an op_key method.")
+            raise TypeError(
+                "All LocalOptimizers passed here must have an op_key method.")
         CompositeLocalOptimizer.__init__(self, optimizers)
 
     def op_key(self):
@@ -1133,8 +1137,8 @@ class NavigatorOptimizer(Optimizer):
 
     def attach_updater(self, fgraph, importer, pruner, chin=None):
         """
-        Install some FunctionGraph listeners to help the navigator deal with the
-        ignore_trees-related functionality.
+        Install some FunctionGraph listeners to help the navigator deal with
+        the ignore_trees-related functionality.
 
         :param importer: function that will be called whenever when
             optimizations add stuff to the graph.
@@ -1522,7 +1526,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 count_opt.append((time_lopts[opt], count, opt))
 
         if count_opt:
-            print >> stream, blanc, 'times applied - optimizer (only those applied):'
+            print >> stream, blanc, \
+                    'times applied - optimizer (only those applied):'
             count_opt.sort()
             for (t, count, opt) in count_opt[::-1]:
                 print >> stream, blanc, '  %.3fs - %d - %s' % (
@@ -1591,6 +1596,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 ### Utilities ###
 #################
 
+
 def _check_chain(r, chain):
     """WRITEME"""
 
@@ -1633,8 +1639,8 @@ def check_chain(r, *chain):
 def pre_greedy_local_optimizer(list_optimizations, out):
     '''
     This function traverses the computation graph described by all
-    ``node`` in the graph before the variable out but that are not in the fgraph.
-    it applies each of the local_optimizations on the traversed graph.
+    ``node`` in the graph before the variable out but that are not in the
+    fgraph. it applies each of the local_optimizations on the traversed graph.
 
     Its main use is to apply locally constant folding when generating
     the graph of the indices of a subtensor.
@@ -1651,6 +1657,7 @@ def pre_greedy_local_optimizer(list_optimizations, out):
         if not getattr(out, 'owner', None):
             return [out], optimized_vars
         node = out.owner
+
         if hasattr(node, 'fgraph'):
             return node.outputs, optimized_vars
         for idx, inp in enumerate(node.inputs):
@@ -1685,10 +1692,13 @@ def pre_greedy_local_optimizer(list_optimizations, out):
                 else:
                     break
         return results, optimized_vars
-
+    if out.owner:
+        out_index = out.owner.outputs.index(out)
+    else:
+        out_index = 0
     final_outs, optimized_nodes = local_recursive_function(
         list_optimizations, out, {}, 0)
-    return final_outs[0]
+    return final_outs[out_index]
 
 
 ############

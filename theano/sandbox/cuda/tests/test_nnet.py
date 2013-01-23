@@ -183,7 +183,9 @@ def test_softmax_with_bias():
 
     def cmp(n, m, catch=False):
         """Some old card won't accet the configuration arguments of
-        this implementation."""
+        this implementation. For those cases set catch=True to skip
+        those errors.
+        """
         try:
             #print "test_softmax",n,m
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
@@ -193,18 +195,22 @@ def test_softmax_with_bias():
         except RuntimeError, e:
             if not catch:
                 raise
-            assert (e.args[0] ==
-              'Cuda error: kSoftmaxWithBias_node_0: invalid configuration argument.\n'
-            ), e.args[0]
+            # Different CUDA driver have different error message
+            assert (e.args[0].startswith(
+              'Cuda error: kSoftmaxWithBias_node_0: invalid configuration argument.\n') or
+            e.args[0].startswith('Cuda error: kSoftmaxWithBias_node_0: invalid argument.\n'))
+
     cmp(2, 5)
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2 << 15, 5)
     cmp(4074, 400)
     cmp(0, 10)
-    cmp(4, 1000, True)
-    cmp(4, 1024, True)
-    cmp(4, 2000, True)
-    cmp(4, 2024, True)
+    cmp(784, 784)
+    cmp(4, 1000)
+    cmp(4, 1024)
+    cmp(4, 2000)
+    cmp(4, 2024)
+    #GTX285 don't have enough shared mem for this case.
     cmp(4, 4074, True)
 
 
@@ -227,8 +233,11 @@ def test_softmax():
                       cuda.nnet.GpuSoftmax)
 
     def cmp(n, m, catch=False):
-        """Some old card won't accet the configuration arguments of
-        this implementation."""
+        """Some old card won't accept the configuration arguments of
+        this implementation. For those cases set catch=True to skip
+        those errors.
+
+        """
         try:
             #print "test_softmax",n,m
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
@@ -238,15 +247,20 @@ def test_softmax():
         except RuntimeError, e:
             if not catch:
                 raise
-            assert (e.args[0] ==
-              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n')
+            # Different CUDA driver have different error message
+            assert (e.args[0].startswith(
+              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n') or
+            e.args[0].startswith('Cuda error: kSoftmax_node_0: invalid argument.\n'))
 
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2, 5)
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(4, 1000, True)
-    cmp(4, 1024, True)
-    cmp(4, 2000, True)
-    cmp(4, 2024, True)
+    cmp(0, 10)
+    cmp(784, 784)
+    cmp(4, 1000)
+    cmp(4, 1024)
+    cmp(4, 2000)
+    cmp(4, 2024)
+    #GTX285 don't have enough shared mem for this case.
     cmp(4, 4074, True)
