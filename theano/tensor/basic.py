@@ -5632,8 +5632,8 @@ def roll(x, shift, axis=None):
     end_list = ([allslice] * axis + [end_slice] +
                 [allslice] * (x.ndim - axis - 1))
     return join(axis,
-                Subtensor(front_list)(x),
-                Subtensor(end_list)(x))
+                x.__getitem__(tuple(front_list)),
+                x.__getitem__(tuple(end_list)))
 
 
 @constructor
