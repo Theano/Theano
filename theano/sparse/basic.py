@@ -8,11 +8,9 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 # Automatic methods for determining best sparse format?
 
 import sys
-from itertools import izip
 import numpy
 import theano
 import scipy.sparse
-
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
@@ -21,13 +19,9 @@ import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented
 from theano.sparse.type import SparseType, _is_sparse
 
-#Column compressed (CSC)
-#Row compressed (CSR)
 sparse_formats = ['csc', 'csr']
 
 
-#Register an optimization that does a specialization
-#Does the same thing but better
 # TODO: move this decorator to the compile submodule
 def register_specialize(lopt, *tags, **kwargs):
     compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
@@ -1714,49 +1708,30 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-   
-    #Constructor of the object 
     def __init__(self, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
         #Should we do inplace addition or not ?
-        self.inplace = inplace 
+        self.inplace = inplace
         if self.inplace:
-            #This is a hint to the local optimizer that says that the first
-            #output is the same as the 3rd input and no intermdiate storage
-            #needs to be allocated
-            self.destroy_map = {0: [3]} 
+            self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        #Compare the inplace flag as well
         return (type(self) == type(other)) and self.inplace == other.inplace
 
     def __hash__(self):
-        #Now use the hash of inplace as well
         return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
-        #If we are running the inplace version, display that 
-        # so that it is useful for debugging
         if self.inplace:
-          return self.__class__.__name__ + '{inplace}'
+            return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
-        
 
-    # Op Contract implementation: make_node:
-    # Should return a Apply object that specifies what:
-    #   1. Input variables type are etc for the operation
-    #   2. What are the types of the output variables
-    #      These should be Theano variables
     def make_node(self, x, y):
-        # x is a sparse matrix, y is a dense one
-        # Wrap them around theano variables as this must be symbolic
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
-        # If the types of both variables are of different types
-        # this is bad as theres a type mismatch
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
-        #Obtains the indices, indpt, data of NNZ sparse matrix x
+
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
 
         # We either use CSC or CSR depending on the format of input
@@ -1771,10 +1746,10 @@ class AddSD(gof.op.Op):
                                            ).make_variable()])
 
     def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
-      inplace = int(self.inplace)
-      format = {'csc': 0, 'csr':1}[self.format]
-      code = """
-                if(%(z)s) {Py_XDECREF(%(z)s);}
+        inplace = int(self.inplace)
+        format = {'csc': 0, 'csr':1}[self.format]
+        code = """
+                Py_XDECREF(%(z)s);
                 if (!%(inplace)s){
                   %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
                 }else{
@@ -1811,44 +1786,26 @@ class AddSD(gof.op.Op):
                  } 
                 }
              """ % dict(locals(), **sub)
-      return code
-    
+        return code
+
     def perform(self, node, (data, indices, indptr,  y), (out, )):
         assert _is_dense(y)
-        if self.inplace:  #inplace enabled
-          if self.format == 'csc': #column compressed
-            for c in xrange(y.shape[1]): #Loop through each column
-              low = indptr[c] #indptr will pint to slice of indices array for column  
-              high = indptr[c+1]
-              for ind in xrange(low, high):
-                y[(indices[ind], c)] += data[ind] #Add that data element
-          elif self.format == 'csr':
-            #Case for row's. Symmetric to what was done for columns
-            for r in xrange(y.shape[0]):
-              low = indptr[r]
-              high = indptr[r+1]
-              for ind in xrange(low, high):
-                y[(r, indices[ind])] += data[ind]
 
-          out[0] = y #Output storage cell is y
-        else:
-          #If in place is not enabled, create back the sparse matrix and 
-          # and just add them normally.
-          if self.format == 'csr':
-            x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
-          elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix( (data,indices,indptr), shape=y.shape)
-          # The asarray is needed as in some case, this return a
-          # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
-          out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
-            
+        if self.format == 'csr':
+            x = scipy.sparse.csr_matrix((data, indices, indptr), shape = y.shape)
+        elif self.format == 'csc':
+            x = scipy.sparse.csc_matrix((data, indices, indptr), shape = y.shape)
+
+        # The asarray is needed as in some case, this return a
+        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
+        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
-        #Shape of output is the shape of y
         return [shapes[3]]
 
 add_s_d = AddSD()
