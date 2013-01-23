@@ -98,11 +98,12 @@ enum = EnumStr("g++", "")
 # Test whether or not g++ is present: disable C code if it is not.
 # Using the dummy file descriptor below is a workaround for a crash experienced
 # in an unusual Python 2.4.4 Windows environment with the default stdin=None.
-dummy_stdin = open(os.devnull)
 try:
-    call_subprocess_Popen('g++', stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE,
-                          stdin=dummy_stdin.fileno())
+    rc = call_subprocess_Popen(['g++', '-v'], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE).wait()
+except OSError:
+    rc = 1
+if rc == 0:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
@@ -110,7 +111,7 @@ try:
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
-except OSError:
+else:
     # g++ is not present, linker should default to python only
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
@@ -123,7 +124,6 @@ except OSError:
             'degraded.')
     enum = EnumStr("")
 
-del dummy_stdin
 AddConfigVar('cxx',
              "The c++ compiler to use. Currently only g++ is"
              " supported. But supporting more is easy if someone want this."
