@@ -214,8 +214,8 @@ def is_positive(v):
     logger.debug('is_positive: %s' % str(v))
     if v.owner and v.owner.op == tensor.pow:
         try:
-            exponent = tensor.get_constant_value(v.owner.inputs[1])
-        except TypeError:
+            exponent = tensor.get_scalar_constant_value(v.owner.inputs[1])
+        except tensor.basic.NotScalarConstantError:
             return False
         if 0 == exponent % 2:
             return True
@@ -662,10 +662,10 @@ class Solve(Op):
     def infer_shape(self, node, shapes):
         Ashape, Bshape = shapes
         rows = Ashape[1]
-        if len(Bshape) == 1: # b is a Vector
+        if len(Bshape) == 1:  # b is a Vector
             return [(rows,)]
         else:
-            cols = Bshape[1] # b is a Matrix
+            cols = Bshape[1]  # b is a Matrix
             return [(rows, cols)]
 
 solve = Solve()  # general solve
@@ -703,7 +703,7 @@ class ExtractDiag(Op):
 
         # zero-dimensional matrices ...
         if x.shape[0] == 0 or x.shape[1] == 0:
-            z[0] = numpy.zeros(0)
+            z[0] = numpy.zeros(0, dtype=x.dtype)
             return
 
         if x.shape[0] < x.shape[1]:
@@ -879,6 +879,7 @@ class A_Xinv_b(Op):
         gb = matrix_dot(ix.T, a.T, gz)
         return [ga, gX, gb]
 
+
 class Eig(Op):
     """Compute the eigenvalues and right eigenvectors of a square array.
 
@@ -916,24 +917,31 @@ class Eig(Op):
 
     def infer_shape(self, node, shapes):
         n = shapes[0][0]
-        return [(n,), (n,n)]
+        return [(n,), (n, n)]
 
     def __str__(self):
         return self._numop.__name__.capitalize()
 
 eig = Eig()
 
+
 def _zero_disconnected(outputs, grads):
-    return [o.zeros_like()
-            if isinstance(g.type, DisconnectedType) else g
-            for o, g in zip(outputs, grads)]
+    l = []
+    for o, g in zip(outputs, grads):
+        if isinstance(g.type, DisconnectedType):
+            l.append(o.zeros_like())
+        else:
+            l.append(g)
+    return l
+
 
 class Eigh(Eig):
     """
     Return the eigenvalues and eigenvectors of a Hermitian or symmetric matrix.
-    
+
     """
     _numop = staticmethod(numpy.linalg.eigh)
+
     def __init__(self, UPLO='L'):
         self.UPLO = UPLO
 
@@ -962,9 +970,8 @@ class Eigh(Eig):
         except numpy.linalg.LinAlgError:
             logger.debug('Failed to find %s of %s' % (self._numop.__name__,
                                                       node.inputs[0]))
-                                                      
             raise
-        
+
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
 
@@ -972,7 +979,7 @@ class Eigh(Eig):
                            {\partial a_{ij}} +
                      \sum_k V_{nk}\frac{\partial\,v_{nk}}
                            {\partial a_{ij}}\right),
-                        
+
         where [:math:`W`, :math:`V`] corresponds to ``g_outputs``,
         :math:`a` to ``inputs``, and  :math:`(w, v)=\mbox{eig}(a)`.
 
@@ -984,7 +991,7 @@ class Eigh(Eig):
 
 
            .. math:: \frac{\partial\,v_{kn}}
-                          {\partial a_{ij}} = 
+                          {\partial a_{ij}} =
                 \sum_{m\ne n}\frac{v_{km}v_{jn}}{w_n-w_m}
         """
         x, = inputs
@@ -994,8 +1001,10 @@ class Eigh(Eig):
         gw, gv = _zero_disconnected([w, v], g_outputs)
         return [EighGrad(self.UPLO)(x, w, v, gw, gv)]
 
+
 def eigh(a, UPLO='L'):
-     return Eigh(UPLO)(a)
+    return Eigh(UPLO)(a)
+
 
 class EighGrad(Op):
     """Gradient of an eigensystem of a Hermitian matrix.
@@ -1009,9 +1018,9 @@ class EighGrad(Op):
         else:
             self.tri0 = numpy.triu
             self.tri1 = lambda a: numpy.tril(a, -1)
-            
+
     def props(self):
-        return ()
+        return (self.UPLO,)
 
     def __hash__(self):
         return hash((type(self), self.props()))
@@ -1021,11 +1030,18 @@ class EighGrad(Op):
 
     def __str__(self):
         return 'EighGrad{%s}' % self.UPLO
-    
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
-        return Apply(self, [x, w, v, gw, gv], [x.type()])
+        assert x.ndim == 2
+        assert w.ndim == 1
+        assert v.ndim == 2
+        assert gw.ndim == 1
+        assert gv.ndim == 2
+        out_dtype = theano.scalar.upcast(x.dtype, w.dtype, v.dtype,
+                                         gw.dtype, gv.dtype)
+        out = theano.tensor.matrix(dtype=out_dtype)
+        return Apply(self, [x, w, v, gw, gv], [out])
 
     def perform(self, node, inputs, outputs):
         r"""
@@ -1036,9 +1052,9 @@ class EighGrad(Op):
         N = x.shape[0]
         outer = numpy.outer
 
-        G = lambda n: sum(v[:,m]*V.T[n].dot(v[:,m])/(w[n]-w[m])
+        G = lambda n: sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
                           for m in xrange(N) if m != n)
-        g = sum(outer(v[:,n], v[:,n]*W[n] + G(n))
+        g = sum(outer(v[:, n], v[:, n] * W[n] + G(n))
                 for n in xrange(N))
 
         # Numpy's eigh(a, 'L') (eigh(a, 'U')) is a function of tril(a)
@@ -1049,8 +1065,13 @@ class EighGrad(Op):
         # opposite triangle contributes to variation of two elements
         # of Hermitian (symmetric) matrix. The following line
         # implements the necessary logic.
-        outputs[0][0] = self.tri0(g) + self.tri1(g).T
+        out = self.tri0(g) + self.tri1(g).T
+
+        # The call to self.tri0 in perform upcast from float32 to
+        # float64 or from int* to int64 in numpy 1.6.1 but not in
+        # 1.6.2. We do not want version dependent dtype in Theano.
+        # We think it should be the same as the output.
+        outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
-

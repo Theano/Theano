@@ -395,7 +395,7 @@ def get_valid_shapes():
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1)) # layer 1 backprop to weights
             , ((60,20,28,28), (10,20,5,5), (1, 1), (2,2), (1, 1))#added a test case that fail from test_nnet.py.test_conv_nnet2
             , ((10,5,28,28), (10,5,5,5), (1, 1), (2,2), (1, 1))#test precedent but reduced that triger the error
-            #Test more then maxThreadsDim0
+            #Test more than maxThreadsDim0
             , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             ]
@@ -667,7 +667,7 @@ def test_full():
             , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
 #            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
 #            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
-            #Test more then maxThreadsDim0
+            #Test more than maxThreadsDim0
             , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             ]

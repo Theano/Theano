@@ -259,10 +259,20 @@ class RepeatOp(theano.Op):
                      % numpy_unsupported_dtypes), repeats.dtype)
 
         if self.axis is None:
-            out_type = theano.tensor.TensorType(dtype=x.dtype,
-                                                broadcastable=[False])
+            broadcastable=[False]
         else:
-            out_type = x.type
+            try:
+                const_reps = basic.get_scalar_constant_value(repeats)
+            except basic.NotScalarConstantError:
+                const_reps = None
+            if const_reps == 1:
+                broadcastable = x.broadcastable
+            else:
+                broadcastable = list(x.broadcastable)
+                broadcastable[self.axis] = False
+
+        out_type = theano.tensor.TensorType(x.dtype, broadcastable)
+
         return theano.Apply(self, [x, repeats], [out_type()])
 
     def perform(self, node, inputs, output_storage):
@@ -491,7 +501,7 @@ def fill_diagonal(a, val):
         2, the main diagonal is the list of locations a[i, i, ..., i]
         (i.e. with indices all identical).)
 
-    Support rectangular matrix and tensor with more then 2 dimensions
+    Support rectangular matrix and tensor with more than 2 dimensions
     if the later have all dimensions are equals.
 
     .. versionadded:: 0.6

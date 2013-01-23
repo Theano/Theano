@@ -15,6 +15,7 @@ import theano
 import warnings
 from theano.gof import utils
 from theano.gof.python25 import any, deque
+from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None
@@ -736,6 +737,9 @@ def general_toposort(r_out, deps, debug_print=False):
         if io not in deps_cache:
             d = deps(io)
             if d:
+                if not isinstance(d, (list, OrderedSet)):
+                    raise TypeError("Non-deterministic collections here make"
+                            " toposort non-deterministic.")
                 deps_cache[io] = list(d)
             else:
                 deps_cache[io] = d

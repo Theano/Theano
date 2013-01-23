@@ -12,6 +12,9 @@ from python25 import all
 from theano import config
 import warnings
 NullType = None
+import theano
+from python25 import OrderedDict
+from theano.misc.ordered_set import OrderedSet
 
 class InconsistencyError(Exception):
     """
@@ -557,6 +560,7 @@ class FunctionGraph(utils.object2):
         ords = self.orderings()
 
         order = graph.io_toposort(fg.inputs, fg.outputs, ords)
+
         return order
 
     def orderings(self):
@@ -571,14 +575,24 @@ class FunctionGraph(utils.object2):
                take care of computing dependencies by itself.
 
         """
-        ords = {}
+        ords =  OrderedDict()
+        assert isinstance(self._features, list)
         for feature in self._features:
             if hasattr(feature, 'orderings'):
-                for node, prereqs in feature.orderings(self).items():
+                orderings = feature.orderings(self)
+                if not isinstance(orderings, OrderedDict):
+                    raise TypeError("Non-deterministic return value from " \
+                            +str(feature.orderings) \
+                            +". Nondeterministic object is "+str(orderings))
+                for node, prereqs in orderings.items():
+                    if not isinstance(prereqs, (list, OrderedSet)):
+                        raise TypeError("prereqs must be a type with a "
+                                "deterministic iteration order, or toposort "
+                                " will be non-deterministic.")
                     ords.setdefault(node, []).extend(prereqs)
         # eliminate duplicate prereqs
         for (node,prereqs) in ords.items():
-            ords[node] = list(set(prereqs))
+            ords[node] = list(OrderedSet(prereqs))
         return ords
 
     def nclients(self, r):

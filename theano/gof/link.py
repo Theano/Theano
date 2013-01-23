@@ -518,7 +518,8 @@ def add_clear_storage(f, computed, storage_map):
 
 
 class WrapLinker(Linker):
-    """ WRITEME
+    """
+    WRITEME
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
@@ -646,7 +647,8 @@ class WrapLinker(Linker):
         return f, inputs0, outputs0
 
 def WrapLinkerMany(linkers, wrappers):
-    """ Variant on WrapLinker that runs a series of wrapper functions instead of
+    """
+    Variant on WrapLinker that runs a series of wrapper functions instead of
     just one.
     """
     def wrapper(*args):

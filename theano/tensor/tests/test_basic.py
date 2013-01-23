@@ -34,7 +34,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, tensordot_grad,  TensorType, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
-        get_constant_value, ivector, reshape, scalar_from_tensor, scal,
+        get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, TensorDot, lvector, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
@@ -1074,12 +1074,23 @@ ExpInplaceTester = makeBroadcastTester(op=inplace.exp_inplace,
                                        grad=_grad_broadcast_unary_normal,
                                        inplace=True)
 
+
+def _numpy_exp2_round_int(x):
+    # Make sure exp2 on an int returns a value that can be correctly casted
+    # to an int. For instance, numpy.exp2(4) sometimes returns
+    # 15.999999999999998, we make sure we return 16. instead.
+    # This is used in Exp2InplaceTester.
+    out = numpy.exp2(x)
+    if x.dtype in tensor.discrete_dtypes:
+        out = numpy.round(out)
+    return out
+
 Exp2Tester = makeBroadcastTester(op=tensor.exp2,
                                  expected=numpy.exp2,
                                  good=_good_broadcast_unary_normal,
                                  grad=_grad_broadcast_unary_normal)
 Exp2InplaceTester = makeBroadcastTester(op=inplace.exp2_inplace,
-                                        expected=numpy.exp2,
+                                        expected=_numpy_exp2_round_int,
                                          good=_good_broadcast_unary_normal,
                                          grad=_grad_broadcast_unary_normal,
                                          inplace=True)
@@ -2129,7 +2140,7 @@ class T_max_and_argmax(unittest.TestCase):
         cost = argmax(x, axis=0).sum()
         value_error_raised = False
         gx = grad(cost, x)
-        val = tensor.get_constant_value(gx)
+        val = tensor.get_scalar_constant_value(gx)
         assert val == 0.0
 
     def test_grad(self):
@@ -3614,43 +3625,44 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_roll(self):
 
-        # Test simple 1D example
-        a = self.shared(numpy.array([1, 2, 3, 4, 5, 6], dtype=self.floatX))
-        b = roll(a, 2)
-        want = numpy.array([5, 6, 1, 2, 3, 4])
-        out = theano.function([], b)()
+        for get_shift in [lambda a:a, lambda x:theano.shared(x)]:
+            # Test simple 1D example
+            a = self.shared(numpy.array([1, 2, 3, 4, 5, 6], dtype=self.floatX))
+            b = roll(a, get_shift(2))
+            want = numpy.array([5, 6, 1, 2, 3, 4])
+            out = theano.function([], b)()
 
-        assert (out == want).all()
+            assert (out == want).all()
 
-        # Test simple 1D example with explicit 0 axis
-        b = roll(a, -1, 0)
-        want = numpy.array([2, 3, 4, 5, 6, 1])
-        out = theano.function([], b)()
+            # Test simple 1D example with explicit 0 axis
+            b = roll(a, get_shift(-1), 0)
+            want = numpy.array([2, 3, 4, 5, 6, 1])
+            out = theano.function([], b)()
 
-        assert (out == want).all()
+            assert (out == want).all()
 
-        # Test 2D example - ensure that behavior matches numpy.roll behavior
-        a = self.shared(numpy.arange(21).reshape((3, 7)).astype(self.floatX))
-        b = roll(a, -2, 1)
+            # Test 2D example - ensure that behavior matches numpy.roll behavior
+            a = self.shared(numpy.arange(21).reshape((3, 7)).astype(self.floatX))
+            b = roll(a, get_shift(-2), 1)
 
-        want = numpy.roll(a.get_value(borrow=True), -2, 1)
-        out = theano.function([], b)()
+            want = numpy.roll(a.get_value(borrow=True), -2, 1)
+            out = theano.function([], b)()
 
-        assert (out == want).all()
+            assert (out == want).all()
 
-        # Test rolling on axis 0
-        want = numpy.roll(a.get_value(borrow=True), -2, 0)
-        b = roll(a, -2, 0)
-        out = theano.function([], b)()
+            # Test rolling on axis 0
+            want = numpy.roll(a.get_value(borrow=True), -2, 0)
+            b = roll(a, get_shift(-2), 0)
+            out = theano.function([], b)()
 
-        assert (out == want).all()
+            assert (out == want).all()
 
-        # Test rolling on default axis with ndim > 1
-        want = numpy.roll(a.get_value(borrow=True), 2)
-        b = roll(a, 2)
-        out = theano.function([], b)()
+            # Test rolling on default axis with ndim > 1
+            want = numpy.roll(a.get_value(borrow=True), 2)
+            b = roll(a, get_shift(2))
+            out = theano.function([], b)()
 
-        assert (out == want).all()
+            assert (out == want).all()
 
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
@@ -6156,40 +6168,40 @@ def test_dimshuffle_duplicate():
     assert success
 
 
-class T_get_constant_value(unittest.TestCase):
-    def test_get_constant_value(self):
+class T_get_scalar_constant_value(unittest.TestCase):
+    def test_get_scalar_constant_value(self):
         a = tensor.stack(1, 2, 3)
-        assert get_constant_value(a[0]) == 1
-        assert get_constant_value(a[1]) == 2
-        assert get_constant_value(a[2]) == 3
+        assert get_scalar_constant_value(a[0]) == 1
+        assert get_scalar_constant_value(a[1]) == 2
+        assert get_scalar_constant_value(a[2]) == 3
 
         b = tensor.iscalar()
         a = tensor.stack(b, 2, 3)
-        self.assertRaises(TypeError, get_constant_value, a[0])
-        assert get_constant_value(a[1]) == 2
-        assert get_constant_value(a[2]) == 3
+        self.assertRaises(tensor.basic.NotScalarConstantError, get_scalar_constant_value, a[0])
+        assert get_scalar_constant_value(a[1]) == 2
+        assert get_scalar_constant_value(a[2]) == 3
 
-        # For now get_constant_value goes through only MakeVector and Join of
+        # For now get_scalar_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
         a = tensor.stack(v, 2, 3)
-        self.assertRaises(TypeError, get_constant_value, a[0])
-        self.assertRaises(TypeError, get_constant_value, a[1])
-        self.assertRaises(TypeError, get_constant_value, a[2])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[0])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[1])
+        self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[2])
 
         # Test the case SubTensor(Shape(v)) when the dimensions
         # is broadcastable.
         v = tensor.row()
-        assert get_constant_value(v.shape[0]) == 1
+        assert get_scalar_constant_value(v.shape[0]) == 1
 
     def test_subtensor_of_constant(self):
         c = constant(rand(5))
         for i in range(c.value.shape[0]):
-            assert get_constant_value(c[i]) == c.value[i]
+            assert get_scalar_constant_value(c[i]) == c.value[i]
         c = constant(rand(5, 5))
         for i in range(c.value.shape[0]):
             for j in range(c.value.shape[1]):
-                assert get_constant_value(c[i, j]) == c.value[i, j]
+                assert get_scalar_constant_value(c[i, j]) == c.value[i, j]
 
 
 class T_as_tensor_variable(unittest.TestCase):
@@ -7108,10 +7120,12 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_dot(self):
         X, Y = self.vars
         x, y = self.vals
-        assert_array_equal(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
+        # Use allclose comparison as a user reported on the mailing
+        # list failure otherwise with array that print exactly the same.
+        assert_allclose(x.dot(y), X.dot(Y).eval({X: x, Y: y}))
         Z = X.dot(Y)
         z = x.dot(y)
-        assert_array_equal(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
+        assert_allclose(x.dot(z), X.dot(Z).eval({X: x, Z: z}))
 
     def test_real_imag(self):
         X, Y = self.vars
@@ -7167,6 +7181,26 @@ class TestTensorInstanceMethods(unittest.TestCase):
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
+    def test_take(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        indices = [1,0,3]
+        assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
+        indices = [1,0,1]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        indices = [-10,5,12]
+        assert_array_equal(X.take(indices, 1, mode='wrap').eval({X: x}),
+                           x.take(indices, 1, mode='wrap'))
+        assert_array_equal(X.take(indices, -1, mode='wrap').eval({X: x}),
+                           x.take(indices, -1, mode='wrap'))
+        assert_array_equal(X.take(indices, 1, mode='clip').eval({X: x}),
+                           x.take(indices, 1, mode='clip'))
+        assert_array_equal(X.take(indices, -1, mode='clip').eval({X: x}),
+                           x.take(indices, -1, mode='clip'))
+        indices = [[1,0,1], [0,1,1]]
+        assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        # Test equivalent advanced indexing
+        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 

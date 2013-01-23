@@ -6,7 +6,7 @@ Views and inplace operations
 ============================
 
 Theano allows the definition of Ops which return a :term:`view` on one
-of their inputs or operates :term:`inplace` on one or several
+of their inputs or operate :term:`inplace` on one or several
 inputs. This allows more efficient operations on numpy's ``ndarray``
 data type than would be possible otherwise.
 However, in order to work correctly, these Ops need to
@@ -201,17 +201,20 @@ input(s)'s memory). From there, go to the previous section.
 Inplace optimization and DebugMode
 ==================================
 
-It is recommended that during the graph construction, all op are not inplace. 
-Then an optimization replace them with an inplace one. Currently DebugMode check
-all optimization that was tryed even if they got rejected. One reason an inplace
-optimization can get rejected is that their is another op that already do an
-inplace on the same input. A second reason to reject an inplace optimization is
-if it introduce cycle into the graph.
+It is recommended that during the graph construction, all Ops are not inplace. 
+Then an optimization replaces them with inplace ones. Currently DebugMode checks
+all optimizations that were tried even if they got rejected. One reason an inplace
+optimization can get rejected is when there is another Op that is already being applied
+inplace on the same input. Another reason to reject an inplace optimization is
+if it would introduce a cycle into the graph.
 
-To allow using DebugMode more often, we can pre-check that our optimization will
-get rejected in many case.(not the cycle reason). For this you can use the 
-theano.gof.destroyhandler.fast_inplace_check() function that will tell you which 
-op can be used.
-
+The problem with DebugMode is that it will trigger a useless error when
+checking a rejected inplace optimization, since it will lead to wrong results.
+In order to be able to use DebugMode in more situations, your inplace
+optimization can pre-check whether it will get rejected by using the
+``theano.gof.destroyhandler.fast_inplace_check()`` function, that will tell
+which Ops can be performed inplace. You may then skip the optimization if it is
+incompatible with this check. Note however that this check does not cover all
+cases where an optimization may be rejected (it will not detect cycles).
 
 .. _optdb:

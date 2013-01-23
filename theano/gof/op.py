@@ -20,6 +20,7 @@ import warnings
 
 import theano
 from theano import config
+from theano.misc.windows import call_subprocess_Popen
 
 import cc
 import graph
@@ -769,6 +770,7 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
+        default_openmp = True
         try:
             code = """
             #include <omp.h>
@@ -787,10 +789,10 @@ class OpenMPOp(Op):
                 os.write(fd, code)
                 os.close(fd)
                 fd = None
-                proc = subprocess.Popen(['g++', '-fopenmp', path],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        stdin=dummy_stdin.fileno())
+                proc = call_subprocess_Popen(['g++', '-fopenmp', path],
+                                             stdout=subprocess.PIPE,
+                                             stderr=subprocess.PIPE,
+                                             stdin=dummy_stdin.fileno())
                 proc.wait()
                 if proc.returncode != 0:
                     default_openmp = False
@@ -804,10 +806,9 @@ class OpenMPOp(Op):
                     os.remove(path)
         except OSError, e:
             return False
-        return True
+        return default_openmp
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        op = self
         if self.openmp:
             if OpenMPOp.gxx_support_openmp is None:
                 OpenMPOp.gxx_support_openmp = OpenMPOp.test_gxx_support()
@@ -820,8 +821,7 @@ class OpenMPOp(Op):
                         " To remove this warning set the theano flags `openmp`"
                         " to False.")
             if OpenMPOp.gxx_support_openmp is False:
-                op = copy.copy(self)
-                op.openmp = False
+                self.openmp = False
                 theano.config.openmp = False
-        return super(OpenMPOp, op).make_thunk(node, storage_map,
-                                              compute_map, no_recycling)
+        return super(OpenMPOp, self).make_thunk(node, storage_map,
+                                                compute_map, no_recycling)

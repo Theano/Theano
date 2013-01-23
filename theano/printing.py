@@ -12,6 +12,7 @@ import sys
 hashlib = None
 
 import numpy
+np = numpy
 
 try:
     import pydot as pd
@@ -1082,6 +1083,7 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
     location dependent information such as the id of a node.
     """
 
+    global hashlib
     if hashlib is None:
         try:
             import hashlib
@@ -1110,14 +1112,17 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
         name = '<ndarray:'
         name += 'strides=['+','.join(str(stride) for stride in obj.strides)+']'
         name += ',digest='+hashlib.md5(obj).hexdigest()+'>'
-    elif hasattr(obj, 'name') and obj.name is not None:
-        name = obj.name
     elif hasattr(obj, 'owner') and obj.owner is not None:
         name = str(obj.owner.op) + '('
         name += ','.join(var_descriptor(ipt,
                     _prev_obs=_prev_obs, _tag_generator=_tag_generator) for ipt
                     in obj.owner.inputs)
         name += ')'
+    elif hasattr(obj, 'name') and obj.name is not None:
+        # Only print the name if there is no owner.
+        # This way adding a name to an intermediate node can't make
+        # a deeper graph get the same descriptor as a shallower one
+        name = obj.name
     else:
         name = str(obj)
         if ' at 0x' in name:
@@ -1143,6 +1148,23 @@ def position_independent_str(obj):
     return rval
 
 
+def hex_digest(x):
+    """
+    Returns a short, mostly hexadecimal hash of a numpy ndarray
+    """
 
-
-
+    global hashlib
+    if hashlib is None:
+        try:
+            import hashlib
+        except ImportError:
+            raise RuntimeError("Can't run hex_digest because hashlib is not available.")
+    assert isinstance(x, np.ndarray)
+    rval = hashlib.md5(x.tostring()).hexdigest()
+    # hex digest must be annotated with strides to avoid collisions
+    # because the buffer interface only exposes the raw data, not
+    # any info about the semantics of how that data should be arranged
+    # into a tensor
+    rval = rval + '|strides=[' + ','.join(str(stride) for stride in x.strides) + ']'
+    rval = rval + '|shape=[' + ','.join(str(s) for s in x.shape) + ']'
+    return rval

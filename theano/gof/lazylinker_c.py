@@ -1,3 +1,4 @@
+import errno
 import os, logging, sys
 
 import theano
@@ -31,7 +32,18 @@ try:
     # imported and compile_str won't get called at all.
     location = os.path.join(config.compiledir, 'lazylinker_ext')
     if not os.path.exists(location):
-        os.mkdir(location)
+        try:
+            # Try to make the location
+            os.mkdir(location)
+        except OSError, e:
+            # If we get an error, verify that the error was # 17, the path already exists,
+            # and that it is a directory
+            # Note: we can't check if it exists before making it, because we are not holding
+            # the lock right now, so we could race another process and get error 17 if we lose
+            # the race
+            assert e.errno == errno.EEXIST
+            assert os.path.isdir(location)
+
     if not os.path.exists(os.path.join(location, '__init__.py')):
         file(os.path.join(location, '__init__.py'), 'w').close()
 

@@ -3,28 +3,20 @@ Implementations of BLAS Ops based on scipy's BLAS bindings.
 """
 import numpy
 
-from blas import Ger, ger, ger_destructive
-from blas import blas_optdb, optdb,local_optimizer
+from theano.tensor.blas import Ger, ger, ger_destructive, have_fblas
+from theano.tensor.blas import blas_optdb, optdb,local_optimizer
 
 from theano.tensor.opt import in2out
 
-try:
-    import scipy.linalg.blas
-    have_fblas = True
-    _blas_gemv_fns = {
-            numpy.dtype('float32'):scipy.linalg.blas.fblas.sgemv,
-            numpy.dtype('float64'):scipy.linalg.blas.fblas.dgemv,
-            numpy.dtype('complex64'):scipy.linalg.blas.fblas.cgemv,
-            numpy.dtype('complex128'):scipy.linalg.blas.fblas.zgemv,
-            }
+
+if have_fblas:
+    from theano.tensor.blas import fblas
     _blas_ger_fns = {
-            numpy.dtype('float32'):scipy.linalg.blas.fblas.sger,
-            numpy.dtype('float64'):scipy.linalg.blas.fblas.dger,
-            numpy.dtype('complex64'):scipy.linalg.blas.fblas.cgeru,
-            numpy.dtype('complex128'):scipy.linalg.blas.fblas.zgeru,
+            numpy.dtype('float32'): fblas.sger,
+            numpy.dtype('float64'): fblas.dger,
+            numpy.dtype('complex64'): fblas.cgeru,
+            numpy.dtype('complex128'): fblas.zgeru,
             }
-except ImportError, e:
-    have_fblas = False
 
 
 class ScipyGer(Ger):

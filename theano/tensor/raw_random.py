@@ -14,7 +14,7 @@ from theano.compile import optdb
 
 
 class RandomStateType(gof.Type):
-    """A Type wrapper for numpy.RandomState
+    """A Type wrapper for numpy.random.RandomState
 
     The reason this exists (and `Generic` doesn't suffice) is that
     RandomState objects that would appear to be equal do not compare
@@ -70,13 +70,13 @@ random_state_type = RandomStateType()
 
 
 class RandomFunction(gof.Op):
-    """Op that draws random numbers from a numpy.RandomState object
+    """Op that draws random numbers from a numpy.random.RandomState object
 
     """
 
     def __init__(self, fn, outtype, inplace=False, ndim_added=0):
         """
-        :param fn: a member function of numpy.RandomState
+        :param fn: a member function of numpy.random.RandomState
         Technically, any function with a signature like the ones in
         numpy.random.RandomState will do.  This function must accept
         the shape (sometimes called size) of the output as the last
@@ -133,7 +133,7 @@ class RandomFunction(gof.Op):
 
     def make_node(self, r, shape, *args):
         """
-        :param r: a numpy.RandomState instance, or a Variable of Type
+        :param r: a numpy.random.RandomState instance, or a Variable of Type
         RandomStateType that will contain a RandomState instance.
 
         :param shape: an lvector with a shape defining how many samples
