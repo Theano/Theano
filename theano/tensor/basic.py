@@ -6541,26 +6541,19 @@ class AdvancedSubtensor1(Op):
         fail = sub['fail']
         return """
             if (%(output_name)s != NULL) {
-                PyArrayObject *out = %(output_name)s;
-                npy_intp nd, i, n, m, chunk;
-                npy_intp shape[NPY_MAXDIMS];
-                n = m = chunk = 1;
+                npy_intp nd, i, shape[NPY_MAXDIMS];
                 nd = PyArray_NDIM(%(a_name)s) + PyArray_NDIM(%(i_name)s) - 1;
                 for (i = 0; i < nd; i++) {
                         if (i < PyArray_NDIM(%(i_name)s)) {
-                            shape[i] = PyArray_DIMS(%(i_name)s )[i];
-                            m *= shape[i];
+                            shape[i] = PyArray_DIMS(%(i_name)s)[i];
                         }
                         else {
                             shape[i] = PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(%(i_name)s)+1];
-                            chunk *= shape[i];
                         }
                 }
-                if ((PyArray_NDIM(out) != nd) ||
-                     !PyArray_CompareLists(PyArray_DIMS(out), shape, nd)) {
-                         PyErr_SetString(PyExc_ValueError,
-                             "output array does not match result of ndarray.take");
-                     %(fail)s;
+                if ((PyArray_NDIM(%(output_name)s) != nd) ||
+                     !PyArray_CompareLists(PyArray_DIMS(%(output_name)s), shape, nd)) {
+                    Py_CLEAR(%(output_name)s);
                 }
             }
             %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0,
@@ -6569,7 +6562,7 @@ class AdvancedSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 0, 1)
+        return (0, 0, 2)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
