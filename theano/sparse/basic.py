@@ -8,11 +8,9 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 # Automatic methods for determining best sparse format?
 
 import sys
-from itertools import izip
 import numpy
 import theano
 import scipy.sparse
-
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
@@ -1710,9 +1708,9 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-    
     def __init__(self, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
+        #Should we do inplace addition or not ?
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [3]}
@@ -1725,18 +1723,21 @@ class AddSD(gof.op.Op):
 
     def __str__(self):
         if self.inplace:
-          return self.__class__.__name__ + '{inplace}'
+            return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
-        
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
+
+        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
+
+        # We either use CSC or CSR depending on the format of input
+        self.format = x.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
-        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
-        self.format = x.format
         assert y.type.ndim == 2
         return gof.Apply(self,
                          [data, indices, indptr, y],
@@ -1745,10 +1746,10 @@ class AddSD(gof.op.Op):
                                            ).make_variable()])
 
     def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
-      inplace = int(self.inplace)
-      format = {'csc': 0, 'csr':1}[self.format]
-      code = """
-                if(%(z)s) {Py_XDECREF(%(z)s);}
+        inplace = int(self.inplace)
+        format = {'csc': 0, 'csr':1}[self.format]
+        code = """
+                Py_XDECREF(%(z)s);
                 if (!%(inplace)s){
                   %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
                 }else{
@@ -1785,33 +1786,20 @@ class AddSD(gof.op.Op):
                  } 
                 }
              """ % dict(locals(), **sub)
-      return code
-    
+        return code
+
     def perform(self, node, (data, indices, indptr,  y), (out, )):
         assert _is_dense(y)
-        if self.inplace:
-          if self.format == 'csc':
-            for c in xrange(y.shape[1]):
-              low = indptr[c]
-              high = indptr[c+1]
-              for ind in xrange(low, high):
-                y[(indices[ind], c)] += data[ind]
-          elif self.format == 'csr':
-            for r in xrange(y.shape[0]):
-              low = indptr[r]
-              high = indptr[r+1]
-              for ind in xrange(low, high):
-                y[(r, indices[ind])] += data[ind]
-          out[0] = y
-        else:
-          if self.format == 'csr':
-            x = scipy.sparse.csr_matrix( (data,indices,indptr), shape=y.shape)
-          elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix( (data,indices,indptr), shape=y.shape)
-          # The asarray is needed as in some case, this return a
-          # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
-          out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
-            
+
+        if self.format == 'csr':
+            x = scipy.sparse.csr_matrix((data, indices, indptr), shape = y.shape)
+        elif self.format == 'csc':
+            x = scipy.sparse.csc_matrix((data, indices, indptr), shape = y.shape)
+
+        # The asarray is needed as in some case, this return a
+        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
+        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
+
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)

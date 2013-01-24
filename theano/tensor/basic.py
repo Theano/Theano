@@ -7,8 +7,6 @@ import warnings
 from itertools import izip
 
 import numpy
-from numpy.lib.stride_tricks import as_strided
-import scipy.sparse as ssparse
 #from copy import copy as python_copy
 
 import theano
@@ -6522,12 +6520,10 @@ class AdvancedSubtensor1(Op):
         return rval
 
     def grad(self, inputs, grads):
+
         gz, = grads
-
         assert len(inputs) == 2
-#        rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
         rval1 = [ConstructSparse()(inputs[0], gz, inputs[1])]
-
         return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):
@@ -6539,8 +6535,9 @@ class AdvancedSubtensor1(Op):
         x, ilist = ishapes
         return [ilist + x[1:]]
 
+
 class ConstructSparse(Op):
-    """Construct a sparse matrix out of a list of 2-D matrix rows"""
+    """Constructs a sparse matrix out of a list of 2-D matrix rows"""
 
     def __hash__(self):
         return hash((type(self)))
@@ -6552,10 +6549,6 @@ class ConstructSparse(Op):
         return self.__class__.__name__
 
     def make_node(self, x, y, ilist):
-
-        x_sparse = ssparse.csc_matrix(tuple(x.shape.eval()), dtype=x.dtype)
-        x__ = theano.sparse.as_sparse_variable(x_sparse)
-
         x_ = as_tensor_variable(x)
         y_ = as_tensor_variable(y)
         ilist_ = as_tensor_variable(ilist)
@@ -6567,27 +6560,23 @@ class ConstructSparse(Op):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
         if y_.type.ndim > x_.type.ndim:
-            if self.set_instead_of_inc:
-                opname = 'set'
-            else:
-                opname = 'increment'
-            raise TypeError('cannot %s x subtensor with ndim=%s'
-            ' by y with ndim=%s to x subtensor with ndim=%s ' % (
-                opname, x_.type.ndim, y_.type.ndim))
-
-        return Apply(self, [x_, y_, ilist_], [x__.type()])
+            raise TypeError('cannot construct sparse matrix as dimensions differ')    
+        return Apply(self, [x_, y_, ilist_], [theano.sparse.csc_matrix(dtype=x.dtype)])
 
     def perform(self, node, inp, out_):
+        import scipy.sparse as ssparse
+        from numpy.lib.stride_tricks import as_strided
         x, values, idx = inp
         out, = out_
         rows, cols = values.shape
         assert rows == len(idx)
-        indptr = numpy.arange(cols+1) * rows
+        indptr = numpy.arange(cols + 1) * rows
         indices = as_strided(idx,
                              strides=(0, idx.strides[0]),
-                             shape=(cols, idx.shape[0])).flatten()
+                             shape = (cols, idx.shape[0])).flatten()
         data = values.T.flatten()
-        out[0] = ssparse.csc_matrix((data,indices,indptr), shape=x.shape, dtype=x.dtype)
+        out[0] = ssparse.csc_matrix((data, indices, indptr), shape=x.shape,
+                                    dtype=x.dtype)
 
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
@@ -6617,7 +6606,6 @@ class ConstructSparse(Op):
         gy = advanced_subtensor1(g_output, *idx_list)
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
-
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
