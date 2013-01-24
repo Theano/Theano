@@ -6538,6 +6538,11 @@ class AdvancedSubtensor1(Op):
 
 class ConstructSparse(Op):
     """Constructs a sparse matrix out of a list of 2-D matrix rows"""
+    def __init__(self):
+        import scipy.sparse as ssparse
+        from numpy.lib.stride_tricks import as_strided
+        self.m_ssparse = ssparse
+        self.m_as_strided = as_strided
 
     def __hash__(self):
         return hash((type(self)))
@@ -6564,18 +6569,16 @@ class ConstructSparse(Op):
         return Apply(self, [x_, y_, ilist_], [theano.sparse.csc_matrix(dtype=x.dtype)])
 
     def perform(self, node, inp, out_):
-        import scipy.sparse as ssparse
-        from numpy.lib.stride_tricks import as_strided
         x, values, idx = inp
         out, = out_
         rows, cols = values.shape
         assert rows == len(idx)
         indptr = numpy.arange(cols + 1) * rows
-        indices = as_strided(idx,
+        indices = self.m_as_strided(idx,
                              strides=(0, idx.strides[0]),
                              shape = (cols, idx.shape[0])).flatten()
         data = values.T.flatten()
-        out[0] = ssparse.csc_matrix((data, indices, indptr), shape=x.shape,
+        out[0] = self.m_ssparse.csc_matrix((data, indices, indptr), shape=x.shape,
                                     dtype=x.dtype)
 
     def infer_shape(self, node, ishapes):
