@@ -105,7 +105,7 @@ Brian Vandenberg emailed `installation instructions on Gentoo
 <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
 focusing on how to install the appropriate dependencies.
 
-Nicolas Pinto provide `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
 
 Alternative installation on Mandriva 2010.2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
