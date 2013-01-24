@@ -6541,19 +6541,27 @@ class AdvancedSubtensor1(Op):
         fail = sub['fail']
         return """
             if (%(output_name)s != NULL) {
-                npy_intp nd, i, shape[NPY_MAXDIMS];
+                npy_intp nd, i, *shape;
                 nd = PyArray_NDIM(%(a_name)s) + PyArray_NDIM(%(i_name)s) - 1;
-                for (i = 0; i < nd; i++) {
-                        if (i < PyArray_NDIM(%(i_name)s)) {
-                            shape[i] = PyArray_DIMS(%(i_name)s)[i];
-                        }
-                        else {
-                            shape[i] = PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(%(i_name)s)+1];
-                        }
-                }
-                if ((PyArray_NDIM(%(output_name)s) != nd) ||
-                     !PyArray_CompareLists(PyArray_DIMS(%(output_name)s), shape, nd)) {
+                if (PyArray_NDIM(%(output_name)s) != nd) {
                     Py_CLEAR(%(output_name)s);
+                }
+                else {
+                    shape = PyArray_DIMS(%(output_name)s);
+                    for (i = 0; i < PyArray_NDIM(%(i_name)s); i++) {
+                        if (shape[i] != PyArray_DIMS(%(i_name)s)[i]) {
+                            Py_CLEAR(%(output_name)s);
+                            break;
+                        }
+                    }
+                    if (%(output_name)s != NULL) {
+                        for (; i < nd; i++) {
+                            if (shape[i] != PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(%(i_name)s)+1]) {
+                                Py_CLEAR(%(output_name)s);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0,
