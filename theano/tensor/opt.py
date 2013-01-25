@@ -416,7 +416,8 @@ def local_lift_transpose_through_dot(node):
     if not (isinstance(node.op, T.DimShuffle)
             and node.op.new_order == (1, 0)):
         return False
-    if not (node.inputs[0].owner and node.inputs[0].owner.op == T.dot):
+    if not (node.inputs[0].owner
+            and isinstance(node.inputs[0].owner.op, T.Dot)):
         return False
     x, y = node.inputs[0].owner.inputs
 

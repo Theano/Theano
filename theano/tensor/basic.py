@@ -6896,14 +6896,19 @@ def take(a, indices, axis=None, mode='raise'):
 
 
 class Dot(Op):
-    """Compute matrix-matrix, matrix-vector products and vector inner-products.
+    """
+    Computes the dot product of two variables. For two matrices, this is
+    equivalent to matrix multiplication. For two vectors, this is the inner
+    product.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 ops
-        (see tensor.blas)
+    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
+    (see tensor.blas)
 
-    :note: non matrix-matrix products (including matrix-vector
-        products) are handled by numpy.  Ensure that you have linked numpy
-        with a fast BLAS.
+    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
+    tensor.blas)
+
+    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas)
 
     """
 
@@ -6919,51 +6924,27 @@ class Dot(Op):
     def make_node(self, *inputs):
         inputs = map(as_tensor_variable, inputs)
 
-        numpy_semantics = 0
-        if numpy_semantics:
-            # numpy defines dot for tensor pairs with any rank
-            if len(inputs) != 2:
-                raise TypeError(
-                    "Wrong number of inputs for %s (got %i, expected 2)" %
-                    self)
-            i_broadcastables = [input.type.broadcastable for input in inputs]
-            bx, by = i_broadcastables
-            if len(bx) == 0:     # x is a scalar
-                bz = by
-            else:
-                if len(by) >= 2:  # y is a matrix or tensor
-                    bz = bx[:-1] + by[:-2] + by[-1:]
-                elif len(by) == 1:  # y is vector
-                    bz = bx[:-1]
-                else:  # y is a scalar
-                    bz = bx
-        else:
-            if len(inputs) != 2:
-                raise TypeError(
-                    'theanor.tensor.Dot: 2 arguments required, %d given ' %
-                    len(inputs))
+        if len(inputs) != 2:
+            raise TypeError(
+                'theano.tensor.Dot: 2 arguments required, %d given ' %
+                len(inputs))
+        if inputs[0].ndim not in (1, 2):
+            raise TypeError(
+                'theano.tensor.Dot: input 0 (0-indexed) must have ndim of '
+                '1 or 2, %d given. Consider calling theano.tensor.dot '
+                'instead.' % inputs[0].ndim)
+        if inputs[1].ndim not in (1, 2):
+            raise TypeError(
+                'theano.tensor.Dot: input 1 (0-indexed) must have ndim of '
+                '1 or 2, %d given. Consider calling theano.tensor.dot '
+                'instead.' % inputs[1].ndim)
 
-            x, y = inputs
-            nx = x.type.ndim
-            ny = y.type.ndim
-
-            if nx not in (1, 2):
-                raise TypeError(
-                    ('dot supports matrix and vector args: email theano-dev '
-                    'about enabling numpy dot semantics if you want them'), x)
-            if ny not in (1, 2):
-                raise TypeError(
-                    ('dot supports matrix and vector args: email theano-dev '
-                    'about enabling numpy dot semantics if you want them'), y)
-
-            if nx == 2 and ny == 2:
-                bz = [x.type.broadcastable[0], y.type.broadcastable[1]]
-            elif nx == 1 and ny == 2:
-                bz = [y.type.broadcastable[1]]
-            elif nx == 2 and ny == 1:
-                bz = [x.type.broadcastable[0]]
-            else:
-                bz = []
+        i_broadcastables = [input.type.broadcastable for input in inputs]
+        bx, by = i_broadcastables
+        if len(by) == 2:  # y is a matrix
+            bz = bx[:-1] + by[-1:]
+        elif len(by) == 1:  # y is vector
+            bz = bx[:-1]
 
         i_dtypes = [input.type.dtype for input in inputs]
         outputs = [tensor(scal.upcast(*i_dtypes), bz)]
@@ -6995,14 +6976,29 @@ class Dot(Op):
 
         x, y = inp
         gz, = grads
-        if gz.type.ndim == 0:
-            rval = gz * y, gz * x
-        elif x.type.ndim == 1 and y.type.ndim > 1:
-            rval = dot(gz, y.T), outer(x.T, gz)
-        elif x.type.ndim > 1 and y.type.ndim == 1:
-            rval = outer(gz, y.T), dot(x.T, gz)
-        else:
-            rval = dot(gz, y.T), dot(x.T, gz)
+        xdim, ydim, gdim = x.type.ndim, y.type.ndim, gz.type.ndim
+
+        #grad is scalar, so x is vector and y is vector
+        if gdim == 0:
+            xgrad = gz * y
+            ygrad = gz * x
+
+        #x is vector, y is matrix, grad is vector
+        elif xdim == 1 and ydim == 2:
+            xgrad = dot(gz, y.T)
+            ygrad = outer(x.T, gz)
+
+        #x is matrix, y is vector, grad is vector
+        elif xdim == 2 and ydim == 1:
+            xgrad = outer(gz, y.T)
+            ygrad = dot(x.T, gz)
+
+        #x is matrix, y is matrix, grad is matrix
+        elif xdim == ydim == 2:
+            xgrad = dot(gz, y.T)
+            ygrad = dot(x.T, gz)
+
+        rval = xgrad, ygrad
 
         for elem in rval:
             assert elem.dtype.find('float') != -1
@@ -7070,224 +7066,264 @@ class Dot(Op):
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
         x, y = node.inputs
-        if x.ndim == 2 and y.ndim == 2:
-            return [(xshp[0], yshp[1])]
-        if x.ndim == 1 and y.ndim == 2:
-            return [(yshp[1],)]
-        if x.ndim == 2 and y.ndim == 1:
-            return [(xshp[0],)]
+
+        # vector / vector
         if x.ndim == 1 and y.ndim == 1:
             return [()]
+        # matrix / vector
+        if x.ndim == 2 and y.ndim == 1:
+            return [xshp[:-1]]
+        # vector / matrix
+        if x.ndim == 1 and y.ndim == 2:
+            return [yshp[-1:]]
+        # matrix / matrix
+        if x.ndim == 2 and y.ndim == 2:
+            return [xshp[:-1] + yshp[-1:]]
         raise NotImplementedError()
 
     def __str__(self):
         return "dot"
-dot = Dot()
 
-
-pprint.assign(dot, printing.OperatorPrinter(printing.special['middle_dot'],
+_dot = Dot()
+pprint.assign(_dot, printing.OperatorPrinter(printing.special['middle_dot'],
                                             -1, 'left'))
+
+def dot(a, b):
+    """
+    Computes the dot product of two variables. For two matrices, this is
+    equivalent to matrix multiplication. For two vectors, this is the inner
+    product. When one variable is a scalar, this is like elementwise
+    multiplication.  For N dimensions, this is a sum product over the last axis
+    of the first array and the second-to-last axis of the second array:
+
+        dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
+
+    Note that this dot function does one of three things, in the following
+    sequence:
+
+        1.  If either a or b is scalar, it returns the elementwise product
+            without calling the Theano Dot op.
+
+        2.  If either a or b has more than 2 dimensions, it calls Theano's
+            tensordot function with appropriate axes. The tensordot function
+            expresses high-dimensional dot products in terms of 2D matrix
+            multiplications, so it may be possible to futherize optimize for
+            performance.
+
+        3.  If both a and b have either 1 or 2 dimensions, it calls Theano's
+            Dot op on a and b.
+
+    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
+    (see tensor.blas)
+
+    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
+    tensor.blas)
+
+    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas)
+
+    """
+    a, b = as_tensor_variable(a), as_tensor_variable(b)
+
+    if a.ndim == 0 or b.ndim == 0:
+        return a * b
+    elif a.ndim > 2 or b.ndim > 2:
+        return tensordot(a, b, [[a.ndim - 1], [numpy.maximum(0, b.ndim - 2)]])
+    else:
+        return _dot(a, b)
+
 
 
 #########################
 # Linalg : TensorDot
 #########################
-class TensorDotGrad(Op):
-    def __init__(self, axes):
-        self.axes = TensorDot.parse_axes(axes)
-        if isinstance(self.axes, (tuple, list)) and len(self.axes) == 2:
-            # The current perform don't implement correctly those cases
-            for i in range(len(self.axes[0]) - 1):
-                if self.axes[0][i] > self.axes[0][i + 1]:
-                    raise NotImplementedError()
-                if self.axes[1][i] > self.axes[1][i + 1]:
-                    raise NotImplementedError()
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axes == other.axes
-
-    def __hash__(self):
-        return hashtype(self) ^ hash(self.axes) ^ 89234
-
-    def make_node(self, x, y, gz):
-        assert isinstance(x, Variable)
-        assert isinstance(y, Variable)
-        assert isinstance(gz, Variable)
-        gx = tensor(dtype=scal.upcast(gz.dtype, y.dtype),
-                    broadcastable=x.broadcastable)
-        gy = tensor(dtype=scal.upcast(x.dtype, gz.dtype),
-                    broadcastable=y.broadcastable)
-        op = self
-        if isinstance(self.axes, int):
-            axes = [range(x.ndim - self.axes, x.ndim), range(self.axes)]
-            op = TensorDotGrad(axes)
-        return Apply(op, [x, y, gz], [gx, gy])
-
-    def perform(self, node, inp, out):
-        x, y, gz = inp
-        gx, gy = out
-        sum_over_y = range(y.ndim)
-        [sum_over_y.remove(q) for q in self.axes[1]]
-        sum_over_x = range(x.ndim)
-        [sum_over_x.remove(q) for q in self.axes[0]]
-        tdot_axes = [range(x.ndim - len(self.axes[0]), gz.ndim), sum_over_y]
-        _gx = numpy.tensordot(gz, y, tdot_axes)
-        idx = numpy.hstack((sum_over_x, self.axes[0]))
-        newshapex = numpy.zeros(x.ndim)
-        newshapex[[newpos for newpos in idx]] = range(x.ndim)
-        gx[0] = numpy.transpose(_gx, newshapex)
-        tdot_axes = [sum_over_x, range(x.ndim - len(self.axes[0]))]
-        _gy = numpy.tensordot(x, gz, tdot_axes)
-        idy = numpy.hstack((self.axes[1], sum_over_y))
-        newshapey = numpy.zeros(y.ndim)
-        newshapey[[newpos for newpos in idy]] = range(y.ndim)
-        gy[0] = numpy.transpose(_gy, newshapey)
-        assert gy[0].shape == y.shape
-        assert gx[0].shape == x.shape
-
-    def infer_shape(self, node, in_shapes):
-        return in_shapes[:2]
-
-tensordot_grad = TensorDotGrad
-
-
-class TensorDot(Op):
-    """Compute tensor-tensor products over the given axes.
-    See numpy documentation for details.
-    (http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html)
-
+def tensordot(a, b, axes = 2):
     """
+    Given two tensors a and b,tensordot computes a generalized dot product over
+    the provided axes. Theano's implementation reduces all expressions to
+    matrix or vector dot products and is based on code from Tijmen Tieleman's
+    gnumpy (http://www.cs.toronto.edu/~tijmen/gnumpy.html).
 
-    @classmethod
-    def parse_axes(cls, axes):
+    :param a: the first tensor variable
+    :type a: symbolic tensor
 
-        if not numpy.isscalar(axes) and len(axes) != 2:
-            raise ValueError("Axes should be scalar valued or a list/tuple of "
-                             "len 2.")
+    :param b: the second tensor variable
+    :type b: symbolic tensor
 
-        if isinstance(axes, (list, tuple)):
-            axes_out = []
-            # cast axes[0] and axes[1] to tuples
-            for i, a in enumerate(axes):
-                if numpy.isscalar(a):
-                    axes_out.append((a,))
-                else:
-                    axes_out.append(tuple(a))
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
 
-            # these should be of same length
-            if len(axes_out[0]) != len(axes_out[1]):
-                raise ValueError("Elements of the axes list/tuple need to be "
-                                 "of the same size.")
+                 Note that the default value of 2 is not guaranteed to work
+                 for all values of a and b, and an error will be raised if
+                 that is the case. The reason for keeping the default is to
+                 maintain the same signature as numpy's tensordot function
+                 (and np.tensordot raises analogous errors for non-compatible
+                 inputs).
 
-            axes = tuple(axes_out)
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor:
+                     axes = [range(a.ndim - i, b.ndim), range(i)]
 
-        return axes
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 0]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 1st axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 1st axis of b.
+    :type axes: int or array-like of length 2
 
-    def __init__(self, axes):
-        self.axes = self.parse_axes(axes)
+    :returns: a tensor with shape equal to the concatenation of a's shape
+              (less any dimensions that were summed over) and b's shape
+              (less any dimensions that were summed over).
+    :rtype: symbolic tensor
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axes == other.axes
+    It may be helpful to consider an example to see what tensordot does.
+    Theano's implementation is identical to NumPy's. Here a has shape (2, 3, 4)
+    and b has shape (5, 6, 4, 3). The axes to sum over are [[1, 2], [3, 2]] --
+    note that a.shape[1] == b.shape[3] and a.shape[2] == b.shape[2]; these axes
+    are compatible. The resulting tensor will have shape (2, 5, 6) -- the
+    dimensions that are not being summed:
 
-    def __hash__(self):
-        return hashtype(self) ^ hash(self.axes) ^ 89234
+        a = np.random.random((2,3,4))
+        b = np.random.random((5,6,4,3))
 
-    def make_node(self, x, y):
-        op = self
-        if isinstance(self.axes, int):
-            axes = [range(x.ndim - self.axes, x.ndim), range(self.axes)]
-            op = TensorDot(axes)
+        #tensordot
+        c = np.tensordot(a, b, [[1,2],[3,2]])
 
-        axesdim = numpy.size(op.axes) / 2
+        #loop replicating tensordot
+        a0, a1, a2 = a.shape
+        b0, b1, _, _ = b.shape
+        cloop = np.zeros((a0,b0,b1))
 
-        x, y = map(as_tensor_variable, [x, y])
+        #loop over non-summed indices -- these exist
+        #in the tensor product.
+        for i in range(a0):
+            for j in range(b0):
+                for k in range(b1):
+                    #loop over summed indices -- these don't exist
+                    #in the tensor product.
+                    for l in range(a1):
+                        for m in range(a2):
+                            cloop[i,j,k] += a[i,l,m] * b[j,k,m,l]
 
-        if axesdim > x.type.ndim or axesdim > y.type.ndim:
-            raise TypeError('Cannot sum over more dimensions than input. '
-                            '%i > %i,%i' %
-                            (axesdim, x.type.ndim, y.type.ndim))
+        np.allclose(c, cloop) #true
 
-        outdim = x.type.ndim + y.type.ndim - 2 * axesdim
-        output = tensor(dtype=scal.upcast(x.dtype, y.dtype),
-                        broadcastable=[False] * outdim)
-        return Apply(op, inputs=[x, y], outputs=[output, ])
+    This specific implementation avoids a loop by transposing a and b such that
+    the summed axes of a are last and the summed axes of b are first. The
+    resulting arrays are reshaped to 2 dimensions (or left as vectors, if
+    appropriate) and a matrix or vector dot product is taken. The result is
+    reshaped back to the required output dimensions.
 
-    def perform(self, node, inp, out):
-        x, y = inp
-        z, = out
+    In an extreme case, no axes may be specified. The resulting tensor
+    will have shape equal to the concatenation of the shapes of a and b:
+
+        c = np.tensordot(a, b, 0)
+        print(a.shape) #(2,3,4)
+        print(b.shape) #(5,6,4,3)
+        print(c.shape) #(2,3,4,5,6,4,3)
+
+    See the documentation of numpy.tensordot for more examples.
+    """
+    a, b = as_tensor_variable(a), as_tensor_variable(b)
+
+    # axes must be a scalar or list/tuple of length 2
+    if not numpy.isscalar(axes) and len(axes) != 2:
+        raise ValueError('Axes should be an integer or a '
+                         'list/tuple of len 2 (%s was provided)' % repr(axes))
+
+    # if 'axes' is a number of axes to multiply and sum over (trailing axes
+    # of a, leading axes of b), we can just reshape and use dot.
+    elif numpy.isscalar(axes):
+        axes = int(axes)
+
+        # check if axes is valid given the dimension of a and b
+        if axes > a.ndim:
+            raise ValueError('axes can not be larger than the dimension of '
+                    'a (a.ndim=%i, axes=%i)' % (a.ndim, axes))
+        if axes > b.ndim:
+            raise ValueError('axes can not be larger than than the dimension '
+                             'of b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
+
+        outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
+        outndim = a.ndim + b.ndim - (2 * axes)
+
+        a_shape_0 = b_shape_0 = a_shape_1 = b_shape_1 = 1
+        for s0 in range(a.ndim - axes):
+            a_shape_0 *= a.shape[s0]
+        for s0 in range(axes):
+            b_shape_0 *= b.shape[s0]
+        for s1 in range(a.ndim - axes, a.ndim):
+            a_shape_1 *= a.shape[s1]
+        for s1 in range(axes, b.ndim):
+            b_shape_1 *= b.shape[s1]
+
+        a_reshaped = a.reshape((a_shape_0, a_shape_1), ndim = 2)
+        b_reshaped = b.reshape((b_shape_0, b_shape_1), ndim = 2)
+
+        return _dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
+
+    # if 'axes' is a list, transpose a and b such that the summed axes of a
+    # are last and the summed axes of b are first.
+    else:
+        #get first axis element as a tuple
         try:
-            z[0] = numpy.asarray(numpy.tensordot(x, y, self.axes))
-        except ValueError, e:
-            # The error raised by numpy has no shape information, we mean to
-            # add that.
-            e.args = e.args + (x.shape, y.shape, self.axes)
-            raise
+            a_axes = tuple(axes[0])
+        except TypeError:
+            a_axes = tuple([axes[0]])
 
-    def infer_shape(self, node, in_shapes):
-        shape_x, shape_y = in_shapes
-        out_shape = []
-        if isinstance(self.axes, (list, tuple)):
-            iter = (i for i in range(len(shape_x)) if i not in self.axes[0])
-            for i in iter:
-                out_shape.append(shape_x[i])
-            iter = (i for i in range(len(shape_y)) if i not in self.axes[1])
-            for i in iter:
-                out_shape.append(shape_y[i])
-        else:
-            out_shape = list(shape_x)[shape_x.ndim - self.axes] + \
-                        list(shape_y)[shape_y.ndim - self.axes, shape_y.ndim]
-        return [out_shape]
+        #get second axis element as a tuple
+        try:
+            b_axes = tuple(axes[1])
+        except TypeError:
+            b_axes = tuple([axes[1]])
 
-    def grad(self, inp, grads):
-        x, y = inp
-        gz, = grads
-        gx, gy = tensordot_grad(self.axes)(x, y, gz)
-        return [gx, gy]
+        # the two axes lists must have the same length
+        if len(a_axes) != len(b_axes):
+            raise ValueError('Axes elements must have the same length.')
 
-    def __str__(self):
-        return "tensordot"
+        # check that there aren't more axes than a has dimensions
+        if len(a_axes) > a.ndim:
+            raise ValueError('axes[0] should be array_like with length '
+                             'less than the dimensions of a '
+                             '(a.ndim=%i, len(axes[0])=%i).' %
+                             (a.ndim, len(a_axes)))
 
+        # check that a_axes doesn't contain an axis greater than or equal to
+        # a's dimensions. also check if len > 0 so numpy.max won't raise an
+        # error.
+        if len(a_axes) > 0 and numpy.max(numpy.array(a_axes)) >= a.ndim:
+            raise ValueError('axes[0] contains dimensions greater than or '
+                             'equal to a.ndim (a.ndim=%i, max(axes[0])=%i).' %
+                             (a.ndim, numpy.max(numpy.array(a_axes))))
 
-def tensordot(x, y=None, axes=2):
-    if y is None:
-        raise NotImplementedError(
-                'The interface to tensordot has changed from '
-                'tensor.tensordot(axes)(x,y) to tensor.tensordot(x,y,axes). '
-                'Please modify your code accordingly.')
+        # check that there aren't more axes than b has dimensions
+        if len(b_axes) > b.ndim:
+            raise ValueError('axes[1] should be array_like, of length '
+                             'smaller than the dimension of b '
+                             '(a.ndim=%i, len(axes[0])=%i).' %
+                             (b.ndim, len(b_axes)))
 
-    if x.ndim == 0 or y.ndim == 0:
-        raise ValueError('Cannot perform tensordot of 0-d inputs.')
+        # check that b_axes doesn't contain an axis greater than or equal to
+        # b's dimensions. also check if len > 0 so numpy.max won't raise an
+        # error.
+        if len(b_axes) > 0 and numpy.max(numpy.array(b_axes)) >= b.ndim:
+            raise ValueError('axes[1] contains dimensions greater than or '
+                             'equal to b.ndim (b.ndim=%i, max(axes[1])=%i).' %
+                             (b.ndim, numpy.max(numpy.array(b_axes))))
 
-    axes = TensorDot.parse_axes(axes)
+        a_order = (tuple(x for x in tuple(xrange(a.ndim)) if x not in a_axes)
+                + a_axes)
+        b_order = (b_axes
+                + tuple(x for x in tuple(xrange(b.ndim)) if x not in b_axes))
 
-    # check whether axes is valid given the dimensions of x and y
-    if numpy.isscalar(axes):
-        if axes >= x.ndim or axes >= y.ndim:
-            raise ValueError('axes should be smaller than the dimension of '\
-                    'x and y (x.ndim=%i, y.ndim=%i)' % (x.ndim, y.ndim))
-    elif isinstance(axes, (list, tuple)):
+        a_shuffled = a.dimshuffle(a_order)
+        b_shuffled = b.dimshuffle(b_order)
 
-        if isinstance(axes[0], (list, tuple)) and \
-           (len(axes[0]) > x.ndim or (numpy.array(axes[0]) >= x.ndim).any()):
-            raise ValueError('axes[0] should be array_like, of length smaller'\
-                    ' than the dimension of x (x.ndim=%i, len(axes[0])=%i).' %
-                    (x.ndim, len(axes[0])))
-
-        if isinstance(axes[1], (list, tuple)) and \
-           (len(axes[1]) > y.ndim or (numpy.array(axes[1]) >= y.ndim).any()):
-            raise ValueError('axes[1] should be array_like, of length smaller'\
-                    'than the dimension of y (y.ndim=%i, len(axes[1])=%i).' %
-                    (y.ndim, len(axes[1])))
-
-    if not hasattr(tensordot, 'op'):
-        tensordot.op = {}
-
-    if axes not in tensordot.op:
-        tensordot.op[axes] = TensorDot(axes)
-
-    return tensordot.op[axes](x, y)
-
-# TODO: tensordot should be function as described in rst docs.
+        # now that a and b are in the right order, call tensordot recursively
+        return tensordot(a_shuffled, b_shuffled, len(a_axes))
 
 
 def outer(x, y):
