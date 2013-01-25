@@ -1344,8 +1344,8 @@ class Scan(PureOp):
                     j_inp_idx = self.get_input_pos(jidx) + 1
                     if connection_pattern[j_inp_idx][iidx] == True:
                         for k in xrange(len(connection_pattern)):
-                            if connection_pattern[k][iidx]:
-                                connection_pattern[k][jidx] = True
+                            if connection_pattern[k][jidx]:
+                                connection_pattern[k][iidx] = True
         return connection_pattern
 
     ### GRAD FUNCTION

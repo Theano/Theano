@@ -3310,6 +3310,18 @@ class T_Scan(unittest.TestCase):
         # disconnected gradient a non disconnected type was returned
         tensor.grad((m * m2).sum(), v)
 
+    def test_disconnected_gradient2(self):
+        v = tensor.vector('v')
+        m = tensor.matrix('m')
+        u0 = tensor.zeros((7,))
+
+        [u, m2], _ = theano.scan(lambda x, u: [x+u, u+v],
+                                 sequences=m,
+                                 outputs_info=[u0, None])
+        # This used to raise an exception with older versions becasue
+        # scan could not detect the connection between `m2` and `x`
+        tensor.grad(m2.sum(), m)
+
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
         bv = tensor.zeros((5,))
