@@ -333,38 +333,6 @@ def test_elemwise_fusion():
       theano._asarray(numpy.random.rand(*shape), dtype='float32'))
 
 
-class test_local_gpu_tensordot(unittest.TestCase):
-    def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed())
-
-    def test_transfer(self):
-        tensor1 = self.rng.rand(20, 10, 5, 8).astype('float32')
-        tensor2 = self.rng.rand(5, 8, 20).astype('float32')
-        tensor3 = self.rng.rand(8, 20, 5).astype('float32')
-
-        x = tensor.ftensor4('x')
-        y = tensor.ftensor3('y')
-
-        tdot1 = tensor.tensordot(x, y, 2)
-        f1 = theano.function([x, y], tdot1, mode=mode_with_gpu)
-        topo1 = f1.maker.fgraph.toposort()
-        assert topo1[-1].op == cuda.host_from_gpu
-        # Let DebugMode debug
-        f1(tensor1, tensor2)
-
-        tdot2 = tensor.tensordot(x, y, axes=[(0, 3), (1, 0)])
-        f2 = theano.function([x, y], tdot2, mode=mode_with_gpu)
-        topo2 = f2.maker.fgraph.toposort()
-        assert topo2[-1].op == cuda.host_from_gpu
-        f2(tensor1, tensor3)
-
-        tdot3 = tensor.tensordot(x, y, axes=[(0, 3, 2), (1, 0, 2)])
-        f3 = theano.function([x, y], tdot3, mode=mode_with_gpu)
-        topo3 = f3.maker.fgraph.toposort()
-        assert topo3[-1].op == cuda.host_from_gpu
-        f3(tensor1, tensor3)
-
-
 import theano.tests.test_ifelse
 
 
