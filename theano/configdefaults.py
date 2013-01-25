@@ -96,11 +96,19 @@ AddConfigVar('mode',
 enum = EnumStr("g++", "")
 
 # Test whether or not g++ is present: disable C code if it is not.
+# Using the dummy file descriptor below is a workaround for a crash experienced
+# in an unusual Python 2.4.4 Windows environment with the default stdin=None.
+dummy_stdin = open(os.devnull)
 try:
-    rc = call_subprocess_Popen(['g++', '-v'], stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE).wait()
-except OSError:
-    rc = 1
+    try:
+        rc = call_subprocess_Popen(['g++', '-v'], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE,
+                                   stdin=dummy_stdin).wait()
+    except OSError:
+        rc = 1
+finally:
+    dummy_stdin.close()
+    del dummy_stdin
 if rc == 0:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
