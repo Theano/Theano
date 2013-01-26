@@ -7091,7 +7091,7 @@ class TestInferShape(utt.InferShapeTester):
 class TestTensorInstanceMethods(unittest.TestCase):
     def setUp(self):
         self.vars = matrices('X', 'Y')
-        self.vals = [rand(2,2),rand(2,2)]
+        self.vals = [m.astype(floatX) for m in [rand(2,2),rand(2,2)]]
 
     def test_argmin(self):
         X, _ = self.vars
