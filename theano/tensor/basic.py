@@ -619,7 +619,7 @@ class TensorType(Type):
     Inf entries. (Used in `DebugMode`)
     """
 
-    def __init__(self, dtype, broadcastable, name=None):
+    def __init__(self, dtype, broadcastable, name=None, sparsegrad=False):
         """Initialize self.dtype and self.broadcastable.
 
         :Parameters:
@@ -644,6 +644,7 @@ class TensorType(Type):
         self.dtype_specs()  # error checking is done there
         self.name = name
         self.numpy_dtype = numpy.dtype(self.dtype)
+        self.sparsegrad = sparsegrad 
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Convert `data` to something which can be associated to a
@@ -6523,7 +6524,10 @@ class AdvancedSubtensor1(Op):
 
         gz, = grads
         assert len(inputs) == 2
-        rval1 = [theano.sparse.ConstructSparseFromList()(inputs[0], gz, inputs[1])]
+        if inputs[0].type.sparsegrad:
+           rval1 = [theano.sparse.ConstructSparseFromList()((inputs[0]), gz, inputs[1])]
+        else:
+           rval1 = [advanced_inc_subtensor1(zeros_like(inputs[0]), gz, inputs[1])]
         return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):
