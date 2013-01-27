@@ -8,9 +8,11 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 # Automatic methods for determining best sparse format?
 
 import sys
+
 import numpy
 import theano
 import scipy.sparse
+
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
@@ -1754,8 +1756,8 @@ class AddSD(gof.op.Op):
                   %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
                 }else{
                   %(z)s = %(y)s;
+                  Py_XINCREF(%(z)s);
                 }
-                Py_XINCREF(%(z)s);
                 
                 npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
                 const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;

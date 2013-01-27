@@ -6593,11 +6593,7 @@ class ConstructSparse(Op):
 
     def connection_pattern(self, node):
 
-        rval = [[True], [True]]
-
-        for ipt in node.inputs[2:]:
-            rval.append([False])
-
+        rval = [[True], [True], [False]]
         return rval
 
     def grad(self, inputs, grads):
@@ -6700,11 +6696,7 @@ class AdvancedIncSubtensor1(Op):
 
     def connection_pattern(self, node):
 
-        rval = [[True], [True]]
-
-        for ipt in node.inputs[2:]:
-            rval.append([False])
-
+        rval = [[True], [True], [False]]
         return rval
 
     def grad(self, inputs, grads):
