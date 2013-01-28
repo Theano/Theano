@@ -258,8 +258,8 @@ class t_gemm(TestCase):
 
     def test_destroy_map4(self):
         """test that dot args can be aliased"""
-        Z = shared(self.rand(2, 2))
-        A = shared(self.rand(2, 2))
+        Z = shared(self.rand(2, 2), name='Z')
+        A = shared(self.rand(2, 2), name='A')
         one = T.constant(1.0).astype(Z.dtype)
         f = inplace_func([], gemm_inplace(Z, one, A, A, one))
         f()
