@@ -1411,7 +1411,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         max_use_abort = False
         opt_name = None
         process_count = {}
-        max_nb_nodes = 0
+        max_nb_nodes = len(fgraph.apply_nodes)
+        max_use = max_nb_nodes * self.max_use_ratio
 
         loop_timing = []
         global_opt_timing = []
@@ -1422,16 +1423,24 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             process_count.setdefault(lopt, 0)
             time_lopts.setdefault(lopt, 0)
 
+        for gopt in self.global_optimizers:
+            process_count.setdefault(gopt, 0)
+
         while changed and not max_use_abort:
             t0 = time.time()
             changed = False
 
-            #apply global optimizer
-            fgraph.change_tracker.reset()
+            #apply global optimizers
             for gopt in self.global_optimizers:
+                fgraph.change_tracker.reset()
                 gopt.apply(fgraph)
-            if fgraph.change_tracker.changed:
-                changed = True
+                if fgraph.change_tracker.changed:
+                    process_count[gopt] += 1
+                    changed = True
+                    if process_count[gopt] > max_use:
+                        max_use_abort = True
+                        opt_name = (getattr(gopt, "name", None)
+                                    or getattr(gopt, "__name__", ""))
 
             global_opt_timing.append(float(time.time() - t0))
 
