@@ -141,7 +141,12 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs) if not (spec.mutable or (hasattr(fgraph, 'destroyers') and fgraph.destroyers(input)))))
+    fgraph.attach_feature(
+            Supervisor(input
+                for spec, input in zip(input_specs, inputs)
+                if not (spec.mutable or
+                        (hasattr(fgraph, 'destroyers') and
+                            fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
