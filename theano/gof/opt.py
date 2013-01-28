@@ -1419,12 +1419,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         time_lopts = {}
         io_toposort_timing = []
         nb_nodes = []
+        for gopt in self.global_optimizers:
+            process_count.setdefault(gopt, 0)
+
         for lopt in self.local_optimizers:
             process_count.setdefault(lopt, 0)
             time_lopts.setdefault(lopt, 0)
-
-        for gopt in self.global_optimizers:
-            process_count.setdefault(gopt, 0)
 
         while changed and not max_use_abort:
             t0 = time.time()
