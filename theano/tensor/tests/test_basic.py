@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
-        tensor_copy, tensordot, TensorType, unbroadcast,
+        tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
@@ -1823,6 +1823,76 @@ def test_eye():
         # N > M, k != 0
         yield check, dtype, 5, 3, 1
         yield check, dtype, 5, 3, -1
+
+
+def test_tri():
+    def check(dtype, N, M_=None, k=0):
+        # Theano does not accept None as a tensor.
+        # So we must use a real value.
+        M = M_
+        # Currently DebugMode does not support None as inputs even if this is
+        # allowed.
+        if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
+            M = N
+        N_symb = tensor.iscalar()
+        M_symb = tensor.iscalar()
+        k_symb = tensor.iscalar()
+        f = function([N_symb, M_symb, k_symb],
+                     tri(N_symb, M_symb, k_symb, dtype=dtype))
+        result = f(N, M, k)
+        assert numpy.allclose(result, numpy.tri(N, M_, k, dtype=dtype))
+        assert result.dtype == numpy.dtype(dtype)
+    for dtype in ALL_DTYPES:
+        yield check, dtype, 3
+        # M != N, k = 0
+        yield check, dtype, 3, 5
+        yield check, dtype, 5, 3
+        # N == M, k != 0
+        yield check, dtype, 3, 3, 1
+        yield check, dtype, 3, 3, -1
+        # N < M, k != 0
+        yield check, dtype, 3, 5, 1
+        yield check, dtype, 3, 5, -1
+        # N > M, k != 0
+        yield check, dtype, 5, 3, 1
+        yield check, dtype, 5, 3, -1
+
+
+def test_tril_triu():
+    def check_l(m, k=0):
+        m_symb = matrix(dtype=m.dtype)
+        k_symb = iscalar()
+        f = function([m_symb, k_symb], tril(m_symb, k_symb))
+        result = f(m, k)
+        assert numpy.allclose(result, numpy.tril(m, k))
+        assert result.dtype == numpy.dtype(dtype)
+
+    def check_u(m, k=0):
+        m_symb = matrix(dtype=m.dtype)
+        k_symb = iscalar()
+        f = function([m_symb, k_symb], triu(m_symb, k_symb))
+        result = f(m, k)
+        assert numpy.allclose(result, numpy.triu(m, k))
+        assert result.dtype == numpy.dtype(dtype)
+
+    for dtype in ALL_DTYPES:
+        m = rand_of_dtype((10, 10), dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
+
+        m = rand_of_dtype((10, 5), dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
 
 
 def test_identity():
@@ -6469,6 +6539,22 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([aiscal, biscal, ciscal],
                                 [Eye()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Eye)
+
+        # Tri
+        aiscal = iscalar()
+        biscal = iscalar()
+        ciscal = iscalar()
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [4, 4, 0], Tri)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [4, 5, 0], Tri)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [3, 5, 0], Tri)
 
         # Diagonal
         atens3 = tensor3()
