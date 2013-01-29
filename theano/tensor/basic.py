@@ -3229,6 +3229,29 @@ class Nonzero(gof.Op):
 
 nonzero = Nonzero()
 
+def flatnonzero(a):
+    """
+    Return indices that are non-zero in the flattened version of a.
+
+    This is equivalent to a.flatten().nonzero().
+
+    Parameters
+    ----------
+    a : tensor
+        Input tensor
+
+    Returns
+    -------
+    res : vector
+        Output vector, containing the indices of the elements of `a.flatten()`
+        that are non-zero.
+
+    See Also
+    --------
+    nonzero : Return the indices of the non-zero elements of the input array.
+    """
+    return nonzero(a.flatten())
+
 
 class Tri(gof.Op):
     def __init__(self, dtype=None):

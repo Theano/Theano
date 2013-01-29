@@ -41,7 +41,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
-        nonzero)
+        nonzero, flatnonzero)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -1909,6 +1909,30 @@ def test_nonzero():
 
         for i, j in zip(result, numpy.nonzero(m)):
             assert numpy.allclose(i, j)
+
+    rand1d = rand(8)
+    rand1d[rand1d > rand1d.mean()] = 0
+    check(rand1d)
+
+    rand2d = rand(8, 9)
+    rand2d[rand2d > rand2d.mean()] = 0
+    check(rand2d)
+
+    rand3d = rand(8, 9, 10)
+    rand3d[rand3d > rand3d.mean()] = 0
+    check(rand3d)
+
+    rand4d = rand(8, 9, 10, 11)
+    rand4d[rand4d > rand4d.mean()] = 0
+    check(rand4d)
+
+def test_flatnonzero():
+    def check(m):
+        m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                      broadcastable = (False,) * m.ndim)
+        f = function([m_symb], flatnonzero(m_symb))
+        result = f(m)
+        assert numpy.allclose(result, numpy.flatnonzero(m))
 
     rand1d = rand(8)
     rand1d[rand1d > rand1d.mean()] = 0
