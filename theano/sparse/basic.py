@@ -20,6 +20,7 @@ from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented
 from theano.sparse.type import SparseType, _is_sparse
+from numpy.lib.stride_tricks import as_strided
 
 sparse_formats = ['csc', 'csr']
 
@@ -1710,31 +1711,94 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
+    def __init__(self, inplace=False, *args, **kwargs):
+        gof.Op.__init__(self, *args, **kwargs)
+        #Should we do inplace addition or not ?
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        return (type(self) == type(other))
+        return (type(self) == type(other)) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
+        if self.inplace:
+            return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
+
+        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
+
+        # We either use CSC or CSR depending on the format of input
+        self.format = x.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
         return gof.Apply(self,
-                         [x, y],
+                         [data, indices, indptr, y],
                          [tensor.TensorType(dtype=y.type.dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
-        assert _is_sparse(x) and _is_dense(y)
+    def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
+        inplace = int(self.inplace)
+        format = {'csc': 0, 'csr':1}[self.format]
+        code = """
+                Py_XDECREF(%(z)s);
+                if (!%(inplace)s){
+                  %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
+                }else{
+                  %(z)s = %(y)s;
+                  Py_XINCREF(%(z)s);
+                }
+                
+                npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
+                const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
+                const npy_int32 * __restrict__ indices = (npy_int32*)%(_indices)s->data;
+                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)%(_data)s->data;
+
+                dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+                dtype_%(z)s* zdata = (dtype_%(z)s*)PyArray_DATA(%(z)s);
+                int Yi = PyArray_STRIDES(%(y)s)[0]/PyArray_DESCR(%(y)s)->elsize;
+                int Yj = PyArray_STRIDES(%(y)s)[1]/PyArray_DESCR(%(y)s)->elsize;
+
+                npy_int32 pos;
+                if (%(format)s == 0){
+                for (npy_int32 col = 0; col < N; ++col){
+                  for (npy_int32 ind = indptr[col]; ind < indptr[col+1]; ++ind){
+                    npy_int32 row = indices[ind];
+                    pos = row * Yi + col * Yj;
+                    zdata[pos] = ydata[pos] + data[ind];
+                  }
+                }
+                }else{
+                for (npy_int32 row = 0; row < N; ++row){
+                  for (npy_int32 ind = indptr[row]; ind < indptr[row+1]; ++ind){
+                    npy_int32 col = indices[ind];
+                    pos = row * Yi + col * Yj;
+                    zdata[pos] = ydata[pos] + data[ind];
+                  }
+                 } 
+                }
+             """ % dict(locals(), **sub)
+        return code
+
+    def perform(self, node, (data, indices, indptr,  y), (out, )):
+        assert _is_dense(y)
+
+        if self.format == 'csr':
+            x = scipy.sparse.csr_matrix((data, indices, indptr), shape = y.shape)
+        elif self.format == 'csc':
+            x = scipy.sparse.csc_matrix((data, indices, indptr), shape = y.shape)
+
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
         out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
@@ -1745,7 +1809,7 @@ class AddSD(gof.op.Op):
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
-        return [shapes[0]]
+        return [shapes[3]]
 
 add_s_d = AddSD()
 
@@ -3227,3 +3291,68 @@ class Usmm(gof.op.Op):
 
         out[0] = rval
 usmm = Usmm()
+
+
+class ConstructSparseFromList(gof.Op):
+    """Constructs a sparse matrix out of a list of 2-D matrix rows"""
+    def __hash__(self):
+        return hash((type(self)))
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, x, y, ilist):
+        x_ = theano.tensor.as_tensor_variable(x)
+        y_ = theano.tensor.as_tensor_variable(y)
+        ilist_ = theano.tensor.as_tensor_variable(ilist)
+
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.ndim != 1:
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if y_.type.ndim > x_.type.ndim:
+            raise TypeError('cannot construct sparse matrix as dimensions differ')    
+        return gof.Apply(self, [x_, y_, ilist_], [theano.sparse.csc_matrix(dtype=x.dtype)])
+
+    def perform(self, node, inp, out_):
+        x, values, idx = inp
+        out, = out_
+        rows, cols = values.shape
+        assert rows == len(idx)
+        indptr = numpy.arange(cols + 1) * rows
+        indices = as_strided(idx,
+                             strides=(0, idx.strides[0]),
+                             shape = (cols, idx.shape[0])).flatten()
+        data = values.T.flatten()
+        out[0] = scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape,
+                                    dtype=x.dtype)
+
+    def infer_shape(self, node, ishapes):
+        x, y, ilist = ishapes
+        return [x]
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1],
+                              *inputs[2:]).outputs
+
+    def connection_pattern(self, node):
+
+        rval = [[True], [True], [False]]
+        return rval
+
+    def grad(self, inputs, grads):
+        g_output, = grads
+        x, y = inputs[:2]
+        idx_list = inputs[2:]
+
+        gx = g_output
+        gy = theano.tensor.advanced_subtensor1(g_output, *idx_list)
+
+        return [gx, gy] + [DisconnectedType()()] * len(idx_list)

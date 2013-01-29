@@ -36,13 +36,38 @@ def local_inplace_remove0(node):
     """
     Optimization to insert inplace versions of Remove0.
     """
+    # If inplace is not enabled, enable it and replace that op with a
+    # new op which has inplace enabled
     if isinstance(node.op, sparse.Remove0) and not node.op.inplace:
         new_op = node.op.__class__(inplace=True)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
+
 theano.compile.optdb.register('local_inplace_remove0',
                               gof.TopoOptimizer(local_inplace_remove0,
+    failure_callback=gof.TopoOptimizer.warn_inplace),
+                              60, 'fast_run', 'inplace')
+@gof.local_optimizer([None])
+def local_inplace_addsd(node):
+    """
+    Optimization to insert inplace versions of AddSD.
+    """
+    if isinstance(node.op, sparse.AddSD) and not node.op.inplace:
+        inputs = node.inputs[:3] + [node.inputs[3].shape]
+        fmt = node.op.format
+        if fmt == 'csc':
+            x = sparse.CSC(*inputs)
+        elif fmt == 'csr':
+            x = sparse.CSR(*inputs)
+        else:
+            raise NotImplementedError('Sparse format %s is not supported' % fmt)
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(x, node.inputs[3])
+        return [new_node]
+    return False
+theano.compile.optdb.register('local_inplace_addsd',
+                              gof.TopoOptimizer(local_inplace_addsd,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
 
