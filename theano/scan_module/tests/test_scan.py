@@ -3331,8 +3331,8 @@ class T_Scan(unittest.TestCase):
                            outputs_info=[tensor.zeros_like(A)])
         f = theano.function([A,B], S.owner.inputs[0][-1])
         rng = numpy.random.RandomState(utt.fetch_seed())
-        vA = rng.uniform(size=(5,5))
-        vB = rng.uniform(size=(5,5))
+        vA = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
+        vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         assert numpy.allclose(f(vA, vB), numpy.dot(vA.T, vB))
 
 
