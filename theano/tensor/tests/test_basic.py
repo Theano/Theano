@@ -1904,8 +1904,15 @@ def test_nonzero():
         f = function([m_symb], nonzero(m_symb))
         result = f(m)
 
+        if not isinstance(result, list):
+            result = [result]
+
         for i, j in zip(result, numpy.nonzero(m)):
             assert numpy.allclose(i, j)
+
+    rand1d = rand(8)
+    rand1d[rand1d > rand1d.mean()] = 0
+    check(rand1d)
 
     rand2d = rand(8, 9)
     rand2d[rand2d > rand2d.mean()] = 0
