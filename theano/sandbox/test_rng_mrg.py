@@ -696,7 +696,7 @@ def test_random_state_transfer():
     """
     Test that random state can be transferred from one theano graph to another.
     """
-    class Graph():
+    class Graph:
         def __init__(self, seed=123):
             self.rng = MRG_RandomStreams(seed)
             self.y = self.rng.uniform(size=(1,))
