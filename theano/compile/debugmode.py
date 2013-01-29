@@ -1609,7 +1609,11 @@ class _Linker(gof.link.LocalLinker):
         active_order = self.schedule(fgraph) # an ordering of just the active nodes
         active_order_set = set(active_order)
 
-        no_recycling = self.no_recycling
+        # Disable no_recycling, in order to be able to use
+        # check_preallocated_output even on the output of the function.
+        # no_recycling in individual thunks does not really matter, since
+        # the function's outputs will always be freshly allocated.
+        no_recycling = []
 
         input_storage, output_storage, storage_map = link.map_storage(
             fgraph, order, input_storage_, output_storage_)
@@ -1704,11 +1708,11 @@ class _Linker(gof.link.LocalLinker):
                     _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function" % node)
                     thunks_py[-1] = thunk
 
-        if no_recycling is True:
-            no_recycling = storage_map.values()
-            no_recycling = utils.difference(no_recycling, input_storage)
+        if self.no_recycling is True:
+            no_recycling_map = storage_map.values()
+            no_recycling_map = utils.difference(no_recycling_map, input_storage)
         else:
-            no_recycling = [storage_map[r] for r in no_recycling
+            no_recycling_map = [storage_map[r] for r in self.no_recycling
                             if r not in fgraph.inputs]
 
         # Precompute some things for storage pre-allocation
@@ -1729,7 +1733,7 @@ class _Linker(gof.link.LocalLinker):
             _logger.debug("starting a DebugMode call")
             _logger.debug("self.maker.mode.check_preallocated_output: %s",
                     self.maker.mode.check_preallocated_output)
-            for x in no_recycling:
+            for x in no_recycling_map:
                 x[0] = None
 
             # nest all this in try-finally to put storage *back* into
