@@ -1818,6 +1818,10 @@ class _tensor_py_operators:
         """See `theano.tensor.nonzero`"""
         return nonzero(self)
 
+    def nonzero_values(self):
+        """See `theano.tensor.nonzero_values`"""
+        return nonzero_values(self)
+
     def sort(self,  axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
         from theano.tensor.sort import sort
@@ -3195,11 +3199,14 @@ class Nonzero(gof.Op):
     Returns a tuple of arrays, one for each dimension of `a`, containing
     the indices of the non-zero elements in that dimension.
 
-    If a is a matrix, the corresponding non-zero values can be obtained with::
+    Note that the following NumPy indexing behavior
+    does *NOT* currently work in Theano:
 
-        a[nonzero(a)[0], nonzero(a)[1]]
+        a[numpy.nonzero(a)]
 
-    Note that this is NOT the same indexing behavior as NumPy.
+    Use the nonzero_values function to extract nonzero elements instead:
+
+        tensor.nonzero_values(a)
 
     Parameters
     ----------
@@ -3210,6 +3217,12 @@ class Nonzero(gof.Op):
     -------
     tuple_of_arrays : tuple
         Indices of elements that are non-zero.
+
+    See Also
+    --------
+    nonzero_vaulues : Return the non-zero elements of the input array
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
 
     """
     def make_node(self, a):
@@ -3249,9 +3262,46 @@ def flatnonzero(a):
     See Also
     --------
     nonzero : Return the indices of the non-zero elements of the input array.
+    nonzero_vaulues : Return the non-zero elements of the input array
     """
     return nonzero(a.flatten())
 
+def nonzero_values(a):
+    """
+    Return a vector of non-zero elements contained in the input array.
+
+    The following behavior works to extract non-zero elements from an array
+    in NumPy but is *NOT* supported by Theano:
+
+        a[numpy.nonzero(a)]
+
+    Instead, the nonzero_values function or method should be used:
+
+        tensor.nonzero_values(a)
+        a.nonzero_values()
+
+    This is equivalent to the following:
+
+        a.flatten()[tensor.flatnonzero(a)]
+
+    Parameters
+    ----------
+    a : tensor
+        Input tensor
+
+    Returns
+    -------
+    res : vector
+        Output vector, containing the non-zero elements of a.
+
+    See Also
+    --------
+    nonzero : Return the indices of the non-zero elements of the input array.
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
+
+    """
+    return a.flatten()[flatnonzero(a)]
 
 class Tri(gof.Op):
     def __init__(self, dtype=None):
