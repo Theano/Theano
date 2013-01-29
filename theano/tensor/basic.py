@@ -1041,15 +1041,19 @@ class TensorType(Type):
             PyErr_Format(PyExc_NotImplementedError,
                          "expected an aligned array of type %%d "
                          "(%(type_num)s), got non-aligned array of type %%d"
-                         " with %%d dimensions, with 2 last dims %%d, %%d"
-                         " and 2 last strides %%d, %%d.",
+                         " with %%d dimensions, with 3 last dims %%d, %%d, %%d"
+                         " and 3 last strides %%d %%d, %%d.",
                          %(type_num)s, type_num_%(name)s,
                          PyArray_NDIM(py_%(name)s),
+                         PyArray_NDIM(py_%(name)s) >= 3 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
                          PyArray_NDIM(py_%(name)s) >= 2 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
                          PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
                          PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
+                         PyArray_NDIM(py_%(name)s) >= 3 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
                          PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
@@ -1107,7 +1111,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (6,) + scalar_version
+            return (7,) + scalar_version
         else:
             return ()
 
