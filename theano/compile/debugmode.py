@@ -1708,6 +1708,9 @@ class _Linker(gof.link.LocalLinker):
                     _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function" % node)
                     thunks_py[-1] = thunk
 
+        # Use self.no_recycling (that was passed in accept()) to always
+        # use new memory storage when it is needed, in particular for the
+        # function's outputs. no_recycling_map will be used in f() below.
         if self.no_recycling is True:
             no_recycling_map = storage_map.values()
             no_recycling_map = utils.difference(no_recycling_map, input_storage)
