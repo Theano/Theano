@@ -1814,6 +1814,10 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
+    def nonzero(self):
+        """See `theano.tensor.nonzero`"""
+        return nonzero(self)
+
     def sort(self,  axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
         from theano.tensor.sort import sort
@@ -3182,6 +3186,52 @@ def ones(shape, dtype=None):
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
+
+
+class Nonzero(gof.Op):
+    def make_node(self, a):
+        a = as_tensor_variable(a)
+        outputs = [TensorType(dtype='int64', broadcastable=(False,))()
+                   for i in xrange(a.ndim)]
+        return gof.Apply(self, [a], outputs)
+
+    def perform(self, node, inp, out_):
+        a = inp[0]
+        result = numpy.nonzero(a)
+        for i in xrange(len(result)):
+            out_[i][0] = result[i]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, 0, inp[0])]
+
+
+_nonzero = Nonzero()
+
+def nonzero(a):
+    """
+    Return the indices of the elements that are non-zero.
+
+    Returns a tuple of arrays, one for each dimension of `a`, containing
+    the indices of the non-zero elements in that dimension.
+
+    If a is a matrix, the corresponding non-zero values can be obtained with::
+
+        a[nonzero(a)[0], nonzero(a)[1]]
+
+    Note that this is NOT the same indexing behavior as NumPy.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+
+    Returns
+    -------
+    tuple_of_arrays : tuple
+        Indices of elements that are non-zero.
+
+    """
+    return _nonzero(a)
 
 
 class Tri(gof.Op):
