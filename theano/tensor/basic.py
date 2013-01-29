@@ -3189,25 +3189,6 @@ def ones(shape, dtype=None):
 
 
 class Nonzero(gof.Op):
-    def make_node(self, a):
-        a = as_tensor_variable(a)
-        outputs = [TensorType(dtype='int64', broadcastable=(False,))()
-                   for i in xrange(a.ndim)]
-        return gof.Apply(self, [a], outputs)
-
-    def perform(self, node, inp, out_):
-        a = inp[0]
-        result = numpy.nonzero(a)
-        for i in xrange(len(result)):
-            out_[i][0] = result[i]
-
-    def grad(self, inp, grads):
-        return [grad_undefined(self, 0, inp[0])]
-
-
-_nonzero = Nonzero()
-
-def nonzero(a):
     """
     Return the indices of the elements that are non-zero.
 
@@ -3231,7 +3212,22 @@ def nonzero(a):
         Indices of elements that are non-zero.
 
     """
-    return _nonzero(a)
+    def make_node(self, a):
+        a = as_tensor_variable(a)
+        outputs = [TensorType(dtype='int64', broadcastable=(False,))()
+                   for i in xrange(a.ndim)]
+        return gof.Apply(self, [a], outputs)
+
+    def perform(self, node, inp, out_):
+        a = inp[0]
+        result = numpy.nonzero(a)
+        for i in xrange(len(result)):
+            out_[i][0] = result[i]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, 0, inp[0])]
+
+nonzero = Nonzero()
 
 
 class Tri(gof.Op):
