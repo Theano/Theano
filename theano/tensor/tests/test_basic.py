@@ -1908,26 +1908,26 @@ def test_nonzero():
         for i, j in zip(f_tuple(m), numpy.nonzero(m)):
             assert numpy.allclose(i, j)
 
-    rand0d = rand()
+    rand0d = numpy.array(rand())
     check(rand0d)
 
     rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
     check(rand0d_0)
 
     rand1d = rand(8)
-    rand1d[rand1d > rand1d.mean()] = 0
+    rand1d[:4] = 0
     check(rand1d)
 
     rand2d = rand(8, 9)
-    rand2d[rand2d > rand2d.mean()] = 0
+    rand2d[:4] = 0
     check(rand2d)
 
     rand3d = rand(8, 9, 10)
-    rand3d[rand3d > rand3d.mean()] = 0
+    rand3d[:4] = 0
     check(rand3d)
 
     rand4d = rand(8, 9, 10, 11)
-    rand4d[rand4d > rand4d.mean()] = 0
+    rand4d[:4] = 0
     check(rand4d)
 
 def test_flatnonzero():
@@ -1938,26 +1938,26 @@ def test_flatnonzero():
         result = f(m)
         assert numpy.allclose(result, numpy.flatnonzero(m))
 
-    rand0d = rand()
+    rand0d = numpy.array(rand())
     check(rand0d)
 
     rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
     check(rand0d_0)
 
     rand1d = rand(8)
-    rand1d[rand1d > rand1d.mean()] = 0
+    rand1d[:4] = 0
     check(rand1d)
 
     rand2d = rand(8, 9)
-    rand2d[rand2d > rand2d.mean()] = 0
+    rand2d[:4] = 0
     check(rand2d)
 
     rand3d = rand(8, 9, 10)
-    rand3d[rand3d > rand3d.mean()] = 0
+    rand3d[:4] = 0
     check(rand3d)
 
     rand4d = rand(8, 9, 10, 11)
-    rand4d[rand4d > rand4d.mean()] = 0
+    rand4d[:4] = 0
     check(rand4d)
 
 def test_nonzero_values():
@@ -1969,19 +1969,19 @@ def test_nonzero_values():
         assert numpy.allclose(result, m[numpy.nonzero(m)])
 
     rand1d = rand(8)
-    rand1d[rand1d > rand1d.mean()] = 0
+    rand1d[:4] = 0
     check(rand1d)
 
     rand2d = rand(8, 9)
-    rand2d[rand2d > rand2d.mean()] = 0
+    rand2d[:4] = 0
     check(rand2d)
 
     rand3d = rand(8, 9, 10)
-    rand3d[rand3d > rand3d.mean()] = 0
+    rand3d[:4] = 0
     check(rand3d)
 
     rand4d = rand(8, 9, 10, 11)
-    rand4d[rand4d > rand4d.mean()] = 0
+    rand4d[:4] = 0
     check(rand4d)
 
 
