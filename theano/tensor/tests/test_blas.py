@@ -5,6 +5,7 @@ import sys
 import theano.tensor as T
 from theano import tensor
 from theano.gof.python25 import product as itertools_product
+from theano.gof.python25 import any
 from theano.printing import pp
 
 import numpy
@@ -857,7 +858,6 @@ def test_dot22():
                 assert _dot22 in [x.op for x in topo], (dtype1, dtype2)
             else:
                 check = [isinstance(x.op, T.Dot) for x in topo]
-                from theano.gof.python25 import any
                 assert any(check), (dtype1, dtype2)
             rng = numpy.random.RandomState(unittest_tools.fetch_seed())
 
