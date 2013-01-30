@@ -3215,7 +3215,7 @@ class Nonzero(gof.Op):
 
     See Also
     --------
-    nonzero_vaulues : Return the non-zero elements of the input array
+    nonzero_values : Return the non-zero elements of the input array
     flatnonzero : Return the indices of the non-zero elements of the
         flattened input array.
 
@@ -3266,7 +3266,7 @@ def nonzero(a, return_matrix=False):
 
     See Also
     --------
-    nonzero_vaulues : Return the non-zero elements of the input array
+    nonzero_values : Return the non-zero elements of the input array
     flatnonzero : Return the indices of the non-zero elements of the
         flattened input array.
 
@@ -3298,7 +3298,7 @@ def flatnonzero(a):
     See Also
     --------
     nonzero : Return the indices of the non-zero elements of the input array.
-    nonzero_vaulues : Return the non-zero elements of the input array
+    nonzero_values : Return the non-zero elements of the input array
     """
     return nonzero(a.flatten(), return_matrix=True)[0]
 
