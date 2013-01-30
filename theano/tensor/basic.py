@@ -3272,11 +3272,14 @@ def nonzero(a, return_matrix=False):
 
     """
     matrix_result = _nonzero(a)
-    if a.ndim > 0:
-        tuple_result = tuple([matrix_result[i] for i in xrange(a.ndim)])
+    if return_matrix:
+        return matrix_result
     else:
-        tuple_result = tuple([matrix_result[0]])
-    return tuple_result
+        if a.ndim > 0:
+            tuple_result = tuple([matrix_result[i] for i in xrange(a.ndim)])
+        else:
+            tuple_result = tuple([matrix_result[0]])
+        return tuple_result
 
 def flatnonzero(a):
     """
