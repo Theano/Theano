@@ -3229,8 +3229,11 @@ class Nonzero(gof.Op):
         a = inp[0]
         out, = out_
         result_tuple = numpy.nonzero(a)
-        result = numpy.vstack(result_tuple)
-        out[0] = result
+        if len(result_tuple[0]) != 0:
+            result = numpy.vstack(result_tuple)
+        else:
+            result = numpy.zeros((len(result_tuple), 0))
+        out[0] = result.astype('int64')
 
     def grad(self, inp, grads):
         return [grad_undefined(self, 0, inp[0])]
