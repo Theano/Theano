@@ -1814,9 +1814,9 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
-    def nonzero(self):
+    def nonzero(self, return_matrix=False):
         """See `theano.tensor.nonzero`"""
-        return nonzero(self)
+        return nonzero(self, return_matrix=return_matrix)
 
     def nonzero_values(self):
         """See `theano.tensor.nonzero_values`"""
@@ -3196,17 +3196,12 @@ class Nonzero(gof.Op):
     """
     Return the indices of the elements that are non-zero.
 
-    Returns a tuple of arrays, one for each dimension of `a`, containing
-    the indices of the non-zero elements in that dimension.
+    Returns a matrix of shape (ndim, number of nonzero elements) such that
+    element (i,j) is the index in the ith dimension of the jth non-zero
+    element.
 
-    Note that the following NumPy indexing behavior
-    does *NOT* currently work in Theano:
-
-        a[numpy.nonzero(a)]
-
-    Use the nonzero_values function to extract nonzero elements instead:
-
-        tensor.nonzero_values(a)
+    Note this is different than NumPy, which returns a tuple of arrays, one for
+    each dimension of the input array.
 
     Parameters
     ----------
@@ -3215,8 +3210,8 @@ class Nonzero(gof.Op):
 
     Returns
     -------
-    tuple_of_arrays : tuple
-        Indices of elements that are non-zero.
+    result : matrix
+        matrix containing the indices of the non-zero elements of a.
 
     See Also
     --------
@@ -3227,26 +3222,67 @@ class Nonzero(gof.Op):
     """
     def make_node(self, a):
         a = as_tensor_variable(a)
-        outputs = [TensorType(dtype='int64', broadcastable=(False,))()
-                   for i in xrange(a.ndim)]
-        return gof.Apply(self, [a], outputs)
+        output = [TensorType(dtype='int64', broadcastable=(False, False))()]
+        return gof.Apply(self, [a], output)
 
     def perform(self, node, inp, out_):
         a = inp[0]
-        result = numpy.nonzero(a)
-        for i in xrange(len(result)):
-            out_[i][0] = result[i]
+        out, = out_
+        result_tuple = numpy.nonzero(a)
+        result = numpy.vstack(result_tuple)
+        out[0] = result
 
     def grad(self, inp, grads):
         return [grad_undefined(self, 0, inp[0])]
 
-nonzero = Nonzero()
+_nonzero = Nonzero()
+
+def nonzero(a, return_matrix=False):
+    """
+    Returns one of the following:
+
+        If return_matrix is False (default, same as NumPy):
+            A tuple of vector arrays such that the ith element of the jth array
+            is the index of the ith non-zero element of the input array in the
+            jth dimension.
+
+        If return_matrix is True (same as Theano Op):
+            Returns a matrix of shape (ndim, number of nonzero elements) such
+            that element (i,j) is the index in the ith dimension of the jth
+            non-zero element.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+
+    return_matrix : bool
+        If True, returns a symbolic matrix. If False, returns a tuple of
+        arrays. Defaults to False.
+
+    Returns
+    -------
+    result : tuple of vectors or matrix
+
+    See Also
+    --------
+    nonzero_vaulues : Return the non-zero elements of the input array
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
+
+    """
+    matrix_result = _nonzero(a)
+    if a.ndim > 0:
+        tuple_result = tuple([matrix_result[i] for i in xrange(a.ndim)])
+    else:
+        tuple_result = tuple([matrix_result[0]])
+    return tuple_result
 
 def flatnonzero(a):
     """
-    Return indices that are non-zero in the flattened version of a.
+    Return a vector of indices that are non-zero in the flattened version of a.
 
-    This is equivalent to a.flatten().nonzero().
+    This is equivalent to nonzero(a.flatten(), return_matrix=True)[0]
 
     Parameters
     ----------
@@ -3264,7 +3300,7 @@ def flatnonzero(a):
     nonzero : Return the indices of the non-zero elements of the input array.
     nonzero_vaulues : Return the non-zero elements of the input array
     """
-    return nonzero(a.flatten())
+    return nonzero(a.flatten(), return_matrix=True)[0]
 
 def nonzero_values(a):
     """

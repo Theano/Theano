@@ -1901,14 +1901,18 @@ def test_nonzero():
         m_symb = theano.tensor.tensor(dtype=m.dtype,
                                       broadcastable = (False,) * m.ndim)
 
-        f = function([m_symb], nonzero(m_symb))
-        result = f(m)
+        f_tuple = function([m_symb], nonzero(m_symb, return_matrix=False))
+        f_matrix = function([m_symb], nonzero(m_symb, return_matrix=True))
 
-        if not isinstance(result, list):
-            result = [result]
-
-        for i, j in zip(result, numpy.nonzero(m)):
+        assert numpy.allclose(f_matrix(m), numpy.vstack(numpy.nonzero(m)))
+        for i, j in zip(f_tuple(m), numpy.nonzero(m)):
             assert numpy.allclose(i, j)
+
+    rand0d = rand()
+    check(rand0d)
+
+    rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
+    check(rand0d_0)
 
     rand1d = rand(8)
     rand1d[rand1d > rand1d.mean()] = 0
@@ -1933,6 +1937,12 @@ def test_flatnonzero():
         f = function([m_symb], flatnonzero(m_symb))
         result = f(m)
         assert numpy.allclose(result, numpy.flatnonzero(m))
+
+    rand0d = rand()
+    check(rand0d)
+
+    rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
+    check(rand0d_0)
 
     rand1d = rand(8)
     rand1d[rand1d > rand1d.mean()] = 0
