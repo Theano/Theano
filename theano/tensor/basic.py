@@ -3229,7 +3229,7 @@ class Nonzero(gof.Op):
         a = inp[0]
         out, = out_
         result_tuple = numpy.nonzero(a)
-        if len(result_tuple[0]) != 0:
+        if len(result_tuple) > 0 and len(result_tuple[0]) > 0:
             result = numpy.vstack(result_tuple)
         else:
             result = numpy.zeros((len(result_tuple), 0))
