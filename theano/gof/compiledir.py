@@ -35,47 +35,9 @@ del p
 del dummy_in
 del dummy_err
 
-
-# EPD sometimes does not recognize python versions as valid,
-# as it expects it to include |EPD ...|.
-# However, even with EPD, this string is not included when
-# the Python interpreter is called via the C API.
-try:
-    _python_version = platform.python_version()
-except ValueError:
-    # Check the raw string from sys.version
-    # code copied and adapted from platform.py
-    import string
-    sys_version = sys.version
-    if (sys_version[:10] == 'IronPython' or
-            sys.platform[:4] == 'java' or
-            "PyPy" in sys_version):
-        # Something else went wrong
-        raise
-    else:
-        # It is CPython
-        _nonepd_sys_version_parser = re.compile(
-                r'([\w.+]+)\s*'
-                '\(#?([^,]+),\s*([\w ]+),\s*([\w :]+)\)\s*'
-                '\[([^\]]+)\]?')
-        match = _nonepd_sys_version_parser.match(sys_version)
-        if match is None:
-            raise
-        else:
-            _python_version = match.groups()[0]
-            # Add the patchlevel version if missing
-            l = string.split(_python_version, '.')
-            if len(l) == 2:
-                l.append('0')
-                _python_version = string.join(l, '.')
-            del l
-        del match
-        del _nonepd_sys_version_parser
-    del sys_version
-
 compiledir_format_dict = {"platform": platform.platform(),
                           "processor": platform.processor(),
-                          "python_version": _python_version,
+                          "python_version": platform.python_version(),
                           "theano_version": theano.__version__,
                           "numpy_version": numpy.__version__,
                           "gxx_version": gcc_version_str.replace(" ", "_"),
