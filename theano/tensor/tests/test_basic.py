@@ -1826,163 +1826,164 @@ def test_eye():
         yield check, dtype, 5, 3, -1
 
 
-def test_tri():
-    def check(dtype, N, M_=None, k=0):
-        # Theano does not accept None as a tensor.
-        # So we must use a real value.
-        M = M_
-        # Currently DebugMode does not support None as inputs even if this is
-        # allowed.
-        if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
-            M = N
-        N_symb = tensor.iscalar()
-        M_symb = tensor.iscalar()
-        k_symb = tensor.iscalar()
-        f = function([N_symb, M_symb, k_symb],
-                     tri(N_symb, M_symb, k_symb, dtype=dtype))
-        result = f(N, M, k)
-        assert numpy.allclose(result, numpy.tri(N, M_, k, dtype=dtype))
-        assert result.dtype == numpy.dtype(dtype)
-    for dtype in ALL_DTYPES:
-        yield check, dtype, 3
-        # M != N, k = 0
-        yield check, dtype, 3, 5
-        yield check, dtype, 5, 3
-        # N == M, k != 0
-        yield check, dtype, 3, 3, 1
-        yield check, dtype, 3, 3, -1
-        # N < M, k != 0
-        yield check, dtype, 3, 5, 1
-        yield check, dtype, 3, 5, -1
-        # N > M, k != 0
-        yield check, dtype, 5, 3, 1
-        yield check, dtype, 5, 3, -1
+class test_triangle(unittest.TestCase):
+    def test_tri(self):
+        def check(dtype, N, M_=None, k=0):
+            # Theano does not accept None as a tensor.
+            # So we must use a real value.
+            M = M_
+            # Currently DebugMode does not support None as inputs even if this is
+            # allowed.
+            if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
+                M = N
+            N_symb = tensor.iscalar()
+            M_symb = tensor.iscalar()
+            k_symb = tensor.iscalar()
+            f = function([N_symb, M_symb, k_symb],
+                        tri(N_symb, M_symb, k_symb, dtype=dtype))
+            result = f(N, M, k)
+            self.assertTrue(
+                numpy.allclose(result, numpy.tri(N, M_, k, dtype=dtype)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
+        for dtype in ALL_DTYPES:
+            yield check, dtype, 3
+            # M != N, k = 0
+            yield check, dtype, 3, 5
+            yield check, dtype, 5, 3
+            # N == M, k != 0
+            yield check, dtype, 3, 3, 1
+            yield check, dtype, 3, 3, -1
+            # N < M, k != 0
+            yield check, dtype, 3, 5, 1
+            yield check, dtype, 3, 5, -1
+            # N > M, k != 0
+            yield check, dtype, 5, 3, 1
+            yield check, dtype, 5, 3, -1
 
 
-def test_tril_triu():
-    def check_l(m, k=0):
-        m_symb = matrix(dtype=m.dtype)
-        k_symb = iscalar()
-        f = function([m_symb, k_symb], tril(m_symb, k_symb))
-        result = f(m, k)
-        assert numpy.allclose(result, numpy.tril(m, k))
-        assert result.dtype == numpy.dtype(dtype)
+    def test_tril_triu(self):
+        def check_l(m, k=0):
+            m_symb = matrix(dtype=m.dtype)
+            k_symb = iscalar()
+            f = function([m_symb, k_symb], tril(m_symb, k_symb))
+            result = f(m, k)
+            self.assertTrue(numpy.allclose(result, numpy.tril(m, k)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
 
-    def check_u(m, k=0):
-        m_symb = matrix(dtype=m.dtype)
-        k_symb = iscalar()
-        f = function([m_symb, k_symb], triu(m_symb, k_symb))
-        result = f(m, k)
-        assert numpy.allclose(result, numpy.triu(m, k))
-        assert result.dtype == numpy.dtype(dtype)
+        def check_u(m, k=0):
+            m_symb = matrix(dtype=m.dtype)
+            k_symb = iscalar()
+            f = function([m_symb, k_symb], triu(m_symb, k_symb))
+            result = f(m, k)
+            self.assertTrue(numpy.allclose(result, numpy.triu(m, k)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
 
-    for dtype in ALL_DTYPES:
-        m = rand_of_dtype((10, 10), dtype)
-        yield check_l, m, 0
-        yield check_l, m, 1
-        yield check_l, m, -1
+        for dtype in ALL_DTYPES:
+            m = rand_of_dtype((10, 10), dtype)
+            yield check_l, m, 0
+            yield check_l, m, 1
+            yield check_l, m, -1
 
-        yield check_u, m, 0
-        yield check_u, m, 1
-        yield check_u, m, -1
+            yield check_u, m, 0
+            yield check_u, m, 1
+            yield check_u, m, -1
 
-        m = rand_of_dtype((10, 5), dtype)
-        yield check_l, m, 0
-        yield check_l, m, 1
-        yield check_l, m, -1
+            m = rand_of_dtype((10, 5), dtype)
+            yield check_l, m, 0
+            yield check_l, m, 1
+            yield check_l, m, -1
 
-        yield check_u, m, 0
-        yield check_u, m, 1
-        yield check_u, m, -1
+            yield check_u, m, 0
+            yield check_u, m, 1
+            yield check_u, m, -1
 
 
-def test_nonzero():
-    def check(m):
-        m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                      broadcastable = (False,) * m.ndim)
+class test_nonzero(unittest.TestCase):
+    def test_nonzero(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
 
-        f_tuple = function([m_symb], nonzero(m_symb, return_matrix=False))
-        f_matrix = function([m_symb], nonzero(m_symb, return_matrix=True))
+            f_tuple = function([m_symb], nonzero(m_symb, return_matrix=False))
+            f_matrix = function([m_symb], nonzero(m_symb, return_matrix=True))
 
-        assert numpy.allclose(f_matrix(m), numpy.vstack(numpy.nonzero(m)))
-        for i, j in zip(f_tuple(m), numpy.nonzero(m)):
-            assert numpy.allclose(i, j)
+            self.assertTrue(numpy.allclose(f_matrix(m), numpy.vstack(numpy.nonzero(m))))
+            for i, j in zip(f_tuple(m), numpy.nonzero(m)):
+                self.assertTrue(numpy.allclose(i, j))
 
-    rand0d = numpy.array(rand())
-    check(rand0d)
+        rand0d = numpy.array(rand())
+        self.assertRaises(ValueError, check, rand0d)
 
-    rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
-    check(rand0d_0)
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
 
-    rand1d = rand(8)
-    rand1d[:4] = 0
-    check(rand1d)
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
 
-    rand2d = rand(8, 9)
-    rand2d[:4] = 0
-    check(rand2d)
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
 
-    rand3d = rand(8, 9, 10)
-    rand3d[:4] = 0
-    check(rand3d)
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
 
-    rand4d = rand(8, 9, 10, 11)
-    rand4d[:4] = 0
-    check(rand4d)
 
-def test_flatnonzero():
-    def check(m):
-        m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                      broadcastable = (False,) * m.ndim)
-        f = function([m_symb], flatnonzero(m_symb))
-        result = f(m)
-        assert numpy.allclose(result, numpy.flatnonzero(m))
+    def test_flatnonzero(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
+            f = function([m_symb], flatnonzero(m_symb))
+            result = f(m)
+            assert numpy.allclose(result, numpy.flatnonzero(m))
 
-    rand0d = numpy.array(rand())
-    check(rand0d)
+        rand0d = numpy.array(rand())
+        self.assertRaises(ValueError, check, rand0d)
 
-    rand0d_0 = numpy.array(0, dtype = theano.config.floatX)
-    check(rand0d_0)
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
 
-    rand1d = rand(8)
-    rand1d[:4] = 0
-    check(rand1d)
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
 
-    rand2d = rand(8, 9)
-    rand2d[:4] = 0
-    check(rand2d)
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
 
-    rand3d = rand(8, 9, 10)
-    rand3d[:4] = 0
-    check(rand3d)
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
 
-    rand4d = rand(8, 9, 10, 11)
-    rand4d[:4] = 0
-    check(rand4d)
+    def test_nonzero_values(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
+            f = function([m_symb], nonzero_values(m_symb))
+            result = f(m)
+            assert numpy.allclose(result, m[numpy.nonzero(m)])
 
-def test_nonzero_values():
-    def check(m):
-        m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                      broadcastable = (False,) * m.ndim)
-        f = function([m_symb], nonzero_values(m_symb))
-        result = f(m)
-        assert numpy.allclose(result, m[numpy.nonzero(m)])
+        rand0d = rand()
+        self.assertRaises(ValueError, check, rand0d)
 
-    rand1d = rand(8)
-    rand1d[:4] = 0
-    check(rand1d)
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
 
-    rand2d = rand(8, 9)
-    rand2d[:4] = 0
-    check(rand2d)
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
 
-    rand3d = rand(8, 9, 10)
-    rand3d[:4] = 0
-    check(rand3d)
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
 
-    rand4d = rand(8, 9, 10, 11)
-    rand4d[:4] = 0
-    check(rand4d)
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
 
 
 def test_identity():
