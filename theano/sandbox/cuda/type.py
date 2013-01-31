@@ -445,14 +445,14 @@ theano.compile.register_deep_copy_op_c_code(
                 %(fail)s;
             }
         } else {
-            if(!CudaNdarray_CopyFromCudaNdarray(%(oname)s, %(iname)s)) {
+            if(CudaNdarray_CopyFromCudaNdarray(%(oname)s, %(iname)s)) {
                 PyErr_SetString(PyExc_ValueError,
             "DeepCopyOp: the copy failed into already allocated space!");
                 %(fail)s;
             }
         }
         """,
-        version=2)
+        version=3)
 
 
 # THIS WORKS But CudaNdarray instances don't compare equal to one
