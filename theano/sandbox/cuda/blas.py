@@ -748,7 +748,7 @@ class GpuDownsampleFactorMax(GpuOp):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (5)
+        return (6)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -849,6 +849,9 @@ class GpuDownsampleFactorMax(GpuOp):
            float *z, int zS0, int zS1, int zS2, int zS3)
         {
             float cur_max, cur_x;
+            // Cast threadIdx.x into a signed int, to avoid problems with
+            // indexing with negative offsets.
+            int tx = threadIdx.x;
             for(int block_x_idx = blockIdx.x;
                 block_x_idx < D0 * D1;
                 block_x_idx += gridDim.x){
@@ -865,7 +868,7 @@ class GpuDownsampleFactorMax(GpuOp):
                 {
                     __syncthreads();
                     // load the current row of the image into shared memory
-                    for (int j = threadIdx.x; j < xD3; j += blockDim.x)
+                    for (int j = tx; j < xD3; j += blockDim.x)
                     {
                         xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
                     }
@@ -873,7 +876,7 @@ class GpuDownsampleFactorMax(GpuOp):
 
                     // initialize our max if this is the
                     // first row we're loading
-                    cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
+                    cur_max = (r2 == 0) ? xbuf[tx*pf3] : cur_max;
 
                     // do a mini-reduction over the pf3 relevant elements
                     // in the current row
@@ -882,7 +885,7 @@ class GpuDownsampleFactorMax(GpuOp):
                     {
                         for (int k = 0; k < pf3; ++k)
                         {
-                            cur_x = xbuf[threadIdx.x*pf3+k];
+                            cur_x = xbuf[tx*pf3+k];
                             cur_max = (cur_x > cur_max) ? cur_x : cur_max;
                         }
                     }
@@ -890,17 +893,16 @@ class GpuDownsampleFactorMax(GpuOp):
                     {
                         for (int k = 0; k < pf3; ++k)
                         {
-                            if (threadIdx.x*pf3 + k < xD3)
+                            if (tx*pf3 + k < xD3)
                             {
-                                cur_x = xbuf[threadIdx.x*pf3+k];
+                                cur_x = xbuf[tx*pf3+k];
                                 cur_max = (cur_x > cur_max) ? cur_x : cur_max;
                             }
                         }
                     }
                 }
 
-                //store the result to global memory
-                z[i0*zS0 + i1*zS1 + i2*zS2 + threadIdx.x*zS3] = cur_max;
+                z[i0*zS0 + i1*zS1 + i2*zS2 + tx*zS3] = cur_max;
             }
         }
         """ % locals()
