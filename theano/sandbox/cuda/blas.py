@@ -933,7 +933,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         return Apply(self, [x, z, gz], [x.type()])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -1001,7 +1001,11 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                 CudaNdarray_HOST_STRIDES(%(gz)s)[1],
                 CudaNdarray_HOST_STRIDES(%(gz)s)[2],
                 CudaNdarray_HOST_STRIDES(%(gz)s)[3],
-                CudaNdarray_DEV_DATA(%(gx)s));
+                CudaNdarray_DEV_DATA(%(gx)s),
+                CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[3]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
@@ -1039,7 +1043,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
            const float * x, int xS0, int xS1, int xS2, int xS3,
            const float * z, int zS0, int zS1, int zS2, int zS3,
            const float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
-           float *gx)
+           float *gx, int gxS0, int gxS1, int gxS2, int gxS3)
         {
             //  D0: number of image rows
             //  D1: number of image cols
@@ -1050,6 +1054,10 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // various .S. variables are strides
 
             float cur_max, cur_x, my_z, my_gz;
+            // Cast threadIdx.x into a signed int, to avoid problems with
+            // indexing with negative offsets.
+            int tx = threadIdx.x;
+
             for(int i0 = blockIdx.x;
                 i0 < D0;
                 i0 += gridDim.x){
@@ -1058,7 +1066,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                 // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
                 // (as needed to cover all x rows)
                 int i2 = blockIdx.y;
-                int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
+                int x_col = tx;            // col wrt x, ranges from 0 to xD3 - 1
                 int z_col = x_col/ds1;     // z_col corresponding to this x_col
 
 
@@ -1075,7 +1083,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
 
                         if(blockDim.x != xD3)
                         {
-                            x_col = threadIdx.x + col_iter * blockDim.x;
+                            x_col = tx + col_iter * blockDim.x;
                             z_col = x_col/ds1;
                         }
 
@@ -1110,13 +1118,10 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                                 // gx[image_row][image_col][x_row][x_col]
                                 //   = (my_z == x[image_row][image_col][
                                 //                x_row][x_col]) ? my_gz : 0.0f;
-                                gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                                   x_row*xD3 + x_col]
+                                gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3]
                                    = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
                                                 x_col*xS3]) ? my_gz : 0.0f;
                             }
-                        //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                        //   x_row*xD3 + x_col] = -999;
                         }
 
                     }
