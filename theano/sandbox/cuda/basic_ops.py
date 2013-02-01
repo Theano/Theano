@@ -2721,7 +2721,7 @@ class GpuAlloc(GpuOp):
         str += "if(%(out)s==NULL\n" % locals()
         for idx, sh in enumerate(shps):
             str += "||CudaNdarray_HOST_DIMS(%(out)s)[%(idx)s]!=dims[%(idx)s]" % locals()
-        str += """){
+        str += """||(%(memset_0)s && !CudaNdarray_is_c_contiguous(%(out)s))){
             Py_XDECREF(%(out)s);
             %(out)s = (CudaNdarray*)CudaNdarray_New();
             if (!%(out)s)
@@ -2769,7 +2769,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
