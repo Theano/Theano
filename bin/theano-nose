@@ -87,6 +87,7 @@ def main():
     if time_prof_args or batch_args:
         from theano.tests import run_tests_in_batch
         return run_tests_in_batch.main(
+                theano_nose=os.path.realpath(__file__),
                 batch_size=batch_size,
                 time_profile=bool(time_prof_args),
                 display_batch_output=display_batch_output)
