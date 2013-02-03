@@ -3347,7 +3347,6 @@ def nonzero_values(a):
     nonzero : Return the indices of the non-zero elements of the input array.
     flatnonzero : Return the indices of the non-zero elements of the
         flattened input array.
-
     """
     return a.flatten()[flatnonzero(a)]
 
