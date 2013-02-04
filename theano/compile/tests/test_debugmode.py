@@ -709,7 +709,7 @@ class Test_preallocated_output(unittest.TestCase):
         a = theano.tensor.fmatrix('a')
         b = theano.tensor.fmatrix('b')
         z = BrokenCImplementationAdd()(a, b)
-        # Needed so that z is not the output of the graph
+        # In this test, we do not want z to be an output of the graph.
         out = theano.tensor.dot(z, numpy.eye(7))
 
         a_val = self.rng.randn(7, 7).astype('float32')
@@ -730,7 +730,39 @@ class Test_preallocated_output(unittest.TestCase):
                 check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        
+
+        if theano.config.cxx:
+            self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+        else:
+            # The python code of this op is good.
+            f(a_val, b_val)
+
+    def test_f_contiguous_out(self):
+        # Same test as test_f_contiguous, but check that it works
+        # even if z _is_ the output of the graph
+        a = theano.tensor.fmatrix('a')
+        b = theano.tensor.fmatrix('b')
+        out = BrokenCImplementationAdd()(a, b)
+
+        a_val = self.rng.randn(7, 7).astype('float32')
+        b_val = self.rng.randn(7, 7).astype('float32')
+
+        # Should work
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['c_contiguous'])
+
+        f = theano.function([a, b], out, mode=mode)
+        out_val = f(a_val, b_val)
+        #print 'out_val =', out_val
+        #print out_val.strides
+
+        # Should raise an Exception, since the output buffer is
+        # used incorrectly.
+        mode = debugmode.DebugMode(
+                check_preallocated_output=['f_contiguous'])
+
+        f = theano.function([a, b], out, mode=mode)
+
         if theano.config.cxx:
             self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
         else:
