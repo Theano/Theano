@@ -3241,14 +3241,19 @@ static __global__ void k_copy_4d(const int N1,
     // These must be made int instead of unsigned int due to a bug in nvcc
     int bx = blockIdx.x;
     int by = blockIdx.y;
-    // N1 and N2 are kept in case a future implementation needs to
-    // loop on the first two dimensions if there are not enough blocks
-    for (int j = threadIdx.y; j < (int) N4; j += (int) blockDim.y)
+
+    for (int i = bx; i < N1; i += gridDim.x)
     {
-        for (int i = threadIdx.x; i <  N3; i += (int) blockDim.x)
+        for (int j = by; j < N2; j += gridDim.y)
         {
-            y[bx * sy1 + by * sy2 + i * sy3 + j * sy4] =  
-                x[bx * sx1 + by * sx2 + i * sx3 + j * sx4];
+            for (int k = threadIdx.x; k < N3; k += (int) blockDim.x)
+            {
+                for (int l = threadIdx.y; l < N4; l += (int) blockDim.y)
+                {
+                    y[i * sy1 + j * sy2 + k * sy3 + l * sy4] =
+                        x[i * sx1 + j * sx2 + k * sx3 + l * sx4];
+                }
+            }
         }
     }
 }
@@ -3380,8 +3385,10 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
 
                 // The blocks implement the looping over the first two axes so
                 // this needs to be (N1, N2)
-                dim3 n_blocks( (unsigned int) CudaNdarray_HOST_DIMS(self)[0],
-                               (unsigned int) CudaNdarray_HOST_DIMS(self)[1]);
+                dim3 n_blocks( std::min(CudaNdarray_HOST_DIMS(self)[0],
+                                        NUM_VECTOR_OP_BLOCKS),
+                               std::min(CudaNdarray_HOST_DIMS(self)[1],
+                                        NUM_VECTOR_OP_BLOCKS));
                 // For the threads, just make as many as possible
                 dim3 n_threads( std::min( (unsigned int) CudaNdarray_HOST_DIMS(self)[2],
                                  (unsigned int) NUM_VECTOR_OP_THREADS_PER_BLOCK),

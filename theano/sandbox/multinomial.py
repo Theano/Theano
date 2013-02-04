@@ -128,7 +128,7 @@ class MultinomialFromUniform(Op):
         if unis.shape[0] != pvals.shape[0]:
             raise ValueError("unis.shape[0] != pvals.shape[0]",
                              unis.shape[0], pvals.shape[0])
-        if not z[0] or z[0].shape != pvals.shape:
+        if z[0] is None or z[0].shape != pvals.shape:
             z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
 
         nb_multi = pvals.shape[0]

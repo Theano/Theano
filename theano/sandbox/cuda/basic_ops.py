@@ -2737,7 +2737,7 @@ class GpuAlloc(GpuOp):
                 %(fail)s;
             }
         }
-        if (%(memset_0)s)
+        if (%(memset_0)s && CudaNdarray_is_c_contiguous(%(out)s))
         {
             if (cudaSuccess != cudaMemset(%(out)s->devdata, 0,
                                           CudaNdarray_SIZE(%(out)s) * 4))
@@ -2769,7 +2769,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (7,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
