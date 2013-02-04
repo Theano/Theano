@@ -2803,6 +2803,13 @@ class GpuContiguous(GpuOp):
     def __hash__(self):
         return hash(type(self))
 
+    def grad(self, inputs, dout):
+
+        x, = inputs
+        dout, = dout
+
+        return [dout]
+
     def __str__(self):
         return self.__class__.__name__
 
