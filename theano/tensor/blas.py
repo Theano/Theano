@@ -1615,7 +1615,7 @@ def local_gemm_to_ger(node):
             yv = y.dimshuffle(1)
             try:
                 bval = T.get_scalar_constant_value(b)
-            except TypeError:
+            except T.NotScalarConstantError:
                 # b isn't a constant, GEMM is doing useful pre-scaling
                 return
 

@@ -1603,6 +1603,13 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
                     self.A, self.a, self.x.dimshuffle(0, 'x'),
                     self.y.dimshuffle('x', 0), self.b(1.5)).owner)
 
+    def test_b_nonconst_does_not_triggers_ger(self):
+        """ test local_gemm_to_ger opt"""
+        assert not T.blas.local_gemm_to_ger.transform(
+                gemm_no_inplace(
+                    self.A, self.a, self.x.dimshuffle(0, 'x'),
+                    self.y.dimshuffle('x', 0), self.a).owner)
+
     def test_outer(self):
         f = self.function([self.x, self.y], T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger_destructive)
