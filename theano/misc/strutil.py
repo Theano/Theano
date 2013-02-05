@@ -31,7 +31,7 @@ def render_string(string, sub):
 
 def renderString(string, dict):
     warnings.warn("renderString is deprecated. It is now called render_string",
-            stack_level = 2)
+            stacklevel = 2)
     return render_string(string, dict)
 
 def pretty_format(string):
