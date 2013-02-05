@@ -2831,7 +2831,8 @@ class GpuContiguous(GpuOp):
             } else if ((NULL == %(z)s)""" % locals()
         for i in xrange(len(node.inputs[0].type.broadcastable)):
             str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])" % locals()
-        str += """)
+        str += """
+                || !CudaNdarray_is_c_contiguous(%(z)s))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = (CudaNdarray*)CudaNdarray_Copy(%(input)s);
@@ -2847,7 +2848,7 @@ class GpuContiguous(GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_contiguous = GpuContiguous()
 
