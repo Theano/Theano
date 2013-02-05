@@ -923,6 +923,9 @@ class ModuleCache(object):
                     # The op have c_code, so take the lock.
                     compilelock.get_lock()
                     lock_taken = True
+                    assert os.path.exists(location), (
+                        "The directory just created shouldn't be deleted!")
+
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
                                 "previous one")
