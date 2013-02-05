@@ -891,10 +891,11 @@ class ModuleCache(object):
             hash_key = hash(key)
             key_data = None
             # We have never seen this key before.
-            # Acquire lock before creating things in the compile cache,
-            # to avoid that other processes remove the compile dir while it
-            # is still empty.
-            compilelock.get_lock()
+
+            # We acquire the lock later only if we where able to
+            # generate c code Otherwise, we would take the lock for op
+            # that have only a perform().
+            lock_taken = False
             # This try/finally block ensures that the lock is released once we
             # are done writing in the cache file or after raising an exception.
             try:
@@ -918,6 +919,13 @@ class ModuleCache(object):
                     # The first compilation step is to yield the source code.
                     src_code = compile_steps.next()
                     module_hash = get_module_hash(src_code, key)
+
+                    # The op have c_code, so take the lock.
+                    compilelock.get_lock()
+                    lock_taken = True
+                    assert os.path.exists(location), (
+                        "The directory just created shouldn't be deleted!")
+
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
                                 "previous one")
@@ -1039,7 +1047,7 @@ class ModuleCache(object):
 
             finally:
                 # Release lock if needed.
-                if not keep_lock:
+                if not keep_lock and lock_taken:
                     compilelock.release_lock()
 
             # Update map from key to module name for all keys associated to
