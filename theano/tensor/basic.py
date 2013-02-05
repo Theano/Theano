@@ -24,6 +24,8 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
 
+import theano.gof.cutils #needed to import cutils_ext
+
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
@@ -7108,18 +7110,27 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            # If `y` has as many dimensions as `x`, then we want to iterate
-            # jointly on `x` and `y`. Otherwise, it means `y` should be
-            # broadcasted to fill all relevant rows of `x`.
-            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
-            if y.ndim == x.ndim:
-                assert len(y) == len(idx)
-                for (j, i) in enumerate(idx):
-                    x[i] += y[j]
-            else:
-                for i in idx:
-                    x[i] += y
+            try :
+                from cutils_ext.cutils_ext import inplace_increment as increment
+            except ImportError: 
+                increment = self.inplace_increment1d_slow
+
+            increment(x,idx, y) 
+
         out[0] = x
+
+    def inplace_increment1d_slow(self, x, idx, y):
+        # If `y` has as many dimensions as `x`, then we want to iterate
+        # jointly on `x` and `y`. Otherwise, it means `y` should be
+        # broadcasted to fill all relevant rows of `x`.
+        assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
+        if y.ndim == x.ndim:
+            assert len(y) == len(idx)
+            for (j, i) in enumerate(idx):
+                x[i] += y[j]
+        else:
+            for i in idx:
+                x[i] += y
 
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
@@ -7368,17 +7379,16 @@ class AdvancedIncSubtensor(Op):
         out, = out_
         if not self.inplace:
             out[0] = inputs[0].copy()
-        else:
-            raise NotImplementedError('In place computation is not'
-                                      ' implemented')
+        
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
         else:
-            try : 
-                increment = gof.cutils_ext.inplace_increment
-            except: 
-                raise NotImplementedError("Couldn't find
-                inplace_increment, update numpy.") 
+            increment = None 
+            try :
+                from cutils_ext.cutils_ext import inplace_increment as increment
+            except ImportError: 
+                raise NotImplementedError('Did not find inplace_increment.' 
+                                          'Update numpy?')
 
             increment(out[0], tuple(inputs[2:]), inputs[1])
 
