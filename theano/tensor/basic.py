@@ -17,6 +17,7 @@ from theano.gof import Apply, Constant, Op, Type, Variable
 import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all, maxsize
+from theano.gof.utils import MethodNotDefined
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
@@ -6550,6 +6551,10 @@ class AdvancedSubtensor1(Op):
         return [ilist + x[1:]]
 
     def c_code(self, node, name, input_names, output_names, sub):
+        if self.__class__ is not AdvancedSubtensor1:
+            raise MethodNotDefined(
+                "c_code defined for AdvancedSubtensor1,"
+                " not for chieldren class", type(self))
         a_name, i_name = input_names[0], input_names[1]
         output_name = output_names[0]
         fail = sub['fail']
