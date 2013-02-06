@@ -6549,8 +6549,44 @@ class AdvancedSubtensor1(Op):
         x, ilist = ishapes
         return [ilist + x[1:]]
 
-advanced_subtensor1 = AdvancedSubtensor1()
+    def c_code(self, node, name, input_names, output_names, sub):
+        a_name, i_name = input_names[0], input_names[1]
+        output_name = output_names[0]
+        fail = sub['fail']
+        return """
+            if (%(output_name)s != NULL) {
+                npy_intp nd, i, *shape;
+                nd = PyArray_NDIM(%(a_name)s) + PyArray_NDIM(%(i_name)s) - 1;
+                if (PyArray_NDIM(%(output_name)s) != nd) {
+                    Py_CLEAR(%(output_name)s);
+                }
+                else {
+                    shape = PyArray_DIMS(%(output_name)s);
+                    for (i = 0; i < PyArray_NDIM(%(i_name)s); i++) {
+                        if (shape[i] != PyArray_DIMS(%(i_name)s)[i]) {
+                            Py_CLEAR(%(output_name)s);
+                            break;
+                        }
+                    }
+                    if (%(output_name)s != NULL) {
+                        for (; i < nd; i++) {
+                            if (shape[i] != PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(%(i_name)s)+1]) {
+                                Py_CLEAR(%(output_name)s);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, (PyObject*)%(i_name)s, 0,
+                                                               %(output_name)s, NPY_RAISE);
+            if (%(output_name)s == NULL) %(fail)s;
+        """ % locals()
 
+    def c_code_cache_version(self):
+        return (0, 0, 2)
+
+advanced_subtensor1 = AdvancedSubtensor1()
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""

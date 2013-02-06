@@ -281,7 +281,7 @@ def test_downsample():
                     for node in f.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, DownsampleFactorMax)
                     for node in f2.maker.fgraph.toposort()])
-                assert numpy.allclose(f(), f2())
+                numpy.testing.assert_allclose(f(), f2(), err_msg=str(f()-f2()))
 
                 # The grad is too slow on GT220 GPU
                 # This cause the computer to freeze...
@@ -306,7 +306,7 @@ def test_downsample():
                             for node in g.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
                             for node in g2.maker.fgraph.toposort()])
-                assert numpy.allclose(g(), g2()), shp
+                numpy.testing.assert_allclose(g(), g2(), err_msg=str(shp))
 
                 # We already check that the gpu version return
                 # the same value as the gpu version for
