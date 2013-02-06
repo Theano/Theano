@@ -9,7 +9,7 @@ class T_load_tensor(unittest.TestCase):
     def setUp(self):
         self.data = numpy.arange(5, dtype=numpy.int32)
         self.filename = os.path.join(
-            theano.config.base_compiledir,
+            theano.config.compiledir,
             "_test.npy")
         numpy.save(self.filename, self.data)
 
@@ -52,5 +52,5 @@ class T_load_tensor(unittest.TestCase):
 
     def tearDown(self):
         os.remove(os.path.join(
-            theano.config.base_compiledir,
+            theano.config.compiledir,
             "_test.npy"))
