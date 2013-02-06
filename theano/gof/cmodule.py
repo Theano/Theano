@@ -892,8 +892,8 @@ class ModuleCache(object):
             key_data = None
             # We have never seen this key before.
 
-            # We acquire the lock later only if we where able to
-            # generate c code Otherwise, we would take the lock for op
+            # We acquire the lock later only if we were able to
+            # generate C code. Otherwise, we would take the lock for ops
             # that have only a perform().
             lock_taken = False
             # This try/finally block ensures that the lock is released once we
@@ -920,7 +920,7 @@ class ModuleCache(object):
                     src_code = compile_steps.next()
                     module_hash = get_module_hash(src_code, key)
 
-                    # The op have c_code, so take the lock.
+                    # The op has c_code, so take the lock.
                     compilelock.get_lock()
                     lock_taken = True
                     assert os.path.exists(location), (
