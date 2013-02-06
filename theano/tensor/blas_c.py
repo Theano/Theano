@@ -497,22 +497,44 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     float alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
                     //fprintf(stderr, "alpha=%%f\\n", alpha);
                     //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
-                    sgemv_(&TRANS, &Nx1, &Nx0,
-                        &alpha,
-                        (float*)(PyArray_DATA(%(xx)s)), &Sx0,
-                        (float*)yy_data, &Sy,
-                        &fbeta,
-                        (float*)zz_data, &Sz);
+
+                    if (Nx0 == 1 && Sx1 == 1)
+                    {
+                        // Special case: vector-vector dot
+                        zz_data[0] = fbeta*zz_data[0] + alpha*sdot_(&Nx1, 
+                            (float*)(PyArray_DATA(%(xx)s)), &Sx1,
+                            (float*)yy_data, &Sy);
+                    }
+                    else
+                    {
+                        sgemv_(&TRANS, &Nx1, &Nx0,
+                            &alpha,
+                            (float*)(PyArray_DATA(%(xx)s)), &Sx0,
+                            (float*)yy_data, &Sy,
+                            &fbeta,
+                            (float*)zz_data, &Sz);
+                    }
                 }
                 else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
                 {
                     double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
-                    dgemv_(&TRANS, &Nx1, &Nx0,
-                        &alpha,
-                        (double*)(PyArray_DATA(%(xx)s)), &Sx0,
-                        (double*)yy_data, &Sy,
-                        &dbeta,
-                        (double*)zz_data, &Sz);
+
+                    if (Nx0 == 1 && Sx1 == 1)
+                    {
+                        // Special case: vector-vector dot
+                        zz_data[0] = dbeta*zz_data[0] + alpha*ddot_(&Nx1, 
+                              (double*)(PyArray_DATA(%(xx)s)), &Sx1,
+                              (double*)yy_data, &Sy);
+                    }
+                    else
+                    {
+                        dgemv_(&TRANS, &Nx1, &Nx0,
+                            &alpha,
+                            (double*)(PyArray_DATA(%(xx)s)), &Sx0,
+                            (double*)yy_data, &Sy,
+                            &dbeta,
+                            (double*)zz_data, &Sz);
+                    }
                 }
                 else
                 {
@@ -556,7 +578,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
