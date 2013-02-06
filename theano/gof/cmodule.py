@@ -1506,7 +1506,7 @@ class GCC_compiler(object):
         :returns: dynamically-imported python module of the compiled code.
         """
         #TODO: Do not do the dlimport in this function
-        
+
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
 
