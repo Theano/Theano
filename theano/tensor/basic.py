@@ -622,7 +622,7 @@ def get_scalar_constant_value(v):
                         msg += 'x=%s' % min_informative_str(x)
                     else:
                         msg += 'x=%s' % str(x)
-                raise ValueError(msg)
+                    raise ValueError(msg)
 
 
 
