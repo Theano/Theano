@@ -53,7 +53,7 @@ struct table_struct{
 };
 table_struct _alloc_size_table[TABLE_SIZE];
 #endif
-void * device_malloc(size_t size)
+void * device_malloc(size_t size, int verbose)
 {
     void * rval=NULL;
     cudaError_t err = cudaMalloc(&rval, size);
@@ -64,11 +64,14 @@ void * device_malloc(size_t size)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-        #if COMPUTE_GPU_MEM_USED
-            fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
-        #else
-            fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
-        #endif
+        if (verbose)
+        {
+            #if COMPUTE_GPU_MEM_USED
+                fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+            #else
+                fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+            #endif
+        }
         PyErr_Format(PyExc_MemoryError,
                 "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
         return NULL;
@@ -959,7 +962,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
 
     // Create the memory place that will store the error information.
     if (err_var == NULL) {
-        err_var = (int*)device_malloc(sizeof(int));
+        err_var = (int*)device_malloc(sizeof(int), VERBOSE_DEVICE_MALLOC);
         if (!err_var) { // PyErr set by device_malloc
             Py_DECREF(indices);
             Py_DECREF(out);
@@ -2625,7 +2628,7 @@ static __global__ void get_gpu_ptr_size(int* dst)
 PyObject *
 CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 {
-    int *gpu_data = (int*)device_malloc(sizeof(int)*2);
+    int *gpu_data = (int*)device_malloc(sizeof(int)*2, VERBOSE_DEVICE_MALLOC);
     if(gpu_data == NULL){
         return PyErr_Format(PyExc_MemoryError,
                             "CudaNdarray_ptr_int_size: Can't allocate memory on the gpu.");
@@ -4521,7 +4524,7 @@ cnda_copy_structure_to_device(const CudaNdarray * self)
         int struct_size = cnda_structure_size(self->nd);
         if (struct_size)
         {
-            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
+            self->dev_structure = (int*)device_malloc(struct_size* sizeof(int), VERBOSE_DEVICE_MALLOC);
             if (NULL == self->dev_structure)
             {
                 return -1;
