@@ -12,8 +12,10 @@
 #else
 #define DllExport   __declspec( dllimport )
 #endif
-#else
+#define ALWAYS_INLINE
+#else //else _WIN32
 #define DllExport
+#define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
 typedef float real;
@@ -134,7 +136,7 @@ CudaNdarray_HOST_STRIDES(const CudaNdarray * self);
 DllExport const int *
 CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self);
 
-DllExport inline void __attribute__((always_inline))
+DllExport inline void ALWAYS_INLINE
 cnda_mark_dev_structure_dirty(CudaNdarray * self)
 {
     self->dev_structure_fresh = 0;
@@ -155,7 +157,7 @@ CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
  *
  *  Does not sync structure to device.
  */
-DllExport inline void __attribute__((always_inline))
+DllExport inline void ALWAYS_INLINE
 CudaNdarray_set_dim(CudaNdarray * self, int idx, int d) 
 {
     if ((idx >= self->nd) || (idx < 0) || (d < 0))
@@ -173,7 +175,7 @@ CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
 }
 
 
-DllExport inline void __attribute__((always_inline))
+DllExport inline void ALWAYS_INLINE
 CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
 {
     if ((idx >= self->nd) || (idx < 0))
@@ -232,7 +234,7 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
  * Note: This does not allocate storage for data, or free
  *       pre-existing storage.
  */
-DllExport inline int __attribute__((always_inline))
+DllExport inline int ALWAYS_INLINE
 CudaNdarray_set_nd(CudaNdarray * self, const int nd)
 {
     if (nd != self->nd)
@@ -434,7 +436,7 @@ CudaNdarray_ZEROS(int n, int * dims);
 /**
  * True iff the strides look like [dim[nd-2], dim[nd-3], ... , dim[0], 1]
  */
-DllExport inline bool  __attribute__((always_inline))
+DllExport inline bool ALWAYS_INLINE
 CudaNdarray_is_c_contiguous(const CudaNdarray * self)
 {
     bool c_contiguous = true;

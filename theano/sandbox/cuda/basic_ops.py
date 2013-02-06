@@ -2737,7 +2737,7 @@ class GpuAlloc(GpuOp):
                 %(fail)s;
             }
         }
-        if (%(memset_0)s)
+        if (%(memset_0)s && CudaNdarray_is_c_contiguous(%(out)s))
         {
             if (cudaSuccess != cudaMemset(%(out)s->devdata, 0,
                                           CudaNdarray_SIZE(%(out)s) * 4))
@@ -2769,7 +2769,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (7,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
@@ -2803,6 +2803,13 @@ class GpuContiguous(GpuOp):
     def __hash__(self):
         return hash(type(self))
 
+    def grad(self, inputs, dout):
+
+        x, = inputs
+        dout, = dout
+
+        return [dout]
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -2824,7 +2831,8 @@ class GpuContiguous(GpuOp):
             } else if ((NULL == %(z)s)""" % locals()
         for i in xrange(len(node.inputs[0].type.broadcastable)):
             str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])" % locals()
-        str += """)
+        str += """
+                || !CudaNdarray_is_c_contiguous(%(z)s))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = (CudaNdarray*)CudaNdarray_Copy(%(input)s);
@@ -2840,7 +2848,7 @@ class GpuContiguous(GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_contiguous = GpuContiguous()
 

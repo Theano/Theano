@@ -417,8 +417,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
 
 def rand(*shape):
-    r = numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
-    return r * 2 - 1
+    r = numpy.random.rand(*shape) * 2 - 1
+    return numpy.asarray(r, dtype=config.floatX)
 
 
 def rand_nonzero(shape, eps=3e-4):
@@ -4270,8 +4270,9 @@ class t_dot(unittest.TestCase):
             return type(x), x.dtype, x.shape
         nz = numpy.dot(x, y)
         tz = eval_outputs([dot(as_tensor_variable(x), as_tensor_variable(y))])
-        self.assertTrue(tz.dtype == nz.dtype)
-        self.assertTrue(tz.shape == nz.shape)
+        self.assertTrue(tz.dtype == nz.dtype,
+                (tz.dtype, tz.dtype.num, nz.dtype, nz.dtype.num))
+        self.assertTrue(tz.shape == nz.shape, (tz.shape, nz.shape))
         self.assertTrue(_approx_eq(nz, tz))
 
     def test_Op_dims(self):
@@ -4300,19 +4301,19 @@ class t_dot(unittest.TestCase):
         self.assertRaises(TypeError, _dot, d3, d3)
 
     def test_dot_0d_0d(self):
-        self.cmp_dot(1.1, 2.2)
+        self.cmp_dot(rand(), rand())
 
     def test_dot_0d_1d(self):
-        self.cmp_dot(1.1, rand(5))
+        self.cmp_dot(rand(), rand(5))
 
     def test_dot_0d_2d(self):
-        self.cmp_dot(3.0, rand(6,7))
+        self.cmp_dot(rand(), rand(6,7))
 
     def test_dot_0d_3d(self):
-        self.cmp_dot(3.0, rand(8,6,7))
+        self.cmp_dot(rand(), rand(8,6,7))
 
     def test_dot_1d_0d(self):
-        self.cmp_dot(rand(5), 1.1 )
+        self.cmp_dot(rand(5), rand())
 
     def test_dot_1d_1d(self):
         self.cmp_dot(rand(5), rand(5))
@@ -4344,7 +4345,7 @@ class t_dot(unittest.TestCase):
         self.cmp_dot(rand(6), rand(8,6,7))
 
     def test_dot_2d_0d(self):
-        self.cmp_dot(rand(5,6), 1.0)
+        self.cmp_dot(rand(5,6), rand())
 
     def test_dot_2d_1d(self):
         self.cmp_dot(rand(5, 6), rand(6))
@@ -4380,7 +4381,7 @@ class t_dot(unittest.TestCase):
         self.cmp_dot(rand(5,6), rand(8,6,7))
 
     def test_dot_3d_0d(self):
-        self.cmp_dot(rand(4,5,6), 1.0)
+        self.cmp_dot(rand(4,5,6), rand())
 
     def test_dot_3d_1d(self):
         self.cmp_dot(rand(4,5,6), rand(6))

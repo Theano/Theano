@@ -1185,6 +1185,9 @@ def local_subtensor_make_vector(node):
                 # if it is a constant we can do something with it
                 try:
                     v = get_scalar_constant_value(idx)
+                    if isinstance(v, numpy.integer):
+                        # Python 2.4 wants to index only with Python integers
+                        v = int(v)
                     return [x.owner.inputs[v]]
                 except NotScalarConstantError:
                     pass

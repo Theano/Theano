@@ -5,6 +5,7 @@ import sys
 import theano.tensor as T
 from theano import tensor
 from theano.gof.python25 import product as itertools_product
+from theano.gof.python25 import any
 from theano.printing import pp
 
 import numpy
@@ -857,7 +858,6 @@ def test_dot22():
                 assert _dot22 in [x.op for x in topo], (dtype1, dtype2)
             else:
                 check = [isinstance(x.op, T.Dot) for x in topo]
-                from theano.gof.python25 import any
                 assert any(check), (dtype1, dtype2)
             rng = numpy.random.RandomState(unittest_tools.fetch_seed())
 
@@ -1602,6 +1602,13 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
                 gemm_no_inplace(
                     self.A, self.a, self.x.dimshuffle(0, 'x'),
                     self.y.dimshuffle('x', 0), self.b(1.5)).owner)
+
+    def test_b_nonconst_does_not_triggers_ger(self):
+        """ test local_gemm_to_ger opt"""
+        assert not T.blas.local_gemm_to_ger.transform(
+                gemm_no_inplace(
+                    self.A, self.a, self.x.dimshuffle(0, 'x'),
+                    self.y.dimshuffle('x', 0), self.a).owner)
 
     def test_outer(self):
         f = self.function([self.x, self.y], T.outer(self.x, self.y))
