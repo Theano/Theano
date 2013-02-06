@@ -605,7 +605,6 @@ def get_scalar_constant_value(v):
             if (leftmost_parent.owner and
                 isinstance(leftmost_parent.owner.op,
                            theano.tensor.Shape)):
-                owner = v.owner
                 op = owner.op
                 idx_list = op.idx_list
                 idx = idx_list[0]
@@ -616,9 +615,16 @@ def get_scalar_constant_value(v):
                 assert ndim == len(gp_broadcastable)
 
                 if not (idx < len(gp_broadcastable)):
-                    raise ValueError("You are taking x.shape[i] on some tensor x, "
-                            "but x.ndim is %d and i is %d, so this is deterministically "
-                            "an index error." % (ndim, idx))
+                    msg = "get_scalar_constant_value detected " + \
+                            "deterministic IndexError: x.shape[%d] " + \
+                            "when x.ndim=%d." % (ndim, idx)
+                    if config.exception_verbosity == 'high':
+                        msg += 'x=%s' % min_informative_str(x)
+                    else:
+                        msg += 'x=%s' % str(x)
+                raise ValueError(msg)
+
+
 
                 if gp_broadcastable[idx]:
                     return numpy.asarray(1)
