@@ -7062,9 +7062,6 @@ class TestTensorInstanceMethods(unittest.TestCase):
         x, _ = self.vals
         indices = [1,0,3]
         assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
-        # The following line will exercise c_code with non-NULL output_name array
-        # when check_preallocated_output=ALL flag is set. (There should be a better way.)
-        assert_array_equal(X.take(indices).sum().eval({X: x}), x.take(indices).sum())
         indices = [1,0,1]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         indices = [-10,5,12]
