@@ -6554,7 +6554,7 @@ class AdvancedSubtensor1(Op):
         if self.__class__ is not AdvancedSubtensor1:
             raise MethodNotDefined(
                 "c_code defined for AdvancedSubtensor1,"
-                " not for chieldren class", type(self))
+                " not for child class", type(self))
         a_name, i_name = input_names[0], input_names[1]
         output_name = output_names[0]
         fail = sub['fail']
