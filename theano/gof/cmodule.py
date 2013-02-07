@@ -1486,7 +1486,7 @@ class GCC_compiler(object):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None):
+                    preargs=None, py_module=True):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1506,7 +1506,11 @@ class GCC_compiler(object):
 
         :param preargs: a list of extra compiler arguments
 
+        :param py_module: if False, compile to a shared library, but do not
+            import it as a Python module.
+
         :returns: dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
         """
         #TODO: Do not do the dlimport in this function
 
@@ -1631,9 +1635,10 @@ class GCC_compiler(object):
             # Print errors just below the command line.
             print compile_stderr
 
-        #touch the __init__ file
-        file(os.path.join(location, "__init__.py"), 'w').close()
-        return dlimport(lib_filename)
+        if py_module:
+            #touch the __init__ file
+            file(os.path.join(location, "__init__.py"), 'w').close()
+            return dlimport(lib_filename)
 
 
 def icc_module_compile_str(*args):
