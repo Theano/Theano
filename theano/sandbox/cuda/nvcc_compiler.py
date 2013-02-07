@@ -164,7 +164,7 @@ class NVCC_compiler(object):
     def compile_str(
             module_name, src_code,
             location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[],
-            rpaths=rpath_defaults):
+            rpaths=rpath_defaults, py_module=True):
         """:param module_name: string (this has been embedded in the src_code
         :param src_code: a complete c or c++ source listing for the module
         :param location: a pre-existing filesystem directory where the
@@ -178,8 +178,11 @@ class NVCC_compiler(object):
         :param preargs: a list of extra compiler arguments
         :param rpaths: list of rpaths to use with Xlinker.
                        Defaults to `rpath_defaults`.
+        :param py_module: if False, compile to a shared library, but
+            do not import as a Python module.
 
         :returns: dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
 
         :note 1: On Windows 7 with nvcc 3.1 we need to compile in the
                  real directory Otherwise nvcc never finish.
@@ -393,9 +396,10 @@ class NVCC_compiler(object):
             # this doesn't happen to my knowledge
             print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
 
-        #touch the __init__ file
-        file(os.path.join(location, "__init__.py"), 'w').close()
-        return dlimport(lib_filename)
+        if py_module:
+            #touch the __init__ file
+            file(os.path.join(location, "__init__.py"), 'w').close()
+            return dlimport(lib_filename)
 
 
 def remove_python_framework_dir(cmd):
