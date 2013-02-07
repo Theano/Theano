@@ -479,7 +479,7 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 PyObject * CudaNdarray_View(const CudaNdarray * self);
 PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
-
+PyObject * CudaNdarray_Subscript(PyObject * py_self, PyObject * key);
 
 
 // Ensures that *arr is a pointer to a contiguous ndarray of the specified

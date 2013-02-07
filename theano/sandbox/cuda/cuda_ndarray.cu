@@ -1889,7 +1889,7 @@ CudaNdarray_len(PyObject * py_self)
 }
 
 // Will by called by __getitem__ in Python
-static PyObject *
+PyObject *
 CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
 {
     int verbose = 0;
