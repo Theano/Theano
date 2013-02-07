@@ -1609,6 +1609,7 @@ class GCC_compiler(object):
 
         try:
             p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
+            p.wait()
             compile_stderr = p.communicate()[1]
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
