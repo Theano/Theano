@@ -198,6 +198,7 @@ if __name__ == "__main__":
 
         gpu/cuda version
         M2050(Amazon)/5.0 0.25s
+        GTX460/5.0        0.37s
 
         GTX680/4.2        0.154s
         GTX580/4.2        0.164s
