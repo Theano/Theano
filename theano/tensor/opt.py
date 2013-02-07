@@ -813,7 +813,16 @@ class ShapeFeature(object):
                         "for a variable with %d dimensions." % (
                         len(s), r.ndim))
 
-            shape_vars = [self.unpack(s_i) for s_i in s]
+            shape_vars = []
+            for i in range(r.ndim):
+                if (hasattr(r.type, 'broadcastable') and
+                    r.type.broadcastable[i]):
+                    shape_vars.append(self.lscalar_one)
+                else:
+                    shape_vars.append(self.unpack(s[i]))
+            assert all([not r.type.broadcastable[i] or
+                        shape_vars[i] == self.lscalar_one
+                        for i in range(r.ndim)])
             self.shape_of[r] = tuple(shape_vars)
             for sv in shape_vars:
                 self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -855,6 +864,10 @@ class ShapeFeature(object):
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
+        assert all([(not r.type.broadcastable[i] and
+                     not other_r.type.broadcastable[i]) or
+                    merged_shape[i] == self.lscalar_one
+                    for i in range(r.ndim)])
         self.shape_of[r] = tuple(merged_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -871,6 +884,9 @@ class ShapeFeature(object):
                 new_shape.append(self.unpack(s_i))
             else:
                 new_shape.append(s_j)
+        assert all([not r.type.broadcastable[i] or
+                    new_shape[i] == self.lscalar_one
+                    for i in range(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
