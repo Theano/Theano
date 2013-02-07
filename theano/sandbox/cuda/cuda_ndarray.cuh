@@ -51,6 +51,7 @@ typedef float real;
  * device_malloc will set the Python error message before returning None.
  * device_free will return nonzero on failure (after setting the python error message)
  */
+DllExport void * device_malloc(size_t size);
 DllExport void * device_malloc(size_t size, int verbose);
 DllExport int device_free(void * ptr);
 
@@ -338,7 +339,7 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         return -1;
     }
 
-    self->devdata = (float*)device_malloc(size*sizeof(real), VERBOSE_DEVICE_MALLOC);
+    self->devdata = (float*)device_malloc(size*sizeof(real));
     if (size && !self->devdata)
     {
         CudaNdarray_set_nd(self, -1);
