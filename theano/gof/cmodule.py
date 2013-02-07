@@ -1472,7 +1472,7 @@ class GCC_compiler(object):
         #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
-        # numpy 1.7 deprecated the following macro but the didn't
+        # numpy 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
             cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
