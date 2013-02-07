@@ -16,12 +16,14 @@ install:
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
-  - PART="theano/tensor/nnet/ theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/scalar/ theano/tests/"
-  - PART="theano/scan_module/ theano/sandbox theano/sparse"
-  - PART="theano/tensor/tests/test_basic.py"
-  - PART="-e test_basic.py theano/tensor/tests"
+#  - PART="theano/tensor/nnet/ theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/scalar/ theano/tests/"
+#  - PART="theano/scan_module/ theano/sandbox theano/sparse"
+  - PART="-v theano/tensor/tests/test_basic.py:TestTensorInstanceMethods.test_take"
+#  - PART="-e test_basic.py theano/tensor/tests"
 script:
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
+  - uname -a
+  - gcc --version
   - python --version
   - echo $PART
   - theano-nose $PART
