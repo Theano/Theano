@@ -492,15 +492,13 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             {
                 if (PyArray_DESCR(%(xx)s)->type_num == NPY_FLOAT)
                 {
-                    //fprintf(stderr, "B %%i %%i %%i %%i\\n",
-                    //        Nz0, Nz1, Sz0, Sz1);
                     float alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
-                    //fprintf(stderr, "alpha=%%f\\n", alpha);
-                    //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
 
+                    // Check for vector-vector dot (Nx0 == 1). The code may work
+                    // for Sx1 != 1 as well, but has not been tested for this case,
+                    // so Sx1 == 1 is required for safety.
                     if (Nx0 == 1 && Sx1 == 1)
                     {
-                        // Special case: vector-vector dot
                         zz_data[0] = fbeta*zz_data[0] + alpha*sdot_(&Nx1, 
                             (float*)(PyArray_DATA(%(xx)s)), &Sx1,
                             (float*)yy_data, &Sy);
@@ -519,9 +517,11 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                 {
                     double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
 
+                    // Check for vector-vector dot (Nx0 == 1). The code may work
+                    // for Sx1 != 1 as well, but has not been tested for this case,
+                    // so Sx1 == 1 is required for safety.
                     if (Nx0 == 1 && Sx1 == 1)
                     {
-                        // Special case: vector-vector dot
                         zz_data[0] = dbeta*zz_data[0] + alpha*ddot_(&Nx1, 
                               (double*)(PyArray_DATA(%(xx)s)), &Sx1,
                               (double*)yy_data, &Sy);
