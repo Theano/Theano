@@ -2004,6 +2004,13 @@ class TensorConstant(_tensor_py_operators, Constant):
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
 
+    def equals(self, other):
+        # Override Contant.equals to allow to compare with numpy.ndarray
+        if isinstance(other, numpy.ndarray):
+            # Make a TensorConstant to be able to compare
+            other = constant(other)
+        return (isinstance(other, TensorConstant) and
+                self.signature() == other.signature())
 
 TensorType.Constant = TensorConstant
 
