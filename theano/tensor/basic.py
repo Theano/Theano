@@ -6531,12 +6531,12 @@ class AdvancedSubtensor1(Op):
         else:
             o = None
 
-        # If i.dtype is more precise than numpy.intc (int32 on 32-bit machines,
+        # If i.dtype is more precise than numpy.intp (int32 on 32-bit machines,
         # int64 on 64-bit machines), numpy may raise the following error:
         # TypeError: array cannot be safely cast to required type.
         # Since we will probably not have an array with more than 2**31 items
-        # on a 32-bit arch, I suppose it is safe to cast i into intc.
-        i = theano._asarray(i, dtype=numpy.intc)
+        # on a 32-bit arch, I suppose it is safe to cast i into intp.
+        i = theano._asarray(i, dtype=numpy.intp)
 
         out[0] = x.take(i, axis=0, out=o)
 
