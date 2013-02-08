@@ -39,7 +39,7 @@ probably do something similar on older computer.
 Installation steps
 ~~~~~~~~~~~~~~~~~~
 
-Ubuntu 11.10/12.04:
+Ubuntu 11.10/12.04/12.10:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
  2) ``sudo pip install Theano``
 
@@ -70,7 +70,7 @@ Theano/BLAS speed test:
 
 .. code-block:: bash
 
-    python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
+    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
 
 This will print a table with different versions of BLAS/numbers of
 threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
@@ -162,6 +162,8 @@ Test GPU configuration
    Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 availables.
 
    Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 availables.
+
+   Ubuntu 12.10: default gcc version 4.7.2. gcc 4.4.7, 4.5.4 and 4.6.3 availables.
 
 
 

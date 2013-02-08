@@ -64,7 +64,8 @@ class OrderedUpdates(OrderedDict):
             # Warn about non-determinism.
             warnings.warn('Updating an `OrderedUpdates` with a '
                           'non-ordered dictionary with 2+ elements could '
-                          'make your code non-deterministic')
+                          'make your code non-deterministic',
+                          stacklevel=2)
         for key, val in OrderedDict(other).iteritems():
             if key in self:
                 if self[key] == val:
