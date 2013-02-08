@@ -180,9 +180,10 @@ fail:
         PyMODINIT_FUNC
         initcutils_ext(void)
         {
+          import_array();
           (void) Py_InitModule("cutils_ext", CutilsExtMethods);
         }
-    }
+    } //extern C
         """
 
     import cmodule 
