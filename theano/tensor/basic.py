@@ -4732,14 +4732,14 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     x = as_tensor_variable(x)
     y = as_tensor_variable(y)
     if y.ndim > x.ndim:
-        raise ValueError(("Trying to increment a %d-dimensional "
+        raise TypeError(("Trying to increment a %d-dimensional "
             "subtensor with a %d-dimensional value.") % (x.ndim, y.ndim))
 
     for dim in range(y.ndim):
         dim_offset = x.ndim - y.ndim
         if (x.broadcastable[dim + dim_offset]
                 and not y.broadcastable[dim]):
-            raise ValueError(("Trying to increment a subtensor with "
+            raise TypeError(("Trying to increment a subtensor with "
                 "broadcastable dimension %d, with a tensor not broadcastable "
                 "on corresponding dimension %d.") % (dim + dim_offset, dim),
                 x.broadcastable, y.broadcastable)

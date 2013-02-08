@@ -61,17 +61,17 @@ class Test_inc_subtensor(unittest.TestCase):
         increment = tt.matrix()
         index = 0
 
-        self.assertRaises(ValueError, tt.set_subtensor, a[index], increment)
-        self.assertRaises(ValueError, tt.inc_subtensor, a[index], increment)
+        self.assertRaises(TypeError, tt.set_subtensor, a[index], increment)
+        self.assertRaises(TypeError, tt.inc_subtensor, a[index], increment)
 
     def test_wrong_broadcast(self):
         a = tt.col()
         increment = tt.vector()
 
-        self.assertRaises(ValueError, tt.set_subtensor, a[:], increment)
-        self.assertRaises(ValueError, tt.set_subtensor, a[0], increment)
-        self.assertRaises(ValueError, tt.inc_subtensor, a[:], increment)
-        self.assertRaises(ValueError, tt.inc_subtensor, a[0], increment)
+        self.assertRaises(TypeError, tt.set_subtensor, a[:], increment)
+        self.assertRaises(TypeError, tt.set_subtensor, a[0], increment)
+        self.assertRaises(TypeError, tt.inc_subtensor, a[:], increment)
+        self.assertRaises(TypeError, tt.inc_subtensor, a[0], increment)
 
     def test_simple_3d(self):
         """Increments or sets part of a tensor by a scalar using full slice and
