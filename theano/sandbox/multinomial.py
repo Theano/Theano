@@ -148,7 +148,7 @@ class MultinomialFromUniform(Op):
                     z[0][n, m] = 1
                     waiting = False
                 else:
-                     z[0][n, m] = 0
+                    z[0][n, m] = 0
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
