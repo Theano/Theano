@@ -5,6 +5,7 @@ from theano import Op, Apply
 import theano.tensor as T
 from theano.gof import local_optimizer
 from theano.gof.python25 import any
+from theano.gradient import DisconnectedType
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:
@@ -44,7 +45,7 @@ class MultinomialFromUniform(Op):
     def grad(self, ins, outgrads):
         pvals, unis = ins
         (gz,) = outgrads
-        return [None, None]
+        return [DisconnectedType()() for x in ins]
 
     def c_code_cache_version(self):
         return (5,)
@@ -147,7 +148,7 @@ class MultinomialFromUniform(Op):
                     z[0][n, m] = 1
                     waiting = False
                 else:
-                    z[0][n, m] = 0
+                     z[0][n, m] = 0
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
