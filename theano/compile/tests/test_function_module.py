@@ -386,6 +386,14 @@ class T_function(unittest.TestCase):
         self.assertRaises(UnusedInputError, function, [m, mt], mt*2)
         f = function([m, mt], mt*2, on_unused_input='ignore')
 
+    def test_givens_input_var(self):
+        """
+        Ensure error is raised when trying to replace an input variable.
+        """
+        x = T.scalar('x')
+        y = x * 2
+        self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
+
 
 class T_picklefunction(unittest.TestCase):
 

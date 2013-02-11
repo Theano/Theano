@@ -452,6 +452,24 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                      "provided for it being ignored. Please do not duplicate "
                      "variables in the inputs list." % (v, i, dup_v_i)))
 
+    # Check that we are not using `givens` to replace input variables, because
+    # this typically does nothing, contrary to what one may expect.
+    in_var_set = set(in_variables)
+    try:
+        givens_pairs = givens.items()
+    except AttributeError:
+        givens_pairs = givens
+    for x, y in givens_pairs:
+        if x in in_var_set:
+            raise RuntimeError(
+                    'You cannot replace variable \'%s\' (found in the '
+                    '`givens` argument), because it is an input to the '
+                    'function. If your goal is to replace some input '
+                    'x to your output f(x) by an expression g(y), so as to '
+                    'compute f(g(y)), then you can achieve this by defining '
+                    'a new variable y and compiling your function '
+                    'as: function([y], f(x), givens={x: g(y)}).' % x)
+
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
                                          replace=givens,
