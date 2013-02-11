@@ -164,8 +164,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     if updates is None:
         updates = []
 
-    if isinstance(updates, dict) and \
-            not isinstance(updates, gof.python25.OrderedDict):
+    if (isinstance(updates, dict) and
+            not isinstance(updates, gof.python25.OrderedDict) and
+            len(updates) > 1):
         warnings.warn(
             "The parameter 'updates' of theano.function()"
             " expects an OrderedDict,"
