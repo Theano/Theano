@@ -1,4 +1,4 @@
-import cPickle, logging, sys
+import cPickle, logging
 
 _logger=logging.getLogger("theano.gof.callcache")
 

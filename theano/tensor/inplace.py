@@ -1,9 +1,7 @@
-from basic import _scal_elemwise #, _transpose_inplace
 from theano import scalar as scal
 import elemwise
 from theano import printing
 from theano.printing import pprint
-from theano.gof.python25 import any
 
 def _scal_inplace(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""

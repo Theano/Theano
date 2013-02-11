@@ -12,7 +12,7 @@ from theano.tensor.opt import (register_stabilize,
         register_specialize, register_canonicalize)
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
-from theano.gradient import grad_not_implemented, DisconnectedType
+from theano.gradient import DisconnectedType
 
 try:
     import scipy.linalg

@@ -28,16 +28,10 @@ Also, we should make the fgraph refuse optimization that break the canonization 
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import operator
-import itertools
-import sys
-
-import theano
 from theano import gof
 from elemwise import CAReduce
 import basic as T
 
-from theano.gof.python25 import any, all
 from theano.gof.opt import Optimizer
 from theano.gof import InconsistencyError, toolbox
 

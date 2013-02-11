@@ -3,7 +3,7 @@
 # import variable
 
 from theano import config
-import re, os, traceback
+import re, traceback
 
 def add_tag_trace(thing):
     """Add tag.trace to an node or variable.
