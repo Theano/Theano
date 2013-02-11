@@ -1,8 +1,6 @@
-import theano
 import numpy
 import math
-from theano import gof, tensor, function, scalar
-from theano.sandbox.linalg.ops import diag
+from theano import gof, tensor
 
 
 class Fourier(gof.Op):

@@ -5,7 +5,7 @@
 """
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys, copy_reg, gc, os
+import copy, sys, copy_reg, gc
 from itertools import izip
 from StringIO import StringIO
 
