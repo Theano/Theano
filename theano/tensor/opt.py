@@ -822,6 +822,8 @@ class ShapeFeature(object):
                     shape_vars.append(self.unpack(s[i]))
             assert all([not hasattr(r.type, "broadcastable") or
                         not r.type.broadcastable[i] or
+                        # The two following comparison are a speed optimization
+                        # But we never timed this speed optimization!
                         self.lscalar_one.equals(shape_vars[i]) or
                         self.lscalar_one.equals(
                             T.extract_constant(shape_vars[i]))
@@ -870,6 +872,8 @@ class ShapeFeature(object):
         assert all([(not hasattr(r.type, "broadcastable") or
                      not r.type.broadcastable[i] and
                      not other_r.type.broadcastable[i]) or
+                    # The two following comparison are a speed optimization
+                    # But we never timed this speed optimization!
                     self.lscalar_one.equals(merged_shape[i]) or
                     self.lscalar_one.equals(
                         T.extract_constant(merged_shape[i]))
@@ -892,6 +896,8 @@ class ShapeFeature(object):
                 new_shape.append(s_j)
         assert all([not hasattr(r.type, "broadcastable") or
                     not r.type.broadcastable[i] or
+                    # The two following comparison are a speed optimization
+                    # But we never timed this speed optimization!
                     self.lscalar_one.equals(new_shape[i]) or
                     self.lscalar_one.equals(T.extract_constant(new_shape[i]))
                     for i in range(r.ndim)])
