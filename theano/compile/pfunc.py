@@ -233,8 +233,8 @@ def rebuild_collect_shared(outputs,
                 cloned_outputs.append(Out(cloned_v, borrow=v.borrow))
             else:
                 raise TypeError('Outputs must be theano Variable or '
-                                'Out instances. Received ' + str(v)\
-                                + ' of type '+str(type(v)))
+                                'Out instances. Received ' + str(v)
+                                + ' of type ' + str(type(v)))
             #computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
@@ -278,23 +278,25 @@ class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False,
             strict=False, allow_downcast=None, implicit=None, borrow=None):
         """
-        :param variable: A variable in an expression graph to use as a compiled-function parameter
+        :param variable: A variable in an expression graph to use as a
+            compiled-function parameter
 
         :param default: The default value to use at call-time (can also be a Container where
-        the function will find a value at call-time.)
+            the function will find a value at call-time.)
 
         :param name: A string to identify this parameter from function kwargs.
 
         :param mutable: True -> function is allowed to modify this argument.
 
         :param borrow: Whether the function is allowed to alias some output to
-        this input. Using None (default) means we re-use the same value as the
-        `mutable` flag.
+            this input. Using None (default) means we re-use the same value as the
+            `mutable` flag.
+            False: do not permit any output to be aliased to the input
 
-        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
-        type required by the parameter `variable`.  True -> function arguments must exactly match the type
-        required by `variable`.
+            type required by the parameter `variable`.
+            True -> function arguments must exactly match the type
+            required by `variable`.
 
         :param allow_downcast: Only applies if `strict` is False.
         True -> allow assigned value to lose precision when cast during assignment.
