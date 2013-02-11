@@ -820,7 +820,8 @@ class ShapeFeature(object):
                     shape_vars.append(self.lscalar_one)
                 else:
                     shape_vars.append(self.unpack(s[i]))
-            assert all([not r.type.broadcastable[i] or
+            assert all([not hasattr(r.type, "broadcastable") or
+                        not r.type.broadcastable[i] or
                         self.lscalar_one.equals(shape_vars[i]) or
                         self.lscalar_one.equals(
                             T.extract_constant(shape_vars[i]))
@@ -866,7 +867,8 @@ class ShapeFeature(object):
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
-        assert all([(not r.type.broadcastable[i] and
+        assert all([(not hasattr(r.type, "broadcastable") or
+                     not r.type.broadcastable[i] and
                      not other_r.type.broadcastable[i]) or
                     self.lscalar_one.equals(merged_shape[i]) or
                     self.lscalar_one.equals(
@@ -888,7 +890,8 @@ class ShapeFeature(object):
                 new_shape.append(self.unpack(s_i))
             else:
                 new_shape.append(s_j)
-        assert all([not r.type.broadcastable[i] or
+        assert all([not hasattr(r.type, "broadcastable") or
+                    not r.type.broadcastable[i] or
                     self.lscalar_one.equals(new_shape[i]) or
                     self.lscalar_one.equals(T.extract_constant(new_shape[i]))
                     for i in range(r.ndim)])
