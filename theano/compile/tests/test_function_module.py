@@ -680,6 +680,18 @@ class SomethingToPickle(object):
         self.f2 = function([x, In(a, value=1.0,name='a'), In(s, value=self.f1.container[s], update=s+a*x, mutable=True)], s+a*x)
 
 
+def test_empty_givens_updates():
+    """
+    Regression test for bug fixed in 8625e03.
+    """
+    # Empty givens / updates dictionaries were not properly detected before,
+    # triggering useless crashes at compile time.
+    x = T.scalar()
+    y = x * 2
+    function([theano.In(x)], y, givens={})
+    function([theano.In(x)], y, updates={})
+
+
 if __name__ == '__main__':
 
     if 1:
