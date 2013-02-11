@@ -12,27 +12,18 @@ __authors__ = ("Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import itertools
 import logging
-import time
 from itertools import izip
 
 import numpy
 
 import theano
-from theano.compile import function, Param, Out
 from theano import compile
-from theano import gradient
 from theano.gof.python25 import any
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType
-from theano import tensor
 from theano.tensor.opt import Shape_i
-#from theano.sandbox import cuda
-from theano.compile.profiling import ScanProfileStats
-
-import scan_utils
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')

@@ -1,5 +1,3 @@
-
-import theano
 import numpy
 
 from elemwise import Elemwise

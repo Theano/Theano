@@ -2,7 +2,6 @@
 # same compilation directory (which can cause crashes).
 
 from theano import config
-import compiledir
 import os, random, time, atexit
 import socket # only used for gethostname()
 import logging

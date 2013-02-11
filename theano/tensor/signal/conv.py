@@ -5,11 +5,7 @@ generic 2D convolution.
 
 __docformat__ = "restructuredtext en"
 
-import numpy
-import theano
 import theano.tensor as tensor
-import theano.tensor.nnet as nnet
-from theano import gof, Op, tensor, config
 from theano.tensor.nnet import conv
 
 import logging

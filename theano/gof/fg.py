@@ -12,7 +12,6 @@ from python25 import all
 from theano import config
 import warnings
 NullType = None
-import theano
 from python25 import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
