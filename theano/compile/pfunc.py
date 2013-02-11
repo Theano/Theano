@@ -462,13 +462,16 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     for x, y in givens_pairs:
         if x in in_var_set:
             raise RuntimeError(
-                    'You cannot replace variable \'%s\' (found in the '
-                    '`givens` argument), because it is an input to the '
-                    'function. If your goal is to replace some input '
-                    'x to your output f(x) by an expression g(y), so as to '
-                    'compute f(g(y)), then you can achieve this by defining '
-                    'a new variable y and compiling your function '
-                    'as: function([y], f(x), givens={x: g(y)}).' % x)
+                'You are trying to replace variable \'%s\' through the '
+                '`givens` parameter, but this variable is an input to your '
+                'function. Replacing inputs is currently forbidden because it '
+                'has no effect. One way to modify an input `x` to a function '
+                'evaluating f(x) is to define a new input `y` and use '
+                '`theano.function([y], f(x), givens={x: g(y)})`. Another '
+                'solution consists in using `theano.clone`, e.g. like this: '
+                '`theano.function([x], '
+                'theano.clone(f(x), replace={x: g(x)}))`.'
+                % x)
 
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
