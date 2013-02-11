@@ -186,8 +186,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     # compute some features of the arguments:
     uses_In = any([isinstance(i, In) for i in inputs])  # N.B. the square brackets are ncessary
     uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])  # N.B. the square brackets are ncessary
-    uses_updates = (updates != [])
-    uses_givens = (givens != [])
+    uses_updates = bool(updates)
+    uses_givens = bool(givens)
 
     # See if we have any mutable / borrow inputs
     check_for_aliased_inputs = False
@@ -201,7 +201,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         if profile:
             raise NotImplementedError('profiling not supported in old-style function')
         if uses_updates or uses_givens:
-            raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
+            raise NotImplementedError(
+                    "In() instances and tuple inputs trigger the old "
+                    "semantics, which disallow using updates and givens")
         fn = orig_function(inputs, outputs,
                            mode=mode,
                            accept_inplace=accept_inplace, name=name)
