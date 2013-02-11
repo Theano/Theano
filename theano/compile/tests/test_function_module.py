@@ -386,6 +386,14 @@ class T_function(unittest.TestCase):
         self.assertRaises(UnusedInputError, function, [m, mt], mt*2)
         f = function([m, mt], mt*2, on_unused_input='ignore')
 
+    def test_givens_input_var(self):
+        """
+        Ensure error is raised when trying to replace an input variable.
+        """
+        x = T.scalar('x')
+        y = x * 2
+        self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
+
 
 class T_picklefunction(unittest.TestCase):
 
@@ -678,6 +686,18 @@ class SomethingToPickle(object):
         self.f1 = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         self.f2 = function([x, In(a, value=1.0,name='a'), In(s, value=self.f1.container[s], update=s+a*x, mutable=True)], s+a*x)
+
+
+def test_empty_givens_updates():
+    """
+    Regression test for bug fixed in 8625e03.
+    """
+    # Empty givens / updates dictionaries were not properly detected before,
+    # triggering useless crashes at compile time.
+    x = T.scalar()
+    y = x * 2
+    function([theano.In(x)], y, givens={})
+    function([theano.In(x)], y, updates={})
 
 
 if __name__ == '__main__':
