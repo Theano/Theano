@@ -166,7 +166,8 @@ CudaNdarray_set_dim(CudaNdarray * self, int idx, int d)
 {
     if ((idx >= self->nd) || (idx < 0) || (d < 0))
     {
-        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: %i %i\n", idx, d);
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: self->ndim=%i, idx=%i stride=%i\n",
+                self->nd, idx, d);
     }
 
     if (d != self->host_structure[idx])

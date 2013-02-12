@@ -2272,9 +2272,17 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
                                        set_dim='CudaNdarray_set_dim',
                                        set_stride='CudaNdarray_set_stride',
                                        update_flags="", strides_mul=4)
+        finish_view = ""
+        #For broadcasted dimensions, set the strides to 0
+        #We can't do that only for broadcasted dimensions as this can happen for dimensions of size 0,
+        #That are rebroadcated later.
+        for idx in range(node.outputs[0].ndim):
+            finish_view += """
+            if(CudaNdarray_HOST_DIMS(xview)[%(idx)s]==1)
+            CudaNdarray_set_stride(xview, %(idx)s, 0);
+            """ % locals()
 
-
-        finish_view = """
+        finish_view += """
         //Set the base only now
 
         if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
@@ -2292,6 +2300,13 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
 
         return build_view + "{" + get_xview + "}" + finish_view
 
+    def c_code_cache_version(self):
+        hv = self.helper_c_code_cache_version()
+        # If `helper_c_code_cache_version` is not versioned we do not want to
+        # have a versioned version of this op's C code.
+        if len(hv) == 0:
+            return ()
+        return (3, hv)
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
