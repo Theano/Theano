@@ -2455,7 +2455,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
             :return: C code expression to make a copy of x
 
-            Base class uses PyArrayObject *, subclasses may override for
+            Base class uses `PyArrayObject *`, subclasses may override for
             different types of arrays.
         """
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
