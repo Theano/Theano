@@ -746,15 +746,6 @@ PyObject * CudaNdarray_View(const CudaNdarray * self)
     return (PyObject*)rval;
 }
 
-
-enum operator_t
-{
-    IADD=0,
-    IDIV,
-    CPY,
-    N_ELEMWISE_OPS // This is to know the number of operation
-};
-
 /*
  * d0,... are the output dims
  * indices are a list of index to operate on
