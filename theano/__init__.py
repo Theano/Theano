@@ -31,7 +31,7 @@ import logging
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
-    fmt='%(levelname)s (%(name)s): %(message)s')
+        fmt='%(levelname)s (%(name)s): %(message)s')
 logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
@@ -42,15 +42,15 @@ from theano.configdefaults import config
 from theano.version import version as __version__
 
 from theano.gof import \
-    CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
-    Container, \
-    InconsistencyError, FunctionGraph, \
-    Apply, Variable, Constant, \
-    Op, OpenMPOp, \
-    opt, \
-    toolbox, \
-    Type, Generic, generic, \
-    object2, utils
+     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
+     Container, \
+     InconsistencyError, FunctionGraph, \
+     Apply, Variable, Constant, \
+     Op, OpenMPOp,\
+     opt, \
+     toolbox, \
+     Type, Generic, generic, \
+     object2, utils
 
 from theano.compile import \
     SymbolicInput, In, \
@@ -83,17 +83,15 @@ from theano.gradient import Rop, Lop, grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
-    # We can't test the driver during import of theano.sandbox.cuda as
-    # this cause circular import dependency. So we also test it manually
-    # after the import
+# We can't test the driver during import of theano.sandbox.cuda as
+# this cause circular import dependency. So we also test it manually
+# after the import
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
-
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
 # Use config.numpy to call numpy.seterr
 import numpy
-
 if config.numpy.seterr_all == 'None':
     _all = None
 else:
@@ -171,17 +169,8 @@ def get_scalar_constant_value(v):
 try:
     from theano.tests import TheanoNoseTester
 except ImportError:
-    raise ImportError("The nose module is not installed."
-                      " It is needed for Theano tests.")
+    def test():
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
 else:
     test = TheanoNoseTester().test
-
-# This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
-# depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
-# here and inject an instance in tensor.
-from theano import tensor
-from theano.tensor.randomstreams import RandomStreams
-# Imitate the numpy.random symbol with a tensor.random one
-tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)
-del RandomStreams
-__import__('theano.tensor.shared_randomstreams')
