@@ -13,14 +13,19 @@ scal = scalar # somewhere scalar gets reassigned to be a function
 
 from theano.gof.python25 import all, any
 
-from theano.sandbox.cuda import GpuOp, device_properties
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import filter as type_support_filter
+try:
+    # We must be able to import this file to create the full doc when nvcc
+    # is not available
+    from theano.sandbox.cuda import filter as type_support_filter
+    from theano.sandbox.cuda import device_properties
+    import cuda_ndarray
+except ImportError:
+    pass
 
+from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.elemwise import NaiveAlgo
 
-
-import cuda_ndarray
 
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
