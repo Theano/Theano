@@ -31,7 +31,7 @@ import logging
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
-        fmt='%(levelname)s (%(name)s): %(message)s')
+    fmt='%(levelname)s (%(name)s): %(message)s')
 logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
@@ -42,15 +42,15 @@ from theano.configdefaults import config
 from theano.version import version as __version__
 
 from theano.gof import \
-     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
-     Container, \
-     InconsistencyError, FunctionGraph, \
-     Apply, Variable, Constant, \
-     Op, OpenMPOp,\
-     opt, \
-     toolbox, \
-     Type, Generic, generic, \
-     object2, utils
+    CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
+    Container, \
+    InconsistencyError, FunctionGraph, \
+    Apply, Variable, Constant, \
+    Op, OpenMPOp, \
+    opt, \
+    toolbox, \
+    Type, Generic, generic, \
+    object2, utils
 
 from theano.compile import \
     SymbolicInput, In, \
@@ -83,15 +83,17 @@ from theano.gradient import Rop, Lop, grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
-# We can't test the driver during import of theano.sandbox.cuda as
-# this cause circular import dependency. So we also test it manually
-# after the import
+    # We can't test the driver during import of theano.sandbox.cuda as
+    # this cause circular import dependency. So we also test it manually
+    # after the import
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
+
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
 # Use config.numpy to call numpy.seterr
 import numpy
+
 if config.numpy.seterr_all == 'None':
     _all = None
 else:
@@ -113,11 +115,11 @@ if config.numpy.seterr_invalid == 'None':
 else:
     _invalid = config.numpy.seterr_invalid
 numpy.seterr(
-        all=_all,
-        divide=_divide,
-        over=_over,
-        under=_under,
-        invalid=_invalid)
+    all=_all,
+    divide=_divide,
+    over=_over,
+    under=_under,
+    invalid=_invalid)
 del _all, _divide, _over, _under, _invalid
 
 ## import scalar_opt
@@ -164,7 +166,7 @@ def get_scalar_constant_value(v):
     if hasattr(theano, 'sparse') and isinstance(v.type,
                                                 theano.sparse.SparseType):
         if v.owner is not None and isinstance(v.owner.op,
-                                                 theano.sparse.CSM):
+                                              theano.sparse.CSM):
             data = v.owner.inputs[0]
             return tensor.get_scalar_constant_value(data)
     return tensor.get_scalar_constant_value(v)
