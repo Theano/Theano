@@ -95,6 +95,15 @@ struct CudaNdarray
     real* devdata; //pointer to data element [0,..,0].
 };
 
+
+enum operator_t
+{
+    IADD=0,
+    IDIV,
+    CPY,
+    N_ELEMWISE_OPS // This is to know the number of operation
+};
+
 /*
  * Return a CudaNdarray whose 'nd' dimensions are all 0.
  * if nd==-1, it is not initialized.
@@ -478,8 +487,8 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 
 PyObject * CudaNdarray_View(const CudaNdarray * self);
-PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 PyObject * CudaNdarray_Subscript(PyObject * py_self, PyObject * key);
+int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t fct_nb);
 
 
 // Ensures that *arr is a pointer to a contiguous ndarray of the specified
