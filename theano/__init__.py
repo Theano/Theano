@@ -36,18 +36,12 @@ logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
 
-import configparser
-import configdefaults
-
-config = configparser.TheanoConfigParser()
+from theano.configdefaults import config
 
 # Version information.
-import theano.version
-__version__ = theano.version.version
+from theano.version import version as __version__
 
-import gof
-
-from gof import \
+from theano.gof import \
      CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
      Container, \
      InconsistencyError, FunctionGraph, \
@@ -58,9 +52,7 @@ from gof import \
      Type, Generic, generic, \
      object2, utils
 
-import compile
-
-from compile import \
+from theano.compile import \
     SymbolicInput, In, \
     SymbolicOutput, Out, \
     Mode, \
@@ -71,31 +63,23 @@ from compile import \
     ProfileMode, \
     Param, shared
 
-from misc.safe_asarray import _asarray
-
-import theano.tests
-if hasattr(theano.tests, "TheanoNoseTester"):
-    test = theano.tests.TheanoNoseTester().test
-else:
-    def test():
-        raise ImportError("The nose module is not installed."
-                          " It is needed for Theano tests.")
+from theano.misc.safe_asarray import _asarray
 
 FancyModule = Module
 
-from printing import \
-    pprint, pp
-import scan_module
-from scan_module import scan, map, reduce, foldl, foldr, clone
+from theano.printing import pprint, pp
 
-from updates import Updates, OrderedUpdates
+from theano.scan_module import scan, map, reduce, foldl, foldr, clone
 
-import tensor
-import scalar
+from theano.updates import Updates, OrderedUpdates
+
+# scan_module import above initializes tensor and scalar making these imports redundant
+#import tensor
+#import scalar
 #we don't import by default as we don't want to force having scipy installed.
 #import sparse
-import gradient
-from gradient import Rop, Lop, grad
+
+from theano.gradient import Rop, Lop, grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
@@ -162,6 +146,9 @@ def dot(l, r):
                                   (e0, e1))
     return rval
 
+# Used by get_scalar_constant_value() below.  Can be eliminated by looking into globals().
+import theano
+
 
 def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
@@ -181,3 +168,13 @@ def get_scalar_constant_value(v):
             data = v.owner.inputs[0]
             return tensor.get_scalar_constant_value(data)
     return tensor.get_scalar_constant_value(v)
+
+
+def test(**kwds):
+    try:
+        from theano.tests import TheanoNoseTester
+    except ImportError:
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
+    else:
+        return TheanoNoseTester().test(**kwds)
