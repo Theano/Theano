@@ -657,8 +657,8 @@ Theano dependencies is easy, but be aware that it will take a long time
 Homebrew
 ~~~~~~~~
 
-There are some :ref:`instructions
-<https://github.com/samueljohn/homebrew-python>` by Samuel John on how to install
+There are some `instructions
+<https://github.com/samueljohn/homebrew-python>`__ by Samuel John on how to install
 Theano dependencies with Homebrew instead of MacPort.
 
 
