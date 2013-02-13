@@ -148,9 +148,6 @@ def dot(l, r):
                                   (e0, e1))
     return rval
 
-# Used by get_scalar_constant_value() below.  Can be eliminated by looking into globals().
-import theano
-
 
 def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
@@ -163,10 +160,9 @@ def get_scalar_constant_value(v):
     If `v` is not some view of constant data, then raise a
     tensor.basic.NotScalarConstantError.
     """
-    if hasattr(theano, 'sparse') and isinstance(v.type,
-                                                theano.sparse.SparseType):
-        if v.owner is not None and isinstance(v.owner.op,
-                                              theano.sparse.CSM):
+    # Is it necessary to test for presence of theano.sparse at runtime?
+    if 'sparse' in globals() and isinstance(v.type, sparse.SparseType):
+        if v.owner is not None and isinstance(v.owner.op, sparse.CSM):
             data = v.owner.inputs[0]
             return tensor.get_scalar_constant_value(data)
     return tensor.get_scalar_constant_value(v)
