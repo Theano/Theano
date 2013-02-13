@@ -74,11 +74,11 @@ cross-entropy (note that this assumes that x will contain values between 0 and
 
 .. code-block:: python
 
-    x,y,b = T.dvectors('x','y','b')
+    x, y, b = T.dvectors('x', 'y', 'b')
     W = T.dmatrix('W') 
-    h = T.nnet.sigmoid(T.dot(W,x) + b)
-    x_recons = T.nnet.sigmoid(T.dot(V,h) + c)
-    recon_cost = T.nnet.binary_crossentropy(x_recons,x).mean()
+    h = T.nnet.sigmoid(T.dot(W, x) + b)
+    x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
+    recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
 
 .. function:: categorical_crossentropy(coding_dist,true_dist)
 
@@ -87,7 +87,7 @@ cross-entropy (note that this assumes that x will contain values between 0 and
     needed to identify an event from a set of possibilities, if a coding scheme is used based
     on a given probability distribution q, rather than the "true" distribution p. Mathematically, this 
     function computes :math:`H(p,q) = - \sum_x p(x) \log(q(x))`, where
-    p=coding_dist and q=true_dist
+    p=true_dist and q=coding_dist.
 
     :Parameters:
 
@@ -108,6 +108,6 @@ cross-entropy (note that this assumes that x will contain values between 0 and
 
 .. code-block:: python
 
-    y = T.nnet.softmax(T.dot(W,x) + b)
-    cost = T.nnet.categorical_crossentropy(y,o)
+    y = T.nnet.softmax(T.dot(W, x) + b)
+    cost = T.nnet.categorical_crossentropy(y, o)
     # o is either the above-mentioned 1-of-N vector or 2D tensor

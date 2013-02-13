@@ -13,14 +13,19 @@ scal = scalar # somewhere scalar gets reassigned to be a function
 
 from theano.gof.python25 import all, any
 
-from theano.sandbox.cuda import GpuOp, device_properties
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import filter as type_support_filter
+try:
+    # We must be able to import this file to create the full doc when nvcc
+    # is not available
+    from theano.sandbox.cuda import filter as type_support_filter
+    from theano.sandbox.cuda import device_properties
+    import cuda_ndarray
+except ImportError:
+    pass
 
+from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.elemwise import NaiveAlgo
 
-
-import cuda_ndarray
 
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
@@ -2267,9 +2272,17 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
                                        set_dim='CudaNdarray_set_dim',
                                        set_stride='CudaNdarray_set_stride',
                                        update_flags="", strides_mul=4)
+        finish_view = ""
+        #For broadcasted dimensions, set the strides to 0
+        #We can't do that only for broadcasted dimensions as this can happen for dimensions of size 0,
+        #That are rebroadcated later.
+        for idx in range(node.outputs[0].ndim):
+            finish_view += """
+            if(CudaNdarray_HOST_DIMS(xview)[%(idx)s]==1)
+            CudaNdarray_set_stride(xview, %(idx)s, 0);
+            """ % locals()
 
-
-        finish_view = """
+        finish_view += """
         //Set the base only now
 
         if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
@@ -2287,6 +2300,13 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
 
         return build_view + "{" + get_xview + "}" + finish_view
 
+    def c_code_cache_version(self):
+        hv = self.helper_c_code_cache_version()
+        # If `helper_c_code_cache_version` is not versioned we do not want to
+        # have a versioned version of this op's C code.
+        if len(hv) == 0:
+            return ()
+        return (3, hv)
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
@@ -2455,7 +2475,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
             :return: C code expression to make a copy of x
 
-            Base class uses PyArrayObject *, subclasses may override for
+            Base class uses `PyArrayObject *`, subclasses may override for
             different types of arrays.
         """
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()

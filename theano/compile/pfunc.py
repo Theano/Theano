@@ -9,7 +9,7 @@ from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
-from theano.gof import Container, Variable, generic, graph, Constant
+from theano.gof import Variable, Constant
 from theano.gof.python25 import any
 
 import logging
@@ -233,8 +233,8 @@ def rebuild_collect_shared(outputs,
                 cloned_outputs.append(Out(cloned_v, borrow=v.borrow))
             else:
                 raise TypeError('Outputs must be theano Variable or '
-                                'Out instances. Received ' + str(v)\
-                                + ' of type '+str(type(v)))
+                                'Out instances. Received ' + str(v)
+                                + ' of type ' + str(type(v)))
             #computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
@@ -278,23 +278,25 @@ class Param(object):
     def __init__(self, variable, default=None, name=None, mutable=False,
             strict=False, allow_downcast=None, implicit=None, borrow=None):
         """
-        :param variable: A variable in an expression graph to use as a compiled-function parameter
+        :param variable: A variable in an expression graph to use as a
+            compiled-function parameter
 
         :param default: The default value to use at call-time (can also be a Container where
-        the function will find a value at call-time.)
+            the function will find a value at call-time.)
 
         :param name: A string to identify this parameter from function kwargs.
 
         :param mutable: True -> function is allowed to modify this argument.
 
         :param borrow: Whether the function is allowed to alias some output to
-        this input. Using None (default) means we re-use the same value as the
-        `mutable` flag.
+            this input. Using None (default) means we re-use the same value as the
+            `mutable` flag.
+            False: do not permit any output to be aliased to the input
 
-        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
-        type required by the parameter `variable`.  True -> function arguments must exactly match the type
-        required by `variable`.
+            type required by the parameter `variable`.
+            True -> function arguments must exactly match the type
+            required by `variable`.
 
         :param allow_downcast: Only applies if `strict` is False.
         True -> allow assigned value to lose precision when cast during assignment.
@@ -451,6 +453,27 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                      "at indices %i and %i.  This would result in values "
                      "provided for it being ignored. Please do not duplicate "
                      "variables in the inputs list." % (v, i, dup_v_i)))
+
+    # Check that we are not using `givens` to replace input variables, because
+    # this typically does nothing, contrary to what one may expect.
+    in_var_set = set(in_variables)
+    try:
+        givens_pairs = givens.items()
+    except AttributeError:
+        givens_pairs = givens
+    for x, y in givens_pairs:
+        if x in in_var_set:
+            raise RuntimeError(
+                'You are trying to replace variable \'%s\' through the '
+                '`givens` parameter, but this variable is an input to your '
+                'function. Replacing inputs is currently forbidden because it '
+                'has no effect. One way to modify an input `x` to a function '
+                'evaluating f(x) is to define a new input `y` and use '
+                '`theano.function([y], f(x), givens={x: g(y)})`. Another '
+                'solution consists in using `theano.clone`, e.g. like this: '
+                '`theano.function([x], '
+                'theano.clone(f(x), replace={x: g(x)}))`.'
+                % x)
 
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,

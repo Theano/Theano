@@ -4,11 +4,8 @@ graphs.
 __docformat__ = "restructuredtext en"
 
 import copy
-import sys
-
 import numpy
 
-from theano.gof import Container
 from theano.compile.sharedvalue import (SharedVariable, shared_constructor,
                                         shared)
 import raw_random

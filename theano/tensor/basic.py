@@ -520,7 +520,6 @@ def get_scalar_constant_value(v):
     if isinstance(v, numpy.ndarray):
         return numpy_scalar(v)
 
-
     if isinstance(v, Constant):
         if getattr(v.tag, 'unique_value', None) is not None:
             data = v.tag.unique_value
@@ -529,11 +528,9 @@ def get_scalar_constant_value(v):
         return numpy_scalar(data)
 
     if v.owner:
-        if isinstance(v.owner.op, Alloc):
-            return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, DimShuffle):
-            return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, Rebroadcast):
+        if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
+                                   compile.ops.OutputGuard,
+                                   compile.DeepCopyOp)):
             return get_scalar_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Elemwise) and \
                 isinstance(v.owner.op.scalar_op, scal.Second):
@@ -604,11 +601,33 @@ def get_scalar_constant_value(v):
 
             # This is needed when we take the grad as the Shape op
             # are not already changed into MakeVector
-            if (v.owner.inputs[0].owner and
-                isinstance(v.owner.inputs[0].owner.op,
+            owner = v.owner
+            leftmost_parent = owner.inputs[0]
+            if (leftmost_parent.owner and
+                isinstance(leftmost_parent.owner.op,
                            theano.tensor.Shape)):
-                if v.owner.inputs[0].owner.inputs[0].type.broadcastable[
-                    v.owner.op.idx_list[0]]:
+                op = owner.op
+                idx_list = op.idx_list
+                idx = idx_list[0]
+                grandparent = leftmost_parent.owner.inputs[0]
+                gp_broadcastable = grandparent.type.broadcastable
+                ndim = grandparent.type.ndim
+
+                assert ndim == len(gp_broadcastable)
+
+                if not (idx < len(gp_broadcastable)):
+                    msg = "get_scalar_constant_value detected " + \
+                            "deterministic IndexError: x.shape[%d] " + \
+                            "when x.ndim=%d." % (ndim, idx)
+                    if config.exception_verbosity == 'high':
+                        msg += 'x=%s' % min_informative_str(x)
+                    else:
+                        msg += 'x=%s' % str(x)
+                    raise ValueError(msg)
+
+
+
+                if gp_broadcastable[idx]:
                     return numpy.asarray(1)
 
     raise NotScalarConstantError(v)
@@ -1986,6 +2005,13 @@ class TensorConstant(_tensor_py_operators, Constant):
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
 
+    def equals(self, other):
+        # Override Contant.equals to allow to compare with numpy.ndarray
+        if isinstance(other, numpy.ndarray):
+            # Make a TensorConstant to be able to compare
+            other = constant(other)
+        return (isinstance(other, TensorConstant) and
+                self.signature() == other.signature())
 
 TensorType.Constant = TensorConstant
 
@@ -3620,6 +3646,10 @@ def var(input, axis=None, keepdims=False):
     :param keepdims: If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
+
+    :note: It use the two-pass algorithm for more stable results.
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+        It exist other implementation that are even more stable, but probably slower.
     """
 
     input_ndim = input.type.ndim
@@ -3655,6 +3685,10 @@ def std(input, axis=None, keepdims=False):
         With this option,
         the result will broadcast correctly against the
         original tensor.
+
+    :note: It call var and var use the two-pass algorithm for more stable results.
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+        It exist other implementation that are even more stable, but probably slower.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
@@ -6510,12 +6544,12 @@ class AdvancedSubtensor1(Op):
         else:
             o = None
 
-        # If i.dtype is more precise than numpy.intc (int32 on 32-bit machines,
+        # If i.dtype is more precise than numpy.intp (int32 on 32-bit machines,
         # int64 on 64-bit machines), numpy may raise the following error:
         # TypeError: array cannot be safely cast to required type.
         # Since we will probably not have an array with more than 2**31 items
-        # on a 32-bit arch, I suppose it is safe to cast i into intc.
-        i = theano._asarray(i, dtype=numpy.intc)
+        # on a 32-bit arch, I suppose it is safe to cast i into intp.
+        i = theano._asarray(i, dtype=numpy.intp)
 
         out[0] = x.take(i, axis=0, out=o)
 

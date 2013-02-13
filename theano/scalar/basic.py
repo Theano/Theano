@@ -561,6 +561,9 @@ class ScalarVariable(_scalar_py_operators, Variable):
 class ScalarConstant(_scalar_py_operators, Constant):
     pass
 
+# Register ScalarConstant as the type of Constant corresponding to Scalar
+Scalar.Constant = ScalarConstant
+
 
 # Easy constructors
 

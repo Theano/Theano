@@ -892,8 +892,8 @@ class ModuleCache(object):
             key_data = None
             # We have never seen this key before.
 
-            # We acquire the lock later only if we where able to
-            # generate c code Otherwise, we would take the lock for op
+            # We acquire the lock later only if we were able to
+            # generate C code. Otherwise, we would take the lock for ops
             # that have only a perform().
             lock_taken = False
             # This try/finally block ensures that the lock is released once we
@@ -920,11 +920,14 @@ class ModuleCache(object):
                     src_code = compile_steps.next()
                     module_hash = get_module_hash(src_code, key)
 
-                    # The op have c_code, so take the lock.
+                    # The op has c_code, so take the lock.
                     compilelock.get_lock()
                     lock_taken = True
-                    assert os.path.exists(location), (
-                        "The directory just created shouldn't be deleted!")
+
+                    if not os.path.exists(location):
+                        # Temporary fix, we should make sure it don't
+                        # get deleted by the clear*() fct.
+                        os.makedirs(path)
 
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
@@ -1469,7 +1472,7 @@ class GCC_compiler(object):
         #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
-        # numpy 1.7 deprecated the following macro but the didn't
+        # numpy 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
             cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
@@ -1483,7 +1486,7 @@ class GCC_compiler(object):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None):
+                    preargs=None, py_module=True):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1503,10 +1506,14 @@ class GCC_compiler(object):
 
         :param preargs: a list of extra compiler arguments
 
+        :param py_module: if False, compile to a shared library, but do not
+            import it as a Python module.
+
         :returns: dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
         """
         #TODO: Do not do the dlimport in this function
-        
+
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
 
@@ -1628,9 +1635,10 @@ class GCC_compiler(object):
             # Print errors just below the command line.
             print compile_stderr
 
-        #touch the __init__ file
-        file(os.path.join(location, "__init__.py"), 'w').close()
-        return dlimport(lib_filename)
+        if py_module:
+            #touch the __init__ file
+            file(os.path.join(location, "__init__.py"), 'w').close()
+            return dlimport(lib_filename)
 
 
 def icc_module_compile_str(*args):

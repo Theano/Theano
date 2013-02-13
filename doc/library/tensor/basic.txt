@@ -1229,6 +1229,7 @@ Linear Algebra
                  If an integer i, it is converted to an array containing
                  the last i dimensions of the first tensor and the first
                  i dimensions of the second tensor:
+
                      axes = [range(a.ndim - i, b.ndim), range(i)]
 
                  If an array, its two elements must contain compatible axes
@@ -1250,6 +1251,8 @@ Linear Algebra
     note that a.shape[1] == b.shape[3] and a.shape[2] == b.shape[2]; these axes
     are compatible. The resulting tensor will have shape (2, 5, 6) -- the
     dimensions that are not being summed:
+
+    .. code-block:: python
 
         a = np.random.random((2,3,4))
         b = np.random.random((5,6,4,3))
@@ -1283,6 +1286,8 @@ Linear Algebra
 
     In an extreme case, no axes may be specified. The resulting tensor
     will have shape equal to the concatenation of the shapes of a and b:
+
+    .. code-block:: python
 
         c = np.tensordot(a, b, 0)
         print(a.shape) #(2,3,4)

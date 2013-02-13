@@ -288,7 +288,9 @@ class CudaNdarrayType(Type):
             //std::cerr << "c_extract " << %(name)s << '\\n';
             if (%(name)s->nd != %(nd)s)
             {
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s", %(name)s->nd);
+                PyErr_Format(PyExc_RuntimeError,
+                             "c_extract: Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s",
+                             %(name)s->nd);
                 %(name)s = NULL;
                 %(fail)s;
             }
@@ -299,7 +301,9 @@ class CudaNdarrayType(Type):
                 print >> sio, """
             if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
             {
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has dim %%i on broadcastable dimension %%i", CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                PyErr_Format(PyExc_RuntimeError,
+                             "c_extract: Some CudaNdarray has dim %%i on broadcastable dimension %%i",
+                             CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
                 %(name)s = NULL;
                 %(fail)s;
             }
@@ -309,7 +313,9 @@ class CudaNdarrayType(Type):
             if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
             {
                 //std::cerr << "c_extract bad stride detected...\\n";
-                PyErr_Format(PyExc_RuntimeError, "Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i", CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                PyErr_Format(PyExc_RuntimeError,
+                             "c_extract: Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i",
+                             CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
                 %(name)s = NULL;
                 %(fail)s;
             }

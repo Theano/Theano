@@ -53,7 +53,13 @@ struct table_struct{
 };
 table_struct _alloc_size_table[TABLE_SIZE];
 #endif
+
 void * device_malloc(size_t size)
+{
+    return device_malloc(size, VERBOSE_DEVICE_MALLOC);
+}
+
+void * device_malloc(size_t size, int verbose)
 {
     void * rval=NULL;
     cudaError_t err = cudaMalloc(&rval, size);
@@ -64,11 +70,14 @@ void * device_malloc(size_t size)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-        #if COMPUTE_GPU_MEM_USED
-            fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
-        #else
-            fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
-        #endif
+        if (verbose)
+        {
+            #if COMPUTE_GPU_MEM_USED
+                fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+            #else
+                fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+            #endif
+        }
         PyErr_Format(PyExc_MemoryError,
                 "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
         return NULL;

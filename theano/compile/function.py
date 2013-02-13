@@ -3,13 +3,10 @@
 __docformat__ = "restructuredtext en"
 
 import logging
-import sys
-import traceback
 _logger = logging.getLogger('theano.compile.function')
 
 from io import In
 from function_module import orig_function
-from profiling import ProfileStats
 from pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
@@ -164,8 +161,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     if updates is None:
         updates = []
 
-    if isinstance(updates, dict) and \
-            not isinstance(updates, gof.python25.OrderedDict):
+    if (isinstance(updates, dict) and
+            not isinstance(updates, gof.python25.OrderedDict) and
+            len(updates) > 1):
         warnings.warn(
             "The parameter 'updates' of theano.function()"
             " expects an OrderedDict,"
@@ -186,8 +184,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     # compute some features of the arguments:
     uses_In = any([isinstance(i, In) for i in inputs])  # N.B. the square brackets are ncessary
     uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])  # N.B. the square brackets are ncessary
-    uses_updates = (updates != [])
-    uses_givens = (givens != [])
+    uses_updates = bool(updates)
+    uses_givens = bool(givens)
 
     # See if we have any mutable / borrow inputs
     check_for_aliased_inputs = False
@@ -201,7 +199,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         if profile:
             raise NotImplementedError('profiling not supported in old-style function')
         if uses_updates or uses_givens:
-            raise NotImplementedError("In() instances and tuple inputs triggers the old semantics, which disallow using updates and givens")
+            raise NotImplementedError(
+                    "In() instances and tuple inputs trigger the old "
+                    "semantics, which disallow using updates and givens")
         fn = orig_function(inputs, outputs,
                            mode=mode,
                            accept_inplace=accept_inplace, name=name)

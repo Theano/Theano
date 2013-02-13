@@ -218,7 +218,7 @@ if cuda_available:
         atexit.register(gpu_shutdown)
     except EnvironmentError, e:
         cuda_available = False
-        cuda_initialization_error_message = e.message
+        cuda_initialization_error_message = " ".join(e.args)
 
 
 class GpuOp(theano.gof.Op):

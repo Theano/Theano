@@ -420,6 +420,11 @@ else:
                         " want theano to use.")
     default_openmp = count > 1
 
+# Disable it by default for now as currently only the ConvOp support
+# it And this cause slow down by default as we do not disable it for
+# too small convolution.
+default_openmp = False
+
 AddConfigVar('openmp',
              "Allow (or not) parallel computation on the CPU with OpenMP. "
              "This is the default value used when creating an Op that "

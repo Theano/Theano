@@ -42,7 +42,7 @@ compiledir_format_dict = {"platform": platform.platform(),
                           "numpy_version": numpy.__version__,
                           "gxx_version": gcc_version_str.replace(" ", "_"),
                          }
-compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
+compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format =\
                     "compiledir_%(platform)s-%(processor)s-%(python_version)s"
 

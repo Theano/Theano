@@ -105,7 +105,7 @@ Brian Vandenberg emailed `installation instructions on Gentoo
 <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
 focusing on how to install the appropriate dependencies.
 
-Nicolas Pinto provide `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
 
 Alternative installation on Mandriva 2010.2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -657,9 +657,9 @@ Theano dependencies is easy, but be aware that it will take a long time
 Homebrew
 ~~~~~~~~
 
-There is some :ref:`instruction
-<https://github.com/samueljohn/homebrew-python>` on how to install
-Theano dependencies with Homebrew instead of MacPort by Samuel John.
+There are some `instructions
+<https://github.com/samueljohn/homebrew-python>`__ by Samuel John on how to install
+Theano dependencies with Homebrew instead of MacPort.
 
 
 .. _gpu_macos:
