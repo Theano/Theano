@@ -2956,6 +2956,12 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
                 Py_DECREF(py_data);
                 Py_DECREF(broadcastable);
                 return NULL;
+            }else if (CudaNdarray_HOST_DIMS(cnda)[i] == 1 && CudaNdarray_HOST_STRIDES(cnda)[i] != 0){
+                PyErr_Format(PyExc_TypeError, "Non-zeros strides(%d) on dimension %d of size 1",
+                             CudaNdarray_HOST_STRIDES(cnda)[i], i);
+                Py_DECREF(py_data);
+                Py_DECREF(broadcastable);
+                return NULL;
             }
         }
         Py_DECREF(broadcastable);
