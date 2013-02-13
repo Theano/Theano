@@ -3964,9 +3964,10 @@ def var(input, axis=None, keepdims=False):
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
 
-    :note: It use the two-pass algorithm for more stable results.
+    :note: It uses the two-pass algorithm for more stable results.
         https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-        It exist other implementation that are even more stable, but probably slower.
+        There exist other implementations that are even more stable, but
+        probably slower.
     """
 
     input_ndim = input.type.ndim
@@ -4003,9 +4004,11 @@ def std(input, axis=None, keepdims=False):
         the result will broadcast correctly against the
         original tensor.
 
-    :note: It call var and var use the two-pass algorithm for more stable results.
+    :note: It calls `var()` and `var()` uses the two-pass algorithm for more
+        stable results.
         https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-        It exist other implementation that are even more stable, but probably slower.
+        There exist other implementations that are even more stable, but
+        probably slower.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
