@@ -3,13 +3,12 @@
 __docformat__ = 'restructuredtext en'
 
 
-from profiling import ProfileStats
-
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
-from theano.gof import Container, Variable, generic, graph, Constant
+from theano.compile.profiling import ProfileStats
+from theano.gof import Variable, Constant
 from theano.gof.python25 import any
 
 import logging
