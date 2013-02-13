@@ -2471,6 +2471,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         x_obj = (PyObject*)CudaNdarray_View(%(x)s);
         y_obj = (PyObject*)CudaNdarray_View(%(y)s);
         num_indices = PyArray_SIZE(%(ind)s);
+        assert((num_indices - 1) <= LONG_MAX);
 
         for (j = 0;j < num_indices; j++) {
 
@@ -2478,7 +2479,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
              x_rowind_obj = PyInt_FromLong(*p_index);
              assert(PyInt_AsLong(x_rowind_obj) == (*p_index));
              y_rowind_obj = PyInt_FromLong(j);
-             assert(PyInt_AsLong(y_rowind_obj) == j);
 
              row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
              row_y = CudaNdarray_Subscript(y_obj, y_rowind_obj);
