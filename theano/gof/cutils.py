@@ -1,6 +1,6 @@
 import os
 import sys
-from compilelock import get_lock, release_lock
+from theano.gof.compilelock import get_lock, release_lock
 from theano import config
 
 # TODO These two lines may be removed in the future, when we are 100% sure

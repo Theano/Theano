@@ -11,7 +11,6 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-import copy
 import logging
 import os
 import subprocess
@@ -22,10 +21,10 @@ import theano
 from theano import config
 from theano.misc.windows import call_subprocess_Popen
 
-import cc
-import graph
-import utils
-from fg import FunctionGraph
+import theano.gof.cc
+from theano.gof import graph
+from theano.gof import utils
+from theano.gof.fg import FunctionGraph
 
 
 class CLinkerObject(object):
@@ -572,7 +571,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 e_no_recycling = [new_o
                         for (new_o, old_o) in zip(e.outputs, node.outputs)
                         if old_o in no_recycling]
-                cl = cc.CLinker().accept(e,
+                cl = theano.gof.cc.CLinker().accept(e,
                         no_recycling=e_no_recycling)
 
                 logger.debug('Trying CLinker.make_thunk')

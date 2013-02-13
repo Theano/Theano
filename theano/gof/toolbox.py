@@ -4,7 +4,7 @@ import time
 from theano.gof.python25 import partial
 from theano.gof.python25 import OrderedDict
 
-import graph
+from theano.gof import graph
 
 
 
