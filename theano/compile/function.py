@@ -3,14 +3,11 @@
 __docformat__ = "restructuredtext en"
 
 import logging
-import sys
-import traceback
 _logger = logging.getLogger('theano.compile.function')
 
-from io import In
-from function_module import orig_function
-from profiling import ProfileStats
-from pfunc import pfunc
+from theano.compile.io import In
+from theano.compile.function_module import orig_function
+from theano.compile.pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
