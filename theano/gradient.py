@@ -22,7 +22,7 @@ from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
 from theano.gof.null_type import NullType
-from theano.printing import min_informative_str
+
 # we can't do "import theano.tensor"
 # tensor depends on theano.compile
 # theano.compile depends on theano.gradient (this file)

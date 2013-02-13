@@ -194,41 +194,28 @@ if __name__ == "__main__":
         goto2 1.13/16                                                     3.16s
 
         Test time in float32
-        (cuda version 3.2RC and up have a faster gemm on the Fermi/GTX[45]??)
 
-        gpu/cuda version
-        M2050(Amazon)/5.0 0.25s
+        cuda version      5.0    4.2    4.1    4.0    3.2    3.0   # note
+        gpu
+        M2070             0.25s         0.27s         0.32s
+        M2050(Amazon)     0.25s
+        C2075                    0.25s
+        C1060                                         0.46s
 
-        GTX680/4.2        0.154s
-        GTX580/4.2        0.164s
-        GTX480/4.2        0.192s
-        GTX470/4.2        0.238s
-        C2075/4.2         0.25s
-        GTX285/4.2        0.452s #cuda 3.0 seam faster? driver version?
-        GT520/4.2         2.68s
-        GTX560/4.2        0.30s
-
-        GTX460/4.0        0.45s
-
-        GTX580/3.2        0.203s
-        GTX680/3.2        0.218s
-        GTX480/3.2        0.237s
-        GTX470/3.2        0.297s
-        GTX285/3.2        0.452s #cuda 3.0 seam faster? driver version?
-
-        GTX480/3.0        0.27s
-        M2070/4.1         0.27s
-        GTX470/3.2        0.29s
-        M2070/3.2         0.32s
-        GTX470/3.0        0.34s
-        GTX285/3.0        0.40s
-        C1060/3.2         0.46s
-        GTX550Ti/4.0      0.57s
-        520/3.2           3.06s
-        520M/3.2          3.19s with bumblebee on Ubuntu 12.04
-        GT220/3.2RC       3.80s
-        GT210/4.0         6.35s
-        8500GT/3.0       10.68s
+        GTX680                   0.154s               0.218s
+        GTX580                   0.164s               0.203s
+        GTX480                   0.192s               0.237s 0.27s
+        GTX470                   0.238s               0.297s 0.34s
+        GTX660                   0.24s
+        GTX560                   0.30s
+        GTX460            0.37s                0.45s
+        GTX285                   0.452s        0.452s        0.40s # cuda 3.0 seam faster? driver version?
+        GTX550Ti                               0.57s
+        GT520                    2.68s                3.06s
+        520M                                          3.19s        # with bumblebee on Ubuntu 12.04
+        GT220                                         3.80s
+        GT210                                  6.35s
+        8500GT                                               10.68s
         """
 
     t, impl = execute(not options.print_only, not options.quiet,

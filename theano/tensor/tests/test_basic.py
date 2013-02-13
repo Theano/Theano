@@ -5456,8 +5456,9 @@ class test_tensordot(unittest.TestCase):
         f1 = inplace_func([avec, bvec], c)
         aval = rand(5)
         bval = rand(5)
-        self.assertTrue(numpy.tensordot(aval, bval, axes) == \
-                        f1(aval, bval))
+        out0 = numpy.tensordot(aval, bval, axes)
+        out1 = f1(aval, bval)
+        self.assertTrue(numpy.allclose(out0, out1), (out0, out1))
         utt.verify_grad(self.TensorDot(axes), [aval, bval])
 
         # Test matrix-vector

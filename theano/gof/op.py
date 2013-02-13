@@ -763,6 +763,7 @@ class OpenMPOp(Op):
         self.openmp = openmp
 
     def c_compile_args(self):
+        self.update_self_openmp()
         if self.openmp:
             return ['-fopenmp']
         return []
@@ -807,7 +808,10 @@ class OpenMPOp(Op):
             return False
         return default_openmp
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def update_self_openmp(self):
+        """
+        Make sure self.openmp is not True if there is no support in gxx
+        """
         if self.openmp:
             if OpenMPOp.gxx_support_openmp is None:
                 OpenMPOp.gxx_support_openmp = OpenMPOp.test_gxx_support()
@@ -818,9 +822,13 @@ class OpenMPOp(Op):
                         " know this happen with some version of the EPD mingw"
                         " compiler. We disable openmp everywhere in Theano."
                         " To remove this warning set the theano flags `openmp`"
-                        " to False.")
+                        " to False.",
+                        stacklevel=3)
             if OpenMPOp.gxx_support_openmp is False:
                 self.openmp = False
                 theano.config.openmp = False
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        self.update_self_openmp()
         return super(OpenMPOp, self).make_thunk(node, storage_map,
                                                 compute_map, no_recycling)

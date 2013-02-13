@@ -336,7 +336,7 @@ convgrad_rows_stack( float* img, float* dCdH, float* dCdW,
                                             dCdW[j,z,k,l,m] += dCdH[i,j,p,q,r] * V[i,z,dr*p+k,dc*q+l,dt*r+m]
 */
 """
-        return codeSource#renderString(codeSource,locals())
+        return codeSource
 
 gpu_conv_grad3d = GpuConvGrad3D()
 

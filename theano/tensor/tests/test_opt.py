@@ -2475,6 +2475,57 @@ class test_shapeoptimizer(unittest.TestCase):
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
 
+    @staticmethod
+    def max_pool_c01b(c01b, pool_shp, pool_stride, img_shp):
+        """Like max_pool but with input using axes ('c', 0, 1, 'b')
+          (Alex Krizhevsky format)
+
+        pool_shp, pool_stride and img_shp are int that represent
+        the same shp in x and y.
+        """
+        mx = None
+
+        # Compute index in pooled space of last needed pool
+        # (needed = each input pixel must appear in at least one pool)
+        def last_pool(im_shp, p_shp, p_strd):
+            rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
+            assert p_strd * rval + p_shp >= im_shp
+            assert p_strd * (rval - 1) + p_shp < im_shp
+            return rval
+        # Compute starting row of the last pool
+        last_pool_r = last_pool(img_shp, pool_shp, pool_stride) * pool_stride
+        # Compute number of rows needed in img for all indexes to work out
+        required_r = last_pool_r + pool_shp
+
+        last_pool_c = last_pool(img_shp, pool_shp, pool_stride) * pool_stride
+        required_c = last_pool_c + pool_shp
+
+        wide_infinity = T.alloc(-numpy.inf, c01b.shape[0],
+                                required_r, required_c, c01b.shape[3])
+
+        c01b = T.set_subtensor(wide_infinity[:, 0:img_shp, 0:img_shp, :], c01b)
+
+        for row_within_pool in xrange(pool_shp):
+            row_stop = last_pool_r + row_within_pool + 1
+            for col_within_pool in xrange(pool_shp):
+                col_stop = last_pool_c + col_within_pool + 1
+                cur = c01b[:, row_within_pool:row_stop:pool_stride,
+                           col_within_pool:col_stop:pool_stride, :]
+                if mx is None:
+                    mx = cur
+                else:
+                    mx = T.maximum(mx, cur)
+        return mx
+
+    def test_broadcasted_dims(self):
+        #This test a case that caused a crash during optimization
+        shp = (1, 1, 1, 1)
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = shared(rng.rand(*shp).astype(config.floatX))
+        out = self.max_pool_c01b(a, 1, 1, 1)
+        f = theano.function([], out)
+        f()
+
     def test_local_track_shape_i(self):
         class IdentityNoShape(gof.Op):
             '''Op that does not infer the output shape from the input one'''

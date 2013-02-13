@@ -519,7 +519,6 @@ def get_scalar_constant_value(v):
     if isinstance(v, numpy.ndarray):
         return numpy_scalar(v)
 
-
     if isinstance(v, Constant):
         if getattr(v.tag, 'unique_value', None) is not None:
             data = v.tag.unique_value
@@ -528,11 +527,9 @@ def get_scalar_constant_value(v):
         return numpy_scalar(data)
 
     if v.owner:
-        if isinstance(v.owner.op, Alloc):
-            return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, DimShuffle):
-            return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, Rebroadcast):
+        if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
+                                   compile.ops.OutputGuard,
+                                   compile.DeepCopyOp)):
             return get_scalar_constant_value(v.owner.inputs[0])
         if isinstance(v.owner.op, Elemwise) and \
                 isinstance(v.owner.op.scalar_op, scal.Second):
@@ -2007,6 +2004,13 @@ class TensorConstant(_tensor_py_operators, Constant):
     def signature(self):
         return TensorConstantSignature((self.type, self.data))
 
+    def equals(self, other):
+        # Override Contant.equals to allow to compare with numpy.ndarray
+        if isinstance(other, numpy.ndarray):
+            # Make a TensorConstant to be able to compare
+            other = constant(other)
+        return (isinstance(other, TensorConstant) and
+                self.signature() == other.signature())
 
 TensorType.Constant = TensorConstant
 
@@ -3641,6 +3645,10 @@ def var(input, axis=None, keepdims=False):
     :param keepdims: If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
+
+    :note: It use the two-pass algorithm for more stable results.
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+        It exist other implementation that are even more stable, but probably slower.
     """
 
     input_ndim = input.type.ndim
@@ -3676,6 +3684,10 @@ def std(input, axis=None, keepdims=False):
         With this option,
         the result will broadcast correctly against the
         original tensor.
+
+    :note: It call var and var use the two-pass algorithm for more stable results.
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+        It exist other implementation that are even more stable, but probably slower.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))

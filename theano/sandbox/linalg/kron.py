@@ -1,4 +1,3 @@
-import numpy
 import theano
 from theano.gof import Op, Apply
 from theano import tensor
