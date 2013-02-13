@@ -1777,7 +1777,7 @@ class Sum(CAReduceDtype):
         out = self(*inp)
 
         if out.dtype.find('int') != -1:
-            return [x.zeros_like().astype(theano.config.floatX)]
+            return [theano.tensor.zeros_like(x, dtype=theano.config.floatX)]
 
         gz, = grads
         gz = as_tensor_variable(gz)
@@ -1891,8 +1891,11 @@ class Prod(CAReduceDtype):
 
         out = self(*inp)
 
-        if out.dtype[0:3] in ('int', 'uin'):
-            return [prod_in.zeros_like().astype(theano.config.floatX)]
+        if (out.dtype in discrete_dtypes or
+                self.acc_dtype in discrete_dtypes):
+            # There is an int conversion in the way
+            return [theano.tensor.zeros_like(prod_in,
+                        dtype=theano.config.floatX)]
 
         # Prepare the broadcasting that is used everywhere to broadcast
         # over the original groups (ie. broadcast over the elements of a given
