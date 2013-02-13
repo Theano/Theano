@@ -38,7 +38,7 @@ __authors__ = ("Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import scan_opt
-from scan import scan
-from scan_views import map, reduce, foldl, foldr
-from scan_utils import clone, until
+from theano.scan_module import scan_opt
+from theano.scan_module.scan import scan
+from theano.scan_module.scan_views import map, reduce, foldl, foldr
+from theano.scan_module.scan_utils import clone, until

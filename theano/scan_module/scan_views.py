@@ -15,7 +15,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
 
-import scan
+from theano.scan_module import scan
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_views')
