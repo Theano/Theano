@@ -168,9 +168,9 @@ Interface changes:
  * We do not support anymore unaligned ndarray in Python code. (Frederic B.)
    We did not support it in C code and supporting it in Python code made
    the detection harder.
- * Now we only officially support scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
+ * Now we only officially support SciPy 0.7.2 and NumPy 1.5.0 (Frederic B.)
    We weren't and aren't testing with older versions.
- * The theano.sparse.SparseType is available even when scipy is not (Frederic B.)
+ * The theano.sparse.SparseType is available even when SciPy is not (Frederic B.)
  * Fixed issue where members of consider_constant grad parameter
    were treated differently from Constant variables. (Ian G.)
  * Removed the parameter g_cost from theano.grad(). (Ian G.)
