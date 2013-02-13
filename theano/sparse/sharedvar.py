@@ -1,8 +1,7 @@
 import copy
 import scipy.sparse
 from theano.compile import shared_constructor, SharedVariable
-from theano import config
-from basic import SparseType, _sparse_py_operators
+from theano.sparse.basic import SparseType, _sparse_py_operators
 
 class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
     pass
