@@ -1328,7 +1328,9 @@ class CAReduce(Op):
             output[0] = theano._asarray(variable,
                     dtype=node.outputs[0].type.dtype)
         else:
-            output[0] = numpy.array(variable, dtype=node.outputs[0].type.dtype)
+            # Force a copy
+            output[0] = numpy.array(variable, copy=True,
+                                    dtype=node.outputs[0].type.dtype)
 
     def infer_shape(self, node, shapes):
         ishape, = shapes
