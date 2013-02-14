@@ -116,9 +116,11 @@ Crash Fixes:
  * The infer shape mechanism now force that broadcasted dimensions have a shape know to be equivalent to one during compilation.
    Sometimes, we where not able knowing this before run time and resulted in crash. (Frederic B.)
  * Fix compilation problems on GPU on Windows. (Frederic B.)
+ * Fix copy on the GPU with big shape for 4d tensor (Pascal L.)
 
 Theoretical bugfix (bug that won't happen with current Theano code, but if you messed with the internal, could have affected you):
- * GpuContiguous now check the preallocated outputs strides before using it. (Pascal L.)
+ * GpuContiguous, GpuAlloc, GpuDownSampleGrad, Conv2d now check the preallocated outputs strides before using it. (Pascal L.)
+ * GpuDownSample, GpuDownSampleGrad didn't worked correctly with negative strides in their output due to problem with nvcc (Pascal L, reported by abalkin?)
 
 Others:
  * Fix race condition when determining if g++ is available. (Abalkin)
