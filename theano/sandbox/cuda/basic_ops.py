@@ -2459,6 +2459,12 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         PyObject *x_rowind_obj, *y_rowind_obj;
         dtype_%(ind)s *p_index;
         int num_indices, j;
+
+        num_indices = PyArray_SIZE(%(ind)s);
+        if ((num_indices - 1) > LONG_MAX) {
+            PyErr_Format(PyExc_AssertionError, "num_indices %%d exceeds LONG_MAX + 1", num_indices);
+            %(fail)s;
+        }
         
         Py_XDECREF(%(out)s);
         if (!%(inplace)s) {
@@ -2470,14 +2476,23 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 
         x_obj = (PyObject*)CudaNdarray_View(%(x)s);
         y_obj = (PyObject*)CudaNdarray_View(%(y)s);
-        num_indices = PyArray_SIZE(%(ind)s);
-        assert((num_indices - 1) <= LONG_MAX);
 
         for (j = 0;j < num_indices; j++) {
 
              p_index = (dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
+
              x_rowind_obj = PyInt_FromLong(*p_index);
-             assert(PyInt_AsLong(x_rowind_obj) == (*p_index));
+
+             if (PyInt_AsLong(x_rowind_obj) != (*p_index)) {
+                 PyErr_Format(PyExc_AssertionError, "Error in converting row index to integer from long");
+                 // Dec Ref what ever we have increfed or allocated so far
+                 // We deallocate objects exactly in the reverse order they were allocated.
+                 Py_XDECREF(x_rowind_obj);
+                 Py_XDECREF(y_obj);
+                 Py_XDECREF(x_obj);
+                 %(fail)s;
+             }
+
              y_rowind_obj = PyInt_FromLong(j);
 
              row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
@@ -2488,8 +2503,8 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
              Py_XDECREF(y_rowind_obj);
         }
 
-        Py_XDECREF(x_obj);
         Py_XDECREF(y_obj);
+        Py_XDECREF(x_obj);
    
         if (!%(out)s) {
             %(fail)s
