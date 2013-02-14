@@ -29,11 +29,10 @@ Jeremiah Lowin
 abalkin
 Olivier Delalleau
 Razvan Pascanu
-Rami Al-Rfou
+Rami Al-Rfou'
 Vivek Kulkarni
 Guillaume Desjardins
 David Warde-Farley
-Rami Al-Rfou'
 Eric Hunsberger
 Amir Elaguizy
 James Bergstra
