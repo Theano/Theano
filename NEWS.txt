@@ -4,10 +4,8 @@
 Release Notes
 =============
 
-Theano in the development version since 0.6rc2
-==============================================
-
-up to merged PR gh-1225
+Theano 0.6rc3 (February 14th, 2013)
+===================================
 
 Highlights:
  * Speed-ups.
@@ -23,7 +21,7 @@ Highlights:
      * Add theano.tensor.take()
      * Add a_tensor_variable.{sort,dot,std,argmin,argmax,argsort,clip,conj,conjugate,repeat,round,trace,real,imag,take}
 
-Commiters for this rc2 only:
+Commiters for this rc3 only:
 Frederic Bastien
 Ian Goodfellow
 Pascal Lamblin
