@@ -8,6 +8,7 @@ Theano 0.6rc3 (February 14th, 2013)
 ===================================
 
 Highlights:
+ * Windows related fixes.
  * Speed-ups.
  * Crash fixes.
  * A few small interface changes.
