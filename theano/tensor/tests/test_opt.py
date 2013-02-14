@@ -2523,7 +2523,11 @@ class test_shapeoptimizer(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         a = shared(rng.rand(*shp).astype(config.floatX))
         out = self.max_pool_c01b(a, 1, 1, 1)
-        f = theano.function([], out)
+
+        #max_pool_c01b use -inf and this will trigger DebugMode error.
+        mode = copy.copy(theano.compile.get_default_mode())
+        mode.check_isfinite = False
+        f = theano.function([], out, mode=mode)
         f()
 
     def test_local_track_shape_i(self):
