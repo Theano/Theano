@@ -14,8 +14,12 @@ def call_subprocess_Popen(command, **params):
         except AttributeError:
             startupinfo.dwFlags |= subprocess._subprocess.STARTF_USESHOWWINDOW
 
-        # Under Windows 7 64-bits, Anaconda's g++ is not found unless
-        # specifying "shell=True".
+        # Anaconda for Windows does not always provide .exe files
+        # in the PATH, they also have .bat files that call the corresponding
+        # executable. For instance, "g++.bat" is in the PATH, not "g++.exe"
+        # Unless "shell=True", "g++.bat" is not executed when trying to
+        # execute "g++" without extensions.
+        # (Executing "g++.bat" explicitly would also work.)
         params['shell'] = True
     proc = subprocess.Popen(command, startupinfo=startupinfo, **params)
     return proc
