@@ -7,7 +7,7 @@ Release Notes
 Theano in the development version since 0.6rc2
 ==============================================
 
-up to merged PR gh-1220
+up to merged PR gh-1225
 
 Highlights:
  * Speed-ups.
@@ -80,6 +80,7 @@ New debug feature:
  * Better profiling of test time with `theano-nose --time-profile`. (Frederic B.)
  * Detection of infinite loop with global optimizer. (Pascal L.)
  * DebugMode.check_preallocated_output now also work on Theano function output. (Pascal L.)
+ * DebugMode will now complains when the strides of CudaNdarray of dimensions of 1 aren't 0. (Frederic B.)
 
 Speed-ups:
  * c_code for SpecifyShape op. (Frederic B.)
@@ -117,6 +118,7 @@ Crash Fixes:
    Sometimes, we where not able knowing this before run time and resulted in crash. (Frederic B.)
  * Fix compilation problems on GPU on Windows. (Frederic B.)
  * Fix copy on the GPU with big shape for 4d tensor (Pascal L.)
+ * GpuSubtensor didn't set the stride to 0 for dimensions of 1. This could lead to check failing later that cause a crash. (Frederic B., reported by vmichals)
 
 Theoretical bugfix (bug that won't happen with current Theano code, but if you messed with the internal, could have affected you):
  * GpuContiguous, GpuAlloc, GpuDownSampleGrad, Conv2d now check the preallocated outputs strides before using it. (Pascal L.)
