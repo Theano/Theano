@@ -58,7 +58,7 @@ def map(fn,
 
     :param name: See ``scan``.
     """
-    return scan.scan(fn=fn,
+    return scan(fn=fn,
                      sequences=sequences,
                      outputs_info=[],
                      non_sequences=non_sequences,
@@ -101,7 +101,7 @@ def reduce(fn,
 
     :param name: See ``scan``.
     """
-    rval = scan.scan(fn=fn,
+    rval = scan(fn=fn,
                      sequences=sequences,
                      outputs_info=outputs_info,
                      non_sequences=non_sequences,
