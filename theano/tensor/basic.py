@@ -1062,23 +1062,24 @@ class TensorType(Type):
         type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num;
         if (!PyArray_ISALIGNED(py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
-                         "expected an aligned array of type %%d "
-                         "(%(type_num)s), got non-aligned array of type %%d"
-                         " with %%d dimensions, with 3 last dims %%d, %%d, %%d"
-                         " and 3 last strides %%d %%d, %%d.",
-                         %(type_num)s, type_num_%(name)s,
-                         PyArray_NDIM(py_%(name)s),
-                         PyArray_NDIM(py_%(name)s) >= 3 ?
+                         "expected an aligned array of type %%ld "
+                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         " with %%ld dimensions, with 3 last dims %%ld, %%ld, %%ld"
+                         " and 3 last strides %%ld %%ld, %%ld.",
+                         (long int) %(type_num)s,
+                         (long int) type_num_%(name)s,
+                         (long int) PyArray_NDIM(py_%(name)s),
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 2 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 1 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 3 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 2 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 1 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
         );
             %(fail)s
