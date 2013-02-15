@@ -226,8 +226,18 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
                                  configparam.fullname)
         configparam.doc = doc
         configparam.in_c_key = in_c_key
-        # trigger a read of the value from config files and env vars
-        configparam.__get__()
+        # Trigger a read of the value from config files and env vars
+        # This allow to filter wrong value from the user.
+        if not callable(configparam.default):
+            configparam.__get__()
+        else:
+            # We do not want to evaluate now the default value when it is a callable.
+            try:
+                fetch_val_for_key(configparam.fullname)
+                # The user provided a value, filter it now.
+                configparam.__get__()
+            except KeyError:
+                pass
         setattr(root.__class__, sections[0], configparam)
         _config_var_list.append(configparam)
 
