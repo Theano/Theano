@@ -6552,9 +6552,11 @@ class AdvancedSubtensor1(Op):
         # many elements on a 32-bit arch).
         if i.dtype != numpy.intp:
             i_ = theano._asarray(i, dtype=numpy.intp)
-            if numpy.any(i != i_):
-                raise IndexError('index contains values that are bigger than '
-                        'the maximum array size on this system.', i)
+            if not numpy.can_cast(i.dtype, numpy.intp):
+                # Check if there was actually an incorrect conversion
+                if numpy.any(i != i_):
+                    raise IndexError('index contains values that are bigger '
+                            'than the maximum array size on this system.', i)
             i = i_
 
         out[0] = x.take(i, axis=0, out=o)
@@ -6603,21 +6605,24 @@ class AdvancedSubtensor1(Op):
             if (PyArray_TYPE(%(i_name)s) != NPY_INTP) {
                 // Cast %(i_name)s to NPY_INTP (expected by PyArray_TakeFrom),
                 // if all values fit.
-                PyObject* py_min_val, py_max_val;
-                npy_int64 min_val, max_val;
-                py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS, min_val);
-                py_max_val = PyArray_Max(%(i_name)s, NPY_MAXDIMS, max_val);
-                min_val = PyLong_AsLongLong(py_min_val);
-                max_val = PyLong_AsLongLong(py_max_val);
-                Py_CLEAR(py_min_val);
-                Py_CLEAR(py_max_val);
-
-                if ((min_val < NPY_MIN_INTP) || (max_val > NPY_MAX_INTP))
+                if (!PyArray_CanCastSafely(PyArray_TYPE(%(i_name)s), NPY_INTP))
                 {
-                    PyExc_SetErr(PyExc_IndexError, "Index contains values "
-                                 "that are bigger than the maximum array "
-                                 "size on this system.");
-                    %(fail)s;
+                    PyObject* py_min_val, py_max_val;
+                    npy_int64 min_val, max_val;
+                    py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS, min_val);
+                    py_max_val = PyArray_Max(%(i_name)s, NPY_MAXDIMS, max_val);
+                    min_val = PyLong_AsLongLong(py_min_val);
+                    max_val = PyLong_AsLongLong(py_max_val);
+                    Py_CLEAR(py_min_val);
+                    Py_CLEAR(py_max_val);
+
+                    if ((min_val < NPY_MIN_INTP) || (max_val > NPY_MAX_INTP))
+                    {
+                        PyExc_SetErr(PyExc_IndexError, "Index contains values "
+                                     "that are bigger than the maximum array "
+                                     "size on this system.");
+                        %(fail)s;
+                    }
                 }
                 indices = PyArray_Cast(%(i_name)s, NPY_INTP);
                 if (indices == NULL) {
@@ -6659,7 +6664,7 @@ class AdvancedSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 0, 4)
+        return (0, 0, 5)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
