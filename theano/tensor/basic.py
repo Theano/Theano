@@ -5876,6 +5876,8 @@ class Reshape(Op):
         except Exception:
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
+        if not out[0].flags.aligned:
+            raise RuntimeError("numpy.reshape returned a not aligned tensor.")
 
     def connection_pattern(self, node):
         return [[True], [False]]
