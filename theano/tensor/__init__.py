@@ -5,16 +5,16 @@ import warnings
 
 from theano.tensor.basic import *
 
-import theano.tensor.opt
-import theano.tensor.opt_uncanonicalize
-import theano.tensor.blas
-import theano.tensor.blas_scipy
-import theano.tensor.blas_c
-import theano.tensor.xlogx
+from theano.tensor import opt
+from theano.tensor import opt_uncanonicalize
+from theano.tensor import blas
+from theano.tensor import blas_scipy
+from theano.tensor import blas_c
+from theano.tensor import xlogx
 
-import theano.tensor.raw_random
-import theano.tensor.randomstreams
-import theano.tensor.shared_randomstreams
+from theano.tensor import raw_random
+from theano.tensor import randomstreams
+from theano.tensor import shared_randomstreams
 from theano.tensor.randomstreams import \
     RandomStreams
 
@@ -23,7 +23,7 @@ random = RandomStreams(seed=0xBAD5EED, no_warn = True)
 
 from theano.tensor.elemwise import DimShuffle, Elemwise, CAReduce
 
-import theano.tensor.sharedvar  # adds shared-variable constructors
+from theano.tensor import sharedvar  # adds shared-variable constructors
 
 # We import as `_shared` instead of `shared` to avoid confusion between
 # `theano.shared` and `tensor._shared`.
@@ -48,7 +48,7 @@ def shared(*args, **kw):
     return _shared(*args, **kw)
 
 
-import theano.tensor.nnet  # used for softmax, sigmoid, etc.
+from theano.tensor import nnet  # used for softmax, sigmoid, etc.
 
 from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian
