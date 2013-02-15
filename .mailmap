@@ -8,6 +8,7 @@
 # # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
 # # gives no duplicates.
 
+Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
 <abergeron@gmail.com> <anakha@kami.(none)>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde-Farley <dwf@cs.toronto.edu>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde Farley <dwf@cs.toronto.edu>
