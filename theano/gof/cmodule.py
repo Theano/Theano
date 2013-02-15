@@ -1491,6 +1491,9 @@ class GCC_compiler(object):
         Returns True if compilation was successful, False if there
         were errors.
         '''
+        if not theano.config.cxx:
+            return False
+
         rval = True
         try:
             code = """
