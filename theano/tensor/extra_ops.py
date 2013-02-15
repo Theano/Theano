@@ -2,9 +2,9 @@ import numpy as np
 import numpy
 
 import theano
-import basic
+from theano.tensor import basic
 from theano import gof, scalar
-import basic as tensor
+tensor = basic
 from theano.gradient import DisconnectedType
 
 
