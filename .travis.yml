@@ -23,6 +23,8 @@ env:
 script:
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
   - python --version
+  - uname -a
+  - free
   - echo $PART
   - theano-nose $PART
 
