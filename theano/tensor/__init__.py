@@ -21,8 +21,7 @@ from theano.tensor.randomstreams import \
 random = RandomStreams(seed=0xBAD5EED, no_warn = True)
 """Imitate the numpy.random symbol with a tensor.random one"""
 
-from theano.tensor.elemwise import \
-    DimShuffle, Elemwise, CAReduce
+from theano.tensor.elemwise import DimShuffle, Elemwise, CAReduce
 
 import theano.tensor.sharedvar  # adds shared-variable constructors
 
