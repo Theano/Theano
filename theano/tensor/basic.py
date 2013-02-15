@@ -5944,7 +5944,7 @@ class Reshape(Op):
             return [tuple(oshape)]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
@@ -5971,6 +5971,10 @@ class Reshape(Op):
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
                 PyArray_CORDER);
+            if (!PyArray_ISALIGNED(%(z)s)) {
+                PyErr_Format(PyExc_RuntimeError, "PyArray_Newshape returned an object that isn't aligned!");
+                %(fail)s;
+            }
             if (!%(z)s)
             {
                 PyErr_Format(PyExc_ValueError,
