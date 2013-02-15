@@ -6529,6 +6529,9 @@ class AdvancedSubtensor1(Op):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def __str__(self):
+        return self.__class__.__name__
+
     def make_node(self, x, ilist):
         x_ = as_tensor_variable(x)
         ilist_ = as_tensor_variable(ilist)
