@@ -253,12 +253,14 @@ class ConfigParam(object):
         # invalid and causes a crash or has unwanted side effects.
 
     def __get__(self, *args):
-        #print "GETTING PARAM", self.fullname, self, args
         if not hasattr(self, 'val'):
             try:
                 val_str = fetch_val_for_key(self.fullname)
             except KeyError:
-                val_str = self.default
+                if callable(self.default):
+                    val_str = self.default()
+                else:
+                    val_str = self.default
             self.__set__(None, val_str)
         #print "RVAL", self.val
         return self.val
