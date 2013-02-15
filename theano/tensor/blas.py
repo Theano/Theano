@@ -390,7 +390,7 @@ def default_blas_ldflags():
 
 AddConfigVar('blas.ldflags',
         "lib[s] to include for [Fortran] level-3 blas implementation",
-        StrParam(default_blas_ldflags()))
+        StrParam(default_blas_ldflags))
 
 
 @utils.memoize
