@@ -23,7 +23,7 @@ from theano.gof import Variable, Constant
 from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
-from elemwise import Elemwise, DimShuffle
+from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano import scalar
 import basic as T
 from theano import compile  # to register the optimizer built by this file
