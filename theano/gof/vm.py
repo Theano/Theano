@@ -13,6 +13,8 @@ from theano.gof.python25 import all
 
 from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
 
+import theano.gof.cmodule
+
 logger = logging.getLogger(__name__)
 
 AddConfigVar('profile',
