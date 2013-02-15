@@ -1106,6 +1106,8 @@ class TensorType(Type):
 
     def c_sync(self, name, sub):
         """Override `CLinkerOp.c_sync` """
+        fail = sub['fail']
+        type_num = self.dtype_specs()[2]
         return """
         {Py_XDECREF(py_%(name)s);}
         if (!%(name)s) {
@@ -1115,7 +1117,33 @@ class TensorType(Type):
         else if ((void*)py_%(name)s != (void*)%(name)s) {
             py_%(name)s = (PyObject*)%(name)s;
         }
+
         {Py_XINCREF(py_%(name)s);}
+
+        if (!PyArray_ISALIGNED(py_%(name)s)) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "c_sync: expected an aligned array of type %%ld "
+                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         " with %%ld dimensions, with 3 last dims %%ld, %%ld, %%ld"
+                         " and 3 last strides %%ld %%ld, %%ld.",
+                         (long int) %(type_num)s,
+                         (long int) type_num_%(name)s,
+                         (long int) PyArray_NDIM(py_%(name)s),
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
+        );
+            %(fail)s
+        }
         """ % locals()
 
     def c_headers(self):
@@ -1135,7 +1163,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (8,) + scalar_version
+            return (9,) + scalar_version
         else:
             return ()
 
