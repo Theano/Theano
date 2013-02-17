@@ -1,11 +1,10 @@
 """WRITEME"""
-import utils
-import graph
-from type import Type
+from theano.gof import utils
+from theano.gof import graph
+from theano.gof.type import Type
 
 import sys, traceback
 from copy import copy
-from theano.gof.python25 import all
 
 __excepthook = sys.excepthook
 

@@ -5,14 +5,15 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 import sys
-import graph
-import utils
-import toolbox
-from python25 import all
+from theano.gof import graph
+from theano.gof import utils
+from theano.gof import toolbox
+from theano.gof.python25 import all
 from theano import config
 import warnings
 NullType = None
-from python25 import OrderedDict
+
+from theano.gof.python25 import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 class InconsistencyError(Exception):

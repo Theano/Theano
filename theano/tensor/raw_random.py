@@ -7,8 +7,8 @@ import numpy
 
 #local imports
 import theano
-import basic as tensor
-import opt
+from theano import tensor
+from theano.tensor import opt
 from theano import gof
 from theano.compile import optdb
 

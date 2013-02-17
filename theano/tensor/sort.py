@@ -3,7 +3,7 @@ import numpy as np
 import theano
 from theano.tensor import tensor
 
-from basic import mul
+from theano.tensor.basic import mul
 
 
 class SortOp(theano.Op):

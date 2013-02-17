@@ -2,9 +2,9 @@
 
 __docformat__ = "restructuredtext en"
 
-import utils
-from utils import MethodNotDefined, object2
-import graph
+from theano.gof import utils
+from theano.gof.utils import MethodNotDefined, object2
+from theano.gof import graph
 
 ########
 # Type #

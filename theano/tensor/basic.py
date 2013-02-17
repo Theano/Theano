@@ -14,7 +14,7 @@ from theano.configparser import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Type, Variable
 
-import elemwise
+from theano.tensor import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all, maxsize
 from theano import compile, printing
@@ -29,7 +29,7 @@ from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 ### set up the external interface
-from elemwise import Elemwise, DimShuffle, CAReduce, Sum
+from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 import logging
 _logger = logging.getLogger("theano.tensor.basic")

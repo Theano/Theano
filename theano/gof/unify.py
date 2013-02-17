@@ -9,8 +9,8 @@ if there exists an assignment to all unification variables such that
 """
 from copy import copy
 
-from python25 import partial
-from utils import *
+from theano.gof.python25 import partial
+from theano.gof.utils import *
 
 
 ################################

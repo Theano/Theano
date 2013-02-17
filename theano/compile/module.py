@@ -15,8 +15,8 @@ import warnings
 
 from itertools import chain
 
-import function_module as F
-import mode as get_mode
+import theano.compile.function_module
+import theano.compile.mode
 
 
 #This module is imported by other parts of theano, and worse still, other
@@ -106,7 +106,7 @@ class Component(object):
         be called.
         """
         if mode is None:
-            mode = get_mode.get_default_mode()
+            mode = theano.compile.mode.get_default_mode()
         memo = {}
         self.allocate(memo)
         rval = self.build(mode, memo)
@@ -120,7 +120,7 @@ class Component(object):
         arguments and the keyword arguments. If 'mode' is in the
         keyword arguments it will be passed to build().
         """
-        mode = kwargs.pop('mode', get_mode.get_default_mode())
+        mode = kwargs.pop('mode', theano.compile.mode.get_default_mode())
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)
@@ -503,7 +503,7 @@ class Method(Component):
             effective_mode = self.mode
 
         # We ignore unused inputs, since all the inputs are passed
-        rval = F.orig_function(inputs, outputs, effective_mode,
+        rval = theano.compile.function_module.orig_function(inputs, outputs, effective_mode,
                 on_unused_input='ignore')
         memo[self] = rval
         return rval
@@ -1192,7 +1192,7 @@ class Module(ComponentDict):
         """
         self.make_module_instance(args,kwargs)
 
-        mode = kwargs.pop('mode', get_mode.get_default_mode())
+        mode = kwargs.pop('mode', theano.compile.mode.get_default_mode())
         rval = self.make_no_init(mode)
         if hasattr(rval, 'initialize'):
             rval.initialize(*args, **kwargs)

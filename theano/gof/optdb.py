@@ -1,10 +1,10 @@
 import StringIO
 import sys
 
-from python25 import DefaultOrderedDict
+from theano.gof.python25 import DefaultOrderedDict
 
 import numpy
-import opt
+from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
 AddConfigVar('optdb.position_cutoff',

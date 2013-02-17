@@ -11,10 +11,9 @@ import warnings
 
 from theano.gof.python25 import all
 
-import theano
-config = theano.config
-
 from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
+
+import theano.gof.cmodule
 
 logger = logging.getLogger(__name__)
 

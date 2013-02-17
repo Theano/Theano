@@ -15,8 +15,8 @@ import numpy
 import theano
 from theano import gof
 from theano.gof.python25 import partial
-import mode as mode_module
-from io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
+import theano.compile.mode
+from theano.compile.io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
 from theano.compile.ops import deep_copy_op, view_op
 
 import logging
@@ -945,7 +945,7 @@ class FunctionMaker(object):
                 - 'ignore': do not do anything
                 - None: Use the value in the Theano flags on_unused_input
         """
-        mode = mode_module.get_mode(mode)
+        mode = theano.compile.mode.get_mode(mode)
 
         # figure out which profile object to use (if any)
         # to help with forward-porting ProfileMode,
@@ -1025,7 +1025,7 @@ class FunctionMaker(object):
         # initialize the linker
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
-                             "or one of %s" % mode_module.predefined_linkers.keys())
+                             "or one of %s" % theano.compile.mode.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
         assert len(fgraph.outputs) == len(outputs + additional_outputs)
@@ -1274,7 +1274,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     # instance if necessary:
 
     t1 = time.time()
-    mode = mode_module.get_mode(mode)
+    mode = theano.compile.mode.get_mode(mode)
 
     inputs = map(convert_function_input, inputs)
     if outputs is not None:

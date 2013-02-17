@@ -29,13 +29,13 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
-from elemwise import CAReduce
-import basic as T
+from theano.tensor.elemwise import CAReduce
+from theano.tensor import basic as T
 
 from theano.gof.opt import Optimizer
 from theano.gof import InconsistencyError, toolbox
 
-from basic import get_scalar_constant_value, NotScalarConstantError
+from theano.tensor.basic import get_scalar_constant_value, NotScalarConstantError
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
 

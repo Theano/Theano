@@ -6,7 +6,7 @@ __license__   = "3-clause BSD License"
 __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
-import gof
+from theano import gof
 
 class Raise(gof.Op):
     """Op whose perform() raises an exception.
