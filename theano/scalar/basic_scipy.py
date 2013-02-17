@@ -13,7 +13,9 @@ imported_scipy_special = False
 try:
     import scipy.special
     imported_scipy_special = True
-except ImportError:
+# Importing scipy.special may raise ValueError.
+# See http://projects.scipy.org/scipy/ticket/1739
+except (ImportError, ValueError):
     pass
 
 

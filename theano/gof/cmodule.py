@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from six import b
 
 import distutils.sysconfig
 
@@ -1572,7 +1573,7 @@ class GCC_compiler(object):
             lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cpp')
-        cppfile = file(cppfilename, 'w')
+        cppfile = open(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
 
@@ -1630,14 +1631,14 @@ class GCC_compiler(object):
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
-                            (status, compile_stderr.replace('\n', '. ')))
+                            (status, compile_stderr.replace(b('\n'), b('. '))))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print compile_stderr
 
         if py_module:
             #touch the __init__ file
-            file(os.path.join(location, "__init__.py"), 'w').close()
+            open(os.path.join(location, "__init__.py"), 'w').close()
             return dlimport(lib_filename)
 
 

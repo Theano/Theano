@@ -6,7 +6,9 @@ import logging
 import os
 import sys
 import warnings
-import ConfigParser
+
+from six.moves import configparser as ConfigParser
+
 import StringIO
 
 import theano

@@ -1,5 +1,6 @@
 import errno
 import os, logging, sys
+from six.moves import reload_module as reload
 
 import theano
 from theano import config
@@ -45,7 +46,7 @@ try:
             assert os.path.isdir(location)
 
     if not os.path.exists(os.path.join(location, '__init__.py')):
-        file(os.path.join(location, '__init__.py'), 'w').close()
+        open(os.path.join(location, '__init__.py'), 'w').close()
 
     _need_reload = False
     if force_compile:
