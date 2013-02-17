@@ -1025,6 +1025,7 @@ static struct PyModuleDef moduledef = {
 #define RETVAL m
 PyObject *PyInit_lazylinker_ext(void) {
 #else
+#define RETVAL
 PyMODINIT_FUNC
 initlazylinker_ext(void) 
 {
