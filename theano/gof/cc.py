@@ -13,8 +13,13 @@ from itertools import izip
 
 import numpy
 
+if sys.version_info[:2] >= (3, 0):
+    import hashlib
 
-if sys.version_info[:2] >= (2, 5):
+    def hash_from_code(msg):
+        return hashlib.md5(msg.encode()).hexdigest()
+
+elif sys.version_info[:2] >= (2, 5):
     import hashlib
 
     def hash_from_code(msg):

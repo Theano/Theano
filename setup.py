@@ -14,6 +14,10 @@ try:
 except ImportError:
     from distutils.core import setup
 try:
+    from distutils.util import Mixin2to3
+    from lib2to3.refactor import get_fixers_from_package
+    Mixin2to3.fixer_names = [f for f in get_fixers_from_package('lib2to3.fixes')
+                             if f != 'lib2to3.fixes.fix_next']
     from distutils.command.build_py import build_py_2to3 \
         as build_py
     from distutils.command.build_scripts import build_scripts_2to3 \

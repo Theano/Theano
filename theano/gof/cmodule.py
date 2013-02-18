@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from six import b
+from six import b, next
 
 import distutils.sysconfig
 
@@ -918,7 +918,7 @@ class ModuleCache(object):
                     # If we do, then there is no need to even compile it.
                     duplicated_module = False
                     # The first compilation step is to yield the source code.
-                    src_code = compile_steps.next()
+                    src_code = next(compile_steps)
                     module_hash = get_module_hash(src_code, key)
 
                     # The op has c_code, so take the lock.
@@ -973,7 +973,7 @@ class ModuleCache(object):
                             try:
                                 # The module should be returned by the last
                                 # step of the compilation.
-                                module = compile_steps.next()
+                                module = next(compile_steps)
                             except StopIteration:
                                 break
 
