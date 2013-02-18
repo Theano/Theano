@@ -126,7 +126,7 @@ def _config_print(thing, buf):
     for cv in _config_var_list:
         print >> buf, cv
         print >> buf, "    Doc: ", cv.doc
-        print >> buf, "    Value: ", cv.val
+        print >> buf, "    Value: ", cv.__get__()
         print >> buf, ""
 
 
@@ -141,7 +141,7 @@ def get_config_md5():
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
     return theano.gof.cc.hash_from_code('\n'.join(
-                    ['%s = %s' % (cv.fullname, cv.val) for cv in all_opts]))
+                    ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
 
 
 class TheanoConfigParser(object):
@@ -226,8 +226,18 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
                                  configparam.fullname)
         configparam.doc = doc
         configparam.in_c_key = in_c_key
-        # trigger a read of the value from config files and env vars
-        configparam.__get__()
+        # Trigger a read of the value from config files and env vars
+        # This allow to filter wrong value from the user.
+        if not callable(configparam.default):
+            configparam.__get__()
+        else:
+            # We do not want to evaluate now the default value when it is a callable.
+            try:
+                fetch_val_for_key(configparam.fullname)
+                # The user provided a value, filter it now.
+                configparam.__get__()
+            except KeyError:
+                pass
         setattr(root.__class__, sections[0], configparam)
         _config_var_list.append(configparam)
 
@@ -253,12 +263,14 @@ class ConfigParam(object):
         # invalid and causes a crash or has unwanted side effects.
 
     def __get__(self, *args):
-        #print "GETTING PARAM", self.fullname, self, args
         if not hasattr(self, 'val'):
             try:
                 val_str = fetch_val_for_key(self.fullname)
             except KeyError:
-                val_str = self.default
+                if callable(self.default):
+                    val_str = self.default()
+                else:
+                    val_str = self.default
             self.__set__(None, val_str)
         #print "RVAL", self.val
         return self.val
