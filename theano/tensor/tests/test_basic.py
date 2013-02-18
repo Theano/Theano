@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
-        tensor_copy, tensordot, TensorType, unbroadcast,
+        tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
@@ -40,7 +40,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
-        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag)
+        itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
+        nonzero, flatnonzero, nonzero_values)
 from theano.tests import unittest_tools as utt
 from theano.printing import debugprint
 
@@ -1823,6 +1824,166 @@ def test_eye():
         # N > M, k != 0
         yield check, dtype, 5, 3, 1
         yield check, dtype, 5, 3, -1
+
+
+class test_triangle(unittest.TestCase):
+    def test_tri(self):
+        def check(dtype, N, M_=None, k=0):
+            # Theano does not accept None as a tensor.
+            # So we must use a real value.
+            M = M_
+            # Currently DebugMode does not support None as inputs even if this is
+            # allowed.
+            if M is None and theano.config.mode in ['DebugMode', 'DEBUG_MODE']:
+                M = N
+            N_symb = tensor.iscalar()
+            M_symb = tensor.iscalar()
+            k_symb = tensor.iscalar()
+            f = function([N_symb, M_symb, k_symb],
+                        tri(N_symb, M_symb, k_symb, dtype=dtype))
+            result = f(N, M, k)
+            self.assertTrue(
+                numpy.allclose(result, numpy.tri(N, M_, k, dtype=dtype)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
+        for dtype in ALL_DTYPES:
+            yield check, dtype, 3
+            # M != N, k = 0
+            yield check, dtype, 3, 5
+            yield check, dtype, 5, 3
+            # N == M, k != 0
+            yield check, dtype, 3, 3, 1
+            yield check, dtype, 3, 3, -1
+            # N < M, k != 0
+            yield check, dtype, 3, 5, 1
+            yield check, dtype, 3, 5, -1
+            # N > M, k != 0
+            yield check, dtype, 5, 3, 1
+            yield check, dtype, 5, 3, -1
+
+
+    def test_tril_triu(self):
+        def check_l(m, k=0):
+            m_symb = matrix(dtype=m.dtype)
+            k_symb = iscalar()
+            f = function([m_symb, k_symb], tril(m_symb, k_symb))
+            result = f(m, k)
+            self.assertTrue(numpy.allclose(result, numpy.tril(m, k)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
+
+        def check_u(m, k=0):
+            m_symb = matrix(dtype=m.dtype)
+            k_symb = iscalar()
+            f = function([m_symb, k_symb], triu(m_symb, k_symb))
+            result = f(m, k)
+            self.assertTrue(numpy.allclose(result, numpy.triu(m, k)))
+            self.assertTrue(result.dtype == numpy.dtype(dtype))
+
+        for dtype in ALL_DTYPES:
+            m = rand_of_dtype((10, 10), dtype)
+            yield check_l, m, 0
+            yield check_l, m, 1
+            yield check_l, m, -1
+
+            yield check_u, m, 0
+            yield check_u, m, 1
+            yield check_u, m, -1
+
+            m = rand_of_dtype((10, 5), dtype)
+            yield check_l, m, 0
+            yield check_l, m, 1
+            yield check_l, m, -1
+
+            yield check_u, m, 0
+            yield check_u, m, 1
+            yield check_u, m, -1
+
+
+class test_nonzero(unittest.TestCase):
+    def test_nonzero(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
+
+            f_tuple = function([m_symb], nonzero(m_symb, return_matrix=False))
+            f_matrix = function([m_symb], nonzero(m_symb, return_matrix=True))
+
+            self.assertTrue(numpy.allclose(f_matrix(m), numpy.vstack(numpy.nonzero(m))))
+            for i, j in zip(f_tuple(m), numpy.nonzero(m)):
+                self.assertTrue(numpy.allclose(i, j))
+
+        rand0d = numpy.array(rand())
+        self.assertRaises(ValueError, check, rand0d)
+
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
+
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
+
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
+
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
+
+
+    def test_flatnonzero(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
+            f = function([m_symb], flatnonzero(m_symb))
+            result = f(m)
+            assert numpy.allclose(result, numpy.flatnonzero(m))
+
+        rand0d = numpy.array(rand())
+        self.assertRaises(ValueError, check, rand0d)
+
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
+
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
+
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
+
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
+
+    def test_nonzero_values(self):
+        def check(m):
+            m_symb = theano.tensor.tensor(dtype=m.dtype,
+                                        broadcastable = (False,) * m.ndim)
+            f = function([m_symb], nonzero_values(m_symb))
+            result = f(m)
+            assert numpy.allclose(result, m[numpy.nonzero(m)])
+
+        rand0d = rand()
+        self.assertRaises(ValueError, check, rand0d)
+
+        rand1d = rand(8)
+        rand1d[:4] = 0
+        check(rand1d)
+
+        rand2d = rand(8, 9)
+        rand2d[:4] = 0
+        check(rand2d)
+
+        rand3d = rand(8, 9, 10)
+        rand3d[:4] = 0
+        check(rand3d)
+
+        rand4d = rand(8, 9, 10, 11)
+        rand4d[:4] = 0
+        check(rand4d)
 
 
 def test_identity():
@@ -6471,6 +6632,22 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([aiscal, biscal, ciscal],
                                 [Eye()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Eye)
+
+        # Tri
+        aiscal = iscalar()
+        biscal = iscalar()
+        ciscal = iscalar()
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [4, 4, 0], Tri)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [4, 5, 0], Tri)
+
+        self._compile_and_check([aiscal, biscal, ciscal],
+                                [Tri()(aiscal, biscal, ciscal)],
+                                [3, 5, 0], Tri)
 
         # Diagonal
         atens3 = tensor3()

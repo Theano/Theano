@@ -1841,6 +1841,14 @@ class _tensor_py_operators:
         """See `theano.tensor.argmax`"""
         return argmax(self, axis, keepdims=keepdims)
 
+    def nonzero(self, return_matrix=False):
+        """See `theano.tensor.nonzero`"""
+        return nonzero(self, return_matrix=return_matrix)
+
+    def nonzero_values(self):
+        """See `theano.tensor.nonzero_values`"""
+        return nonzero_values(self)
+
     def sort(self,  axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
         from theano.tensor.sort import sort
@@ -3216,6 +3224,270 @@ def ones(shape, dtype=None):
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
+
+
+class Nonzero(gof.Op):
+    """
+    Return the indices of the elements that are non-zero.
+
+    Returns a matrix of shape (ndim, number of nonzero elements) such that
+    element (i,j) is the index in the ith dimension of the jth non-zero
+    element.
+
+    Note this is different than NumPy, which returns a tuple of arrays, one for
+    each dimension of the input array.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+
+    Returns
+    -------
+    result : matrix
+        matrix containing the indices of the non-zero elements of a.
+
+    See Also
+    --------
+    nonzero_values : Return the non-zero elements of the input array
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
+
+    """
+    def make_node(self, a):
+        a = as_tensor_variable(a)
+        if a.ndim == 0:
+            raise ValueError('Nonzero only supports non-scalar arrays.')
+        output = [TensorType(dtype='int64', broadcastable=(False, False))()]
+        return gof.Apply(self, [a], output)
+
+    def perform(self, node, inp, out_):
+        a = inp[0]
+        out, = out_
+
+        result_tuple = numpy.nonzero(a)
+        if len(result_tuple[0]) > 0:
+            result = numpy.vstack(result_tuple)
+        else:
+            result = numpy.zeros((len(result_tuple), 0))
+
+        out[0] = result.astype('int64')
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, 0, inp[0])]
+
+_nonzero = Nonzero()
+
+def nonzero(a, return_matrix=False):
+    """
+    Returns one of the following:
+
+        If return_matrix is False (default, same as NumPy):
+            A tuple of vector arrays such that the ith element of the jth array
+            is the index of the ith non-zero element of the input array in the
+            jth dimension.
+
+        If return_matrix is True (same as Theano Op):
+            Returns a matrix of shape (ndim, number of nonzero elements) such
+            that element (i,j) is the index in the ith dimension of the jth
+            non-zero element.
+
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+
+    return_matrix : bool
+        If True, returns a symbolic matrix. If False, returns a tuple of
+        arrays. Defaults to False.
+
+    Returns
+    -------
+    result : tuple of vectors or matrix
+
+    See Also
+    --------
+    nonzero_values : Return the non-zero elements of the input array
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
+
+    """
+    matrix_result = _nonzero(a)
+    if return_matrix:
+        return matrix_result
+    else:
+        if a.ndim > 0:
+            tuple_result = tuple([matrix_result[i] for i in xrange(a.ndim)])
+        else:
+            tuple_result = tuple([matrix_result[0]])
+        return tuple_result
+
+def flatnonzero(a):
+    """
+    Return a vector of indices that are non-zero in the flattened version of a.
+
+    This is equivalent to nonzero(a.flatten(), return_matrix=True)[0]
+
+    Parameters
+    ----------
+    a : tensor
+        Input tensor
+
+    Returns
+    -------
+    res : vector
+        Output vector, containing the indices of the elements of `a.flatten()`
+        that are non-zero.
+
+    See Also
+    --------
+    nonzero : Return the indices of the non-zero elements of the input array.
+    nonzero_values : Return the non-zero elements of the input array
+    """
+    if a.ndim == 0:
+        raise ValueError('Nonzero only supports non-scalar arrays.')
+    return nonzero(a.flatten(), return_matrix=True)[0]
+
+def nonzero_values(a):
+    """
+    Return a vector of non-zero elements contained in the input array.
+
+    The following behavior works to extract non-zero elements from an array
+    in NumPy but is *NOT* supported by Theano:
+
+        a[numpy.nonzero(a)]
+
+    Instead, the nonzero_values function or method should be used:
+
+        tensor.nonzero_values(a)
+        a.nonzero_values()
+
+    This is equivalent to the following:
+
+        a.flatten()[tensor.flatnonzero(a)]
+
+    Parameters
+    ----------
+    a : tensor
+        Input tensor
+
+    Returns
+    -------
+    res : vector
+        Output vector, containing the non-zero elements of a.
+
+    See Also
+    --------
+    nonzero : Return the indices of the non-zero elements of the input array.
+    flatnonzero : Return the indices of the non-zero elements of the
+        flattened input array.
+    """
+    return a.flatten()[flatnonzero(a)]
+
+class Tri(gof.Op):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
+        self.dtype = dtype
+
+    def make_node(self, N, M, k):
+        N = as_tensor_variable(N)
+        M = as_tensor_variable(M)
+        k = as_tensor_variable(k)
+        return gof.Apply(self, [N, M, k],
+                [TensorType(dtype=self.dtype, broadcastable=(False, False))()])
+
+    def perform(self, node, inp, out_):
+        N, M, k = inp
+        out, = out_
+        out[0] = numpy.tri(N, M, k, dtype=self.dtype)
+
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(type(self))
+
+
+def tri(N, M=None, k=0, dtype=None):
+    """
+    An array with ones at and below the given diagonal and zeros elsewhere.
+
+    Parameters
+    ----------
+    N : int
+        Number of rows in the array.
+    M : int, optional
+        Number of columns in the array.
+        By default, `M` is taken equal to `N`.
+    k : int, optional
+        The sub-diagonal at and below which the array is filled.
+        `k` = 0 is the main diagonal, while `k` < 0 is below it,
+        and `k` > 0 is above.  The default is 0.
+    dtype : dtype, optional
+        Data type of the returned array.  The default is float.
+
+    Returns
+    -------
+    tri : Array of shape (N, M)
+        Array with its lower triangle filled with ones and zero elsewhere;
+        in other words ``T[i,j] == 1`` for ``i <= j + k``, 0 otherwise.
+    """
+    if dtype is None:
+        dtype = config.floatX
+    if M is None:
+        M = N
+    op = Tri(dtype)
+    return op(N, M, k)
+
+
+def tril(m, k=0):
+    """
+    Lower triangle of an array.
+
+    Return a copy of an array with elements above the `k`-th diagonal zeroed.
+
+    Parameters
+    ----------
+    m : array_like, shape (M, N)
+        Input array.
+    k : int, optional
+        Diagonal above which to zero elements.  `k = 0` (the default) is the
+        main diagonal, `k < 0` is below it and `k > 0` is above.
+
+    Returns
+    -------
+    tril : array, shape (M, N)
+        Lower triangle of `m`, of same shape and data-type as `m`.
+
+    See Also
+    --------
+    triu : same thing, only for the upper triangle
+    """
+    return m * tri(m.shape[0], m.shape[1], k=k, dtype=m.dtype)
+
+
+def triu(m, k=0):
+    """
+    Upper triangle of an array.
+
+    Return a copy of a matrix with the elements below the `k`-th diagonal
+    zeroed.
+
+    Please refer to the documentation for `tril` for further details.
+
+    See Also
+    --------
+    tril : lower triangle of an array
+    """
+    return m * (1 - tri(m.shape[0], m.shape[1], k=k-1, dtype=m.dtype))
 
 
 class Eye(gof.Op):
