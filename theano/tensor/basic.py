@@ -7196,6 +7196,10 @@ class MakeSlice(Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def grad(self, inputs, grads): 
+        return [DiconnectedType()() for i in inputs]    
+
 make_slice = MakeSlice()
  
 
@@ -7226,7 +7230,13 @@ slicetype = SliceType()
 
 NoneConst = Constant(NoneTypeT(), None, name = 'None')
     
-def adv_broadcastable(a, idx):
+def adv_index_broadcastable_pattern(a, idx):
+    """
+    This function is only used to determine the broardcast pattern for AdvancedSubtensor output variable.
+
+    For this, we make a fake ndarray and a fake idx and call use ask numpy the output. From this, we find the output broadcast pattern.
+    """
+
     def replace_slice(v):
         if isinstance(v, gof.Apply):
             if len(v.outputs) != 1:
@@ -7236,7 +7246,7 @@ def adv_broadcastable(a, idx):
             else:
                 v = v.outputs[0]
             
-        if v is NoneConst:
+        if NoneConst.equals(v):
             return None
         if isinstance(v.type, SliceType): 
             return slice(None,None)
@@ -7275,7 +7285,7 @@ class AdvancedSubtensor(Op):
         return gof.Apply(self,
                         (x,) + index,
                          [tensor(dtype = x.type.dtype, 
-                                 broadcastable = adv_broadcastable(x, index) )])
+                                 broadcastable = adv_index_broadcastable_pattern(x, index) )])
               
 
     def R_op(self, inputs, eval_points):
@@ -7379,6 +7389,8 @@ class AdvancedIncSubtensor(Op):
         out, = out_
         if not self.inplace:
             out[0] = inputs[0].copy()
+        else: 
+            out[0] = inputs[0]
         
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
