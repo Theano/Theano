@@ -126,9 +126,7 @@ def _config_print(thing, buf):
     for cv in _config_var_list:
         print >> buf, cv
         print >> buf, "    Doc: ", cv.doc
-        if not hasattr(cv, 'val'):
-            cv.__get__()
-        print >> buf, "    Value: ", cv.val
+        print >> buf, "    Value: ", cv.__get__()
         print >> buf, ""
 
 
@@ -142,11 +140,8 @@ def get_config_md5():
     """
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
-    for opt in all_opts:
-        if not hasattr(opt, 'val'):
-            opt.__get__()
     return theano.gof.cc.hash_from_code('\n'.join(
-                    ['%s = %s' % (cv.fullname, cv.val) for cv in all_opts]))
+                    ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
 
 
 class TheanoConfigParser(object):
