@@ -8,6 +8,7 @@ from tempfile import mkstemp
 import unittest
 import warnings
 from copy import copy, deepcopy
+from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
 import __builtin__
 builtin_min = __builtin__.min
@@ -25,7 +26,7 @@ from theano.gof.python25 import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, Subtensor, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
-        fscalar, zeros_like, sum, tensor3, vector, izip, add, addbroadcast,
+        fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,

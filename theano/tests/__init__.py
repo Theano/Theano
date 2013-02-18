@@ -1,6 +1,6 @@
 
 try:
-    from main import main, TheanoNoseTester
+    from theano.tests.main import main, TheanoNoseTester
 except ImportError:
     pass
-import unittest_tools
+from theano.tests import unittest_tools
