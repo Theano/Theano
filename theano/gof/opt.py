@@ -49,6 +49,16 @@ class Optimizer(object):
             _optimizer_idx[0] += 1
         return self._optimizer_idx
 
+    def __eq__(self, other):
+        # added to override the  __eq__ implementation that may be inherited
+        # in subclasses from other bases.
+        return id(self) == id(other)
+
+    def __neq__(self, other):
+        # added to override the  __neq__ implementation that may be inherited
+        # in subclasses from other bases.
+        return id(self) != id(other)
+
     def apply(self, fgraph):
         """WRITEME
         Applies the optimization to the provided L{FunctionGraph}. It may
@@ -176,14 +186,6 @@ class SeqOptimizer(Optimizer, list):
             validate_time = None
         return (self, l, validate_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs)
-
-    def __eq__(self, other):
-        #added to override the list's __eq__ implementation
-        return id(self) == id(other)
-
-    def __neq__(self, other):
-        #added to override the list's __neq__ implementation
-        return id(self) != id(other)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
