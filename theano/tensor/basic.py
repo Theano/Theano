@@ -5113,11 +5113,11 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         return the_op(real_x, y, ilist)
     elif isinstance(x.owner.op, AdvancedSubtensor):
         real_x = x.owner.inputs[0]
-        coordvec_0 = x.owner.inputs[1]
-        coordvec_1 = x.owner.inputs[2]
+        ilist = x.owner.inputs[1:]
+
         the_op = AdvancedIncSubtensor(inplace,
                                       set_instead_of_inc=set_instead_of_inc)
-        return the_op(real_x, y, coordvec_0, coordvec_1)
+        return the_op(real_x, y, *ilist)
     elif isinstance(x.owner.op, DimShuffle):
         inner_x = x.owner.inputs[0]
         # In the dimshuffle case, there are in fact two dimshuffles:
