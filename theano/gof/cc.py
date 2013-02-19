@@ -9,7 +9,7 @@ import os
 import StringIO
 import sys
 from itertools import izip
-
+from six import PY3
 
 import numpy
 
@@ -17,7 +17,9 @@ if sys.version_info[:2] >= (3, 0):
     import hashlib
 
     def hash_from_code(msg):
-        return hashlib.md5(msg.encode()).hexdigest()
+        # Python 3 does not like module names that start with
+        # a digit.
+        return 'm' + hashlib.md5(msg.encode()).hexdigest()
 
 elif sys.version_info[:2] >= (2, 5):
     import hashlib
@@ -1232,19 +1234,25 @@ class CLinker(link.Linker):
 
         # Static methods that can run and destroy the struct built by
         # instantiate.
-        static = """
+        if PY3:
+            static = """
+        int {struct_name}_executor({struct_name} *self) {{
+            return self->run();
+        }}
+
+        void {struct_name}_destructor(PyObject *capsule) {{
+            {struct_name} *self = ({struct_name} *)PyCapsule_GetContext(capsule);
+            delete self;
+        }}
+        """.format(struct_name=self.struct_name)
+        else:
+            static = """
         int %(struct_name)s_executor(%(struct_name)s* self) {
             return self->run();
         }
 
         void %(struct_name)s_destructor(void* executor, void* self) {
-            //printf("doing cleanup\\n");
-            //fflush(stdout);
-            // ((%(struct_name)s*)self)->cleanup();
-            // free(self);
             delete ((%(struct_name)s*)self);
-            //printf("done cleanup\\n");
-            //fflush(stdout);
         }
         """ % dict(struct_name=self.struct_name)
 
@@ -1310,7 +1318,17 @@ class CLinker(link.Linker):
         print >> code, '  }'
         print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
         print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ');'
-        print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' % locals()
+        if PY3:
+            print >> code, """\
+    PyObject* thunk = PyCapsule_New((void*)(&{struct_name}_executor), NULL, {struct_name}_destructor);
+    if (thunk != NULL && PyCapsule_SetContext(thunk, struct_ptr) != 0) {{
+        PyErr_Clear();
+        Py_DECREF(thunk);
+        thunk = NULL;
+    }}
+""".format(**locals())
+        else:
+            print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' % locals()
         print >> code, "  return thunk; }"
         return code.getvalue()
 

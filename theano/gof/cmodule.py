@@ -13,7 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from six import b, next
+from six import PY3, b, next
 
 import distutils.sysconfig
 
@@ -165,11 +165,27 @@ class DynamicModule(object):
         print >> stream, "};"
 
     def print_init(self, stream):
-        print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
-        for b in self.init_blocks:
-            print >> stream, '  ', b
-        print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                % self.name)
+        if PY3:
+            print >> stream, """\
+static struct PyModuleDef moduledef = {{
+      PyModuleDef_HEAD_INIT,
+      "{name}",
+      NULL,
+      -1,
+      MyMethods,
+}};
+""".format(name=self.name)
+            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.name
+            for b in self.init_blocks:
+                print >> stream, '  ', b
+            print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
+            print >> stream, "    return m;"
+        else:
+            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
+            for b in self.init_blocks:
+                print >> stream, '  ', b
+            print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
+                                    % self.name)
         print >> stream, "}"
 
     def add_include(self, str):
@@ -1639,6 +1655,7 @@ class GCC_compiler(object):
         if py_module:
             #touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
+            assert os.path.isfile(lib_filename)
             return dlimport(lib_filename)
 
 
