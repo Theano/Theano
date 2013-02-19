@@ -224,8 +224,8 @@ def inplace_elemwise_optimizer_op(OP):
                         candidate_output].type:
                         continue
 
-                    inplace_pattern = dict(baseline, **{candidate_output:
-                                                            candidate_input})
+                    inplace_pattern = dict(baseline)
+                    inplace_pattern[candidate_output] = candidate_input
                     try:
                         if hasattr(op.scalar_op, "make_new_inplace"):
                             new_scal = op.scalar_op.make_new_inplace(
@@ -510,7 +510,7 @@ class MakeVector(T.Op):
                     "The upcast of the inputs to MakeVector should match the "
                     "dtype given in __init__.")
             if not all(self.dtype == T.cast(i, dtype=dtype).dtype
-                       for a in inputs):
+                       for i in inputs):
                 raise TypeError("MakeVector.make_node expected inputs"
                                 " upcastable to %s. got %s" % (
                         self.dtype,

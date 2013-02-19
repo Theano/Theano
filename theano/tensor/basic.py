@@ -6,6 +6,7 @@ import sys
 import warnings
 from itertools import izip
 
+from six import PY3
 import numpy
 #from copy import copy as python_copy
 
@@ -1513,6 +1514,8 @@ class _tensor_py_operators:
             raise
         except (NotImplementedError, TypeError):
             return NotImplemented
+    if PY3:
+        __truediv__ = __div__
 
     def __pow__(self, other):
         # See explanation in __add__ for the error catched

@@ -13,6 +13,12 @@ from itertools import izip
 import __builtin__
 builtin_min = __builtin__.min
 
+from six import PY3
+if PY3:
+    operator_div = operator.truediv
+else:
+    operator_div = operator.div
+
 from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
@@ -4420,7 +4426,7 @@ class t_dot(unittest.TestCase):
                          == ['Incompatible', 'shapes', 'for', 'gemv'] or
                     # Reported by Theano when 'exception_verbosity' is set
                     # to 'high'.
-                    e[0].split()[0:3] == ['dot', 'product', 'failed.'],
+                    e.args[0].split()[0:3] == ['dot', 'product', 'failed.'],
                     e)
         finally:
             _logger.setLevel(oldlevel)
@@ -5891,7 +5897,7 @@ class test_arithmetic_cast(unittest.TestCase):
             for cfg in ('numpy+floatX', ):  # Used to test 'numpy' as well.
                 config.cast_policy = cfg
                 for op in (operator.add, operator.sub, operator.mul,
-                           operator.div, operator.floordiv):
+                           operator_div, operator.floordiv):
                     for a_type in dtypes:
                         for b_type in dtypes:
                             # Note that we do not test division between
@@ -5899,7 +5905,7 @@ class test_arithmetic_cast(unittest.TestCase):
                             # Theano deals with integer division in its own
                             # special way (depending on `config.int_division`).
                             is_int_division = (
-                                    op is operator.div and
+                                    op is operator_div and
                                     a_type in tensor.discrete_dtypes and
                                     b_type in tensor.discrete_dtypes)
                             # We will test all meaningful combinations of
@@ -5982,12 +5988,12 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
-                                numpy_version =numpy.__version__.split('.')[:2]
+                                numpy_version = numpy.__version__.split('.')[:2]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     b_type == 'float32' and
                                     combo == ('scalar', 'array') and
-                                    bool(numpy_version >= [1, 6]) and
+                                    bool(numpy_version >= ['1', '6']) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtypes == ['complex64',
                                                      'complex64']):

@@ -17,9 +17,13 @@ if sys.version_info[:2] >= (3, 0):
     import hashlib
 
     def hash_from_code(msg):
+        # hashlib.md5() requires an object that supports buffer interface,
+        # but Python 3 (unicode) strings don't.
+        if isinstance(msg, str):
+            msg = msg.encode()
         # Python 3 does not like module names that start with
         # a digit.
-        return 'm' + hashlib.md5(msg.encode()).hexdigest()
+        return 'm' + hashlib.md5(msg).hexdigest()
 
 elif sys.version_info[:2] >= (2, 5):
     import hashlib
