@@ -168,14 +168,13 @@ def get_scalar_constant_value(v):
     return tensor.get_scalar_constant_value(v)
 
 
-def test(**kwds):
-    try:
-        from theano.tests import TheanoNoseTester
-    except ImportError:
+import theano.tests
+if hasattr(theano.tests, "TheanoNoseTester"):
+    test = theano.tests.TheanoNoseTester().test
+else:
+    def test():
         raise ImportError("The nose module is not installed."
                           " It is needed for Theano tests.")
-    else:
-        return TheanoNoseTester().test(**kwds)
 
 # This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
 # depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
