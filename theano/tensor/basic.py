@@ -1764,6 +1764,8 @@ class _tensor_py_operators:
                 and numpy.all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                         numpy.ndarray,
+                        theano.tensor.sharedvar.TensorSharedVariable))
+                    and as_tensor_variable(args[0]).type.broadcastable == (False,) ):
             return AdvancedSubtensor()(self, *args)
         else:
             if numpy.newaxis in args:
