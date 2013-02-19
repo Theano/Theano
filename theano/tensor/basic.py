@@ -1648,7 +1648,8 @@ class _tensor_py_operators:
                         list,
                         TensorVariable,
                         TensorConstant,
-                        theano.tensor.sharedvar.TensorSharedVariable))):
+                        theano.tensor.sharedvar.TensorSharedVariable))
+                    and as_tensor_variable(args[0]).type.broadcastable == (False,) ):
                 return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor()(self, *args)
