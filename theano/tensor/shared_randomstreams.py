@@ -8,7 +8,7 @@ import numpy
 
 from theano.compile.sharedvalue import (SharedVariable, shared_constructor,
                                         shared)
-import raw_random
+from theano.tensor import raw_random
 
 
 class RandomStateSharedVariable(SharedVariable):

@@ -10,16 +10,15 @@ import time
 
 import numpy
 
-import graph
-from fg import InconsistencyError
-import op
-import utils
-import unify
-import toolbox
+from theano.gof import graph
+from theano.gof.fg import InconsistencyError
+from theano.gof import op
+from theano.gof import utils
+from theano.gof import unify
+from theano.gof import toolbox
 import theano
 from theano import config
 from theano.gof.python25 import any, all, deque
-from theano.configparser import AddConfigVar, BoolParam
 
 #if sys.version_info[:2] >= (2,5):
 #  from collections import defaultdict

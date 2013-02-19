@@ -33,8 +33,8 @@ from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
 from theano.compile.profiling import ScanProfileStats
 
-import scan_utils
-from scan_utils import safe_new, forced_replace
+from theano.scan_module import scan_utils
+from theano.scan_module.scan_utils import safe_new, forced_replace
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')

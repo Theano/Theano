@@ -1,4 +1,4 @@
-from graph import list_of_nodes
+from theano.gof.graph import list_of_nodes
 from theano.gof.python25 import any, defaultdict
 
 

@@ -27,12 +27,12 @@ from theano.gof import PureOp, Apply
 
 import theano.tensor
 from theano.tensor import TensorType
-import gof
+from theano import gof
 
-from compile import optdb
-from tensor import opt
-from scan_module.scan_utils import find_up
-from scan_module.scan_utils import clone
+from theano.compile import optdb
+from theano.tensor import opt
+from theano.scan_module.scan_utils import find_up
+from theano.scan_module.scan_utils import clone
 
 _logger = logging.getLogger('theano.ifelse')
 

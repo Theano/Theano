@@ -2,7 +2,7 @@ import numpy
 from theano import gof
 from theano.gof import Constant, Generic, Op
 from theano.gof.sched import key_to_cmp
-from basic import tensor
+from theano.tensor import tensor
 import theano
 ##########################
 # Disk Access
