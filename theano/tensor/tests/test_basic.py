@@ -16,8 +16,19 @@ builtin_min = __builtin__.min
 from six import PY3
 if PY3:
     operator_div = operator.truediv
+    # In python 3.x, when an exception is reraised it saves original
+    # exception in its args, therefore in order to find the actual
+    # message, we need to unpack arguments recurcively.
+    def exc_message(e):
+        msg = e.args[0]
+        if isinstance(msg, Exception):
+            return exc_message(msg)
+        return msg
 else:
     operator_div = operator.div
+    def exc_message(e):
+        return e[0]
+
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -4416,17 +4427,18 @@ class t_dot(unittest.TestCase):
                 tz = eval_outputs([z])
                 assert False    # should have raised exception
             except ValueError, e:
+                e0 = exc_message(e)
                 self.assertTrue(
                     # Reported by numpy.
-                    e[0].split()[1:4] == ['are', 'not', 'aligned'] or
+                    e0.split()[1:4] == ['are', 'not', 'aligned'] or
                     # Reported by blas or Theano.
-                    e[0].split()[0:2] == ['Shape', 'mismatch:'] or
+                    e0.split()[0:2] == ['Shape', 'mismatch:'] or
                     # Reported by Theano perform
-                    e[0].split()[0:4]
+                    e0.split()[0:4]
                          == ['Incompatible', 'shapes', 'for', 'gemv'] or
                     # Reported by Theano when 'exception_verbosity' is set
                     # to 'high'.
-                    e.args[0].split()[0:3] == ['dot', 'product', 'failed.'],
+                    e0.split()[0:3] == ['dot', 'product', 'failed.'],
                     e)
         finally:
             _logger.setLevel(oldlevel)
