@@ -4113,8 +4113,9 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-
-        elif isinstance(entry, int):
+        # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+        # See <http://projects.scipy.org/numpy/ticket/2235>.
+        elif isinstance(entry, (numpy.integer, int)):
             return entry
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
