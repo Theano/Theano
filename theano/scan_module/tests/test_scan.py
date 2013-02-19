@@ -3427,6 +3427,23 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(outs[2], v_w + 3)
         assert numpy.allclose(sh.get_value(), v_w + 4)
 
+    def test_clone(self):
+        def test(x, y, mention_y):
+            if mention_y:
+                d = 0.1 + 0 * y
+            else:
+                d = 0.1
+            out = theano.clone(y, replace={x:x + d})
+            theano.printing.debugprint(out)
+            return theano.function([], out)()
+
+        x = theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
+        assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=False),
+                              1.21000003815)
+        assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
+                              1.21000003815)
+
+
 def test_speed():
     #
     # This function prints out the speed of very simple recurrent

@@ -169,14 +169,24 @@ def clone(output,
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
+    items = replace.items()
+    tmp_replace = [(x, x.type()) for x, y in items]
+    new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
+                                                           items)]
+    _, _outs, _ = rebuild_collect_shared(output,
+                                         [],
+                                         tmp_replace,
+                                         [],
+                                         strict,
+                                         copy_inputs)
 
-    inps, outs, other_stuff = rebuild_collect_shared(output,
-                                                     [],
-                                                     replace,
-                                                     [],
-                                                     strict,
-                                                     copy_inputs
-                                                     )
+    _, outs, _ = rebuild_collect_shared(_outs,
+                                        [],
+                                        new_replace,
+                                        [],
+                                        strict,
+                                        copy_inputs)
+
     return outs
 
 
