@@ -138,6 +138,7 @@ from theano.gof import (utils, Op, view_roots, DestroyHandler,
                         InconsistencyError, toolbox, SequenceDB,
                         EquilibriumOptimizer, Apply,
                         ReplacementDidntRemovedError)
+from theano.gof.cmodule import GCC_compiler
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 from theano.gof.python25 import all, any
@@ -373,9 +374,8 @@ def default_blas_ldflags():
 
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
-        if all(not os.path.exists(dir) for dir in blas_info['library_dirs']):
-            return "-lblas"
-        return ' '.join(
+        if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
+            return ' '.join(
                         #TODO: the Gemm op below should separate the
                         # -L and -l arguments into the two callbacks
                         # that CLinker uses for that stuff.  for now,
@@ -386,7 +386,17 @@ def default_blas_ldflags():
                         [])
 #                       ['-I%s' % l for l in blas_info['include_dirs']])
     except KeyError:
+        pass
+
+    # Even if we could not detect what was used for numpy, or if these
+    # libraries are not found, most Linux systems have a libblas.so
+    # readily available. We try to see if that's the case, rather
+    # than disable blas.
+    if GCC_compiler.try_flags(["-lblas"]):
         return "-lblas"
+    else:
+        return ""
+
 
 AddConfigVar('blas.ldflags',
         "lib[s] to include for [Fortran] level-3 blas implementation",

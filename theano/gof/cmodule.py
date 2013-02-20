@@ -1484,6 +1484,49 @@ class GCC_compiler(object):
         return cxxflags
 
     @staticmethod
+    def try_flags(flag_list):
+        '''
+        Try to compile a dummy file with these flags.
+
+        Returns True if compilation was successful, False if there
+        were errors.
+        '''
+        if not theano.config.cxx:
+            return False
+
+        rval = True
+        try:
+            code = """
+            int main(int argc, char** argv)
+            {
+                return 0;
+            }
+            """
+            fd, path = tempfile.mkstemp(suffix='.c', prefix='try_flags_')
+            dummy_stdin = open(os.devnull)
+            try:
+                os.write(fd, code)
+                os.close(fd)
+                fd = None
+                proc = call_subprocess_Popen(['g++', path] + flag_list,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        stdin=dummy_stdin.fileno())
+                proc.wait()
+                if proc.returncode != 0:
+                    rval = False
+            finally:
+                del dummy_stdin
+                try:
+                    if fd is not None:
+                        os.close(fd)
+                finally:
+                    os.remove(path)
+        except OSError, e:
+            rval = False
+        return rval
+
+    @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True):
