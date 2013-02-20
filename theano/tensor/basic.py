@@ -496,7 +496,7 @@ def get_scalar_constant_value(v):
         # on passing it None)
         raise NotScalarConstantError()
 
-    if isinstance(v, (int, float)):
+    if isinstance(v, (numpy.integer, int, float)):
         return numpy.asarray(v)
 
     def numpy_scalar(n):
