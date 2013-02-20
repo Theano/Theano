@@ -531,7 +531,7 @@ def char_from_number(number):
         remainder = number % base
         new_char = chr(ord('A') + remainder)
         rval = new_char + rval
-        number /= base
+        number //= base
 
     return rval
 
