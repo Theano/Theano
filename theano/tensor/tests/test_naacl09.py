@@ -66,7 +66,7 @@ class QuadraticDenoisingAA(module.Module):
         """
         super(QuadraticDenoisingAA, self).__init__()
 
-        self.random = T.RandomStreams()
+        self.random = T.randomstreams.RandomStreams()
 
         # MODEL CONFIGURATION
 #        self.regularize = regularize

@@ -31,36 +31,28 @@ import logging
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
-        fmt='%(levelname)s (%(name)s): %(message)s')
+    fmt='%(levelname)s (%(name)s): %(message)s')
 logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
 
-import configparser
-import configdefaults
-
-config = configparser.TheanoConfigParser()
+from theano.configdefaults import config
 
 # Version information.
-import theano.version
-__version__ = theano.version.version
+from theano.version import version as __version__
 
-import gof
+from theano.gof import \
+    CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
+    Container, \
+    InconsistencyError, FunctionGraph, \
+    Apply, Variable, Constant, \
+    Op, OpenMPOp, \
+    opt, \
+    toolbox, \
+    Type, Generic, generic, \
+    object2, utils
 
-from gof import \
-     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker, \
-     Container, \
-     InconsistencyError, FunctionGraph, \
-     Apply, Variable, Constant, \
-     Op, OpenMPOp,\
-     opt, \
-     toolbox, \
-     Type, Generic, generic, \
-     object2, utils
-
-import compile
-
-from compile import \
+from theano.compile import \
     SymbolicInput, In, \
     SymbolicOutput, Out, \
     Mode, \
@@ -71,43 +63,37 @@ from compile import \
     ProfileMode, \
     Param, shared
 
-from misc.safe_asarray import _asarray
-
-import theano.tests
-if hasattr(theano.tests, "TheanoNoseTester"):
-    test = theano.tests.TheanoNoseTester().test
-else:
-    def test():
-        raise ImportError("The nose module is not installed."
-                          " It is needed for Theano tests.")
+from theano.misc.safe_asarray import _asarray
 
 FancyModule = Module
 
-from printing import \
-    pprint, pp
-import scan_module
-from scan_module import scan, map, reduce, foldl, foldr, clone
+from theano.printing import pprint, pp
 
-from updates import Updates, OrderedUpdates
+from theano.scan_module import scan, map, reduce, foldl, foldr, clone
 
-import tensor
-import scalar
+from theano.updates import Updates, OrderedUpdates
+
+# scan_module import above initializes tensor and scalar making these imports redundant
+#import tensor
+#import scalar
 #we don't import by default as we don't want to force having scipy installed.
 #import sparse
-import gradient
-from gradient import Rop, Lop, grad
+
+from theano.gradient import Rop, Lop, grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
-# We can't test the driver during import of theano.sandbox.cuda as
-# this cause circular import dependency. So we also test it manually
-# after the import
+    # We can't test the driver during import of theano.sandbox.cuda as
+    # this cause circular import dependency. So we also test it manually
+    # after the import
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
+
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
 # Use config.numpy to call numpy.seterr
 import numpy
+
 if config.numpy.seterr_all == 'None':
     _all = None
 else:
@@ -129,11 +115,11 @@ if config.numpy.seterr_invalid == 'None':
 else:
     _invalid = config.numpy.seterr_invalid
 numpy.seterr(
-        all=_all,
-        divide=_divide,
-        over=_over,
-        under=_under,
-        invalid=_invalid)
+    all=_all,
+    divide=_divide,
+    over=_over,
+    under=_under,
+    invalid=_invalid)
 del _all, _divide, _over, _under, _invalid
 
 ## import scalar_opt
@@ -174,10 +160,28 @@ def get_scalar_constant_value(v):
     If `v` is not some view of constant data, then raise a
     tensor.basic.NotScalarConstantError.
     """
-    if hasattr(theano, 'sparse') and isinstance(v.type,
-                                                theano.sparse.SparseType):
-        if v.owner is not None and isinstance(v.owner.op,
-                                                 theano.sparse.CSM):
+    # Is it necessary to test for presence of theano.sparse at runtime?
+    if 'sparse' in globals() and isinstance(v.type, sparse.SparseType):
+        if v.owner is not None and isinstance(v.owner.op, sparse.CSM):
             data = v.owner.inputs[0]
             return tensor.get_scalar_constant_value(data)
     return tensor.get_scalar_constant_value(v)
+
+
+import theano.tests
+if hasattr(theano.tests, "TheanoNoseTester"):
+    test = theano.tests.TheanoNoseTester().test
+else:
+    def test():
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
+
+# This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
+# depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
+# here and inject an instance in tensor.
+from theano import tensor
+from theano.tensor.randomstreams import RandomStreams
+# Imitate the numpy.random symbol with a tensor.random one
+tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)
+del RandomStreams
+__import__('theano.tensor.shared_randomstreams')

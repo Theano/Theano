@@ -25,8 +25,8 @@ from theano.gof.cc import hash_from_code
 from theano.misc.windows import call_subprocess_Popen
 
 # we will abuse the lockfile mechanism when reading and writing the registry
-import compilelock
-from compiledir import gcc_version_str
+from theano.gof import compilelock
+from theano.gof.compiledir import gcc_version_str
 
 from theano.configparser import AddConfigVar, BoolParam
 

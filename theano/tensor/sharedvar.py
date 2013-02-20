@@ -3,7 +3,7 @@ import traceback
 import numpy
 
 import theano.tensor.basic
-from basic import TensorType, _tensor_py_operators
+from theano.tensor.basic import TensorType, _tensor_py_operators
 from theano.compile import shared_constructor, SharedVariable
 
 

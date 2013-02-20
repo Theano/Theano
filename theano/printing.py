@@ -24,9 +24,9 @@ except ImportError:
     pydot_imported = False
 
 import theano
-import gof
+from theano import gof
 from theano import config
-from gof import Op, Apply
+from theano.gof import Op, Apply
 from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode

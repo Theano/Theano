@@ -15,7 +15,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
 
-import scan
+from theano.scan_module import scan
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_views')
@@ -58,7 +58,7 @@ def map(fn,
 
     :param name: See ``scan``.
     """
-    return scan.scan(fn=fn,
+    return scan(fn=fn,
                      sequences=sequences,
                      outputs_info=[],
                      non_sequences=non_sequences,
@@ -101,7 +101,7 @@ def reduce(fn,
 
     :param name: See ``scan``.
     """
-    rval = scan.scan(fn=fn,
+    rval = scan(fn=fn,
                      sequences=sequences,
                      outputs_info=outputs_info,
                      non_sequences=non_sequences,

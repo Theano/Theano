@@ -44,13 +44,13 @@ AddConfigVar('gcc.cxxflags',
         StrParam(""))
 
 # gof imports
-import graph
-import link
-import utils
+from theano.gof import graph
+from theano.gof import link
+from theano.gof import utils
 
-from compilelock import get_lock, release_lock
+from theano.gof.compilelock import get_lock, release_lock
 
-import cmodule
+from theano.gof import cmodule
 
 
 import logging

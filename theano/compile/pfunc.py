@@ -3,12 +3,11 @@
 __docformat__ = 'restructuredtext en'
 
 
-from profiling import ProfileStats
-
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
+from theano.compile.profiling import ProfileStats
 from theano.gof import Variable, Constant
 from theano.gof.python25 import any
 
@@ -293,6 +292,7 @@ class Param(object):
             `mutable` flag.
             False: do not permit any output to be aliased to the input
 
+        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
             type required by the parameter `variable`.
             True -> function arguments must exactly match the type
