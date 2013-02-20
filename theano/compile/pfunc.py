@@ -179,10 +179,11 @@ def rebuild_collect_shared(outputs,
     # it is also not clear when/how to use the value of that shared
     # variable (is it a default? ignored?, if the shared variable changes,
     # does that function default also change?).
-    if any([isinstance(v, SharedVariable) for v in input_variables]):
-        raise TypeError(('Cannot use a shared variable (%s) as explicit '
-                         'input. Consider substituting a non-shared'
-                         ' variable via the `givens` parameter') % v)
+    for v in input_variables:
+        if isinstance(v, SharedVariable):
+            raise TypeError(('Cannot use a shared variable (%s) as explicit '
+                             'input. Consider substituting a non-shared'
+                             ' variable via the `givens` parameter') % v)
 
     # Fill update_d and update_expr with provided updates
     if updates is None:

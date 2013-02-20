@@ -632,10 +632,11 @@ class T_picklefunction(unittest.TestCase):
 
         f = theano.function([x], theano.tensor.dot(x, y))
 
-        import StringIO
-        fp = StringIO.StringIO()
+        from six import BytesIO
+        fp = BytesIO()
         p = cPickle.Pickler(fp, 2)
         p.persistent_id = pers_save
+        p.dump(f)
         try:
             p.dump(f)
         except NotImplementedError, e:
@@ -643,7 +644,7 @@ class T_picklefunction(unittest.TestCase):
                 return
             else:
                 raise
-        fp2 = StringIO.StringIO(fp.getvalue())
+        fp2 = BytesIO(fp.getvalue())
         fp.close()
         p = cPickle.Unpickler(fp2)
         p.persistent_load = pers_load

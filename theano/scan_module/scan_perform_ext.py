@@ -1,6 +1,5 @@
-import logging
-import os
-import sys
+import os, logging, sys
+from six.moves import reload_module as reload
 
 import theano
 from theano import config

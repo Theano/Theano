@@ -123,7 +123,9 @@ class DimShuffle(Op):
 
         for i, j in enumerate(new_order):
             if j != 'x':
-                if not isinstance(j, int):
+                # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+                # See <http://projects.scipy.org/numpy/ticket/2235>.
+                if not isinstance(j, (int, numpy.integer)):
                     raise TypeError(
                             "DimShuffle indices must be python ints.")
                 if j >= len(input_broadcastable):
@@ -1178,7 +1180,9 @@ class CAReduce(Op):
 
         if axis is None:
             self.axis = axis
-        elif isinstance(axis, int):
+        # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+        # See <http://projects.scipy.org/numpy/ticket/2235>.
+        elif isinstance(axis, (int, numpy.integer)):
             self.axis = (axis,)
         else:
             self.axis = list(set(axis))

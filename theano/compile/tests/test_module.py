@@ -10,6 +10,21 @@ from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
 import sys, copy
 import theano
+from six import PY3
+
+# Copied from theano/tensor/tests/test_basic.py
+if PY3:
+    # In python 3.x, when an exception is reraised it saves original
+    # exception in its args, therefore in order to find the actual
+    # message, we need to unpack arguments recurcively.
+    def exc_message(e):
+        msg = e.args[0]
+        if isinstance(msg, Exception):
+            return exc_message(msg)
+        return msg
+else:
+    def exc_message(e):
+        return e[0]
 
 #TODO: add test for module.make(member=init_value)
 class T_module(unittest.TestCase):
@@ -489,7 +504,7 @@ class T_module(unittest.TestCase):
             m.a = [4, 5, 6]
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -498,7 +513,7 @@ class T_module(unittest.TestCase):
             m.a[0] = 4
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -514,7 +529,7 @@ class T_module(unittest.TestCase):
             m.a[0] = 4
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -634,7 +649,7 @@ def test_method_updates():
         m = M.make()
         assert False
     except ValueError, e:
-        if str(e[0]).startswith('Variable listed in both inputs and up'):
+        if str(exc_message(e)).startswith('Variable listed in both inputs and up'):
             pass
         else:
             raise
