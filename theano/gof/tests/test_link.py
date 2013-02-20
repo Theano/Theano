@@ -8,7 +8,11 @@ from theano.gof import fg
 from theano.gof import toolbox
 
 from theano.gof.link import *
-
+try:
+    cmp
+except NameError:
+    def cmp(a, b):
+        return (a > b) - (a < b)
 
 def as_variable(x):
     assert isinstance(x, Variable)
