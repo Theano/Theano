@@ -169,7 +169,12 @@ def clone(output,
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
-    items = replace.items()
+    if isinstance(replace, dict):
+        items = replace.items()
+    elif isinstance(replace, list):
+        items = replace
+    else:
+        items = []
     tmp_replace = [(x, x.type()) for x, y in items]
     new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
                                                            items)]
