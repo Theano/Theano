@@ -615,7 +615,7 @@ def guess_n_streams(size, warn=True):
         for s in size:
             r *= s
         if r > 6:
-            r = r/6 # chosen as fastest for rbm_benchmark
+            r = r//6 # chosen as fastest for rbm_benchmark
 
         # The purpose of sampling from many streams is to be able to use
         # the GPU to its full capacity.  It just wastes RAM and stream-initialization time to
@@ -741,7 +741,7 @@ class MRG_RandomStreams(object):
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
-            assert all([isinstance(i,int) or isinstance(i,Variable)
+            assert all([isinstance(i, (numpy.integer, int)) or isinstance(i,Variable)
                 for i in size]), msg
             if any([isinstance(i, int) and i <= 0 for i in size]):
                 raise ValueError(

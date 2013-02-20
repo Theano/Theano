@@ -354,7 +354,7 @@ class ConvOp(OpenMPOp):
         all_shape = imshp is not None and kshp is not None and \
                     nkern is not None and bsize is not None
 
-        if (unroll_batch > 0 or unroll_kern > 0) and not all_shape:
+        if (unroll_batch or unroll_kern) and not all_shape:
             raise Exception("In ConvOp, when using unroll_batch and"
                             " unroll_nkern, all shape are needed")
 
@@ -409,8 +409,8 @@ class ConvOp(OpenMPOp):
         if self.unroll_kern and not self.unroll_batch:
             self.unroll_batch = 1
 
-        #downcast unroll_batch if not a divisor of batch size
-        if self.unroll_batch > 0 and self.bsize % self.unroll_batch != 0:
+        # downcast unroll_batch if not a divisor of batch size
+        if self.unroll_batch is not None and self.unroll_batch > 0 and self.bsize % self.unroll_batch != 0:
 
             if self.bsize <= self.unroll_batch:
                 self.unroll_batch = self.bsize
@@ -430,7 +430,7 @@ class ConvOp(OpenMPOp):
                 self.unroll_batch = new
 
         #downcast unroll_kern if not a divisor of nb of kernel
-        if self.unroll_kern > 0 and self.nkern % self.unroll_kern != 0:
+        if self.unroll_kern is not None and self.unroll_kern > 0 and self.nkern % self.unroll_kern != 0:
 
             if self.nkern <= self.unroll_kern:
                 self.unroll_kern = self.nkern
@@ -1217,7 +1217,8 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
                 _logger.debug("return unroll patch version. all_shape=%s",
                               all_shape)
             return _conv_op_code_unroll_patch % d
-        if self.unroll_batch > 0 or self.unroll_kern > 0:
+        if ((self.unroll_batch is not None and self.unroll_batch > 0) or
+            (self.unroll_kern is not None and self.unroll_kern > 0)):
             assert self.unroll_batch > 0
             assert self.unroll_kern > 0
             if self.verbose:

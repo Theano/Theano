@@ -4670,7 +4670,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, int):
+            if isinstance(entry, (numpy.integer, int)):
                 init_cmds.append(
                         "subtensor_spec[%i] = %i;" % (spec_pos(),
                             entry))

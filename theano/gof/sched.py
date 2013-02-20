@@ -1,6 +1,10 @@
 from theano.gof.graph import list_of_nodes
 from theano.gof.python25 import any, defaultdict
-
+try:
+    cmp
+except NameError:
+    def cmp(a, b):
+        return (a > b) - (a < b)
 
 ## {{{ http://code.activestate.com/recipes/578231/ (r1)
 # Copyright (c) Oren Tirosh 2012
