@@ -1062,23 +1062,24 @@ class TensorType(Type):
         type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num;
         if (!PyArray_ISALIGNED(py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
-                         "expected an aligned array of type %%d "
-                         "(%(type_num)s), got non-aligned array of type %%d"
-                         " with %%d dimensions, with 3 last dims %%d, %%d, %%d"
-                         " and 3 last strides %%d %%d, %%d.",
-                         %(type_num)s, type_num_%(name)s,
-                         PyArray_NDIM(py_%(name)s),
-                         PyArray_NDIM(py_%(name)s) >= 3 ?
+                         "expected an aligned array of type %%ld "
+                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         " with %%ld dimensions, with 3 last dims %%ld, %%ld, %%ld"
+                         " and 3 last strides %%ld %%ld, %%ld.",
+                         (long int) %(type_num)s,
+                         (long int) type_num_%(name)s,
+                         (long int) PyArray_NDIM(py_%(name)s),
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 2 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 1 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 2 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 3 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         PyArray_NDIM(py_%(name)s) >= 1 ?
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
         PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
         );
             %(fail)s
@@ -1105,6 +1106,8 @@ class TensorType(Type):
 
     def c_sync(self, name, sub):
         """Override `CLinkerOp.c_sync` """
+        fail = sub['fail']
+        type_num = self.dtype_specs()[2]
         return """
         {Py_XDECREF(py_%(name)s);}
         if (!%(name)s) {
@@ -1114,7 +1117,33 @@ class TensorType(Type):
         else if ((void*)py_%(name)s != (void*)%(name)s) {
             py_%(name)s = (PyObject*)%(name)s;
         }
+
         {Py_XINCREF(py_%(name)s);}
+
+        if (!PyArray_ISALIGNED(py_%(name)s)) {
+            PyErr_Format(PyExc_NotImplementedError,
+                         "c_sync: expected an aligned array of type %%ld "
+                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         " with %%ld dimensions, with 3 last dims %%ld, %%ld, %%ld"
+                         " and 3 last strides %%ld %%ld, %%ld.",
+                         (long int) %(type_num)s,
+                         (long int) type_num_%(name)s,
+                         (long int) PyArray_NDIM(py_%(name)s),
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
+        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
+        );
+            %(fail)s
+        }
         """ % locals()
 
     def c_headers(self):
@@ -1134,7 +1163,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (7,) + scalar_version
+            return (9,) + scalar_version
         else:
             return ()
 
@@ -6148,6 +6177,8 @@ class Reshape(Op):
         except Exception:
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
+        if not out[0].flags.aligned:
+            raise RuntimeError("numpy.reshape returned a not aligned tensor.")
 
     def connection_pattern(self, node):
         return [[True], [False]]
@@ -6214,7 +6245,7 @@ class Reshape(Op):
             return [tuple(oshape)]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
@@ -6245,6 +6276,10 @@ class Reshape(Op):
             {
                 PyErr_Format(PyExc_ValueError,
                              "Could not reshape array.");
+                %(fail)s;
+            }
+            if (!PyArray_ISALIGNED(%(z)s)) {
+                PyErr_Format(PyExc_RuntimeError, "PyArray_Newshape returned an object that isn't aligned!");
                 %(fail)s;
             }
             """ % locals()
@@ -6794,6 +6829,9 @@ class AdvancedSubtensor1(Op):
 
     def __eq__(self, other):
         return type(self) == type(other)
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def make_node(self, x, ilist):
         x_ = as_tensor_variable(x)

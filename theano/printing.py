@@ -478,14 +478,15 @@ default_colorCodes = {'GpuFromHost': 'red',
               'Scan': 'yellow',
               'Shape': 'cyan',
               'IfElse': 'magenta',
-              'Elemwise': '#FFAABB',
-              'Subtensor': '#FFAAFF'}
+              'Elemwise': '#FFAABB',  # dark pink
+              'Subtensor': '#FFAAFF',  # purple
+              'Alloc': '#FFAA22'}  # orange
 
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
                high_contrast=True, cond_highlight=None, colorCodes=None,
-               max_label_size=50, scan_graphs=False,
+               max_label_size=70, scan_graphs=False,
                var_with_name_simple=False,
                print_output_file=True,
                assert_nb_all_strings=-1
