@@ -7167,8 +7167,11 @@ class TestTensorInstanceMethods(unittest.TestCase):
     def test_clip(self):
         X, Y = self.vars
         x, y = self.vals
-        Z = X.clip(0.5 - Y, 0.5 + Y)
-        z = x.clip(0.5 - y, 0.5 + y)
+        # numpy.clip gives unexpected values when min > max,
+        # so we have to make sure that min <= max in that test,
+        # otherwise it randomly fails.
+        Z = X.clip(Y - 0.5, Y + 0.5)
+        z = x.clip(y - 0.5, y + 0.5)
         assert_array_equal(Z.eval({X: x, Y: y}), z)
 
     def test_dot(self):
