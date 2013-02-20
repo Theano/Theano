@@ -744,14 +744,21 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
     )
 
-_good_broadcast_div_mod_normal_float_inplace = copymod(
-    _good_broadcast_div_mod_normal_float_no_complex,
-    empty1=(numpy.asarray([]), numpy.asarray([1])),
-    complex1=(randcomplex(2, 3), randcomplex_nonzero((2, 3))),
-    complex2=(randcomplex(2, 3), rand_nonzero((2, 3))),
-    # Inplace on the first element. Must have the same type.
-    #complex3=(rand(2, 3) ,randcomplex(2, 3)),
-    )
+if PY3:
+    _good_broadcast_div_mod_normal_float_inplace = copymod(
+        _good_broadcast_div_mod_normal_float_no_complex,
+        empty1=(numpy.asarray([]), numpy.asarray([1])),
+        # No complex floor division in python 3.x
+        )
+else:
+    _good_broadcast_div_mod_normal_float_inplace = copymod(
+        _good_broadcast_div_mod_normal_float_no_complex,
+        empty1=(numpy.asarray([]), numpy.asarray([1])),
+        complex1=(randcomplex(2, 3), randcomplex_nonzero((2, 3))),
+        complex2=(randcomplex(2, 3), rand_nonzero((2, 3))),
+        # Inplace on the first element. Must have the same type.
+        #complex3=(rand(2, 3) ,randcomplex(2, 3)),
+        )
 
 _good_broadcast_div_mod_normal_float = copymod(
     _good_broadcast_div_mod_normal_float_inplace,
