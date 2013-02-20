@@ -171,10 +171,13 @@ def clone(output,
     """
     if isinstance(replace, dict):
         items = replace.items()
-    elif isinstance(replace, list):
+    elif isinstance(replace, (list, tuple)):
         items = replace
-    else:
+    elif item is None:
         items = []
+    else:
+        raise ValueError(("replace is neither a dictionary, list, "
+                          "tuple or None !"))
     tmp_replace = [(x, x.type()) for x, y in items]
     new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
                                                            items)]
