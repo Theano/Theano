@@ -4185,8 +4185,8 @@ class T_divimpl(unittest.TestCase):
         assert numpy.allclose(function([i, d], d / i)(5, 7.0), (7.0 / 5.0))
         assert numpy.allclose(function([i, f], i / f)(5, 11.0), (5.0 / 11.0))
         assert numpy.allclose(function([i, f], f / i)(5, 11.0), (11.0 / 5.0))
-        assert numpy.allclose(function([i, ii], i // ii)(5, 3), (5 / 3))
-        assert numpy.allclose(function([i, ii], ii // i)(5, 3), (3 / 5))
+        assert numpy.allclose(function([i, ii], i // ii)(5, 3), (5 // 3))
+        assert numpy.allclose(function([i, ii], ii // i)(5, 3), (3 // 5))
         assert numpy.allclose(function([i, ii], true_div(i, ii))(5, 3),
                 (5. / 3.))
         assert numpy.allclose(function([i, ii], true_div(ii, i))(5, 3),
