@@ -35,29 +35,27 @@ For more details and discussion, see the theano-dev
 e-mail thread "What is gof?"
 """
 
-import sys
-
-from cc import \
+from theano.gof.cc import \
     CLinker, OpWiseCLinker, DualLinker
 
-import compiledir # adds config vars
+import theano.gof.compiledir # adds config vars
 
-from fg import \
+from theano.gof.fg import \
     InconsistencyError, MissingInputError, FunctionGraph
 
-from destroyhandler import \
+from theano.gof.destroyhandler import \
     DestroyHandler
 
-from graph import \
+from theano.gof.graph import \
     Apply, Variable, Constant, view_roots
 
-from link import \
+from theano.gof.link import \
     Container, Linker, LocalLinker, PerformLinker, WrapLinker, WrapLinkerMany
 
-from op import \
+from theano.gof.op import \
     Op, OpenMPOp, PureOp, ops_with_inner_function
 
-from opt import (Optimizer, optimizer, SeqOptimizer,
+from theano.gof.opt import (Optimizer, optimizer, SeqOptimizer,
     MergeOptimizer, MergeOptMerge,
     LocalOptimizer, local_optimizer, LocalOptGroup,
     OpSub, OpRemove, PatternSub,
@@ -65,18 +63,18 @@ from opt import (Optimizer, optimizer, SeqOptimizer,
     InplaceOptimizer, PureThenInplaceOptimizer,
     OpKeyOptimizer)
 
-from optdb import \
+from theano.gof.optdb import \
     DB, Query, \
     EquilibriumDB, SequenceDB, ProxyDB
 
-from toolbox import \
+from theano.gof.toolbox import \
     Feature, \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
     PrintListener, ReplacementDidntRemovedError
 
-from type import \
+from theano.gof.type import \
     Type, Generic, generic
 
-from utils import \
+from theano.gof.utils import \
     object2, MethodNotDefined
 

@@ -26,9 +26,9 @@ from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
 from theano.compile.function_module import deep_copy_op
 
-import scan_op
-import scan_utils
-from scan_utils import equal_computations, find_up, scan_args
+from theano.scan_module import scan_op
+from theano.scan_module import scan_utils
+from theano.scan_module.scan_utils import equal_computations, find_up, scan_args
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 # Logging function for sending warning or info

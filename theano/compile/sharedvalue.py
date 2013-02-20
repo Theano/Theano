@@ -4,7 +4,6 @@ __docformat__ = 'restructuredtext en'
 # Standard imports
 import copy
 import logging
-import sys
 
 # Third-party imports
 import numpy

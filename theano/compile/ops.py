@@ -63,7 +63,7 @@ class ViewOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items()):
+        for t, (c, v) in sorted(self.c_code_and_version.items(), key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for ViewOp, but it has "
                         "no version. You should add a 'version' keyword arg "
@@ -153,7 +153,7 @@ class DeepCopyOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items()):
+        for t, (c, v) in sorted(self.c_code_and_version.items(), key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for OutputGuard, but it has "
                         "no version. You should add a 'version' keyword arg "

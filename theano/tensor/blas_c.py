@@ -1,10 +1,10 @@
 from theano import config
 
 
-from blas import ldflags, blas_header_text
-from blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
-from blas import Ger, ger, ger_destructive
-from blas import Gemv, gemv_inplace, gemv_no_inplace
+from theano.tensor.blas import ldflags, blas_header_text
+from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
+from theano.tensor.blas import Ger, ger, ger_destructive
+from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
 
 
 class BaseBLAS(object):

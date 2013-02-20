@@ -6,6 +6,7 @@ import sys
 import warnings
 from itertools import izip
 
+from six import PY3
 import numpy
 #from copy import copy as python_copy
 
@@ -14,7 +15,7 @@ from theano.configparser import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Type, Variable
 
-import elemwise
+from theano.tensor import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all, maxsize
 from theano import compile, printing
@@ -29,7 +30,7 @@ from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 ### set up the external interface
-from elemwise import Elemwise, DimShuffle, CAReduce, Sum
+from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 import logging
 _logger = logging.getLogger("theano.tensor.basic")
@@ -495,7 +496,7 @@ def get_scalar_constant_value(v):
         # on passing it None)
         raise NotScalarConstantError()
 
-    if isinstance(v, (int, float)):
+    if isinstance(v, (numpy.integer, int, float)):
         return numpy.asarray(v)
 
     def numpy_scalar(n):
@@ -1513,6 +1514,8 @@ class _tensor_py_operators:
             raise
         except (NotImplementedError, TypeError):
             return NotImplemented
+    if PY3:
+        __truediv__ = __div__
 
     def __pow__(self, other):
         # See explanation in __add__ for the error catched
@@ -4382,8 +4385,9 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-
-        elif isinstance(entry, int):
+        # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+        # See <http://projects.scipy.org/numpy/ticket/2235>.
+        elif isinstance(entry, (numpy.integer, int)):
             return entry
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)

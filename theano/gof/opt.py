@@ -10,16 +10,15 @@ import time
 
 import numpy
 
-import graph
-from fg import InconsistencyError
-import op
-import utils
-import unify
-import toolbox
+from theano.gof import graph
+from theano.gof.fg import InconsistencyError
+from theano.gof import op
+from theano.gof import utils
+from theano.gof import unify
+from theano.gof import toolbox
 import theano
 from theano import config
 from theano.gof.python25 import any, all, deque
-from theano.configparser import AddConfigVar, BoolParam
 
 #if sys.version_info[:2] >= (2,5):
 #  from collections import defaultdict
@@ -49,6 +48,16 @@ class Optimizer(object):
             self._optimizer_idx = _optimizer_idx[0]
             _optimizer_idx[0] += 1
         return self._optimizer_idx
+
+    def __eq__(self, other):
+        # added to override the  __eq__ implementation that may be inherited
+        # in subclasses from other bases.
+        return id(self) == id(other)
+
+    def __neq__(self, other):
+        # added to override the  __neq__ implementation that may be inherited
+        # in subclasses from other bases.
+        return id(self) != id(other)
 
     def apply(self, fgraph):
         """WRITEME
@@ -177,14 +186,6 @@ class SeqOptimizer(Optimizer, list):
             validate_time = None
         return (self, l, validate_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs)
-
-    def __eq__(self, other):
-        #added to override the list's __eq__ implementation
-        return id(self) == id(other)
-
-    def __neq__(self, other):
-        #added to override the list's __neq__ implementation
-        return id(self) != id(other)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)

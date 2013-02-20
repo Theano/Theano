@@ -23,9 +23,9 @@ from theano.gof import Variable, Constant
 from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
-from elemwise import Elemwise, DimShuffle
+from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano import scalar
-import basic as T
+from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
 
 from theano.gof.python25 import any, all
@@ -33,7 +33,7 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
-from basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
 
 
 theano.configparser.AddConfigVar('on_shape_error',
@@ -224,8 +224,8 @@ def inplace_elemwise_optimizer_op(OP):
                         candidate_output].type:
                         continue
 
-                    inplace_pattern = dict(baseline, **{candidate_output:
-                                                            candidate_input})
+                    inplace_pattern = dict(baseline)
+                    inplace_pattern[candidate_output] = candidate_input
                     try:
                         if hasattr(op.scalar_op, "make_new_inplace"):
                             new_scal = op.scalar_op.make_new_inplace(
@@ -510,7 +510,7 @@ class MakeVector(T.Op):
                     "The upcast of the inputs to MakeVector should match the "
                     "dtype given in __init__.")
             if not all(self.dtype == T.cast(i, dtype=dtype).dtype
-                       for a in inputs):
+                       for i in inputs):
                 raise TypeError("MakeVector.make_node expected inputs"
                                 " upcastable to %s. got %s" % (
                         self.dtype,

@@ -14,13 +14,17 @@ try:
 except ImportError:
     from distutils.core import setup
 try:
-    from distutils.command.build_py import build_py_2to3 \
-        as build_py
-    from distutils.command.build_scripts import build_scripts_2to3 \
-        as build_scripts
+    from distutils.command.build_py import build_py_2to3 as build_py
 except ImportError:
     from distutils.command.build_py import build_py
     from distutils.command.build_scripts import build_scripts
+else:
+    exclude_fixers = ['fix_next', 'fix_filter']
+    from distutils.util import Mixin2to3
+    from lib2to3.refactor import get_fixers_from_package
+    Mixin2to3.fixer_names = [f for f in get_fixers_from_package('lib2to3.fixes')
+                             if f.rsplit('.', 1)[-1] not in exclude_fixers]
+    from distutils.command.build_scripts import build_scripts_2to3 as build_scripts
 
 
 CLASSIFIERS = """\
@@ -177,7 +181,7 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.5.0', 'scipy>=0.7.2'],
+          install_requires=['numpy>=1.5.0', 'scipy>=0.7.2', 'six>=1.2.0'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh',
                    'ChangeLog'],

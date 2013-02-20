@@ -6,7 +6,7 @@ import shutil
 import stat
 import sys
 
-import numpy
+import six
 
 import theano
 from theano.compile import optdb
@@ -243,7 +243,7 @@ class GpuOp(theano.gof.Op):
         return super(GpuOp, self).make_thunk(node, storage_map,
                                              compute_map, no_recycling)
 
-theano.compile.debugmode.default_make_thunk.append(GpuOp.make_thunk.im_func)
+theano.compile.debugmode.default_make_thunk.append(six.get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available

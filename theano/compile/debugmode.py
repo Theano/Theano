@@ -10,6 +10,7 @@ from itertools import izip
 from StringIO import StringIO
 
 import numpy
+import six
 
 import theano
 from theano import gof
@@ -530,7 +531,7 @@ def char_from_number(number):
         remainder = number % base
         new_char = chr(ord('A') + remainder)
         rval = new_char + rval
-        number /= base
+        number //= base
 
     return rval
 
@@ -1563,8 +1564,8 @@ class _VariableEquivalenceTracker(object):
 #List of default version of make thunk.
 #This is needed to know if the user overrided it.
 #The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [theano.gof.Op.make_thunk.im_func,
-                      theano.gof.OpenMPOp.make_thunk.im_func]
+default_make_thunk = [six.get_unbound_function(theano.gof.Op.make_thunk),
+                      six.get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
 
 
 class _Linker(gof.link.LocalLinker):
