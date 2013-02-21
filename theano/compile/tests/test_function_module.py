@@ -632,7 +632,7 @@ class T_picklefunction(unittest.TestCase):
 
         f = theano.function([x], theano.tensor.dot(x, y))
 
-        from six import BytesIO
+        from theano.compat import BytesIO
         fp = BytesIO()
         p = cPickle.Pickler(fp, 2)
         p.persistent_id = pers_save

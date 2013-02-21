@@ -18,10 +18,10 @@ from copy import copy
 from itertools import imap
 from textwrap import dedent
 
-from six import PY3
 import numpy
 
 import theano
+from theano.compat import PY3
 from theano import gof
 from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
 from theano.gof.python25 import partial, all, any

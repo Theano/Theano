@@ -1,8 +1,8 @@
 import os, logging, sys
-from six.moves import reload_module as reload
 
 import theano
 from theano import config
+from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 

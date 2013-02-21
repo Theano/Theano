@@ -10,10 +10,10 @@ from itertools import izip
 from StringIO import StringIO
 
 import numpy
-import six
 
 import theano
 from theano import gof
+from theano.compat import get_unbound_function
 from theano.gof import FunctionGraph,graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
@@ -1564,8 +1564,8 @@ class _VariableEquivalenceTracker(object):
 #List of default version of make thunk.
 #This is needed to know if the user overrided it.
 #The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [six.get_unbound_function(theano.gof.Op.make_thunk),
-                      six.get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
+default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk),
+                      get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
 
 
 class _Linker(gof.link.LocalLinker):

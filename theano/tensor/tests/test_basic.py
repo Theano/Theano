@@ -13,29 +13,13 @@ from itertools import izip
 import __builtin__
 builtin_min = __builtin__.min
 
-from six import PY3
-if PY3:
-    operator_div = operator.truediv
-    # In python 3.x, when an exception is reraised it saves original
-    # exception in its args, therefore in order to find the actual
-    # message, we need to unpack arguments recurcively.
-    def exc_message(e):
-        msg = e.args[0]
-        if isinstance(msg, Exception):
-            return exc_message(msg)
-        return msg
-else:
-    operator_div = operator.div
-    def exc_message(e):
-        return e[0]
-
-
 from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
+from theano.compat import PY3, exc_message, operator_div
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode

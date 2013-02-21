@@ -7,11 +7,10 @@ import os
 import sys
 import warnings
 
-from six.moves import configparser as ConfigParser
-
 import StringIO
 
 import theano
+from theano.compat import configparser as ConfigParser
 
 _logger = logging.getLogger('theano.configparser')
 

@@ -6,11 +6,11 @@ import sys
 import warnings
 from itertools import izip
 
-from six import PY3
 import numpy
 #from copy import copy as python_copy
 
 import theano
+from theano.compat import PY3
 from theano.configparser import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Type, Variable

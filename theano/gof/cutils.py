@@ -1,6 +1,6 @@
-import os
-import sys
-from six import PY3
+import os, sys
+
+from theano.compat import PY3
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
 

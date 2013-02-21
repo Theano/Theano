@@ -2,23 +2,10 @@
 #import traceback
 import itertools
 import sys
-# Copied from tensor/tests/test_basic.py.
-from six import PY3
-if PY3:
-    # In python 3.x, when an exception is reraised it saves original
-    # exception in its args, therefore in order to find the actual
-    # message, we need to unpack arguments recurcively.
-    def exc_message(e):
-        msg = e.args[0]
-        if isinstance(msg, Exception):
-            return exc_message(msg)
-        return msg
-else:
-    def exc_message(e):
-        return e[0]
 
 import theano.tensor as T
 from theano import tensor
+from theano.compat import PY3, exc_message
 from theano.gof.python25 import product as itertools_product
 from theano.gof.python25 import any
 from theano.printing import pp

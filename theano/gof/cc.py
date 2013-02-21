@@ -9,11 +9,12 @@ import os
 import StringIO
 import sys
 from itertools import izip
-from six import PY3
 
 import numpy
 
-if sys.version_info[:2] >= (3, 0):
+from theano.compat import PY3
+
+if PY3:
     import hashlib
 
     def hash_from_code(msg):

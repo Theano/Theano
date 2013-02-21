@@ -13,13 +13,13 @@ import subprocess
 import sys
 import tempfile
 import time
-from six import PY3, b, next
 
 import distutils.sysconfig
 
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
+from theano.compat import PY3, b, next
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
