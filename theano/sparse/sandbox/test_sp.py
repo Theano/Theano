@@ -2,6 +2,7 @@ from nose.plugins.skip import SkipTest
 import sys
 import time
 import unittest
+from six import next
 
 import theano.sparse
 if not theano.sparse.enable_sparse:
@@ -63,7 +64,7 @@ class TestSP(unittest.TestCase):
                         it = reversed(filters[k, :])
                         for i in range(kshp[0]):
                             for j in range(kshp[1]):
-                                filtersflipped[k,i,j] = it.next()
+                                filtersflipped[k,i,j] = next(it)
 
                     # compute output with convolve2d
                     if conv_mode == 'valid':
@@ -314,14 +315,14 @@ class TestSP(unittest.TestCase):
 
             # numeric verification
             my_output_val = numpy.zeros((imval.shape[0], imval.shape[1],
-                                     imval.shape[2]/maxpoolshp[0],
-                                     imval.shape[3]/maxpoolshp[1]))
+                                     imval.shape[2] // maxpoolshp[0],
+                                     imval.shape[3] // maxpoolshp[1]))
             assert numpy.prod(my_output_val.shape[1:]) == numpy.prod(numpy.r_[imval.shape[1],outshp])
 
             for n in range(imval.shape[0]):
                 for k in range(imval.shape[1]):
-                    for i in range(imval.shape[2]/maxpoolshp[0]):
-                        for j in range(imval.shape[3]/maxpoolshp[1]):
+                    for i in range(imval.shape[2] // maxpoolshp[0]):
+                        for j in range(imval.shape[3] // maxpoolshp[1]):
                             ii,jj = i*maxpoolshp[0], j*maxpoolshp[1]
                             patch = imval[n,k,ii:ii+maxpoolshp[0],jj:jj+maxpoolshp[1]]
                             my_output_val[n,k,i,j] = numpy.max(patch)

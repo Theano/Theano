@@ -743,7 +743,7 @@ class MRG_RandomStreams(object):
             msg = "size must be a tuple of int or a Theano variable"
             assert all([isinstance(i, (numpy.integer, int)) or isinstance(i,Variable)
                 for i in size]), msg
-            if any([isinstance(i, int) and i <= 0 for i in size]):
+            if any([isinstance(i, (numpy.integer, int)) and i <= 0 for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
                     size)
@@ -873,7 +873,7 @@ class MRG_RandomStreams(object):
 
         evened = False
         constant = False
-        if isinstance(size, tuple) and all([isinstance(i,int) for i in size]):
+        if isinstance(size, tuple) and all([isinstance(i, (numpy.integer, int)) for i in size]):
             constant = True
             n_samples = numpy.prod(size)
 

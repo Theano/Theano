@@ -5,6 +5,11 @@ import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
 from theano.gof.python25 import any
+try:
+    cmp
+except NameError:
+    def cmp(a, b):
+        return (a > b) - (a < b)
 
 
 def test_dependence():
