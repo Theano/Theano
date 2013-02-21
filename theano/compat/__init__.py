@@ -45,4 +45,4 @@ else:
     # Older Python 2.x compatibility
     from theano.compat.python2x import all, any, partial, defaultdict, deque
     from theano.compat.python2x import combinations, product, maxsize
-    from theano.compat.python2x import DictMixin, OrderedDict, Callable
+    from theano.compat.python2x import DictMixin, OrderedDict
