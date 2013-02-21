@@ -303,7 +303,7 @@ else:
     OrderedDict = collections.OrderedDict
     from collections import Callable
 
-__all__ += ['DictMixin', 'OrderedDict', 'Callable']
+__all__ += ['DictMixin', 'OrderedDict']
 
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
