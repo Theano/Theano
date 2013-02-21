@@ -24,6 +24,13 @@ if PY3:
         """Return -1 if x<y, 0 if x==y, 1 if x > y."""
         return (a > b) - (a < b)
 
+    all = all
+    any = any
+    from functools import partial
+    from collections import defaultdict, deque
+    from itertools import combinations, product
+    from sys import maxsize
+
 
 else:
 
@@ -34,3 +41,8 @@ else:
         return e[0]
 
     cmp = cmp
+
+    # Older Python 2.x compatibility
+    from theano.compat.python2x import all, any, partial, defaultdict, deque
+    from theano.compat.python2x import combinations, product, maxsize
+    from theano.compat.python2x import DictMixin, OrderedDict, Callable

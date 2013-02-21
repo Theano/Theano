@@ -1,5 +1,5 @@
 """
-Helper functions to make gof backwards compatible
+Helper functions to make theano backwards compatible with python 2.4 - 2.7
 
 (tested on python 2.4 and 2.5)
 """
@@ -105,7 +105,7 @@ else:
     defaultdict = collections.defaultdict
     deque = collections.deque
 
-__all__ = ['all', 'any']
+__all__ = ['all', 'any', 'partial', 'defaultdict', 'deque']
 
 if sys.version_info[:2] < (2, 6):
     # Borrowed from Python docs
@@ -158,6 +158,8 @@ if sys.version_info[:2] < (2, 6):
 else:
     from itertools import combinations, product
     from sys import maxsize
+
+__all__ += ['combinations', 'product', 'maxsize']
 
 
 if sys.version_info[:2] < (2, 7):
@@ -301,6 +303,7 @@ else:
     OrderedDict = collections.OrderedDict
     from collections import Callable
 
+__all__ += ['DictMixin', 'OrderedDict', 'Callable']
 
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
@@ -334,3 +337,5 @@ class DefaultOrderedDict(OrderedDict):
 
     def __copy__(self):
         return type(self)(self.default_factory, self)
+
+__all__ += ['DefaultOrderedDict']
