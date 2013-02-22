@@ -1826,15 +1826,15 @@ class _tensor_py_operators:
 
     dot = __dot__
 
-    def sum(self, axis=None, dtype=None, acc_dtype=None, keepdims=False):
+    def sum(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.sum`"""
-        return sum(self, axis=axis, dtype=dtype, acc_dtype=acc_dtype,
-                keepdims=keepdims)
+        return sum(self, axis=axis, dtype=dtype, keepdims=keepdims,
+                acc_dtype=acc_dtype)
 
-    def prod(self, axis=None, dtype=None, acc_dtype=None, keepdims=False):
+    def prod(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.prod`"""
-        return prod(self, axis=axis, dtype=dtype, acc_dtype=acc_dtype,
-                keepdims=keepdims)
+        return prod(self, axis=axis, dtype=dtype, keepdims=keepdims,
+                acc_dtype=acc_dtype)
 
     def norm(self, L, axis=None):
         if L == 0:
@@ -1844,10 +1844,10 @@ class _tensor_py_operators:
         # optimizations will/should catch cases like L=1, L=2
         return pow(pow(abs_(self), L).sum(axis=axis), 1.0 / L)
 
-    def mean(self, axis=None, dtype=None, acc_dtype=None, keepdims=False):
+    def mean(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.mean`"""
-        return mean(self, axis=axis, dtype=dtype, acc_dtype=acc_dtype,
-                keepdims=keepdims)
+        return mean(self, axis=axis, dtype=dtype, keepdims=keepdims,
+                acc_dtype=acc_dtype)
 
     def var(self, axis=None, keepdims=False):
         """See `theano.tensor.var`"""
@@ -3780,7 +3780,7 @@ pprint.assign(tensor_copy, printing.IgnorePrinter())
 
 
 @constructor
-def sum(input, axis=None, dtype=None, acc_dtype=None, keepdims=False):
+def sum(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
     """
     Computes the sum along the given axis(es) of a tensor `input`
 
@@ -3806,7 +3806,7 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 
 @constructor
-def prod(input, axis=None, dtype=None, acc_dtype=None, keepdims=False):
+def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
     """
     Computes the product along the given axis(es) of a tensor `input`
 
@@ -3871,21 +3871,14 @@ class Mean(elemwise.CAReduce):
 
 
 @constructor
-def mean(input, axis=None, dtype=None, acc_dtype=None, op=False,
-        keepdims=False):
+def mean(input, axis=None, dtype=None, op=False, keepdims=False,
+        acc_dtype=None):
     """
     Computes the mean value along the given axis(es) of a tensor `input`
 
     :param axis: compute the mean along this axis of the tensor.
                  None means all axes (like numpy).
     :type axis: None or int or (list of int) (see `Sum`)
-
-    :param acc_dtype: dtype to use for the inner summation. This will not
-                  necessarily be the dtype of the output (in particular
-                  if it is a discrete (int/uint) dtype, the output will
-                  be in a float type).
-                  If None, then we use the same rules as `sum()`.
-    :type dtype: None or string
 
     :param dtype: dtype to cast the result of the inner summation into.
         For instance, by default, a sum of a float32 tensor will be
@@ -3896,6 +3889,13 @@ def mean(input, axis=None, dtype=None, acc_dtype=None, op=False,
     :param keepdims: If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
+
+    :param acc_dtype: dtype to use for the inner summation. This will not
+                  necessarily be the dtype of the output (in particular
+                  if it is a discrete (int/uint) dtype, the output will
+                  be in a float type).
+                  If None, then we use the same rules as `sum()`.
+    :type acc_dtype: None or string
 
     :note: for gpu, if you specify dtype=float32, everything will be done
            on the gpu.
@@ -3927,8 +3927,8 @@ def mean(input, axis=None, dtype=None, acc_dtype=None, op=False,
         # Let sum() infer the appropriate dtype.
         sum_dtype = None
 
-    s = sum(input, axis=axis, dtype=sum_dtype, acc_dtype=acc_dtype,
-            keepdims=keepdims)
+    s = sum(input, axis=axis, dtype=sum_dtype, keepdims=keepdims,
+            acc_dtype=acc_dtype)
     shp = shape(input)
 
     # Cast shp into a float type

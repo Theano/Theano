@@ -1609,14 +1609,6 @@ class CAReduceDtype(CAReduce):
                      - list of dimensions that we want to reduce
                      - if None, all dimensions are reduced
 
-        :param acc_dtype: The dtype of the internal accumulator.
-            If None (default), we use a minimum precision, or the input dtype
-            if its precision is higher
-            - for int dtypes, we use int64;
-            - for uint dtypes, we use uint64;
-            - for float dtypes, we use float64;
-            - for complex dtypes, we use complex128.
-
         :param dtype: The dtype of the returned
             tensor. If None, then we use the default dtype which is the same
             as the input tensor's dtype except when:
@@ -1628,6 +1620,15 @@ class CAReduceDtype(CAReduce):
             This behavior is similar in spirit to that of numpy (except numpy
             uses the default machine integer while we always use 64 bit
             integers to avoid platform-dependent behavior).
+
+        :param acc_dtype: The dtype of the internal accumulator.
+            If None (default), we use the dtype in the list below,
+            or the input dtype if its precision is higher:
+            - for int dtypes, we use at least int64;
+            - for uint dtypes, we use at least uint64;
+            - for float dtypes, we use at least float64;
+            - for complex dtypes, we use at least complex128.
+
         """
         CAReduce.__init__(self, scalar_op, axis=axis)
         self.dtype = dtype
@@ -1753,14 +1754,6 @@ class Sum(CAReduceDtype):
         (use None to sum over all axes, and a list or tuple to sum along more
         than one axis).
 
-        :param acc_dtype: The dtype of the internal accumulator.
-            If None (default), we use a minimum precision, or the input dtype
-            if its precision is higher
-            - for int dtypes, we use int64;
-            - for uint dtypes, we use uint64;
-            - for float dtypes, we use float64;
-            - for complex dtypes, we use complex128.
-
         :param dtype: The dtype of the internal accumulator and returned
         tensor. If None, then we use the default dtype which is the same as the
         input tensor's dtype except when:
@@ -1769,6 +1762,14 @@ class Sum(CAReduceDtype):
             - the input dtype is an unsigned integer of precision < 64 bit, in
               which case we use uint64
             This value does not depend on the value of "acc_dtype".
+
+        :param acc_dtype: The dtype of the internal accumulator.
+            If None (default), we use the dtype in the list below,
+            or the input dtype if its precision is higher:
+            - for int dtypes, we use at least int64;
+            - for uint dtypes, we use at least uint64;
+            - for float dtypes, we use at least float64;
+            - for complex dtypes, we use at least complex128.
         """
         CAReduceDtype.__init__(self, scalar.add, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
