@@ -776,23 +776,26 @@ pip is not included in EPD, but you can simply install it with::
 You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_edge`.
 
 
-Alternative: Anaconda 0.8.3 (Linux VM on Windows)
-#################################################
+Alternative: AnacondaCE
+#######################
 
-ContinuumIO_ was providing a free VM with Theano installed. Now they
-provide a new installation system that installs itself on Windows.
-Since we lack time to update this part of the documentation, it has been
-removed for now. Check back later!
+ContinuumIO_ is providing a free Python distribution for Windows (32-bit
+and 64-bit), including all dependencies of Theano. If you are not
+eligible for a download of EPD (via a commercial, or free academic
+licence), this is the easiest way to install
+Theano's dependencies. Simply download and execute the installer from
+`AnacondaCE downlowad page <http://continuum.io/anacondace.html>`__,
+then download and execute the :ref:`windows_anaconda`.
 
 .. _ContinuumIO: http://continuum.io
 
 Alternative: Python(x,y)
 ########################
 
-If you are not eligible to a free download of EPD, and
-neither Python nor MinGW is installed on your computer, the easiest way to
-install most dependencies is to install
-`Python(x,y) <http://www.pythonxy.com>`__.
+If you do not have a commercial licence of EPD, and are not eligible to a free
+academic licence, and neither
+Python nor MinGW is installed on your computer, you can install most
+dependencies of Theano with `Python(x,y) <http://www.pythonxy.com>`__.
 It is a single installation
 file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
 MinGW, Nose, etc.
@@ -900,6 +903,36 @@ Theano. The easiest way is to install the latest released version
 development version, or edit the code, you should follow the
 instructions in :ref:`windows_bleeding_edge`.
 
+.. _windows_anaconda:
+
+Installation script for AnacondaCE
+##################################
+
+If you installed AnacondaCE, the simplest way to install and configure
+Theano is to download and execute this :download:`installation script
+for Theano on AnacondaCE for Windows <theano_installer_for_anaconda.bat>`.
+
+.. note
+
+    This script was tested on Windows 7, 64-bit edition, and AnacondaCE
+    version 1.3.1. It is still experimental, please get back to us if
+    you experience trouble with it.
+
+This script will:
+
+- Copy MinGW runtime DLLs into ``C:\\Anaconda\\Scripts``, so they are in the ``PATH``;
+- Call ``pip install theano``, installing the latest released version;
+- Set up a default configuration file for Theano, ``.theanorc.txt``, containing:
+
+.. code-block:: config
+
+    [global]
+    openmp=False
+
+    [blas]
+    ldflags=
+
+
 .. _windows_basic:
 
 Basic user installation
@@ -957,7 +990,8 @@ used within an MSYS Shell (not available if you only installed Python(x,y)).
 Configure Theano
 ################
 
-If you installed Python through EPD, you should be all set by now. Otherwise,
+If you installed Python through EPD, or through the installation script for
+Anaconda, you should be all set by now. Otherwise,
 whether you installed Theano through pip or git, you should follow these
 steps.
 
