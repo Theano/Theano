@@ -715,13 +715,34 @@ Reductions
     if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: sum(x, axis=None, keepdims=False)
+.. function:: sum(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *dtype* - The dtype of the returned tensor.
+        If None, then we use the default dtype which is the same as
+        the input tensor's dtype except when:
+
+        - the input dtype is a signed integer of precision < 64 bit, in
+          which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
+        This default dtype does _not_ depend on the value of "acc_dtype".
+
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
+
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
     :Returns: sum of *x* along *axis*
 
     axis can be:
@@ -729,13 +750,34 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: prod(x, axis=None, keepdims=False)
+.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the product
+    :Parameter: *dtype* - The dtype of the returned tensor.
+        If None, then we use the default dtype which is the same as
+        the input tensor's dtype except when:
+
+        - the input dtype is a signed integer of precision < 64 bit, in
+          which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
+        This default dtype does _not_ depend on the value of "acc_dtype".
+
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
+
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
     :Returns: product of every term in *x* along *axis*
 
     axis can be:
@@ -743,13 +785,22 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: mean(x, axis=None, keepdims=False)
+.. function:: mean(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the mean
+    :Parameter: *dtype* - The dtype to cast the result of the inner summation into.
+        For instance, by default, a sum of a float32 tensor will be
+        done in float64 (acc_dtype would be float64 by default),
+        but that result will be casted back in float32.
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator of the
+        inner summation. This will not necessarily be the dtype of the
+        output (in particular if it is a discrete (int/uint) dtype, the
+        output will be in a float type).  If None, then we use the same
+        rules as :ref:`sum()`.
     :Returns: mean value of *x* along *axis*
 
     axis can be:
