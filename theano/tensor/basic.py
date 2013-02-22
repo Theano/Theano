@@ -5052,10 +5052,11 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         dim_offset = x.ndim - y.ndim
         if (x.broadcastable[dim + dim_offset]
                 and not y.broadcastable[dim]):
-            raise TypeError(("Trying to increment a subtensor with "
-                "broadcastable dimension %d, with a tensor not broadcastable "
-                "on corresponding dimension %d.") % (dim + dim_offset, dim),
-                x.broadcastable, y.broadcastable)
+            # It is acceptable to try to increment a subtensor with a
+            # a broadcastable dim with a tensor that is not broadcastable
+            # on that dimension. However, its length must then be 1.
+            # We insert a Rebroadcast Op to make sure it is the case.
+            y = addbroadcast(y, dim)
 
     if not x.owner:
         raise TypeError('x must be result of a subtensor operation')
