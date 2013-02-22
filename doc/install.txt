@@ -781,7 +781,8 @@ Alternative: AnacondaCE
 
 ContinuumIO_ is providing a free Python distribution for Windows (32-bit
 and 64-bit), including all dependencies of Theano. If you are not
-eligible for a free download of EPD, this is the easiest way to install
+eligible for a download of EPD (via a commercial, or free academic
+licence), this is the easiest way to install
 Theano's dependencies. Simply download and execute the installer from
 `AnacondaCE downlowad page <http://continuum.io/anacondace.html>`__,
 then download and execute the :ref:`windows_anaconda`.
@@ -791,7 +792,8 @@ then download and execute the :ref:`windows_anaconda`.
 Alternative: Python(x,y)
 ########################
 
-If you are not eligible to a free download of EPD, and neither
+If you do not have a commercial licence of EPD, and are not eligible to a free
+academic licence, and neither
 Python nor MinGW is installed on your computer, you can install most
 dependencies of Theano with `Python(x,y) <http://www.pythonxy.com>`__.
 It is a single installation
