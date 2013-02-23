@@ -458,7 +458,8 @@ def grad(cost, wrt, consider_constant=None,
             g_cost = g_cost.astype(cost.type.dtype)
         # DO NOT enforce g_cost to be 0 if cost is an integer.
         # This is to be enforced by the Op.grad method for the Op that outputs cost.
-        assert g_cost not in tensor.discrete_dtypes
+        if hasattr(g_cost.type, 'dtype'):
+            assert g_cost.type.dtype not in tensor.discrete_dtypes
 
         grad_dict[cost] = g_cost
 
