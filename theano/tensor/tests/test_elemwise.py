@@ -632,6 +632,24 @@ class T_sum_dtype(unittest.TestCase):
                     uint32='uint64',
                     ).get(dtype, dtype)
 
+    def test_sum_default_acc_dtype(self):
+        ##Test the default acc_dtype of a sum().
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+            axis = axes[idx % len(axes)]
+            x = tensor.matrix(dtype=dtype).sum(axis=axis)
+            assert x.owner.op.acc_dtype == dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    float32='float64',
+                    complex64='complex128',
+                    ).get(dtype, dtype)
+
     def test_sum_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a sum.
@@ -650,15 +668,43 @@ class T_sum_dtype(unittest.TestCase):
                     continue
 
                 axis = axes[idx % len(axes)]
+                sum_var = x.sum(dtype=output_dtype, axis=axis)
+                assert sum_var.dtype == output_dtype
+
+                if "complex" in input_dtype:
+                    continue
+                # Check that we can take the gradient
+                grad_var = tensor.grad(sum_var.sum(), x,
+                        disconnected_inputs='ignore')
+                idx += 1
+
+    def test_sum_custom_acc_dtype(self):
+        """
+        Test the ability to provide your own accumulator dtype for a sum.
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        idx = 0
+        for input_dtype in imap(str, theano.scalar.all_types):
+            x = tensor.matrix(dtype=input_dtype)
+            for acc_dtype in imap(str, theano.scalar.all_types):
+                # If the accumulator is a complex, the gradient of the sum will
+                # cast the complex to the input dtype. We can't call the normal
+                # cast on a complex to a not complex as this is ambiguous.
+                if (not input_dtype.startswith('complex') and
+                    acc_dtype.startswith('complex')):
+                    continue
+
+                axis = axes[idx % len(axes)]
                 # If output_dtype would force a downcast, we expect a TypeError
                 # We always allow int/uint inputs with float/complex outputs.
-                upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
-                if (output_dtype == upcasted_dtype or
+                upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
+                if (acc_dtype == upcasted_dtype or
                         (input_dtype in tensor.discrete_dtypes and
-                            output_dtype in tensor.continuous_dtypes)
+                            acc_dtype in tensor.continuous_dtypes)
                         ):
-                    sum_var = x.sum(dtype=output_dtype, axis=axis)
-                    assert sum_var.dtype == output_dtype
+                    sum_var = x.sum(acc_dtype=acc_dtype, axis=axis)
+                    assert sum_var.owner.op.acc_dtype == acc_dtype
 
                     if "complex" in input_dtype:
                         continue
@@ -667,9 +713,17 @@ class T_sum_dtype(unittest.TestCase):
                             disconnected_inputs='ignore')
                 else:
                     self.assertRaises(TypeError,
-                            x.sum, dtype=output_dtype, axis=axis)
+                            x.sum, acc_dtype=acc_dtype, axis=axis)
 
                 idx += 1
+
+    def test_sum_precision(self):
+        # Check that the default accumulator precision is sufficient
+        x = theano.shared(numpy.asarray([1e8, 1, -1e8], dtype='float32'))
+        s = x.sum()
+        f = theano.function([], s)
+        s_val = f()
+        assert numpy.allclose(s_val, 1)
 
 
 class T_mean_dtype(unittest.TestCase):
@@ -688,7 +742,6 @@ class T_mean_dtype(unittest.TestCase):
                 assert x.dtype == dtype, (x, x.dtype, dtype)
 
     def test_mean_custom_dtype(self):
-
         """
         Test the ability to provide your own output dtype for a mean.
         """
@@ -727,6 +780,14 @@ class T_mean_dtype(unittest.TestCase):
 
                 idx += 1
 
+    def test_mean_precision(self):
+        # Check that the default accumulator precision is sufficient
+        x = theano.shared(numpy.asarray([1e8, 1, -1e8], dtype='float32'))
+        m = x.mean()
+        f = theano.function([], m)
+        m_val = f()
+        assert numpy.allclose(m_val, 1. / 3)
+
 
 class T_prod_dtype(unittest.TestCase):
     def test_prod_default_dtype(self):
@@ -747,6 +808,26 @@ class T_prod_dtype(unittest.TestCase):
                     uint32='uint64',
                     ).get(dtype, dtype)
 
+    def test_prod_default_acc_dtype(self):
+        """
+        Test the default acc_dtype of a prod().
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+            axis = axes[idx % len(axes)]
+            x = tensor.matrix(dtype=dtype).prod(axis=axis)
+            assert x.owner.op.acc_dtype == dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    float32='float64',
+                    complex64='complex128',
+                    ).get(dtype, dtype)
+
     def test_prod_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a prod.
@@ -758,24 +839,45 @@ class T_prod_dtype(unittest.TestCase):
             x = tensor.matrix(dtype=input_dtype)
             for output_dtype in imap(str, theano.scalar.all_types):
                 axis = axes[idx % len(axes)]
-                # If output_dtype would force a downcast, we expect a TypeError
-                # We always allow int/uint inputs with float/complex outputs.
-                upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
-                if (output_dtype == upcasted_dtype or
-                        (input_dtype in tensor.discrete_dtypes and
-                            output_dtype in tensor.continuous_dtypes)
-                        ):
-                    prod_var = x.prod(dtype=output_dtype, axis=axis)
-                    assert prod_var.dtype == output_dtype
+                prod_var = x.prod(dtype=output_dtype, axis=axis)
+                assert prod_var.dtype == output_dtype
 
-                    if "complex" in output_dtype:
+                if "complex" in output_dtype or "complex" in input_dtype:
+                    continue
+                # Check that we can take the gradient
+                grad_var = tensor.grad(prod_var.sum(), x,
+                    disconnected_inputs='ignore')
+                idx += 1
+
+    def test_prod_custom_acc_dtype(self):
+        """
+        Test the ability to provide your own acc_dtype for a prod.
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        idx = 0
+        for input_dtype in imap(str, theano.scalar.all_types):
+            x = tensor.matrix(dtype=input_dtype)
+            for acc_dtype in imap(str, theano.scalar.all_types):
+                axis = axes[idx % len(axes)]
+                # If acc_dtype would force a downcast, we expect a TypeError
+                # We always allow int/uint inputs with float/complex outputs.
+                upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
+                if (acc_dtype == upcasted_dtype or
+                        (input_dtype in tensor.discrete_dtypes and
+                            acc_dtype in tensor.continuous_dtypes)
+                        ):
+                    prod_var = x.prod(acc_dtype=acc_dtype, axis=axis)
+                    assert prod_var.owner.op.acc_dtype == acc_dtype
+
+                    if "complex" in acc_dtype:
                         continue
                     # Check that we can take the gradient
                     grad_var = tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')
                 else:
                     self.assertRaises(TypeError,
-                            x.prod, dtype=output_dtype, axis=axis)
+                            x.prod, acc_dtype=acc_dtype, axis=axis)
 
                 idx += 1
 
@@ -799,6 +901,26 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                     uint32='uint64',
                     ).get(dtype, dtype)
 
+    def test_prod_without_zeros_default_acc_dtype(self):
+        """
+        Test the default dtype of a ProdWithoutZeros().
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+            axis = axes[idx % len(axes)]
+            x = ProdWithoutZeros(axis=axis)(tensor.matrix(dtype=dtype))
+            assert x.owner.op.acc_dtype == dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    float32='float64',
+                    complex64='complex128'
+                    ).get(dtype, dtype)
+
     def test_prod_without_zeros_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a ProdWithoutZeros().
@@ -810,19 +932,35 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             x = tensor.matrix(dtype=input_dtype)
             for output_dtype in imap(str, theano.scalar.all_types):
                 axis = axes[idx % len(axes)]
-                # If output_dtype would force a downcast, we expect a TypeError
+                prod_woz_var = ProdWithoutZeros(
+                        axis=axis, dtype=output_dtype)(x)
+                assert prod_woz_var.dtype == output_dtype
+                idx += 1
+
+    def test_prod_without_zeros_custom_acc_dtype(self):
+        """
+        Test the ability to provide your own acc_dtype for a ProdWithoutZeros().
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        axes = [None, 0, 1, [0], [1], [0, 1]]
+        idx = 0
+        for input_dtype in imap(str, theano.scalar.all_types):
+            x = tensor.matrix(dtype=input_dtype)
+            for acc_dtype in imap(str, theano.scalar.all_types):
+                axis = axes[idx % len(axes)]
+                # If acc_dtype would force a downcast, we expect a TypeError
                 # We always allow int/uint inputs with float/complex outputs.
-                upcasted_dtype = scalar.upcast(input_dtype, output_dtype)
-                if (output_dtype == upcasted_dtype or
+                upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
+                if (acc_dtype == upcasted_dtype or
                         (input_dtype in tensor.discrete_dtypes and
-                            output_dtype in tensor.continuous_dtypes)
+                            acc_dtype in tensor.continuous_dtypes)
                         ):
                     prod_woz_var = ProdWithoutZeros(
-                            axis=axis, dtype=output_dtype)(x)
-                    assert prod_woz_var.dtype == output_dtype
+                            axis=axis, acc_dtype=acc_dtype)(x)
+                    assert prod_woz_var.owner.op.acc_dtype == acc_dtype
                 else:
                     self.assertRaises(TypeError,
-                            ProdWithoutZeros(axis=axis, dtype=output_dtype),
+                            ProdWithoutZeros(axis=axis, acc_dtype=acc_dtype),
                             x)
 
                 idx += 1

@@ -19,6 +19,10 @@ from theano.tensor import elemwise_cgen as cgen
 
 config = theano.config
 
+# We cannot import discrete_dtypes from tensor.basic yet,
+# so we redefine them here
+discrete_dtypes = map(str, scalar.discrete_types)
+
 
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
@@ -1279,6 +1283,12 @@ class CAReduce(Op):
             axis = range(input.ndim)
         variable = input
         to_reduce = reversed(sorted(axis))
+
+        if hasattr(self, 'acc_dtype'):
+            acc_dtype = self.acc_dtype
+        else:
+            acc_dtype = node.outputs[0].type.dtype
+
         if to_reduce:
             for dimension in to_reduce:
                 # If it's a zero-size array, use scalar_op.identity
@@ -1289,7 +1299,7 @@ class CAReduce(Op):
                         v_shape = list(variable.shape)
                         del v_shape[dimension]
                         variable = numpy.empty(tuple(v_shape),
-                                               dtype=variable.dtype)
+                                               dtype=acc_dtype)
                         variable.fill(self.scalar_op.identity)
                     else:
                         raise ValueError((
@@ -1307,7 +1317,8 @@ class CAReduce(Op):
                         variable = self.ufunc.reduce(variable, dimension,
                                 dtype='object')
                     else:
-                        variable = self.ufunc.reduce(variable, dimension)
+                        variable = self.ufunc.reduce(variable, dimension,
+                                dtype=acc_dtype)
 
             variable = numpy.asarray(variable)
             if numpy.may_share_memory(variable, input):
@@ -1317,7 +1328,9 @@ class CAReduce(Op):
             output[0] = theano._asarray(variable,
                     dtype=node.outputs[0].type.dtype)
         else:
-            output[0] = numpy.copy(variable)
+            # Force a copy
+            output[0] = numpy.array(variable, copy=True,
+                                    dtype=node.outputs[0].type.dtype)
 
     def infer_shape(self, node, shapes):
         ishape, = shapes
@@ -1339,6 +1352,14 @@ class CAReduce(Op):
         idtype = input.type.dtype_specs()[1]
         odtype = output.type.dtype_specs()[1]
 
+        if hasattr(self, 'acc_dtype'):
+            acc_type = TensorType(
+                    broadcastable=node.outputs[0].broadcastable,
+                    dtype=self.acc_dtype)
+            adtype = acc_type.dtype_specs()[1]
+        else:
+            adtype = odtype
+
         axis = self.axis
         if axis is None:
             axis = range(len(input.type.broadcastable))
@@ -1356,13 +1377,25 @@ class CAReduce(Op):
         for i, (input, iname) in enumerate(izip(node.inputs, inames)):
             sub['lv%i' % i] = iname
 
-        decl = cgen.make_declare([order], [idtype], sub)
+        decl = ""
+        if adtype != odtype:
+            # Create an accumulator variable different from the output
+            aname = "acc"
+            decl = acc_type.c_declare(aname, sub)
+            decl += acc_type.c_init(aname, sub)
+        else:
+            # the output is the accumulator variable
+            aname = oname
+
+        decl += cgen.make_declare([order], [idtype], sub)
         checks = cgen.make_checks([order], [idtype], sub)
 
         alloc = ""
         i += 1
         sub['lv%i' % i] = oname
         sub['olv'] = oname
+
+        # Allocate output buffer
         alloc += cgen.make_declare(
                 [range(nnested) + ['x'] * len(axis)],
                 [odtype], dict(sub, lv0=oname))
@@ -1370,6 +1403,19 @@ class CAReduce(Op):
         alloc += cgen.make_checks(
                 [range(nnested) + ['x'] * len(axis)],
                 [odtype], dict(sub, lv0=oname))
+
+        if adtype != odtype:
+            # Allocate accumulation buffer
+            sub['lv%i' % i] = aname
+            sub['olv'] = aname
+
+            alloc += cgen.make_declare(
+                    [range(nnested) + ['x'] * len(axis)],
+                    [adtype], dict(sub, lv0=aname))
+            alloc += cgen.make_alloc([order1], adtype, sub)
+            alloc += cgen.make_checks(
+                    [range(nnested) + ['x'] * len(axis)],
+                    [adtype], dict(sub, lv0=aname))
 
         if hasattr(self.scalar_op, 'identity'):
             identity = self.scalar_op.identity
@@ -1414,7 +1460,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         task0_decl = (
                 "%(dtype)s& %(name)s_i = *%(name)s_iter;\n"
                 "%(name)s_i = %(identity)s;"
-                % dict(dtype=odtype, name=onames[0], identity=identity))
+                % dict(dtype=adtype, name=aname, identity=identity))
 
         task1_decl = ("%(dtype)s& %(name)s_i = *%(name)s_iter;\n"
                 % dict(dtype=idtype, name=inames[0]))
@@ -1427,8 +1473,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
                     [Scalar(dtype=output.type.dtype)()
                         for input in node.outputs]),
                 None,
-                ["%s_i" % onames[0], "%s_i" % inames[0]],
-                ["%s_i" % onames[0]],
+                ["%s_i" % aname, "%s_i" % inames[0]],
+                ["%s_i" % aname],
                 sub)
         code1 = """
         {
@@ -1450,8 +1496,16 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
             all_code = [task0_decl + code1]
         loop = cgen.make_loop(
                 [order, range(nnested) + ['x'] * len(axis)],
-                [idtype, odtype], all_code, sub)
-        return decl, checks, alloc, loop
+                [idtype, adtype], all_code, sub)
+
+        end = ""
+        if adtype != odtype:
+            end = """
+            PyArray_CopyInto(%(oname)s, %(aname)s);
+            """ % dict(oname=oname, aname=aname)
+            end += acc_type.c_cleanup(aname, sub)
+
+        return decl, checks, alloc, loop, end
 
     def c_code(self, node, name, inames, onames, sub):
         code = "\n".join(self._c_all(node, name, inames, onames, sub))
@@ -1462,7 +1516,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         return ['<vector>', '<algorithm>']
 
     def c_code_cache_version_apply(self, node):
-        version = [4]  # the version corresponding to the c code in this Op
+        version = [5]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -1532,13 +1586,19 @@ class CAReduceDtype(CAReduce):
     Reduces a scalar operation along the specified axis(es).
 
     This subclass of CAReduce accepts an additional "dtype" parameter,
-    that specifies which dtype will be used for the accumulation.
+    that specifies which dtype the output should be.
+
+    It also accepts an optional "acc_dtype", which specify the dtype that
+    will be used for the accumulation.
+
+    So, the accumulation will be done into a tensor of dtype "acc_dtype",
+    then it will be casted into "dtype" and returned.
 
     If no dtype is provided, one will be inferred so as not to lose
     too much precision.
     """
 
-    def __init__(self, scalar_op, axis=None, dtype=None):
+    def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         """
         Usage: CAReduceDtype(scalar_op, axis=None, dtype=None)
 
@@ -1549,26 +1609,38 @@ class CAReduceDtype(CAReduce):
                      - list of dimensions that we want to reduce
                      - if None, all dimensions are reduced
 
-        :param dtype: The dtype of the internal accumulator and returned
-        tensor. If None, then we use the default dtype which is the same as the
-        input tensor's dtype except when:
+        :param dtype: The dtype of the returned
+            tensor. If None, then we use the default dtype which is the same
+            as the input tensor's dtype except when:
             - the input dtype is a signed integer of precision < 64 bit, in
               which case we use int64
             - the input dtype is an unsigned integer of precision < 64 bit, in
               which case we use uint64
-        This behavior is similar in spirit to that of numpy (except numpy
-        uses the default machine integer while we always use 64 bit integers to
-        avoid platform-dependent behavior).
+            This default dtype does _not_ depend on the value of "acc_dtype".
+            This behavior is similar in spirit to that of numpy (except numpy
+            uses the default machine integer while we always use 64 bit
+            integers to avoid platform-dependent behavior).
+
+        :param acc_dtype: The dtype of the internal accumulator.
+            If None (default), we use the dtype in the list below,
+            or the input dtype if its precision is higher:
+            - for int dtypes, we use at least int64;
+            - for uint dtypes, we use at least uint64;
+            - for float dtypes, we use at least float64;
+            - for complex dtypes, we use at least complex128.
 
         """
         CAReduce.__init__(self, scalar_op, axis=axis)
         self.dtype = dtype
+        self.acc_dtype = acc_dtype
 
     def __eq__(self, other):
-        return CAReduce.__eq__(self, other) and self.dtype == other.dtype
+        return (CAReduce.__eq__(self, other)
+                and self.dtype == other.dtype
+                and self.acc_dtype == other.acc_dtype)
 
     def __hash__(self):
-        return CAReduce.__hash__(self) ^ hash(self.dtype)
+        return CAReduce.__hash__(self) ^ hash((self.dtype, self.acc_dtype))
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -1577,6 +1649,11 @@ class CAReduceDtype(CAReduce):
             # We need to keep the old dtype behavior as the op
             # could be in an apply node with a specified dtype.
             self.dtype = "OLD"
+
+        if not hasattr(self, "acc_dtype"):
+            # acc_dtype is not used by any external Op, so we do not
+            # need to keep the previous behaviour here.
+            self.acc_dtype = None
 
     def _output_dtype(self, idtype):
         dtype = self.dtype
@@ -1599,25 +1676,46 @@ class CAReduceDtype(CAReduce):
                     uint16='uint64',
                     uint32='uint64',
                     ).get(idtype, idtype)
-        elif (dtype in theano.tensor.continuous_dtypes and
-              idtype in theano.tensor.discrete_dtypes):
-            # Specifying a continuous output for discrete input is OK
+
+        else:
+            # The important is that the accumulator dtype does not
+            # lose precision. Then, the result can be downcasted.
             return dtype
+
+    def _acc_dtype(self, idtype):
+        acc_dtype = self.acc_dtype
+        if acc_dtype is None:
+            return dict(
+                    int8='int64',
+                    int16='int64',
+                    int32='int64',
+                    uint8='uint64',
+                    uint16='uint64',
+                    uint32='uint64',
+                    float32='float64',
+                    complex64='complex128',
+                    ).get(idtype, idtype)
+        elif (acc_dtype in theano.tensor.continuous_dtypes and
+              idtype in theano.tensor.discrete_dtypes):
+            # Specifying a continuous accumulator for discrete input is OK
+            return acc_dtype
         else:
             # The conversion has to be considered an upcast.
-            upcasted_dtype = scalar.upcast(idtype, dtype)
-            if dtype != upcasted_dtype:
+            upcasted_dtype = scalar.upcast(idtype, acc_dtype)
+            if acc_dtype != upcasted_dtype:
                 raise TypeError(
                         'Cannot build %s node with input dtype %s '
-                        'and output dtype %s, as precision would be lost. '
-                        'To correct this error, you can either:\n'
-                        '  - not specify a dtype, or\n'
-                        '  - use a dtype at least as precise as %s.\n'
+                        'and acc_dtype %s, as precision would be lost. '
+                        'To correct this error, you can:\n'
+                        '  - not specify acc_dtype, or\n'
+                        '  - use an acc_dtype at least as precise as %s.\n'
+                        '  - specify "dtype" instead of "acc_dtype", so '
+                        'the reduction will be precise, but the result will '
+                        'be casted into "dtype" at the end.\n'
                         'If you are expecting the precision loss, you can '
-                        'use tensor.cast(..., dtype="%s"), either on your '
-                        'input, or on the output of the reduce operation.'
-                        % (self, idtype, dtype, upcasted_dtype, dtype))
-            return dtype
+                        'use tensor.cast(..., dtype="%s"), on your input.'
+                        % (self, idtype, acc_dtype, upcasted_dtype, acc_dtype))
+            return acc_dtype
 
     def make_node(self, input):
         # We need to redefine make_node so that, if self.dtype is None,
@@ -1625,12 +1723,17 @@ class CAReduceDtype(CAReduce):
         # of the appropriate dtype.
         input = as_tensor_variable(input)
         dtype = self._output_dtype(input.dtype)
+        acc_dtype = self._acc_dtype(input.dtype)
         assert dtype is not None
-        if dtype == self.dtype:
+        assert acc_dtype is not None
+        if dtype == self.dtype and acc_dtype == self.acc_dtype:
             # Don't build another instance
             op = self
         else:
-            op = self.__class__(axis=self.axis, dtype=dtype)
+            op = self.__class__(axis=self.axis,
+                                dtype=dtype, acc_dtype=acc_dtype)
+
+        assert op.acc_dtype is not None
         return CAReduce.make_node(op, input)
 
 
@@ -1643,7 +1746,7 @@ class Sum(CAReduceDtype):
     tensor input.
     """
 
-    def __init__(self, axis=None, dtype=None):
+    def __init__(self, axis=None, dtype=None, acc_dtype=None):
         """
         Constructor.
 
@@ -1658,8 +1761,18 @@ class Sum(CAReduceDtype):
               which case we use int64
             - the input dtype is an unsigned integer of precision < 64 bit, in
               which case we use uint64
+            This value does not depend on the value of "acc_dtype".
+
+        :param acc_dtype: The dtype of the internal accumulator.
+            If None (default), we use the dtype in the list below,
+            or the input dtype if its precision is higher:
+            - for int dtypes, we use at least int64;
+            - for uint dtypes, we use at least uint64;
+            - for float dtypes, we use at least float64;
+            - for complex dtypes, we use at least complex128.
         """
-        CAReduceDtype.__init__(self, scalar.add, axis=axis, dtype=dtype)
+        CAReduceDtype.__init__(self, scalar.add, axis=axis,
+                               dtype=dtype, acc_dtype=acc_dtype)
 
     def grad(self, inp, grads):
         x, = inp
@@ -1667,7 +1780,7 @@ class Sum(CAReduceDtype):
         out = self(*inp)
 
         if out.dtype.find('int') != -1:
-            return [x.zeros_like().astype(theano.config.floatX)]
+            return [theano.tensor.zeros_like(x, dtype=theano.config.floatX)]
 
         gz, = grads
         gz = as_tensor_variable(gz)
@@ -1710,8 +1823,10 @@ class Prod(CAReduceDtype):
     difference that this defines the gradient of prod wrt its tensor
     input.
     """
-    def __init__(self, axis=None, dtype=None, no_zeros_in_input=False):
-        CAReduceDtype.__init__(self, scalar.mul, axis=axis, dtype=dtype)
+    def __init__(self, axis=None, dtype=None, acc_dtype=None,
+                 no_zeros_in_input=False):
+        CAReduceDtype.__init__(self, scalar.mul, axis=axis,
+                               dtype=dtype, acc_dtype=acc_dtype)
         self.no_zeros_in_input = no_zeros_in_input
 
     def __setstate__(self, dct):
@@ -1779,8 +1894,11 @@ class Prod(CAReduceDtype):
 
         out = self(*inp)
 
-        if out.dtype[0:3] in ('int', 'uin'):
-            return [prod_in.zeros_like().astype(theano.config.floatX)]
+        if (out.dtype in discrete_dtypes or
+                self.acc_dtype in discrete_dtypes):
+            # There is an int conversion in the way
+            return [theano.tensor.zeros_like(prod_in,
+                        dtype=theano.config.floatX)]
 
         # Prepare the broadcasting that is used everywhere to broadcast
         # over the original groups (ie. broadcast over the elements of a given
@@ -1893,8 +2011,9 @@ mul_without_zeros = MulWithoutZeros(scalar.upcast_out,
 
 
 class ProdWithoutZeros(CAReduceDtype):
-    def __init__(self, axis=None, dtype=None):
-        CAReduceDtype.__init__(self, mul_without_zeros, axis=axis, dtype=dtype)
+    def __init__(self, axis=None, dtype=None, acc_dtype=None):
+        CAReduceDtype.__init__(self, mul_without_zeros, axis=axis,
+                dtype=dtype, acc_dtype=acc_dtype)
 
     def __str__(self):
         if self.axis is None:
