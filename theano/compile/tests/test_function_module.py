@@ -9,7 +9,7 @@ from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError
 from theano.gof import MissingInputError
-from theano.gof.python25 import all, any
+from theano.compat import all, exc_message
 
 from theano import tensor
 from theano import tensor as T
@@ -636,11 +636,10 @@ class T_picklefunction(unittest.TestCase):
         fp = BytesIO()
         p = cPickle.Pickler(fp, 2)
         p.persistent_id = pers_save
-        p.dump(f)
         try:
             p.dump(f)
         except NotImplementedError, e:
-            if e[0].startswith('DebugMode is not picklable'):
+            if exc_message(e).startswith('DebugMode is not picklable'):
                 return
             else:
                 raise
