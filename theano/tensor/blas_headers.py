@@ -994,6 +994,7 @@ def blas_header_text():
     if detect_macos_sdot_bug():
         if detect_macos_sdot_bug.fix_works:
             header += textwrap.dedent("""\
+                    extern "C" float cblas_sdot(int, float*, int, float*, int);
                     float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
                     {
                         return cblas_sdot(*Nx, x, *Sx, y, *Sy);
