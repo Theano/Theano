@@ -1165,30 +1165,3 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         /* v 1 */
     """ % locals()
-
-# currently unused, preferring the fallback method (throwing
-# NotImplementedError) for when gemm won't work.
-_templated_memaligned_gemm = """
-template <typename Ta, typename Tx, typename Ty, typename Tb, typename Tz>
-int general_gemm(int zM, int zN, int xN,.
-    Ta a,
-    Tx * x, int xm, int xn,
-    Tx * y, int ym, int yn,
-    Tb b,
-    Tz * z, int zm, int zn)
-{
-    for (int i = 0; i < zM; ++i)
-    {
-        for (int j = 0; j < zN; ++j)
-        {
-            Tz zij = 0.0;
-            for (int k = 0; k < xN; ++k)
-            {
-                zij += x[i*xm+k*xn] * y[k*ym+j*yn];
-            }
-            z[i * zm + j * zn] *= b;
-            z[i * zm + j * zn] += a * zij;
-        }
-    }
-}
-"""
