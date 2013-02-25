@@ -1925,8 +1925,8 @@ class _tensor_py_operators:
     def get_scalar_constant_value(self):
         return get_scalar_constant_value(self)
 
-    def zeros_like(model):
-        return zeros_like(model)
+    def zeros_like(model, dtype=None):
+        return zeros_like(model, dtype=dtype)
 
 
 class TensorVariable(_tensor_py_operators, Variable):

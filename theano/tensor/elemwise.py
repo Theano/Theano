@@ -397,8 +397,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         # canonicalization optimization phase will remove the inplace.
         # The inplace will be reintroduced automatically later in the graph.
         if 'int' in inp[0].dtype:
-            return [theano.tensor.zeros_like(inp[0],
-                                             dtype=theano.config.floatX)]
+            return [inp[0].zeros_like(dtype=theano.config.floatX)]
         else:
             return [DimShuffle(gz.type.broadcastable, grad_order)(
                 Elemwise(scalar.identity)(gz))]
@@ -622,7 +621,7 @@ class Elemwise(Op):
         for idx, out in enumerate(outs):
             # make such that _bgrads computes only the gradients of the
             # current output on the inputs ( and not all outputs)
-            ograds = [theano.tensor.zeros_like(x) for x in outs]
+            ograds = [x.zeros_like() for x in outs]
             ograds[idx] = theano.tensor.ones_like(out)
 
             bgrads = self._bgrad(inputs, ograds)
@@ -1780,7 +1779,7 @@ class Sum(CAReduceDtype):
         out = self(*inp)
 
         if out.dtype.find('int') != -1:
-            return [theano.tensor.zeros_like(x, dtype=theano.config.floatX)]
+            return [x.zeros_like(dtype=theano.config.floatX)]
 
         gz, = grads
         gz = as_tensor_variable(gz)
@@ -1897,8 +1896,7 @@ class Prod(CAReduceDtype):
         if (out.dtype in discrete_dtypes or
                 self.acc_dtype in discrete_dtypes):
             # There is an int conversion in the way
-            return [theano.tensor.zeros_like(prod_in,
-                        dtype=theano.config.floatX)]
+            return [prod_in.zeros_like(dtype=theano.config.floatX)]
 
         # Prepare the broadcasting that is used everywhere to broadcast
         # over the original groups (ie. broadcast over the elements of a given
