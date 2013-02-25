@@ -420,8 +420,8 @@ else:
                         " want theano to use.")
     default_openmp = count > 1
 
-# Disable it by default for now as currently only the ConvOp support
-# it And this cause slow down by default as we do not disable it for
+# Disable it by default for now as currently only the ConvOp supports
+# it, and this causes slowdown by default as we do not disable it for
 # too small convolution.
 default_openmp = False
 
