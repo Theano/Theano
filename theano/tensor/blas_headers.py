@@ -2,6 +2,199 @@
 
 There is no standard name or location for this header, so we just insert it ourselves into the C code
 """
+import os
+import tempfile
+import textwrap
+import subprocess
+import sys
+
+from theano import config
+from theano.misc.windows import call_subprocess_Popen
+
+
+def detect_macos_sdot_bug():
+    """
+    Try to detect a bug in the default BLAS in MacOS.
+
+    The problem in Theano has been reported in gh-1240,
+    the underlying bug has been confirmed in
+    http://www.macresearch.org/lapackblas-fortran-106#comment-17227.
+
+    This function tries to compile code triggering that bug,
+    and, if necessary, an attempted fix.
+
+    Three attributes of this function will be set:
+        - detect_macos_sdot_bug.tested will be set to True
+          when this function is called.
+        - detect_macos_sdot_bug.present will be set to True if the bug is
+          detected. Its value is returned by the function
+        - detect_macos_sdot_bug.fix_works will be set to True if the fix was
+          attempted, and succeeded.
+    """
+    if detect_macos_sdot_bug.tested:
+        return detect_macos_sdot_bug.present
+
+    if sys.platform != 'darwin' or not config.blas.ldflags:
+        detect_macos_sdot_bug.tested = True
+        return False
+
+    # This code will return -1 if the dot product did not return
+    # the right value (30.).
+    flags = config.blas.ldflags.split()
+    for f in flags:
+        # Library directories should also be added as rpath,
+        # so that they can be loaded even if the environment
+        # variable LD_LIBRARY_PATH does not contain them
+        if f.startswith('-L'):
+            flags.append('-Wl,-rpath,' + f[2:])
+
+    test_code = textwrap.dedent("""\
+        extern "C" float sdot_(int*, float*, int*, float*, int*);
+        int main(int argc, char** argv)
+        {
+            int Nx = 5;
+            int Sx = 1;
+            float x[5] = {0, 1, 2, 3, 4};
+            float r = sdot_(&Nx, x, &Sx, x, &Sx);
+
+            if ((r - 30.f) > 1e-6 || (r - 30.f) < -1e-6)
+            {
+                return -1;
+            }
+            return 0;
+        }
+        """)
+    try:
+        fd, path = tempfile.mkstemp(suffix='.c',
+                prefix='detect_macos_sdot_bug_')
+        exe_path = path[:-2]
+        dummy_stdin = open(os.devnull)
+        compilation_failed = False
+        try:
+            os.write(fd, test_code)
+            os.close(fd)
+            fd = None
+            proc = call_subprocess_Popen(
+                    ['g++', path, '-o', exe_path] + flags,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=dummy_stdin.fileno())
+            proc.wait()
+            if proc.returncode != 0:
+                # We were not able to compile
+                compilation_failed = True
+            else:
+                # Try to execute the program
+                try:
+                    proc = call_subprocess_Popen([exe_path],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            stdin=dummy_stdin.fileno())
+                    proc.wait()
+                    detect_macos_sdot_bug.tested = True
+                    if proc.returncode != 0:
+                        # The bug is present
+                        detect_macos_sdot_bug.present = True
+                    else:
+                        detect_macos_sdot_bug.present = False
+                finally:
+                    os.remove(exe_path)
+
+        finally:
+            del dummy_stdin
+            try:
+                if fd is not None:
+                    os.close(fd)
+            finally:
+                os.remove(path)
+
+    except OSError, e:
+        compilation_failed = True
+
+    # If compilation failed, we consider there is a bug,
+    # and the fix does not work
+    if compilation_failed:
+        detect_macos_sdot_bug.tested = True
+        detect_macos_sdot_bug.present = True
+        return True
+
+    if not detect_macos_sdot_bug.present:
+        return False
+
+    # Else, try a simple fix
+    test_fix_code = textwrap.dedent("""\
+        extern "C" float sdot_(int*, float*, int*, float*, int*);
+        float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+        {
+            return cblas_sdot(*Nx, x, *Sx, y, *Sy);
+        }
+
+        int main(int argc, char** argv)
+        {
+            int Nx = 5;
+            int Sx = 1;
+            float x[5] = {0, 1, 2, 3, 4};
+            float r = sdot_(&Nx, x, &Sx, x, &Sx);
+
+            if (fabs(r - 30.f) > 1e-6)
+            {
+                return -1;
+            }
+            return 0;
+        }
+        """)
+    try:
+        fd, path = tempfile.mkstemp(suffix='.c',
+                prefix='detect_macos_sdot_bug_testfix_')
+        exe_path = path[:-2]
+        dummy_stdin = open(os.devnull)
+        compilation_failed = False
+        try:
+            os.write(fd, test_fix_code)
+            os.close(fd)
+            fd = None
+            proc = call_subprocess_Popen(
+                    ['g++', path, '-o', exe_path] + flags,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    stdin=dummy_stdin.fileno())
+            proc.wait()
+            if proc.returncode != 0:
+                # We were not able to compile
+                compilation_failed = True
+
+            else:
+                # Try to execute the program
+                try:
+                    proc = call_subprocess_Popen([exe_path],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            stdin=dummy_stdin.fileno())
+                    proc.wait()
+                    if proc.returncode == 0:
+                        # The fix is working
+                        detect_macos_sdot_bug.fix_works = True
+                finally:
+                    os.remove(exe_path)
+
+        finally:
+            del dummy_stdin
+            try:
+                if fd is not None:
+                    os.close(fd)
+            finally:
+                os.remove(path)
+
+    except OSError, e:
+        compilation_failed = True
+
+    return detect_macos_sdot_bug.present
+
+detect_macos_sdot_bug.tested = False
+detect_macos_sdot_bug.present = False
+detect_macos_sdot_bug.fix_works = False
+
+
 def cblas_header_text():
     """C header for the cblas interface."""
 
@@ -585,7 +778,7 @@ def cblas_header_text():
 
 def blas_header_text():
     """C header for the fortran blas interface"""
-    return """
+    header = """
     extern "C"
     {
 
@@ -788,6 +981,47 @@ def blas_header_text():
 
     }
     """
+
+    if detect_macos_sdot_bug():
+        if detect_macos_sdot_bug.fix_works:
+            header += textwrap.dedent("""\
+                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    {
+                        return cblas_sdot(*Nx, x, *Sx, y, *Sy);
+                    }
+                    """)
+        else:
+            # Make sure the buggy version of sdot_ is never used
+            header += textwrap.dedent("""\
+                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    {
+                        fprintf(stderr,
+                            "FATAL: The implementation of BLAS SDOT "
+                            "routine in your system has a bug that "
+                            "makes it return wrong results.\\n"
+                            "Please contact theano-dev@groups.google.com.\\n"
+                            "You can work around this bug by using a "
+                            "different BLAS library, or disabling BLAS\\n");
+                        assert(0);
+                    }
+                    """)
+
+    return header
+
+
+def blas_header_version():
+    # Version for the base header
+    version = (1,)
+    if detect_macos_sdot_bug():
+        if detect_macos_sdot_bug.fix_works:
+            # Version with fix
+            version += (1,)
+        else:
+            # Version with error
+            version += (2,)
+
+    return version
+
 
 def ____gemm_code(check_ab, a_init, b_init):
     mod = '%'

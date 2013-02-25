@@ -145,6 +145,7 @@ from theano.gof.python25 import all, any
 import theano.scalar
 from theano.tensor import basic as T
 from theano.tensor.blas_headers import blas_header_text
+from theano.tensor.blas_headers import blas_header_version
 from theano.tensor.opt import local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
@@ -768,7 +769,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (12,)
+        return (12, blas_header_version())
 
 
 class Gemm(GemmRelated):

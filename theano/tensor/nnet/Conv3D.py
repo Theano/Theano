@@ -51,7 +51,7 @@ class Conv3D(theano.Op):
         return "Conv3D"
 
     def c_code_cache_version(self):
-        return (3,)
+        return (3, blas_header_text.version)
 
 
     def make_node(self, V, W, b, d):
