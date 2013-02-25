@@ -1,6 +1,7 @@
 """ Header text for the C and Fortran BLAS interfaces.
 
-There is no standard name or location for this header, so we just insert it ourselves into the C code
+There is no standard name or location for this header, so we just insert it
+ourselves into the C code
 """
 import os
 import tempfile
@@ -776,6 +777,7 @@ def cblas_header_text():
     __END_DECLS
     """
 
+
 def blas_header_text():
     """C header for the fortran blas interface"""
     header = """
@@ -1190,4 +1192,3 @@ int general_gemm(int zM, int zN, int xN,.
     }
 }
 """
-
