@@ -138,7 +138,7 @@ def detect_macos_sdot_bug():
             float x[5] = {0, 1, 2, 3, 4};
             float r = sdot_(&Nx, x, &Sx, x, &Sx);
 
-            if (fabs(r - 30.f) > 1e-6)
+            if ((r - 30.f) > 1e-6 || (r - 30.f) < -1e-6)
             {
                 return -1;
             }
