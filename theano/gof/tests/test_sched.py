@@ -5,7 +5,7 @@ import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
 from theano.gof.python25 import any
-
+from theano.compat import cmp
 
 def test_dependence():
     dependence = make_dependence_cmp()

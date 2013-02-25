@@ -8,6 +8,7 @@ from tempfile import mkstemp
 import unittest
 import warnings
 from copy import copy, deepcopy
+from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
 import __builtin__
 builtin_min = __builtin__.min
@@ -18,6 +19,7 @@ from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
+from theano.compat import PY3, exc_message, operator_div
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
@@ -25,7 +27,7 @@ from theano.gof.python25 import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, Subtensor, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
-        fscalar, zeros_like, sum, tensor3, vector, izip, add, addbroadcast,
+        fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
@@ -727,14 +729,21 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
     )
 
-_good_broadcast_div_mod_normal_float_inplace = copymod(
-    _good_broadcast_div_mod_normal_float_no_complex,
-    empty1=(numpy.asarray([]), numpy.asarray([1])),
-    complex1=(randcomplex(2, 3), randcomplex_nonzero((2, 3))),
-    complex2=(randcomplex(2, 3), rand_nonzero((2, 3))),
-    # Inplace on the first element. Must have the same type.
-    #complex3=(rand(2, 3) ,randcomplex(2, 3)),
-    )
+if PY3:
+    _good_broadcast_div_mod_normal_float_inplace = copymod(
+        _good_broadcast_div_mod_normal_float_no_complex,
+        empty1=(numpy.asarray([]), numpy.asarray([1])),
+        # No complex floor division in python 3.x
+        )
+else:
+    _good_broadcast_div_mod_normal_float_inplace = copymod(
+        _good_broadcast_div_mod_normal_float_no_complex,
+        empty1=(numpy.asarray([]), numpy.asarray([1])),
+        complex1=(randcomplex(2, 3), randcomplex_nonzero((2, 3))),
+        complex2=(randcomplex(2, 3), rand_nonzero((2, 3))),
+        # Inplace on the first element. Must have the same type.
+        #complex3=(rand(2, 3) ,randcomplex(2, 3)),
+        )
 
 _good_broadcast_div_mod_normal_float = copymod(
     _good_broadcast_div_mod_normal_float_inplace,
@@ -2804,7 +2813,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 self.eval_output_and_check(t)
                 assert 0
             except Exception, e:
-                if e[0] != 'index out of bounds':
+                if exc_message(e) != 'index out of bounds':
                     raise
         finally:
             _logger.setLevel(oldlevel)
@@ -4328,8 +4337,8 @@ class T_divimpl(unittest.TestCase):
         assert numpy.allclose(function([i, d], d / i)(5, 7.0), (7.0 / 5.0))
         assert numpy.allclose(function([i, f], i / f)(5, 11.0), (5.0 / 11.0))
         assert numpy.allclose(function([i, f], f / i)(5, 11.0), (11.0 / 5.0))
-        assert numpy.allclose(function([i, ii], i // ii)(5, 3), (5 / 3))
-        assert numpy.allclose(function([i, ii], ii // i)(5, 3), (3 / 5))
+        assert numpy.allclose(function([i, ii], i // ii)(5, 3), (5 // 3))
+        assert numpy.allclose(function([i, ii], ii // i)(5, 3), (3 // 5))
         assert numpy.allclose(function([i, ii], true_div(i, ii))(5, 3),
                 (5. / 3.))
         assert numpy.allclose(function([i, ii], true_div(ii, i))(5, 3),
@@ -4570,17 +4579,18 @@ class t_dot(unittest.TestCase):
                 tz = eval_outputs([z])
                 assert False    # should have raised exception
             except ValueError, e:
+                e0 = exc_message(e)
                 self.assertTrue(
                     # Reported by numpy.
-                    e[0].split()[1:4] == ['are', 'not', 'aligned'] or
+                    e0.split()[1:4] == ['are', 'not', 'aligned'] or
                     # Reported by blas or Theano.
-                    e[0].split()[0:2] == ['Shape', 'mismatch:'] or
+                    e0.split()[0:2] == ['Shape', 'mismatch:'] or
                     # Reported by Theano perform
-                    e[0].split()[0:4]
+                    e0.split()[0:4]
                          == ['Incompatible', 'shapes', 'for', 'gemv'] or
                     # Reported by Theano when 'exception_verbosity' is set
                     # to 'high'.
-                    e[0].split()[0:3] == ['dot', 'product', 'failed.'],
+                    e0.split()[0:3] == ['dot', 'product', 'failed.'],
                     e)
         finally:
             _logger.setLevel(oldlevel)
@@ -6051,7 +6061,7 @@ class test_arithmetic_cast(unittest.TestCase):
             for cfg in ('numpy+floatX', ):  # Used to test 'numpy' as well.
                 config.cast_policy = cfg
                 for op in (operator.add, operator.sub, operator.mul,
-                           operator.div, operator.floordiv):
+                           operator_div, operator.floordiv):
                     for a_type in dtypes:
                         for b_type in dtypes:
                             # Note that we do not test division between
@@ -6059,7 +6069,7 @@ class test_arithmetic_cast(unittest.TestCase):
                             # Theano deals with integer division in its own
                             # special way (depending on `config.int_division`).
                             is_int_division = (
-                                    op is operator.div and
+                                    op is operator_div and
                                     a_type in tensor.discrete_dtypes and
                                     b_type in tensor.discrete_dtypes)
                             # We will test all meaningful combinations of
@@ -6142,12 +6152,12 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
-                                numpy_version =numpy.__version__.split('.')[:2]
+                                numpy_version = numpy.__version__.split('.')[:2]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     b_type == 'float32' and
                                     combo == ('scalar', 'array') and
-                                    bool(numpy_version >= [1, 6]) and
+                                    bool(numpy_version >= ['1', '6']) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtypes == ['complex64',
                                                      'complex64']):

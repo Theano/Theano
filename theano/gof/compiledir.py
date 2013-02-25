@@ -27,7 +27,7 @@ try:
                               stdin=dummy_in.fileno(),
                               stderr=dummy_err.fileno())
     p.wait()
-    gcc_version_str = p.stdout.readline().strip()
+    gcc_version_str = p.stdout.readline().strip().decode()
 except OSError:
     # Typically means gcc cannot be found.
     gcc_version_str = 'GCC_NOT_FOUND'

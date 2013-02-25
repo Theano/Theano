@@ -2,8 +2,10 @@
 #import traceback
 import itertools
 import sys
+
 import theano.tensor as T
 from theano import tensor
+from theano.compat import PY3, exc_message
 from theano.gof.python25 import product as itertools_product
 from theano.gof.python25 import any
 from theano.printing import pp
@@ -112,7 +114,7 @@ class t_gemm(TestCase):
         try:
             g = gemm_inplace([1.], 1., [1.], [1.], 1.)
         except TypeError, e:
-            if e[0] is Gemm.E_rank:
+            if exc_message(e) is Gemm.E_rank:
                 return
         self.fail()
 
@@ -120,7 +122,7 @@ class t_gemm(TestCase):
         try:
             self.cmp(1., 0., 1.0, 1.0, 1.0)
         except TypeError, e:
-            if e[0] is Gemm.E_rank:
+            if exc_message(e) is Gemm.E_rank:
                 return
         self.fail()
 
@@ -128,7 +130,7 @@ class t_gemm(TestCase):
         try:
             self.cmp(2., 1.0, [3, 2, 1.], [[1], [2], [3.]], 1.0)
         except TypeError, e:
-            self.assertTrue(e[0] == Gemm.E_rank)
+            self.assertTrue(exc_message(e) == Gemm.E_rank)
             return
         self.fail()
 
@@ -220,7 +222,7 @@ class t_gemm(TestCase):
         try:
             gemm_inplace(Z, 1.0, Z, Z, 1.0)
         except InconsistencyError, e:
-            if e[0] == Gemm.E_z_uniq:
+            if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
 
@@ -231,7 +233,7 @@ class t_gemm(TestCase):
         try:
             gemm_inplace(Z, 1.0, A, inplace.transpose_inplace(Z), 1.0)
         except InconsistencyError, e:
-            if e[0] == Gemm.E_z_uniq:
+            if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
 
@@ -242,7 +244,7 @@ class t_gemm(TestCase):
         try:
             gemm_inplace(Z, 1.0, inplace.transpose_inplace(Z), A, 1.0)
         except InconsistencyError, e:
-            if e[0] == Gemm.E_z_uniq:
+            if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
 
@@ -253,7 +255,7 @@ class t_gemm(TestCase):
         try:
             gemm_inplace(Z, 1.0, Z, A, 1.0)
         except InconsistencyError, e:
-            if e[0] == Gemm.E_z_uniq:
+            if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
 
@@ -325,7 +327,7 @@ class t_gemm(TestCase):
         try:
             t(C.T, A[:2, :], B[:, :2].T)
         except ValueError, e:
-            if e[0].find('aligned') >= 0:
+            if exc_message(e).find('aligned') >= 0:
                 return
         self.fail()
 

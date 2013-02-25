@@ -5,15 +5,13 @@ For design notes, see doc/advanced/module.txt
 """
 
 __docformat__ = "restructuredtext en"
+import sys, warnings
+from itertools import chain
 
 from theano import gof
 from theano.printing import pprint
-import io, sys
-
+from theano.compile import io
 from theano.gof.python25 import all
-import warnings
-
-from itertools import chain
 
 import theano.compile.function_module
 import theano.compile.mode
@@ -1150,12 +1148,12 @@ class Module(ComponentDict):
         # to look for submodules on which make_module_instance needs to be called
         def recurse(v):
             if isinstance(v,list):
-                iter = enumerate(v)
+                iterv = enumerate(v)
             else:
-                iter = v.iteritems()
+                iterv = v.iteritems()
             #backport
             #iter = enumerate(v) if isinstance(v,list) else v.iteritems()
-            for sk,sv in iter:
+            for sk,sv in iterv:
                 if isinstance(sv,(list,dict)):
                     sv = recurse(sv)
                 elif isinstance(sv,Module):

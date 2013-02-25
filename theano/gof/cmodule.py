@@ -19,6 +19,7 @@ import distutils.sysconfig
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
+from theano.compat import PY3, b, next
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -164,11 +165,27 @@ class DynamicModule(object):
         print >> stream, "};"
 
     def print_init(self, stream):
-        print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
-        for b in self.init_blocks:
-            print >> stream, '  ', b
-        print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                % self.name)
+        if PY3:
+            print >> stream, """\
+static struct PyModuleDef moduledef = {{
+      PyModuleDef_HEAD_INIT,
+      "{name}",
+      NULL,
+      -1,
+      MyMethods,
+}};
+""".format(name=self.name)
+            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.name
+            for b in self.init_blocks:
+                print >> stream, '  ', b
+            print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
+            print >> stream, "    return m;"
+        else:
+            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
+            for b in self.init_blocks:
+                print >> stream, '  ', b
+            print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
+                                    % self.name)
         print >> stream, "}"
 
     def add_include(self, str):
@@ -917,7 +934,7 @@ class ModuleCache(object):
                     # If we do, then there is no need to even compile it.
                     duplicated_module = False
                     # The first compilation step is to yield the source code.
-                    src_code = compile_steps.next()
+                    src_code = next(compile_steps)
                     module_hash = get_module_hash(src_code, key)
 
                     # The op has c_code, so take the lock.
@@ -972,7 +989,7 @@ class ModuleCache(object):
                             try:
                                 # The module should be returned by the last
                                 # step of the compilation.
-                                module = compile_steps.next()
+                                module = next(compile_steps)
                             except StopIteration:
                                 break
 
@@ -1615,7 +1632,7 @@ class GCC_compiler(object):
             lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cpp')
-        cppfile = file(cppfilename, 'w')
+        cppfile = open(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
 
@@ -1673,14 +1690,15 @@ class GCC_compiler(object):
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
-                            (status, compile_stderr.replace('\n', '. ')))
+                            (status, compile_stderr.replace(b('\n'), b('. '))))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print compile_stderr
 
         if py_module:
             #touch the __init__ file
-            file(os.path.join(location, "__init__.py"), 'w').close()
+            open(os.path.join(location, "__init__.py"), 'w').close()
+            assert os.path.isfile(lib_filename)
             return dlimport(lib_filename)
 
 

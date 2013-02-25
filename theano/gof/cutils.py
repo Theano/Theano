@@ -1,5 +1,6 @@
-import os
-import sys
+import os, sys
+
+from theano.compat import PY3
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
 
@@ -38,8 +39,29 @@ def compile_cutils():
             {"run_cthunk",  run_cthunk, METH_VARARGS|METH_KEYWORDS,
              "Run a theano cthunk."},
             {NULL, NULL, 0, NULL}        /* Sentinel */
+        };"""
+    if PY3:
+        # This is not the most efficient code, but it is written this way to highlight
+        # the changes needed to make 2.x code compile under python 3.
+        code = code.replace("<Python.h>", '"numpy/npy_3kcompat.h"', 1)
+        code = code.replace("PyCObject", "NpyCapsule")
+        code += """
+        static struct PyModuleDef moduledef = {
+            PyModuleDef_HEAD_INIT,
+            "cutils_ext",
+            NULL,
+            -1,
+            CutilsExtMethods,
         };
 
+        PyMODINIT_FUNC
+        PyInit_cutils_ext(void) {
+            return PyModule_Create(&moduledef);
+        }
+        }
+    """
+    else:
+        code += """
         PyMODINIT_FUNC
         initcutils_ext(void)
         {
@@ -68,7 +90,7 @@ try:
     if not os.path.exists(location):
         os.mkdir(location)
     if not os.path.exists(os.path.join(location, '__init__.py')):
-        file(os.path.join(location, '__init__.py'), 'w').close()
+        open(os.path.join(location, '__init__.py'), 'w').close()
 
     try:
         from cutils_ext.cutils_ext import *

@@ -1,6 +1,6 @@
 from theano.gof.graph import list_of_nodes
 from theano.gof.python25 import any, defaultdict
-
+from theano.compat import cmp
 
 ## {{{ http://code.activestate.com/recipes/578231/ (r1)
 # Copyright (c) Oren Tirosh 2012
