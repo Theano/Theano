@@ -125,6 +125,7 @@ def detect_macos_sdot_bug():
     # Else, try a simple fix
     test_fix_code = textwrap.dedent("""\
         extern "C" float sdot_(int*, float*, int*, float*, int*);
+        extern "C" float cblas_sdot(int, float*, int, float*, int);
         float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
         {
             return cblas_sdot(*Nx, x, *Sx, y, *Sy);
@@ -163,7 +164,13 @@ def detect_macos_sdot_bug():
             if proc.returncode != 0:
                 # We were not able to compile
                 compilation_failed = True
-
+                print >> sys.stderr, ("ERROR: Failed to compile tentative fix "
+                        "for bug in BLAS shipped with Mac OS X")
+                print >> sys.stderr, "command line was:", ' '.join(
+                        ['g++', path, '-o', exe_path] + flags)
+                print >> sys.stderr, "error was:"
+                for l in proc.stderr:
+                    print >> sys.stderr, l
             else:
                 # Try to execute the program
                 try:
