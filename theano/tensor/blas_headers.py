@@ -3,14 +3,11 @@
 There is no standard name or location for this header, so we just insert it
 ourselves into the C code
 """
-import os
-import tempfile
 import textwrap
-import subprocess
 import sys
 
 from theano import config
-from theano.misc.windows import call_subprocess_Popen
+from theano.gof.cmodule import GCC_compiler
 
 
 def detect_macos_sdot_bug():
@@ -65,61 +62,19 @@ def detect_macos_sdot_bug():
             return 0;
         }
         """)
-    try:
-        fd, path = tempfile.mkstemp(suffix='.c',
-                prefix='detect_macos_sdot_bug_')
-        exe_path = path[:-2]
-        dummy_stdin = open(os.devnull)
-        compilation_failed = False
-        try:
-            os.write(fd, test_code)
-            os.close(fd)
-            fd = None
-            proc = call_subprocess_Popen(
-                    ['g++', path, '-o', exe_path] + flags,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    stdin=dummy_stdin.fileno())
-            proc.wait()
-            if proc.returncode != 0:
-                # We were not able to compile
-                compilation_failed = True
-            else:
-                # Try to execute the program
-                try:
-                    proc = call_subprocess_Popen([exe_path],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            stdin=dummy_stdin.fileno())
-                    proc.wait()
-                    detect_macos_sdot_bug.tested = True
-                    if proc.returncode != 0:
-                        # The bug is present
-                        detect_macos_sdot_bug.present = True
-                    else:
-                        detect_macos_sdot_bug.present = False
-                finally:
-                    os.remove(exe_path)
 
-        finally:
-            del dummy_stdin
-            try:
-                if fd is not None:
-                    os.close(fd)
-            finally:
-                os.remove(path)
-
-    except OSError, e:
-        compilation_failed = True
+    compilation_ok, run_ok = GCC_compiler.try_compile_tmp(test_code,
+            tmp_prefix='detect_macos_sdot_bug_', flags=flags, try_run=True)
+    detect_macos_sdot_bug.tested = True
 
     # If compilation failed, we consider there is a bug,
     # and the fix does not work
-    if compilation_failed:
-        detect_macos_sdot_bug.tested = True
+    if not compilation_ok:
         detect_macos_sdot_bug.present = True
         return True
 
-    if not detect_macos_sdot_bug.present:
+    if run_ok:
+        detect_macos_sdot_bug.present = False
         return False
 
     # Else, try a simple fix
@@ -145,56 +100,14 @@ def detect_macos_sdot_bug():
             return 0;
         }
         """)
-    try:
-        fd, path = tempfile.mkstemp(suffix='.c',
-                prefix='detect_macos_sdot_bug_testfix_')
-        exe_path = path[:-2]
-        dummy_stdin = open(os.devnull)
-        compilation_failed = False
-        try:
-            os.write(fd, test_fix_code)
-            os.close(fd)
-            fd = None
-            proc = call_subprocess_Popen(
-                    ['g++', path, '-o', exe_path] + flags,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    stdin=dummy_stdin.fileno())
-            proc.wait()
-            if proc.returncode != 0:
-                # We were not able to compile
-                compilation_failed = True
-                print >> sys.stderr, ("ERROR: Failed to compile tentative fix "
-                        "for bug in BLAS shipped with Mac OS X")
-                print >> sys.stderr, "command line was:", ' '.join(
-                        ['g++', path, '-o', exe_path] + flags)
-                print >> sys.stderr, "error was:"
-                for l in proc.stderr:
-                    print >> sys.stderr, l
-            else:
-                # Try to execute the program
-                try:
-                    proc = call_subprocess_Popen([exe_path],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            stdin=dummy_stdin.fileno())
-                    proc.wait()
-                    if proc.returncode == 0:
-                        # The fix is working
-                        detect_macos_sdot_bug.fix_works = True
-                finally:
-                    os.remove(exe_path)
 
-        finally:
-            del dummy_stdin
-            try:
-                if fd is not None:
-                    os.close(fd)
-            finally:
-                os.remove(path)
+    compilation_fix_ok, run_fix_ok = GCC_compiler.try_compile_tmp(
+            test_fix_code,
+            tmp_prefix='detect_macos_sdot_bug_testfix_',
+            flags=flags,
+            try_run=True)
 
-    except OSError, e:
-        compilation_failed = True
+    detect_macos_sdot_bug.fix_works = run_fix_ok
 
     return detect_macos_sdot_bug.present
 

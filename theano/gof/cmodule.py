@@ -1484,6 +1484,68 @@ class GCC_compiler(object):
         return cxxflags
 
     @staticmethod
+    def try_compile_tmp(src_code, tmp_prefix='', flags=(), try_run=False):
+        """Try to compile (and run) a test program.
+
+        This is useful in various occasions, to check if libraries
+        or compilers are behaving as expected.
+
+        If try_run is True, the src_code is assumed to be executable,
+        and will be run.
+
+        If try_run is False, returns the compilation status.
+        If try_run is False, returns a (compile_status, run_status) pair.
+        """
+        if not theano.config.cxx:
+            return False
+
+        flags = list(flags)
+        compilation_ok = True
+        try:
+            fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
+            exe_path = path[:-2]
+            dummy_stdin = open(os.devnull)
+            try:
+                os.write(fd, src_code)
+                os.close(fd)
+                fd = None
+                proc = call_subprocess_Popen(
+                        ['g++', path, '-o', exe_path] + flags,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        stdin=dummy_stdin.fileno())
+                proc.wait()
+                if proc.returncode != 0:
+                    compilation_ok = False
+                elif try_run:
+                    # Try to execute the program
+                    run_ok = False
+                    try:
+                        proc = call_subprocess_Popen([exe_path],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                stdin=dummy_stdin.fileno())
+                        proc.wait()
+                        run_ok = (proc.returncode == 0)
+                    finally:
+                        os.remove(exe_path)
+            finally:
+                del dummy_stdin
+                try:
+                    if fd is not None:
+                        os.close(fd)
+                finally:
+                    os.remove(path)
+
+        except OSError, e:
+            compilation_ok = False
+
+        if not try_run:
+            return compilation_ok
+        else:
+            return (compilation_ok, run_ok)
+
+    @staticmethod
     def try_flags(flag_list):
         '''
         Try to compile a dummy file with these flags.
@@ -1494,37 +1556,14 @@ class GCC_compiler(object):
         if not theano.config.cxx:
             return False
 
-        rval = True
-        try:
-            code = """
-            int main(int argc, char** argv)
-            {
-                return 0;
-            }
-            """
-            fd, path = tempfile.mkstemp(suffix='.c', prefix='try_flags_')
-            dummy_stdin = open(os.devnull)
-            try:
-                os.write(fd, code)
-                os.close(fd)
-                fd = None
-                proc = call_subprocess_Popen(['g++', path] + flag_list,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        stdin=dummy_stdin.fileno())
-                proc.wait()
-                if proc.returncode != 0:
-                    rval = False
-            finally:
-                del dummy_stdin
-                try:
-                    if fd is not None:
-                        os.close(fd)
-                finally:
-                    os.remove(path)
-        except OSError, e:
-            rval = False
-        return rval
+        code = """
+        int main(int argc, char** argv)
+        {
+            return 0;
+        }
+        """
+        return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
+                flags=flag_list, try_run=False)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
