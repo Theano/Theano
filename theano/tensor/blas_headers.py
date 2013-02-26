@@ -77,7 +77,10 @@ def detect_macos_sdot_bug():
         detect_macos_sdot_bug.present = False
         return False
 
-    # Else, try a simple fix
+    # Else, the bug is detected.
+    detect_macos_sdot_bug.present = True
+
+    # Then, try a simple fix
     test_fix_code = textwrap.dedent("""\
         extern "C" float sdot_(int*, float*, int*, float*, int*);
         extern "C" float cblas_sdot(int, float*, int, float*, int);

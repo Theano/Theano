@@ -1494,7 +1494,7 @@ class GCC_compiler(object):
         and will be run.
 
         If try_run is False, returns the compilation status.
-        If try_run is False, returns a (compile_status, run_status) pair.
+        If try_run is True, returns a (compile_status, run_status) pair.
         """
         if not theano.config.cxx:
             return False
