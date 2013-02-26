@@ -7156,7 +7156,7 @@ class TestInferShape(utt.InferShapeTester):
 class TestTensorInstanceMethods(unittest.TestCase):
     def setUp(self):
         self.vars = matrices('X', 'Y')
-        self.vals = [rand(2,2),rand(2,2)]
+        self.vals = [m.astype(floatX) for m in [rand(2,2),rand(2,2)]]
 
     def test_argmin(self):
         X, _ = self.vars
@@ -7255,7 +7255,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
         indices = [1,0,1]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
-        indices = [-10,5,12]
+        indices = numpy.array([-10,5,12], dtype='int32')
         assert_array_equal(X.take(indices, 1, mode='wrap').eval({X: x}),
                            x.take(indices, 1, mode='wrap'))
         assert_array_equal(X.take(indices, -1, mode='wrap').eval({X: x}),
@@ -7264,6 +7264,10 @@ class TestTensorInstanceMethods(unittest.TestCase):
                            x.take(indices, 1, mode='clip'))
         assert_array_equal(X.take(indices, -1, mode='clip').eval({X: x}),
                            x.take(indices, -1, mode='clip'))
+        # Test error handling
+        self.assertRaises(IndexError, X.take(indices).eval, {X: x})
+        self.assertRaises(IndexError, (2 * X.take(indices)).eval, {X: x})
+        self.assertRaises(TypeError, X.take, [0.0])
         indices = [[1,0,1], [0,1,1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         # Test equivalent advanced indexing
