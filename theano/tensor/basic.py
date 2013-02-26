@@ -5,6 +5,7 @@ __docformat__ = "restructuredtext en"
 import sys
 import warnings
 from itertools import izip
+from textwrap import dedent
 
 import numpy
 #from copy import copy as python_copy
@@ -18,6 +19,7 @@ from theano.gof import Apply, Constant, Op, Type, Variable
 from theano.tensor import elemwise
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all, maxsize
+from theano.gof.utils import MethodNotDefined
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
@@ -6912,9 +6914,17 @@ class AdvancedSubtensor1(Op):
         # If i.dtype is more precise than numpy.intp (int32 on 32-bit machines,
         # int64 on 64-bit machines), numpy may raise the following error:
         # TypeError: array cannot be safely cast to required type.
-        # Since we will probably not have an array with more than 2**31 items
-        # on a 32-bit arch, I suppose it is safe to cast i into intp.
-        i = theano._asarray(i, dtype=numpy.intp)
+        # We need to check if values in i can fit in numpy.intp, because
+        # if they don't, that should be an error (no array can have that
+        # many elements on a 32-bit arch).
+        if i.dtype != numpy.intp:
+            i_ = theano._asarray(i, dtype=numpy.intp)
+            if not numpy.can_cast(i.dtype, numpy.intp):
+                # Check if there was actually an incorrect conversion
+                if numpy.any(i != i_):
+                    raise IndexError('index contains values that are bigger '
+                            'than the maximum array size on this system.', i)
+            i = i_
 
         out[0] = x.take(i, axis=0, out=o)
 
@@ -6951,8 +6961,98 @@ class AdvancedSubtensor1(Op):
         x, ilist = ishapes
         return [ilist + x[1:]]
 
-advanced_subtensor1 = AdvancedSubtensor1()
+    def c_support_code(self):
+        # In some versions of numpy, NPY_MIN_INTP is defined as MIN_LONG,
+        # which is not defined. It should be NPY_MIN_LONG instead in that case.
+        return dedent("""\
+                #ifndef MIN_LONG
+                #define MIN_LONG NPY_MIN_LONG
+                #endif""")
 
+    def c_code(self, node, name, input_names, output_names, sub):
+        if self.__class__ is not AdvancedSubtensor1:
+            raise MethodNotDefined(
+                "c_code defined for AdvancedSubtensor1,"
+                " not for child class", type(self))
+        a_name, i_name = input_names[0], input_names[1]
+        output_name = output_names[0]
+        fail = sub['fail']
+        return """
+            PyObject *indices;
+            int i_type = PyArray_TYPE(%(i_name)s);
+            if (i_type != NPY_INTP) {
+                // Cast %(i_name)s to NPY_INTP (expected by PyArray_TakeFrom),
+                // if all values fit.
+                if (!PyArray_CanCastSafely(i_type, NPY_INTP)) {
+                    npy_int64 min_val, max_val;
+                    PyObject* py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS, NULL);
+                    if (py_min_val == NULL) {
+                        %(fail)s;
+                    }
+                    min_val = PyLong_AsLongLong(py_min_val);
+                    Py_DECREF(py_min_val);
+                    if (min_val == -1 && PyErr_Occurred()) {
+                        %(fail)s;
+                    }
+                    PyObject* py_max_val = PyArray_Max(%(i_name)s, NPY_MAXDIMS, NULL);
+                    if (py_max_val == NULL) {
+                        %(fail)s;
+                    }
+                    max_val = PyLong_AsLongLong(py_max_val);
+                    Py_DECREF(py_max_val);
+                    if (max_val == -1 && PyErr_Occurred()) {
+                        %(fail)s;
+                    }
+                    if (min_val < NPY_MIN_INTP || max_val > NPY_MAX_INTP) {
+                        PyErr_SetString(PyExc_IndexError, "Index contains values "
+                                     "that are bigger than the maximum array "
+                                     "size on this system.");
+                        %(fail)s;
+                    }
+                }
+                indices = PyArray_Cast(%(i_name)s, NPY_INTP);
+                if (indices == NULL) {
+                    %(fail)s;
+                }
+            }
+            else {
+                 indices = (PyObject *)%(i_name)s;
+                 Py_INCREF(indices);
+            }
+            if (%(output_name)s != NULL) {
+                npy_intp nd, i, *shape;
+                nd = PyArray_NDIM(%(a_name)s) + PyArray_NDIM(indices) - 1;
+                if (PyArray_NDIM(%(output_name)s) != nd) {
+                    Py_CLEAR(%(output_name)s);
+                }
+                else {
+                    shape = PyArray_DIMS(%(output_name)s);
+                    for (i = 0; i < PyArray_NDIM(indices); i++) {
+                        if (shape[i] != PyArray_DIMS(indices)[i]) {
+                            Py_CLEAR(%(output_name)s);
+                            break;
+                        }
+                    }
+                    if (%(output_name)s != NULL) {
+                        for (; i < nd; i++) {
+                            if (shape[i] != PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(indices)+1]) {
+                                Py_CLEAR(%(output_name)s);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, indices, 0,
+                                                               %(output_name)s, NPY_RAISE);
+            Py_DECREF(indices);
+            if (%(output_name)s == NULL) %(fail)s;
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (0, 1, 1)
+
+advanced_subtensor1 = AdvancedSubtensor1()
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
