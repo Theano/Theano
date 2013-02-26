@@ -1774,6 +1774,15 @@ class Remove0Tester(utt.InferShapeTester):
                 # list of apply nodes in the optimized graph.
                 nodes = f.maker.fgraph.toposort()
                 v = [True for node in nodes]
+                # In python 3, list comprehention variables do not leak
+                # in the outside scope, so we bind node varible below
+                # to make the code behave the same under all
+                # versions. However, the logic here does not look
+                # right: the length of v is always the same as that of
+                # nodes and the only result of the assert is to check
+                # that nodes is not empty.  The intent was probably to
+                # keep if clause inside the [] and check every node.
+                node = nodes[-1]
                 if isinstance(node.op, Remove0) and node.op.inplace:
                     assert len(v), \
                     'Inplacing optimization should have been applied.'
@@ -2060,12 +2069,7 @@ class CastTester(utt.InferShapeTester):
 
                     verify_grad_sparse(Cast(o_dtype), data, eps=eps)
 
-
-class _HVStackTester(utt.InferShapeTester):
-    """Test for both HStack and VStack.
-
-    """
-    nb = 3  # Number of sparse matrix to stack
+def _format_info(nb):
     x = {}
     mat = {}
 
@@ -2077,6 +2081,15 @@ class _HVStackTester(utt.InferShapeTester):
         mat[format] = [spa(numpy.random.random_integers(5, size=(3, 4)) - 1,
                            dtype=theano.config.floatX)
                        for t in range(nb)]
+    return x, mat
+
+
+class _HVStackTester(utt.InferShapeTester):
+    """Test for both HStack and VStack.
+
+    """
+    nb = 3  # Number of sparse matrix to stack
+    x, mat = _format_info(nb)
 
     def test_op(self):
         for format in sparse.sparse_formats:

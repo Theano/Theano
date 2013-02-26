@@ -3,6 +3,7 @@ import os, logging, sys
 
 import theano
 from theano import config
+from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 
@@ -45,7 +46,7 @@ try:
             assert os.path.isdir(location)
 
     if not os.path.exists(os.path.join(location, '__init__.py')):
-        file(os.path.join(location, '__init__.py'), 'w').close()
+        open(os.path.join(location, '__init__.py'), 'w').close()
 
     _need_reload = False
     if force_compile:

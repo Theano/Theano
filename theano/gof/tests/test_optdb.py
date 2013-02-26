@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+from theano.compat import exc_message
 from theano.gof.optdb import opt, DB
 
 
@@ -21,7 +22,7 @@ class Test_DB(TestCase):
             db.register('c', Opt())  # name taken
             self.fail()
         except ValueError, e:
-            if e[0].startswith("The name"):
+            if exc_message(e).startswith("The name"):
                 pass
             else:
                 raise
@@ -32,7 +33,7 @@ class Test_DB(TestCase):
             db.register('z', Opt())  # name collides with tag
             self.fail()
         except ValueError, e:
-            if e[0].startswith("The name"):
+            if exc_message(e).startswith("The name"):
                 pass
             else:
                 raise
@@ -43,7 +44,7 @@ class Test_DB(TestCase):
             db.register('u', Opt(), 'b')  # name new but tag collides with name
             self.fail()
         except ValueError, e:
-            if e[0].startswith("The tag"):
+            if exc_message(e).startswith("The tag"):
                 pass
             else:
                 raise

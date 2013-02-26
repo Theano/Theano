@@ -732,12 +732,12 @@ class T_loading_and_saving(unittest.TestCase):
                 tmpdir = mkdtemp()
                 os.chdir(tmpdir)
 
-                f = file('obj.save', 'wb')
+                f = open('obj.save', 'wb')
                 cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
 
 
-                f = file('obj.save', 'rb')
+                f = open('obj.save', 'rb')
                 loaded_obj = cPickle.load(f)
                 f.close()
 
@@ -745,12 +745,12 @@ class T_loading_and_saving(unittest.TestCase):
                 obj2 = my_obj
                 obj3 = my_obj
 
-                f = file('objects.save', 'wb')
+                f = open('objects.save', 'wb')
                 for obj in [obj1, obj2, obj3]:
                     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
 
-                f = file('objects.save', 'rb')
+                f = open('objects.save', 'rb')
                 loaded_objects = []
                 for i in range(3):
                     loaded_objects.append(cPickle.load(f))

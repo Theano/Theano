@@ -6,10 +6,11 @@ import logging
 import os
 import sys
 import warnings
-import ConfigParser
+
 import StringIO
 
 import theano
+from theano.compat import configparser as ConfigParser
 
 _logger = logging.getLogger('theano.configparser')
 

@@ -13,6 +13,17 @@ typedef int Py_ssize_t;
 #define PyNumber_AsSsize_t(ob, exc) PyInt_AsLong(ob)
 #endif
 
+#if PY_VERSION_HEX >= 0x03000000
+#include "numpy/npy_3kcompat.h"
+#define PyCObject_AsVoidPtr  NpyCapsule_AsVoidPtr
+#define PyCObject_GetDesc  NpyCapsule_GetDesc
+#define PyCObject_Check NpyCapsule_Check
+#endif
+
+#ifndef Py_TYPE
+#define Py_TYPE(obj) obj->ob_type
+#endif
+
 /**
 
 TODO: 
@@ -172,7 +183,7 @@ CLazyLinker_dealloc(PyObject* _self)
   Py_XDECREF(self->call_times);
   Py_XDECREF(self->call_counts);
   Py_XDECREF(self->pre_call_clear);
-  self->ob_type->tp_free((PyObject*)self);
+  Py_TYPE(self)->tp_free((PyObject*)self);
 }
 static PyObject *
 CLazyLinker_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -937,8 +948,12 @@ static PyMemberDef CLazyLinker_members[] = {
 };
 
 static PyTypeObject lazylinker_ext_CLazyLinkerType = {
+#if defined(NPY_PY3K)
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
+#endif
     "lazylinker_ext.CLazyLinker",             /*tp_name*/
     sizeof(CLazyLinker), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -992,19 +1007,44 @@ static PyMethodDef lazylinker_ext_methods[] = {
 #ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
+
+#if defined(NPY_PY3K)
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "lazylinker_ext",
+        NULL,
+        -1,
+        lazylinker_ext_methods,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+};
+#endif
+#if defined(NPY_PY3K)
+#define RETVAL m
+PyMODINIT_FUNC
+PyInit_lazylinker_ext(void) {
+#else
+#define RETVAL
 PyMODINIT_FUNC
 initlazylinker_ext(void) 
 {
+#endif
     PyObject* m;
 
     lazylinker_ext_CLazyLinkerType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&lazylinker_ext_CLazyLinkerType) < 0)
-        return;
-
+        return RETVAL;
+#if defined(NPY_PY3K)
+    m = PyModule_Create(&moduledef);
+#else
     m = Py_InitModule3("lazylinker_ext", lazylinker_ext_methods,
                        "Example module that creates an extension type.");
-
+#endif
     Py_INCREF(&lazylinker_ext_CLazyLinkerType);
     PyModule_AddObject(m, "CLazyLinker", (PyObject *)&lazylinker_ext_CLazyLinkerType);
+
+    return RETVAL;
 }
 

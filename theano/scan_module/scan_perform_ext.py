@@ -1,9 +1,8 @@
-import logging
-import os
-import sys
+import os, logging, sys
 
 import theano
 from theano import config
+from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 

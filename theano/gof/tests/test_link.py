@@ -5,10 +5,9 @@ from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.type import Type
 from theano.gof.op import Op
 from theano.gof import fg
-from theano.gof import toolbox
 
 from theano.gof.link import *
-
+from theano.compat import cmp
 
 def as_variable(x):
     assert isinstance(x, Variable)

@@ -4,7 +4,9 @@
 __docformat__ = "restructuredtext en"
 
 import cPickle, numpy, unittest
+
 from theano import config
+from theano.compat import exc_message
 from theano.compile.module import *
 from theano.compile.function_module import AliasedMemoryError
 import theano.tensor as T
@@ -489,7 +491,7 @@ class T_module(unittest.TestCase):
             m.a = [4, 5, 6]
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -498,7 +500,7 @@ class T_module(unittest.TestCase):
             m.a[0] = 4
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -514,7 +516,7 @@ class T_module(unittest.TestCase):
             m.a[0] = 4
             assert False
         except Exception, e:
-            if e[0].startswith("Cannot set readonly"):
+            if exc_message(e).startswith("Cannot set readonly"):
                 pass
             else:
                 raise
@@ -634,7 +636,7 @@ def test_method_updates():
         m = M.make()
         assert False
     except ValueError, e:
-        if str(e[0]).startswith('Variable listed in both inputs and up'):
+        if str(exc_message(e)).startswith('Variable listed in both inputs and up'):
             pass
         else:
             raise
