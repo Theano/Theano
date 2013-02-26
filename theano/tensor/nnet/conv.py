@@ -965,7 +965,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (10, self.openmp, blas_header_version())
+        return (10, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
