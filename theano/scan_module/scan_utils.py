@@ -173,7 +173,7 @@ def clone(output,
         items = replace.items()
     elif isinstance(replace, (list, tuple)):
         items = replace
-    elif item is None:
+    elif replace is None:
         items = []
     else:
         raise ValueError(("replace is neither a dictionary, list, "
