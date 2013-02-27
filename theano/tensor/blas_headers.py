@@ -3,11 +3,15 @@
 There is no standard name or location for this header, so we just insert it
 ourselves into the C code
 """
+import logging
 import textwrap
 import sys
 
 from theano import config
 from theano.gof.cmodule import GCC_compiler
+
+_logger = logging.getLogger('theano.tensor.blas')
+#_logger.setLevel(logging.INFO)
 
 
 def detect_macos_sdot_bug():
@@ -29,10 +33,12 @@ def detect_macos_sdot_bug():
         - detect_macos_sdot_bug.fix_works will be set to True if the fix was
           attempted, and succeeded.
     """
+    _logger.debug('Starting detection of bug in Mac OS BLAS sdot_ routine')
     if detect_macos_sdot_bug.tested:
         return detect_macos_sdot_bug.present
 
     if sys.platform != 'darwin' or not config.blas.ldflags:
+        _logger.info('Not Mac OS, no sdot_ bug')
         detect_macos_sdot_bug.tested = True
         return False
 
@@ -63,6 +69,7 @@ def detect_macos_sdot_bug():
         }
         """)
 
+    _logger.debug('Trying to compile and run test case.')
     compilation_ok, run_ok = GCC_compiler.try_compile_tmp(test_code,
             tmp_prefix='detect_macos_sdot_bug_', flags=flags, try_run=True)
     detect_macos_sdot_bug.tested = True
@@ -70,14 +77,17 @@ def detect_macos_sdot_bug():
     # If compilation failed, we consider there is a bug,
     # and the fix does not work
     if not compilation_ok:
+        _logger.info('Could not compile test case for sdot_.')
         detect_macos_sdot_bug.present = True
         return True
 
     if run_ok:
+        _logger.info('The sdot_ bug is not present on this system.')
         detect_macos_sdot_bug.present = False
         return False
 
     # Else, the bug is detected.
+    _logger.info('The sdot_ bug is present on this system.')
     detect_macos_sdot_bug.present = True
 
     # Then, try a simple fix
@@ -104,12 +114,15 @@ def detect_macos_sdot_bug():
         }
         """)
 
+    _logger.debug('Trying to compile and run tentative workaround.')
     compilation_fix_ok, run_fix_ok = GCC_compiler.try_compile_tmp(
             test_fix_code,
             tmp_prefix='detect_macos_sdot_bug_testfix_',
             flags=flags,
             try_run=True)
 
+    _logger.info("Status of tentative fix -- compilation OK: %s, works: %s",
+            compilation_fix_ok, run_fix_ok)
     detect_macos_sdot_bug.fix_works = run_fix_ok
 
     return detect_macos_sdot_bug.present
