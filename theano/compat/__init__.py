@@ -10,7 +10,6 @@ if PY3:
 
     from operator import truediv as operator_div
 
-
     # In python 3.x, when an exception is reraised it saves original
     # exception in its args, therefore in order to find the actual
     # message, we need to unpack arguments recursively.
@@ -35,7 +34,6 @@ if PY3:
 else:
 
     from operator import div as operator_div
-
 
     def exc_message(e):
         return e[0]
