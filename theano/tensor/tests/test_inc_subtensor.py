@@ -72,19 +72,22 @@ class Test_inc_subtensor(unittest.TestCase):
         # one element. So it should fail at runtime, not at compile time.
         rng = numpy.random.RandomState(utt.fetch_seed())
 
+        def rng_randX(*shape):
+            return rng.rand(*shape).astype(theano.config.floatX)
+
         for op in (tt.set_subtensor, tt.inc_subtensor):
             for base in (a[:], a[0]):
                 out = op(base, increment)
                 f = theano.function([a, increment], out)
                 # This one should work
-                f(rng.rand(3, 1), rng.rand(1))
+                f(rng_randX(3, 1), rng_randX(1))
                 # These ones should not
                 self.assertRaises(ValueError,
-                        f, rng.rand(3, 1), rng.rand(2))
+                        f, rng_randX(3, 1), rng_randX(2))
                 self.assertRaises(ValueError,
-                        f, rng.rand(3, 1), rng.rand(3))
+                        f, rng_randX(3, 1), rng_randX(3))
                 self.assertRaises(ValueError,
-                        f, rng.rand(3, 1), rng.rand(0))
+                        f, rng_randX(3, 1), rng_randX(0))
 
     def test_simple_3d(self):
         """Increments or sets part of a tensor by a scalar using full slice and
