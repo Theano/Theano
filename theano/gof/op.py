@@ -12,18 +12,15 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import logging
-import os
-import subprocess
-import tempfile
 import warnings
 
 import theano
 from theano import config
-from theano.misc.windows import call_subprocess_Popen
 
 import theano.gof.cc
 from theano.gof import graph
 from theano.gof import utils
+from theano.gof.cmodule import GCC_compiler
 from theano.gof.fg import FunctionGraph
 
 
@@ -770,42 +767,22 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
-        default_openmp = True
-        try:
-            code = """
-            #include <omp.h>
-    int main( int argc, const char* argv[] )
-    {
-            int res[10];
+        code = """
+        #include <omp.h>
+int main( int argc, const char* argv[] )
+{
+        int res[10];
 
-            for(int i=0; i < 10; i++){
-                res[i] = i;
-            }
-    }
-            """
-            fd, path = tempfile.mkstemp(suffix='.c', prefix='test_omp_')
-            dummy_stdin = open(os.devnull)
-            try:
-                os.write(fd, code)
-                os.close(fd)
-                fd = None
-                proc = call_subprocess_Popen(['g++', '-fopenmp', path],
-                                             stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE,
-                                             stdin=dummy_stdin.fileno())
-                proc.wait()
-                if proc.returncode != 0:
-                    default_openmp = False
-            finally:
-                del dummy_stdin
-                # Ensure `fd` is closed before we remove the temporary file.
-                try:
-                    if fd is not None:
-                        os.close(fd)
-                finally:
-                    os.remove(path)
-        except OSError, e:
-            return False
+        for(int i=0; i < 10; i++){
+            res[i] = i;
+        }
+}
+        """
+        default_openmp = GCC_compiler.try_compile_tmp(
+                code=code,
+                tmp_prefix='test_omp_',
+                flags=['-fopenmp'],
+                try_run=False)
         return default_openmp
 
     def update_self_openmp(self):

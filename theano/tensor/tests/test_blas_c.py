@@ -208,8 +208,12 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
     def test_gemv1(self):
         self.t_gemv1((3, 2))
+        self.t_gemv1((1, 2))
         self.t_gemv1((0, 2))
+        self.t_gemv1((3, 1))
         self.t_gemv1((3, 0))
+        self.t_gemv1((1, 0))
+        self.t_gemv1((0, 1))
         self.t_gemv1((0, 0))
 
     def test_gemv_dimensions(self, dtype='float32'):
