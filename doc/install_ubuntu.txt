@@ -47,7 +47,7 @@ Ubuntu 11.10/12.04/12.10:
  If you see NumPy errors, the simplest is to remove ``libopenblas-dev`` and its dependency ``libopenblas-base`` like this: ``sudo apt-get remove libopenblas-base``.
  The ideal would be that you remove ``libatlas3gf-base`` and ``libatlas-dev``,
  but you will need to reinstall python-numpy, python-scipy and all other packages that used it.
- openblas is faster then ATLAS most of the time and it allow to control the number of thread used during the execution.
+ OpenBLAS is faster then ATLAS most of the time and it allows to control the number of threads used during the execution.
 
 Ubuntu 11.04:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev``
