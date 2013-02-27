@@ -23,7 +23,7 @@ import theano
 from theano.compile import function, Param, Out
 from theano import compile
 from theano import gradient
-from theano.gof.python25 import any
+from theano.gof.python25 import any, OrderedDict
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType
@@ -426,9 +426,9 @@ class Scan(PureOp):
         if not type(self) == type(other):
             return False
         if not 'destroy_map' in self.info:
-            self.info['destroy_map'] = {}
+            self.info['destroy_map'] = OrderedDict()
         if not 'destroy_map' in other.info:
-            other.info['destroy_map'] = {}
+            other.info['destroy_map'] = OrderedDict()
         keys_to_check = ['truncate_gradient', 'profile',
                          'n_seqs', 'tap_array', 'name',
                          'as_while', 'n_mit_sot', 'destroy_map',
@@ -472,7 +472,7 @@ class Scan(PureOp):
             name = 'for'
         aux_txt = '%s'
         if getattr(self, 'destroy_map', None) is None:
-            self.destroy_map = {}
+            self.destroy_map = OrderedDict()
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
             if (sorted(self.destroy_map.keys()) == \
@@ -852,7 +852,7 @@ class Scan(PureOp):
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
                          in xrange(self.n_outs + self.n_nit_sot)]
         if not getattr(self, 'destroy_map', None):
-            self.destroy_map = {}
+            self.destroy_map = OrderedDict()
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
             if idx in self.destroy_map:
@@ -1138,7 +1138,7 @@ class Scan(PureOp):
         # Non-sequences have a direct equivalent from self.inputs in
         # node.inputs
         inner_non_sequences = self.inputs[len(seqs_shape) + len(outs_shape):]
-        out_equivalent = {}
+        out_equivalent = OrderedDict()
         for in_ns, out_ns in izip(inner_non_sequences, node.inputs[offset:]):
             out_equivalent[in_ns] = out_ns
         if self.as_while:
@@ -1257,7 +1257,7 @@ class Scan(PureOp):
 
         def compute_gradient(y, g_y, diff_inputs):
             rval = []
-            gmp = {}
+            gmp = OrderedDict()
             consider_inps = [x for x in theano.gof.graph.inputs([y])
                              if x in diff_inputs]
             for x in consider_inps:
@@ -1695,7 +1695,7 @@ class Scan(PureOp):
         new_tap_array = mitmot_inp_taps + [[-1] for k in
                                            xrange(n_sitsot_outs)]
 
-        info = {}
+        info = OrderedDict()
         info['n_seqs'] = len(outer_inp_seqs)
         info['n_mit_sot'] = 0
         info['tap_array'] = new_tap_array
@@ -1709,7 +1709,7 @@ class Scan(PureOp):
         info['n_nit_sot'] = n_nit_sot
         info['as_while'] = False
         info['profile'] = self.profile
-        info['destroy_map'] = {}
+        info['destroy_map'] = OrderedDict()
         if self.name:
             info['name'] = 'grad_of_' + self.name
         else:
@@ -1852,7 +1852,7 @@ class Scan(PureOp):
         # The only exception is the eval point for the number of sequences, and
         # evan point for the number of nit_sot which I think should just be
         # ignored (?)
-        info = {}
+        info = OrderedDict()
         info['n_seqs'] = self.n_seqs * 2
         info['n_mit_sot'] = self.n_mit_sot * 2
         info['n_sit_sot'] = self.n_sit_sot * 2
@@ -1869,7 +1869,7 @@ class Scan(PureOp):
             info['name'] = None
         info['mode'] = self.mode
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
-        info['destroy_map'] = {}
+        info['destroy_map'] = OrderedDict()
         new_tap_array = []
         b = 0
         e = self.n_mit_mot
