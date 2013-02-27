@@ -1773,19 +1773,10 @@ class Remove0Tester(utt.InferShapeTester):
             if theano.config.mode not in ['FAST_COMPILE']:
                 # list of apply nodes in the optimized graph.
                 nodes = f.maker.fgraph.toposort()
-                v = [True for node in nodes]
-                # In python 3, list comprehention variables do not leak
-                # in the outside scope, so we bind node varible below
-                # to make the code behave the same under all
-                # versions. However, the logic here does not look
-                # right: the length of v is always the same as that of
-                # nodes and the only result of the assert is to check
-                # that nodes is not empty.  The intent was probably to
-                # keep if clause inside the [] and check every node.
-                node = nodes[-1]
-                if isinstance(node.op, Remove0) and node.op.inplace:
-                    assert len(v), \
-                    'Inplacing optimization should have been applied.'
+                for node in nodes:
+                    if isinstance(node.op, Remove0):
+                        assert node.op.inplace, ('Inplace optimization should '
+                                                 'have been applied.')
 
             # checking
             # makes sense to change its name
