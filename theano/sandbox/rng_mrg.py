@@ -615,7 +615,7 @@ def guess_n_streams(size, warn=True):
         for s in size:
             r *= s
         if r > 6:
-            r = r//6 # chosen as fastest for rbm_benchmark
+            r = r // 6 # chosen as fastest for rbm_benchmark
 
         # The purpose of sampling from many streams is to be able to use
         # the GPU to its full capacity.  It just wastes RAM and stream-initialization time to
