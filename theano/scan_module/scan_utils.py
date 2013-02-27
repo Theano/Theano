@@ -202,7 +202,8 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            if not isinstance(elem, gof.python25.OrderedDict):
+            if (not isinstance(elem, gof.python25.OrderedDict) and
+                len(elem) > 1):
                 warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
                         + str(type(elem)) + ". This can make your script non-"
                         "deterministic.")
