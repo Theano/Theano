@@ -1,7 +1,137 @@
 """ Header text for the C and Fortran BLAS interfaces.
 
-There is no standard name or location for this header, so we just insert it ourselves into the C code
+There is no standard name or location for this header, so we just insert it
+ourselves into the C code
 """
+import logging
+import textwrap
+import sys
+
+from theano import config
+from theano.gof.cmodule import GCC_compiler
+
+_logger = logging.getLogger('theano.tensor.blas')
+#_logger.setLevel(logging.INFO)
+
+
+def detect_macos_sdot_bug():
+    """
+    Try to detect a bug in the default BLAS in MacOS.
+
+    The problem in Theano has been reported in gh-1240,
+    the underlying bug has been confirmed in
+    http://www.macresearch.org/lapackblas-fortran-106#comment-17227.
+
+    This function tries to compile code triggering that bug,
+    and, if necessary, an attempted fix.
+
+    Three attributes of this function will be set:
+        - detect_macos_sdot_bug.tested will be set to True
+          when this function is called.
+        - detect_macos_sdot_bug.present will be set to True if the bug is
+          detected. Its value is returned by the function
+        - detect_macos_sdot_bug.fix_works will be set to True if the fix was
+          attempted, and succeeded.
+    """
+    _logger.debug('Starting detection of bug in Mac OS BLAS sdot_ routine')
+    if detect_macos_sdot_bug.tested:
+        return detect_macos_sdot_bug.present
+
+    if sys.platform != 'darwin' or not config.blas.ldflags:
+        _logger.info('Not Mac OS, no sdot_ bug')
+        detect_macos_sdot_bug.tested = True
+        return False
+
+    # This code will return -1 if the dot product did not return
+    # the right value (30.).
+    flags = config.blas.ldflags.split()
+    for f in flags:
+        # Library directories should also be added as rpath,
+        # so that they can be loaded even if the environment
+        # variable LD_LIBRARY_PATH does not contain them
+        if f.startswith('-L'):
+            flags.append('-Wl,-rpath,' + f[2:])
+
+    test_code = textwrap.dedent("""\
+        extern "C" float sdot_(int*, float*, int*, float*, int*);
+        int main(int argc, char** argv)
+        {
+            int Nx = 5;
+            int Sx = 1;
+            float x[5] = {0, 1, 2, 3, 4};
+            float r = sdot_(&Nx, x, &Sx, x, &Sx);
+
+            if ((r - 30.f) > 1e-6 || (r - 30.f) < -1e-6)
+            {
+                return -1;
+            }
+            return 0;
+        }
+        """)
+
+    _logger.debug('Trying to compile and run test case.')
+    compilation_ok, run_ok = GCC_compiler.try_compile_tmp(test_code,
+            tmp_prefix='detect_macos_sdot_bug_', flags=flags, try_run=True)
+    detect_macos_sdot_bug.tested = True
+
+    # If compilation failed, we consider there is a bug,
+    # and the fix does not work
+    if not compilation_ok:
+        _logger.info('Could not compile test case for sdot_.')
+        detect_macos_sdot_bug.present = True
+        return True
+
+    if run_ok:
+        _logger.info('The sdot_ bug is not present on this system.')
+        detect_macos_sdot_bug.present = False
+        return False
+
+    # Else, the bug is detected.
+    _logger.info('The sdot_ bug is present on this system.')
+    detect_macos_sdot_bug.present = True
+
+    # Then, try a simple fix
+    test_fix_code = textwrap.dedent("""\
+        extern "C" float sdot_(int*, float*, int*, float*, int*);
+        extern "C" float cblas_sdot(int, float*, int, float*, int);
+        float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+        {
+            return cblas_sdot(*Nx, x, *Sx, y, *Sy);
+        }
+
+        int main(int argc, char** argv)
+        {
+            int Nx = 5;
+            int Sx = 1;
+            float x[5] = {0, 1, 2, 3, 4};
+            float r = sdot_(&Nx, x, &Sx, x, &Sx);
+
+            if ((r - 30.f) > 1e-6 || (r - 30.f) < -1e-6)
+            {
+                return -1;
+            }
+            return 0;
+        }
+        """)
+
+    _logger.debug('Trying to compile and run tentative workaround.')
+    compilation_fix_ok, run_fix_ok = GCC_compiler.try_compile_tmp(
+            test_fix_code,
+            tmp_prefix='detect_macos_sdot_bug_testfix_',
+            flags=flags,
+            try_run=True)
+
+    _logger.info("Status of tentative fix -- compilation OK: %s, works: %s",
+            compilation_fix_ok, run_fix_ok)
+    detect_macos_sdot_bug.fix_works = run_fix_ok
+
+    return detect_macos_sdot_bug.present
+
+detect_macos_sdot_bug.tested = False
+detect_macos_sdot_bug.present = False
+detect_macos_sdot_bug.fix_works = False
+
+
 def cblas_header_text():
     """C header for the cblas interface."""
 
@@ -583,9 +713,10 @@ def cblas_header_text():
     __END_DECLS
     """
 
+
 def blas_header_text():
     """C header for the fortran blas interface"""
-    return """
+    header = """
     extern "C"
     {
 
@@ -789,6 +920,48 @@ def blas_header_text():
     }
     """
 
+    if detect_macos_sdot_bug():
+        if detect_macos_sdot_bug.fix_works:
+            header += textwrap.dedent("""\
+                    extern "C" float cblas_sdot(int, float*, int, float*, int);
+                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    {
+                        return cblas_sdot(*Nx, x, *Sx, y, *Sy);
+                    }
+                    """)
+        else:
+            # Make sure the buggy version of sdot_ is never used
+            header += textwrap.dedent("""\
+                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    {
+                        fprintf(stderr,
+                            "FATAL: The implementation of BLAS SDOT "
+                            "routine in your system has a bug that "
+                            "makes it return wrong results.\\n"
+                            "Please contact theano-dev@groups.google.com.\\n"
+                            "You can work around this bug by using a "
+                            "different BLAS library, or disabling BLAS\\n");
+                        assert(0);
+                    }
+                    """)
+
+    return header
+
+
+def blas_header_version():
+    # Version for the base header
+    version = (1,)
+    if detect_macos_sdot_bug():
+        if detect_macos_sdot_bug.fix_works:
+            # Version with fix
+            version += (1,)
+        else:
+            # Version with error
+            version += (2,)
+
+    return version
+
+
 def ____gemm_code(check_ab, a_init, b_init):
     mod = '%'
     return """
@@ -929,31 +1102,3 @@ def ____gemm_code(check_ab, a_init, b_init):
 
         /* v 1 */
     """ % locals()
-
-# currently unused, preferring the fallback method (throwing
-# NotImplementedError) for when gemm won't work.
-_templated_memaligned_gemm = """
-template <typename Ta, typename Tx, typename Ty, typename Tb, typename Tz>
-int general_gemm(int zM, int zN, int xN,.
-    Ta a,
-    Tx * x, int xm, int xn,
-    Tx * y, int ym, int yn,
-    Tb b,
-    Tz * z, int zm, int zn)
-{
-    for (int i = 0; i < zM; ++i)
-    {
-        for (int j = 0; j < zN; ++j)
-        {
-            Tz zij = 0.0;
-            for (int k = 0; k < xN; ++k)
-            {
-                zij += x[i*xm+k*xn] * y[k*ym+j*yn];
-            }
-            z[i * zm + j * zn] *= b;
-            z[i * zm + j * zn] += a * zij;
-        }
-    }
-}
-"""
-

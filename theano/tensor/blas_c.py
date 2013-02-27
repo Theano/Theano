@@ -1,7 +1,7 @@
 from theano import config
 
 
-from theano.tensor.blas import ldflags, blas_header_text
+from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
 from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
 from theano.tensor.blas import Ger, ger, ger_destructive
 from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
@@ -251,7 +251,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (8,)
+        return (8, blas_header_version())
 
 
 @local_optimizer([ger, ger_destructive])
@@ -578,7 +578,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (10,)
+        return (10, blas_header_version())
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
