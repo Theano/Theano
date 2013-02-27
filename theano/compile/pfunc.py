@@ -293,7 +293,6 @@ class Param(object):
             `mutable` flag.
             False: do not permit any output to be aliased to the input
 
-        False: do not permit any output to be aliased to the input
         :param strict: False -> function arguments may be copied or cast to match the
             type required by the parameter `variable`.
             True -> function arguments must exactly match the type
