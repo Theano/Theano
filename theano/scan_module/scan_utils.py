@@ -169,14 +169,33 @@ def clone(output,
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
+    if isinstance(replace, dict):
+        items = replace.items()
+    elif isinstance(replace, (list, tuple)):
+        items = replace
+    elif replace is None:
+        items = []
+    else:
+        raise ValueError(("replace is neither a dictionary, list, "
+                          "tuple or None ! The value provided is %s,"
+                          "of type %s")%(str(replace), str(type(replace))))
+    tmp_replace = [(x, x.type()) for x, y in items]
+    new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
+                                                           items)]
+    _, _outs, _ = rebuild_collect_shared(output,
+                                         [],
+                                         tmp_replace,
+                                         [],
+                                         strict,
+                                         copy_inputs)
 
-    inps, outs, other_stuff = rebuild_collect_shared(output,
-                                                     [],
-                                                     replace,
-                                                     [],
-                                                     strict,
-                                                     copy_inputs
-                                                     )
+    _, outs, _ = rebuild_collect_shared(_outs,
+                                        [],
+                                        new_replace,
+                                        [],
+                                        strict,
+                                        copy_inputs)
+
     return outs
 
 
