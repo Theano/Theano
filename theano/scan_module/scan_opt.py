@@ -20,7 +20,7 @@ import theano
 from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
-from theano.gof.python25 import maxsize, any
+from theano.gof.python25 import maxsize, any, OrderedDict
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
@@ -471,7 +471,7 @@ class PushOutSeqScan(gof.Optimizer):
               not op.as_while and
               not op.outer_mitmot(node)):
             # Nothing in the inner graph should be kept
-            replace_with = gof.python25.OrderedDict()
+            replace_with = OrderedDict()
             for idx, out in enumerate(to_replace):
                 if out in local_fgraph.outputs:
                     x = node.outputs[local_fgraph.outputs.index(out)]
