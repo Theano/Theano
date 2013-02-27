@@ -615,7 +615,7 @@ def guess_n_streams(size, warn=True):
         for s in size:
             r *= s
         if r > 6:
-            r = r//6 # chosen as fastest for rbm_benchmark
+            r = r // 6 # chosen as fastest for rbm_benchmark
 
         # The purpose of sampling from many streams is to be able to use
         # the GPU to its full capacity.  It just wastes RAM and stream-initialization time to
@@ -693,7 +693,7 @@ class MRG_RandomStreams(object):
         rval = numpy.zeros((n_streams,6), dtype='int32')
         rval[0] = self.rstate
         for i in xrange(1, n_streams):
-            rval[i] = ff_2p72(rval[i-1])
+            rval[i] = ff_2p72(rval[i - 1])
         if inc_rstate:
             self.inc_rstate()
         return rval
@@ -741,8 +741,8 @@ class MRG_RandomStreams(object):
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
-            assert all([isinstance(i, (numpy.integer, int)) or isinstance(i,Variable)
-                for i in size]), msg
+            assert all([isinstance(i, (numpy.integer, int, Variable))
+                        for i in size]), msg
             if any([isinstance(i, (numpy.integer, int)) and i <= 0 for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
@@ -750,12 +750,12 @@ class MRG_RandomStreams(object):
 
         else:
             msg = "size must be a tuple of int or a Theano variable"
-            assert isinstance(size, Variable) and size.ndim==1, msg
+            assert isinstance(size, Variable) and size.ndim == 1, msg
 
         if nstreams is None:
             nstreams = self.n_streams(size)
 
-        if self.use_cuda and dtype=='float32':
+        if self.use_cuda and dtype == 'float32':
             rstates = self.get_substream_rstates(nstreams)
             rstates = rstates.flatten()
             # HACK - we use fact that int32 and float32 have same size to
@@ -779,10 +779,12 @@ class MRG_RandomStreams(object):
             node_rstate = shared(self.get_substream_rstates(nstreams))
             u = self.pretty_return(node_rstate,
                     *mrg_uniform.new(node_rstate, ndim, dtype, size))
-        r = u * (high-low) + low
+        r = u * (high - low) + low
 
         if u.type.broadcastable != r.type.broadcastable:
-            raise NotImplementedError( 'Increase the size to match the broadcasting pattern of `low` and `high` arguments')
+            raise NotImplementedError(
+                    'Increase the size to match the broadcasting pattern of '
+                    '`low` and `high` arguments')
 
         assert r.dtype == dtype
         return  r
@@ -836,9 +838,9 @@ class MRG_RandomStreams(object):
                         "MRG_RandomStreams.multinomial, which does not use "
                         "the ndim argument.")
             ndim, size, bcast = raw_random._infer_ndim_bcast(
-                    ndim, size, pvals[:,0])
-            assert ndim==1
-            bcast = bcast+(pvals.type.broadcastable[-1],)
+                    ndim, size, pvals[:, 0])
+            assert ndim == 1
+            bcast = bcast + (pvals.type.broadcastable[-1],)
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialFromUniform(dtype)
             return op(pvals, unis)
@@ -882,7 +884,7 @@ class MRG_RandomStreams(object):
                 evened = True
         else:
             #if even, don't change, if odd, +1
-            n_samples = prod(size)+(prod(size)%2)
+            n_samples = prod(size) + (prod(size) % 2)
         flattened = self.uniform(size=(n_samples,), dtype=dtype,
                                  nstreams=nstreams)
 
@@ -902,7 +904,7 @@ class MRG_RandomStreams(object):
 
         # so trying this instead
         first_half = sqrt_ln_U1 * cos(numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
-        second_half = sqrt_ln_U1 * sin(numpy.array(2.0 * numpy.pi, dtype=dtype)*U2)
+        second_half = sqrt_ln_U1 * sin(numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
         normal_samples = join(0, first_half, second_half)
 
         final_samples = None
@@ -920,6 +922,7 @@ class MRG_RandomStreams(object):
 
         assert final_samples.dtype == dtype
         return final_samples
+
 
 @local_optimizer([None])
 def mrg_random_make_inplace(node):
