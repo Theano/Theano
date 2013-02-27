@@ -177,7 +177,8 @@ def clone(output,
         items = []
     else:
         raise ValueError(("replace is neither a dictionary, list, "
-                          "tuple or None !"))
+                          "tuple or None ! The value provided is %s,"
+                          "of type %s")%(str(replace), str(type(replace))))
     tmp_replace = [(x, x.type()) for x, y in items]
     new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
                                                            items)]
