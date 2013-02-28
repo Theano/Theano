@@ -17,9 +17,19 @@ except ImportError:
         """
 
 
+def good_seed_param(seed):
+    if seed == "random":
+        return True
+    try:
+        int(seed)
+    except Exception:
+        return False
+    return True
+
 AddConfigVar('unittests.rseed',
-        "Seed to use for randomized unit tests. Special value 'random' means using a seed of None.",
-        StrParam(666),
+        "Seed to use for randomized unit tests. "
+        "Special value 'random' means using a seed of None.",
+        StrParam(666, is_valid=good_seed_param),
         in_c_key=False)
 
 
