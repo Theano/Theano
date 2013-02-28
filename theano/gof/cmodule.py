@@ -944,7 +944,7 @@ class ModuleCache(object):
                     if not os.path.exists(location):
                         # Temporary fix, we should make sure it don't
                         # get deleted by the clear*() fct.
-                        os.makedirs(path)
+                        os.makedirs(location)
 
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
