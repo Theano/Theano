@@ -221,7 +221,8 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            if not isinstance(elem, gof.python25.OrderedDict):
+            if (not isinstance(elem, gof.python25.OrderedDict) and
+                len(elem) > 1):
                 warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
                         + str(type(elem)) + ". This can make your script non-"
                         "deterministic.")
@@ -511,7 +512,7 @@ class Validator(object):
         if invalid is None:
             invalid = []
         if valid_equivalent is None:
-            valid_equivalent = {}
+            valid_equivalent = OrderedDict()
 
         # Nodes that are valid to have in the graph computing outputs
         self.valid = set(valid)
@@ -624,7 +625,7 @@ def compress_outs(op, not_required, inputs):
     means removing its inputs from the inner funciton and from the
     node inputs, and changing the dictionary.
     '''
-    info = {}
+    info = OrderedDict()
     info['tap_array'] = []
     info['n_seqs'] = op.info['n_seqs']
     info['n_mit_mot'] = 0
@@ -644,7 +645,7 @@ def compress_outs(op, not_required, inputs):
     op_inputs = op.inputs[:op.n_seqs]
     op_outputs = []
     node_inputs = inputs[:op.n_seqs + 1]
-    map_old_new = {}
+    map_old_new = OrderedDict()
 
     offset = 0
     ni_offset = op.n_seqs + 1
@@ -779,7 +780,7 @@ def reconstruct_graph(inputs, outputs, tag=None):
     if tag is None:
         tag = ''
     nw_inputs = [safe_new(x, tag) for x in inputs]
-    givens = {}
+    givens = OrderedDict()
     for nw_x, x in izip(nw_inputs, inputs):
         givens[x] = nw_x
     allinputs = theano.gof.graph.inputs(outputs)
@@ -899,7 +900,7 @@ class scan_args(object):
         p += n_shared_outs
         q += n_shared_outs
 
-        self.other_info = dict()
+        self.other_info = OrderedDict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
                   'gpu', 'as_while', 'profile'):
             if k in info:
@@ -933,7 +934,7 @@ class scan_args(object):
                                            self.outer_out_nit_sot +
                                            self.outer_out_shared))
 
-    info = property(lambda self: dict(
+    info = property(lambda self: OrderedDict(
             n_seqs=len(self.outer_in_seqs),
             n_mit_mot=len(self.outer_in_mit_mot),
             n_mit_sot=len(self.outer_in_mit_sot),
@@ -998,4 +999,4 @@ def forced_replace(out, x, y):
                 rval += traverse(inp, x)
             return rval
     to_replace = traverse(out, x)
-    return clone(out, replace=dict((v, y) for v in to_replace))
+    return clone(out, replace=OrderedDict((v, y) for v in to_replace))
