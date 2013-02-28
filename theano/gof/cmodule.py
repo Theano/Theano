@@ -1482,6 +1482,60 @@ class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+
+        # Add the equivalent of -march=native flag.  We can't use
+        # -march=native as if the compiledir is shared by multiple
+        # computers (for example, if the home directory is on NFS), this
+        # won't be optimum or cause crash depending if the file is compiled
+        # on an older or more recent computer.
+        # Those URL discuss how to find witch flags are used by -march=native.
+        #http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
+        #http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
+        add_march = True
+
+        #We will add it ourself in a safe way, so remove them.
+        if '-march=native' in cxxflags:
+            cxxflags.remove('-march=native')
+        if '--march=native' in cxxflags:
+            cxxflags.remove('--march=native')
+
+        for f in cxxflags:
+            #If the user specify an -march=X parameter, don't add one ourself
+            if ((f.startswith("--march=") or f.startswith("-march="))):
+                print ("WARNING: your Theano flags `gcc.cxxflags` specify an"
+                       " `-march=X` flags that isn't `-march=native`")
+                print ("         It is better to let Theano/g++ find it "
+                       "automatically, but we don't do it now")
+                add_march = False
+
+        if add_march:
+            def get_lines(cmd):
+                p = call_subprocess_Popen(cmd,
+                                          stderr=subprocess.PIPE,
+                                          stdout=subprocess.PIPE, shell=True)
+                p.wait()
+                stdout = p.stdout.readlines()
+                stderr = p.stderr.readlines()
+                lines = []
+                for line in stdout + stderr:
+                    if "march" in line:
+                        lines.append(line.strip())
+                return lines
+
+            native_lines = get_lines("gcc -march=native -E -v - </dev/null")
+            assert len(native_lines) == 1
+
+            default_lines = get_lines("gcc -E -v - </dev/null")
+            assert len(default_lines) > 1
+            part = native_lines[0].split()
+            for line in default_lines:
+                if line.startswith(part[0]):
+                    part2 = [p for p in line.split()
+                             if not 'march' in p and not 'mtune' in p]
+                    new_flags = [p for p in part if p not in part2]
+                    cxxflags.extend(new_flags)
+                    break
+
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
         #the following macro to assert that we don't bring new code
