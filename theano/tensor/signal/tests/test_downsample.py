@@ -1,12 +1,10 @@
 import unittest
-import sys
-import time
 import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
                                              DownsampleFactorMaxGrad)
-from theano import function, Mode
+from theano import function
 
 
 class TestDownsampleFactorMax(utt.InferShapeTester):

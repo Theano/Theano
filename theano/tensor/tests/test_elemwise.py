@@ -1,16 +1,13 @@
 import cPickle
 from copy import copy
 from itertools import imap
-import time
 import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
-from numpy.testing import dec
 
 import theano
 from theano.gof.python25 import all, any
-from theano.gof import Variable, Op
 from theano import gof, scalar, config
 
 from theano import tensor

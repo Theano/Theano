@@ -503,7 +503,6 @@ class test_Eig(utt.InferShapeTester):
                                 warn=False)
 
     def test_eval(self):
-        import math
         A = theano.tensor.matrix(dtype=self.dtype)
         self.assertEquals([e.eval({A: [[1]]}) for e in self.op(A)],
                           [[1.0], [[1.0]]])

@@ -1,11 +1,8 @@
-import sys
 import time
-import unittest
 import numpy
 
 import theano
 import theano.tensor as T
-from theano import function, Mode
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet import conv
