@@ -3168,6 +3168,23 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(numpy.allclose(f([0]), ones[0] * 5))
         self.assertRaises(IndexError, f, [0, 1])
 
+    def test_adv_sub1_idx_broadcast(self):
+        # The idx can be a broadcastable vector.
+        ones = numpy.ones((4, 3), dtype=self.dtype)
+        n = self.shared(ones * 5)
+        idx = tensor.TensorType(dtype='int64', broadcastable=(True,))()
+        assert idx.type.broadcastable == (True,)
+        t = n[idx]
+        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+
+        f = self.function([idx], t, op=self.adv_sub1)
+        topo = f.maker.fgraph.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op,
+             self.ignore_topo)]
+        assert len(topo_) == 1
+        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+        self.assertTrue(numpy.allclose(f([0]), ones[0] * 5))
+
     def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 
