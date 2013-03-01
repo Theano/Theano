@@ -2322,7 +2322,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         ilist_ = tensor.as_tensor_variable(ilist)
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
             raise TypeError('index must be integers')
-        if ilist_.type.broadcastable != (False,):
+        if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
