@@ -1523,7 +1523,7 @@ class GCC_compiler(object):
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
-            assert len(native_lines) == 1
+            assert len(native_lines) == 1, native_lines
 
             default_lines = get_lines("g++ -E -v - </dev/null")
             assert len(default_lines) > 1
