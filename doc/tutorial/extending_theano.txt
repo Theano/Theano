@@ -228,12 +228,22 @@ output.
 ``self._compile_and_check`` compiles a Theano function. It takes as
 parameters the lists of input and output Theano variables, as would be
 provided to ``theano.function``, and a list of real values to pass to the
-compiled function (do not use symmetric shapes, e.g. (3, 3),
-as they can easily hide errors). It also takes the op class as a parameter
+compiled function. It also takes the op class as a parameter
 in order to verify that no instance of it appears in the shape-optimized graph.
 
 If there is an error, the function raises an exception. If you want to
 see it fail, you can implement an incorrect ``infer_shape``.
+
+When testing with input values with shapes that take the same value
+over different dimensions (for instance, a square matrix, or a tensor3
+with shape (n, n, n), or (m, n, m)), it is not possible to detect if
+the output shape was computed correctly, or if some shapes with the
+same value have been mixed up. For instance, if the infer_shape uses
+the width of a matrix instead of its height, then testing with only
+square matrices will not detect the problem. This is why the
+``self._compile_and_check`` method print a warning in such a case. If
+your op work only in such case, you can diable the warning with the
+warn=True parameter.
 
 .. code-block:: python
 

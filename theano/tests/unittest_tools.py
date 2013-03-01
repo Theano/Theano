@@ -176,7 +176,19 @@ class InferShapeTester(unittest.TestCase):
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
                            excluding=None, warn=True):
-        """This tests the infer_shape method only"""
+        """This tests the infer_shape method only
+
+        When testing with input values with shapes that take the same
+        value over different dimensions (for instance, a square
+        matrix, or a tensor3 with shape (n, n, n), or (m, n, m)), it
+        is not possible to detect if the output shape was computed
+        correctly, or if some shapes with the same value have been
+        mixed up. For instance, if the infer_shape uses the width of a
+        matrix instead of its height, then testing with only square
+        matrices will not detect the problem. If warn=True, we emit a
+        warning when testing with such values.
+
+        """
         mode = self.mode
         if excluding:
             mode = mode.excluding(*excluding)
@@ -194,10 +206,13 @@ class InferShapeTester(unittest.TestCase):
                 else:
                     shp = inp.shape
                 if len(set(shp)) != len(shp):
-                    _logger.warn("While testing the shape, we received input"
-                                 " with dimensions of the same shape %s! This"
-                                 " lower the quality of the verification.",
-                                 str(inp.shape))
+                    _logger.warn(
+                        "While testing the shape inference, we received an"
+                        " input with a shape that has some repeated values: %s"
+                        ", like a square matrix. This makes it impossible to"
+                        " check if the values for these dimensions have been"
+                        " correctly used, or if they have been mixed up.",
+                        str(inp.shape))
                     break
 
         outputs_function = theano.function(inputs, outputs, mode=mode)
