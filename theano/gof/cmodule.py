@@ -1522,10 +1522,10 @@ class GCC_compiler(object):
                         lines.append(line.strip())
                 return lines
 
-            native_lines = get_lines("gcc -march=native -E -v - </dev/null")
+            native_lines = get_lines("g++ -march=native -E -v - </dev/null")
             assert len(native_lines) == 1
 
-            default_lines = get_lines("gcc -E -v - </dev/null")
+            default_lines = get_lines("g++ -E -v - </dev/null")
             assert len(default_lines) > 1
             part = native_lines[0].split()
             for line in default_lines:
