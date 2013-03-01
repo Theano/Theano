@@ -615,12 +615,12 @@ SubTester = makeBroadcastTester(
     grad=_grad_broadcast_binary_normal)
 
 SubInplaceTester = makeBroadcastTester(op=inplace.sub_inplace,
-                                         expected=lambda x, y: x - y,
-                                         good=_good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         grad = _grad_broadcast_binary_normal,
-                                         inplace = True)
+                                       expected=lambda x, y: x - y,
+                                       good=_good_broadcast_binary_normal,
+                                       bad_build=_bad_build_broadcast_binary_normal,
+                                       bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                       grad=_grad_broadcast_binary_normal,
+                                       inplace=True)
 
 
 SwitchTester = makeBroadcastTester(
@@ -902,7 +902,8 @@ _good_broadcast_unary_normal_float_no_complex = copymod(
         without=['complex'])
 
 _good_broadcast_unary_normal = dict(
-        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=config.floatX)],
+        normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)),
+                              dtype=config.floatX)],
         integers=[randint_ranged(-5, 5, (2, 3))],
         corner_case=[corner_case],
         complex=[randcomplex(2, 3)],
@@ -944,9 +945,9 @@ _good_broadcast_unary_normal_abs = copy(_good_broadcast_unary_normal)
 del _good_broadcast_unary_normal_abs['complex']
 AbsInplaceTester = makeBroadcastTester(op=inplace.abs__inplace,
                                          expected=lambda x: numpy.abs(x),
-                                         good = _good_broadcast_unary_normal_abs,
-                                         grad = _grad_broadcast_unary_normal,
-                                         inplace = True)
+                                         good=_good_broadcast_unary_normal_abs,
+                                         grad=_grad_broadcast_unary_normal,
+                                         inplace=True)
 
 NegTester = makeBroadcastTester(op=tensor.neg,
                                   expected=lambda x: -x,
@@ -964,9 +965,9 @@ SgnTester = makeBroadcastTester(op=tensor.sgn,
                                 grad=_grad_broadcast_unary_normal,)
 SgnInplaceTester = makeBroadcastTester(op=inplace.sgn_inplace,
                                        expected=numpy.sign,
-                                       good = _good_broadcast_unary_normal_no_complex,
-                                       grad = _grad_broadcast_unary_normal,
-                                       inplace = True)
+                                       good=_good_broadcast_unary_normal_no_complex,
+                                       grad=_grad_broadcast_unary_normal,
+                                       inplace=True)
 
 
 IntDivTester = makeBroadcastTester(
@@ -1602,16 +1603,18 @@ DotTester = makeTester(name='DotTester',
                                         rand(5, 7)),
                                     mixed2=(rand(5).astype('float64'),
                                         rand(5, 7)),
-                                    complex1 = (randcomplex(5, 7), randcomplex(7)),
-                                    complex2 = (rand(5, 7), randcomplex(7)),
-                                    complex3 = (randcomplex(5, 7), rand(7)),
-                                    empty1 = (numpy.asarray([]),numpy.asarray([])),
-                                    empty2 = (rand(5,0),rand(0,2)),
-                                    empty3 = (rand(0,5),rand(5,0)),
+                                    complex1=(randcomplex(5, 7),
+                                              randcomplex(7)),
+                                    complex2=(rand(5, 7), randcomplex(7)),
+                                    complex3=(randcomplex(5, 7), rand(7)),
+                                    empty1=(numpy.asarray([]),
+                                            numpy.asarray([])),
+                                    empty2=(rand(5, 0), rand(0, 2)),
+                                    empty3=(rand(0, 5), rand(5, 0)),
                                     ),
-                        bad_build = dict(),
-                        bad_runtime = dict(bad1 = (rand(5, 7), rand(5, 7)),
-                                           bad2 = (rand(5, 7), rand(8, 3))))
+                        bad_build=dict(),
+                        bad_runtime=dict(bad1=(rand(5, 7), rand(5, 7)),
+                                         bad2=(rand(5, 7), rand(8, 3))))
 
 
 def _numpy_second(x, y):
@@ -1678,8 +1681,9 @@ SecondSameRankTester = makeTester(
                                 multi_dtype_checks((4, 5), (5, 4)),
                                 multi_dtype_checks((1, 5), (5, 4)),
                             )),
-                            mode=get_default_mode().excluding('local_fill_to_alloc',
-                                                              'local_useless_fill')
+                            mode=get_default_mode().excluding(
+                                'local_fill_to_alloc',
+                                'local_useless_fill')
                         )
 
 ### Alloc
@@ -1869,7 +1873,6 @@ class test_triangle(unittest.TestCase):
             yield check, dtype, 5, 3, 1
             yield check, dtype, 5, 3, -1
 
-
     def test_tril_triu(self):
         def check_l(m, k=0):
             m_symb = matrix(dtype=m.dtype)
@@ -1911,12 +1914,13 @@ class test_nonzero(unittest.TestCase):
     def test_nonzero(self):
         def check(m):
             m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                        broadcastable = (False,) * m.ndim)
+                                          broadcastable=(False,) * m.ndim)
 
             f_tuple = function([m_symb], nonzero(m_symb, return_matrix=False))
             f_matrix = function([m_symb], nonzero(m_symb, return_matrix=True))
 
-            self.assertTrue(numpy.allclose(f_matrix(m), numpy.vstack(numpy.nonzero(m))))
+            self.assertTrue(numpy.allclose(f_matrix(m),
+                                           numpy.vstack(numpy.nonzero(m))))
             for i, j in zip(f_tuple(m), numpy.nonzero(m)):
                 self.assertTrue(numpy.allclose(i, j))
 
@@ -1939,11 +1943,10 @@ class test_nonzero(unittest.TestCase):
         rand4d[:4] = 0
         check(rand4d)
 
-
     def test_flatnonzero(self):
         def check(m):
             m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                        broadcastable = (False,) * m.ndim)
+                                          broadcastable=(False,) * m.ndim)
             f = function([m_symb], flatnonzero(m_symb))
             result = f(m)
             assert numpy.allclose(result, numpy.flatnonzero(m))
@@ -1970,7 +1973,7 @@ class test_nonzero(unittest.TestCase):
     def test_nonzero_values(self):
         def check(m):
             m_symb = theano.tensor.tensor(dtype=m.dtype,
-                                        broadcastable = (False,) * m.ndim)
+                                          broadcastable=(False,) * m.ndim)
             f = function([m_symb], nonzero_values(m_symb))
             result = f(m)
             assert numpy.allclose(result, m[numpy.nonzero(m)])
@@ -2104,6 +2107,7 @@ def _approx_eq(a, b, eps=1.0e-4):
     return  True
 _approx_eq.debug = 0
 
+
 def test_batched_dot():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
@@ -2125,6 +2129,7 @@ def test_batched_dot():
     result = result_fn(first_mat_val, second_mat_val)
 
     assert result.shape[0] == first_val.shape[0]
+
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
@@ -3196,8 +3201,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             for stop in [None] + [-8, -5, -1, 0, 1, 5, 8]:
                 for step in [None] + [-3, -1, 2]:
                     outs += [data[start:stop:step].shape]
-                    shapes += [data.get_value(borrow=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        True)[start:stop:step].shape]
+                    shapes += [data.get_value(
+                        borrow=True)[start:stop:step].shape]
             f = self.function([], outs, mode=mode_opt,
                               op=self.ops, N=0)
             t_shapes = f()
@@ -3226,8 +3231,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         for start in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
             for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
                 for step in [-3, -1, 2, 5]:
-                    assert numpy.all(
-                            f(start,stop,step) == v_data[start:stop:step].shape)
+                    assert numpy.all(f(start, stop, step) ==
+                                     v_data[start:stop:step].shape)
 
     def test_slice_canonical_form_0(self):
         start = tensor.iscalar('b')
@@ -4494,10 +4499,10 @@ class t_dot(unittest.TestCase):
         self.cmp_dot(rand(), rand(5))
 
     def test_dot_0d_2d(self):
-        self.cmp_dot(rand(), rand(6,7))
+        self.cmp_dot(rand(), rand(6, 7))
 
     def test_dot_0d_3d(self):
-        self.cmp_dot(rand(), rand(8,6,7))
+        self.cmp_dot(rand(), rand(8, 6, 7))
 
     def test_dot_1d_0d(self):
         self.cmp_dot(rand(5), rand())
@@ -4529,10 +4534,10 @@ class t_dot(unittest.TestCase):
         self.cmp_dot(rand(0), rand(0, 0))
 
     def test_dot_1d_3d(self):
-        self.cmp_dot(rand(6), rand(8,6,7))
+        self.cmp_dot(rand(6), rand(8, 6, 7))
 
     def test_dot_2d_0d(self):
-        self.cmp_dot(rand(5,6), rand())
+        self.cmp_dot(rand(5, 6), rand())
 
     def test_dot_2d_1d(self):
         self.cmp_dot(rand(5, 6), rand(6))
@@ -4565,19 +4570,19 @@ class t_dot(unittest.TestCase):
         self.cmp_dot(rand(0, 6), rand(6, 0))
 
     def test_dot_2d_3d(self):
-        self.cmp_dot(rand(5,6), rand(8,6,7))
+        self.cmp_dot(rand(5, 6), rand(8, 6, 7))
 
     def test_dot_3d_0d(self):
-        self.cmp_dot(rand(4,5,6), rand())
+        self.cmp_dot(rand(4, 5, 6), rand())
 
     def test_dot_3d_1d(self):
-        self.cmp_dot(rand(4,5,6), rand(6))
+        self.cmp_dot(rand(4, 5, 6), rand(6))
 
     def test_dot_3d_2d(self):
-        self.cmp_dot(rand(4,5,6), rand(6,7))
+        self.cmp_dot(rand(4, 5, 6), rand(6, 7))
 
     def test_dot_3d_3d(self):
-        self.cmp_dot(rand(4,5,6), rand(8,6,7))
+        self.cmp_dot(rand(4, 5, 6), rand(8, 6, 7))
 
     def not_aligned(self, x, y):
         ctv_backup = config.compute_test_value
@@ -4619,7 +4624,7 @@ class t_dot(unittest.TestCase):
         self.not_aligned(rand(5), rand(6, 4))
 
     def test_align_1_3(self):
-        self.not_aligned(rand(5), rand(6,4,7))
+        self.not_aligned(rand(5), rand(6, 4, 7))
 
     def test_align_2_1(self):
         self.not_aligned(rand(5, 4), rand(6))
@@ -4628,16 +4633,16 @@ class t_dot(unittest.TestCase):
         self.not_aligned(rand(5, 4), rand(6, 7))
 
     def test_align_2_3(self):
-        self.not_aligned(rand(5,4), rand(6,7,8))
+        self.not_aligned(rand(5, 4), rand(6, 7, 8))
 
     def test_align_3_1(self):
-        self.not_aligned(rand(5,4,3), rand(6))
+        self.not_aligned(rand(5, 4, 3), rand(6))
 
     def test_align_3_2(self):
-        self.not_aligned(rand(5,4,3), rand(6,7))
+        self.not_aligned(rand(5, 4, 3), rand(6, 7))
 
     def test_align_3_3(self):
-        self.not_aligned(rand(5,4,3), rand(6,7,8))
+        self.not_aligned(rand(5, 4, 3), rand(6, 7, 8))
 
     def test_grad(self):
         utt.verify_grad(dot, [rand(2, 3), rand(3, 2)])
@@ -4645,14 +4650,14 @@ class t_dot(unittest.TestCase):
         utt.verify_grad(dot, [rand(3, 2), rand(2)])
         utt.verify_grad(dot, [rand(2), rand(2)])
         utt.verify_grad(dot, [rand(), rand(2)])
-        utt.verify_grad(dot, [rand(), rand(2,5)])
+        utt.verify_grad(dot, [rand(), rand(2, 5)])
         utt.verify_grad(dot, [rand(2), rand()])
-        utt.verify_grad(dot, [rand(2,5), rand()])
-        utt.verify_grad(dot, [rand(2,3,4), rand(4)])
-        utt.verify_grad(dot, [rand(3), rand(2,3,4)])
-        utt.verify_grad(dot, [rand(4,3), rand(2,3,4)])
-        utt.verify_grad(dot, [rand(2,3,4), rand(4,5)])
-        utt.verify_grad(dot, [rand(2,3,4), rand(3,4,5)])
+        utt.verify_grad(dot, [rand(2, 5), rand()])
+        utt.verify_grad(dot, [rand(2, 3, 4), rand(4)])
+        utt.verify_grad(dot, [rand(3), rand(2, 3, 4)])
+        utt.verify_grad(dot, [rand(4, 3), rand(2, 3, 4)])
+        utt.verify_grad(dot, [rand(2, 3, 4), rand(4, 5)])
+        utt.verify_grad(dot, [rand(2, 3, 4), rand(3, 4, 5)])
 
     def test_broadcastable_patterns(self):
 
@@ -4667,7 +4672,8 @@ class t_dot(unittest.TestCase):
                 # This strange way of doing things is the only way that worked on
                 # numpy 1.4.1
                 if r.ndim == 0:
-                    return numpy.asarray(numpy.complex(1.1, 2.1), dtype=r.dtype)
+                    return numpy.asarray(numpy.complex(1.1, 2.1),
+                                         dtype=r.dtype)
                 if r.ndim == 1:
                     if r.dtype == 'complex64':
                         return numpy.complex64([numpy.complex(1.2, 2.2)])
@@ -4697,8 +4703,8 @@ class t_dot(unittest.TestCase):
                         x = TensorType(dtype=dtype0, broadcastable=bc0)()
                         y = TensorType(dtype=dtype1, broadcastable=bc1)()
                         z = dot(x, y)
-                        t = TensorType(dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    dtype0, broadcastable=z.broadcastable)()
+                        t = TensorType(dtype=dtype0,
+                                       broadcastable=z.broadcastable)()
 
                         rval = z * 3 + 2 * t
                         f = function([x, y, t], rval)
@@ -5021,8 +5027,10 @@ def test_make_column_matrix_broadcastable():
 
 
 def test_flatten_outdimNone():
-    """ Flatten always returns a copy of the array. There is no danger with in-place
-    operations and thus no need to test it."""
+    """Flatten always returns a copy of the array. There is no danger
+    with in-place operations and thus no need to test it.
+
+    """
 
     a = dmatrix()
     c = flatten(a)
@@ -5629,7 +5637,7 @@ class test_tensordot(unittest.TestCase):
         Since tensordot is no longer an op, mimic the old op signature
         to allow easy use of verify_grad.
         """
-        return lambda a, b : tensordot(a, b, axes)
+        return lambda a, b: tensordot(a, b, axes)
 
     def setUp(self):
         utt.seed_rng()
