@@ -182,7 +182,8 @@ class SqueezeTester(utt.InferShapeTester):
             self._compile_and_check([variable],
                                     [self.op(variable)],
                                     [data],
-                                    tensor.DimShuffle)
+                                    tensor.DimShuffle,
+                                    warn=False)
 
     def test_grad(self):
         for shape, broadcast in zip(self.shape_list, self.broadcast_list):
@@ -375,9 +376,11 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class)
         self._compile_and_check([z, y], [self.op(z, y)],
+                                #must be square when nd>2
                                 [numpy.random.rand(8, 8, 8),
                                  numpy.random.rand()],
-                                self.op_class)
+                                self.op_class,
+                                warn=False)
 
 if __name__ == "__main__":
     utt.unittest.main()

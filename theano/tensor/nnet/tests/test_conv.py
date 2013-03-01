@@ -1,11 +1,8 @@
-import sys
 import time
-import unittest
 import numpy
 
 import theano
 import theano.tensor as T
-from theano import function, Mode
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet import conv
@@ -424,82 +421,62 @@ class TestConv2D(utt.InferShapeTester):
 
         adtens = T.dtensor4()
         bdtens = T.dtensor4()
-        aivec_val = [2, 2, 3, 3]
-        bivec_val = [2, 2, 2, 2]
+        aivec_val = [4, 5, 6, 3]
+        bivec_val = [7, 5, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [2, 2, 3, 3]
-        bivec_val = [2, 2, 2, 2]
-        adtens_val = rand(*aivec_val)
-        bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 8, 8]
-        bivec_val = [4, 2, 5, 5]
+        aivec_val = [6, 2, 8, 3]
+        bivec_val = [4, 2, 5, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 8, 8]
-        bivec_val = [4, 2, 5, 5]
-        adtens_val = rand(*aivec_val)
-        bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 7, 5]
-        bivec_val = [5, 2, 3, 2]
+        aivec_val = [3, 6, 7, 5]
+        bivec_val = [5, 6, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 7, 5]
-        bivec_val = [5, 2, 3, 2]
-        adtens_val = rand(*aivec_val)
-        bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 7, 5]
-        bivec_val = [5, 2, 2, 3]
+        aivec_val = [3, 6, 7, 5]
+        bivec_val = [5, 6, 2, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 7, 5]
-        bivec_val = [5, 2, 2, 3]
-        adtens_val = rand(*aivec_val)
-        bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 3, 3]
-        bivec_val = [4, 2, 3, 3]
+        aivec_val = [5, 2, 4, 3]
+        bivec_val = [6, 2, 4, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
-        aivec_val = [3, 2, 3, 3]
-        bivec_val = [4, 2, 3, 3]
-        adtens_val = rand(*aivec_val)
-        bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)

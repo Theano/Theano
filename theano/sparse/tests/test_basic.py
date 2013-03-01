@@ -1615,7 +1615,8 @@ class DiagTester(utt.InferShapeTester):
             self._compile_and_check(variable,
                                     [self.op(*variable)],
                                     data,
-                                    self.op_class)
+                                    self.op_class,
+                                    warn=False)
 
     def test_grad(self):
         for format in sparse.sparse_formats:
@@ -2591,9 +2592,14 @@ class StructuredAddSVTester(unittest.TestCase):
 class SamplingDotTester(utt.InferShapeTester):
     x = [tensor.matrix() for t in range(2)]
     x.append(sparse.csr_matrix())
-    a = [numpy.array(numpy.random.random_integers(maximum, size=(3, 3)) - 1,
+    #unsquare shape
+    a = [numpy.array(numpy.random.random_integers(5, size=(4, 3)) - 1,
+                      dtype=theano.config.floatX),
+         numpy.array(numpy.random.random_integers(5, size=(5, 3)) - 1,
+                      dtype=theano.config.floatX),
+         numpy.array(numpy.random.random_integers(2, size=(4, 5)) - 1,
                       dtype=theano.config.floatX)
-         for maximum in [5, 5, 2]]
+         ]
     a[2] = sp.csr_matrix(a[2])
 
     def setUp(self):
