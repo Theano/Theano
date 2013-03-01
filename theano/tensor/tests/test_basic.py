@@ -39,13 +39,12 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, lvector, true_div, max, min, Split, roll,
-        tile, patternbroadcast, Eye, Shape, Default, Dot, PermuteRowElements,
+        tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values)
 from theano.tests import unittest_tools as utt
-from theano.printing import debugprint
 
 
 imported_scipy_special = False
