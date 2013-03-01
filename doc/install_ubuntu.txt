@@ -115,6 +115,8 @@ Do like in the section "Updating Theano", but use
 ``git+git://github.com/Theano/Theano.git`` instead of ``theano``.
 
 
+.. _install_ubuntu_gpu:
+
 Contributed GPU instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
