@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+import logging
 import sys
 import unittest
 
@@ -15,6 +16,7 @@ except ImportError:
         """
         Skip this test
         """
+_logger = logging.getLogger("theano.tests.unittest_tools")
 
 
 AddConfigVar('unittests.rseed',
@@ -173,11 +175,45 @@ class InferShapeTester(unittest.TestCase):
         self.mode = mode.including("canonicalize")
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
-                           excluding=None):
-        """This tests the infer_shape method only"""
+                           excluding=None, warn=True):
+        """This tests the infer_shape method only
+
+        When testing with input values with shapes that take the same
+        value over different dimensions (for instance, a square
+        matrix, or a tensor3 with shape (n, n, n), or (m, n, m)), it
+        is not possible to detect if the output shape was computed
+        correctly, or if some shapes with the same value have been
+        mixed up. For instance, if the infer_shape uses the width of a
+        matrix instead of its height, then testing with only square
+        matrices will not detect the problem. If warn=True, we emit a
+        warning when testing with such values.
+
+        """
         mode = self.mode
         if excluding:
             mode = mode.excluding(*excluding)
+        if warn:
+            for var, inp in zip(inputs, numeric_inputs):
+                if isinstance(inp, (int, float, list, tuple)):
+                    inp = var.type.filter(inp)
+                if not hasattr(inp, "shape"):
+                    continue
+                # remove broadcasted dims as it is sure they can't be
+                # changed to prevent the same dim problem.
+                if hasattr(var.type, "broadcastable"):
+                    shp = [inp.shape[i] for i in range(inp.ndim)
+                           if not var.type.broadcastable[i]]
+                else:
+                    shp = inp.shape
+                if len(set(shp)) != len(shp):
+                    _logger.warn(
+                        "While testing the shape inference, we received an"
+                        " input with a shape that has some repeated values: %s"
+                        ", like a square matrix. This makes it impossible to"
+                        " check if the values for these dimensions have been"
+                        " correctly used, or if they have been mixed up.",
+                        str(inp.shape))
+                    break
 
         outputs_function = theano.function(inputs, outputs, mode=mode)
         shapes_function = theano.function(inputs, [o.shape for o in outputs],

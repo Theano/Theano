@@ -3434,7 +3434,7 @@ class T_Scan(unittest.TestCase):
             else:
                 d = 0.1
             out = theano.clone(y, replace={x:x + d})
-            theano.printing.debugprint(out)
+            #theano.printing.debugprint(out)
             return theano.function([], out)()
 
         x = theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
@@ -3503,7 +3503,7 @@ def test_speed():
         s_i = theano.shared(numpy.array(1))
         s_rinc = tensor.inc_subtensor(shared_r[s_i], shared_r[s_i - 1],
                 tolerate_inplace_aliasing=True)
-        theano.printing.debugprint(s_rinc)
+        #theano.printing.debugprint(s_rinc)
         f = theano.function([],
                             [],
                             updates=OrderedDict([
@@ -3518,7 +3518,7 @@ def test_speed():
         f()  # 999 to update the profiling timers
         t3 = time.time()
         print 'theano (updates, cvm)', t3 - t2
-        print shared_r.get_value()
+        #print shared_r.get_value()
 
 
 def test_speed_rnn():
