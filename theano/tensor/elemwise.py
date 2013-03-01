@@ -1242,6 +1242,7 @@ class CAReduce(Op):
             # We can't call self.__class__() as there is class that
             # inherit from CAReduce that don't have the same signature
             op = copy(self)
+            op.set_ufunc(op.scalar_op)
             op.axis = axis
         else:
             op = self
@@ -1733,8 +1734,10 @@ class CAReduceDtype(CAReduce):
             # Don't build another instance
             op = self
         else:
-            op = self.__class__(axis=self.axis,
-                                dtype=dtype, acc_dtype=acc_dtype)
+            op = copy(self)
+            op.set_ufunc(self.scalar_op)
+            op.dtype = dtype
+            op.acc_dtype = acc_dtype
 
         assert op.acc_dtype is not None
         return CAReduce.make_node(op, input)
