@@ -461,6 +461,20 @@ Any one of them is enough.
 * add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
 * add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
 
+.. note::
+
+    On Dedian, you can ask the software package manager to install it
+    for you. We have a user report that this work for Debian Wheezy
+    (7.0). When you install it this way, you won't always have the
+    latest version, but we where said that they it get updated
+    rapidly. One big advantage is that it will be updated
+    automatically. You can try the ``sudo apt-get install
+    nvidia-cuda-toolkit`` command to install it.
+
+    :ref:`Ubuntu instruction <install_ubuntu_gpu>`.
+
+
+
 Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
 computer, and set the default floating point computations to float32.
 For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu,floatX=float32'``.
