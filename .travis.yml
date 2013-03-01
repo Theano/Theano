@@ -12,7 +12,7 @@ before_install:
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install -q numpy==1.5 --use-mirrors"
-# We can't install SciPy as there is no BLAS installed.
+  - "pip install -q scipy --use-mirrors"
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
