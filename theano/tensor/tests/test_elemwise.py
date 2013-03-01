@@ -467,7 +467,6 @@ class test_Prod(unittest.TestCase):
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
         x_val = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
              dtype='float32')
-        x = theano.tensor.dmatrix()
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
 
@@ -672,8 +671,8 @@ class T_sum_dtype(unittest.TestCase):
                 if "complex" in input_dtype:
                     continue
                 # Check that we can take the gradient
-                grad_var = tensor.grad(sum_var.sum(), x,
-                        disconnected_inputs='ignore')
+                tensor.grad(sum_var.sum(), x,
+                            disconnected_inputs='ignore')
                 idx += 1
 
     def test_sum_custom_acc_dtype(self):
@@ -707,8 +706,8 @@ class T_sum_dtype(unittest.TestCase):
                     if "complex" in input_dtype:
                         continue
                     # Check that we can take the gradient
-                    grad_var = tensor.grad(sum_var.sum(), x,
-                            disconnected_inputs='ignore')
+                    tensor.grad(sum_var.sum(), x,
+                                disconnected_inputs='ignore')
                 else:
                     self.assertRaises(TypeError,
                             x.sum, acc_dtype=acc_dtype, axis=axis)
@@ -766,8 +765,8 @@ class T_mean_dtype(unittest.TestCase):
                     if "complex" in mean_var.dtype:
                         continue
                     try:
-                        grad_var = tensor.grad(mean_var.sum(), x,
-                                disconnected_inputs='ignore')
+                        tensor.grad(mean_var.sum(), x,
+                                    disconnected_inputs='ignore')
                     except NotImplementedError:
                         # TrueDiv does not seem to have a gradient when
                         # the numerator is complex.
@@ -843,8 +842,8 @@ class T_prod_dtype(unittest.TestCase):
                 if "complex" in output_dtype or "complex" in input_dtype:
                     continue
                 # Check that we can take the gradient
-                grad_var = tensor.grad(prod_var.sum(), x,
-                    disconnected_inputs='ignore')
+                tensor.grad(prod_var.sum(), x,
+                            disconnected_inputs='ignore')
                 idx += 1
 
     def test_prod_custom_acc_dtype(self):
@@ -871,8 +870,8 @@ class T_prod_dtype(unittest.TestCase):
                     if "complex" in acc_dtype:
                         continue
                     # Check that we can take the gradient
-                    grad_var = tensor.grad(prod_var.sum(), x,
-                            disconnected_inputs='ignore')
+                    tensor.grad(prod_var.sum(), x,
+                                disconnected_inputs='ignore')
                 else:
                     self.assertRaises(TypeError,
                             x.prod, acc_dtype=acc_dtype, axis=axis)
