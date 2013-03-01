@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+import logging
 import sys
 import unittest
 
@@ -15,6 +16,7 @@ except ImportError:
         """
         Skip this test
         """
+_logger = logging.getLogger("theano.tests.unittest_tools")
 
 
 AddConfigVar('unittests.rseed',
@@ -173,11 +175,30 @@ class InferShapeTester(unittest.TestCase):
         self.mode = mode.including("canonicalize")
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
-                           excluding=None):
+                           excluding=None, warn=True):
         """This tests the infer_shape method only"""
         mode = self.mode
         if excluding:
             mode = mode.excluding(*excluding)
+        if warn:
+            for var, inp in zip(inputs, numeric_inputs):
+                if isinstance(inp, (int, float, list, tuple)):
+                    inp = var.type.filter(inp)
+                if not hasattr(inp, "shape"):
+                    continue
+                # remove broadcasted dims as it is sure they can't be
+                # changed to prevent the same dim problem.
+                if hasattr(var.type, "broadcastable"):
+                    shp = [inp.shape[i] for i in range(inp.ndim)
+                           if not var.type.broadcastable[i]]
+                else:
+                    shp = inp.shape
+                if len(set(shp)) != len(shp):
+                    _logger.warn("While testing the shape, we received input"
+                                 " with dimensions of the same shape %s! This"
+                                 " lower the quality of the verification.",
+                                 str(inp.shape))
+                    break
 
         outputs_function = theano.function(inputs, outputs, mode=mode)
         shapes_function = theano.function(inputs, [o.shape for o in outputs],

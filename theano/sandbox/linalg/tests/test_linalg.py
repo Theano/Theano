@@ -463,7 +463,8 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX),
                                  numpy.asarray(rng.rand(5, 1),
                                                dtype=config.floatX)],
-                                self.op_class)
+                                self.op_class,
+                                warn=False)
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.vector()
@@ -474,7 +475,8 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX),
                                  numpy.asarray(rng.rand(5),
                                                dtype=config.floatX)],
-                                self.op_class)
+                                self.op_class,
+                                warn=False)
 
 
 class test_Eig(utt.InferShapeTester):
@@ -497,7 +499,8 @@ class test_Eig(utt.InferShapeTester):
                                 self.op(A),  # theano.function outputs
                                 # S must be square
                                 [S],
-                                self.op_class)
+                                self.op_class,
+                                warn=False)
 
     def test_eval(self):
         import math

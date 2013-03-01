@@ -6743,7 +6743,7 @@ class TestInferShape(utt.InferShapeTester):
         # Join
         cdmat = dmatrix()
         admat_val = rand(1, 3)
-        bdmat_val = rand(3, 3)
+        bdmat_val = rand(2, 3)
         cdmat_val = rand(4, 3)
         aiscal_val = 0
         self._compile_and_check([aiscal, admat, bdmat, cdmat],
@@ -6821,7 +6821,8 @@ class TestInferShape(utt.InferShapeTester):
         adtens4_val = rand(2, 1, 3, 1)
         self._compile_and_check([adtens4],
                                 [Rebroadcast(*adict)(adtens4)],
-                                [adtens4_val], Rebroadcast)
+                                [adtens4_val], Rebroadcast,
+                                warn=False)
 
         adtens4_bro = TensorType('float64', (True, True, True, False))()
         bdict = [(0, True), (1, False), (2, False), (3, False)]
@@ -6948,8 +6949,8 @@ class TestInferShape(utt.InferShapeTester):
         adtens4_val = rand(3, 4, 2, 5)
         self._compile_and_check([adtens4, bdtens4],
                             [inc_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor)
-
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
+                            warn=False)
         self._compile_and_check([adtens4, bdmat],
                             [inc_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
                             [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
@@ -6964,7 +6965,8 @@ class TestInferShape(utt.InferShapeTester):
 
         self._compile_and_check([adtens4, bdtens4],
                             [set_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor)
+                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
+                            warn=False)
 
         self._compile_and_check([adtens4, bdmat],
                             [set_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
@@ -7005,7 +7007,8 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([adtens4, bdtens4],
                             [set_subtensor(adtens4[aivec_val], bdtens4)],
                             [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
-                            AdvancedIncSubtensor1)
+                            AdvancedIncSubtensor1,
+                            warn=False)
 
         aivec_val = [1, 3, 2]
         self._compile_and_check([adtens4, advec],
@@ -7042,7 +7045,8 @@ class TestInferShape(utt.InferShapeTester):
                             [inc_subtensor(adtens4[aivec_val], bdtens4)],
                             [adtens4_val, [[[[1, 2, 3, 4, 5]]],
                                            [[[6, 7, 8, 9, 10]]]]],
-                            AdvancedIncSubtensor1)
+                            AdvancedIncSubtensor1,
+                            warn=False)
 
         aivec_val = [1, 2, 1]
         self._compile_and_check([adtens4, advec],

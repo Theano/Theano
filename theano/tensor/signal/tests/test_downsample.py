@@ -182,9 +182,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         [DownsampleFactorMaxGrad(maxpoolshp,
                         ignore_border=ignore_border)(image, maxout, gz)],
                         [image_val, maxout_val, gz_val],
-                                        DownsampleFactorMaxGrad)
-
-
+                                        DownsampleFactorMaxGrad,
+                        warn=False)
 
 
 if __name__ == '__main__':

@@ -92,8 +92,9 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             adtens = TensorType('float64', ib)('x')
             adtens_val = numpy.ones(xsh)
             self._compile_and_check([adtens],
-                            [DimShuffle(ib, shuffle)(adtens)],
-                            [adtens_val], DimShuffle)
+                                    [DimShuffle(ib, shuffle)(adtens)],
+                                    [adtens_val], DimShuffle,
+                                    warn=False)
 
     def test_too_big_rank(self):
         x = tensor.dscalar()

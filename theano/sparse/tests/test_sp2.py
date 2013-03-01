@@ -135,7 +135,8 @@ class MultinomialTester(utt.InferShapeTester):
         self._compile_and_check([self.p],
                                 [multinomial(5, self.p)],
                                 [self._p],
-                                self.op_class)
+                                self.op_class,
+                                warn=False)
 
 
 if __name__ == '__main__':
