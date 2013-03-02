@@ -8,11 +8,12 @@ python:
 #  - "3.2"
 # command to install dependencies
 before_install:
-  - sudo apt-get install -qq libatlas3gf-base libatlas-dev
+  - sudo apt-get install -qq libatlas3gf-base libatlas-dev liblapack-dev gfortran
+#  - sudo apt-get install -qq libopenblas-dev
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install -q numpy==1.5 --use-mirrors"
-# We can't install SciPy as there is no BLAS installed.
+  - "pip install scipy==0.8 --use-mirrors"
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
@@ -30,5 +31,6 @@ script:
 
 
 #after_script:
-#after_failure:
+after_failure:
+  - cat /home/travis/.pip/pip.log
 #after_success:
