@@ -1524,18 +1524,21 @@ class GCC_compiler(object):
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
-            assert len(native_lines) == 1, native_lines
-
-            default_lines = get_lines("g++ -E -v - </dev/null")
-            assert len(default_lines) > 1
-            part = native_lines[0].split()
-            for line in default_lines:
-                if line.startswith(part[0]):
-                    part2 = [p for p in line.split()
-                             if not 'march' in p and not 'mtune' in p]
-                    new_flags = [p for p in part if p not in part2]
-                    cxxflags.extend(new_flags)
-                    break
+            _logger.info("g++ -march=native selected lines:", native_lines)
+            if len(native_lines) != 1:
+                _logger.warn("OPTIMIZATION WARNING: Theano was not able to find the g++ parameter that tune the compilation to your specific CPU. This can slow down the execution of Theano function. Can you submit the following lines to Theano's mailing list such that we fix this problem:\n ", native_lines)
+            else:
+                default_lines = get_lines("g++ -E -v - </dev/null")
+                _logger.info("g++ default lines: ", default_lines)
+                assert len(default_lines) > 1
+                part = native_lines[0].split()
+                for line in default_lines:
+                    if line.startswith(part[0]):
+                        part2 = [p for p in line.split()
+                                 if not 'march' in p and not 'mtune' in p]
+                        new_flags = [p for p in part if p not in part2]
+                        cxxflags.extend(new_flags)
+                        break
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
