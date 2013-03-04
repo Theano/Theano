@@ -64,7 +64,9 @@ def test_careduce():
 
     TODO: test with broadcast
     """
-    for scalar_op in [theano.scalar.add, theano.scalar.maximum]:
+    for scalar_op, careduce_op in [
+            (theano.scalar.add, tensor.elemwise.CAReduceDtype),
+            (theano.scalar.maximum, tensor.CAReduce)]:
         for shape, pattern in [((1,1),(1,)),
                                ((1,0),(1,)),
                                ((0,1),(1,)),
@@ -119,7 +121,7 @@ def test_careduce():
 
                                ]:
 
-            op = tensor.CAReduce(scalar_op, axis=pattern)
+            op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
             #GpuCAReduce{maximum} support only those patterns
             if scalar_op is theano.scalar.maximum and pat not in [
@@ -187,7 +189,7 @@ def test_careduce():
                                ((5,4),[0,1]),((5,4),[0]),
                                ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
-            op = tensor.CAReduce(scalar_op, axis=pattern)
+            op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
             #GpuCAReduce{maximum} support only those patterns
             if scalar_op is theano.scalar.maximum and pat not in [
@@ -219,7 +221,7 @@ def test_careduce():
                                ((5,4,3),[0]),((5,4,3),[0,1]),
                                ((5,4,3),[2]),((5,4,3),[0,1,2]),
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
-            op = tensor.CAReduce(scalar_op, axis=pattern)
+            op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
             #GpuCAReduce{maximum} support only those patterns
             if scalar_op is theano.scalar.maximum and pat not in [
