@@ -3351,6 +3351,11 @@ class ConstructSparseFromList(gof.Op):
             raise TypeError(
                 'cannot create a sparse matrix from values with %d ndim' %
                 values_.type.ndim)
+
+        # We only need the shape of `x` in the perform
+        # If we keep in the graph the x variable as input of the Apply node,
+        # this can rise the memory usage. That is why the Apply node
+        # take `x_.shape` as input and not `x`.
         return gof.Apply(self, [x_.shape, values_, ilist_],
                          [csc_matrix(dtype=x.dtype)])
 
