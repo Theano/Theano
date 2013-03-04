@@ -24,8 +24,8 @@ pip install Theano
 echo installed
 
 rem Put a default .theanorc.txt
-set THEANORC=%HOMEPATH%\.theanorc.txt
-set THEANORC_=%HOMEPATH%\.theanorc_install.txt
+set THEANORC=%USERPROFILE%\.theanorc.txt
+set THEANORC_=%USERPROFILE%\.theanorc_install.txt
 echo [global]> %THEANORC_%
 echo openmp=False>> %THEANORC_%
 echo.>> %THEANORC_%
