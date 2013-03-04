@@ -1475,6 +1475,9 @@ def gcc_version():
 
 
 class GCC_compiler(object):
+    # The equivalent flags of --march=native used by g++.
+    march_flags = None
+
     @staticmethod
     def version_str():
         return "g++ " + gcc_version_str
@@ -1484,14 +1487,14 @@ class GCC_compiler(object):
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
 
         # Add the equivalent of -march=native flag.  We can't use
-        # -march=native as if the compiledir is shared by multiple
+        # -march=native as when the compiledir is shared by multiple
         # computers (for example, if the home directory is on NFS), this
         # won't be optimum or cause crash depending if the file is compiled
         # on an older or more recent computer.
         # Those URL discuss how to find witch flags are used by -march=native.
-        #http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
-        #http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
-        add_march = True
+        # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
+        # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
+        detect_march = GCC_compiler.march_flags is None
 
         #We will add it ourself in a safe way, so remove them.
         if '-march=native' in cxxflags:
@@ -1499,16 +1502,18 @@ class GCC_compiler(object):
         if '--march=native' in cxxflags:
             cxxflags.remove('--march=native')
 
-        for f in cxxflags:
-            #If the user specify an -march=X parameter, don't add one ourself
-            if ((f.startswith("--march=") or f.startswith("-march="))):
-                print ("WARNING: your Theano flags `gcc.cxxflags` specify an"
-                       " `-march=X` flags that isn't `-march=native`")
-                print ("         It is better to let Theano/g++ find it "
-                       "automatically, but we don't do it now")
-                add_march = False
+        if detect_march:
+            for f in cxxflags:
+                #If the user give an -march=X parameter, don't add one ourself
+                if ((f.startswith("--march=") or f.startswith("-march="))):
+                    print ("WARNING: your Theano flags `gcc.cxxflags` specify"
+                           " an `-march=X` flags that isn't `-march=native`")
+                    print ("         It is better to let Theano/g++ find it"
+                           " automatically, but we don't do it now")
+                    detect_march = False
 
-        if add_march:
+        if detect_march:
+            GCC_compiler.march_flags = []
             def get_lines(cmd):
                 p = call_subprocess_Popen(cmd,
                                           stderr=subprocess.PIPE,
@@ -1537,8 +1542,13 @@ class GCC_compiler(object):
                         part2 = [p for p in line.split()
                                  if not 'march' in p and not 'mtune' in p]
                         new_flags = [p for p in part if p not in part2]
-                        cxxflags.extend(new_flags)
+                        GCC_compiler.march_flags = new_flags
                         break
+                _logger.info("g++ -march=native equivalent flags:",
+                             GCC_compiler.march_flags)
+
+        #Add the detected -march=native equivalent flags
+        cxxflags.extend(GCC_compiler.march_flags)
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
