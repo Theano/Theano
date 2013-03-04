@@ -1475,6 +1475,9 @@ def gcc_version():
 
 
 class GCC_compiler(object):
+    # The equivalent flags of --march=native used by g++.
+    march_flags = None
+
     @staticmethod
     def version_str():
         return "g++ " + gcc_version_str
@@ -1482,6 +1485,74 @@ class GCC_compiler(object):
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+
+        # Add the equivalent of -march=native flag.  We can't use
+        # -march=native as when the compiledir is shared by multiple
+        # computers (for example, if the home directory is on NFS), this
+        # won't be optimum or cause crash depending if the file is compiled
+        # on an older or more recent computer.
+        # Those URL discuss how to find witch flags are used by -march=native.
+        # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
+        # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
+        detect_march = GCC_compiler.march_flags is None
+
+        if detect_march:
+            for f in cxxflags:
+                #If the user give an -march=X parameter, don't add one ourself
+                if ((f.startswith("--march=") or f.startswith("-march="))):
+                    _logger.warn(
+                        "WARNING: your Theano flags `gcc.cxxflags` specify"
+                        " an `-march=X` flags.\n"
+                        "         It is better to let Theano/g++ find it"
+                        " automatically, but we don't do it now")
+                    detect_march = False
+                    break
+
+        if detect_march:
+            GCC_compiler.march_flags = []
+
+            def get_lines(cmd):
+                p = call_subprocess_Popen(cmd,
+                                          stderr=subprocess.PIPE,
+                                          stdout=subprocess.PIPE, shell=True)
+                p.wait()
+                stdout = p.stdout.readlines()
+                stderr = p.stderr.readlines()
+                lines = []
+                for line in stdout + stderr:
+                    if "-march=" in line and "-march=native" not in line:
+                        lines.append(line.strip())
+                lines = list(set(lines))  # to remove duplicate
+                return lines
+
+            native_lines = get_lines("g++ -march=native -E -v - </dev/null")
+            _logger.info("g++ -march=native selected lines: %s", native_lines)
+            if len(native_lines) != 1:
+                _logger.warn(
+                    "OPTIMIZATION WARNING: Theano was not able to find the"
+                    " g++ parameter that tune the compilation to your specific"
+                    " CPU. This can slow down the execution of Theano"
+                    " function. Can you submit the following lines to"
+                    " Theano's mailing list such that we fix this"
+                    " problem:\n %s", native_lines)
+            else:
+                default_lines = get_lines("g++ -E -v - </dev/null")
+                _logger.info("g++ default lines: %s", default_lines)
+                assert len(default_lines) > 1
+                part = native_lines[0].split()
+                for line in default_lines:
+                    if line.startswith(part[0]):
+                        part2 = [p for p in line.split()
+                                 if not 'march' in p and not 'mtune' in p]
+                        new_flags = [p for p in part if p not in part2]
+                        GCC_compiler.march_flags = new_flags
+                        break
+                _logger.info("g++ -march=native equivalent flags: %s",
+                             GCC_compiler.march_flags)
+
+        #Add the detected -march=native equivalent flags
+        cxxflags.extend(GCC_compiler.march_flags)
+
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
         #the following macro to assert that we don't bring new code
