@@ -811,7 +811,7 @@ class ShapeFeature(object):
 
             if r.ndim != len(s):
                 sio = StringIO.StringIO()
-                theano.printing.debugprint(r, file=sio)
+                theano.printing.debugprint(r, file=sio, print_type=True)
                 raise AssertionError(
                     "Something inferred a shape with %d dimensions "
                     "for a variable with %d dimensions"
