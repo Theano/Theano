@@ -3306,7 +3306,10 @@ usmm = Usmm()
 
 
 class ConstructSparseFromList(gof.Op):
-    """Constructs a sparse matrix out of a list of 2-D matrix rows"""
+    """Constructs a sparse matrix out of a list of 2-D matrix rows
+
+    :note: The grad implemented is regular, i.e. not structured.
+    """
     def __hash__(self):
         return hash((type(self)))
 
@@ -3318,15 +3321,18 @@ class ConstructSparseFromList(gof.Op):
 
     def make_node(self, x, values, ilist):
         """
-        :param x: a matrix that specify the output shape.
-        :param values: a matrix with the values that we want in the output.
-        :param ilist: a vector with the same lenght as the number of rows
+        :param x: a dense matrix that specify the output shape.
+        :param values: a dense matrix with the values to use for output.
+        :param ilist: a dense vector with the same lenght as the number of rows
                       then values. It specify where in the output to put
                       the corresponding rows.
 
         This create a sparse matrix with the same shape as `x`. Its
-        values are the are the rows of `values` moved to the `ilist`
-        corresponding rows.
+        values are the rows of `values` moved. Pseudo-code::
+
+            output = csc_matrix.zeros_like(x, dtype=values.dtype)
+            for in_idx, out_idx in enumerate(ilist):
+                output[out_idx] = values[in_idx]
 
         """
         x_ = theano.tensor.as_tensor_variable(x)
