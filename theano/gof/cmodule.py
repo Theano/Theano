@@ -1506,14 +1506,16 @@ class GCC_compiler(object):
             for f in cxxflags:
                 #If the user give an -march=X parameter, don't add one ourself
                 if ((f.startswith("--march=") or f.startswith("-march="))):
-                    print ("WARNING: your Theano flags `gcc.cxxflags` specify"
-                           " an `-march=X` flags that isn't `-march=native`")
-                    print ("         It is better to let Theano/g++ find it"
+                    _logget.warn(
+                        "WARNING: your Theano flags `gcc.cxxflags` specify"
+                        " an `-march=X` flags that isn't `-march=native`.\n"
+                        "         It is better to let Theano/g++ find it"
                            " automatically, but we don't do it now")
                     detect_march = False
 
         if detect_march:
             GCC_compiler.march_flags = []
+
             def get_lines(cmd):
                 p = call_subprocess_Popen(cmd,
                                           stderr=subprocess.PIPE,
@@ -1525,13 +1527,19 @@ class GCC_compiler(object):
                 for line in stdout + stderr:
                     if "-march=" in line and "-march=native" not in line:
                         lines.append(line.strip())
-                lines = list(set(lines)) # to remove duplicate
+                lines = list(set(lines))  # to remove duplicate
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
-                _logger.warn("OPTIMIZATION WARNING: Theano was not able to find the g++ parameter that tune the compilation to your specific CPU. This can slow down the execution of Theano function. Can you submit the following lines to Theano's mailing list such that we fix this problem:\n %s", native_lines)
+                _logger.warn(
+                    "OPTIMIZATION WARNING: Theano was not able to find the"
+                    " g++ parameter that tune the compilation to your specific"
+                    " CPU. This can slow down the execution of Theano"
+                    " function. Can you submit the following lines to"
+                    " Theano's mailing list such that we fix this"
+                    " problem:\n %s", native_lines)
             else:
                 default_lines = get_lines("g++ -E -v - </dev/null")
                 _logger.info("g++ default lines: %s", default_lines)
