@@ -1518,8 +1518,9 @@ class GCC_compiler(object):
                 stderr = p.stderr.readlines()
                 lines = []
                 for line in stdout + stderr:
-                    if "march" in line:
+                    if "-march=" in line and "-march=native" not in line:
                         lines.append(line.strip())
+                lines = list(set(lines)) # to remove duplicate
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
