@@ -3152,12 +3152,24 @@ class Dot(gof.op.Op):
 
         if not x_is_sparse_var:
             x = tensor.as_tensor_variable(x)
+            if x.ndim not in (1, 2):
+                raise TypeError(
+                    'theano.sparse.Dot: input 0 (0-indexed) must have ndim of '
+                    '1 or 2, %d given.' % x.ndim)
 
         if not y_is_sparse_var:
             y = tensor.as_tensor_variable(y)
+            if y.ndim not in (1, 2):
+                raise TypeError(
+                    'theano.sparse.Dot: input 1 (1-indexed) must have ndim of '
+                    '1 or 2, %d given.' % y.ndim)
 
+        if y.ndim == 1 or x.ndim == 1:
+            bz = (False,)
+        else:
+            bz = (False, False)
         return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
-                         broadcastable=(False, False))])
+                                                      broadcastable=bz)])
 
     def perform(self, node, inputs, out):
         x, y = inputs

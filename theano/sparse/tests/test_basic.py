@@ -1027,8 +1027,9 @@ class test_structureddot(unittest.TestCase):
                                      overhead_tol)
 
 
-class DotTests(unittest.TestCase):
+class DotTests(utt.InferShapeTester):
     def setUp(self):
+        super(DotTests, self).setUp()
         x_size = (10, 100)
         y_size = (100, 1000)
         utt.seed_rng()
@@ -1043,10 +1044,15 @@ class DotTests(unittest.TestCase):
             numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
         self.y_csc = scipy.sparse.csc_matrix(
             numpy.random.binomial(1, 0.5, y_size), dtype=theano.config.floatX)
+        self.v_10 = numpy.asarray(numpy.random.uniform(-1, 1, 10),
+                                  dtype=theano.config.floatX)
+        self.v_100 = numpy.asarray(numpy.random.uniform(-1, 1, 100),
+                                  dtype=theano.config.floatX)
 
     def test_csr_dense(self):
         x = theano.sparse.csr_matrix('x')
         y = theano.tensor.matrix('y')
+        v = theano.tensor.vector('v')
 
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
@@ -1054,20 +1060,20 @@ class DotTests(unittest.TestCase):
         assert _allclose(f_a(self.x_csr, self.y), f_b(self.x_csr, self.y))
 
         # Test infer_shape
-        f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
-        f_b = lambda x, y: (x * y).shape
-        assert numpy.all(f_a(self.x_csr, self.y) == f_b(self.x_csr, self.y))
-        topo = f_a.maker.fgraph.toposort()
-        if theano.config.mode != 'FAST_COMPILE':
-            nb = 0
-        else:
-            nb = 1
-        assert sum([isinstance(node.op, (Dot, Usmm, UsmmCscDense))
-                    for node in topo]) == nb
+        self._compile_and_check([x, y], [theano.sparse.dot(x, y)],
+                                [self.x_csr, self.y],
+                                (Dot, Usmm, UsmmCscDense))
+        self._compile_and_check([v, x], [theano.sparse.dot(v, x)],
+                                [self.v_10, self.x_csr],
+                                (Dot, Usmm, UsmmCscDense))
+        self._compile_and_check([x, v], [theano.sparse.dot(x, v)],
+                                [self.x_csr, self.v_100],
+                                (Dot, Usmm, UsmmCscDense))
 
     def test_csc_dense(self):
         x = theano.sparse.csc_matrix('x')
         y = theano.tensor.matrix('y')
+        v = theano.tensor.vector('v')
 
         f_a = theano.function([x, y], theano.sparse.dot(x, y))
         f_b = lambda x, y: x * y
@@ -1075,16 +1081,15 @@ class DotTests(unittest.TestCase):
         assert _allclose(f_a(self.x_csc, self.y), f_b(self.x_csc, self.y))
 
         # Test infer_shape
-        f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
-        f_b = lambda x, y: (x * y).shape
-        assert numpy.all(f_a(self.x_csc, self.y) == f_b(self.x_csc, self.y))
-        topo = f_a.maker.fgraph.toposort()
-        if theano.config.mode != 'FAST_COMPILE':
-            nb = 0
-        else:
-            nb = 1
-        assert sum([isinstance(node.op, (Dot, Usmm, UsmmCscDense))
-                    for node in topo]) == nb
+        self._compile_and_check([x, y], [theano.sparse.dot(x, y)],
+                                [self.x_csc, self.y],
+                                (Dot, Usmm, UsmmCscDense))
+        self._compile_and_check([v, x], [theano.sparse.dot(v, x)],
+                                [self.v_10, self.x_csc],
+                                (Dot, Usmm, UsmmCscDense))
+        self._compile_and_check([x, v], [theano.sparse.dot(x, v)],
+                                [self.x_csc, self.v_100],
+                                (Dot, Usmm, UsmmCscDense))
 
     def test_sparse_sparse(self):
         for d1, d2 in [('float32', 'float32'),
