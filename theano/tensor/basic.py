@@ -6929,7 +6929,6 @@ class AdvancedSubtensor1(Op):
         out[0] = x.take(i, axis=0, out=o)
 
     def connection_pattern(self, node):
-
         rval = [[True]]
 
         for ipt in node.inputs[1:]:
@@ -6939,17 +6938,18 @@ class AdvancedSubtensor1(Op):
 
     def grad(self, inputs, grads):
         global sparse_module_ref
+        x, ilist = inputs
         gz, = grads
         assert len(inputs) == 2
-        if inputs[0].type.sparse_grad:
+
+        if x.type.sparse_grad:
             if sparse_module_ref is None:
                 import theano.sparse as sparse_module_ref
 
-            rval1 = [sparse_module_ref.ConstructSparseFromList()(
-                                                (inputs[0]), gz, inputs[1])]
+            rval1 = [sparse_module_ref.construct_sparse_from_list(x, gz,
+                                                                  ilist)]
         else:
-            rval1 = [advanced_inc_subtensor1(
-                                        zeros_like(inputs[0]), gz, inputs[1])]
+            rval1 = [advanced_inc_subtensor1(zeros_like(x), gz, ilist)]
         return rval1 + [DisconnectedType()()] * (len(inputs) - 1)
 
     def R_op(self, inputs, eval_points):

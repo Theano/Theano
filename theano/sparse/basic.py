@@ -3316,9 +3316,9 @@ class ConstructSparseFromList(gof.Op):
     def __str__(self):
         return self.__class__.__name__
 
-    def make_node(self, x, y, ilist):
+    def make_node(self, x, values, ilist):
         x_ = theano.tensor.as_tensor_variable(x)
-        y_ = theano.tensor.as_tensor_variable(y)
+        values_ = theano.tensor.as_tensor_variable(values)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
 
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
@@ -3327,22 +3327,32 @@ class ConstructSparseFromList(gof.Op):
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        if y_.type.ndim > x_.type.ndim:
+        if values_.type.ndim > x_.type.ndim:
             raise TypeError('cannot construct sparse matrix as dimensions differ')    
-        return gof.Apply(self, [x_, y_, ilist_], [theano.sparse.csc_matrix(dtype=x.dtype)])
+        return gof.Apply(self, [x_, values_, ilist_],
+                         [csc_matrix(dtype=x.dtype)])
 
     def perform(self, node, inp, out_):
-        x, values, idx = inp
+        """
+        :param inp: tuple(x, values, ilist)
+                    x: specify the output shape and dtype only.
+                    values: a matrix with the values that we want in the output
+                    ilist: a vector with the same lenght as the number of row
+                           then values. It specify where in the output to put
+                           the corresponding rows.
+        """
+        x, values, ilist = inp
         out, = out_
         rows, cols = values.shape
-        assert rows == len(idx)
+        assert rows == len(ilist)
         indptr = numpy.arange(cols + 1) * rows
-        indices = as_strided(idx,
-                             strides=(0, idx.strides[0]),
-                             shape = (cols, idx.shape[0])).flatten()
+        indices = as_strided(ilist,
+                             strides=(0, ilist.strides[0]),
+                             shape=(cols, ilist.shape[0])).flatten()
         data = values.T.flatten()
-        out[0] = scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape,
-                                    dtype=x.dtype)
+        out[0] = scipy.sparse.csc_matrix((data, indices, indptr),
+                                         shape=x.shape,
+                                         dtype=x.dtype)
 
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
@@ -3368,3 +3378,5 @@ class ConstructSparseFromList(gof.Op):
         gy = theano.tensor.advanced_subtensor1(g_output, *idx_list)
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
+
+construct_sparse_from_list = ConstructSparseFromList()
