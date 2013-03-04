@@ -1529,12 +1529,12 @@ class GCC_compiler(object):
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
-            _logger.info("g++ -march=native selected lines:", native_lines)
+            _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
-                _logger.warn("OPTIMIZATION WARNING: Theano was not able to find the g++ parameter that tune the compilation to your specific CPU. This can slow down the execution of Theano function. Can you submit the following lines to Theano's mailing list such that we fix this problem:\n ", native_lines)
+                _logger.warn("OPTIMIZATION WARNING: Theano was not able to find the g++ parameter that tune the compilation to your specific CPU. This can slow down the execution of Theano function. Can you submit the following lines to Theano's mailing list such that we fix this problem:\n %s", native_lines)
             else:
                 default_lines = get_lines("g++ -E -v - </dev/null")
-                _logger.info("g++ default lines: ", default_lines)
+                _logger.info("g++ default lines: %s", default_lines)
                 assert len(default_lines) > 1
                 part = native_lines[0].split()
                 for line in default_lines:
@@ -1544,7 +1544,7 @@ class GCC_compiler(object):
                         new_flags = [p for p in part if p not in part2]
                         GCC_compiler.march_flags = new_flags
                         break
-                _logger.info("g++ -march=native equivalent flags:",
+                _logger.info("g++ -march=native equivalent flags: %s",
                              GCC_compiler.march_flags)
 
         #Add the detected -march=native equivalent flags
