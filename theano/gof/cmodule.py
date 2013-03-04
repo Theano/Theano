@@ -1496,12 +1496,6 @@ class GCC_compiler(object):
         # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
         detect_march = GCC_compiler.march_flags is None
 
-        #We will add it ourself in a safe way, so remove them.
-        if '-march=native' in cxxflags:
-            cxxflags.remove('-march=native')
-        if '--march=native' in cxxflags:
-            cxxflags.remove('--march=native')
-
         if detect_march:
             for f in cxxflags:
                 #If the user give an -march=X parameter, don't add one ourself
@@ -1512,6 +1506,7 @@ class GCC_compiler(object):
                         "         It is better to let Theano/g++ find it"
                            " automatically, but we don't do it now")
                     detect_march = False
+                    break
 
         if detect_march:
             GCC_compiler.march_flags = []
