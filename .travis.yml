@@ -13,7 +13,9 @@ before_install:
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install -q numpy==1.5 --use-mirrors"
-  - "pip install scipy==0.8 --use-mirrors"
+# We support scipy 0.7.2, but it is not available on pypi anymore.
+# So we test with 0.8. Our internal buildbot have 0.7.2
+  - "pip install -q scipy==0.8 --use-mirrors"
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
