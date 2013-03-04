@@ -9,6 +9,7 @@ _logger = logging.getLogger('theano.tensor.opt')
 
 import operator
 import itertools
+import StringIO
 import sys
 import traceback
 from itertools import izip
@@ -807,11 +808,15 @@ class ShapeFeature(object):
         else:
             if not isinstance(s, (tuple, list)):
                 raise TypeError('shapes must be tuple/list', (r, s))
+
             if r.ndim != len(s):
+                sio = StringIO.StringIO()
+                theano.printing.debugprint(r, file=sio)
                 raise AssertionError(
-                        "Something inferred a shape with %d dimensions "
-                        "for a variable with %d dimensions." % (
-                        len(s), r.ndim))
+                    "Something inferred a shape with %d dimensions "
+                    "for a variable with %d dimensions"
+                    " for the variable:\n%s" % (
+                        len(s), r.ndim, sio.getvalue()))
 
             shape_vars = []
             for i in range(r.ndim):
