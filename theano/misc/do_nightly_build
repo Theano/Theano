@@ -51,35 +51,46 @@ if [ "$RELEASE" ]; then
     THEANO_FLAGS=${FLAGS},compute_test_value=ignore ${NOSETESTS} ${ARGS}
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
+    echo
 fi
 
 echo "Executing tests with mode=FAST_COMPILE with --batch=1000"
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}"
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+echo
 
 echo "Executing tests with mode=FAST_RUN"
+echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}"
 THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+echo
 
 echo "Executing tests with mode=FAST_RUN,floatX=float32"
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}"
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+echo
 
 echo "Executing tests with linker=vm,vm.lazy=True,floatX=float32"
+echo "THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}"
 THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+echo
 
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
 echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"
+echo "THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}"
 THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+echo
 
 echo
 END=`date +%s`
