@@ -1485,8 +1485,8 @@ def gcc_llvm():
         p = None
         try:
             p = call_subprocess_Popen(['g++', '--version'],
-                                      stdout=subprocess.PIPE,
                                       stdin=dummy_in.fileno(),
+                                      stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
             p.wait()
             output = p.stdout.read() + p.stderr.read()
@@ -1546,10 +1546,16 @@ class GCC_compiler(object):
             GCC_compiler.march_flags = []
 
             def get_lines(cmd, parse=True):
-                p = call_subprocess_Popen(cmd,
-                                          stderr=subprocess.PIPE,
-                                          stdout=subprocess.PIPE, shell=True)
-                p.wait()
+                dummy_in = open(os.devnull)
+                try:
+                    p = call_subprocess_Popen(cmd,
+                                              stdin=dummy_in.fileno(),
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE,
+                                              shell=True)
+                    p.wait()
+                finally:
+                    del dummy_in
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
                 lines = []
@@ -1566,7 +1572,7 @@ class GCC_compiler(object):
                     lines = stdout + stderr
                 return lines
 
-            native_lines = get_lines("g++ -march=native -E -v - </dev/null")
+            native_lines = get_lines("g++ -march=native -E -v -")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
                 _logger.warn(
