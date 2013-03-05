@@ -3,9 +3,13 @@ import numpy
 
 import theano
 from theano.tests import unittest_tools as utt
-from theano.tensor.extra_ops import (BinCountOp, bincount, DiffOp, diff,
-        squeeze, RepeatOp, repeat, Bartlett, bartlett,
-        FillDiagonal, fill_diagonal)
+from theano.tensor.extra_ops import (
+    BinCountOp, bincount, DiffOp, diff,
+    squeeze,
+    RepeatOp, repeat,
+    Bartlett, bartlett,
+    FillDiagonal, fill_diagonal,
+    CentralDiff, central_diff)
 from theano import tensor as T
 from theano import config, tensor, function
 
@@ -191,6 +195,70 @@ class SqueezeTester(utt.InferShapeTester):
             variable = tensor.TensorType(theano.config.floatX, broadcast)()
 
             utt.verify_grad(self.op, [data])
+
+
+class CentralDiffTester(utt.InferShapeTester):
+    def setUp(self):
+        super(CentralDiffTester, self).setUp()
+        self.op = central_diff
+        self.op_class = CentralDiff
+
+    def test_op(self):
+        for ndim in range(1, 4):
+            for dtype in tensor.all_dtypes:
+                for dx in [None, (0.3, ), (0.1, ) * ndim]:
+                    variable = tensor.TensorType(dtype, (False, ) * ndim)()
+
+                    shape = range(5, 5 + ndim)
+                    if dtype in tensor.discrete_dtypes:
+                        data = numpy.random.random_integers(10, size=shape)
+                    else:
+                        data = numpy.random.random(size=shape)
+                    data = data.astype(dtype)
+
+                    f = theano.function([variable], self.op(variable, step=dx))
+
+                    tested = f(data)
+                    if dx is None:
+                        expected = numpy.gradient(data)
+                    else:
+                        expected = numpy.gradient(data, *dx)
+
+
+                    if ndim == 1:
+                        tested, expected = [tested], [expected]
+
+                    for test, expec in zip(tested, expected):
+                        assert test.dtype == expec.dtype
+                        assert test.shape == expec.shape
+                        assert numpy.allclose(test, expec)
+
+    def test_infer_shape(self):
+        for ndim in range(1, 4):
+            for dx in [None, (0.3, ), (0.1, ) * ndim]:
+                variable = tensor.TensorType('float64', (False, ) * ndim)()
+                data = numpy.random.random(size=range(5, 5 + ndim))
+                data = data.astype('float64')
+
+                out = self.op(variable, step=dx)
+                if ndim == 1:
+                    out = [out]
+
+                self._compile_and_check([variable],
+                                        out,
+                                        [data],
+                                        self.op_class)
+
+    def test_grad(self):
+        for ndim in range(1, 2):
+            for dtype in tensor.float_dtypes:
+                for dx in [None, (0.3, ), (0.1, ) * ndim]:
+                    data = numpy.random.random(size=range(11, 11 + ndim))
+                    data = data.astype(dtype)
+
+                    for i in range(ndim):
+                        func = lambda x: self.op(x, step=dx)[i]
+                        utt.verify_grad(func, [data])
 
 
 class TestRepeatOp(utt.InferShapeTester):

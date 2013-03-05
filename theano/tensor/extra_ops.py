@@ -8,6 +8,119 @@ tensor = basic
 from theano.gradient import DisconnectedType
 
 
+class CentralDiff(theano.Op):
+    """
+    """
+
+    def __init__(self, *vargs):
+        self.dx = vargs
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+               self.dx == other.dx)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.dx)
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)
+        if x.dtype in tensor.continuous_dtypes:
+            out_type = x.type
+        else:
+            out_type = basic.TensorType('float64', x.broadcastable)
+        return theano.Apply(self, [x], [out_type() for i in range(x.ndim)])
+
+    def perform(self, node, (x, ), output_storage):
+        if self.dx:
+            result = numpy.gradient(x, *self.dx)
+        else:
+            result = numpy.gradient(x)
+
+        if x.ndim == 1:
+            output_storage[0][0] = result
+        else:
+            for i in range(x.ndim):
+                output_storage[i][0] = result[i]
+
+    def grad(self, (x, ), gz_list):
+        dx = self.dx
+        if dx:
+            if len(dx) == 1:
+                dx = dx * x.ndim
+            elif len(dx) != x.ndim:
+                raise TypeError("Step should have the same "
+                                "length as the number of dimension "
+                                "of the input.")
+        else:
+            dx = (1, ) * x.ndim
+
+        outvals = []
+
+        position1 = [slice(None)] * x.ndim
+        position2 = [slice(None)] * x.ndim
+        position3 = [slice(None)] * x.ndim
+
+        positionm3 = [slice(None)] * x.ndim
+        positionm2 = [slice(None)] * x.ndim
+        positionm1 = [slice(None)] * x.ndim
+
+        slice1 = [slice(None)] * x.ndim
+        slice2 = [slice(None)] * x.ndim
+
+        for axis, gz in enumerate(gz_list):
+            position1[axis] = slice(0, 1)
+            position2[axis] = slice(1, 2)
+            position3[axis] = slice(2, 3)
+
+            positionm3[axis] = slice(-3, -2)
+            positionm2[axis] = slice(-2, -1)
+            positionm1[axis] = slice(-1, None)
+
+            slice1[axis] = slice(None, -3)
+            slice2[axis] = slice(3, None)
+
+            parts = []
+            parts.append(-gz.__getitem__(*position1) - gz.__getitem__(*position2)[0] / 2.)
+            parts.append(gz.__getitem__(*position1) - gz.__getitem__(*position3) / 2.)
+            
+            parts.append((gz.__getitem__(*slice1) - gz.__getitem__(*slice2)) / 2.)
+
+            parts.append(gz.__getitem__(*positionm3) / 2. - gz.__getitem__(*positionm1))
+            parts.append(gz.__getitem__(*positionm2) / 2. + gz.__getitem__(*positionm1))
+
+            outvals.append(dx[axis] * basic.concatenate(parts, axis=axis))
+
+            # reset the slice object in this dimension
+            position1[axis] = slice(None)
+            position2[axis] = slice(None)
+            position3[axis] = slice(None)
+
+            positionm3[axis] = slice(None)
+            positionm2[axis] = slice(None)
+            positionm1[axis] = slice(None)
+
+            slice1[axis] = slice(None)
+            slice2[axis] = slice(None)
+
+        result = 0
+        for grad in outvals:
+            result += grad
+        return [result]
+
+    def infer_shape(self, node, (input_shape, )):
+        return [input_shape] * node.inputs[0].ndim
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def central_diff(x, step=None):
+    if step is None:
+        return CentralDiff()(x)
+    else:
+        return CentralDiff(*step)(x)
+
+
 class DiffOp(theano.Op):
     # See function diff for docstring
     def __init__(self, n=1, axis=-1):
