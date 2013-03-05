@@ -1481,12 +1481,10 @@ def gcc_llvm():
     """
     if gcc_llvm.is_llvm is None:
         pass
-        dummy_in = open(os.devnull)
         p = None
         try:
             p = call_subprocess_Popen(['g++', '--version'],
                                       stdout=subprocess.PIPE,
-                                      stdin=dummy_in.fileno(),
                                       stderr=subprocess.PIPE)
             p.wait()
             output = p.stdout.read() + p.stderr.read()
@@ -1499,7 +1497,6 @@ def gcc_llvm():
             # will crash later so supposing it is not llvm is "safe".
             output = ''
         del p
-        del dummy_in
         gcc_llvm.is_llvm = "llvm" in output
     return gcc_llvm.is_llvm
 gcc_llvm.is_llvm = None
@@ -1547,8 +1544,9 @@ class GCC_compiler(object):
 
             def get_lines(cmd, parse=True):
                 p = call_subprocess_Popen(cmd,
+                                          stdout=subprocess.PIPE,
                                           stderr=subprocess.PIPE,
-                                          stdout=subprocess.PIPE, shell=True)
+                                          shell=True)
                 p.wait()
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
@@ -1566,7 +1564,8 @@ class GCC_compiler(object):
                     lines = stdout + stderr
                 return lines
 
-            native_lines = get_lines("g++ -march=native -E -v - </dev/null")
+            # The '-' at the end is needed. Otherwise, g++ do not output enough information.
+            native_lines = get_lines("g++ -march=native -E -v -")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
                 _logger.warn(
@@ -1577,7 +1576,7 @@ class GCC_compiler(object):
                     " Theano's mailing list such that we fix this"
                     " problem:\n %s", native_lines)
             else:
-                default_lines = get_lines("g++ -E -v - </dev/null")
+                default_lines = get_lines("g++ -E -v -")
                 _logger.info("g++ default lines: %s", default_lines)
                 if len(default_lines) < 1:
                     _logger.warn(
@@ -1588,7 +1587,7 @@ class GCC_compiler(object):
                         " function. Can you submit the following lines to"
                         " Theano's mailing list such that we fix this"
                         " problem:\n %s",
-                        get_lines("g++ -E -v - </dev/null", parse=False))
+                        get_lines("g++ -E -v -", parse=False))
                 else:
                     part = native_lines[0].split()
                     for line in default_lines:
@@ -1643,7 +1642,6 @@ class GCC_compiler(object):
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
-            dummy_stdin = open(os.devnull)
             try:
                 os.write(fd, src_code)
                 os.close(fd)
@@ -1651,8 +1649,7 @@ class GCC_compiler(object):
                 proc = call_subprocess_Popen(
                         ['g++', path, '-o', exe_path] + flags,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        stdin=dummy_stdin.fileno())
+                        stderr=subprocess.PIPE)
                 proc.wait()
                 if proc.returncode != 0:
                     compilation_ok = False
@@ -1662,14 +1659,12 @@ class GCC_compiler(object):
                     try:
                         proc = call_subprocess_Popen([exe_path],
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                stdin=dummy_stdin.fileno())
+                                stderr=subprocess.PIPE)
                         proc.wait()
                         run_ok = (proc.returncode == 0)
                     finally:
                         os.remove(exe_path)
             finally:
-                del dummy_stdin
                 try:
                     if fd is not None:
                         os.close(fd)

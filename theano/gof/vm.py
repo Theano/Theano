@@ -491,13 +491,13 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
-except (OSError, theano.gof.cmodule.MissingGXX):
+except (OSError, theano.gof.cmodule.MissingGXX), e:
     # OSError happens when g++ is not installed.  In that case, we
     # already changed the default linker to something else then CVM.
     # Currently this is the py linker.
     # Here we assert that the default linker is not cvm.
     assert not [x for x in theano.configparser._config_var_list
-                if x.fullname == 'linker'][0].default.startswith('cvm')
+                if x.fullname == 'linker'][0].default.startswith('cvm'), e
     pass
 
 
