@@ -21,5 +21,18 @@ def call_subprocess_Popen(command, **params):
         # execute "g++" without extensions.
         # (Executing "g++.bat" explicitly would also work.)
         params['shell'] = True
-    proc = subprocess.Popen(command, startupinfo=startupinfo, **params)
+
+    # Using the dummy file descriptors below is a workaround for a
+    # crash experienced in an unusual Python 2.4.4 Windows environment
+    # with the default None values.
+    stdin = None
+    if "stdin" not in params:
+        stdin = open(os.devnull)
+        params['stdin'] = stdin.fileno()
+
+    try:
+        proc = subprocess.Popen(command, startupinfo=startupinfo, **params)
+    finally:
+        if stdin is not None:
+            del stdin
     return proc

@@ -18,13 +18,11 @@ from theano.misc.windows import call_subprocess_Popen
 # Using the dummy file descriptors below is a workaround for a crash
 # experienced in an unusual Python 2.4.4 Windows environment with the default
 # None values.
-dummy_in = open(os.devnull)
 dummy_err = open(os.devnull, 'w')
 p = None
 try:
     p = call_subprocess_Popen(['g++', '-dumpversion'],
                               stdout=subprocess.PIPE,
-                              stdin=dummy_in.fileno(),
                               stderr=dummy_err.fileno())
     p.wait()
     gcc_version_str = p.stdout.readline().strip().decode()
@@ -32,7 +30,6 @@ except OSError:
     # Typically means gcc cannot be found.
     gcc_version_str = 'GCC_NOT_FOUND'
 del p
-del dummy_in
 del dummy_err
 
 compiledir_format_dict = {"platform": platform.platform(),
