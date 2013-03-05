@@ -1511,7 +1511,7 @@ class GCC_compiler(object):
         if detect_march:
             GCC_compiler.march_flags = []
 
-            def get_lines(cmd):
+            def get_lines(cmd, parse=True):
                 p = call_subprocess_Popen(cmd,
                                           stderr=subprocess.PIPE,
                                           stdout=subprocess.PIPE, shell=True)
@@ -1519,10 +1519,17 @@ class GCC_compiler(object):
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
                 lines = []
-                for line in stdout + stderr:
-                    if "-march=" in line and "-march=native" not in line:
-                        lines.append(line.strip())
-                lines = list(set(lines))  # to remove duplicate
+                if parse:
+                    for line in stdout + stderr:
+                        if "COLLECT_GCC_OPTIONS=" in line:
+                            continue
+                        elif "-march=" in line and "-march=native" not in line:
+                            lines.append(line.strip())
+                        elif "-mtune=" in line and "-march=native" not in line:
+                            lines.append(line.strip())
+                    lines = list(set(lines))  # to remove duplicate
+                else:
+                    lines = stdout + stderr
                 return lines
 
             native_lines = get_lines("g++ -march=native -E -v - </dev/null")
@@ -1538,17 +1545,27 @@ class GCC_compiler(object):
             else:
                 default_lines = get_lines("g++ -E -v - </dev/null")
                 _logger.info("g++ default lines: %s", default_lines)
-                assert len(default_lines) > 1
-                part = native_lines[0].split()
-                for line in default_lines:
-                    if line.startswith(part[0]):
-                        part2 = [p for p in line.split()
-                                 if not 'march' in p and not 'mtune' in p]
-                        new_flags = [p for p in part if p not in part2]
-                        GCC_compiler.march_flags = new_flags
-                        break
-                _logger.info("g++ -march=native equivalent flags: %s",
-                             GCC_compiler.march_flags)
+                if len(default_lines) < 1:
+                    _logger.warn(
+                        "OPTIMIZATION WARNING: Theano was not able to find the"
+                        " default g++ parameter. This is needed to tune"
+                        " the compilation to your specific"
+                        " CPU. This can slow down the execution of Theano"
+                        " function. Can you submit the following lines to"
+                        " Theano's mailing list such that we fix this"
+                        " problem:\n %s",
+                        get_lines("g++ -E -v - </dev/null", parse=False))
+                else:
+                    part = native_lines[0].split()
+                    for line in default_lines:
+                        if line.startswith(part[0]):
+                            part2 = [p for p in line.split()
+                                     if not 'march' in p and not 'mtune' in p]
+                            new_flags = [p for p in part if p not in part2]
+                            GCC_compiler.march_flags = new_flags
+                            break
+                    _logger.info("g++ -march=native equivalent flags: %s",
+                                 GCC_compiler.march_flags)
 
         #Add the detected -march=native equivalent flags
         cxxflags.extend(GCC_compiler.march_flags)
