@@ -1572,6 +1572,7 @@ class GCC_compiler(object):
                     lines = stdout + stderr
                 return lines
 
+            # The '-' at the end is needed. Otherwise, g++ do not output enough information.
             native_lines = get_lines("g++ -march=native -E -v -")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
@@ -1583,7 +1584,7 @@ class GCC_compiler(object):
                     " Theano's mailing list such that we fix this"
                     " problem:\n %s", native_lines)
             else:
-                default_lines = get_lines("g++ -E -v - </dev/null")
+                default_lines = get_lines("g++ -E -v -")
                 _logger.info("g++ default lines: %s", default_lines)
                 if len(default_lines) < 1:
                     _logger.warn(
@@ -1594,7 +1595,7 @@ class GCC_compiler(object):
                         " function. Can you submit the following lines to"
                         " Theano's mailing list such that we fix this"
                         " problem:\n %s",
-                        get_lines("g++ -E -v - </dev/null", parse=False))
+                        get_lines("g++ -E -v -", parse=False))
                 else:
                     part = native_lines[0].split()
                     for line in default_lines:
