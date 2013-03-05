@@ -276,8 +276,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                     # test name in display
                     # (see class 'DisabDocString' in file theano-nose)
                     stderr=subprocess.PIPE,
-                    stdout=dummy_out.fileno(),
-                    stdin=dummy_in.fileno())
+                    stdout=dummy_out.fileno())
 
                 # recovering and processing data from pipe
                 err = proc.stderr.read()

@@ -1481,11 +1481,9 @@ def gcc_llvm():
     """
     if gcc_llvm.is_llvm is None:
         pass
-        dummy_in = open(os.devnull)
         p = None
         try:
             p = call_subprocess_Popen(['g++', '--version'],
-                                      stdin=dummy_in.fileno(),
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
             p.wait()
@@ -1499,7 +1497,6 @@ def gcc_llvm():
             # will crash later so supposing it is not llvm is "safe".
             output = ''
         del p
-        del dummy_in
         gcc_llvm.is_llvm = "llvm" in output
     return gcc_llvm.is_llvm
 gcc_llvm.is_llvm = None
@@ -1546,16 +1543,11 @@ class GCC_compiler(object):
             GCC_compiler.march_flags = []
 
             def get_lines(cmd, parse=True):
-                dummy_in = open(os.devnull)
-                try:
-                    p = call_subprocess_Popen(cmd,
-                                              stdin=dummy_in.fileno(),
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.PIPE,
-                                              shell=True)
-                    p.wait()
-                finally:
-                    del dummy_in
+                p = call_subprocess_Popen(cmd,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE,
+                                          shell=True)
+                p.wait()
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
                 lines = []
@@ -1650,7 +1642,6 @@ class GCC_compiler(object):
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
-            dummy_stdin = open(os.devnull)
             try:
                 os.write(fd, src_code)
                 os.close(fd)
@@ -1658,8 +1649,7 @@ class GCC_compiler(object):
                 proc = call_subprocess_Popen(
                         ['g++', path, '-o', exe_path] + flags,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        stdin=dummy_stdin.fileno())
+                        stderr=subprocess.PIPE)
                 proc.wait()
                 if proc.returncode != 0:
                     compilation_ok = False
@@ -1669,14 +1659,12 @@ class GCC_compiler(object):
                     try:
                         proc = call_subprocess_Popen([exe_path],
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                stdin=dummy_stdin.fileno())
+                                stderr=subprocess.PIPE)
                         proc.wait()
                         run_ok = (proc.returncode == 0)
                     finally:
                         os.remove(exe_path)
             finally:
-                del dummy_stdin
                 try:
                     if fd is not None:
                         os.close(fd)
