@@ -44,7 +44,7 @@ class MultinomialFromUniform(Op):
     def grad(self, ins, outgrads):
         pvals, unis = ins
         (gz,) = outgrads
-        return [None, None]
+        return [T.zeros_like(x) for x in ins]
 
     def c_code_cache_version(self):
         return (5,)
