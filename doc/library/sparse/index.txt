@@ -135,6 +135,8 @@ List of Implemented Operations
       The grad implemented is regular.
     - :class:`SquareDiagonal <theano.sparse.basic.SquareDiagonal>` and ``square_diagonal``.
       The grad implemented is regular.
+    - :class:`ConstructSparseFromList <theano.sparse.basic.ConstructSparseFromList>` and ``construct_sparse_from_list``.
+      The grad implemented is regular.
 
 - Cast
     - :class:`Cast <theano.sparse.basic.Cast>` with ``bcast``, ``wcast``, ``icast``, ``lcast``,
@@ -190,7 +192,8 @@ List of Implemented Operations
     - ``sqrt``
 
 - Dot Product
-    - :class:`Dot <theano.sparse.basic.Dot>` and ``dot``.
+    - :class:`Dot <theano.sparse.basic.Dot>` and
+      :func:`dot <theano.sparse.basic.dot>`.
       The grad implemented is regular.
     - :class:`StructuredDot <theano.sparse.basic.StructuredDot>`
       and :func:`structured_dot <theano.sparse.basic.structured_dot>`.
