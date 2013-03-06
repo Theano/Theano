@@ -43,6 +43,7 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print '    blas.ldflags=', theano.config.blas.ldflags
         print '    compiledir=', theano.config.compiledir
         print '    floatX=', theano.config.floatX
+        print '    device=', theano.config.device
         print 'Some environment variables:'
         print '    MKL_NUM_THREADS=', os.getenv('MKL_NUM_THREADS')
         print '    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS')
@@ -202,11 +203,12 @@ if __name__ == "__main__":
         C2075                    0.25s
         C1060                                         0.46s
 
-        GTX680                   0.154s               0.218s
-        GTX580                   0.164s               0.203s
-        GTX480                   0.192s               0.237s 0.27s
-        GTX470                   0.238s               0.297s 0.34s
-        GTX660                   0.24s
+        GTX Titan(D15U-50)0.06s  don't work
+        GTX680            0.12s  0.154s               0.218s
+        GTX580            0.16s  0.164s               0.203s
+        GTX480            0.19s  0.192s               0.237s 0.27s
+        GTX470            0.23s  0.238s               0.297s 0.34s
+        GTX660            0.20s  0.23s
         GTX560                   0.30s
         GTX460            0.37s                0.45s
         GTX285                   0.452s        0.452s        0.40s # cuda 3.0 seam faster? driver version?
