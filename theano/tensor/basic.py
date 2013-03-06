@@ -1761,12 +1761,18 @@ class _tensor_py_operators:
                     axis = i
 
         if advanced:
+            if (axis is not None
+                and numpy.all(a == slice(None) for a in args[:axis])
                 and numpy.all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                         numpy.ndarray,
-                        theano.tensor.sharedvar.TensorSharedVariable))
-                    and as_tensor_variable(args[0]).type.broadcastable == (False,) ):
-            return AdvancedSubtensor()(self, *args)
+                        list,
+                        TensorVariable,
+                        TensorConstant,
+                        theano.tensor.sharedvar.TensorSharedVariable))):
+                return self.take(arg, axis)
+            else:
+                return AdvancedSubtensor()(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
@@ -7407,7 +7413,6 @@ class AdvancedIncSubtensor(Op):
             increment(out[0], tuple(inputs[2:]), inputs[1])
 
             out[0][inputs[2:]] = inputs[1]
-        else:
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
