@@ -1286,48 +1286,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     defaults = [getattr(input, 'value', None) for input in inputs]
 
     if isinstance(mode, (list, tuple)):  # "mode comparison" semantics
-        _logger.warning('Passing multiple modes is deprecated (20091019)')
-        if not mode:
-            raise ValueError("Please provide at least one mode.")
-        elif len(mode) == 1:
-            fn = FunctionMaker(
-                    inputs,
-                    outputs,
-                    mode[0],
-                    accept_inplace=accept_inplace,
-                    profile=profile,
-                    on_unused_input=on_unused_input).create(defaults)
-        else:
-            if profile:
-                raise NotImplementedError('profiling not implemented in this '
-                                          'kind of mode')
-            #return a different kind of function
-
-            def dup_defaults():
-                # TODO This may need to be changed to use containers as
-                # defaults.
-                retval = []
-                for default in defaults:
-                    if isinstance(default, gof.Container):
-                        retval += [copy.copy(default.value)]
-                    else:
-                        retval += [copy.copy(default)]
-                return retval
-                #backport
-                #return [copy.copy(default.value)
-                #        if isinstance(default, gof.Container) else
-                #        copy.copy(default)
-                #        for default in defaults]
-            makers = [FunctionMaker(inputs, outputs, m,
-                                    accept_inplace=accept_inplace)
-                      for m in mode[1:]]
-            fns = [maker.create(dup_defaults(), trustme=True)
-                   for maker in makers]
-            builder = partial(SanityCheckFunction, fns, check_equal)
-            maker1 = FunctionMaker(inputs, outputs, mode[0],
-                                   accept_inplace=accept_inplace,
-                                   function_builder=builder)
-            fn = maker1.create(defaults)
+        raise Exception("We do not support the passing of multiple mode")
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs,
