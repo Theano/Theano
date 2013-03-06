@@ -208,7 +208,9 @@ fail:
              "increments a numpy array inplace at the passed indexes."},
             #endif
             {NULL, NULL, 0, NULL}        /* Sentinel */
-        };"""
+        };""")
+
+
     if PY3:
         # This is not the most efficient code, but it is written this way to highlight
         # the changes needed to make 2.x code compile under python 3.
@@ -228,7 +230,7 @@ fail:
             return PyModule_Create(&moduledef);
         }
         }
-    """
+        """
     else:
         code += """
         PyMODINIT_FUNC
@@ -238,7 +240,7 @@ fail:
           (void) Py_InitModule("cutils_ext", CutilsExtMethods);
         }
     } //extern C
-        """)
+        """
 
     import cmodule 
     loc = os.path.join(config.compiledir, 'cutils_ext')
