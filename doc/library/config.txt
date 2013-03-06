@@ -364,7 +364,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: compiledir_format
 
-    Default: "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+    Default: "compiledir_%(platform)s-%(processor)s-%(python_version)s-%(python_bitwidth)s"
 
     This is a Python format string that specifies the subdirectory
     of ``config.base_compiledir`` in which to store platform-dependent

@@ -27,7 +27,7 @@ from theano.misc.windows import call_subprocess_Popen
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.gof.compiledir import gcc_version_str
+from theano.gof.compiledir import gcc_version_str, local_bitwidth
 
 from theano.configparser import AddConfigVar, BoolParam
 
@@ -54,29 +54,6 @@ AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warning.",
              BoolParam(False))
 
-
-def local_bitwidth():
-    """
-    Return 32 for 32bit arch, 64 for 64bit arch
-
-    By "architecture", we mean the size of memory pointers (size_t in C),
-    *not* the size of long int, as it can be different.
-    """
-    # Note that according to Python documentation, `platform.architecture()` is
-    # not reliable on OS X with universal binaries.
-    # Also, sys.maxsize does not exist in Python < 2.6.
-    # 'P' denotes a void*, and the size is expressed in bytes.
-    return struct.calcsize('P') * 8
-
-
-def python_int_bitwidth():
-    """
-    Return the bit width of Python int (C long int).
-
-    Note that it can be different from the size of a memory pointer.
-    """
-    # 'l' denotes a C long int, and the size is expressed in bytes.
-    return struct.calcsize('l') * 8
 
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)

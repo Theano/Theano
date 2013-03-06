@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import textwrap
@@ -32,16 +33,43 @@ except OSError:
 del p
 del dummy_err
 
-compiledir_format_dict = {"platform": platform.platform(),
-                          "processor": platform.processor(),
-                          "python_version": platform.python_version(),
-                          "theano_version": theano.__version__,
-                          "numpy_version": numpy.__version__,
-                          "gxx_version": gcc_version_str.replace(" ", "_"),
-                         }
+
+def local_bitwidth():
+    """
+    Return 32 for 32bit arch, 64 for 64bit arch
+
+    By "architecture", we mean the size of memory pointers (size_t in C),
+    *not* the size of long int, as it can be different.
+    """
+    # Note that according to Python documentation, `platform.architecture()` is
+    # not reliable on OS X with universal binaries.
+    # Also, sys.maxsize does not exist in Python < 2.6.
+    # 'P' denotes a void*, and the size is expressed in bytes.
+    return struct.calcsize('P') * 8
+
+
+def python_int_bitwidth():
+    """
+    Return the bit width of Python int (C long int).
+
+    Note that it can be different from the size of a memory pointer.
+    """
+    # 'l' denotes a C long int, and the size is expressed in bytes.
+    return struct.calcsize('l') * 8
+
+
+compiledir_format_dict = {
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "python_version": platform.python_version(),
+        "python_bitwidth": local_bitwidth(),
+        "theano_version": theano.__version__,
+        "numpy_version": numpy.__version__,
+        "gxx_version": gcc_version_str.replace(" ", "_"),
+        }
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
-default_compiledir_format =\
-                    "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+default_compiledir_format = ("compiledir_%(platform)s-%(processor)s-"
+                             "%(python_version)s-%(python_bitwidth)s")
 
 AddConfigVar("compiledir_format",
              textwrap.fill(textwrap.dedent("""\

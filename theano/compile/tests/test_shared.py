@@ -18,7 +18,7 @@ class Test_SharedVariable(unittest.TestCase):
             assert shared(7, dtype='float64').type == Scalar('float64')
 
         else:
-            if theano.gof.cmodule.python_int_bitwidth() == 32:
+            if theano.gof.python_int_bitwidth() == 32:
                 assert shared(7).type == theano.tensor.iscalar, shared(7).type
             else:
                 assert shared(7).type == theano.tensor.lscalar, shared(7).type

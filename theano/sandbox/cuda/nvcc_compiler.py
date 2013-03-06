@@ -10,10 +10,11 @@ import warnings
 import numpy
 
 import theano
+from theano.gof import local_bitwidth
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
-                                get_lib_extension, local_bitwidth)
+                                get_lib_extension)
 from theano.gof.python25 import any
 from theano.misc.windows import call_subprocess_Popen
 
