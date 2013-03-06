@@ -13,6 +13,7 @@ from theano import config, tensor, function
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
 
+
 class TestBinCountOp(utt.InferShapeTester):
     def setUp(self):
         super(TestBinCountOp, self).setUp()
@@ -188,7 +189,6 @@ class SqueezeTester(utt.InferShapeTester):
     def test_grad(self):
         for shape, broadcast in zip(self.shape_list, self.broadcast_list):
             data = numpy.random.random(size=shape).astype(theano.config.floatX)
-            variable = tensor.TensorType(theano.config.floatX, broadcast)()
 
             utt.verify_grad(self.op, [data])
 
@@ -287,10 +287,11 @@ class TestRepeatOp(utt.InferShapeTester):
         x = T.TensorType(config.floatX, [False, True, False])()
         r = RepeatOp(axis=1)(x, 2)
         self.assertEqual(r.broadcastable, (False, False, False))
-        r =  RepeatOp(axis=1)(x, 1)
+        r = RepeatOp(axis=1)(x, 1)
         self.assertEqual(r.broadcastable, (False, True, False))
-        r =  RepeatOp(axis=0)(x, 2)
+        r = RepeatOp(axis=0)(x, 2)
         self.assertEqual(r.broadcastable, (False, True, False))
+
 
 class TestBartlett(utt.InferShapeTester):
 

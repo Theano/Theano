@@ -9,7 +9,6 @@ import warnings
 
 import numpy
 
-import theano
 from theano.gof import local_bitwidth
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -246,8 +245,6 @@ class NVCC_compiler(object):
         cppfile = file(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
-        ofiles = []
-        rval = None
 
         cppfile.write(src_code)
         cppfile.close()

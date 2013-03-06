@@ -79,4 +79,3 @@ from theano.gof.type import \
 
 from theano.gof.utils import \
     object2, MethodNotDefined
-

@@ -259,7 +259,7 @@ class RepeatOp(theano.Op):
                      % numpy_unsupported_dtypes), repeats.dtype)
 
         if self.axis is None:
-            broadcastable=[False]
+            broadcastable = [False]
         else:
             try:
                 const_reps = basic.get_scalar_constant_value(repeats)

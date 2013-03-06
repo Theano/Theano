@@ -8,7 +8,6 @@ import os
 import shutil
 import stat
 import StringIO
-import struct
 import subprocess
 import sys
 import tempfile
@@ -153,14 +152,14 @@ static struct PyModuleDef moduledef = {{
 }};
 """.format(name=self.name)
             print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.name
-            for b in self.init_blocks:
-                print >> stream, '  ', b
+            for block in self.init_blocks:
+                print >> stream, '  ', block
             print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
             print >> stream, "    return m;"
         else:
             print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
-            for b in self.init_blocks:
-                print >> stream, '  ', b
+            for block in self.init_blocks:
+                print >> stream, '  ', block
             print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
                                     % self.name)
         print >> stream, "}"
@@ -1541,7 +1540,8 @@ class GCC_compiler(object):
                     lines = stdout + stderr
                 return lines
 
-            # The '-' at the end is needed. Otherwise, g++ do not output enough information.
+            # The '-' at the end is needed. Otherwise, g++ do not output
+            # enough information.
             native_lines = get_lines("g++ -march=native -E -v -")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
