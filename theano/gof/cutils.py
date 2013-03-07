@@ -20,12 +20,12 @@ def compile_cutils():
     complex_types = ['npy_'+t for t in ['complex32', 'complex64', 'complex128', 'complex160', 'complex192', 'complex512'] ]
 
     inplace_map_template = """
-    #if defined({typen})
-    static void {type}_inplace_add(PyArrayMapIterObject *mit, PyArrayIterObject *it)
+    #if defined(%(typen))
+    static void %(type)_inplace_add(PyArrayMapIterObject *mit, PyArrayIterObject *it)
     {{
         int index = mit->size;
         while (index--) {{
-            {op}
+            %(op)
 
             PyArray_MapIterNext(mit);
             PyArray_ITER_NEXT(it);
@@ -34,31 +34,31 @@ def compile_cutils():
     #endif
     """
 
-    floatadd = "(({type}*)mit->dataptr)[0] = (({type}*)mit->dataptr)[0] + (({type}*)it->dataptr)[0];"
+    floatadd = "((%(type)*)mit->dataptr)[0] = ((%(type)*)mit->dataptr)[0] + ((%(type)*)it->dataptr)[0];"
     complexadd = """
-    (({type}*)mit->dataptr)[0].real = (({type}*)mit->dataptr)[0].real + (({type}*)it->dataptr)[0].real; 
-    (({type}*)mit->dataptr)[0].imag = (({type}*)mit->dataptr)[0].imag + (({type}*)it->dataptr)[0].imag; 
+    ((%(type)*)mit->dataptr)[0].real = ((%(type)*)mit->dataptr)[0].real + ((%(type)*)it->dataptr)[0].real; 
+    ((%(type)*)mit->dataptr)[0].imag = ((%(type)*)mit->dataptr)[0].imag + ((%(type)*)it->dataptr)[0].imag; 
     """
 
 
-    fns = ''.join([inplace_map_template.format(type = t, typen = t.upper(), op = floatadd.format(type = t)) for t in types] + 
-           [inplace_map_template.format(type = t, typen = t.upper(), op = complexadd.format(type = t)) for t in complex_types])
+    fns = ''.join([inplace_map_template % {'type' : t, 'typen' : t.upper(), 'op' : floatadd % {'type' : t} } for t in types] + 
+           [inplace_map_template % {'type' : t, 'typen' : t.upper(), 'op' : complexadd % {'type' : t} } for t in complex_types])
 
     fn_array = ("inplace_map_binop addition_funcs[] = {" + 
             ''.join(["""
-            #if defined({typen})
-            {type}_inplace_add,
+            #if defined(%(typen))
+            %(type)_inplace_add,
             #endif
-            """.format(type = t, typen = t.upper()) for t in types+complex_types]) + 
+            """ % {'type' : t, 'typen' : t.upper()} for t in types+complex_types]) + 
             """NULL};
             """)
 
     type_number_array = ("int type_numbers[] = {" + 
             ''.join(["""
-            #if defined({typen})
-            {typen},
+            #if defined(%(typen))
+            %(typen),
             #endif
-            """.format(type = t, typen = t.upper()) for t in types+complex_types]) + 
+            """ % {'type' : t, 'typen' : t.upper()} for t in types+complex_types]) + 
             "-1000};")
 
 
