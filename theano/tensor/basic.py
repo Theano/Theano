@@ -24,6 +24,8 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
 
+import theano.gof.cutils #needed to import cutils_ext
+
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
@@ -43,14 +45,14 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-int_dtypes = map(str, scal.int_types)
-uint_dtypes = map(str, scal.uint_types)
-float_dtypes = map(str, scal.float_types)
 complex_dtypes = map(str, scal.complex_types)
-
 continuous_dtypes = map(str, scal.continuous_types)
+float_dtypes = map(str, scal.float_types)
 discrete_dtypes = map(str, scal.discrete_types)
 all_dtypes = map(str, scal.all_types)
+int_dtypes = map(str, scal.int_types)
+uint_dtypes = map(str, scal.uint_types)
+
 
 # Do a lazy import of the sparse module
 sparse_module_ref = None
@@ -4752,7 +4754,7 @@ class Subtensor(Op):
         rval = """
         #define PyArray_set_dim(obj, idx, d) PyArray_DIMS(obj)[idx]=d
         #define PyArray_set_stride(obj, idx, d) PyArray_STRIDES(obj)[idx]=d
-        #define PyArray_set_data(obj, ptr, base) PyArray_BYTES(obj)=ptr
+        #define PyArray_set_data(obj, ptr, base) ((PyArrayObject*)(obj))->data=ptr
 
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
@@ -4917,7 +4919,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, TensorType):
@@ -7116,18 +7118,27 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            # If `y` has as many dimensions as `x`, then we want to iterate
-            # jointly on `x` and `y`. Otherwise, it means `y` should be
-            # broadcasted to fill all relevant rows of `x`.
-            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
-            if y.ndim == x.ndim:
-                assert len(y) == len(idx)
-                for (j, i) in enumerate(idx):
-                    x[i] += y[j]
-            else:
-                for i in idx:
-                    x[i] += y
+            try :
+                from cutils_ext.cutils_ext import inplace_increment as increment
+            except ImportError: 
+                increment = self.inplace_increment1d_slow
+
+            increment(x,idx, y) 
+
         out[0] = x
+
+    def inplace_increment1d_slow(self, x, idx, y):
+        # If `y` has as many dimensions as `x`, then we want to iterate
+        # jointly on `x` and `y`. Otherwise, it means `y` should be
+        # broadcasted to fill all relevant rows of `x`.
+        assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
+        if y.ndim == x.ndim:
+            assert len(y) == len(idx)
+            for (j, i) in enumerate(idx):
+                x[i] += y[j]
+        else:
+            for i in idx:
+                x[i] += y
 
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
@@ -7155,8 +7166,98 @@ class AdvancedIncSubtensor1(Op):
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
+    
+def as_index_variable(idx):
+    if idx is None:
+        return NoneConst
+    if isinstance(idx, slice):
+        return make_slice(idx)
+    idx = as_tensor_variable(idx)
+    if idx.type.dtype[:3] not in ('int', 'uin'):
+        raise TypeError('index must be integers')
+    return idx
+
+def as_int_none_variable(x):
+    if x is None:
+        return NoneConst
+    x = as_tensor_variable(x, ndim = 0)
+    if x.type.dtype[:3] not in ('int', 'uin'):
+        raise TypeError('index must be integers')
+    return x
+
+class MakeSlice(Op):
+    def make_node(self, slc):
+        
+        return Apply(self,
+                     map(as_int_none_variable,[slc.start, slc.stop, slc.step]),
+                     [slicetype()])
+
+    def perform(self, node, inp, out_):
+        out, = out_
+        out[0] = slice(*inp)
+
+    def __str__(self):
+        return self.__class__.__name__    
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+make_slice = MakeSlice()
+ 
+
+class SliceType(gof.Type):
+
+    def filter(self, x, strict=False, allow_downcast=None):
+        if isinstance(x, slice):
+            return x
+        else:
+            raise TypeError('Expected a slice!')
+
+    def __str__(self):
+        return "slice"
 
 
+
+class NoneTypeT(gof.Type):
+
+    def filter(self, x, strict=False, allow_downcast=None):
+        if x is None:
+            return x
+        else:
+            raise TypeError('Expected None!')
+
+    def __str__(self):
+        return "None"
+slicetype = SliceType()
+
+NoneConst = Constant(NoneTypeT(), None, name = 'None')
+    
+def adv_broadcastable(a, idx):
+    def replace_slice(v):
+        if isinstance(v, gof.Apply):
+            if len(v.outputs) != 1:
+                raise ValueError(
+                    "It is ambiguous which output of a multi-output Op has"
+                    " to be fetched.", v)
+            else:
+                v = v.outputs[0]
+            
+        if v is NoneConst:
+            return None
+        if isinstance(v.type, SliceType): 
+            return slice(None,None)
+ 
+        return numpy.zeros( (2,)* v.ndim, int)
+    
+    newidx = tuple(map(replace_slice, idx))
+    
+    #2 - True = 1; 2 - False = 2
+    fakeshape = [2 - bc for bc in a.broadcastable] 
+    retshape = numpy.empty(fakeshape)[newidx].shape
+    return tuple([dim == 1 for dim in retshape])
+    
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
     """
@@ -7173,37 +7274,17 @@ class AdvancedSubtensor(Op):
     def __str__(self):
         return self.__class__.__name__
 
-    def make_node(self, x, *inputs):
+    def make_node(self, x, *index):
         x = as_tensor_variable(x)
-        # FIXME
-        # Note (9 Jul 2012): what does this 'FIXME' mean? Possibly that the
-        # current implementation must be generalized? Please specify.
-        if x.ndim == 2 and len(inputs) == 2:
-            ind1 = as_tensor_variable(inputs[0])
-            ind2 = as_tensor_variable(inputs[1])
-            if (not (ind1.type.dtype.startswith('int') or
-                     ind1.type.dtype.startswith('uint'))):
-                raise TypeError(
-                    'the indices into a matrix must be int or uint. It is ',
-                    ind1.type.dtype)
-            if (not (ind2.type.dtype.startswith('int') or
-                     ind2.type.dtype.startswith('uint'))):
-                raise TypeError(
-                    'the indices into a matrix must be int or uint. It is ',
-                    ind2.type.dtype)
 
-            if ind1.ndim == 1 and ind2.ndim == 1:
-                return gof.Apply(self,
-                        (x, ind1, ind2),
-                        [tensor(dtype=x.type.dtype,
-                            broadcastable=[False])])
-            raise NotImplementedError(
-                'Advanced indexing of x (of dimension %i) with these argument'
-                ' dimensions (%s) not supported yet'
-                    % (x.ndim, ','.join(str(input.ndim) for input in inputs)))
-        raise NotImplementedError(
-            'Advanced indexing of x with arguments (%s) not supported yet'
-                % ','.join(str(input) for input in inputs))
+        index = tuple(map(as_index_variable, index))
+        
+        
+        return gof.Apply(self,
+                        (x,) + index,
+                         [tensor(dtype = x.type.dtype, 
+                                 broadcastable = adv_broadcastable(x, index) )])
+              
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -7258,7 +7339,6 @@ class AdvancedSubtensor(Op):
                                        *rest)] + \
             [DisconnectedType()()] * len(rest)
 
-
 class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
 
@@ -7295,24 +7375,10 @@ class AdvancedIncSubtensor(Op):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
 
-        if x.ndim == 2 and y.ndim == 1 and len(inputs) == 2:
-            ind1 = as_tensor_variable(inputs[0])
-            ind2 = as_tensor_variable(inputs[1])
-            if ind1.ndim == 1 and ind2.ndim == 1:
-                return gof.Apply(self,
+        return gof.Apply(self,
                         (x, y) + inputs,
                         [tensor(dtype=x.type.dtype,
                             broadcastable=x.type.broadcastable)])
-            raise NotImplementedError(
-                'Advanced indexing increment/set of x (of dimension %i) by y'
-                ' (of dimension %i) with these argument dimensions (%s) not'
-                ' supported yet'
-                % (x.ndim, y.ndim,
-                   ','.join(str(input.ndim) for input in inputs)))
-        raise NotImplementedError(
-            'Advanced indexing increment/set of x (of dim %i) by y (of dim %i)'
-            ' with arguments (%s) not supported yet'
-            % (x.ndim, y.ndim, ','.join(str(input) for input in inputs)))
 
     def perform(self, node, inputs, out_):
         # TODO: 1. opt to make this in place 2. generalize as described in
@@ -7321,13 +7387,18 @@ class AdvancedIncSubtensor(Op):
         out, = out_
         if not self.inplace:
             out[0] = inputs[0].copy()
-        else:
-            raise NotImplementedError('In place computation is not'
-                                      ' implemented')
+        
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
         else:
-            out[0][inputs[2:]] += inputs[1]
+            increment = None 
+            try :
+                from cutils_ext.cutils_ext import inplace_increment as increment
+            except ImportError: 
+                raise NotImplementedError('Did not find inplace_increment.' 
+                                          'Update numpy?')
+
+            increment(out[0], tuple(inputs[2:]), inputs[1])
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
