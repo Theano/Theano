@@ -38,7 +38,9 @@ e-mail thread "What is gof?"
 from theano.gof.cc import \
     CLinker, OpWiseCLinker, DualLinker
 
-import theano.gof.compiledir # adds config vars
+# Also adds config vars
+from theano.gof.compiledir import \
+    local_bitwidth, python_int_bitwidth
 
 from theano.gof.fg import \
     InconsistencyError, MissingInputError, FunctionGraph
@@ -77,4 +79,3 @@ from theano.gof.type import \
 
 from theano.gof.utils import \
     object2, MethodNotDefined
-
