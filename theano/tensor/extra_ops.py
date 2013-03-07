@@ -114,12 +114,12 @@ class BinCountOp(theano.Op):
         # Some dtypes are not supported by numpy's implementation of bincount.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
-        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        int_bitwidth = theano.gof.python_int_bitwidth()
         if int_bitwidth == 64:
             numpy_unsupported_dtypes = ('uint64',)
         if int_bitwidth == 32:
             numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-        intp_bitwidth = theano.gof.cmodule.local_bitwidth()
+        intp_bitwidth = theano.gof.local_bitwidth()
         if intp_bitwidth == 32:
             out_type = basic.ivector()
         elif intp_bitwidth == 64:
@@ -246,7 +246,7 @@ class RepeatOp(theano.Op):
         # Some dtypes are not supported by numpy's implementation of repeat.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
-        int_bitwidth = theano.gof.cmodule.python_int_bitwidth()
+        int_bitwidth = theano.gof.python_int_bitwidth()
         if int_bitwidth == 64:
             numpy_unsupported_dtypes = ('uint64',)
         if int_bitwidth == 32:
@@ -259,7 +259,7 @@ class RepeatOp(theano.Op):
                      % numpy_unsupported_dtypes), repeats.dtype)
 
         if self.axis is None:
-            broadcastable=[False]
+            broadcastable = [False]
         else:
             try:
                 const_reps = basic.get_scalar_constant_value(repeats)

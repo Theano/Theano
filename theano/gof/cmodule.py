@@ -8,7 +8,6 @@ import os
 import shutil
 import stat
 import StringIO
-import struct
 import subprocess
 import sys
 import tempfile
@@ -27,7 +26,7 @@ from theano.misc.windows import call_subprocess_Popen
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.gof.compiledir import gcc_version_str
+from theano.gof.compiledir import gcc_version_str, local_bitwidth
 
 from theano.configparser import AddConfigVar, BoolParam
 
@@ -54,29 +53,6 @@ AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warning.",
              BoolParam(False))
 
-
-def local_bitwidth():
-    """
-    Return 32 for 32bit arch, 64 for 64bit arch
-
-    By "architecture", we mean the size of memory pointers (size_t in C),
-    *not* the size of long int, as it can be different.
-    """
-    # Note that according to Python documentation, `platform.architecture()` is
-    # not reliable on OS X with universal binaries.
-    # Also, sys.maxsize does not exist in Python < 2.6.
-    # 'P' denotes a void*, and the size is expressed in bytes.
-    return struct.calcsize('P') * 8
-
-
-def python_int_bitwidth():
-    """
-    Return the bit width of Python int (C long int).
-
-    Note that it can be different from the size of a memory pointer.
-    """
-    # 'l' denotes a C long int, and the size is expressed in bytes.
-    return struct.calcsize('l') * 8
 
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
@@ -176,14 +152,14 @@ static struct PyModuleDef moduledef = {{
 }};
 """.format(name=self.name)
             print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.name
-            for b in self.init_blocks:
-                print >> stream, '  ', b
+            for block in self.init_blocks:
+                print >> stream, '  ', block
             print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
             print >> stream, "    return m;"
         else:
             print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
-            for b in self.init_blocks:
-                print >> stream, '  ', b
+            for block in self.init_blocks:
+                print >> stream, '  ', block
             print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
                                     % self.name)
         print >> stream, "}"
@@ -1564,7 +1540,8 @@ class GCC_compiler(object):
                     lines = stdout + stderr
                 return lines
 
-            # The '-' at the end is needed. Otherwise, g++ do not output enough information.
+            # The '-' at the end is needed. Otherwise, g++ do not output
+            # enough information.
             native_lines = get_lines("g++ -march=native -E -v -")
             _logger.info("g++ -march=native selected lines: %s", native_lines)
             if len(native_lines) != 1:
@@ -1619,6 +1596,39 @@ class GCC_compiler(object):
             cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
             cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
             cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+
+        # Platform-specific flags.
+        # We put them here, rather than in compile_str(), so they en up
+        # in the key of the compiled module, avoiding potential conflicts.
+
+        # Figure out whether the current Python executable is 32
+        # or 64 bit and compile accordingly.
+        n_bits = local_bitwidth()
+        cxxflags.append('-m%d' % n_bits)
+        _logger.debug("Compiling for %s bit architecture", n_bits)
+
+        if sys.platform != 'win32':
+            # Under Windows it looks like fPIC is useless. Compiler warning:
+            # '-fPIC ignored for target (all code is position independent)'
+            cxxflags.append('-fPIC')
+
+        if sys.platform == 'win32' and local_bitwidth() == 64:
+            # Under 64-bit Windows installation, sys.platform is 'win32'.
+            # We need to define MS_WIN64 for the preprocessor to be able to
+            # link with libpython.
+            cxxflags.append('-DMS_WIN64')
+
+        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
+        if sys.platform == 'darwin':
+            cxxflags.extend(['-undefined', 'dynamic_lookup'])
+            python_inc = distutils.sysconfig.get_python_inc()
+            # link with the framework library *if specifically requested*
+            # config.mac_framework_link is by default False, since on some mac
+            # installs linking with -framework causes a Bus Error
+            if (python_inc.count('Python.framework') > 0 and
+                config.cmodule.mac_framework_link):
+                cxxflags.extend(['-framework', 'Python'])
+
         return cxxflags
 
     @staticmethod
@@ -1744,39 +1754,9 @@ class GCC_compiler(object):
         else:
             preargs = list(preargs)
 
-        if sys.platform != 'win32':
-            # Under Windows it looks like fPIC is useless. Compiler warning:
-            # '-fPIC ignored for target (all code is position independent)'
-            preargs.append('-fPIC')
-
-        if sys.platform == 'win32' and local_bitwidth() == 64:
-            # Under 64-bit Windows installation, sys.platform is 'win32'.
-            # We need to define MS_WIN64 for the preprocessor to be able to
-            # link with libpython.
-            preargs.append('-DMS_WIN64')
-            # We also add "-m64", in case the installed gcc is 32-bit
-            preargs.append('-m64')
-
         include_dirs = include_dirs + std_include_dirs()
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
-
-        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
-        if sys.platform == 'darwin':
-            preargs.extend(['-undefined', 'dynamic_lookup'])
-            python_inc = distutils.sysconfig.get_python_inc()
-            # link with the framework library *if specifically requested*
-            # config.mac_framework_link is by default False, since on some mac
-            # installs linking with -framework causes a Bus Error
-            if (python_inc.count('Python.framework') > 0 and
-                config.cmodule.mac_framework_link):
-                preargs.extend(['-framework', 'Python'])
-
-            # Figure out whether the current Python executable is 32
-            # or 64 bit and compile accordingly.
-            n_bits = local_bitwidth()
-            preargs.extend(['-m%s' % n_bits])
-            _logger.debug("OS X: compiling for %s bit architecture", n_bits)
 
         # sometimes, the linker cannot find -lpython so we need to tell it
         # explicitly where it is located
