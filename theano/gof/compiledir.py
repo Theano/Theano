@@ -63,6 +63,7 @@ compiledir_format_dict = {
         "processor": platform.processor(),
         "python_version": platform.python_version(),
         "python_bitwidth": local_bitwidth(),
+        "python_int_bitwidth": python_int_bitwidth(),
         "theano_version": theano.__version__,
         "numpy_version": numpy.__version__,
         "gxx_version": gcc_version_str.replace(" ", "_"),
