@@ -7412,7 +7412,6 @@ class AdvancedIncSubtensor(Op):
 
             increment(out[0], tuple(inputs[2:]), inputs[1])
 
-            out[0][inputs[2:]] = inputs[1]
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
