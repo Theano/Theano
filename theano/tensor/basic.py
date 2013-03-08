@@ -1756,12 +1756,7 @@ class _tensor_py_operators:
                 break
 
         if advanced:
-            if (len(args) == 1
-                    and isinstance(args[0], (
-                        list,
-                        TensorVariable,
-                        TensorConstant,
-                        theano.tensor.sharedvar.TensorSharedVariable))):
+            if (len(args) == 1 and as_tensor_variable(args[0]).ndim <= 1):
                 return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor()(self, *args)
