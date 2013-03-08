@@ -7410,8 +7410,6 @@ class TestTensorInstanceMethods(unittest.TestCase):
         self.assertRaises(TypeError, X.take, [0.0])
         indices = [[1,0,1], [0,1,1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
-        # Test equivalent advanced indexing
-        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 
