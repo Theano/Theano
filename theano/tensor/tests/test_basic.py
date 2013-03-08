@@ -29,7 +29,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
-        clip, constant, default, dot, inc_subtensor, set_subtensor,
+        clip, constant, default, dot, inc_subtensor,advanced_inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -37,8 +37,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
-        iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, lvector, true_div, max, min, Split, roll,
+        iscalars, arange, dscalars, fvector, imatrix, numeric_grad,
+        opt, ComplexError, lvector, lmatrix, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
@@ -3131,10 +3131,6 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0, 0])
 
-    def test_err_invalid_not_2d(self):
-        n = self.shared(numpy.ones((3, 3, 3), dtype=self.dtype) * 5)
-        self.assertRaises(NotImplementedError, n.__getitem__,
-                          ([0, 0, 0], [1, 1, 1], [2, 2, 2]))
 
     def test_err_invalid_2list_dtype(self):
         n = self.shared(numpy.ones((3, 3), dtype=self.dtype) * 5)
@@ -3677,6 +3673,70 @@ class TestIncSubtensor1(unittest.TestCase):
     def test_assigning_matrix_to_vector_selection(self):
         self.assertRaises(TypeError,
                 lambda: inc_subtensor(self.v[self.adv1q], fmatrix()))
+
+class TestAdvancedSubtensor(unittest.TestCase):
+    # test inc_subtensor
+    # also tests set_subtensor
+
+    def setUp(self):
+        self.s = iscalar()
+        self.v = fvector()
+        self.m = dmatrix()
+        self.t = ctensor3()
+
+        self.ix1 = lvector()  # advanced 1d query
+        self.ix12 = lvector()
+        self.ix2 = lmatrix()
+
+    def test_cant_adv_idx_into_scalar(self):
+        self.assertRaises(TypeError, lambda: self.s[self.ix1])
+
+    def test_index_into_vec_w_vec(self):
+        a = self.v[self.ix1]
+        assert a.type == self.v.type, (a.type, self.v.type)
+
+    def test_index_into_vec_w_matrix(self):
+        a = self.v[self.ix2]
+
+    def test_inc_adv_selection(self):
+        a = inc_subtensor(self.v[self.ix2], self.v[self.ix2])
+
+        assert a.type == self.v.type, (a.type,self.v.type)
+        f = theano.function([self.v, self.ix2], a, allow_input_downcast=True)
+        aval = f([.4, .9, .1], [[1, 2],
+                                [1, 2]])
+        assert numpy.allclose(aval, [.4, .9*3, .1 * 3])
+
+    def test_inc_adv_selection2(self):
+        subt = self.m[self.ix1,self.ix12]
+        a = inc_subtensor(subt, subt)
+
+        typ = TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
+        assert a.type == typ, (a.type,typ)
+        f = theano.function([self.m, self.ix1, self.ix12], a, allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+            [1, 2, 1], [0,1,0])
+        assert numpy.allclose(aval, 
+                [[.4, .9, .1],
+                  [5*3,   6,  7],
+                  [.5, .3*2, .15]]), aval
+
+    def test_inc_adv_selection_with_broadcasting(self):
+        a = inc_subtensor(self.m[self.ix1,self.ix12], 2.1)
+
+        assert a.type == self.m.type, (a.type, self.m.type)
+        f = theano.function([self.m, self.ix1, self.ix12], a, allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+
+            [1, 2, 1], [0,1,0])
+        assert numpy.allclose(aval, 
+                [[.4, .9, .1],
+                  [5+2.1*2,   6,  7],
+                  [.5, .3 + 2.1, .15]]), aval
 
 
 class T_Join_and_Split(unittest.TestCase):
@@ -7298,8 +7358,6 @@ class TestTensorInstanceMethods(unittest.TestCase):
         self.assertRaises(TypeError, X.take, [0.0])
         indices = [[1,0,1], [0,1,1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
-        # Test equivalent advanced indexing
-        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 
