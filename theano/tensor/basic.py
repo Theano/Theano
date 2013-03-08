@@ -1748,29 +1748,21 @@ class _tensor_py_operators:
         # standard indexing is used; if it fails with
         # AdvancedIndexingError, advanced indexing
         advanced = False
-        axis = None
-        for i, arg in enumerate(args):
+        for arg in args:
             try:
                 arg == numpy.newaxis or Subtensor.convert(arg)
             except AdvancedIndexingError:
-                if advanced:
-                    axis = None
-                    break
-                else:
-                    advanced = True
-                    axis = i
+                advanced = True
+                break
 
         if advanced:
-            if (axis is not None
-                and numpy.all(a == slice(None) for a in args[:axis])
-                and numpy.all(a == slice(None) for a in args[axis + 1:])
-                and isinstance(args[axis], (
-                        numpy.ndarray,
+            if (len(args) == 1
+                    and isinstance(args[0], (
                         list,
                         TensorVariable,
                         TensorConstant,
                         theano.tensor.sharedvar.TensorSharedVariable))):
-                return self.take(arg, axis)
+                return advanced_subtensor1(self, *args)
             else:
                 return AdvancedSubtensor()(self, *args)
         else:
