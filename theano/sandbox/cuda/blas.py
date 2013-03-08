@@ -582,6 +582,8 @@ class GpuConv(GpuOp):
         self.__dict__.update(d)
         if not hasattr(self, "imshp"):
             self.imshp = None
+        if not hasattr(self, "max_threads_dim0"):
+            self.max_threads_dim0 = None
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and
@@ -638,11 +640,6 @@ class GpuConv(GpuOp):
             node_.op.max_threads_dim0 = prop['maxThreadsDim0']
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        if not hasattr(self, "max_threads_dim0"):
-            self.max_threads_dim0 = None
 
     def c_compile_args(self):
         nb = 0
