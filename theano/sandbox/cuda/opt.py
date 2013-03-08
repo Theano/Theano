@@ -9,7 +9,7 @@ import numpy
 
 import theano
 from theano import scalar as scal
-from theano import tensor, gof
+from theano import config, tensor, gof
 import theano.ifelse
 
 from theano.compile import optdb
@@ -17,7 +17,11 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
                         EquilibriumOptimizer)
 from theano.gof.python25 import all, any
-from theano.sandbox.cuda.basic_ops import *
+from theano.sandbox.cuda.basic_ops import (
+    gpu_from_host, host_from_gpu, HostFromGpu,
+    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
+    GpuSubtensor, GpuAdvancedIncSubtensor1, GpuAdvancedSubtensor1,
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
@@ -1217,7 +1221,8 @@ def get_device_type_sizes():
     int_size = 8
     try:
 
-        t = cuda_ndarray.cuda_ndarray.ptr_int_size()
+        cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
+        t = cuda_ndarray.ptr_int_size()
         gpu_ptr_size, cpu_ptr_size, int_size, gpu_int_size = t
         assert int_size == gpu_int_size
         del gpu_int_size
