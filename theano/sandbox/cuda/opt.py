@@ -666,9 +666,6 @@ def local_gpu_careduce(node):
                                 "WARNING: local_gpu_careduce got type wrong"
                             return None
 
-                        raise Exception(
-                            "GpuCAReduce does not yet implement this pattern:",
-                            pattern)
     return False
 
 
