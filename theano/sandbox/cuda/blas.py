@@ -760,7 +760,8 @@ class GpuDownsampleFactorMax(GpuOp):
         int dims[4], xdim2, xdim3;
         if (%(x)s->nd != 4)
         {
-            PyErr_SetString(PyExc_ValueError, "rank error");
+            PyErr_SetString(PyExc_ValueError,
+                            "GpuDownsampleFactorMax: rank error");
             %(fail)s;
         }
         xdim2 = CudaNdarray_HOST_DIMS(%(x)s)[2];
@@ -796,6 +797,7 @@ class GpuDownsampleFactorMax(GpuOp):
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
                 PyErr_SetString(PyExc_ValueError,
+                                "GpuDownsampleFactorMax:"
                                 "Was not able to allocate output!");
                 %(fail)s;
             }
