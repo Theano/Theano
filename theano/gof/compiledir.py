@@ -301,3 +301,37 @@ def print_compiledir_content():
            " 1 op (was compiled with the C linker)" % more_than_one_ops)
     print ("Skipped %d files that contained 0 op "
            "(are they always theano.scalar ops?)" % zeros_op)
+
+
+def compiledir_purge():
+    shutil.rmtree(config.compiledir)
+
+
+def basecompiledir_ls():
+    subdirs = []
+    others = []
+    for f in os.listdir(config.base_compiledir):
+        if os.path.isdir(os.path.join(config.base_compiledir, f)):
+            subdirs.append(f)
+        else:
+            others.append(f)
+
+    subdirs = sorted(subdirs)
+    others = sorted(others)
+
+    print 'Base compile dir is %s' % theano.config.base_compiledir
+    print 'Sub-directories (possible compile caches):'
+    for d in subdirs:
+        print '    %s' % d
+    if not subdirs:
+        print '    (None)'
+
+    if others:
+        print
+        print 'Other files in base_compiledir:'
+        for f in others:
+            print '    %s' % f
+
+
+def basecompiledir_purge():
+    shutil.rmtree(config.base_compiledir)
