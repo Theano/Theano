@@ -16,7 +16,7 @@ import numpy
 
 import theano
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
-                           patternbroadcast)
+                           patternbroadcast, NotScalarConstantError)
 from theano import OpenMPOp, config
 from theano.gof import Apply
 from theano.gof.python25 import any
@@ -56,13 +56,16 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :type subsample: tuple of len 2
     :param subsample: factor by which to subsample the output
 
-    :type image_shape: tuple of len 4 of int or Constant variable
+    :type image_shape: None, tuple/list of len 4 of int or Constant variable
     :param image_shape: (batch size, stack size, nb row, nb col)
-                        Optional, used for optimization.
-    :type filter_shape: tuple of len 4 of int or Constant variable
+                        Optional, used for optimization like loop unrolling
+                        You can put None for any element of the list
+                        to tell that this element is not constant.
+    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
     :param filter_shape: (nb filters, stack size, nb row, nb col)
-                         Optional, used for optimization.
-
+                         Optional, used for optimization like loop unrolling
+                         You can put None for any element of the list
+                         to tell that this element is not constant.
     :param kwargs: kwargs are passed onto ConvOp.
                    Can be used to set the following:
                    unroll_batch, unroll_kern, unroll_patch,

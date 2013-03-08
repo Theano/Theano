@@ -25,7 +25,18 @@ class TestConv2D(utt.InferShapeTester):
                  input=None, filters=None,
                  unroll_batch=None, unroll_kern=None, unroll_patch=None,
                  verify_grad=True, should_raise=False):
+        """
+        :param image_shape: The constant shape info passed to conv2d.
+        :param filter_shape: The constant shape info passed to conv2d.
 
+        :param N_image_shape: None(default to image_shape) or tuple of
+                              4 elements with the shape of the input image
+
+        :param N_filter_shape: None(default to filter_shape) or tuple
+                               of 4 elements with the shape of the
+                               input filter
+
+        """
         if N_image_shape is None:
             N_image_shape = [T.get_scalar_constant_value(T.
                 as_tensor_variable(x)) for x in image_shape]
