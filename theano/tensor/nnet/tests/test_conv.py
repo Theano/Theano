@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet import conv
 
-from theano.tensor.basic import _allclose
+from theano.tensor.basic import _allclose, NotScalarConstantError
 
 
 class TestConv2D(utt.InferShapeTester):
@@ -25,7 +25,18 @@ class TestConv2D(utt.InferShapeTester):
                  input=None, filters=None,
                  unroll_batch=None, unroll_kern=None, unroll_patch=None,
                  verify_grad=True, should_raise=False):
+        """
+        :param image_shape: The constant shape info passed to conv2d.
+        :param filter_shape: The constant shape info passed to conv2d.
 
+        :param N_image_shape: None(default to image_shape) or tuple of
+                              4 elements with the shape of the input image
+
+        :param N_filter_shape: None(default to filter_shape) or tuple
+                               of 4 elements with the shape of the
+                               input filter
+
+        """
         if N_image_shape is None:
             N_image_shape = [T.get_scalar_constant_value(T.
                 as_tensor_variable(x)) for x in image_shape]
@@ -341,6 +352,20 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((None, 2, None, None), (None, 2, 5, 5),
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
+
+    def test_wrong_info(self):
+        """
+        Test convolutions when we don't give a constant as shape information
+        """
+        i = theano.scalar.basic.int32()
+        self.assertRaises(NotScalarConstantError, self.validate,
+                          (3, 2, 8, i), (4, 2, 5, 5),
+                          N_image_shape=(3, 2, 8, 8),
+                          N_filter_shape=(4, 2, 5, 5))
+        self.assertRaises(NotScalarConstantError, self.validate,
+                          (3, 2, 8, 8), (4, 2, 5, i),
+                          N_image_shape=(3, 2, 8, 8),
+                          N_filter_shape=(4, 2, 5, 5))
 
     def test_full_mode(self):
         """

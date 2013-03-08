@@ -16,7 +16,7 @@ import numpy
 
 import theano
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
-                           patternbroadcast)
+                           patternbroadcast, NotScalarConstantError)
 from theano import OpenMPOp, config
 from theano.gof import Apply
 from theano.gof.python25 import any
@@ -56,13 +56,16 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :type subsample: tuple of len 2
     :param subsample: factor by which to subsample the output
 
-    :type image_shape: tuple of len 4 of int or Constant variable
+    :type image_shape: None, tuple/list of len 4 of int or Constant variable
     :param image_shape: (batch size, stack size, nb row, nb col)
-                        Optional, used for optimization.
-    :type filter_shape: tuple of len 4 of int or Constant variable
+                        Optional, used for optimization like loop unrolling
+                        You can put None for any element of the list
+                        to tell that this element is not constant.
+    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
     :param filter_shape: (nb filters, stack size, nb row, nb col)
-                         Optional, used for optimization.
-
+                         Optional, used for optimization like loop unrolling
+                         You can put None for any element of the list
+                         to tell that this element is not constant.
     :param kwargs: kwargs are passed onto ConvOp.
                    Can be used to set the following:
                    unroll_batch, unroll_kern, unroll_patch,
@@ -90,16 +93,30 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         image_shape = list(image_shape)
         for i in xrange(len(image_shape)):
             if image_shape[i] is not None:
-                image_shape[i] = get_scalar_constant_value(
-                    as_tensor_variable(image_shape[i]))
+                try:
+                    image_shape[i] = get_scalar_constant_value(
+                        as_tensor_variable(image_shape[i]))
+                except NotScalarConstantError, e:
+                    raise NotScalarConstantError(
+                        "The convolution need that the shape"
+                        " information are constant values. We got"
+                        " %s for the image_shape parameter" %
+                        image_shape[i])
                 assert str(image_shape[i].dtype).startswith('int')
                 image_shape[i] = int(image_shape[i])
     if filter_shape is not None:
         filter_shape = list(filter_shape)
         for i in xrange(len(filter_shape)):
             if filter_shape[i] is not None:
-                filter_shape[i] = get_scalar_constant_value(
-                    as_tensor_variable(filter_shape[i]))
+                try:
+                    filter_shape[i] = get_scalar_constant_value(
+                        as_tensor_variable(filter_shape[i]))
+                except NotScalarConstantError, e:
+                    raise NotScalarConstantError(
+                        "The convolution need that the shape"
+                        " information are constant values. We got"
+                        " %s for the filter_shape "
+                        "parameter" % filter_shape[i])
                 assert str(filter_shape[i].dtype).startswith('int')
                 filter_shape[i] = int(filter_shape[i])
 
