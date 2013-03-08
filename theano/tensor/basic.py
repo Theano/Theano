@@ -5079,6 +5079,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     # nor have non-broadcastable dimensions where x is broadcastable.
     x = as_tensor_variable(x)
     y = as_tensor_variable(y)
+
     if y.ndim > x.ndim:
         raise TypeError(("Trying to increment a %d-dimensional "
             "subtensor with a %d-dimensional value.") % (x.ndim, y.ndim))
@@ -5094,7 +5095,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             y = addbroadcast(y, dim)
 
     if not x.owner:
-        raise TypeError('x must be result of a subtensor operation')
+        raise TypeError('x must be the result of a subtensor operation')
 
     # retrieve idx_list from x.owner
     if isinstance(x.owner.op, Subtensor):
@@ -5121,8 +5122,26 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         the_op = AdvancedIncSubtensor(inplace,
                                       set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, coordvec_0, coordvec_1)
+    elif isinstance(x.owner.op, DimShuffle):
+        inner_x = x.owner.inputs[0]
+        # Try to apply inc_subtensor on inner_x, and dimshuffle the result
+        inner_incsubtensor = inc_subtensor(inner_x, y,
+                inplace=inplace,
+                set_instead_of_inc=set_instead_of_inc,
+                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
+    elif isinstance(x.owner.op, Reshape):
+        inner_x = x.owner.inputs[0]
+        # Try to apply inc_subtensor on inner_x.
+        # If it works, there is no need to reshape, as the inc_subtensor
+        # will have the same shape as inner_x, which is what we want.
+        inner_incsubtensor = inc_subtensor(inner_x, y,
+                inplace=inplace,
+                set_instead_of_inc=set_instead_of_inc,
+                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        return inner_incsubtensor
     else:
-        raise TypeError('x must be result of a subtensor operation')
+        raise TypeError('x must be the result of a subtensor operation')
 
 
 class IncSubtensor(Op):

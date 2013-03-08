@@ -38,7 +38,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, lvector, true_div, max, min, Split, roll,
+        opt, ComplexError, lvector, lmatrix, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
@@ -3625,6 +3625,53 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         s2 = m[g, i]
 
         assert gof.graph.is_same_graph(s1, s2)
+
+    def test_adv1_inc_sub_notlastdim(self):
+        # Test that taking 1-dimensional advanced indexing
+        # over a dimension that's not the first (outer-most) works.
+        m = matrix('m')
+        i = lvector('i')
+
+        m1 = set_subtensor(m[:, i], 0)
+        m2 = inc_subtensor(m[:, i], 1)
+        f = theano.function([m, i], [m1, m2])
+
+        m_val = rand(3, 5)
+        i_val = randint_ranged(min=0, max=4, shape=(4,))
+        m1_ref = m_val.copy()
+        m2_ref = m_val.copy()
+
+        m1_val, m2_val = f(m_val, i_val)
+        for idx in i_val:
+            m1_ref[:, idx] = 0
+            m2_ref[:, idx] += 1
+
+        assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
+        assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
+
+    def test_adv1_inc_sub_notlastdim_2didx(self):
+        # Test that taking 1-dimensional advanced indexing
+        # over a dimension that's not the first (outer-most) works,
+        # if the index is a matrix.
+        m = matrix('m')
+        i = lmatrix('i')
+
+        m1 = set_subtensor(m[:, i], 0)
+        m2 = inc_subtensor(m[:, i], 1)
+        f = theano.function([m, i], [m1, m2])
+
+        m_val = rand(5, 7)
+        i_val = randint_ranged(min=0, max=6, shape=(4, 2))
+        m1_ref = m_val.copy()
+        m2_ref = m_val.copy()
+
+        m1_val, m2_val = f(m_val, i_val)
+        for idx in i_val.ravel():
+            m1_ref[:, idx] = 0
+            m2_ref[:, idx] += 1
+
+        assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
+        assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
 
 
 class TestIncSubtensor1(unittest.TestCase):
