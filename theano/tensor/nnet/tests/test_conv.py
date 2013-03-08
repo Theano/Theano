@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet import conv
 
-from theano.tensor.basic import _allclose
+from theano.tensor.basic import _allclose, NotScalarConstantError
 
 
 class TestConv2D(utt.InferShapeTester):
@@ -352,6 +352,20 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((None, 2, None, None), (None, 2, 5, 5),
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
+
+    def test_wrong_info(self):
+        """
+        Test convolutions when we don't give a constant as shape information
+        """
+        i = theano.scalar.basic.int32()
+        self.assertRaises(NotScalarConstantError, self.validate,
+                          (3, 2, 8, i), (4, 2, 5, 5),
+                          N_image_shape=(3, 2, 8, 8),
+                          N_filter_shape=(4, 2, 5, 5))
+        self.assertRaises(NotScalarConstantError, self.validate,
+                          (3, 2, 8, 8), (4, 2, 5, i),
+                          N_image_shape=(3, 2, 8, 8),
+                          N_filter_shape=(4, 2, 5, 5))
 
     def test_full_mode(self):
         """

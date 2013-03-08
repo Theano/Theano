@@ -93,16 +93,30 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         image_shape = list(image_shape)
         for i in xrange(len(image_shape)):
             if image_shape[i] is not None:
-                image_shape[i] = get_scalar_constant_value(
-                    as_tensor_variable(image_shape[i]))
+                try:
+                    image_shape[i] = get_scalar_constant_value(
+                        as_tensor_variable(image_shape[i]))
+                except NotScalarConstantError, e:
+                    raise NotScalarConstantError(
+                        "The convolution need that the shape"
+                        " information are constant values. We got"
+                        " %s for the image_shape parameter" %
+                        image_shape[i])
                 assert str(image_shape[i].dtype).startswith('int')
                 image_shape[i] = int(image_shape[i])
     if filter_shape is not None:
         filter_shape = list(filter_shape)
         for i in xrange(len(filter_shape)):
             if filter_shape[i] is not None:
-                filter_shape[i] = get_scalar_constant_value(
-                    as_tensor_variable(filter_shape[i]))
+                try:
+                    filter_shape[i] = get_scalar_constant_value(
+                        as_tensor_variable(filter_shape[i]))
+                except NotScalarConstantError, e:
+                    raise NotScalarConstantError(
+                        "The convolution need that the shape"
+                        " information are constant values. We got"
+                        " %s for the filter_shape "
+                        "parameter" % filter_shape[i])
                 assert str(filter_shape[i].dtype).startswith('int')
                 filter_shape[i] = int(filter_shape[i])
 
