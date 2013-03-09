@@ -246,7 +246,6 @@ class Stack(VM):
         self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
-        self.apply_time = {}
         self.outputs_size = {}
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
@@ -256,7 +255,6 @@ class Stack(VM):
 
         for i, node in enumerate(self.nodes):
             node_idx[node] = i
-            self.apply_time[node] = 0
             self.outputs_size[node] = []
             # XXX: inconsistent style - why modify node here rather
             #      than track destroy_dependencies with dictionary like
@@ -357,7 +355,9 @@ class Stack(VM):
                         _, dt = self.run_thunk_of_node(current_apply)
                         del _
                         if config.profile:
-                            self.apply_time[current_apply] += dt
+                            nodes_idx = self.nodes.index(current_apply)
+                            self.call_counts[nodes_idx] += 1
+                            self.call_times[nodes_idx] += dt
                             ## Computing the memory footprint of the the op
                             # ?? What about inplace .. if the op is inplace
                             # you don't actually ask for more memory!
@@ -424,7 +424,9 @@ class Stack(VM):
 
                 try:
                     requires, dt = self.run_thunk_of_node(current_apply)
-                    self.apply_time[current_apply] += dt
+                    nodes_idx = self.nodes.index(current_apply)
+                    self.call_counts[nodes_idx] += 1
+                    self.call_times[nodes_idx] += dt
 
                 except Exception:
                     raise_with_op(current_apply)
