@@ -590,7 +590,7 @@ class ProfileStats(object):
                     if (input in computed) and
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
-            for node, val in items[:N]:
+            for node, val in items:
                 dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
 
@@ -613,7 +613,7 @@ class ProfileStats(object):
                 pass
 
             print "    Max FAST_RUN_NO_GC (KB)", node_memory_size / 1024
-            print "    Max FAST_RUN (KB)", running_max_memory_size / 1024
+            print "    Max c|py (KB)", running_max_memory_size / 1024
             print "    Memory saved by view (KB)", (
                 node_memory_saved_by_view / 1024)
             print "    Memory saved by inplace (KB)", (
@@ -621,11 +621,11 @@ class ProfileStats(object):
             print "    Memory saved by GC (KB)", (
                 node_memory_size - running_max_memory_size) / 1024
 
-            N += 10  # TODO remove this line
             print
             print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
             print "    <created/inplace/view> is taked from the op declaration."
             print "    Use DebugMode for warnings about inplace/view declaration being respected."
+            print
             for key, val in items[:N]:
                 code = ['c'] * len(node.outputs)
                 for out, inp in getattr(key.op, 'destroy_map', {}).iteritems():
