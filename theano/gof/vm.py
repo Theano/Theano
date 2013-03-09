@@ -130,6 +130,8 @@ class VM(object):
 
             profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
 
+            profile.outputs_size[node] = self.outputs_size[node]
+
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
             self.call_times[i] = 0.0
@@ -283,7 +285,6 @@ class Stack(VM):
         if config.profile:
             self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
                                     "t64": 8, "128": 16}
-            atexit.register(self.atexit_print_all)
 
     def run_thunk_of_node(self, node):
         """Run the thunk corresponding to Apply instance `node`

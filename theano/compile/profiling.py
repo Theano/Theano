@@ -555,6 +555,92 @@ class ProfileStats(object):
         # The validation time is a subset of optimizer_time
         assert self.validate_time < self.optimizer_time
 
+    def summary_memory(self, file, N=None):
+        fct_memory = {}  # fgraph->dict(node->(outputs size))
+        var_mem = {}
+        for node, val in self.outputs_size.items():
+            fct_memory.setdefault(node.fgraph, {})
+            fct_memory[node.fgraph][node] = val
+            for out, v in zip(node.outputs, val):
+                var_mem[out] = v
+        print
+        print "Profile of Theano functions memory:"
+
+        for fgraph, nodes_mem in fct_memory.iteritems():
+            size_sum = sum([sum(val)
+                            for key, val in nodes_mem.iteritems()])
+            print "    Max without gc, inplace and view (KB)", size_sum / 1024
+
+            node_memory_size = 0
+            node_memory_saved_by_view = 0
+            node_memory_saved_by_inplace = 0
+            running_memory_size = 0
+            running_max_memory_size = 0
+            post_thunk_old_storage = []
+            items = nodes_mem.items()
+            items.sort(key=lambda a: a[1])
+            items.reverse()
+
+            order = fgraph.toposort()
+            computed, last_user = theano.gof.link.gc_helper(order)
+            for node in order:
+                post_thunk_old_storage.append([
+                    input_idx
+                    for input_idx, input in enumerate(node.inputs)
+                    if (input in computed) and
+                    (input not in fgraph.outputs) and
+                    node == last_user[input]])
+            for node, val in items[:N]:
+                dmap = getattr(node.op, 'destroy_map', None)
+                vmap = getattr(node.op, 'view_map', None)
+
+                for idx, v in enumerate(val):
+                    # TODO check the op returned a view
+                    if dmap and idx in dmap:
+                        node_memory_saved_by_inplace += v
+                    # TODO check the op returned a view
+                    elif vmap and idx in vmap:
+                        node_memory_saved_by_view += v
+                    else:
+                        node_memory_size += v
+                        running_memory_size += v
+                        if running_memory_size > running_max_memory_size:
+                            running_max_memory_size = running_memory_size
+                        old_storage = post_thunk_old_storage[order.index(node)]
+                        for old_s in old_storage:
+                            running_memory_size -= var_mem[node.inputs[old_s]]
+                            pass
+                pass
+
+            print "    Max FAST_RUN_NO_GC (KB)", node_memory_size / 1024
+            print "    Max FAST_RUN (KB)", running_max_memory_size / 1024
+            print "    Memory saved by view (KB)", (
+                node_memory_saved_by_view / 1024)
+            print "    Memory saved by inplace (KB)", (
+                node_memory_saved_by_inplace / 1024)
+            print "    Memory saved by GC (KB)", (
+                node_memory_size - running_max_memory_size) / 1024
+
+            N += 10  # TODO remove this line
+            print
+            print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
+            print "    <created/inplace/view> is taked from the op declaration."
+            print "    Use DebugMode for warnings about inplace/view declaration being respected."
+            for key, val in items[:N]:
+                code = ['c'] * len(node.outputs)
+                for out, inp in getattr(key.op, 'destroy_map', {}).iteritems():
+                    code[out] = "i"
+                for out, inp in getattr(key.op, 'view_map', {}).iteritems():
+                    code[out] = "v"
+                print '       %9dB  %s %s %s' % (sum(val), str(val),
+                                                 ' '.join(code), key)
+
+            sum_remaining = sum(sum(val) for key, val in items[N:])
+            print ('   ... (remaining %i Apply account for %.2f%%(%.2fs) of'
+                   ' the runtime)') % (max(0, len(nodes_mem) - N),
+                                       sum_remaining,
+                                       sum_remaining / size_sum)
+
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_applies_to_print=20):
         self.summary_function(file)
@@ -566,10 +652,13 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
+        if self.outputs_size:
+            self.summary_memory(file, n_ops_to_print)
         if self.optimizer_profile:
             print "Optimizer Profile"
             print "-----------------"
-            self.optimizer_profile[0].print_profile(file, self.optimizer_profile[1])
+            self.optimizer_profile[0].print_profile(file,
+                                                    self.optimizer_profile[1])
 
 
 if 0: # old code still to be ported from ProfileMode
@@ -727,7 +816,7 @@ if 0: # old code still to be ported from ProfileMode
                 items.reverse()
 
                 order = fgraph.toposort()
-                computed, last_user = gc_helper(order)
+                computed, last_user = theano.gof.link.gc_helper(order)
                 for node in order:
                     post_thunk_old_storage.append([ input_idx
                                                     for input_idx,input in enumerate(node.inputs)
