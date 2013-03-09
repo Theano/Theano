@@ -145,6 +145,9 @@ class ProfileStats(object):
     optimizer_profile = None
     # None or tuple (the optimizer, the profile it returned)
 
+    memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
+                       "t64": 8, "128": 16}
+
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
@@ -557,14 +560,26 @@ class ProfileStats(object):
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->(outputs size))
+        fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
         var_mem = {}
-        for node, val in self.outputs_size.items():
+        for node, shapes in self.outputs_size.items():
             fct_memory.setdefault(node.fgraph, {})
-            fct_memory[node.fgraph][node] = val
-            for out, v in zip(node.outputs, val):
+            fct_memory[node.fgraph].setdefault(node, [])
+            fct_shapes.setdefault(node.fgraph, {})
+            fct_shapes[node.fgraph].setdefault(node, [])
+
+            for out, sh in zip(node.outputs, shapes):
+                v = numpy.prod(sh)
+                dtype = str(out.dtype)
+                v *= self.memory_size_map[dtype[-3:]]
+
                 var_mem[out] = v
+                fct_memory[node.fgraph][node].append(v)
+                fct_shapes[node.fgraph][node].append(sh)
+
+        assert len(fct_memory) == 1
         print
-        print "Profile of Theano functions memory:"
+        print "  Memory Profile"
 
         for fgraph, nodes_mem in fct_memory.iteritems():
             size_sum = sum([sum(val)
@@ -622,7 +637,7 @@ class ProfileStats(object):
                 node_memory_size - running_max_memory_size) / 1024
 
             print
-            print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
+            print "    <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>"
             print "    <created/inplace/view> is taked from the op declaration."
             print "    Use DebugMode for warnings about inplace/view declaration being respected."
             print
@@ -632,10 +647,11 @@ class ProfileStats(object):
                     code[out] = "i"
                 for out, inp in getattr(key.op, 'view_map', {}).iteritems():
                     code[out] = "v"
-                print '       %9dB  %s %s %s' % (sum(val), str(val),
-                                                 ' '.join(code), key)
+                shapes = str(fct_shapes[fgraph][key])
+                print '     %9dB  %s %s %s' % (sum(val), shapes,
+                                               ' '.join(code), key)
 
-            sum_remaining = sum(sum(val) for key, val in items[N:])
+            sum_remaining = sum(sum(shapes) for key, shapes in items[N:])
             print ('   ... (remaining %i Apply account for %.2f%%(%.2fs) of'
                    ' the runtime)') % (max(0, len(nodes_mem) - N),
                                        sum_remaining,

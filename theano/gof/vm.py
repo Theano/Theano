@@ -365,16 +365,10 @@ class Stack(VM):
                             for (idx, o) in enumerate(
                                     thunks[self.node_idx[
                                         current_apply]].outputs):
-                                if not hasattr(o[0], 'size'):
-                                    size.append(-1)
+                                if not hasattr(o[0], 'shape'):
+                                    size.append('no shape')
                                     continue
-                                s = o[0].size
-                                dtype = str(o[0].dtype)
-                                dtype2 = dtype[-3:]
-                                # KeyError here: couldn't determine
-                                # the dtype memory size
-                                s *= self.memory_size_map[dtype2]
-                                size.append(s)
+                                size.append(o[0].shape)
                             self.outputs_size[current_apply] = size
                     except Exception:
                         raise_with_op(current_apply)
@@ -448,16 +442,10 @@ class Stack(VM):
                         size = []
                         for (idx, o) in enumerate(thunks[
                                 self.node_idx[current_apply]].outputs):
-                            if not hasattr(o[0], 'size'):
-                                size.append(-1)
+                            if not hasattr(o[0], 'shape'):
+                                size.append('no shape')
                                 continue
-                            s = o[0].size
-                            dtype = str(o[0].dtype)
-                            dtype2 = dtype[-2:]
-                            # KeyError here: couldn't determine the
-                            # dtype memory size
-                            s *= self.memory_size_map[dtype2]
-                            size.append(s)
+                            size.append(o[0].shape)
                         self.outputs_size[current_apply] = size
                     if self.allow_gc:
                         for i in current_apply.inputs:
