@@ -59,7 +59,7 @@ def _atexit_print_fn():
 
             #merge dictonary
             for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "outputs_size"]:
+                         "apply_cimpl", "variable_shape"]:
                 cum_attr = getattr(cum, attr)
                 for key, val in getattr(ps, attr).iteritems():
                     assert key not in cum_attr
@@ -125,8 +125,8 @@ class ProfileStats(object):
     # pretty string to print in summary, to identify this output
     #
 
-    outputs_size = None
-    # node -> size of allocated output
+    variable_shape = {}
+    # Variable -> shapes
     #
 
     optimizer_time = 0.0
@@ -161,7 +161,7 @@ class ProfileStats(object):
         self.output_size = {}
         self.apply_time = {}
         self.apply_cimpl = {}
-        self.outputs_size = {}
+        self.variable_shape = {}
         if flag_time_thunks is None:
             self.flag_time_thunks = config.profiling.time_thunks
         else:
@@ -562,13 +562,15 @@ class ProfileStats(object):
         fct_memory = {}  # fgraph->dict(node->(outputs size))
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
         var_mem = {}
-        for node, shapes in self.outputs_size.items():
+
+        for node in self.apply_callcount.keys():
             fct_memory.setdefault(node.fgraph, {})
             fct_memory[node.fgraph].setdefault(node, [])
             fct_shapes.setdefault(node.fgraph, {})
             fct_shapes[node.fgraph].setdefault(node, [])
 
-            for out, sh in zip(node.outputs, shapes):
+            for out in node.outputs:
+                sh = self.variable_shape[out]
                 v = numpy.prod(sh)
                 dtype = str(out.dtype)
                 v *= self.memory_size_map[dtype[-3:]]
@@ -668,7 +670,7 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
-        if self.outputs_size:
+        if self.variable_shape:
             self.summary_memory(file, n_ops_to_print)
         if self.optimizer_profile:
             print "Optimizer Profile"

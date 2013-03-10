@@ -130,7 +130,7 @@ class VM(object):
 
             profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
 
-            profile.outputs_size[node] = self.outputs_size[node]
+        profile.variable_shape = self.variable_shape.copy()
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
@@ -246,7 +246,7 @@ class Stack(VM):
         self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
-        self.outputs_size = {}
+        self.variable_shape = {}  # Variable -> shape
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
         self.callback = callback
@@ -255,7 +255,7 @@ class Stack(VM):
 
         for i, node in enumerate(self.nodes):
             node_idx[node] = i
-            self.outputs_size[node] = []
+
             # XXX: inconsistent style - why modify node here rather
             #      than track destroy_dependencies with dictionary like
             #      storage_map?
@@ -319,6 +319,17 @@ class Stack(VM):
         apply_stack = list(self.base_apply_stack)
         last_apply_stack_len = -1
         ls = []
+
+        #This record all function inputs/shared varibles and constants
+        for var, data in self.storage_map.iteritems():
+            if data[0] is None:
+                continue
+            if not hasattr(data[0], 'shape'):
+                sh = 'input no shape'
+            else:
+                sh = data[0].shape
+            self.variable_shape[var] = sh
+
         while apply_stack:
             # Make sure something happened last time round.  This is
             # just a safety check to make sure the op is written
@@ -355,21 +366,21 @@ class Stack(VM):
                         _, dt = self.run_thunk_of_node(current_apply)
                         del _
                         if config.profile:
-                            nodes_idx = self.nodes.index(current_apply)
-                            self.call_counts[nodes_idx] += 1
-                            self.call_times[nodes_idx] += dt
+                            current_idx = self.node_idx[current_apply]
+                            self.call_counts[current_idx] += 1
+                            self.call_times[current_idx] += dt
                             ## Computing the memory footprint of the the op
                             # ?? What about inplace .. if the op is inplace
                             # you don't actually ask for more memory!
-                            size = []
                             for (idx, o) in enumerate(
                                     thunks[self.node_idx[
                                         current_apply]].outputs):
                                 if not hasattr(o[0], 'shape'):
-                                    size.append('no shape')
-                                    continue
-                                size.append(o[0].shape)
-                            self.outputs_size[current_apply] = size
+                                    sh = 'no shape'
+                                else:
+                                    sh = o[0].shape
+                                var = self.nodes[current_idx].outputs[idx]
+                                self.variable_shape[var] = sh
                     except Exception:
                         raise_with_op(current_apply)
                     for o in current_apply.outputs:
@@ -424,9 +435,9 @@ class Stack(VM):
 
                 try:
                     requires, dt = self.run_thunk_of_node(current_apply)
-                    nodes_idx = self.nodes.index(current_apply)
-                    self.call_counts[nodes_idx] += 1
-                    self.call_times[nodes_idx] += dt
+                    current_idx = self.node_idx[current_apply]
+                    self.call_counts[current_idx] += 1
+                    self.call_times[current_idx] += dt
 
                 except Exception:
                     raise_with_op(current_apply)
@@ -441,14 +452,14 @@ class Stack(VM):
                             apply_stack.append(current_apply.inputs[r].owner)
                 else:
                     if config.profile:
-                        size = []
                         for (idx, o) in enumerate(thunks[
                                 self.node_idx[current_apply]].outputs):
                             if not hasattr(o[0], 'shape'):
-                                size.append('no shape')
-                                continue
-                            size.append(o[0].shape)
-                        self.outputs_size[current_apply] = size
+                                sh = 'no shape'
+                            else:
+                                sh = o[0].shape
+                            var = self.nodes[self.node_idx[current_apply]].outputs[idx]
+                            self.variable_shape[var] = sh
                     if self.allow_gc:
                         for i in current_apply.inputs:
                             if (dependencies[i] and i.owner and
