@@ -126,8 +126,13 @@ import theano and print the config variable, as in:
 
     Default: ``False``
 
-    If ``True``, we raise an error if we cannot use the specified :attr:`device`.
-    If ``False``, we fall back to the CPU.
+    If ``True`` and ``device=gpu*``, we raise an error if we cannot
+    use the specified :attr:`device`. If ``True`` and ``device=cpu``,
+    we disable the GPU.  If ``False`` and ``device=gpu*``, and if the
+    specified device cannot be used, we warn and fall back to the CPU.
+
+    This is useful to run Theano's tests on a computer with a GPU, but
+    without running the GPU tests.
 
     This flag's value cannot be modified during the program execution.
 
