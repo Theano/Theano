@@ -285,9 +285,6 @@ class Stack(VM):
         if self.allow_gc and self.dependencies is None:
             raise ValueError("Must set dependencies when using GC")
 
-        if config.profile:
-            self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
-                                    "t64": 8, "128": 16}
 
     def run_thunk_of_node(self, node):
         """Run the thunk corresponding to Apply instance `node`
