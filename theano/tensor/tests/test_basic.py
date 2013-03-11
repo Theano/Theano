@@ -29,7 +29,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
-        clip, constant, default, dot, inc_subtensor,advanced_inc_subtensor, set_subtensor,
+        clip, constant, default, dot, inc_subtensor, set_subtensor,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -3722,6 +3722,7 @@ class TestIncSubtensor1(unittest.TestCase):
         self.assertRaises(TypeError,
                 lambda: inc_subtensor(self.v[self.adv1q], fmatrix()))
 
+
 class TestAdvancedSubtensor(unittest.TestCase):
     # test inc_subtensor
     # also tests set_subtensor
@@ -3745,6 +3746,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
     def test_index_into_vec_w_matrix(self):
         a = self.v[self.ix2]
+        assert a.dtype == self.v.dtype, (a.dtype, self.v.dtype)
+        assert a.broadcastable == self.ix2.broadcastable, (
+                a.broadcastable, self.ix2.broadcastable)
 
     def test_inc_adv_selection(self):
         if not AdvancedIncSubtensor.increment_available:
@@ -3754,49 +3758,52 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         a = inc_subtensor(self.v[self.ix2], self.v[self.ix2])
 
-        assert a.type == self.v.type, (a.type,self.v.type)
+        assert a.type == self.v.type, (a.type, self.v.type)
         f = theano.function([self.v, self.ix2], a, allow_input_downcast=True)
         aval = f([.4, .9, .1], [[1, 2],
                                 [1, 2]])
-        assert numpy.allclose(aval, [.4, .9*3, .1 * 3])
+        assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
 
     def test_inc_adv_selection2(self):
         if not AdvancedIncSubtensor.increment_available:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
                     "should make that feature available.")
-        subt = self.m[self.ix1,self.ix12]
+        subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
 
         typ = TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
-        assert a.type == typ, (a.type,typ)
-        f = theano.function([self.m, self.ix1, self.ix12], a, allow_input_downcast=True)
+        assert a.type == typ, (a.type, typ)
+        f = theano.function([self.m, self.ix1, self.ix12], a,
+                            allow_input_downcast=True)
         aval = f([[.4, .9, .1],
                   [5,   6,  7],
                   [.5, .3, .15]],
-            [1, 2, 1], [0,1,0])
-        assert numpy.allclose(aval, 
+                 [1, 2, 1],
+                 [0, 1, 0])
+        assert numpy.allclose(aval,
                 [[.4, .9, .1],
-                  [5*3,   6,  7],
-                  [.5, .3*2, .15]]), aval
+                  [5 * 3,   6,  7],
+                  [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_selection_with_broadcasting(self):
         if not AdvancedIncSubtensor.increment_available:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
                     "should make that feature available.")
-        a = inc_subtensor(self.m[self.ix1,self.ix12], 2.1)
+        a = inc_subtensor(self.m[self.ix1, self.ix12], 2.1)
 
         assert a.type == self.m.type, (a.type, self.m.type)
-        f = theano.function([self.m, self.ix1, self.ix12], a, allow_input_downcast=True)
+        f = theano.function([self.m, self.ix1, self.ix12], a,
+                            allow_input_downcast=True)
         aval = f([[.4, .9, .1],
                   [5,   6,  7],
                   [.5, .3, .15]],
-
-            [1, 2, 1], [0,1,0])
-        assert numpy.allclose(aval, 
+                 [1, 2, 1],
+                 [0, 1, 0])
+        assert numpy.allclose(aval,
                 [[.4, .9, .1],
-                  [5+2.1*2,   6,  7],
+                  [5 + 2.1 * 2,   6,  7],
                   [.5, .3 + 2.1, .15]]), aval
 
 
