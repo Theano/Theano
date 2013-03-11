@@ -636,9 +636,11 @@ class VM_Linker(link.LocalLinker):
 
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
-        if self.callback is not None:
-            if self.use_cloop:
-                logger.warn('CLoop does not support callback, using Stack VM.')
+        if self.callback is not None or (config.profile and config.profile_memory):
+            if self.use_cloop and self.callback is not None:
+                logger.warn('CVM does not support callback, using Stack VM.')
+            if self.use_cloop and config.profile_memory:
+                logger.warn('CVM does not support memory profile, using Stack VM.')
             deps = None
             if self.allow_gc:
                 deps = self.compute_gc_dependencies(storage_map)
