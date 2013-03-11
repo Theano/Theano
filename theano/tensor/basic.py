@@ -5079,6 +5079,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     # nor have non-broadcastable dimensions where x is broadcastable.
     x = as_tensor_variable(x)
     y = as_tensor_variable(y)
+
     if y.ndim > x.ndim:
         raise TypeError(("Trying to increment a %d-dimensional "
             "subtensor with a %d-dimensional value.") % (x.ndim, y.ndim))
@@ -5094,7 +5095,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             y = addbroadcast(y, dim)
 
     if not x.owner:
-        raise TypeError('x must be result of a subtensor operation')
+        raise TypeError('x must be the result of a subtensor operation')
 
     # retrieve idx_list from x.owner
     if isinstance(x.owner.op, Subtensor):
@@ -5121,8 +5122,38 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         the_op = AdvancedIncSubtensor(inplace,
                                       set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, coordvec_0, coordvec_1)
+    elif isinstance(x.owner.op, DimShuffle):
+        inner_x = x.owner.inputs[0]
+        # In the dimshuffle case, there are in fact two dimshuffles:
+        # one to make the indexed dimension the last one,
+        # and one to put it back where it was. So, in the case where we have
+        # inc_subtensor(x[:,i], y), the graph is actually
+        # inc_subtensor((x.T)[i].T, y).
+        # We could get all the way to x, and then get rid of the dimshuffles
+        # completely, but the problem is that advanced_inc_subtensor1 can only
+        # work on the first (outer-most, left-most) dimension of x,
+        # just like advanced_subtensor1.
+        # So we call advanced_inc_subtensor1(x.T, i, y), but then we need to
+        # return something that has the same shape as x, not as x.T (inner_x).
+        # So re-apply the outer dimshuffle on the new inc_subtensor,
+        # and return advanced_inc_subtensor1(x.T, i, y).T.
+        inner_incsubtensor = inc_subtensor(inner_x, y,
+                inplace=inplace,
+                set_instead_of_inc=set_instead_of_inc,
+                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
+    elif isinstance(x.owner.op, Reshape):
+        inner_x = x.owner.inputs[0]
+        # Try to apply inc_subtensor on inner_x.
+        # If it works, there is no need to reshape, as the inc_subtensor
+        # will have the same shape as inner_x, which is what we want.
+        inner_incsubtensor = inc_subtensor(inner_x, y,
+                inplace=inplace,
+                set_instead_of_inc=set_instead_of_inc,
+                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        return inner_incsubtensor
     else:
-        raise TypeError('x must be result of a subtensor operation')
+        raise TypeError('x must be the result of a subtensor operation')
 
 
 class IncSubtensor(Op):
