@@ -5131,7 +5131,8 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         # inc_subtensor((x.T)[i].T, y).
         # We could get all the way to x, and then get rid of the dimshuffles
         # completely, but the problem is that advanced_inc_subtensor1 can only
-        # work on the last dimension of x, just like advanced_subtensor1.
+        # work on the first (outer-most, left-most) dimension of x,
+        # just like advanced_subtensor1.
         # So we call advanced_inc_subtensor1(x.T, i, y), but then we need to
         # return something that has the same shape as x, not as x.T (inner_x).
         # So re-apply the outer dimshuffle on the new inc_subtensor,
