@@ -605,7 +605,8 @@ class ProfileStats(object):
         for fgraph, nodes_mem in fct_memory.iteritems():
             size_sum = sum([sum(val)
                             for key, val in nodes_mem.iteritems()])
-            print "    Max without gc, inplace and view (KB)", size_sum / 1024
+            print "    Max without gc, inplace and view (KB)", int(
+                round(size_sum / 1024))
 
             node_memory_size = 0
             node_memory_saved_by_view = 0
@@ -648,14 +649,16 @@ class ProfileStats(object):
                             pass
                 pass
 
-            print "    Max FAST_RUN_NO_GC (KB)", node_memory_size / 1024
-            print "    Max c|py (KB)", running_max_memory_size / 1024
-            print "    Memory saved by view (KB)", (
-                node_memory_saved_by_view / 1024)
-            print "    Memory saved by inplace (KB)", (
-                node_memory_saved_by_inplace / 1024)
-            print "    Memory saved by GC (KB)", (
-                node_memory_size - running_max_memory_size) / 1024
+            print "    Max allow_gc=False (KB)", int(round(
+                node_memory_size / 1024.))
+            print "    Max linker=c|py (KB)", int(round(
+                running_max_memory_size / 1024.))
+            print "    Memory saved by view (KB)", int(round(
+                node_memory_saved_by_view / 1024.))
+            print "    Memory saved by inplace (KB)", int(round(
+                node_memory_saved_by_inplace / 1024.))
+            print "    Memory saved by GC (KB)", int(round((
+                node_memory_size - running_max_memory_size) / 1024.))
 
             print
             print "    <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>"
