@@ -23,6 +23,9 @@ AddConfigVar('profile',
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
         BoolParam(False))
+AddConfigVar('profile_memory',
+        "If VM should collect memory profile information and print it",
+        BoolParam(False))
 
 
 def filter_vm_lazy(val):

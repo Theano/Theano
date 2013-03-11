@@ -523,6 +523,16 @@ class ProfileStats(object):
             print >> file, format_str %(f, ftot, t, t / nb_call, nb_call,
                                         nd_id,
                                         str(a)[:maxlen])
+            if not config.profile_memory:
+                continue
+            for idx, var in enumerate(a.inputs):
+                sh = self.variable_shape.get(var, 'no shape')
+                dtype = getattr(var, 'dtype', 'no dtype')
+                print "    input %d: dtype=%s, shape=%s " % (idx, dtype, sh)
+            for idx, var in enumerate(a.outputs):
+                sh = self.variable_shape.get(var, 'no shape')
+                dtype = getattr(var, 'dtype', 'no dtype')
+                print "    output %d: dtype=%s, shape=%s " % (idx, dtype, sh)
             # Same as before, this I've sacrificied some information making
             # the output more readable
             #print >> file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %s'%(
@@ -670,7 +680,7 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print >> file, ("  No node time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
-        if self.variable_shape:
+        if config.profile_memory:
             self.summary_memory(file, n_ops_to_print)
         if self.optimizer_profile:
             print "Optimizer Profile"
