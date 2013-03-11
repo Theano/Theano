@@ -133,8 +133,9 @@ class VM(object):
 
             profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
 
-        profile.variable_shape = self.variable_shape.copy()
-        profile.variable_strides = self.variable_strides.copy()
+        if hasattr(self, 'variable_shape'):
+            profile.variable_shape = self.variable_shape.copy()
+            profile.variable_strides = self.variable_strides.copy()
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
