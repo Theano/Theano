@@ -5,6 +5,7 @@ VM was a better name at some point.
 """
 import link
 import logging
+import os
 import sys
 import time
 import warnings
@@ -563,6 +564,19 @@ class VM_Linker(link.LocalLinker):
         :returns: self if fgraph is the first FunctionGraph that has ever been
             associated to self, else, a new VM_Linker associated to fgraph.
         """
+        if (config.profile and
+            hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            theano.sandbox.cuda.cuda_enabled):
+            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
+                raise Exception(
+                    "You are running Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution are asynchron by default."
+                    " So by default, the profile is useless."
+                    " You must use set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
+                    " synchonize the execution to get meaning full profile.")
+
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
