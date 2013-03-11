@@ -5124,7 +5124,18 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         return the_op(real_x, y, coordvec_0, coordvec_1)
     elif isinstance(x.owner.op, DimShuffle):
         inner_x = x.owner.inputs[0]
-        # Try to apply inc_subtensor on inner_x, and dimshuffle the result
+        # In the dimshuffle case, there are in fact two dimshuffles:
+        # one to make the indexed dimension the last one,
+        # and one to put it back where it was. So, in the case where we have
+        # inc_subtensor(x[:,i], y), the graph is actually
+        # inc_subtensor((x.T)[i].T, y).
+        # We could get all the way to x, and then get rid of the dimshuffles
+        # completely, but the problem is that advanced_inc_subtensor1 can only
+        # work on the last dimension of x, just like advanced_subtensor1.
+        # So we call advanced_inc_subtensor1(x.T, i, y), but then we need to
+        # return something that has the same shape as x, not as x.T (inner_x).
+        # So re-apply the outer dimshuffle on the new inc_subtensor,
+        # and return advanced_inc_subtensor1(x.T, i, y).T.
         inner_incsubtensor = inc_subtensor(inner_x, y,
                 inplace=inplace,
                 set_instead_of_inc=set_instead_of_inc,
