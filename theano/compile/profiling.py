@@ -59,7 +59,7 @@ def _atexit_print_fn():
 
             #merge dictonary
             for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape"]:
+                         "apply_cimpl", "variable_shape", "variable_strides"]:
                 cum_attr = getattr(cum, attr)
                 for key, val in getattr(ps, attr).iteritems():
                     assert key not in cum_attr
@@ -129,6 +129,10 @@ class ProfileStats(object):
     # Variable -> shapes
     #
 
+    variable_strides = {}
+    # Variable -> strides
+    #
+
     optimizer_time = 0.0
     # time spent optimizing graph (FunctionMaker.__init__)
 
@@ -162,6 +166,7 @@ class ProfileStats(object):
         self.apply_time = {}
         self.apply_cimpl = {}
         self.variable_shape = {}
+        self.variable_strides = {}
         if flag_time_thunks is None:
             self.flag_time_thunks = config.profiling.time_thunks
         else:
@@ -527,12 +532,16 @@ class ProfileStats(object):
                 continue
             for idx, var in enumerate(a.inputs):
                 sh = self.variable_shape.get(var, 'no shape')
+                st = self.variable_strides.get(var, 'no strides')
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print "    input %d: dtype=%s, shape=%s " % (idx, dtype, sh)
+                print "    input %d: dtype=%s, shape=%s, strides=%s " % (
+                    idx, dtype, sh, st)
             for idx, var in enumerate(a.outputs):
                 sh = self.variable_shape.get(var, 'no shape')
+                st = self.variable_strides.get(var, 'no strides')
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print "    output %d: dtype=%s, shape=%s " % (idx, dtype, sh)
+                print "    output %d: dtype=%s, shape=%s, strides=%s " % (
+                    idx, dtype, sh, st)
             # Same as before, this I've sacrificied some information making
             # the output more readable
             #print >> file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %i  %s'%(

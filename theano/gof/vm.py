@@ -134,6 +134,7 @@ class VM(object):
             profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
 
         profile.variable_shape = self.variable_shape.copy()
+        profile.variable_strides = self.variable_strides.copy()
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
@@ -250,6 +251,7 @@ class Stack(VM):
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
         self.variable_shape = {}  # Variable -> shape
+        self.variable_strides = {}  # Variable -> strides
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
         self.callback = callback
@@ -327,11 +329,12 @@ class Stack(VM):
         for var, data in self.storage_map.iteritems():
             if data[0] is None:
                 continue
-            if not hasattr(data[0], 'shape'):
-                sh = 'input no shape'
-            else:
-                sh = data[0].shape
+            sh = getattr(data[0], 'shape', 'input no shape')
             self.variable_shape[var] = sh
+            st = getattr(data[0], 'strides', 'input no strides')
+            if getattr(data[0], 'flags', False) and data[0].flags.c_contiguous:
+                st = 'c'
+            self.variable_strides[var] = st
 
         while apply_stack:
             # Make sure something happened last time round.  This is
@@ -378,12 +381,15 @@ class Stack(VM):
                             for (idx, o) in enumerate(
                                     thunks[self.node_idx[
                                         current_apply]].outputs):
-                                if not hasattr(o[0], 'shape'):
-                                    sh = 'no shape'
-                                else:
-                                    sh = o[0].shape
                                 var = self.nodes[current_idx].outputs[idx]
+                                sh = getattr(o[0], 'shape', 'input no shape')
                                 self.variable_shape[var] = sh
+                                st = getattr(o[0], 'strides',
+                                             'input no strides')
+                                if (getattr(o[0], 'flags', False) and
+                                    o[0].flags.c_contiguous):
+                                    st = 'c'
+                                self.variable_strides[var] = st
                     except Exception:
                         raise_with_op(current_apply)
                     for o in current_apply.outputs:
@@ -457,12 +463,16 @@ class Stack(VM):
                     if config.profile:
                         for (idx, o) in enumerate(thunks[
                                 self.node_idx[current_apply]].outputs):
-                            if not hasattr(o[0], 'shape'):
-                                sh = 'no shape'
-                            else:
-                                sh = o[0].shape
-                            var = self.nodes[self.node_idx[current_apply]].outputs[idx]
+                            var = self.nodes[
+                                self.node_idx[current_apply]].outputs[idx]
+                            sh = getattr(o[0], 'shape', 'input no shape')
                             self.variable_shape[var] = sh
+                            st = getattr(o[0], 'strides', 'input no strides')
+                            if (getattr(o[0], 'flags', False) and
+                                o[0].flags.c_contiguous):
+                                st = 'c'
+                            self.variable_strides[var] = st
+
                     if self.allow_gc:
                         for i in current_apply.inputs:
                             if (dependencies[i] and i.owner and
