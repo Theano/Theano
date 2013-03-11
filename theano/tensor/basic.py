@@ -7336,6 +7336,7 @@ class AdvancedSubtensor(Op):
                                        *rest)] + \
             [DisconnectedType()()] * len(rest)
 
+
 class AdvancedIncSubtensor(Op):
     """Increments a subtensor using advanced indexing.
 
@@ -7445,9 +7446,9 @@ class AdvancedIncSubtensor(Op):
         out, = out_
         if not self.inplace:
             out[0] = inputs[0].copy()
-        else: 
+        else:
             out[0] = inputs[0]
-        
+
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
         elif self.increment_available:
