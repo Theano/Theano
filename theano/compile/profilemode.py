@@ -303,6 +303,10 @@ class ProfileMode(Mode):
                                 whose outputs memory size is lower then that.
         """
 
+        print "ProfileMode is deprecated! Use the new profiler."
+        print " The Theano flags to enable it ise: profile=True"
+        print " The Theano flags for the memory profile to it is: profile_memory=True"
+
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
