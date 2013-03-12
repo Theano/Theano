@@ -1,7 +1,9 @@
 import atexit
 import copy
+import os
 import time
 
+import theano
 from theano.gof.link import WrapLinker
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
@@ -41,6 +43,18 @@ AddConfigVar('ProfileMode.profile_memory',
 class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
         ret = super(Profile_Maker, self).create(input_storage, trustme)
+
+        if (hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            theano.sandbox.cuda.cuda_enabled):
+            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
+                raise Exception(
+                    "You are running Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution are asynchron by default."
+                    " So by default, the profile is useless."
+                    " You must use set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
+                    " synchonize the execution to get meaning full profile.")
 
         # create a function-specific storage container for profiling info
         profile = ProfileStats(atexit_print=False)
