@@ -121,6 +121,7 @@ if not nvcc_compiler.is_nvcc_available() or not theano.config.cxx:
     # use already compiled GPU op and not the others.
     # Also, if cxx is not available, we need to disable all GPU code.
     set_cuda_disabled()
+    compile_cuda_ndarray = False
 elif not config.device.startswith('gpu') and config.force_device:
     # We where asked to NEVER use the GPU
     set_cuda_disabled()
