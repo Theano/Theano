@@ -659,6 +659,14 @@ class ProfileStats(object):
                 node_memory_saved_by_inplace / 1024.))
             print "    Memory saved by GC (KB)", int(round((
                 node_memory_size - running_max_memory_size) / 1024.))
+            if (hasattr(theano, 'sandbox') and
+                hasattr(theano.sandbox, 'cuda') and
+                hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
+                hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
+                        'theano_allocated')):
+                _, gpu_max = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
+                print "    Max Memory allocated on the GPU(for all functions) (KB)", int(round(
+                    gpu_max / 1024.))
 
             print
             print "    <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>"

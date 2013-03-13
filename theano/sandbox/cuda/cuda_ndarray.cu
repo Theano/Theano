@@ -44,8 +44,11 @@ static PyObject *CudaNdarray_get_shape(CudaNdarray *self, void *closure);
  *
  */
 int _outstanding_mallocs[] = {0,0};
+
 #if COMPUTE_GPU_MEM_USED
 int _allocated_size = 0;
+int _max_allocated_size = 0;
+
 const int TABLE_SIZE = 10000;
 struct table_struct{
     void* ptr;
@@ -82,8 +85,15 @@ void * device_malloc(size_t size, int verbose)
                 "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
         return NULL;
     }
-    _outstanding_mallocs[0] += (rval != NULL);
-    #if COMPUTE_GPU_MEM_USED
+    if (rval != NULL){
+        // Can it happen that cudaMalloc return cudaSuccess, but return a NULL ptr?
+        // Could this be what happen if size is 0?
+        _outstanding_mallocs[0] += 1;
+
+#if COMPUTE_GPU_MEM_USED
+        _allocated_size += size;
+        _max_allocated_size = std::max(_max_allocated_size, _allocated_size);
+
         for(int i=0;i<TABLE_SIZE;i++){
             if(NULL==_alloc_size_table[i].ptr){
                 _alloc_size_table[i].ptr=rval;
@@ -91,8 +101,8 @@ void * device_malloc(size_t size, int verbose)
                 break;
             }
         }
-        _allocated_size += size;
-    #endif
+#endif
+    }
     //fprintf(stderr,
     //"allocated %li bytes of device memory (%s). new total bytes allocated: %d. ptr: %p\n",
     //(long)size, cudaGetErrorString(err),_allocated_size,rval);
@@ -2517,6 +2527,7 @@ CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
 #if COMPUTE_GPU_MEM_USED
 /*
  * Return the size in bytes that Theano currently have allocated on the gpu.
@@ -2524,7 +2535,8 @@ CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
 PyObject *
 GetTheanoAllocInfo(PyObject* _unused, PyObject* dummy)
 {
-    return PyLong_FromLong(_allocated_size);
+    PyObject* tuple = Py_BuildValue("(ii)", _allocated_size, _max_allocated_size);
+    return tuple;
 }
 #endif
 
