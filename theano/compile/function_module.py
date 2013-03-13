@@ -781,7 +781,6 @@ class SanityCheckFunction(Function):
         return variables
 
 
-
 ###
 ### FunctionMaker
 ###
@@ -813,12 +812,12 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
         view_tree_set(alias_root(fgraph.outputs[i]), views_of_output_i)
         copied = False
         # do not allow outputs to be aliased
-        for j in xrange(i+1, len(fgraph.outputs)):
+        for j in xrange(i + 1, len(fgraph.outputs)):
             # We could don't put deep copy if both outputs have borrow==True
             # and not(wrapped_outputs[i].borrow and wrapped_outputs[j].borrow):
             if fgraph.outputs[j] in views_of_output_i:
                 if wrapped_outputs[i].borrow and wrapped_outputs[j].borrow:
-                    fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
+                    fgraph.change_input('output', i, view_op(fgraph.outputs[i]),
                                      reason=reason)
                 else:
                     fgraph.change_input('output', i, deep_copy_op(fgraph.outputs[i]),
@@ -831,7 +830,8 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                 # do not allow outputs to be aliased to an inputs (j), unless
                 # a) that j'th input has been 'destroyed' by e.g. in-place computations
                 # b) that j'th input is a shared variable that is also being updated
-                if hasattr(fgraph,'get_destroyers_of') and fgraph.get_destroyers_of(input_j):
+                if (hasattr(fgraph, 'get_destroyers_of') and
+                    fgraph.get_destroyers_of(input_j)):
                     continue
                 if input_j in updated_fgraph_inputs:
                     continue
@@ -840,7 +840,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                     if input_j in fgraph.inputs:
                         j = fgraph.inputs.index(input_j)
                         if wrapped_outputs[i].borrow and wrapped_inputs[j].borrow:
-                            fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
+                            fgraph.change_input('output', i, view_op(fgraph.outputs[i]),
                                              reason="insert_deepcopy")
                             break
                         else:
@@ -848,7 +848,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                                              reason="insert_deepcopy")
                             break
                     elif wrapped_outputs[i].borrow:
-                        fgraph.change_input('output',i, view_op(fgraph.outputs[i]),
+                        fgraph.change_input('output', i, view_op(fgraph.outputs[i]),
                                          reason="insert_deepcopy")
                         break
                     else:
@@ -857,6 +857,8 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                         break
 
 NODEFAULT = ['NODEFAULT']
+
+
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
 
@@ -876,7 +878,7 @@ class FunctionMaker(object):
         elif isinstance(input, (list, tuple)):
             # (r, u) -> SymbolicInput(variable=r, update=u)
             if len(input) == 2:
-                return SymbolicInput(input[0], update = input[1])
+                return SymbolicInput(input[0], update=input[1])
             else:
                 raise TypeError("Expected two elements in the list or tuple.", input)
         else:
@@ -899,7 +901,7 @@ class FunctionMaker(object):
                 stacklevel=2)
         return self.fgraph
 
-    def env_setter(self,value):
+    def env_setter(self, value):
         warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
                 stacklevel=2)
         self.fgraph = value
@@ -911,7 +913,6 @@ class FunctionMaker(object):
 
     env = property(env_getter, env_setter, env_deleter)
 
-
     @staticmethod
     def wrap_out(output):
         if isinstance(output, SymbolicOutput):
@@ -922,7 +923,7 @@ class FunctionMaker(object):
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
 
     def __init__(self, inputs, outputs,
-            mode = None, accept_inplace = False, function_builder = Function,
+            mode=None, accept_inplace=False, function_builder=Function,
             profile=None, on_unused_input=None):
         """
         :type inputs: a list of SymbolicInput instances
