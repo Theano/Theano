@@ -30,11 +30,11 @@ You can enable faster gcc optimization with the ``cxxflags``. This list of flags
 
 Use it at your own risk. Some people warned that the ``-ftree-loop-distribution`` optimization resulted in wrong results in the past.
 
-In the past we told that if the ``compiledir`` wasn't shared by multiple
-computers, you could add the ``-march=native`` flags. Now we recommande
-to remove this flags as Theano does that automatically and safelly
+In the past we said that if the ``compiledir`` was not shared by multiple
+computers, you could add the ``-march=native`` flag. Now we recommend
+to remove this flag as Theano does it automatically and safely,
 even if the ``compiledir`` is shared by multiple computers with different
-CPU. In fact, we ask g++ what are the equivalent flags it use and use
+CPUs. In fact, Theano asks g++ what are the equivalent flags it uses, and re-uses
 them directly.
 
 
