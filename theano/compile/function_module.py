@@ -1286,7 +1286,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     defaults = [getattr(input, 'value', None) for input in inputs]
 
     if isinstance(mode, (list, tuple)):  # "mode comparison" semantics
-        raise Exception("We do not support the passing of multiple mode")
+        raise Exception("We do not support the passing of multiple modes")
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs,
