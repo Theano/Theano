@@ -605,7 +605,7 @@ class ProfileStats(object):
         for fgraph, nodes_mem in fct_memory.iteritems():
             size_sum = sum([sum(val)
                             for key, val in nodes_mem.iteritems()])
-            print "    Max without gc, inplace and view (KB)", int(
+            print "    Max without gc, inplace and view: %dKB" % int(
                 round(size_sum / 1024))
 
             node_memory_size = 0
@@ -649,15 +649,15 @@ class ProfileStats(object):
                             pass
                 pass
 
-            print "    Max allow_gc=False (KB)", int(round(
+            print "    Max allow_gc=False: %dKB" % int(round(
                 node_memory_size / 1024.))
-            print "    Max linker=c|py (KB)", int(round(
+            print "    Max linker=c|py: %dKB" % int(round(
                 running_max_memory_size / 1024.))
-            print "    Memory saved by view (KB)", int(round(
+            print "    Memory saved by view: %dKB" % int(round(
                 node_memory_saved_by_view / 1024.))
-            print "    Memory saved by inplace (KB)", int(round(
+            print "    Memory saved by inplace: %dKB" % int(round(
                 node_memory_saved_by_inplace / 1024.))
-            print "    Memory saved by GC (KB)", int(round((
+            print "    Memory saved by GC: %dKB" % int(round((
                 node_memory_size - running_max_memory_size) / 1024.))
             if (hasattr(theano, 'sandbox') and
                 hasattr(theano.sandbox, 'cuda') and
@@ -665,7 +665,7 @@ class ProfileStats(object):
                 hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
                         'theano_allocated')):
                 _, gpu_max = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
-                print "    Max Memory allocated on the GPU(for all functions) (KB)", int(round(
+                print "    Max Memory allocated on the GPU(for all functions): %dKB" % int(round(
                     gpu_max / 1024.))
 
             print
