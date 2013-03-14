@@ -25,6 +25,10 @@ from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
 
 import theano.gof.cutils #needed to import cutils_ext
+try:
+    from cutils_ext.cutils_ext import inplace_increment 
+except ImportError:
+    inplace_increment = None
 
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
@@ -7105,9 +7109,8 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            try :
-                from cutils_ext.cutils_ext import inplace_increment as increment
-            except ImportError: 
+            increment = inplace_increment
+            if increment is None: 
                 increment = self.inplace_increment1d_slow
 
             increment(x,idx, y) 
@@ -7345,17 +7348,6 @@ class AdvancedIncSubtensor(Op):
         op.
 
     """
-    increment_available = None
-
-    @classmethod
-    def check_increment_available(cls):
-        if cls.increment_available is None:
-            try:
-                from cutils_ext.cutils_ext import (
-                        inplace_increment as increment)
-                cls.increment_available = True
-            except ImportError:
-                cls.increment_available = False
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
@@ -7367,15 +7359,12 @@ class AdvancedIncSubtensor(Op):
             raise NotImplementedError('In place computation is not'
                                       ' implemented')
 
-        # The first time we instanciate an AdvancedIncSubtensor without
-        # set_instead_of_inc, check if the "increment" function is available
-        if not set_instead_of_inc:
-            self.check_increment_available()
-
-        # This flag enables the legacy implementation of "perform" for
-        # advanced_inc_subtensor. This implementation is incorrect in general,
-        # but gives correct results when no element is indexed more than once.
         self.allow_legacy_perform = False
+
+    @classmethod
+    @property
+    def increment_available():
+        return inplace_increment is not None
 
     def __hash__(self):
         return hash((type(self), self.inplace, self.set_instead_of_inc))
@@ -7391,11 +7380,7 @@ class AdvancedIncSubtensor(Op):
                 " set_instead_of_inc=" + str(self. set_instead_of_inc))
 
     def __setstate__(self, state):
-        # We do not want to pickle increment_available, as it depends
-        # on the machine. Instead, we call check_increment_available on load
         self.__dict__.update(state)
-        if self.set_instead_of_inc:
-            self.check_increment_available()
 
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
@@ -7451,8 +7436,8 @@ class AdvancedIncSubtensor(Op):
 
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
-        elif self.increment_available:
-            increment(out[0], tuple(inputs[2:]), inputs[1])
+        elif inplace_increment is not None:
+            inplace_increment(out[0], tuple(inputs[2:]), inputs[1])
         elif self.allow_legacy_perform:
             out[0][inputs[2:]] += inputs[1]
         else:
