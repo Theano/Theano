@@ -7410,9 +7410,6 @@ class AdvancedIncSubtensor(Op):
                 "inplace=" + str(self.inplace),
                 " set_instead_of_inc=" + str(self. set_instead_of_inc))
 
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-
     def make_node(self, x, y, *inputs):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
