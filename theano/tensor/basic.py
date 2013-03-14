@@ -24,9 +24,9 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
 
-import theano.gof.cutils #needed to import cutils_ext
+import theano.gof.cutils  # needed to import cutils_ext
 try:
-    from cutils_ext.cutils_ext import inplace_increment 
+    from cutils_ext.cutils_ext import inplace_increment
 except ImportError:
     inplace_increment = None
 
@@ -4439,7 +4439,8 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-        # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+        # There is a bug in numpy that results in isinstance(x, int) returning
+        # False for numpy integers.
         # See <http://projects.scipy.org/numpy/ticket/2235>.
         elif isinstance(entry, (numpy.integer, int)):
             return entry
@@ -7198,19 +7199,21 @@ def as_index_variable(idx):
         raise TypeError('index must be integers')
     return idx
 
+
 def as_int_none_variable(x):
     if x is None:
         return NoneConst
-    x = as_tensor_variable(x, ndim = 0)
+    x = as_tensor_variable(x, ndim=0)
     if x.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
     return x
 
+
 class MakeSlice(Op):
     def make_node(self, slc):
-        
         return Apply(self,
-                     map(as_int_none_variable,[slc.start, slc.stop, slc.step]),
+                     map(as_int_none_variable,
+                         [slc.start, slc.stop, slc.step]),
                      [slicetype()])
 
     def perform(self, node, inp, out_):
@@ -7218,7 +7221,7 @@ class MakeSlice(Op):
         out[0] = slice(*inp)
 
     def __str__(self):
-        return self.__class__.__name__    
+        return self.__class__.__name__
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -7226,11 +7229,11 @@ class MakeSlice(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def grad(self, inputs, grads): 
-        return [DiconnectedType()() for i in inputs]    
+    def grad(self, inputs, grads):
+        return [DisconnectedType()() for i in inputs]
 
 make_slice = MakeSlice()
- 
+
 
 class SliceType(gof.Type):
 
@@ -7242,7 +7245,6 @@ class SliceType(gof.Type):
 
     def __str__(self):
         return "slice"
-
 
 
 class NoneTypeT(gof.Type):
@@ -7257,13 +7259,16 @@ class NoneTypeT(gof.Type):
         return "None"
 slicetype = SliceType()
 
-NoneConst = Constant(NoneTypeT(), None, name = 'None')
-    
+NoneConst = Constant(NoneTypeT(), None, name='None')
+
+
 def adv_index_broadcastable_pattern(a, idx):
     """
-    This function is only used to determine the broardcast pattern for AdvancedSubtensor output variable.
+    This function is only used to determine the broadcast pattern for
+    AdvancedSubtensor output variable.
 
-    For this, we make a fake ndarray and a fake idx and call use ask numpy the output. From this, we find the output broadcast pattern.
+    For this, we make a fake ndarray and a fake idx and call use ask numpy
+    the output. From this, we find the output broadcast pattern.
     """
 
     def replace_slice(v):
@@ -7274,21 +7279,22 @@ def adv_index_broadcastable_pattern(a, idx):
                     " to be fetched.", v)
             else:
                 v = v.outputs[0]
-            
+
         if NoneConst.equals(v):
             return None
-        if isinstance(v.type, SliceType): 
-            return slice(None,None)
- 
-        return numpy.zeros( (2,)* v.ndim, int)
-    
+        if isinstance(v.type, SliceType):
+            return slice(None, None)
+
+        return numpy.zeros((2,) * v.ndim, int)
+
     newidx = tuple(map(replace_slice, idx))
-    
+
     #2 - True = 1; 2 - False = 2
-    fakeshape = [2 - bc for bc in a.broadcastable] 
+    fakeshape = [2 - bc for bc in a.broadcastable]
     retshape = numpy.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
-    
+
+
 class AdvancedSubtensor(Op):
     """Return a subtensor copy, using advanced indexing.
     """
@@ -7309,13 +7315,11 @@ class AdvancedSubtensor(Op):
         x = as_tensor_variable(x)
 
         index = tuple(map(as_index_variable, index))
-        
-        
+        bcast = adv_index_broadcastable_pattern(x, index)
         return gof.Apply(self,
-                        (x,) + index,
-                         [tensor(dtype = x.type.dtype, 
-                                 broadcastable = adv_index_broadcastable_pattern(x, index) )])
-              
+                         (x,) + index,
+                         [tensor(dtype=x.type.dtype,
+                                 broadcastable=bcast)])
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
