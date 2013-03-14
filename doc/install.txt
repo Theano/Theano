@@ -919,24 +919,26 @@ instructions in :ref:`windows_bleeding_edge`.
 
 .. _windows_anaconda:
 
-Installation script for AnacondaCE
-##################################
+Windows installer for AnacondaCE
+################################
 
 If you installed AnacondaCE, the simplest way to install and configure
-Theano is to download and execute this :download:`installation script
-for Theano on AnacondaCE for Windows <theano_installer_for_anaconda.bat>`.
+Theano is to download and execute this `Windows installer
+for Theano on AnacondaCE for Windows
+<https://github.com/Theano/Theano-wininstaller/raw/master/bin/theano_installer_latest.msi>`__.
 
 .. note
 
-    This script was tested on Windows 7, 64-bit edition, and AnacondaCE
-    version 1.3.1. It is still experimental, please get back to us if
-    you experience trouble with it.
+    This installer was tested on Windows 7, 64-bit edition, and AnacondaCE
+    version 1.3.1. Please get back to us if you experience trouble with it.
 
-This script will:
+This installer will:
 
-- Copy MinGW runtime DLLs into ``C:\\Anaconda\\Scripts``, so they are in the ``PATH``;
+- Copy MinGW runtime DLLs into ``C:\\Anaconda\\``, so they are in the ``PATH``;
 - Call ``pip install theano``, installing the latest released version;
-- Set up a default configuration file for Theano, ``.theanorc.txt``, containing:
+- Set up a default configuration file for Theano,
+  ``theanorc_default.txt``, and set it up as your ``.theanorc.txt`` if it
+  does not exist. It contains:
 
 .. code-block:: config
 
@@ -945,6 +947,9 @@ This script will:
 
     [blas]
     ldflags=
+
+When uninstalling, it will call ``pip uninstall Theano``, and remove the
+compilation cache as well as ``theanorc_default.txt``.
 
 
 .. _windows_basic:
