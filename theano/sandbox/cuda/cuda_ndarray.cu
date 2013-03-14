@@ -2551,6 +2551,11 @@ static PyGetSetDef CudaNdarray_getset[] = {
         (setter)CudaNdarray_set_strides,
         "data pointer strides (in elements)",
         NULL},
+    {"strides",
+        (getter)CudaNdarray_get_strides,
+        (setter)CudaNdarray_set_strides,
+        "data pointer strides (in elements)",
+        NULL},
     //gpudata is needed to allow calling pycuda fct with CudaNdarray input.
     {"gpudata",
         (getter)CudaNdarray_get_dev_data,
