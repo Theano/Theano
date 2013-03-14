@@ -7392,11 +7392,6 @@ class AdvancedIncSubtensor(Op):
 
         self.allow_legacy_perform = False
 
-    @classmethod
-    @property
-    def increment_available():
-        return inplace_increment is not None
-
     def __hash__(self):
         return hash((type(self), self.inplace, self.set_instead_of_inc))
 
@@ -7417,7 +7412,7 @@ class AdvancedIncSubtensor(Op):
         op = self
         # If we are incrementing, but the increment compiled function is not
         # available, we need to support legacy cases.
-        if not self.set_instead_of_inc and not self.increment_available:
+        if not self.set_instead_of_inc and inplace_increment is None:
             legacy_conditions = False
             if x.ndim == 2 and y.ndim == 1 and len(inputs) == 2:
                 ind1 = as_tensor_variable(inputs[0])
