@@ -23,7 +23,8 @@ import numpy
 import theano
 from theano.compat import PY3
 from theano import gof
-from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
+from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
+        FunctionGraph)
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
@@ -2680,7 +2681,7 @@ class Composite(ScalarOp):
         except AttributeError:
             if 0:
                 l = []
-                for n in fgraph.toposort():
+                for n in self.fgraph.toposort():
                     if hasattr(n.op, "name") and n.op.name is not None:
                         v = n.op.name
                         if v.startswith("Composite"):

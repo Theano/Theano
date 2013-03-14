@@ -43,7 +43,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
-        nonzero, flatnonzero, nonzero_values)
+        nonzero, flatnonzero, nonzero_values, inplace_increment)
 from theano.tests import unittest_tools as utt
 
 
@@ -3750,7 +3750,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                 a.broadcastable, self.ix2.broadcastable)
 
     def test_inc_adv_selection(self):
-        if not AdvancedIncSubtensor.increment_available:
+        if inplace_increment is None:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
                     "should make that feature available.")
@@ -3764,7 +3764,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
 
     def test_inc_adv_selection2(self):
-        if not AdvancedIncSubtensor.increment_available:
+        if inplace_increment is None:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
                     "should make that feature available.")
@@ -3786,7 +3786,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_selection_with_broadcasting(self):
-        if not AdvancedIncSubtensor.increment_available:
+        if inplace_increment is None:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
                     "should make that feature available.")
@@ -7425,6 +7425,8 @@ class TestTensorInstanceMethods(unittest.TestCase):
         self.assertRaises(TypeError, X.take, [0.0])
         indices = [[1,0,1], [0,1,1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
+        # Test equivalent advanced indexing
+        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
 if __name__ == '__main__':
 
