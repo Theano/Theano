@@ -3675,7 +3675,6 @@ class TestIncSubtensor1(unittest.TestCase):
     # also tests set_subtensor
 
     def setUp(self):
-        AdvancedIncSubtensor.check_increment_available()
         self.s = iscalar()
         self.v = fvector()
         self.m = dmatrix()
