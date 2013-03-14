@@ -459,6 +459,9 @@ class _scalar_py_operators:
     # variables and Tensor variables
     ndim = 0
 
+    dtype = property(lambda self: self.type.dtype)
+    """ The dtype of this scalar.  """
+
     #UNARY
     def __abs__(self):
         return abs_(self)
