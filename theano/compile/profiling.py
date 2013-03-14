@@ -580,7 +580,7 @@ class ProfileStats(object):
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->(outputs size))
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
-        var_mem = {}
+        var_mem = {}  # varible->size in bytes, ignore the input variable
 
         for node in self.apply_callcount.keys():
             fct_memory.setdefault(node.fgraph, {})
@@ -598,15 +598,16 @@ class ProfileStats(object):
                 fct_memory[node.fgraph][node].append(v)
                 fct_shapes[node.fgraph][node].append(sh)
 
-        assert len(fct_memory) == 1
-        print
-        print "  Memory Profile"
-
+        #Find the function that used the most memory
+        max_sum_size = 0
+        max_node_memory_size = 0
+        max_running_memory_size = 0
+        max_running_max_memory_size = 0
+        max_node_memory_saved_by_view = 0
+        max_node_memory_saved_by_inplace = 0
         for fgraph, nodes_mem in fct_memory.iteritems():
-            size_sum = sum([sum(val)
+            sum_size = sum([sum(val)
                             for key, val in nodes_mem.iteritems()])
-            print "    Max without gc, inplace and view: %dKB" % int(
-                round(size_sum / 1024))
 
             node_memory_size = 0
             node_memory_saved_by_view = 0
@@ -646,48 +647,99 @@ class ProfileStats(object):
                         old_storage = post_thunk_old_storage[order.index(node)]
                         for old_s in old_storage:
                             running_memory_size -= var_mem[node.inputs[old_s]]
-                            pass
-                pass
+            max_sum_size = max(max_sum_size, sum_size)
+            max_node_memory_size = max(max_node_memory_size, node_memory_size)
+            max_running_memory_size = max(max_running_memory_size,
+                                          running_memory_size)
+            max_running_max_memory_size = max(max_running_max_memory_size,
+                                          running_max_memory_size)
+            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
+                                                node_memory_saved_by_view)
+            max_node_memory_saved_by_inplace = max(
+                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
 
-            print "    Max allow_gc=False: %dKB" % int(round(
-                node_memory_size / 1024.))
-            print "    Max linker=c|py: %dKB" % int(round(
-                running_max_memory_size / 1024.))
-            print "    Memory saved by view: %dKB" % int(round(
-                node_memory_saved_by_view / 1024.))
-            print "    Memory saved by inplace: %dKB" % int(round(
-                node_memory_saved_by_inplace / 1024.))
-            print "    Memory saved by GC: %dKB" % int(round((
-                node_memory_size - running_max_memory_size) / 1024.))
-            if (hasattr(theano, 'sandbox') and
-                hasattr(theano.sandbox, 'cuda') and
-                hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
-                hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
-                        'theano_allocated')):
-                _, gpu_max = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
-                print "    Max Memory allocated on the GPU(for all functions): %dKB" % int(round(
-                    gpu_max / 1024.))
+        print
+        if len(fct_memory) > 1:
+            print "Memory Profile (the max between all function in that profile)"
+        else:
+            print "Memory Profile"
+        print "---"
+        size_sum = sum(var_mem.values())
+        print "    Max without gc, inplace and view: %dKB" % int(
+            round(size_sum / 1024))
 
-            print
-            print "    <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>"
-            print "    <created/inplace/view> is taked from the op declaration."
-            print "    Use DebugMode for warnings about inplace/view declaration being respected."
-            print
-            for key, val in items[:N]:
-                code = ['c'] * len(node.outputs)
-                for out, inp in getattr(key.op, 'destroy_map', {}).iteritems():
-                    code[out] = "i"
-                for out, inp in getattr(key.op, 'view_map', {}).iteritems():
-                    code[out] = "v"
-                shapes = str(fct_shapes[fgraph][key])
-                print '     %9dB  %s %s %s' % (sum(val), shapes,
-                                               ' '.join(code), key)
+        order = fgraph.toposort()
+        computed, last_user = theano.gof.link.gc_helper(order)
+        for node in order:
+            post_thunk_old_storage.append([
+                input_idx
+                for input_idx, input in enumerate(node.inputs)
+                if (input in computed) and
+                (input not in fgraph.outputs) and
+                node == last_user[input]])
+        for node, val in items:
+            dmap = getattr(node.op, 'destroy_map', None)
+            vmap = getattr(node.op, 'view_map', None)
 
-            sum_remaining = sum(sum(shapes) for key, shapes in items[N:])
-            print ('   ... (remaining %i Apply account for %.2f%%(%.2fs) of'
-                   ' the runtime)') % (max(0, len(nodes_mem) - N),
-                                       sum_remaining,
-                                       sum_remaining / size_sum)
+            for idx, v in enumerate(val):
+                # TODO check the op returned a view
+                if dmap and idx in dmap:
+                    node_memory_saved_by_inplace += v
+                # TODO check the op returned a view
+                elif vmap and idx in vmap:
+                    node_memory_saved_by_view += v
+                else:
+                    node_memory_size += v
+                    running_memory_size += v
+                    if running_memory_size > running_max_memory_size:
+                        running_max_memory_size = running_memory_size
+                    old_storage = post_thunk_old_storage[order.index(node)]
+                    for old_s in old_storage:
+                        running_memory_size -= var_mem[node.inputs[old_s]]
+                        pass
+            pass
+
+        print "    Max allow_gc=False: %dKB" % int(round(
+            max_node_memory_size / 1024.))
+        print "    Max linker=c|py: %dKB" % int(round(
+            max_running_max_memory_size / 1024.))
+        print "    Memory saved by view: %dKB" % int(round(
+            max_node_memory_saved_by_view / 1024.))
+        print "    Memory saved by inplace: %dKB" % int(round(
+            max_node_memory_saved_by_inplace / 1024.))
+        print "    Memory saved by GC: %dKB" % int(round((
+            max_node_memory_size - max_running_max_memory_size) / 1024.))
+        if (hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
+            hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
+                    'theano_allocated')):
+            _, gpu_max = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
+            print "    Max Memory allocated on the GPU(for all functions): %dKB" % int(round(
+                gpu_max / 1024.))
+
+        print
+        if len(fct_memory) > 1:
+            print "    This list is based on all functions in the profile"
+        print "    <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>"
+        print "    <created/inplace/view> is taked from the op declaration."
+        print "    Use DebugMode for warnings about inplace/view declaration being respected."
+        print
+        for key, val in items[:N]:
+            code = ['c'] * len(node.outputs)
+            for out, inp in getattr(key.op, 'destroy_map', {}).iteritems():
+                code[out] = "i"
+            for out, inp in getattr(key.op, 'view_map', {}).iteritems():
+                code[out] = "v"
+            shapes = str(fct_shapes[fgraph][key])
+            print '     %9dB  %s %s %s' % (sum(val), shapes,
+                                           ' '.join(code), key)
+
+        sum_remaining = sum(sum(shapes) for key, shapes in items[N:])
+        print ('   ... (remaining %i Apply account for %.2f%%(%.2fs) of'
+               ' the runtime)') % (max(0, len(nodes_mem) - N),
+                                   sum_remaining,
+                                   sum_remaining / size_sum)
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_applies_to_print=20):
