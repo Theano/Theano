@@ -36,7 +36,9 @@ def max_pool_2d(input, ds, ignore_border=False):
     img_shape = input.shape[-2:]
 
     # count the number of "leading" dimensions, store as dmatrix
-    batch_size = tensor.prod(input.shape[:-2])
+    batch_size = input.shape[0]
+    for dx in xrange(1, input.ndim -2):
+        batch_size = batch_size*input.shape[dx]
     batch_size = tensor.shape_padright(batch_size,1)
 
     # store as 4D tensor with shape: (batch_size,1,height,width)
@@ -172,10 +174,9 @@ class DownsampleFactorMax(Op):
         # return None for those.
         if eval_points[0] is None:
             return [None]
-            return eval_points
-        rop = DownsampleFactorMaxRop(self, ds,
+        rop = DownsampleFactorMaxRop(self.ds,
                                      ignore_border=self.ignore_border)
-        return [rop(input[0], eval_points[0])]
+        return [rop(inputs[0], eval_points[0])]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
