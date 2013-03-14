@@ -780,8 +780,18 @@ class ConvOp(OpenMPOp):
         #execute the c version which is much faster.
         if self.dx > 1 or self.dy > 1:
             zz = zz[:, :, 0::self.dx, 0::self.dy].copy()
-
         z[0] = zz
+
+    def R_op(self, inputs, eval_points):
+        rval = None
+        if eval_points[0] is not None:
+            rval = self.make_node(eval_points[0], inputs[1]).outputs[0]
+        if eval_points[1] is not None:
+            if rval is None:
+                rval = self.make_node(inputs[0], eval_points[1]).outputs[0]
+            else:
+                rval += self.make_node(inputs[0], eval_points[1]).outputs[0]
+        return [rval]
 
     def grad(self, inp, grads):
         inputs, kerns = inp

@@ -5522,11 +5522,18 @@ class IncSubtensor(Op):
         return [shapes[0]]
 
     def R_op(self, inputs, eval_points):
-        if eval_points[0] is None or eval_points[1] is None:
+        if eval_points[0] is None and eval_points[1] is None:
             return [None]
+        ev0 = eval_points[0]
+        ev1 = eval_points[1]
+        if ev0 is None:
+            ev0 = zeros_like(inputs[0])
+        if ev1 is None:
+            ev1 = zeros_like(inputs[1])
+
         # Again we ignore eval points for indices because incsubtensor is
         # not differentiable wrt to those
-        return self.make_node(eval_points[0], eval_points[1],
+        return self.make_node(ev0, ev1,
                             *inputs[2:]).outputs
 
     def connection_pattern(self, node):
@@ -5930,9 +5937,15 @@ class Join(Op):
                 dtype=node.outputs[0].type.dtype)
 
     def R_op(self, inputs, eval_points):
-        if None in eval_points[1:]:
+        if numpy.all([x is None for x in eval_points[1:]]):
             return [None]
-        return self.make_node(inputs[0], *eval_points[1:]).outputs
+        evs = []
+        for inp, evp in zip(inputs[1:], eval_points[1:]):
+            if evp is not None:
+                evs.append(evp)
+            else:
+                evs.append(zeros_like(inp))
+        return self.make_node(inputs[0], *evs).outputs
 
     def grad(self, axis_and_tensors, grads):
         """ The gradient wrt a join op is a `Split`, used to partition
@@ -7552,7 +7565,7 @@ class Dot(Op):
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is
         # simply c \dot b + a \dot d
-        if None in eval_points:
+        if eval_points[0] is None and eval_points[1] is None:
             return [None]
 
         assert len(inputs) == 2
@@ -7576,13 +7589,19 @@ class Dot(Op):
                 debugger_available = False
 
             try:
-                ev0 = gof.op.get_test_value(eval_points[0])
+                if eval_points[0] is not None:
+                    ev0 = gof.op.get_test_value(eval_points[0])
+                else:
+                    ev0 = numpy.zeros_like(iv0)
             except AttributeError:
                 gof.op.missing_test_message(
                     'first eval point passed to Dot.R_op has no test value')
                 debugger_available = False
             try:
-                ev1 = gof.op.get_test_value(eval_points[1])
+                if eval_points[1] is not None:
+                    ev1 = gof.op.get_test_value(eval_points[1])
+                else:
+                    ev1 = numpy.zeros_like(iv1)
             except AttributeError:
                 gof.op.missing_test_message(
                     'second eval point passed to Dot.R_op has no test value')
@@ -7601,11 +7620,16 @@ class Dot(Op):
                                      ' %s and %s, respectively' % (
                             str(input_values[i].shape),
                             str(eval_point_values[i].shape)))
+        rval = None
+        if eval_points[0] is not None:
+            rval = self(eval_points[0], inputs[1])
+        if eval_points[1] is not None:
+            if rval is None:
+                rval = self(inputs[0], eval_points[1])
+            else:
+                rval += self(inputs[0], eval_points[1])
 
-        t1 = self(eval_points[0], inputs[1])
-        t2 = self(inputs[0], eval_points[1])
-
-        return [t1 + t2]
+        return [rval]
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes

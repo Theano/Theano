@@ -224,6 +224,7 @@ def Rop(f, wrt, eval_points):
         op = node.op
         inputs = node.inputs
 
+
         # Compute the evaluation points corresponding to each of the
         # inputs of the node
         local_eval_points = []
@@ -231,14 +232,14 @@ def Rop(f, wrt, eval_points):
             if inp in wrt:
                 local_eval_points.append(eval_points[wrt.index(inp)])
             elif inp.owner is None:
-                try:
-                    local_eval_points.append(inp.zeros_like())
-                except:
-                    # None should be used for non-differentiable
-                    # arguments, like for example random states
-                    local_eval_points.append(None)
+                # This avoids relying on Theano to eliminate expressions
+                # that include zeros_like if they evaluate to 0. This
+                # can be especially useful when involving more obscure
+                # ops for which optimizations to remove zeros_like are
+                # not implemented
+                local_eval_points.append(None)
+                #local_eval_points.append(inp.zeros_like())
             elif inp.owner in seen_nodes:
-
                 local_eval_points.append(
                     seen_nodes[inp.owner][inp.owner.outputs.index(inp)])
 

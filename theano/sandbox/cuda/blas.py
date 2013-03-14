@@ -907,6 +907,206 @@ class GpuDownsampleFactorMax(GpuOp):
         """ % locals()
 
 
+class GpuDownsampleFactorMaxRop(GpuOp):
+    """
+    Implement rop for downsample with max on the gpu.
+    """
+    def __init__(self, ds, ignore_border=False):
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.ds == other.ds and
+                self.ignore_border == other.ignore_border)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__,
+                              self.ds,
+                              self.ignore_border)
+
+    def make_node(self, x, ex):
+        if not isinstance(x.type, CudaNdarrayType):
+            raise TypeError()
+        if not isinstance(ex.type, CudaNdarrayType):
+            raise TypeError()
+        if not x.type.ndim == 4:
+            raise TypeError()
+        return Apply(self, [x, ex], [x.type()])
+
+    #def perform(self, node, input_storage, output_storage):
+        #raise NotImplementedError('only C is implemented')
+    def c_code_cache_version(self):
+        return (1)
+
+    def c_code(self, node, nodename, inps, out, sub):
+        x, ex = inps
+        z, = out
+        fail = sub['fail']
+        ds0, ds1 = self.ds
+        ignore_border = int(self.ignore_border)
+        return """
+        int dims[4], xdim2, xdim3;
+        if (%(x)s->nd != 4)
+        {
+            PyErr_SetString(PyExc_ValueError, "rank error");
+            %(fail)s;
+        }
+        xdim2 = CudaNdarray_HOST_DIMS(%(x)s)[2];
+        xdim3 = CudaNdarray_HOST_DIMS(%(x)s)[3];
+        dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+        dims[1] = CudaNdarray_HOST_DIMS(%(x)s)[1];
+        dims[2] = xdim2 / %(ds0)s;
+        dims[3] = xdim3 / %(ds1)s;
+        if (! %(ignore_border)s)
+        {
+            dims[2] += (xdim2%%(%(ds0)s)?1:0);
+            dims[3] += (xdim3%%(%(ds1)s)?1:0);
+        }
+        if(dims[3]>512){
+            PyErr_Format(PyExc_ValueError,
+                         "GpuDownsampleFactorMaxRop: last dimension size of %%d"
+                         " is bigger then 512. This case is not implemented.",
+                         dims[3]);
+            %(fail)s;
+        }
+
+        if ((NULL == %(z)s)
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != dims[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != dims[1])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[2] != dims[2])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[3] != dims[3]))
+        {
+            Py_XDECREF(%(z)s);
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
+            if ((NULL == %(z)s)
+                || CudaNdarray_alloc_contiguous(%(z)s, 4, dims))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = NULL;
+                PyErr_SetString(PyExc_ValueError,
+                                "Was not able to allocate output!");
+                %(fail)s;
+            }
+        }
+        {
+
+            dim3 grid(dims[0] * dims[1], dims[2]);
+            //dim3 block(std::min(dims[3], 512));
+            //TODO: implement this by supporting more outputs than threads
+            dim3 block(dims[3]);
+            if ((grid.x*grid.y) && dims[3])
+            kMaxPoolRop_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block,
+                                                       2*xdim3*sizeof(float)>>>(
+                dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
+                CudaNdarray_DEV_DATA(%(x)s),
+                CudaNdarray_DEV_DATA(%(ex)s),
+                CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                CudaNdarray_DEV_DATA(%(z)s),
+                CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                CudaNdarray_HOST_STRIDES(%(z)s)[3]);
+            CNDA_THREAD_SYNC;
+            cudaError_t err = cudaGetLastError();
+            if( cudaSuccess != err)
+            {
+                PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: %%s: %%s. (grid: %%i x %%i;"
+                    " block: %%i x %%i x %%i)\\n",
+                    "kMaxPoolRop_%(nodename)s",
+                    cudaGetErrorString(err),
+                    grid.x,
+                    grid.y,
+                    block.x,
+                    block.y,
+                    block.z);
+                %(fail)s;
+            }
+        }
+        """ % locals()
+
+    def c_support_code_apply(self, node, nodename):
+        ignore_border = int(self.ignore_border)
+        return """
+        template<int pf2, int pf3>
+        __global__ void kMaxPoolRop_%(nodename)s(
+           int D0, int D1, int D2, int D3, int xD2, int xD3,
+           const float * x,
+           const float * ev,
+           int xS0, int xS1, int xS2, int xS3,
+           float *z, int zS0, int zS1, int zS2, int zS3)
+        {
+            float cur_max, cur_x, cur_ev, cur_max_ev;
+            int i0 = blockIdx.x %% D0;
+            int i1 = blockIdx.x / D0;
+            int i2 = blockIdx.y;
+
+            extern __shared__ float xbuf[]; //size [xD3]
+
+            for (int r2 = 0;
+                 (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
+                 ++r2)
+            {
+                __syncthreads();
+                // load the current row of the image into shared memory
+                for (int j = threadIdx.x; j < xD3; j += blockDim.x)
+                {
+                    xbuf[j]       =  x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
+                    xbuf[j + xD3] = ev[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
+                }
+                __syncthreads();
+
+                // initialize our max if this is the first row we're loading
+                cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
+                cur_max_ev = (r2 == 0) ? xbuf[xD3 + threadIdx.x*pf3] :cur_max_ev;
+
+                // do a mini-reduction over the pf3 relevant elements
+                // in the current row
+                if (%(ignore_border)s)
+                {
+                    for (int k = 0; k < pf3; ++k)
+                    {
+                        cur_x  = xbuf[threadIdx.x*pf3+k];
+                        cur_ev = xbuf[xD3 + threadIdx.x*pf3+k];
+                        if (cur_x > cur_max)
+                        {
+                            cur_max = cur_x;
+                            cur_max_ev = cur_ev;
+                        }
+
+                    }
+                }
+                else
+                {
+                    for (int k = 0; k < pf3; ++k)
+                    {
+                        if (threadIdx.x*pf3 + k < xD3)
+                        {
+                            cur_x  = xbuf[threadIdx.x*pf3+k];
+                            cur_ev = xbuf[xD3+threadIdx.x*pf3+k];
+                            if (cur_x > cur_max)
+                            {
+                            cur_max = cur_x;
+                            cur_max_ev = cur_ev;
+                            }
+                        }
+                    }
+                }
+            }
+
+            //store the result to global memory
+            z[i0*zS0 + i1*zS1 + i2*zS2 + threadIdx.x*zS3] = cur_max_ev;
+        }
+        """ % locals()
+
+
 class GpuDownsampleFactorMaxGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
