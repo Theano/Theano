@@ -3749,7 +3749,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert a.broadcastable == self.ix2.broadcastable, (
                 a.broadcastable, self.ix2.broadcastable)
 
-    def test_inc_adv_selection(self):
+    def test_inc_adv_subtensor_w_matrix(self):
         if not AdvancedIncSubtensor.increment_available:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
@@ -3763,7 +3763,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                                 [1, 2]])
         assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
 
-    def test_inc_adv_selection2(self):
+    def test_inc_adv_subtensor_w_2vec(self):
         if not AdvancedIncSubtensor.increment_available:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
@@ -3785,7 +3785,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [5 * 3,   6,  7],
                   [.5, .3 * 2, .15]]), aval
 
-    def test_inc_adv_selection_with_broadcasting(self):
+    def test_inc_adv_subtensor_with_broadcasting(self):
         if not AdvancedIncSubtensor.increment_available:
             raise SkipTest("inc_subtensor with advanced indexing not enabled. "
                     "Installing NumPy 1.8 or the latest development version "
