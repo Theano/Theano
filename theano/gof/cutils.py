@@ -3,6 +3,7 @@ import os, sys
 from theano.compat import PY3
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
+import cmodule 
 
 # TODO These two lines may be removed in the future, when we are 100% sure
 # noone has an old cutils_ext.so lying around anymore.
@@ -243,7 +244,6 @@ fail:
         """
 
     
-    import cmodule 
     loc = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(loc):
         os.mkdir(loc)
@@ -269,8 +269,6 @@ try:
     try:
         from cutils_ext.cutils_ext import *
     except ImportError:
-        import cmodule
-
         get_lock()
     # Ensure no-one else is currently modifying the content of the compilation
     # directory. This is important to prevent multiple processes from trying to
@@ -282,7 +280,6 @@ try:
                 # and when we receive the lock
                 from cutils_ext.cutils_ext import *
             except ImportError:
-                import cmodule
 
                 compile_cutils()
                 from cutils_ext.cutils_ext import *
