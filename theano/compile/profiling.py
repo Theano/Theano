@@ -250,7 +250,7 @@ class ProfileStats(object):
         return rval
 
     def op_impl(self):
-        """dict op -> total number of nodes"""
+        """dict op -> 'C' or 'Py' depending how the op is implemented"""
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
         for node in self.apply_callcount:
