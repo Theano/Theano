@@ -3803,6 +3803,24 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [5 + 2.1 * 2,   6,  7],
                   [.5, .3 + 2.1, .15]]), aval
 
+    def test_inc_adv_subtensor_with_index_broadcasting(self):
+        check_increment_available()
+
+        a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
+
+        assert a.type == self.m.type, (a.type, self.m.type)
+        f = theano.function([self.m, self.ix1, self.ix2], a,
+                            allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+                 [0, 2, 0],
+                 [[0, 1, 0],
+                  [2, 2, 2]])
+        assert numpy.allclose(aval,
+                [[.4 + 2*2.1, .9, .1 + 2*2.1],
+                  [5 ,   6,  7 ],
+                  [.5, .3 + 2.1, .15 + 2.1]]), aval
 
 class T_Join_and_Split(unittest.TestCase):
     """
