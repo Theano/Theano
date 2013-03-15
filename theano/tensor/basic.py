@@ -7243,6 +7243,7 @@ class SliceType(gof.Type):
     def __str__(self):
         return "slice"
 
+slicetype = SliceType()
 
 
 class NoneTypeT(gof.Type):
@@ -7255,7 +7256,6 @@ class NoneTypeT(gof.Type):
 
     def __str__(self):
         return "None"
-slicetype = SliceType()
 
 NoneConst = Constant(NoneTypeT(), None, name = 'None')
     
