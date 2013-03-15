@@ -3721,6 +3721,11 @@ class TestIncSubtensor1(unittest.TestCase):
         self.assertRaises(TypeError,
                 lambda: inc_subtensor(self.v[self.adv1q], fmatrix()))
 
+def check_increment_available():
+    if not AdvancedIncSubtensor.increment_available:
+        raise SkipTest("inc_subtensor with advanced indexing not enabled. "
+                       "Installing NumPy 1.8 or the latest development version "
+                       "should make that feature available.")
 
 class TestAdvancedSubtensor(unittest.TestCase):
     # test inc_subtensor
@@ -3750,10 +3755,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                 a.broadcastable, self.ix2.broadcastable)
 
     def test_inc_adv_subtensor_w_matrix(self):
-        if not AdvancedIncSubtensor.increment_available:
-            raise SkipTest("inc_subtensor with advanced indexing not enabled. "
-                    "Installing NumPy 1.8 or the latest development version "
-                    "should make that feature available.")
+        check_increment_available()
 
         a = inc_subtensor(self.v[self.ix2], self.v[self.ix2])
 
@@ -3764,10 +3766,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
 
     def test_inc_adv_subtensor_w_2vec(self):
-        if not AdvancedIncSubtensor.increment_available:
-            raise SkipTest("inc_subtensor with advanced indexing not enabled. "
-                    "Installing NumPy 1.8 or the latest development version "
-                    "should make that feature available.")
+        check_increment_available()
+
         subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
 
@@ -3786,10 +3786,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
-        if not AdvancedIncSubtensor.increment_available:
-            raise SkipTest("inc_subtensor with advanced indexing not enabled. "
-                    "Installing NumPy 1.8 or the latest development version "
-                    "should make that feature available.")
+        check_increment_available()
+
         a = inc_subtensor(self.m[self.ix1, self.ix12], 2.1)
 
         assert a.type == self.m.type, (a.type, self.m.type)
