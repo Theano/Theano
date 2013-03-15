@@ -16,6 +16,7 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 import atexit
 import copy
+import os
 import sys
 import time
 
@@ -161,6 +162,18 @@ class ProfileStats(object):
         **kwargs - misc initializers. These should (but need not) match the
                    names of the class vars declared in this class.
         """
+        if (hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            theano.sandbox.cuda.cuda_enabled):
+            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
+                raise Exception(
+                    "You are running Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution are asynchron by default."
+                    " So by default, the profile is useless."
+                    " You must use set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
+                    " synchonize the execution to get meaning full profile.")
+
         self.apply_callcount = {}
         self.output_size = {}
         self.apply_time = {}
