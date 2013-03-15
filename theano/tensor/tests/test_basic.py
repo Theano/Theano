@@ -3755,8 +3755,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
     def test_inc_adv_subtensor_w_matrix(self):
         if inplace_increment is None: 
             raise inplace_increment_missing
-
-        a = inc_subtensor(self.v[self.ix2], self.v[self.ix2])
+        
+        subt = self.v[self.ix2]
+        a = inc_subtensor(subt,subt)
 
         assert a.type == self.v.type, (a.type, self.v.type)
         f = theano.function([self.v, self.ix2], a, allow_input_downcast=True)

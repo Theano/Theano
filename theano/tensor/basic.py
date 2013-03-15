@@ -5084,6 +5084,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     """
     # First of all, y cannot have a higher dimension than x,
     # nor have non-broadcastable dimensions where x is broadcastable.
+
     x = as_tensor_variable(x)
     y = as_tensor_variable(y)
 
@@ -5154,7 +5155,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         # Try to apply inc_subtensor on inner_x.
         # If it works, there is no need to reshape, as the inc_subtensor
         # will have the same shape as inner_x, which is what we want.
-        inner_incsubtensor = inc_subtensor(inner_x, y,
+        inner_incsubtensor = inc_subtensor(inner_x, y.flatten(),
                 inplace=inplace,
                 set_instead_of_inc=set_instead_of_inc,
                 tolerate_inplace_aliasing=tolerate_inplace_aliasing)
