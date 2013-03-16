@@ -29,7 +29,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        )
-from theano.sandbox.linalg import eig, eigh
+from theano.sandbox.linalg import eig, eigh, eigvals, eigvalsh
 from nose.plugins.skip import SkipTest
 
 
@@ -533,3 +533,27 @@ class test_Eigh(test_Eig):
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
+
+class test_eigvals(test_Eig):
+    op = staticmethod(eigvals)
+    def test_infer_shape(self):
+        A = self.A
+        S = self.S
+        self._compile_and_check([A],  # theano.function inputs
+                                [self.op(A)],  # theano.function outputs
+                                # S must be square
+                                [S],
+                                self.op_class)
+    def test_eval(self):
+        import math
+        A = theano.tensor.matrix(dtype=self.dtype)
+        x = [[0.0, 1], [1, 0]] 
+        w = self.op(A).eval({A: x})
+        w.sort()
+        assert_array_almost_equal(w, [-1, 1])
+        w = self.op(x).eval()
+        w.sort()
+        assert_array_almost_equal(w, [-1, 1])
+
+class test_eigvalsh(test_eigvals):
+    op = staticmethod(eigvalsh)
