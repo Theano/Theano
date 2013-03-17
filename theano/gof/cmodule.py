@@ -1470,6 +1470,34 @@ def gcc_version():
     return gcc_version_str
 
 
+def gcc_llvm():
+    """ Detect if the g++ version used is the llvm one or not.
+
+    It don't support all g++ parameters even if it support many of them.
+    """
+    if gcc_llvm.is_llvm is None:
+        pass
+        p = None
+        try:
+            p = call_subprocess_Popen(['g++', '--version'],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            p.wait()
+            output = p.stdout.read() + p.stderr.read()
+        except OSError:
+            # Typically means g++ cannot be found.
+            # So it is not an llvm compiler.
+
+            # Normally this should not happen as we should not try to
+            # compile when g++ is not available. If this happen, it
+            # will crash later so supposing it is not llvm is "safe".
+            output = b('')
+        del p
+        gcc_llvm.is_llvm = b("llvm") in output
+    return gcc_llvm.is_llvm
+gcc_llvm.is_llvm = None
+
+
 class GCC_compiler(object):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
@@ -1520,16 +1548,19 @@ class GCC_compiler(object):
                 lines = []
                 if parse:
                     for line in stdout + stderr:
-                        if "COLLECT_GCC_OPTIONS=" in line:
+                        if b("COLLECT_GCC_OPTIONS=") in line:
                             continue
-                        elif "-march=" in line and "-march=native" not in line:
+                        elif b("-march=") in line and b("-march=native") not in line:
                             lines.append(line.strip())
-                        elif "-mtune=" in line and "-march=native" not in line:
+                        elif b("-mtune=") in line and b("-march=native") not in line:
                             lines.append(line.strip())
                     lines = list(set(lines))  # to remove duplicate
                 else:
                     lines = stdout + stderr
-                return lines
+                if PY3:
+                    return [line.decode() for line in lines]
+                else:
+                    return lines
 
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
