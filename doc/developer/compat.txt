@@ -11,8 +11,12 @@ Installation (2to3 and setup.py)
 --------------------------------
 
 
-Compatibility package (theano.compat)
+Python code compatibility
 -------------------------------------
+
+
+Compatibility package (theano.compat)
+.....................................
 
 Compatibility between 2.x and 3.x is implemented using six_, a Python
 2 and 3 compatibility library by Benjamin Peterson.  A copy of six_
@@ -33,7 +37,21 @@ Incorrect:
 
 ::
 
-   from six import b 
+   from six import b
+
+Strings, bytes and unicode
+..........................
+
+
+
+C code compatibility
+--------------------
+
+Module initialization
+.....................
+
+PyCapsule and PyCObject
+.......................
 
 
 
