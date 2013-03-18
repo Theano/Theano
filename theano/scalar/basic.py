@@ -23,7 +23,8 @@ import numpy
 import theano
 from theano.compat import PY3
 from theano import gof
-from theano.gof import Op, utils, Variable, Constant, Type, Apply, FunctionGraph
+from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
+        FunctionGraph)
 from theano.gof.python25 import partial, all, any
 from theano.configparser import config
 
@@ -1090,7 +1091,7 @@ class UnaryBitOp(UnaryScalarOp):
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
-        return [None]
+        return [inputs[0].zeros_like().astype(theano.config.floatX)]
 
 
 class BinaryBitOp(BinaryScalarOp):
@@ -1103,7 +1104,8 @@ class BinaryBitOp(BinaryScalarOp):
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
-        return [None, None]
+        a,b = inputs
+        return [a.zeros_like().astype(theano.config.floatX), b.zeros_like().astype(theano.config.floatX)]
 
 
 class OR(BinaryBitOp):
@@ -2679,7 +2681,7 @@ class Composite(ScalarOp):
         except AttributeError:
             if 0:
                 l = []
-                for n in fgraph.toposort():
+                for n in self.fgraph.toposort():
                     if hasattr(n.op, "name") and n.op.name is not None:
                         v = n.op.name
                         if v.startswith("Composite"):
