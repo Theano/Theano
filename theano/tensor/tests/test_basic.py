@@ -2998,6 +2998,20 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == ())
         self.assertTrue(numpy.all(tval == 0))
 
+    def test_long(self):
+        n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
+        t = n[1L:4L:2L, 1L]
+        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        tval = self.eval_output_and_check(t)
+        self.assertTrue(tval.shape == (2,))
+        self.assertTrue(numpy.all(tval == [4, 10]))
+
+    def test_long_too_big(self):
+        # Currently, we cast Python longs to int64 when used for indexing.
+        # This test checks that using a long that does not fit raises an error.
+        n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
+        self.assertRaises(Exception, lambda: n[:(2L ** 63)])
+
     def test_newaxis(self):
         """
         newaxis support comes from logic in the __getitem__ of TensorType
