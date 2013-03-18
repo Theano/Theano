@@ -1,0 +1,67 @@
+===================================
+Compatibility with Python versions.
+===================================
+
+Theano is compatible with Python versions >= 2.4 including 3.x series.
+This guide provides coding guidelines on how to maintain
+comnpatibility.
+
+
+Installation (2to3 and setup.py)
+--------------------------------
+
+
+Python code compatibility
+-------------------------------------
+
+
+Compatibility package (theano.compat)
+.....................................
+
+Compatibility between 2.x and 3.x is implemented using six_, a Python
+2 and 3 compatibility library by Benjamin Peterson.  A copy of six_
+library is included in theano.compat package, but it should not be
+called directly.  Instead, use symbols exposed at the package level.
+
+Correct:
+
+::
+
+   from theano.compat import b
+
+Incorrect:
+
+::
+
+   from theano.compat.six import b 
+
+::
+
+   from six import b
+
+Strings, bytes and unicode
+..........................
+
+
+
+C code compatibility
+--------------------
+
+Module initialization
+.....................
+
+PyCapsule and PyCObject
+.......................
+
+
+
+References
+----------
+
+.. _six: http://pythonhosted.org/six
+.. _[What's new in Python 2.5]: http://docs.python.org/2/whatsnew/2.5.html
+.. _[What's new in Python 2.6]: http://docs.python.org/2/whatsnew/2.5.html
+.. _[What's new in Python 2.7]: http://docs.python.org/2/whatsnew/2.5.html
+.. _[What's new in Python 3.0]: http://docs.python.org/2/whatsnew/3.0.html
+.. _[What's new in Python 3.1]: http://docs.python.org/2/whatsnew/3.1.html
+.. _[What's new in Python 3.2]: http://docs.python.org/2/whatsnew/3.2.html
