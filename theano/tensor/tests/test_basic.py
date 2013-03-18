@@ -37,13 +37,13 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
-        iscalars, arange,  dscalars, fvector, imatrix, numeric_grad,
+        iscalars, arange, dscalars, fvector, imatrix, numeric_grad,
         opt, ComplexError, lvector, lmatrix, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
-        nonzero, flatnonzero, nonzero_values)
+        nonzero, flatnonzero, nonzero_values, inplace_increment)
 from theano.tests import unittest_tools as utt
 
 
@@ -3131,10 +3131,6 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0, 0])
 
-    def test_err_invalid_not_2d(self):
-        n = self.shared(numpy.ones((3, 3, 3), dtype=self.dtype) * 5)
-        self.assertRaises(NotImplementedError, n.__getitem__,
-                          ([0, 0, 0], [1, 1, 1], [2, 2, 2]))
 
     def test_err_invalid_2list_dtype(self):
         n = self.shared(numpy.ones((3, 3), dtype=self.dtype) * 5)
@@ -3725,6 +3721,109 @@ class TestIncSubtensor1(unittest.TestCase):
         self.assertRaises(TypeError,
                 lambda: inc_subtensor(self.v[self.adv1q], fmatrix()))
 
+inplace_increment_missing = SkipTest("inc_subtensor with advanced indexing not enabled. "
+                       "Installing NumPy 1.8 or the latest development version "
+                       "should make that feature available.")
+
+class TestAdvancedSubtensor(unittest.TestCase):
+    # test inc_subtensor
+    # also tests set_subtensor
+
+    def setUp(self):
+        self.s = iscalar()
+        self.v = fvector()
+        self.m = dmatrix()
+        self.t = ctensor3()
+
+        self.ix1 = lvector()  # advanced 1d query
+        self.ix12 = lvector()
+        self.ix2 = lmatrix()
+
+    def test_cant_adv_idx_into_scalar(self):
+        self.assertRaises(TypeError, lambda: self.s[self.ix1])
+
+    def test_index_into_vec_w_vec(self):
+        a = self.v[self.ix1]
+        assert a.type == self.v.type, (a.type, self.v.type)
+
+    def test_index_into_vec_w_matrix(self):
+        a = self.v[self.ix2]
+        assert a.dtype == self.v.dtype, (a.dtype, self.v.dtype)
+        assert a.broadcastable == self.ix2.broadcastable, (
+                a.broadcastable, self.ix2.broadcastable)
+
+    def test_inc_adv_subtensor_w_matrix(self):
+        if inplace_increment is None: 
+            raise inplace_increment_missing
+        
+        subt = self.v[self.ix2]
+        a = inc_subtensor(subt,subt)
+
+        assert a.type == self.v.type, (a.type, self.v.type)
+        f = theano.function([self.v, self.ix2], a, allow_input_downcast=True)
+        aval = f([.4, .9, .1], [[1, 2],
+                                [1, 2]])
+        assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
+
+    def test_inc_adv_subtensor_w_2vec(self):
+        if inplace_increment is None: 
+            raise inplace_increment_missing
+
+        subt = self.m[self.ix1, self.ix12]
+        a = inc_subtensor(subt, subt)
+
+        typ = TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
+        assert a.type == typ, (a.type, typ)
+        f = theano.function([self.m, self.ix1, self.ix12], a,
+                            allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+                 [1, 2, 1],
+                 [0, 1, 0])
+        assert numpy.allclose(aval,
+                [[.4, .9, .1],
+                  [5 * 3,   6,  7],
+                  [.5, .3 * 2, .15]]), aval
+
+    def test_inc_adv_subtensor_with_broadcasting(self):
+        if inplace_increment is None: 
+            raise inplace_increment_missing
+
+        a = inc_subtensor(self.m[self.ix1, self.ix12], 2.1)
+
+        assert a.type == self.m.type, (a.type, self.m.type)
+        f = theano.function([self.m, self.ix1, self.ix12], a,
+                            allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+                 [1, 2, 1],
+                 [0, 1, 0])
+        assert numpy.allclose(aval,
+                [[.4, .9, .1],
+                  [5 + 2.1 * 2,   6,  7],
+                  [.5, .3 + 2.1, .15]]), aval
+
+    def test_inc_adv_subtensor_with_index_broadcasting(self):
+        if inplace_increment is None: 
+            raise inplace_increment_missing
+
+        a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
+
+        assert a.type == self.m.type, (a.type, self.m.type)
+        f = theano.function([self.m, self.ix1, self.ix2], a,
+                            allow_input_downcast=True)
+        aval = f([[.4, .9, .1],
+                  [5,   6,  7],
+                  [.5, .3, .15]],
+                 [0, 2, 0],
+                 [[0, 1, 0],
+                  [2, 2, 2]])
+        assert numpy.allclose(aval,
+                [[.4 + 2*2.1, .9, .1 + 2*2.1],
+                  [5 ,   6,  7 ],
+                  [.5, .3 + 2.1, .15 + 2.1]]), aval
 
 class T_Join_and_Split(unittest.TestCase):
     """
