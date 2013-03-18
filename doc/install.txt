@@ -463,15 +463,15 @@ Any one of them is enough.
 
 .. note::
 
-    On Dedian, you can ask the software package manager to install it
-    for you. We have a user report that this work for Debian Wheezy
+    On Debian, you can ask the software package manager to install it
+    for you. We have a user report that this works for Debian Wheezy
     (7.0). When you install it this way, you won't always have the
-    latest version, but we where said that they it get updated
-    rapidly. One big advantage is that it will be updated
+    latest version, but we were told that it gets updated
+    regularly. One big advantage is that it will be updated
     automatically. You can try the ``sudo apt-get install
     nvidia-cuda-toolkit`` command to install it.
 
-    :ref:`Ubuntu instruction <install_ubuntu_gpu>`.
+    :ref:`Ubuntu instructions <install_ubuntu_gpu>`.
 
 
 

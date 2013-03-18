@@ -51,8 +51,8 @@ Bug fix:
 New Features:
  * More Theano determinism (Ian G., Olivier D., Pascal L.)
      * Add and use a new class OrderedSet.
-     * theano.grad is now determinist.
-     * Warn when the user use a dictionary and this cause non-determinism in Theano.
+     * theano.grad is now deterministic.
+     * Warn when the user uses a (non ordered) dictionary and this causes non-determinism in Theano.
      * The Updates class was non-deterministic; replaced it with the OrderedUpdates class.
  * tensor.tensordot now support Rop/Lop (Jeremiah Lowin)
    This remove the class TensorDot and TensorDotGrad. It is the Dot/Elemwise ops that are used.
@@ -68,7 +68,7 @@ New Features:
 
 Interface Deprecation (a warning is printed):
  * theano.misc.strutil.renderString -> render_string (Ian G.)
- * Print a warning when using dictionary and this make Theano non-deterministic.
+ * Print a warning when using dictionary and this makes Theano non-deterministic.
 
 Interface Change:
  * Raise an error when theano.shared called with a theano variable. (Frederic B.)
@@ -79,8 +79,8 @@ Interface Change:
  * In the grad method, if it were asked to raise an error if there is no path between the variables, we didn't always returned an error. (Ian G.)
    We returned the mathematical right answer 0 in those cases.
  * get_constant_value() renamed get_scalar_constant_value() and raise a new exception tensor.basic.NotScalarConstantError. (Ian G.)
- * theano.function raise an error when triing to replace inputs with the given paramter. (Olivier D.)
-   This was doing nothing, the error message explain what the user probably want to do.
+ * theano.function raises an error when trying to replace inputs with the 'given' parameter. (Olivier D.)
+   This was doing nothing, the error message explains what the user probably wants to do.
 
 New Interface (reuse existing functionality):
  * tensor_var.sort() as a shortcut for theano.tensor.sort. (Jeremiah Lowin)
@@ -93,7 +93,7 @@ New debug feature:
  * Better profiling of test time with `theano-nose --time-profile`. (Frederic B.)
  * Detection of infinite loop with global optimizer. (Pascal L.)
  * DebugMode.check_preallocated_output now also work on Theano function output. (Pascal L.)
- * DebugMode will now complains when the strides of CudaNdarray of dimensions of 1 aren't 0. (Frederic B.)
+ * DebugMode will now complain when the strides of CudaNdarray of dimensions of 1 are not 0. (Frederic B.)
 
 Speed-ups:
  * c_code for SpecifyShape op. (Frederic B.)
@@ -101,7 +101,7 @@ Speed-ups:
  * The Scan optimization ScanSaveMem and PushOutDot1 applied more frequently. (Razvan P, reported Abalkin)
    A skipped optimization warning was printed.
  * dot(vector, vector) now faster with some BLAS implementation. (Eric Hunsberger)
-   OpenBLAS and possibly others didn't called {s,d}dot internally when we called {s,d}gemv.
+   OpenBLAS and possibly others didn't call {s,d}dot internally when we called {s,d}gemv.
    MKL was doing this.
  * Compilation speed up: Take the compiledir lock only for op that generate c_code. (Frederic B)
  * More scan optimization (Razvan P.)
@@ -131,11 +131,11 @@ Crash Fixes:
    Sometimes, we where not able knowing this before run time and resulted in crash. (Frederic B.)
  * Fix compilation problems on GPU on Windows. (Frederic B.)
  * Fix copy on the GPU with big shape for 4d tensor (Pascal L.)
- * GpuSubtensor didn't set the stride to 0 for dimensions of 1. This could lead to check failing later that cause a crash. (Frederic B., reported by vmichals)
+ * GpuSubtensor didn't set the stride to 0 for dimensions of 1. This could lead to check failing later that caused a crash. (Frederic B., reported by vmichals)
 
 Theoretical bugfix (bug that won't happen with current Theano code, but if you messed with the internal, could have affected you):
  * GpuContiguous, GpuAlloc, GpuDownSampleGrad, Conv2d now check the preallocated outputs strides before using it. (Pascal L.)
- * GpuDownSample, GpuDownSampleGrad didn't worked correctly with negative strides in their output due to problem with nvcc (Pascal L, reported by abalkin?)
+ * GpuDownSample, GpuDownSampleGrad didn't work correctly with negative strides in their output due to problem with nvcc (Pascal L, reported by abalkin?)
 
 Others:
  * Fix race condition when determining if g++ is available. (Abalkin)

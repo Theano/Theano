@@ -241,9 +241,9 @@ the output shape was computed correctly, or if some shapes with the
 same value have been mixed up. For instance, if the infer_shape uses
 the width of a matrix instead of its height, then testing with only
 square matrices will not detect the problem. This is why the
-``self._compile_and_check`` method print a warning in such a case. If
-your op work only in such case, you can diable the warning with the
-warn=True parameter.
+``self._compile_and_check`` method prints a warning in such a case. If
+your op works only with such matrices, you can disable the warning with the
+``warn=False`` parameter.
 
 .. code-block:: python
 
