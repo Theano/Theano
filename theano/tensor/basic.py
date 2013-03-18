@@ -4457,6 +4457,12 @@ class Subtensor(Op):
         # See <http://projects.scipy.org/numpy/ticket/2235>.
         elif isinstance(entry, (numpy.integer, int)):
             return entry
+        # On Windows 64-bit, shapes are returned as Python long, as they can
+        # be bigger than what a Python int can hold.
+        # Shapes should always fit in a numpy.int64, and we support them better
+        elif isinstance(entry, long):
+            entry64 = numpy.int64(entry)
+            return entry64
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
