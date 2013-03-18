@@ -5,7 +5,8 @@ import numpy
 
 from theano.gof import Op, Apply
 
-from theano.tensor import as_tensor_variable, dot, DimShuffle
+from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
+from theano.tensor.blas import Dot22
 from theano import tensor
 import theano.tensor
 from theano.tensor.opt import (register_stabilize,
@@ -227,7 +228,7 @@ def is_positive(v):
 def inv_as_solve(node):
     if not imported_scipy:
         return False
-    if node.op == dot:
+    if isinstance(node.op, (Dot, Dot22)):
         l, r = node.inputs
         if l.owner and l.owner.op == matrix_inverse:
             return [solve(l.owner.inputs[0], r)]

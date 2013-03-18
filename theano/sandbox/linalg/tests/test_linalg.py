@@ -28,6 +28,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        spectral_radius_bound,
                                        imported_scipy,
                                        Eig,
+                                       inv_as_solve,
                                        )
 from theano.sandbox.linalg import eig, eigh
 from nose.plugins.skip import SkipTest
@@ -533,3 +534,10 @@ class test_Eigh(test_Eig):
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
+
+def test_matrix_inverse_solve():
+    A = theano.tensor.dmatrix('A')
+    b = theano.tensor.dmatrix('b')
+    node = matrix_inverse(A).dot(b).owner
+    [out] = inv_as_solve.transform(node)
+    assert isinstance(out.owner.op, Solve)
