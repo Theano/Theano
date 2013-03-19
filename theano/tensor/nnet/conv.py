@@ -36,34 +36,37 @@ _logger = logging.getLogger("theano.tensor.nnet.conv")
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), **kargs):
-    """This function will build the symbolic graph for convolving a stack of input
-    images with a set of filters. The implementation is modelled after
-    Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp but
-    provides a much cleaner interface.
+    """This function will build the symbolic graph for convolving a stack of
+    input images with a set of filters. The implementation is modelled after
+    Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp
+    but provides a much cleaner interface.
 
     :type input: symbolic 4D tensor
-    :param input: mini-batch of feature map stacks, of shape image_shape.
+    :param input: mini-batch of feature map stacks, of shape
+                  (batch size, stack size, nb row, nb col)
+                  see the optional parameter image_shape
 
     :type filters: symbolic 4D tensor
-    :param filters: set of filters used in CNN layer of shape filter_shape
+    :param filters: set of filters used in CNN layer of shape
+                    (nb filters, stack size, nb row, nb col)
+                    see the optional parameter filter_shape
 
     :param border_mode:
        'valid'-- only apply filter to complete patches of the image. Generates
                  output of shape: image_shape - filter_shape + 1
-       'full' -- zero-pads image to multiple of filter shape to generate output of
-                 shape: image_shape + filter_shape - 1
+       'full' -- zero-pads image to multiple of filter shape to generate output
+                 of shape: image_shape + filter_shape - 1
 
     :type subsample: tuple of len 2
     :param subsample: factor by which to subsample the output
 
     :type image_shape: None, tuple/list of len 4 of int or Constant variable
-    :param image_shape: (batch size, stack size, nb row, nb col)
+    :param image_shape: The shape of the input parameter.
                         Optional, used for optimization like loop unrolling
                         You can put None for any element of the list
                         to tell that this element is not constant.
     :type filter_shape: None, tuple/list of len 4 of int or Constant variable
-    :param filter_shape: (nb filters, stack size, nb row, nb col)
-                         Optional, used for optimization like loop unrolling
+    :param filter_shape: Optional, used for optimization like loop unrolling
                          You can put None for any element of the list
                          to tell that this element is not constant.
     :param kwargs: kwargs are passed onto ConvOp.
