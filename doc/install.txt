@@ -940,7 +940,7 @@ This installer will:
   ``theanorc_default.txt``, and set it up as your ``.theanorc.txt`` if it
   does not exist. It contains:
 
-.. code-block:: config
+.. code-block:: cfg
 
     [global]
     openmp=False
