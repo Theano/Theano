@@ -477,8 +477,8 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 
-PyObject * CudaNdarray_View(const CudaNdarray * self);
-PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
+DllExport PyObject * CudaNdarray_View(const CudaNdarray * self);
+DllExport PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 
 
 
@@ -487,7 +487,7 @@ PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 // *arr may initially be NULL, a pointer to an ndarray of the wrong size,
 // or a pointer to an ndarray of the right size. In the last case it will
 // not change.
-int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
+DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims);
 
 #endif
