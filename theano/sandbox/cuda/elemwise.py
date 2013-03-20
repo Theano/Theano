@@ -9,6 +9,8 @@ import copy, logging, StringIO, sys
 
 import numpy
 
+from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
+from theano.scalar.basic_scipy import Erfinv
 from theano import Apply, Constant, Op, Type, Variable
 from theano import gof, scalar, tensor
 
@@ -1021,3 +1023,25 @@ nd_collapse_[i]=0;
         #print sio.getvalue()
         return sio.getvalue()
 
+
+class ErfinvGPU(Erfinv):
+    """
+    Provides a c-code implementation of the inverse error function for GPU.
+    
+    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
+    currently rely on Nvidia's cublas library to provide the erfinv
+    c-implementation (which requires different c_headers). As it stands,
+    theano.scalar.basic_scipy.Erfinv does not have c_code as scipy does not
+    export the required C function
+    """
+    def c_headers(self):
+        return ['math_functions.h', 'cublas_v2.h']
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = erfinv(%(x)s);" % locals()
+
+erfinv_gpu = ErfinvGPU(upgrade_to_float_no_complex, name='erfinv_gpu')

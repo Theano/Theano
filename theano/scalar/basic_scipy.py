@@ -78,6 +78,15 @@ erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
 class Erfinv(UnaryScalarOp):
+    """
+    Implements the inverse error function.
+
+    Note: This op can still be executed on GPU, despite not having c_code.  When
+    running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
+    with sandbox.cuda.elemwise.ErfinvGPU.
+
+    (TODO) Find a C implementation of erfinv for CPU.
+    """
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfinv(x)
