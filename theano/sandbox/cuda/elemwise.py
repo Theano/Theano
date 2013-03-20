@@ -1025,7 +1025,15 @@ nd_collapse_[i]=0;
 
 
 class ErfinvGPU(Erfinv):
-
+    """
+    Provides a c-code implementation of the inverse error function for GPU.
+    
+    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
+    currently rely on Nvidia's cublas library to provide the erfinv
+    c-implementation (which requires different c_headers). As it stands,
+    theano.scalar.basic_scipy.Erfinv does not have c_code as scipy does not
+    export the required C function
+    """
     def c_libraries(self):
         return ['math.h']
 
