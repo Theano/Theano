@@ -1034,9 +1034,6 @@ class ErfinvGPU(Erfinv):
     theano.scalar.basic_scipy.Erfinv does not have c_code as scipy does not
     export the required C function
     """
-    def c_libraries(self):
-        return ['math.h']
-
     def c_headers(self):
         return ['math_functions.h', 'cublas_v2.h']
 
