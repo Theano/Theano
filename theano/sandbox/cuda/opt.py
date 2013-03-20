@@ -33,6 +33,8 @@ from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
 from theano.sandbox.cuda.elemwise import SupportCodeError
+from theano.scalar.basic_scipy import Erfinv
+from theano.sandbox.cuda.elemwise import ErfinvGPU, erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.scan_module import scan_utils, scan_op
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
@@ -177,11 +179,15 @@ def local_gpu_elemwise_0(node):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 # Don't set any inplace pattern.
                 # gpu_inplace_elemwise_optimizer will do it later
-                try:
-                    new_op = GpuElemwise(node.op.scalar_op)
-                except SupportCodeError:
-                    # This happens when scalar_op requires support code
-                    return False
+
+                if isinstance(node.op.scalar_op, Erfinv):
+                    new_op = GpuElemwise(erfinv_gpu)
+                else:
+                    try:
+                        new_op = GpuElemwise(node.op.scalar_op)
+                    except SupportCodeError:
+                        # This happens when scalar_op requires support code
+                        return False
 
                 #   first establish that float32 can store all inputs
                 upcastable = set(['float32', 'int8', 'int16', 'uint8',
@@ -234,11 +240,16 @@ def local_gpu_elemwise_1(node):
             elemwise_node = host_i.owner
             # Don't set any inplace pattern.
             # gpu_inplace_elemwise_optimizer will do it later
-            try:
-                new_op = GpuElemwise(elemwise_node.op.scalar_op)
-            except SupportCodeError:
-                # This happens when scalar_op requires support code
-                return False
+
+            if isinstance(node.op.scalar_op, Erfinv):
+                new_op = GpuElemwise(erfinv_gpu)
+            else:
+                try:
+                    new_op = GpuElemwise(elemwise_node.op.scalar_op)
+                except SupportCodeError:
+                    # This happens when scalar_op requires support code
+                    return False
+
             if all([i.dtype == 'float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[gpu_from_host(i)
                                         for i in elemwise_node.inputs])

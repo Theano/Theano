@@ -17,6 +17,7 @@ if cuda.cuda_available == False:
 
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.scalar.basic_scipy import erfinv
 
 if theano.config.mode=='FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -367,6 +368,18 @@ def test_incsubtensor_mixed():
     packed ,= client.outputs[0].clients
     client, idx = packed
     assert isinstance(client.op, cuda.GpuFromHost)
+
+
+def test_erfinvgpu():
+    """ Test that local_gpu_elemwise_0 replaces Erfinv with ErfinvGPU """
+    x = tensor.fmatrix()
+    f = theano.function([x], tensor.Elemwise(erfinv)(x), mode=mode_with_gpu)
+    f2 = theano.function([x], tensor.Elemwise(erfinv)(x), mode=mode_without_gpu)
+    assert isinstance(f.maker.fgraph.toposort()[1].op, cuda.GpuElemwise)
+    assert isinstance(f.maker.fgraph.toposort()[1].op.scalar_op, cuda.elemwise.ErfinvGPU)
+    xv=numpy.random.rand(7,8).astype('float32')
+    assert numpy.allclose(f(xv),f2(xv))
+
 
 if __name__ == '__main__':
     test_gpualloc()
