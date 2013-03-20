@@ -6124,7 +6124,8 @@ def stack(*tensors):
     # See ticket #660
     if numpy.all([
                   # in case there is direct int in tensors.
-                  isinstance(t, (numpy.number, float, int, python_complex)) or
+                  isinstance(t, (numpy.number, float, int, python_complex,
+                                 long)) or
                   (isinstance(t, Variable) and
                    isinstance(t.type, TensorType) and
                    t.ndim == 0)
