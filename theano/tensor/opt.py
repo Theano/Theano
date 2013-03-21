@@ -23,6 +23,7 @@ from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
 from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
+from theano.gof.utils import memoize
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano import scalar
@@ -2514,6 +2515,7 @@ register_canonicalize(local_fill_sink)
 # Canonization #
 ################
 
+
 class Canonizer(gof.LocalOptimizer):
     """
     Simplification tool.
@@ -2807,33 +2809,19 @@ class Canonizer(gof.LocalOptimizer):
         num_const_val = [self.get_constant(v) for v in orig_num]
         denum_const_val = [self.get_constant(v) for v in orig_denum]
 
-        def removable(r, v):
-            """
-            r: result node
-            v: None or constant value (a numpy ndarray or number)
-
-            Returns True if the node could be merged or removed from the
-            expression without hiding problems (e.g. shape mismatch)
-            """
-            if all(r.broadcastable):
-                return True
-            # TODO: use the shape feature to check that all non-broadcastable
-            # dims of r (or elements of v.shape) match at least one of the
-            # corresponding non-broadcastable shapes of the other non-constant
-            # arguments. In other words, to remove r, with non-broadcastable
-            # dimension 'i', there must be at least one other element x in
-            # orig_num or orig_denum such that x.shape[i] == v.shape[i].
-            return False
+        removability = InputRemovabilityAnalysis(
+            fgraph=orig_num[0].fgraph if orig_num else orig_denym[0].fgraph,
+            inputs=orig_num + orig_denum)
 
         num = [r for r, v in zip(orig_num, num_const_val)
-                if not ((v is not None) and removable(r, v))]
+                if not ((v is not None) and removability.is_ok[r])]
         numct = [v for r, v in zip(orig_num, num_const_val)
-                if ((v is not None) and removable(r, v))]
+                if ((v is not None) and removability.is_ok[r])]
 
         denum = [r for r, v in zip(orig_denum, denum_const_val)
-                if not ((v is not None) and removable(r, v))]
+                if not ((v is not None) and removability.is_ok[r])]
         denumct = [v for r, v in zip(orig_denum, denum_const_val)
-                if ((v is not None) and removable(r, v))]
+                if ((v is not None) and removability.is_ok[r])]
 
         if self.use_reciprocal or num:
             # This will calculate either:
@@ -2940,6 +2928,67 @@ class Canonizer(gof.LocalOptimizer):
     def __str__(self):
         return getattr(self, 'name', 'Canonizer(%s, %s, %s)' % (
                 self.main, self.inverse, self.reciprocal))
+
+
+class InputRemovabilityAnalysis(object):
+    """
+    A graph analysis object - this class analyses whether the removal of an input
+    two an elementwise operator such as mul or add might mask a shape error.
+
+    """
+    def __init__(self, fgraph, inputs):
+        """
+        node: Apply node
+        """
+        self.fgraph = fgraph
+        self.inputs = inputs
+        if hasattr(fgraph, 'shape_feature'):
+            self.inputs_shapes = [fgraph.shape_feature.shape_of[v]
+                                  for v in inputs]
+        else:
+            self.inputs_shapes = [v.shape for v in inputs]
+        self.is_ok = {}
+        for ii, invar in enumerate(inputs):
+            self.is_ok[invar] = self._is_ok(ii)
+
+        print self.is_ok
+
+    def _is_ok(self, ii):
+        """
+        invar - one of the inputs to node
+
+        Returns True only if node would not miss a shape error if invar were removed.
+        """
+        invar = self.inputs[ii]
+        if len(self.inputs) == 1:
+            return False
+        if all(invar.broadcastable):
+            return True
+        else:
+            # The logic here in words is that:
+            # it is safe to remove invar if invar's shape on every non-broadcastable
+            # dimension is present in another input variable. The rationale is that
+            # any shape error that invar would have caused will therefore be
+            # triggered by the other variable.
+            inputs = self.inputs
+            inputs_shapes = self.inputs_shapes
+
+            for dim in range(invar.ndim):
+                other_shapes = [vs for v, vs in zip(inputs, inputs_shapes)
+                        if v is not invar]
+                print other_shapes
+                if not invar.broadcastable[dim]:
+                    # Comparison based on '==' makes ether numeric match or
+                    # an exact symbolic variable match. Currently no attempt is
+                    # made to match symbolic vars based on e.g. two
+                    # tensorcontants that eval to the same thing
+                    # or two different graphs that could be merged and proved equal.
+                    shape_matches = [vs[dim] == inputs_shapes[ii][dim]
+                                     for vs in other_shapes]
+                    print shape_matches
+                    if not any(shape_matches):
+                        return False
+                return True
 
 
 def mul_calculate(num, denum, aslist=False, out_type=None):
@@ -3526,6 +3575,8 @@ def local_mul_specialize(node):
         #the idea here is that we have pow(x, y)
         neg = False
         new_inputs = []
+        removability = InputRemovabilityAnalysis(
+            getattr(node, 'fgraph'), node.inputs)
         for input in node.inputs:
             # remove any neg arguments
             while input.owner and input.owner.op == T.neg:
@@ -3534,15 +3585,11 @@ def local_mul_specialize(node):
 
             # remove special case arguments of 1, -1 or 0
             y = local_mul_canonizer.get_constant(input)
-            # XXX: this is conservative and duplicates tricky logic in
-            # Canonizer.simplify_constants - see the note in the comment of
-            # removable() inside Canonizer.simplify_constants
-            remove_guaranteed_safe = all(input.broadcastable)
-            if N.all(y == 1.0) and remove_guaranteed_safe:
+            if N.all(y == 1.0) and removability.is_ok[input]:
                 continue
-            elif N.all(y == -1.0) and remove_guaranteed_safe:
+            elif N.all(y == -1.0) and removability.is_ok[input]:
                 neg ^= True  # toggles
-            elif N.all(y == 0.0) and remove_guaranteed_safe:
+            elif N.all(y == 0.0) and removability.is_ok[input]:
                 # if we find any zero, we just return right away
                 return [broadcast_like(0, node.outputs[0], node.fgraph)]
             else:
@@ -3582,17 +3629,16 @@ def local_add_specialize(node):
     #here, we are past the point of canonicalization, so we don't want
     #to put in un-necessary fills.
     if node.op == T.add:
+        removability = InputRemovabilityAnalysis(
+            getattr(node, 'fgraph'), node.inputs)
         new_inputs = []
-        for input in node.inputs:
+        for ii, input in enumerate(node.inputs):
             try:
                 y = get_scalar_constant_value(input)
             except NotScalarConstantError:
                 y = input
-            # XXX: this is conservative and duplicates tricky logic in
-            # Canonizer.simplify_constants - see the note in the comment of
-            # removable() inside Canonizer.simplify_constants
-            remove_guaranteed_safe = all(input.broadcastable)
-            if numpy.all(y == 0.0) and remove_guaranteed_safe:
+
+            if numpy.all(y == 0.0) and removability.is_ok[input]:
                 continue
             new_inputs.append(input)
 
