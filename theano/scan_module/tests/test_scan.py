@@ -3427,6 +3427,15 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(outs[2], v_w + 3)
         assert numpy.allclose(sh.get_value(), v_w + 4)
 
+    def test_grad_bug_disconnected_input(self):
+        W = theano.shared(numpy.zeros((3, 3)), name='W')
+        v = theano.tensor.ivector(name='v')
+        y, _ = theano.scan(lambda i, W: W[i], sequences=v, outputs_info=None, non_sequences=W)
+
+        #This used to raise an exception
+        f = theano.function([v], theano.tensor.grad(y.sum(), W))
+        assert numpy.allclose(f([1,2]), [[0,0,0],[1,1,1],[1,1,1]])
+
     def test_clone(self):
         def test(x, y, mention_y):
             if mention_y:
