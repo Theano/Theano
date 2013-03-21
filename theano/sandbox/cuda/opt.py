@@ -241,7 +241,7 @@ def local_gpu_elemwise_1(node):
             # Don't set any inplace pattern.
             # gpu_inplace_elemwise_optimizer will do it later
 
-            if isinstance(node.op.scalar_op, Erfinv):
+            if isinstance(elemwise_node.op.scalar_op, Erfinv):
                 new_op = GpuElemwise(erfinv_gpu)
             else:
                 try:
