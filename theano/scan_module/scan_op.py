@@ -1268,6 +1268,8 @@ class Scan(PureOp):
                     # It means the gradient is undefined (which implies
                     # is connected)
                     gmp[x] = x
+                except gradient.DisconnectedInputError:
+                    gmp[x] = None
             return [gmp.get(p, None) for p in diff_inputs]
 
         def _get_inner_outs(oidx):
