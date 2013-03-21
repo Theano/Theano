@@ -2799,25 +2799,41 @@ class Canonizer(gof.LocalOptimizer):
         """
 
         # Lists representing the numerator and denumerator
-        num, denum = list(orig_num), list(orig_denum)
+        #
+        # XXX: this is not a reliable estimate of the output type,
+        #      as evidenced by all that crap in transform()
         out_type = self.merge_num_denum(orig_num, orig_denum).type
 
-        # Lists representing the *constant* elements of num and denum
-        numct, denumct = [], []
+        num_const_val = [self.get_constant(v) for v in orig_num]
+        denum_const_val = [self.get_constant(v) for v in orig_denum]
 
-        for v in orig_num:
-            ct = self.get_constant(v)
-            if ct is not None:
-                # We found a constant in the numerator!
-                # We remove it from num
-                num.remove(v)
-                # We add it to numct
-                numct.append(ct)
-        for v in orig_denum:
-            ct = self.get_constant(v)
-            if ct is not None:
-                denum.remove(v)
-                denumct.append(ct)
+        def removable(r, v):
+            """
+            r: result node
+            v: None or constant value (a numpy ndarray or number)
+
+            Returns True if the node could be merged or removed from the
+            expression without hiding problems (e.g. shape mismatch)
+            """
+            if all(r.broadcastable):
+                return True
+            # TODO: use the shape feature to check that all non-broadcastable
+            # dims of r (or elements of v.shape) match at least one of the
+            # corresponding non-broadcastable shapes of the other non-constant
+            # arguments. In other words, to remove r, with non-broadcastable
+            # dimension 'i', there must be at least one other element x in
+            # orig_num or orig_denum such that x.shape[i] == v.shape[i].
+            return False
+
+        num = [r for r, v in zip(orig_num, num_const_val)
+                if not ((v is not None) and removable(r, v))]
+        numct = [v for r, v in zip(orig_num, num_const_val)
+                if ((v is not None) and removable(r, v))]
+
+        denum = [r for r, v in zip(orig_denum, denum_const_val)
+                if not ((v is not None) and removable(r, v))]
+        denumct = [v for r, v in zip(orig_denum, denum_const_val)
+                if ((v is not None) and removable(r, v))]
 
         if self.use_reciprocal or num:
             # This will calculate either:
@@ -3518,11 +3534,15 @@ def local_mul_specialize(node):
 
             # remove special case arguments of 1, -1 or 0
             y = local_mul_canonizer.get_constant(input)
-            if N.all(y == 1.0):
+            # XXX: this is conservative and duplicates tricky logic in
+            # Canonizer.simplify_constants - see the note in the comment of
+            # removable() inside Canonizer.simplify_constants
+            remove_guaranteed_safe = all(input.broadcastable)
+            if N.all(y == 1.0) and remove_guaranteed_safe:
                 continue
-            elif N.all(y == -1.0):
+            elif N.all(y == -1.0) and remove_guaranteed_safe:
                 neg ^= True  # toggles
-            elif N.all(y == 0.0):
+            elif N.all(y == 0.0) and remove_guaranteed_safe:
                 # if we find any zero, we just return right away
                 return [broadcast_like(0, node.outputs[0], node.fgraph)]
             else:
@@ -3568,7 +3588,11 @@ def local_add_specialize(node):
                 y = get_scalar_constant_value(input)
             except NotScalarConstantError:
                 y = input
-            if numpy.all(y == 0.0):
+            # XXX: this is conservative and duplicates tricky logic in
+            # Canonizer.simplify_constants - see the note in the comment of
+            # removable() inside Canonizer.simplify_constants
+            remove_guaranteed_safe = all(input.broadcastable)
+            if numpy.all(y == 0.0) and remove_guaranteed_safe:
                 continue
             new_inputs.append(input)
 

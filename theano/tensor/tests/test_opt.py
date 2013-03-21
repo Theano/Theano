@@ -759,6 +759,33 @@ class test_canonize(unittest.TestCase):
         assert not sio.getvalue()
 
 
+class TestCanonizeConstants(unittest.TestCase):
+
+    def test_1(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[True], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert f([2]).shape == (3,)
+
+    def test_2(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert_raises(ValueError, f, [2])
+
+    def test_3(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False, True], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert f(numpy.ones((2, 1))).shape == (2, 3)
+
+    def test_4(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False, False], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert_raises(ValueError, f, numpy.ones((2, 1)))
+
+
 def test_local_merge_abs():
     x, y, z = T.matrices('xyz')
     x_val = numpy.random.rand(5, 5).astype(config.floatX)
@@ -4043,18 +4070,6 @@ class TestShape_i(utt.InferShapeTester):
 
         self._compile_and_check([admat], [Shape_i(1)(admat)],
                         [admat_val], Shape_i)
-
-
-def test_constant_folding_with_broadcasting():
-    ones = tensor.ones((3,), dtype='float64')
-    x_b = theano.tensor.TensorType(broadcastable=[True], dtype='float64')()
-    f = theano.function([x_b], ones * x_b)
-    assert f([2]).shape == (3,)
-
-    x_nb = theano.tensor.TensorType(broadcastable=[False], dtype='float64')()
-    f = theano.function([x_nb], ones * x_nb)
-    assert_raises(ValueError, f, [2])
-
 
 
 if __name__ == '__main__':
