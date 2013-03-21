@@ -10,6 +10,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
+from nose.tools import assert_raises
 
 import theano
 import theano.scalar as scal
@@ -4042,6 +4043,18 @@ class TestShape_i(utt.InferShapeTester):
 
         self._compile_and_check([admat], [Shape_i(1)(admat)],
                         [admat_val], Shape_i)
+
+
+def test_constant_folding_with_broadcasting():
+    ones = tensor.ones((3,), dtype='float64')
+    x_b = theano.tensor.TensorType(broadcastable=[True], dtype='float64')()
+    f = theano.function([x_b], ones * x_b)
+    assert f([2]).shape == (3,)
+
+    x_nb = theano.tensor.TensorType(broadcastable=[False], dtype='float64')()
+    f = theano.function([x_nb], ones * x_nb)
+    assert_raises(ValueError, f, [2])
+
 
 
 if __name__ == '__main__':
