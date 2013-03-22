@@ -44,6 +44,11 @@ theano.configparser.AddConfigVar('on_shape_error',
                                  theano.configparser.EnumStr("warn", "raise"),
                                  in_c_key=False)
 
+theano.configparser.AddConfigVar('assume_constants_shape_ok',
+                                 "True: allow optimized code to run"
+                                 "incorrectly for incorrect shapes",
+                                 theano.configparser.BoolParam(False),
+                                 in_c_key=False)
 # Utilities
 
 
@@ -2933,7 +2938,7 @@ class Canonizer(gof.LocalOptimizer):
 class InputRemovabilityAnalysis(object):
     """
     A graph analysis object - this class analyses whether the removal of an input
-    two an elementwise operator such as mul or add might mask a shape error.
+    to an elementwise operator such as mul or add might mask a shape error.
 
     """
     def __init__(self, fgraph, inputs):
@@ -2959,9 +2964,11 @@ class InputRemovabilityAnalysis(object):
 
         Returns True only if node would not miss a shape error if invar were removed.
         """
+        if config.assume_constants_shape_ok:
+            return True
         invar = self.inputs[ii]
         if len(self.inputs) == 1:
-            return False
+            return True
         if all(invar.broadcastable):
             return True
         else:
@@ -2972,11 +2979,10 @@ class InputRemovabilityAnalysis(object):
             # triggered by the other variable.
             inputs = self.inputs
             inputs_shapes = self.inputs_shapes
-
+            assert invar.ndim 
             for dim in range(invar.ndim):
                 other_shapes = [vs for v, vs in zip(inputs, inputs_shapes)
                         if v is not invar]
-                print other_shapes
                 if not invar.broadcastable[dim]:
                     # Comparison based on '==' makes ether numeric match or
                     # an exact symbolic variable match. Currently no attempt is
@@ -2985,10 +2991,9 @@ class InputRemovabilityAnalysis(object):
                     # or two different graphs that could be merged and proved equal.
                     shape_matches = [vs[dim] == inputs_shapes[ii][dim]
                                      for vs in other_shapes]
-                    print shape_matches
                     if not any(shape_matches):
                         return False
-                return True
+            return True
 
 
 def mul_calculate(num, denum, aslist=False, out_type=None):
@@ -3576,7 +3581,7 @@ def local_mul_specialize(node):
         neg = False
         new_inputs = []
         removability = InputRemovabilityAnalysis(
-            getattr(node, 'fgraph'), node.inputs)
+            getattr(node, 'fgraph', None), node.inputs)
         for input in node.inputs:
             # remove any neg arguments
             while input.owner and input.owner.op == T.neg:
@@ -3630,7 +3635,7 @@ def local_add_specialize(node):
     #to put in un-necessary fills.
     if node.op == T.add:
         removability = InputRemovabilityAnalysis(
-            getattr(node, 'fgraph'), node.inputs)
+            getattr(node, 'fgraph', None), node.inputs)
         new_inputs = []
         for ii, input in enumerate(node.inputs):
             try:
