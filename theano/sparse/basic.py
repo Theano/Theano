@@ -3374,8 +3374,8 @@ class ConstructSparseFromList(gof.Op):
                                          dtype=values.dtype)
 
     def infer_shape(self, node, ishapes):
-        x, y, ilist = ishapes
-        return [x]
+        x = node.inputs[0]
+        return [[x[0], x[1]]]
 
     def R_op(self, inputs, eval_points):
         if None in eval_points[:2]:
