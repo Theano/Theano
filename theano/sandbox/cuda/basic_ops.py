@@ -2439,6 +2439,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         PyObject *x_rowind_obj, *y_rowind_obj;
         dtype_%(ind)s *p_index;
         int num_indices, j;
+        int ret;
 
         num_indices = PyArray_SIZE(%(ind)s);
         if ((num_indices - 1) > LONG_MAX) {
@@ -2477,10 +2478,32 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
 
              row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
              row_y = CudaNdarray_Subscript(y_obj, y_rowind_obj);
-             CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
 
-             Py_XDECREF(x_rowind_obj);
+             if ((row_x == NULL) || (row_y == NULL)) {
+                  Py_XDECREF(row_y);
+                  Py_XDECREF(row_x);
+                  Py_XDECREF(y_rowind_obj);
+                  Py_XDECREF(x_rowind_obj);
+                  Py_XDECREF(y_obj);
+                  Py_XDECREF(x_obj);
+                  %(fail)s;
+             }
+             
+             ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
+             if (ret != 0) {
+                 Py_XDECREF(row_y);
+                 Py_XDECREF(row_x);
+                 Py_XDECREF(y_rowind_obj);
+                 Py_XDECREF(x_rowind_obj);
+                 Py_XDECREF(y_obj);
+                 Py_XDECREF(x_obj);
+                 %(fail)s;
+             }
+
+             Py_XDECREF(row_y);
+             Py_XDECREF(row_x);
              Py_XDECREF(y_rowind_obj);
+             Py_XDECREF(x_rowind_obj);
         }
 
         Py_XDECREF(y_obj);
