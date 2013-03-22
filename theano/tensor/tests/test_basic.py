@@ -3417,9 +3417,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             utt.verify_grad(fct, [data])
 
             # Test the grad of the grad (e.i. AdvancedIncSubtensor1.grad)
-            def fct(t):
+            def fct2(t):
                 return grad(sum(t[idx_]), t)
-            utt.verify_grad(fct, [data])
+            utt.verify_grad(fct2, [data])
 
             # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
             if not self.fast_compile:
@@ -5151,10 +5151,11 @@ class T_reshape(unittest.TestCase):
         assert numpy.all(f_sub(a_val, b_val) == [2, 3])
 
     def test_reshape_long_in_shape(self):
-        v = vector('v')
+        v = dvector('v')
         r = v.reshape((v.shape[0], 1L))
         print r.eval({v: numpy.arange(5.)})
-        assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T, numpy.arange(5.))
+        assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
+                              numpy.arange(5.))
 
     def test_bad_shape(self):
         a = matrix('a')
@@ -5709,7 +5710,7 @@ class TestPermuteRowElements(unittest.TestCase):
         out_val = permute(input_val, p_val)
 
         # The same permutation should be applied to every row of the input matrix.
-        out_bis = numpy.asarray([row[p_val] for row in input_val])
+        out_bis = numpy.asarray([r[p_val] for r in input_val])
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
