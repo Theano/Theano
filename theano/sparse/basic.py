@@ -3323,8 +3323,8 @@ class ConstructSparseFromList(gof.Op):
         """
         :param x: a dense matrix that specify the output shape.
         :param values: a dense matrix with the values to use for output.
-        :param ilist: a dense vector with the same lenght as the number of rows
-                      then values. It specify where in the output to put
+        :param ilist: a dense vector with the same length as the number of rows
+                      of values. It specify where in the output to put
                       the corresponding rows.
 
         This create a sparse matrix with the same shape as `x`. Its
@@ -3374,8 +3374,8 @@ class ConstructSparseFromList(gof.Op):
                                          dtype=values.dtype)
 
     def infer_shape(self, node, ishapes):
-        x, y, ilist = ishapes
-        return [x]
+        x = node.inputs[0]
+        return [[x[0], x[1]]]
 
     def R_op(self, inputs, eval_points):
         if None in eval_points[:2]:

@@ -24,7 +24,7 @@ from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse import (
     verify_grad_sparse, as_sparse_variable,
-    CSC, CSR, CSM, CSMProperties, csm_properties,
+    CSC, CSM, CSMProperties, csm_properties,
     SparseType, CSMGrad,
     StructuredDot,
     StructuredDotGradCSC, StructuredDotGradCSR,
@@ -34,12 +34,12 @@ from theano.sparse import (
     Dot, Usmm, sp_ones_like, GetItemScalar,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
-    structured_sigmoid, structured_exp, structured_log,
-    structured_pow, structured_minimum, structured_maximum, structured_add,
-    MulSV, mul_s_v, StructuredAddSV, structured_add_s_v,
+    structured_minimum, structured_maximum, structured_add,
+     mul_s_v, structured_add_s_v,
     SamplingDot, sampling_dot,
     Diag, diag, SquareDiagonal, square_diagonal,
-    EnsureSortedIndices, ensure_sorted_indices, clean)
+    EnsureSortedIndices, ensure_sorted_indices, clean,
+    ConstructSparseFromList, construct_sparse_from_list)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -401,6 +401,21 @@ class SparseInferShapeTester(utt.InferShapeTester):
                     config.floatX)],
 
                                 csc_from_dense.__class__)
+
+    def test_sparse_from_list(self):
+        x = tensor.matrix('x')
+        vals = tensor.matrix('vals')
+        ilist = tensor.lvector('ilist')
+
+        out = construct_sparse_from_list(x, vals, ilist)
+        self._compile_and_check(
+                [x, vals, ilist],
+                [out],
+                [numpy.zeros((40, 10), dtype=config.floatX),
+                 numpy.random.randn(12, 10).astype(config.floatX),
+                 numpy.random.randint(low=0, high=40, size=(12,))],
+                ConstructSparseFromList
+                )
 
 
 class T_AddMul(unittest.TestCase):
@@ -1256,9 +1271,9 @@ class UsmmTests(unittest.TestCase):
                         isinstance(topo[2].op.scalar_op, theano.scalar.Mul))
                 assert (isinstance(topo[3].op, theano.tensor.Elemwise) and
                         isinstance(topo[3].op.scalar_op, theano.scalar.Sub))
-            elif (y.type.dtype == up and format1 == 'csc' and format2 == 'dense'
-                and not fast_compile and theano.config.cxx and
-                up in ('float32', 'float64')):
+            elif (y.type.dtype == up and format1 == 'csc'
+                    and format2 == 'dense' and not fast_compile
+                    and theano.config.cxx and up in ('float32', 'float64')):
                 # The op UsmmCscDense should be inserted
                 assert (sum([isinstance(node.op, tensor.Elemwise) and
                              isinstance(node.op.scalar_op,
@@ -2062,6 +2077,7 @@ class CastTester(utt.InferShapeTester):
                         eps = 7e-4
 
                     verify_grad_sparse(Cast(o_dtype), data, eps=eps)
+
 
 def _format_info(nb):
     x = {}
