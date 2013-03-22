@@ -3417,9 +3417,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             utt.verify_grad(fct, [data])
 
             # Test the grad of the grad (e.i. AdvancedIncSubtensor1.grad)
-            def fct(t):
+            def fct2(t):
                 return grad(sum(t[idx_]), t)
-            utt.verify_grad(fct, [data])
+            utt.verify_grad(fct2, [data])
 
             # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
             if not self.fast_compile:
@@ -5710,7 +5710,7 @@ class TestPermuteRowElements(unittest.TestCase):
         out_val = permute(input_val, p_val)
 
         # The same permutation should be applied to every row of the input matrix.
-        out_bis = numpy.asarray([row[p_val] for row in input_val])
+        out_bis = numpy.asarray([r[p_val] for r in input_val])
         assert numpy.all(out_val == out_bis)
 
         # Verify gradient
