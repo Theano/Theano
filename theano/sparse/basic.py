@@ -3323,8 +3323,8 @@ class ConstructSparseFromList(gof.Op):
         """
         :param x: a dense matrix that specify the output shape.
         :param values: a dense matrix with the values to use for output.
-        :param ilist: a dense vector with the same lenght as the number of rows
-                      then values. It specify where in the output to put
+        :param ilist: a dense vector with the same length as the number of rows
+                      of values. It specify where in the output to put
                       the corresponding rows.
 
         This create a sparse matrix with the same shape as `x`. Its

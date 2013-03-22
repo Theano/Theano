@@ -39,7 +39,8 @@ from theano.sparse import (
     MulSV, mul_s_v, StructuredAddSV, structured_add_s_v,
     SamplingDot, sampling_dot,
     Diag, diag, SquareDiagonal, square_diagonal,
-    EnsureSortedIndices, ensure_sorted_indices, clean)
+    EnsureSortedIndices, ensure_sorted_indices, clean,
+    ConstructSparseFromList, construct_sparse_from_list)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -401,6 +402,21 @@ class SparseInferShapeTester(utt.InferShapeTester):
                     config.floatX)],
 
                                 csc_from_dense.__class__)
+
+    def test_sparse_from_list(self):
+        x = tensor.matrix('x')
+        vals = tensor.matrix('vals')
+        ilist = tensor.lvector('ilist')
+
+        out = construct_sparse_from_list(x, vals, ilist)
+        self._compile_and_check(
+                [x, vals, ilist],
+                [out],
+                [numpy.zeros((40, 10), dtype=config.floatX),
+                 numpy.random.randn(12, 10).astype(config.floatX),
+                 numpy.random.randint(low=0, high=40, size=(12,))],
+                ConstructSparseFromList
+                )
 
 
 class T_AddMul(unittest.TestCase):
