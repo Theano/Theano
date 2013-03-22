@@ -163,17 +163,6 @@ class NVCC_compiler(object):
                     flags.append('-arch=sm_' + str(p['major']) +
                                  str(p['minor']))
 
-        if sys.platform.startswith("linux"):
-            #The windows compiler used by nvcc don't support all g++
-            # extension.  In particular, it don't support the
-            # "variable length array" extension. So we ask warning
-            # about all extensions.
-            #flags.extend(['-std=c++98', '-pedantic', '-Wvla'])
-            #flags.extend(['-std=c++98','-Wvla'])
-            flags.extend(['-Wvla'])
-            pass
-        #-std=c++98 for gcc? -Wvla
-
         return flags
 
     @staticmethod
