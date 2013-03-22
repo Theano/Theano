@@ -136,28 +136,44 @@ class NVCC_compiler(object):
             flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
             flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
-        # We compile cuda_ndarray.cu during import.
-        # We should not add device properties at that time.
-        # As the device is not selected yet!
-        # TODO: compile cuda_ndarray when we bind to a GPU?
-        import theano.sandbox.cuda
-        if hasattr(theano.sandbox, 'cuda'):
-            n = theano.sandbox.cuda.use.device_number
-            if n is None:
-                _logger.warn("We try to get compilation arguments for CUDA"
-                             " code, but the GPU device is not initialized."
-                             " This is probably caused by an Op that work on"
-                             " the GPU that don't inherit from GpuOp."
-                             " We Initialize the GPU now.")
-                theano.sandbox.cuda.use("gpu",
-                                        force=True,
-                                        default_to_move_computation_to_gpu=False,
-                                        move_shared_float32_to_gpu=False,
-                                        enable_cuda=False)
+        # If the user didn't specify architecture flags add them
+        if not any(['-arch=sm_' in f for f in flags]):
+            # We compile cuda_ndarray.cu during import.
+            # We should not add device properties at that time.
+            # As the device is not selected yet!
+            # TODO: re-compile cuda_ndarray when we bind to a GPU?
+            import theano.sandbox.cuda
+            if hasattr(theano.sandbox, 'cuda'):
                 n = theano.sandbox.cuda.use.device_number
+                if n is None:
+                    _logger.warn(
+                        "We try to get compilation arguments for CUDA"
+                        " code, but the GPU device is not initialized."
+                        " This is probably caused by an Op that work on"
+                        " the GPU that don't inherit from GpuOp."
+                        " We Initialize the GPU now.")
+                    theano.sandbox.cuda.use(
+                        "gpu",
+                        force=True,
+                        default_to_move_computation_to_gpu=False,
+                        move_shared_float32_to_gpu=False,
+                        enable_cuda=False)
+                    n = theano.sandbox.cuda.use.device_number
+                    p = theano.sandbox.cuda.device_properties(n)
+                    flags.append('-arch=sm_' + str(p['major']) +
+                                 str(p['minor']))
 
-            p = theano.sandbox.cuda.device_properties(n)
-            flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
+        if sys.platform.startswith("linux"):
+            #The windows compiler used by nvcc don't support all g++
+            # extension.  In particular, it don't support the
+            # "variable length array" extension. So we ask warning
+            # about all extensions.
+            #flags.extend(['-std=c++98', '-pedantic', '-Wvla'])
+            #flags.extend(['-std=c++98','-Wvla'])
+            flags.extend(['-Wvla'])
+            pass
+        #-std=c++98 for gcc? -Wvla
+
         return flags
 
     @staticmethod
