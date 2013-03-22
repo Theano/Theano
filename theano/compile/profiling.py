@@ -150,9 +150,6 @@ class ProfileStats(object):
     optimizer_profile = None
     # None or tuple (the optimizer, the profile it returned)
 
-    memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
-                       "t64": 8, "128": 16}
-
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
@@ -606,7 +603,7 @@ class ProfileStats(object):
                 sh = self.variable_shape[out]
                 v = numpy.prod(sh)
                 dtype = str(out.dtype)
-                v *= self.memory_size_map[dtype[-3:]]
+                v *= numpy.dtype(dtype).itemsize
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
