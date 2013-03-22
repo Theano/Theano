@@ -5151,10 +5151,11 @@ class T_reshape(unittest.TestCase):
         assert numpy.all(f_sub(a_val, b_val) == [2, 3])
 
     def test_reshape_long_in_shape(self):
-        v = vector('v')
+        v = dvector('v')
         r = v.reshape((v.shape[0], 1L))
         print r.eval({v: numpy.arange(5.)})
-        assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T, numpy.arange(5.))
+        assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
+                              numpy.arange(5.))
 
     def test_bad_shape(self):
         a = matrix('a')
