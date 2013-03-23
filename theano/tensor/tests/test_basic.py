@@ -6632,6 +6632,14 @@ class T_get_scalar_constant_value(unittest.TestCase):
             for j in range(c.value.shape[1]):
                 assert get_scalar_constant_value(c[i, j]) == c.value[i, j]
 
+    def test_numpy_array(self):
+        # Regression test for crash when called on a numpy array.
+        assert get_scalar_constant_value(numpy.array(3)) == 3
+        self.assertRaises(
+                tensor.NotScalarConstantError,
+                get_scalar_constant_value,
+                numpy.array([0, 1]))
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """
