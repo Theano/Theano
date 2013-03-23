@@ -4250,8 +4250,8 @@ def get_canonical_form_slice(theslice, length):
     that respects the conventions imposed by python and numpy.
 
     In a canonical form a slice is represented by a canonical form slice,
-    in which 0 <= start <= stop <= length and step > 0, and a flag which says if
-    the resulting set of numbers needs to be reversed or not.
+    in which 0 <= start <= stop <= length and step > 0, and a flag which says
+    if the resulting set of numbers needs to be reversed or not.
     '''
 
     if isinstance(theslice, slice):
@@ -4292,8 +4292,8 @@ def get_canonical_form_slice(theslice, length):
                     # Full slice.
                     return slice(0, length, 1), 1
                 if is_stop_constant and stop >= 0:
-                    return (slice(0, switch(lt(stop, length), stop, length), 1),
-                            1)
+                    return (slice(0, switch(lt(stop, length), stop, length),
+                                  1), 1)
                 stop_plus_len = stop + length
                 stop = switch(
                         lt(stop, 0),
@@ -4343,6 +4343,7 @@ def get_canonical_form_slice(theslice, length):
                 sgn_step = -1
         else:
             is_step_neg = lt(step, 0)
+
             def switch_neg_step(a, b):
                 return switch(is_step_neg, a, b)
             abs_step = abs(step)
@@ -7120,7 +7121,8 @@ class AdvancedSubtensor1(Op):
                 // if all values fit.
                 if (!PyArray_CanCastSafely(i_type, NPY_INTP)) {
                     npy_int64 min_val, max_val;
-                    PyObject* py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS, NULL);
+                    PyObject* py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS,
+                                                       NULL);
                     if (py_min_val == NULL) {
                         %(fail)s;
                     }
@@ -7129,7 +7131,8 @@ class AdvancedSubtensor1(Op):
                     if (min_val == -1 && PyErr_Occurred()) {
                         %(fail)s;
                     }
-                    PyObject* py_max_val = PyArray_Max(%(i_name)s, NPY_MAXDIMS, NULL);
+                    PyObject* py_max_val = PyArray_Max(%(i_name)s, NPY_MAXDIMS,
+                                                       NULL);
                     if (py_max_val == NULL) {
                         %(fail)s;
                     }
@@ -7139,7 +7142,8 @@ class AdvancedSubtensor1(Op):
                         %(fail)s;
                     }
                     if (min_val < NPY_MIN_INTP || max_val > NPY_MAX_INTP) {
-                        PyErr_SetString(PyExc_IndexError, "Index contains values "
+                        PyErr_SetString(PyExc_IndexError,
+                                     "Index contains values "
                                      "that are bigger than the maximum array "
                                      "size on this system.");
                         %(fail)s;
@@ -7170,7 +7174,8 @@ class AdvancedSubtensor1(Op):
                     }
                     if (%(output_name)s != NULL) {
                         for (; i < nd; i++) {
-                            if (shape[i] != PyArray_DIMS(%(a_name)s)[i-PyArray_NDIM(indices)+1]) {
+                            if (shape[i] != PyArray_DIMS(%(a_name)s)[
+                                                i-PyArray_NDIM(indices)+1]) {
                                 Py_CLEAR(%(output_name)s);
                                 break;
                             }
@@ -7178,8 +7183,8 @@ class AdvancedSubtensor1(Op):
                     }
                 }
             }
-            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(%(a_name)s, indices, 0,
-                                                               %(output_name)s, NPY_RAISE);
+            %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(
+                        %(a_name)s, indices, 0, %(output_name)s, NPY_RAISE);
             Py_DECREF(indices);
             if (%(output_name)s == NULL) %(fail)s;
         """ % locals()
@@ -7188,6 +7193,7 @@ class AdvancedSubtensor1(Op):
         return (0, 1, 1)
 
 advanced_subtensor1 = AdvancedSubtensor1()
+
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
@@ -7252,10 +7258,10 @@ class AdvancedIncSubtensor1(Op):
             x[idx] = y
         else:
             increment = inplace_increment
-            if increment is None: 
+            if increment is None:
                 increment = self.inplace_increment1d_slow
 
-            increment(x,idx, y) 
+            increment(x, idx, y)
 
         out[0] = x
 
@@ -7298,7 +7304,8 @@ class AdvancedIncSubtensor1(Op):
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
-    
+
+
 def as_index_variable(idx):
     if idx is None:
         return NoneConst
@@ -7357,6 +7364,7 @@ class SliceType(gof.Type):
         return "slice"
 
 slicetype = SliceType()
+
 
 class NoneTypeT(gof.Type):
 
