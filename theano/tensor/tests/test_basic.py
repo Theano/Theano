@@ -6639,6 +6639,10 @@ class T_get_scalar_constant_value(unittest.TestCase):
                 tensor.NotScalarConstantError,
                 get_scalar_constant_value,
                 numpy.array([0, 1]))
+        self.assertRaises(
+                tensor.EmptyConstantError,
+                get_scalar_constant_value,
+                numpy.array([]))
 
 
 class T_as_tensor_variable(unittest.TestCase):
