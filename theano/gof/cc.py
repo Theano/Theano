@@ -4,7 +4,6 @@ Defines Linkers that deal with C implementations.
 
 # Python imports
 from copy import copy
-import re  # for set_compiledir
 import os
 import StringIO
 import sys
@@ -643,24 +642,15 @@ class CLinker(link.Linker):
         args += ["storage_%s" % symbol[variable] for variable
                  in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
+        # <<<<HASH_PLACEHOLDER>>>> will be replaced by a hash of the whole
+        # code in the file, including support code, in DynamicModule.code.
+        struct_name = '__struct_compiled_op_%s' % '<<<<HASH_PLACEHOLDER>>>>'
         struct_code = struct_gen(args, init_blocks, blocks,
                                  dict(failure_var=failure_var,
-                                      name="<<<<NAME>>>>"))
-
-        # TODO: still needed? We do not use weave anymore.
-        # The hash calculated on the code identifies it so weave can
-        # cache properly.  (the hash has to be used outside of the
-        # support code because weave does not consider changes in the
-        # support code)
-        hash = hash_from_code(struct_code)
-
-        struct_name = '__struct_compiled_op_%s' % hash
-        #struct_code %= dict(name = struct_name)
-        struct_code = re.sub("<<<<NAME>>>>", struct_name, struct_code)
+                                      name=struct_name))
 
         self.struct_code = struct_code
         self.struct_name = struct_name
-        self.hash = hash
         self.args = args
         self.r2symbol = symbol
         self.init_blocks = init_blocks
@@ -1204,7 +1194,7 @@ class CLinker(link.Linker):
             _logger.debug("LOCATION %s", str(location))
             try:
                 module = c_compiler.compile_str(
-                    module_name=mod.name,
+                    module_name=mod.code_hash,
                     src_code=src_code,
                     location=location,
                     include_dirs=self.header_dirs(),
@@ -1224,9 +1214,8 @@ class CLinker(link.Linker):
         for our fgraph.
         """
         self.code_gen()
-        module_name = self.hash
 
-        mod = cmodule.DynamicModule(module_name)
+        mod = cmodule.DynamicModule()
 
         # The code of instantiate
         # the 1 is for error_storage
