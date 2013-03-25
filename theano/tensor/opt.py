@@ -35,7 +35,9 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
-from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import get_scalar_constant_value
+from theano.tensor.basic import ShapeError
+from theano.tensor.basic import NotScalarConstantError
 
 
 theano.configparser.AddConfigVar('on_shape_error',
@@ -2815,7 +2817,7 @@ class Canonizer(gof.LocalOptimizer):
         denum_const_val = [self.get_constant(v) for v in orig_denum]
 
         removability = InputRemovabilityAnalysis(
-            fgraph=orig_num[0].fgraph if orig_num else orig_denym[0].fgraph,
+            fgraph=None,
             inputs=orig_num + orig_denum)
 
         num = [r for r, v in zip(orig_num, num_const_val)
@@ -2945,24 +2947,30 @@ class InputRemovabilityAnalysis(object):
         """
         node: Apply node
         """
-        self.fgraph = fgraph
-        self.inputs = inputs
+        # add will pad the shapes of all inputs to be same ndim
+        self.is_ok = {}
+        if inputs:
+            self.inputs = T.add(*inputs).owner.inputs
+        else:
+            self.inputs = []
+            return
+        ndim = self.inputs[0].ndim
+        assert all([invar.ndim == ndim for invar in self.inputs]), self.inputs
         if hasattr(fgraph, 'shape_feature'):
-            self.inputs_shapes = [fgraph.shape_feature.shape_of[v]
+            def padleft(shp):
+                return (1,) * (ndim - len(shp)) + tuple(shp)
+            self.inputs_shapes = [padleft(fgraph.shape_feature.shape_of[v])
                                   for v in inputs]
         else:
-            self.inputs_shapes = [v.shape for v in inputs]
-        self.is_ok = {}
+            self.inputs_shapes = [v.shape for v in self.inputs]
         for ii, invar in enumerate(inputs):
             self.is_ok[invar] = self._is_ok(ii)
-
-        print self.is_ok
+        #print self.is_ok
 
     def _is_ok(self, ii):
         """
-        invar - one of the inputs to node
-
-        Returns True only if node would not miss a shape error if invar were removed.
+        Returns True only if node would not miss a shape error if
+        self.inputs[ii] were removed.
         """
         if config.assume_constants_shape_ok:
             return True
@@ -2979,17 +2987,18 @@ class InputRemovabilityAnalysis(object):
             # triggered by the other variable.
             inputs = self.inputs
             inputs_shapes = self.inputs_shapes
-            assert invar.ndim 
+            assert invar.ndim
             for dim in range(invar.ndim):
                 other_shapes = [vs for v, vs in zip(inputs, inputs_shapes)
                         if v is not invar]
+                invar_dim = inputs_shapes[ii][dim]
                 if not invar.broadcastable[dim]:
                     # Comparison based on '==' makes ether numeric match or
                     # an exact symbolic variable match. Currently no attempt is
                     # made to match symbolic vars based on e.g. two
                     # tensorcontants that eval to the same thing
                     # or two different graphs that could be merged and proved equal.
-                    shape_matches = [vs[dim] == inputs_shapes[ii][dim]
+                    shape_matches = [vs[dim] == invar_dim
                                      for vs in other_shapes]
                     if not any(shape_matches):
                         return False
