@@ -588,7 +588,9 @@ class CLinker(link.Linker):
 ##                                       ivnames + ovnames):
 ##                sub[vname] = symbol[variable]
 
-            name = "node_%i" % node_num
+            # The placeholder will be replaced by a hash of the entire
+            # code (module + support code) in DynamicModule.code.
+            name = "node_<<<<HASH_PLACEHOLDER>>>>_%i" % node_num
             isyms = [symbol[r] for r in node.inputs]
             osyms = [symbol[r] for r in node.outputs]
 
