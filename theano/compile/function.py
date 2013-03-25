@@ -141,18 +141,19 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
          4. Linker
-               The linker uses a python loop to execute the code associated
+               The linker uses a Python loop to execute the code associated
                with all the Apply nodes in the graph in the correct order.
-               the cvm is a linker that replaces this python loop with a c
-               loop to avoid continuously changing between python and c.
+               The CVM is a linker that replaces this Python loop with a C
+               loop to avoid continuously changing between Python and C.
                The CVM is faster for 2 reasons:
-                 1) Its internal logic in C, so no Python interpreter overhead.
+                 1) Its internal logic is in C, so no Python interpreter
+                    overhead.
                  2) It makes native calls from the VM logic into thunks that
-                 have been compiled using the CLinker.
-               the vm is a linker that was developed to prototype the cvm. it
-        was easier to develop the vm in python then translate it to c instead
-        of just writing it in c from scratch
-               cvm stands for c virtual machine.
+                    have been compiled using the CLinker.
+               The VM is a linker that was developed to prototype the CVM. it
+        was easier to develop the VM in Python then translate it to C instead
+        of just writing it in C from scratch.
+               CVM stands for C Virtual Machine.
 
 
 
