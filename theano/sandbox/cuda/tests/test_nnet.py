@@ -219,9 +219,7 @@ def test_softmax():
     This is basic test for GpuSoftmax
 
     We check that we loop when their is too much block
-
-    TODO: check that we loop when their is too much thread.(THIS IS
-    NOT IMPLEMENTED)
+    We use slower code when there isn't enough shared memory
     """
     x = T.fmatrix('x')
 
@@ -232,25 +230,17 @@ def test_softmax():
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmax)
 
-    def cmp(n, m, catch=False):
+    def cmp(n, m):
         """Some old card won't accept the configuration arguments of
         this implementation. For those cases set catch=True to skip
         those errors.
 
         """
-        try:
-            #print "test_softmax",n,m
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-            out = f(data)
-            gout = f_gpu(data)
-            assert numpy.allclose(out, gout), numpy.absolute(out - gout)
-        except RuntimeError, e:
-            if not catch:
-                raise
-            # Different CUDA driver have different error message
-            assert (e.args[0].startswith(
-              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n') or
-            e.args[0].startswith('Cuda error: kSoftmax_node_0: invalid argument.\n'))
+        #print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2, 5)
@@ -262,5 +252,9 @@ def test_softmax():
     cmp(4, 1024)
     cmp(4, 2000)
     cmp(4, 2024)
-    #GTX285 don't have enough shared mem for this case.
-    cmp(4, 4074, True)
+    # The GTX285 don't have enough shared memory.
+    cmp(4, 4074)
+    # The GTX580, 680 and kepler don't have enough shared memory.
+    cmp(2, 10000)
+    cmp(128, 16 * 1024)
+    cmp(128, 64 * 1024)

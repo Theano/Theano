@@ -70,7 +70,7 @@ def inline_reduce(N, buf, pos, count, manner_fn):
 
     return """
     {
-        // This function trashes buf[1..N], leaving the reduction result in buf[0].
+        // This function trashes buf[1..warpSize], leaving the reduction result in buf[0].
 
         if (%(pos)s < warpSize)
         {
@@ -158,3 +158,118 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
             '}',
             '__syncthreads()',
             ]
+
+
+@code_version((1,))
+def inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
+                               manner_fn, manner_init):
+    """Return C++ code for a function that reduces a contiguous buffer.
+
+    :param N: length of the buffer
+    :param buf: buffer pointer of size warpSize * sizeof(float)
+    :param pos: index of executing thread
+    :param count: number of executing threads
+
+    :param manner_fn: a function that accepts strings of arguments a
+        and b, and returns c code for their reduction. (Example:
+        return "%(a)s + %(b)s" for a sum reduction).
+    :param manner_init: a function that accepts strings of arguments a
+        and return c code for its initialization
+
+    :postcondition:
+    This function leaves the answer in position 0 of the buffer.  The
+    rest of the buffer is trashed by this function.
+
+    :note: buf should be in gpu shared memory, we access it many times.
+
+    """
+    init = manner_init("%(x)s[tx * %(stride_x)s]" % locals())
+    loop_line = manner_fn("%s[%s]" % (buf, pos),
+                          manner_init("%s[i * %s]" % (x, stride_x)))
+    r_16 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+16]" % (buf, pos))
+    r_8 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+8]" % (buf, pos))
+    r_4 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+4]" % (buf, pos))
+    r_2 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+2]" % (buf, pos))
+    r_1 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+1]" % (buf, pos))
+
+    return """
+    {
+        // This function trashes buf[1..warpSize], leaving the reduction result in buf[0].
+
+        for (int tx = %(pos)s; tx<warpSize; tx += %(count)s){
+            %(buf)s[tx] = %(init)s;
+        }
+        __syncthreads();
+        if (%(pos)s < warpSize)
+        {
+            for (int i = %(pos)s + warpSize; i < %(N)s; i += warpSize)
+            {
+                %(buf)s[%(pos)s] = %(loop_line)s;
+            }
+            if (%(pos)s < 16)
+            {
+                //reduce so that %(pos)s 0 has the sum of everything
+                if(%(pos)s + 16 < %(N)s)
+                    %(buf)s[%(pos)s] = %(r_16)s;
+                if(%(pos)s + 8 < %(N)s)
+                    %(buf)s[%(pos)s] = %(r_8)s;
+                if(%(pos)s + 4 < %(N)s)
+                    %(buf)s[%(pos)s] = %(r_4)s;
+                if(%(pos)s + 2 < %(N)s)
+                    %(buf)s[%(pos)s] = %(r_2)s;
+                if(%(pos)s + 1 < %(N)s)
+                    %(buf)s[%(pos)s] = %(r_1)s;
+            }
+        }
+    }
+    """ % locals()
+
+
+@code_version(inline_reduce_fixed_shared.code_version)
+def inline_reduce_fixed_shared_max(N, buf, x, stride_x, pos, count):
+    return inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
+                                      lambda a, b: "max(%s, %s)" % (a, b),
+                                      lambda a: a)
+
+
+@code_version((1,) + inline_reduce_max.code_version +
+              inline_reduce_sum.code_version)
+def inline_softmax_fixed_shared(N, buf, x, stride_x,
+                                sm, sm_stride,
+                                threadPos, threadCount):
+    """
+
+    :param N: length of the buffer, atleast waprSize(32).
+    :param buf: a shared memory buffer of size warpSize * sizeof(float)
+    :param x: a ptr to the gpu memory where the row is stored
+    :param stride_x: the stride between each element in x
+    :param sm: a ptr to the gpu memory to store the result
+    :param sm_stride: the stride between eash sm element
+    :param threadPos: index of executing thread
+    :param threadCount: number of executing threads
+
+    :Precondition: buf is empty
+    :Postcondition: buf[0] contains the softmax, buf2 contains un-normalized softmax
+
+    :note: buf and buf2 should be in gpu shared memory, we access it many times.
+
+    :note2: We use __i as an int variable in a loop
+    """
+    return [
+        #get max of buf (trashing all but buf[0])
+        inline_reduce_fixed_shared_max(N, buf, x, stride_x, threadPos, threadCount),
+        '__syncthreads()',
+        'float row_max = '+buf+'[0]',
+        '__syncthreads()',
+        inline_reduce_fixed_shared(N, buf, x, stride_x, threadPos, threadCount,
+                                   lambda a, b: "%s + %s" % (a, b),
+                                   lambda a: "exp(%s - row_max)" % a),
+        '__syncthreads()',
+        'float row_sum = '+buf+'[0]',
+        '__syncthreads()',
+        "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+            # This set all value correctly
+            "%(sm)s[tx * %(sm_stride)s] = exp(%(x)s[tx * %(stride_x)s] - row_max) / row_sum" % locals(),
+        "}",
+        '__syncthreads()',
+    ]

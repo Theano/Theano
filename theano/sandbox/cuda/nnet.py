@@ -7,7 +7,8 @@ from theano.sandbox.cuda import GpuOp
 
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel, inline_reduce_max,
                                                 inline_reduce_sum,
-                                                inline_softmax)
+                                                inline_softmax,
+                                                inline_softmax_fixed_shared)
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
@@ -350,8 +351,7 @@ class GpuSoftmax (GpuOp):
         return shape
 
     def c_code_cache_version(self):
-        #return ()
-        return (7,) + inline_softmax.code_version
+        return (8,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -386,6 +386,7 @@ class GpuSoftmax (GpuOp):
 
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
+              if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmax_%(nodename)s
                     <<<
                         n_blocks,
@@ -403,24 +404,43 @@ class GpuSoftmax (GpuOp):
                             CudaNdarray_HOST_STRIDES(%(z)s)[0],
                             CudaNdarray_HOST_STRIDES(%(z)s)[1]
                     );
-                CNDA_THREAD_SYNC;
-                cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
-                {
-                    PyErr_Format(PyExc_RuntimeError,
-                                 "Cuda error: %%s: %%s.\\n Used %%d blocks,"
-                                 " %%d threads %%d bytes of shared memory",
-                                 "kSoftmax_%(nodename)s", cudaGetErrorString(err),
-                                 n_blocks, n_threads, n_shared_bytes);
-                    %(fail)s;
-                }
+              }else{
+                kSoftmax_fixed_shared%(nodename)s
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        32 * sizeof(float)
+                    >>>(
+                            CudaNdarray_HOST_DIMS(%(x)s)[0],
+                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(x)s),
+                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(z)s),
+                            CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+              }
+              CNDA_THREAD_SYNC;
+              cudaError_t err = cudaGetLastError();
+              if( cudaSuccess != err)
+              {
+                  PyErr_Format(PyExc_RuntimeError,
+                               "Cuda error: %%s: %%s.\\n Used %%d blocks,"
+                               " %%d threads %%d bytes of shared memory",
+                               "kSoftmax[_fixed_shared]%(nodename)s", cudaGetErrorString(err),
+                                n_blocks, n_threads, n_shared_bytes);
+                  %(fail)s;
+              }
             }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        return nvcc_kernel("kSoftmax_%s" % nodename,
+        ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'float * sm', 'const int sm_s0', 'const int sm_s1'],
@@ -441,7 +461,23 @@ class GpuSoftmax (GpuOp):
                       "}",
                       "__syncthreads()",
                     "}",
+                ])
+        ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
+                params=['int M', 'int N',
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                body=[
+                    "extern __shared__ float buf[]",
+                    "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                      "const float *x_ptr = &x[blockIDX * sx0]",
+                      "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                      inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                                  'sm_ptr', 'sm_s1',
+                                                  'threadIdx.x', 'blockDim.x'),
+                      "__syncthreads()",
+                    "}",
                     ])
+        return ret1 + "\n" + ret2
 
 gpu_softmax = GpuSoftmax()
 
