@@ -490,7 +490,7 @@ DllExport PyObject * CudaNdarray_View(const CudaNdarray * self);
 DllExport PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
 DllExport PyObject * CudaNdarray_Subscript(PyObject * py_self, PyObject * key);
 DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t fct_nb);
-
+DllExport void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray *py_other, PyArrayObject *indices_arr);
 
 // Ensures that *arr is a pointer to a contiguous ndarray of the specified
 // dimensions.

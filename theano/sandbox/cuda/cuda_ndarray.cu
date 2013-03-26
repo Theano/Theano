@@ -1326,6 +1326,28 @@ CudaNdarray_add(PyObject* py_self, PyObject * py_other)
     return (PyObject *) rval;
 }
 
+__global__ void k_vector_add_fast(int numRowsX,
+                                  int numColsX,
+                                  int stridesX0,
+                                  int stridesX1,
+                                  float *X,
+                                  int numRowsY,
+                                  int numColsY,
+                                  int stridesY0,
+                                  int stridesY1,
+                                  float *Y ,
+                                  long *d_indices_arr,
+                                  int num)
+{
+     int i = (blockIdx.x);
+     int j = (threadIdx.x);
+     int x_row = d_indices_arr[i];
+     int y_row = i;
+     atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+     return;
+}
+
+
 template <int operator_num>
 __global__ void k_ielem_3(const int d0, const int d1, const int d2,
         float* a, const int sA0, const int sA1, const int sA2,
@@ -1775,6 +1797,46 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
     Py_XDECREF(new_other);
     return 0;
 }
+
+void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
+{
+     const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
+     const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
+     const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
+     const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
+     unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
+     unsigned int num_threads_per_block = shapeY[1];
+     unsigned int num_blocks = size;
+     dim3 n_blocks(num_blocks);
+     dim3 n_threads(num_threads_per_block);
+     static long *d_indices_arr = NULL;
+     if (!d_indices_arr)
+     {
+         d_indices_arr = (long *)device_malloc(sizeof(long) * PyArray_SIZE(indices_arr));
+     }
+     assert(d_indices_arr);
+
+     cudaError_t err = cudaMemcpy(d_indices_arr,
+                                  PyArray_DATA(indices_arr) ,
+                                  sizeof(long) * PyArray_SIZE(indices_arr),
+                                  cudaMemcpyHostToDevice);
+
+     k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
+                                                shapeX[1],
+                                                strX[0],
+                                                strX[1],
+                                                CudaNdarray_DEV_DATA(py_self),
+                                                shapeY[0],
+                                                shapeY[1],
+                                                strY[0],
+                                                strY[1],
+                                                CudaNdarray_DEV_DATA(py_other),
+                                                d_indices_arr,
+                                                PyArray_SIZE(indices_arr)
+                                                );
+     return;
+}
+
 
 /*
  * We need this inplace Add to support IncSubTensor
