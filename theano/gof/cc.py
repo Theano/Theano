@@ -590,6 +590,11 @@ class CLinker(link.Linker):
 
             # The placeholder will be replaced by a hash of the entire
             # code (module + support code) in DynamicModule.code.
+            # This ensures that, when defining functions in support code,
+            # we cannot have two different functions, in different modules,
+            # that have the same name.
+            # It was problematic, in particular, on Mac OS X (10.6 and 10.7)
+            # when defining CUDA kernels (with Cuda 4.2 and 5.0). See gh-1172.
             name = "node_<<<<HASH_PLACEHOLDER>>>>_%i" % node_num
             isyms = [symbol[r] for r in node.inputs]
             osyms = [symbol[r] for r in node.outputs]
