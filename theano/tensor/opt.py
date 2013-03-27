@@ -1078,7 +1078,8 @@ class ShapeOptimizer(Optimizer):
         Optimizer.__init__(self)
 
     def add_requirements(self, fgraph):
-        fgraph.attach_feature(ShapeFeature())
+        if not hasattr(fgraph, 'shape_feature'):
+            fgraph.attach_feature(ShapeFeature())
 
     def apply(self, fgraph):
         pass
