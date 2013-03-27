@@ -689,20 +689,19 @@ class ProfileStats(object):
         else:
             print >> file,  "Memory Profile"
         print >> file,  "---"
-
-        print >> file,  "    Max without gc, inplace and view: %dKB" % int(
-            round(max_sum_size / 1024))
-
-        print >> file,  "    Max allow_gc=False: %dKB" % int(round(
-            max_node_memory_size / 1024.))
-        print >> file,  "    Max linker=c|py: %dKB" % int(round(
+#        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
+#            round(max_sum_size / 1024))
+        print >> file,  "    Max if linker=cvm (default): unknow"
+        print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
+                             max_node_memory_size / 1024.))
+        print >> file,  "    Max if linker=c|py: %dKB" % int(round(
             max_running_max_memory_size / 1024.))
-        print >> file,  "    Memory saved by view: %dKB" % int(round(
-            max_node_memory_saved_by_view / 1024.))
-        print >> file,  "    Memory saved by inplace: %dKB" % int(round(
-            max_node_memory_saved_by_inplace / 1024.))
-        print >> file,  "    Memory saved by GC: %dKB" % int(round((
-            max_node_memory_size - max_running_max_memory_size) / 1024.))
+#        print >> file,  "    Memory saved if view are used: %dKB" % int(round(
+#            max_node_memory_saved_by_view / 1024.))
+#        print >> file,  "    Memory saved if inplace op are used: %dKB" % int(
+#            round(max_node_memory_saved_by_inplace / 1024.))
+        print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
+            round(max_node_memory_size - max_running_max_memory_size) / 1024.)
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
             hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
