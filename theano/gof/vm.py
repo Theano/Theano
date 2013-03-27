@@ -74,7 +74,12 @@ class VM(object):
         storage. False means it *must not* repeat that feedback.
 
     """
-    def __init__(self, nodes, thunks, pre_call_clear):
+    def __init__(self, nodes, thunks, pre_call_clear,
+            updated_vars=None,
+            storage_map=None,
+            need_update_inputs=True,
+            ):
+        # XXX updated_vars should be mandatory, and used by all linkers
         """
         Allocate a virtual machine.
 
@@ -93,11 +98,13 @@ class VM(object):
         self.call_counts = [0] * len(nodes)
         self.call_times = [0] * len(nodes)
         self.time_thunks = False
+        self.updated_vars = updated_vars
+        self.storage_map = storage_map
 
         # This variable (self.need_update_inputs) is overshadowed by
         # CLazyLinker in CVM which has an attribute of the same name that
         # defaults to 0 (aka False).
-        self.need_update_inputs = True
+        self.need_update_inputs = need_update_inputs
 
     def __call__(self):
         """
@@ -163,6 +170,12 @@ class Loop(VM):
                     thunk()
             except:
                 raise_with_op(node)
+        # -- updates
+        storage_map = self.storage_map
+        for (ivar, ovar) in self.updated_vars.items():
+            storage_map[ivar][0] = storage_map[ovar][0]
+            storage_map[ovar][0] = None
+        # XXX: return the same thing as CLoop (some outputs? all outputs?)
 
 
 class LoopGC(VM):
@@ -756,6 +769,7 @@ class VM_Linker(link.LocalLinker):
             if not lazy:
                 # there is no conditional in the graph
                 if self.allow_gc:
+                    # XXX pass updated vars, storage_map
                     vm = LoopGC(
                             nodes,
                             thunks,
@@ -765,7 +779,10 @@ class VM_Linker(link.LocalLinker):
                     vm = Loop(
                             nodes,
                             thunks,
-                            pre_call_clear)
+                            pre_call_clear,
+                            updated_vars=updated_vars,
+                            storage_map=storage_map,
+                            need_update_inputs=False)
             else:
                 deps = None
                 if self.allow_gc:
