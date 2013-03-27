@@ -366,12 +366,12 @@ Then in your ``~/.emacs`` file, add this:
 
 .. note::
 
-   The script highlight problematic lines. This can make part of the
-   line not readable depending of the background. To replace the line
+   The script highlights problematic lines. This can make part of the
+   line not readable depending on the background. To replace the line
    highlight by an underline, add this to your emacs configuration
-   file.
+   file:
 
-   ;; Make thing readable when there is an warning [optional]
+   ;; Make lines readable when there is an warning [optional]
    (custom-set-faces
    '(flymake-errline ((((class color)) (:underline "red"))))
    '(flymake-warnline ((((class color)) (:underline "yellow")))))
