@@ -170,11 +170,10 @@ class Loop(VM):
                     thunk()
             except:
                 raise_with_op(node)
-        # -- updates
+        # -- apply updates
         storage_map = self.storage_map
         for (ivar, ovar) in self.updated_vars.items():
             storage_map[ivar][0] = storage_map[ovar][0]
-            storage_map[ovar][0] = None
         # XXX: return the same thing as CLoop (some outputs? all outputs?)
 
 
@@ -558,7 +557,20 @@ class VM_Linker(link.LocalLinker):
         :param fgraph: a PerformLinker can have accepted one FunctionGraph
             instance at a time.
 
-        :param no_recycling: WRITEME
+        :param no_recycling: a list of variables whose storage should be
+            cleared after every call.
+
+            For correctness this list should include
+            * all outputs that are destined for updates
+            * all internal variables that may view said outputs
+            * no inputs or constants.
+
+            To prevent surprising bugs due to memory aliasing, this list
+            should usually include
+            * outputs returned to the user
+            * all internal variables aliased to outputs
+            but these are meant to be over-ridden by the "borrow=True" option
+            for SymbolicOutput variables.
 
         :returns: self if fgraph is the first FunctionGraph that has ever been
             associated to self, else, a new VM_Linker associated to fgraph.
@@ -580,13 +592,40 @@ class VM_Linker(link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def accept_var_updates(self, updated_vars):
+    def accept_var_updates(self, updated_vars, check_correctness=True):
+        """Record how inputs (e.g. shared variables) should be updated.
+
+        (These updates will be applied after computations.)
+
+        Parameters
+        ----------
+        updated_vars - dict [ input variable ] -> [ output variable ]
+            The update dictionary, of the sort passed to theano.function
+
+        check_correctness - bool
+            If the linker has already "accepted" an fgraph, then there are
+            some quick correctness checks that can be done, namely, that the
+            values of `updated_vars` are in fact outputs, and they are at the
+            end of the fgraph outputs list, and they are in the no_recycling
+            list.
+
+        N.B. Not all VMs in this file actually implement the updates, things
+        are in transition. VMs that do not implement the updates should leave
+        their `self.need_update_inputs == True` so that the updates are
+        applied by `Function` in `function_module`.
+
+        """
+
+        if self.fgraph:
+            outputs = self.fgraph.outputs
+            last_outputs = outputs[-len(updated_vars):]
+            for out in last_outputs:
+                if out not in updated_vars.values():
+                    raise ValueError('update exprs must be trailing outputs')
+                if out not in self.no_recycling:
+                    raise ValueError('update exprs and their views must be in'
+                        ' self.no_recycling')
         self.updated_vars = updated_vars
-        # This method simply records in the linker which variables have update
-        # expressions.  It does not imply that the linker will actually
-        # implement these updates (see need_update_inputs).  This mechanism is
-        # admittedly confusing, and it could use some cleaning up. The base
-        # Linker object should probably go away completely.
 
     def compute_gc_dependencies(self, variables):
         """
