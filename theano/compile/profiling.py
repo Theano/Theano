@@ -746,7 +746,7 @@ class ProfileStats(object):
             self.summary_ops(file, n_ops_to_print)
             self.summary_nodes(file, n_applies_to_print)
         elif self.fct_callcount > 0:
-            print >> file, ("  No node time accumulated "
+            print >> file, ("  No execution time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
         if config.profile_memory:
             self.summary_memory(file, n_ops_to_print)
