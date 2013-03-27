@@ -709,10 +709,6 @@ class ProfileStats(object):
                          " <Apply outputs shape>"
                          " <created/inplace/view>"
                          " <Apply node>")
-        print >> file,  (
-            "    <created/inplace/view> is taked from the op declaration.")
-        print >> file,  ("    Use DebugMode for warnings about inplace/view"
-                         " declaration being respected.")
         print >> file, ""
         items = node_mem.items()
         items.sort(key=lambda a: a[1])
@@ -735,6 +731,13 @@ class ProfileStats(object):
             ' the runtime)') % (max(0, len(node_mem) - N),
                                 sum_remaining,
                                 sum_remaining / size_sum)
+        print >> file, ''
+        print >> file,  (
+            "    <created/inplace/view> is taked from the op declaration.")
+        print >> file,  ("    Apply nodes marked 'inplace' or 'view' may"
+                         " actually allocate memory, this is not reported"
+                         " here. If you use DebugMode, warnings will be"
+                         " emitted in those cases.")
         print >> file, ''
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
