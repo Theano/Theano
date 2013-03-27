@@ -2535,7 +2535,12 @@ CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
 PyObject *
 GetTheanoAllocInfo(PyObject* _unused, PyObject* dummy)
 {
-    PyObject* tuple = Py_BuildValue("(ii)", _allocated_size, _max_allocated_size);
+    PyObject* a = PyLong_FromLong(_allocated_size);
+    PyObject* b = PyLong_FromLong(_max_allocated_size);
+
+    PyObject* tuple = PyTuple_New(2);
+    PyTuple_SetItem(tuple, 0, a);
+    PyTuple_SetItem(tuple, 1, b);
     return tuple;
 }
 #endif
