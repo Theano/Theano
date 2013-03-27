@@ -588,7 +588,7 @@ class ProfileStats(object):
         assert self.validate_time < self.optimizer_time
 
     def summary_memory(self, file, N=None):
-        fct_memory = {}  # fgraph->dict(node->(outputs size))
+        fct_memory = {}  # fgraph->dict(node->[outputs size])
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
         var_mem = {}  # varible->size in bytes; don't include input variables
         node_mem = {}  # node->total outputs size
@@ -610,7 +610,7 @@ class ProfileStats(object):
                 fct_shapes[node.fgraph][node].append(sh)
             node_mem[node] = sum([var_mem[var] for var in node.outputs])
 
-        #Find the function that used the most memory
+        #Find the function that used the most of that statistic
         max_sum_size = 0
         max_node_memory_size = 0
         max_running_memory_size = 0
@@ -635,12 +635,12 @@ class ProfileStats(object):
             # The maximum of running_memory_size during the function
             running_max_memory_size = 0
 
-            post_thunk_old_storage = []
-            items = nodes_mem.items()
-            items.sort(key=lambda a: a[1])
-            items.reverse()
-
             order = fgraph.toposort()
+            # A list of intermediate variable that are not need
+            # after the execution of the corresponding node.
+            # It mean that after executing the node,
+            # the corresponding variable can be gc.
+            post_thunk_old_storage = []
             computed, last_user = theano.gof.link.gc_helper(order)
             for node in order:
                 post_thunk_old_storage.append([
@@ -649,7 +649,8 @@ class ProfileStats(object):
                     if (input in computed) and
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
-            for node, val in items:
+            for node in order:
+                val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
 
@@ -680,7 +681,7 @@ class ProfileStats(object):
                                                 node_memory_saved_by_view)
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
-        del fgraph, nodes_mem, items, post_thunk_old_storage, node
+        del fgraph, nodes_mem, post_thunk_old_storage, node
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
