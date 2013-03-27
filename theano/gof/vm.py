@@ -616,7 +616,7 @@ class VM_Linker(link.LocalLinker):
 
         """
 
-        if self.fgraph:
+        if self.fgraph and check_correctness:
             outputs = self.fgraph.outputs
             last_outputs = outputs[-len(updated_vars):]
             for out in last_outputs:
