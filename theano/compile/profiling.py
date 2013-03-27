@@ -618,14 +618,23 @@ class ProfileStats(object):
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
         for fgraph, nodes_mem in fct_memory.iteritems():
+            # Sum of the size of all variables in bytes
             sum_size = sum([sum(val)
                             for key, val in nodes_mem.iteritems()])
-
+            # Sum of the size of all variables that actually allocate
+            # memory (excluding views, and inplace);
             node_memory_size = 0
+            # The sum of memory saved by returning view instead of new
+            # allocation
             node_memory_saved_by_view = 0
+            # The sum of memory saved by reusing the input instead of
+            # new allocation
             node_memory_saved_by_inplace = 0
+            # The memory allocated after the current apply node
             running_memory_size = 0
+            # The maximum of running_memory_size during the function
             running_max_memory_size = 0
+
             post_thunk_old_storage = []
             items = nodes_mem.items()
             items.sort(key=lambda a: a[1])
@@ -659,6 +668,8 @@ class ProfileStats(object):
                         old_storage = post_thunk_old_storage[order.index(node)]
                         for old_s in old_storage:
                             running_memory_size -= var_mem[node.inputs[old_s]]
+
+            # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size = max(max_node_memory_size, node_memory_size)
             max_running_memory_size = max(max_running_memory_size,
