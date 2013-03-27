@@ -3591,23 +3591,24 @@ def local_mul_specialize(node):
         new_inputs = []
         removability = InputRemovabilityAnalysis(
             getattr(node, 'fgraph', None), node.inputs)
-        for input in node.inputs:
+        for node_input in node.inputs:
             # remove any neg arguments
-            while input.owner and input.owner.op == T.neg:
+            noneg_input = node_input
+            while noneg_input.owner and noneg_input.owner.op == T.neg:
                 neg ^= True
-                input = input.owner.inputs[0]
+                noneg_input = noneg_input.owner.inputs[0]
 
             # remove special case arguments of 1, -1 or 0
-            y = local_mul_canonizer.get_constant(input)
-            if N.all(y == 1.0) and removability.is_ok[input]:
+            y = local_mul_canonizer.get_constant(noneg_input)
+            if N.all(y == 1.0) and removability.is_ok[node_input]:
                 continue
-            elif N.all(y == -1.0) and removability.is_ok[input]:
+            elif N.all(y == -1.0) and removability.is_ok[node_input]:
                 neg ^= True  # toggles
-            elif N.all(y == 0.0) and removability.is_ok[input]:
+            elif N.all(y == 0.0) and removability.is_ok[node_input]:
                 # if we find any zero, we just return right away
                 return [broadcast_like(0, node.outputs[0], node.fgraph)]
             else:
-                new_inputs.append(input)
+                new_inputs.append(noneg_input)
 
         if new_inputs != node.inputs:
             if new_inputs:
