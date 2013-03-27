@@ -351,7 +351,7 @@ class GpuSoftmax (GpuOp):
         return shape
 
     def c_code_cache_version(self):
-        return (8,) + inline_softmax.code_version
+        return (9,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -409,7 +409,7 @@ class GpuSoftmax (GpuOp):
                     <<<
                         n_blocks,
                         n_threads,
-                        32 * sizeof(float)
+                        n_threads * sizeof(float)
                     >>>(
                             CudaNdarray_HOST_DIMS(%(x)s)[0],
                             CudaNdarray_HOST_DIMS(%(x)s)[1],
