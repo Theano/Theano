@@ -613,7 +613,6 @@ class ProfileStats(object):
         #Find the function that used the most of that statistic
         max_sum_size = 0
         max_node_memory_size = 0
-        max_running_memory_size = 0
         max_running_max_memory_size = 0
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
@@ -673,8 +672,6 @@ class ProfileStats(object):
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size = max(max_node_memory_size, node_memory_size)
-            max_running_memory_size = max(max_running_memory_size,
-                                          running_memory_size)
             max_running_max_memory_size = max(max_running_max_memory_size,
                                           running_max_memory_size)
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
