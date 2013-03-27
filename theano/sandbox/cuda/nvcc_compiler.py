@@ -159,9 +159,9 @@ class NVCC_compiler(object):
                         move_shared_float32_to_gpu=False,
                         enable_cuda=False)
                     n = theano.sandbox.cuda.use.device_number
-                    p = theano.sandbox.cuda.device_properties(n)
-                    flags.append('-arch=sm_' + str(p['major']) +
-                                 str(p['minor']))
+                p = theano.sandbox.cuda.device_properties(n)
+                flags.append('-arch=sm_' + str(p['major']) +
+                             str(p['minor']))
 
         return flags
 
