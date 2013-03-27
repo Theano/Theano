@@ -5,6 +5,7 @@ import cPickle
 import logging
 import operator
 import os
+import re
 import shutil
 import stat
 import StringIO
@@ -121,8 +122,18 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name=None):
+        assert name is None, ("The 'name' parameter of DynamicModule"
+                " cannot be specified anymore. Instead, 'code_hash'"
+                " will be automatically computed and can be used as"
+                " the module's name.")
+        # While the module is not finalized, we can call add_...
+        # when it is finalized, a hash is computed and used instead of
+        # the placeholder, and as module name.
+        self.finalized = False
+        self.code_hash = None
+        self.hash_placeholder = '<<<<HASH_PLACEHOLDER>>>>'
+
         self.support_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>"]
@@ -150,31 +161,35 @@ static struct PyModuleDef moduledef = {{
       -1,
       MyMethods,
 }};
-""".format(name=self.name)
-            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.name
+""".format(name=self.hash_placeholder)
+            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.hash_placeholder
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
             print >> stream, "    return m;"
         else:
-            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
+            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.hash_placeholder
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                                    % self.name)
+                                    % self.hash_placeholder)
         print >> stream, "}"
 
     def add_include(self, str):
+        assert not self.finalized
         self.includes.append(str)
 
     def add_init_code(self, code):
+        assert not self.finalized
         self.init_blocks.append(code)
 
     def add_support_code(self, code):
+        assert not self.finalized
         if code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
+        assert not self.finalized
         self.functions.append(fn)
 
     def code(self):
@@ -205,7 +220,14 @@ static struct PyModuleDef moduledef = {{
         self.print_methoddef(sio)
         self.print_init(sio)
 
-        return sio.getvalue()
+        rval = sio.getvalue()
+        self.code_hash = hash_from_code(rval)
+        rval = re.sub(self.hash_placeholder, self.code_hash, rval)
+        # Finalize the Module, so no support code or function
+        # can be added
+        self.finalized = True
+
+        return rval
 
     def list_code(self, ofile=sys.stdout):
         """Print out the code with line numbers to `ofile` """
