@@ -1545,6 +1545,9 @@ class GCC_compiler(object):
                                           stderr=subprocess.PIPE,
                                           shell=True)
                 p.wait()
+                if p.returncode != 0:
+                    return None
+
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
                 lines = []
@@ -1564,7 +1567,15 @@ class GCC_compiler(object):
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
             native_lines = get_lines("g++ -march=native -E -v -")
-            _logger.info("g++ -march=native selected lines: %s", native_lines)
+            if native_lines is None:
+                _logger.info("Call to 'g++ -march=native' failed,"
+                             "not setting -march flag")
+                detect_march = False
+            else:
+                _logger.info("g++ -march=native selected lines: %s",
+                             native_lines)
+
+        if detect_march:
             if len(native_lines) != 1:
                 _logger.warn(
                     "OPTIMIZATION WARNING: Theano was not able to find the"
