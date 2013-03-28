@@ -172,8 +172,8 @@ def test_softmax_with_bias():
     x = T.fmatrix('x')
     # We can't use zeros_like(x[0,::]) as this don't allow to test with
     # 0 shape.
-    z = T.nnet.softmax_with_bias(x, T.alloc(numpy.asarray(0, dtype='float32'),
-                                            x.shape[1]))
+    z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
+                                             dtype='float32')[::2])
 
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
@@ -181,24 +181,12 @@ def test_softmax_with_bias():
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmaxWithBias)
 
-    def cmp(n, m, catch=False):
-        """Some old card won't accet the configuration arguments of
-        this implementation. For those cases set catch=True to skip
-        those errors.
-        """
-        try:
-            #print "test_softmax",n,m
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-            out = f(data)
-            gout = f_gpu(data)
-            assert numpy.allclose(out, gout), numpy.absolute(out - gout)
-        except RuntimeError, e:
-            if not catch:
-                raise
-            # Different CUDA driver have different error message
-            assert (e.args[0].startswith(
-              'Cuda error: kSoftmaxWithBias_node_0: invalid configuration argument.\n') or
-            e.args[0].startswith('Cuda error: kSoftmaxWithBias_node_0: invalid argument.\n'))
+    def cmp(n, m):
+        #print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
     cmp(2, 5)
     #we need to test n>32*1024 to check that we make the block loop.
@@ -211,7 +199,11 @@ def test_softmax_with_bias():
     cmp(4, 2000)
     cmp(4, 2024)
     #GTX285 don't have enough shared mem for this case.
-    cmp(4, 4074, True)
+    cmp(4, 4074)
+    # The GTX580, 680 and kepler don't have enough shared memory.
+    cmp(2, 10000)
+    cmp(128, 16 * 1024)
+    cmp(128, 64 * 1024)
 
 
 def test_softmax():
@@ -231,11 +223,6 @@ def test_softmax():
                       cuda.nnet.GpuSoftmax)
 
     def cmp(n, m):
-        """Some old card won't accept the configuration arguments of
-        this implementation. For those cases set catch=True to skip
-        those errors.
-
-        """
         #print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)

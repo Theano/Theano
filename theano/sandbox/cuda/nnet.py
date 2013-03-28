@@ -506,7 +506,7 @@ class GpuSoftmaxWithBias (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (7,) + inline_softmax.code_version
+        return (8,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -550,10 +550,9 @@ class GpuSoftmaxWithBias (GpuOp):
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
+              if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmaxWithBias_%(nodename)s
                     <<<
-                    // todo: cap these at the card limits,
-                    //       implement loops in kernel
                         n_blocks,
                         n_threads,
                         n_shared_bytes
@@ -572,6 +571,28 @@ class GpuSoftmaxWithBias (GpuOp):
                         CudaNdarray_HOST_STRIDES(%(z)s)[0],
                         CudaNdarray_HOST_STRIDES(%(z)s)[1]
                     );
+              }else{
+                kSoftmaxWithBias_fixed_shared%(nodename)s
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        n_threads * sizeof(float)
+                    >>>(
+                        CudaNdarray_HOST_DIMS(%(x)s)[0],
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                        CudaNdarray_DEV_DATA(%(b)s),
+                        CudaNdarray_HOST_STRIDES(%(b)s)[0],
+
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+              }
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err)
@@ -588,7 +609,7 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        return nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
+        ret1 = nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
                 params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'const float * b', 'const int sb0',
@@ -610,5 +631,23 @@ class GpuSoftmaxWithBias (GpuOp):
                       "__syncthreads()",
                     "}",
                     ])
+        ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
+                           params=['int M', 'int N',
+                                   'const float * x', 'const int sx0', 'const int sx1',
+                                   'const float * b', 'const int sb0',
+                                   'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                           body=[
+                               "extern __shared__ float buf[]",
+                               "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                               "const float *x_ptr = &x[blockIDX * sx0]",
+                               "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                               inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                                           'sm_ptr', 'sm_s1',
+                                                           'threadIdx.x', 'blockDim.x',
+                                                           'b', 'sb0'),
+                               "__syncthreads()",
+                               "}",
+                           ])
+        return ret1 + "\n" + ret2
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
