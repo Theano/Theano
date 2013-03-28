@@ -1446,7 +1446,7 @@ class Scan(PureOp):
 
             # We are looking for x[t-1] for a given x[t]
             if idx >= self.n_mit_mot_outs:
-                Xt_placeholder = Xt.type()
+                Xt_placeholder = safe_new(Xt)
                 Xts.append(Xt_placeholder)
             if Xt not in self.inner_nitsot_outs(self_outputs):
                 # What we do here is loop through dC_douts and collect all
@@ -1502,12 +1502,12 @@ class Scan(PureOp):
         for pos, x in enumerate(dC_dinps_t[self.n_seqs:]):
             opos = self.get_output_pos(pos)
             if opos >= 0:
-                dC_dXtm1s.append(dC_dXts[opos].type())
+                dC_dXtm1s.append(safe_new(dC_dXts[opos]))
                 if x.dtype != dC_dXts[opos].dtype:
                     dC_dinps_t[pos + self.n_seqs] = \
                             x.astype(dC_dXts[opos].dtype)
             else:
-                dC_dXtm1s.append(x.type())
+                dC_dXtm1s.append(safe_new(x))
         for dx, dC_dXtm1 in enumerate(dC_dXtm1s):
             dC_dinps_t[dx + self.n_seqs] += dC_dXtm1
         # Construct scan op
