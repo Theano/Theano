@@ -932,7 +932,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         return Apply(self, [x, z, gz], [x.type()])
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -1056,7 +1056,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // Cast threadIdx.x into a signed int, to avoid problems with
             // indexing with negative offsets.
             int tx = threadIdx.x;
-            int bx = blockDim.x;
+            int bdimx = blockDim.x;
 
             for(int i0 = blockIdx.x;
                 i0 < D0;
@@ -1076,20 +1076,20 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                 for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
                 {
                     for(int col_iter = 0;
-                        (tx + col_iter * bx < xD3) ; col_iter++){
+                        (tx + col_iter * bdimx < xD3) ; col_iter++){
 
                         //The if inside is to don't do the division if we
                         // need only 1 col_iter
 
-                        if(tx + bx < xD3)
+                        if(tx + bdimx < xD3)
                         {
-                            x_col = tx + col_iter * bx;
+                            x_col = tx + col_iter * bdimx;
                             z_col = x_col/ds1;
                         }
 
                         if (%(ignore_border)s && ((x_col >= ds1 * D3) || (i2 >= D2)))
                         {
-                            // This happens only if x_col was ignored, or if i2*ds0 was
+                            // This happens only if x_col, or i2*ds0, was ignored
                             // (via ignore_border)
                             // TODO: if ignore_border is False, this is impossible
                             //        and we don't even need to generate this code.
