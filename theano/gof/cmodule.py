@@ -1472,33 +1472,6 @@ def gcc_version():
     return gcc_version_str
 
 
-def gcc_llvm():
-    """ Detect if the g++ version used is the llvm one or not.
-
-    It does not support all g++ parameters even if it supports many of them.
-    """
-    if gcc_llvm.is_llvm is None:
-        p = None
-        try:
-            p = call_subprocess_Popen(['g++', '--version'],
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
-            p.wait()
-            output = p.stdout.read() + p.stderr.read()
-        except OSError:
-            # Typically means g++ cannot be found.
-            # So it is not an llvm compiler.
-
-            # Normally this should not happen as we should not try to
-            # compile when g++ is not available. If this happens, it
-            # will crash later so supposing it is not llvm is "safe".
-            output = ''
-        del p
-        gcc_llvm.is_llvm = "llvm" in output
-    return gcc_llvm.is_llvm
-gcc_llvm.is_llvm = None
-
-
 class GCC_compiler(object):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
@@ -1520,10 +1493,6 @@ class GCC_compiler(object):
         # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
         # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
         detect_march = GCC_compiler.march_flags is None
-        if detect_march and gcc_llvm():
-            detect_march = False
-            GCC_compiler.march_flags = []
-
         if detect_march:
             for f in cxxflags:
                 #If the user give an -march=X parameter, don't add one ourself
@@ -1545,6 +1514,9 @@ class GCC_compiler(object):
                                           stderr=subprocess.PIPE,
                                           shell=True)
                 p.wait()
+                if p.returncode != 0:
+                    return None
+
                 stdout = p.stdout.readlines()
                 stderr = p.stderr.readlines()
                 lines = []
@@ -1564,7 +1536,15 @@ class GCC_compiler(object):
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
             native_lines = get_lines("g++ -march=native -E -v -")
-            _logger.info("g++ -march=native selected lines: %s", native_lines)
+            if native_lines is None:
+                _logger.info("Call to 'g++ -march=native' failed,"
+                             "not setting -march flag")
+                detect_march = False
+            else:
+                _logger.info("g++ -march=native selected lines: %s",
+                             native_lines)
+
+        if detect_march:
             if len(native_lines) != 1:
                 _logger.warn(
                     "OPTIMIZATION WARNING: Theano was not able to find the"
