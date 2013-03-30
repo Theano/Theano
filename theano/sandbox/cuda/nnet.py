@@ -609,11 +609,11 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        ret1 = nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
+        ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'const float * b', 'const int sb0',
-                    'float * sm', 'const int ssm0', 'const int ssm1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'const float * b', 'const int sb0',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
@@ -626,7 +626,7 @@ class GpuSoftmaxWithBias (GpuOp):
                        "__syncthreads()",
                        inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * ssm0 + tx * ssm1] = buf[tx]",
+                         "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
                       "}",
                       "__syncthreads()",
                     "}",
