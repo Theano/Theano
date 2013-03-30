@@ -505,5 +505,6 @@ Other tools that can help you
  * `line_profiler <http://pypi.python.org/pypi/line_profiler/>`_: Line-by-line profiler.
  * `memory_profiler <http://fseoane.net/blog/2012/line-by-line-report-of-memory-usage/>`_: memory profiler
  * `runsnake <http://www.vrplumber.com/programming/runsnakerun/>`_: Gui for cProfile(time profiler) and Meliae(memory profiler)
+ * `Guppy <https://pypi.python.org/pypi/guppy/>`_: Supports object and heap memory sizing, profiling and debugging.
  * `hub <https://github.com/defunkt/hub>`_: A tool that adds github commands to the git command line.
  * `git pull-requests <http://www.splitbrain.org/blog/2011-06/19-automate_github_pull_requests>`_: Another tool for git/github command line.
