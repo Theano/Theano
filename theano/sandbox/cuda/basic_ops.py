@@ -2475,7 +2475,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             Py_XINCREF(%(out)s);
         }
 
-        x_obj = (PyObject*)CudaNdarray_View(%(x)s);
+        x_obj = (PyObject*)CudaNdarray_View(%(out)s);
         y_obj = (PyObject*)CudaNdarray_View(%(y)s);
 
         for (j = 0;j < num_indices; j++) {
