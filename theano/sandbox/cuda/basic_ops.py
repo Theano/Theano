@@ -2442,6 +2442,9 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                     x[i] += y
         out[0] = x
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, inputs, outputs, sub):
         if (self.set_instead_of_inc) or \
            (node.inputs[0].ndim != node.inputs[1].ndim):
