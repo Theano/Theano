@@ -1625,7 +1625,7 @@ def local_useless_subtensor(node):
             except NotScalarConstantError:
                 pass
 
-            if isinstance(idx.stop, int):
+            if isinstance(idx.stop, (int, numpy.integer)):
                 if idx.stop < length_pos_data:
                     return False
             elif isinstance(idx.stop, theano.scalar.Scalar):
