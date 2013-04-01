@@ -19,7 +19,7 @@ import distutils.sysconfig
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import PY3, b, next
+from theano.compat import PY3, next, decode, decode_iter
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -1543,16 +1543,16 @@ class GCC_compiler(object):
                 if p.returncode != 0:
                     return None
 
-                stdout = p.stdout.readlines()
-                stderr = p.stderr.readlines()
+                stdout = decode_iter(p.stdout.readlines())
+                stderr = decode_iter(p.stderr.readlines())
                 lines = []
                 if parse:
                     for line in stdout + stderr:
-                        if b("COLLECT_GCC_OPTIONS=") in line:
+                        if "COLLECT_GCC_OPTIONS=" in line:
                             continue
-                        elif b("-march=") in line and b("-march=native") not in line:
+                        elif "-march=" in line and "-march=native" not in line:
                             lines.append(line.strip())
-                        elif b("-mtune=") in line and b("-march=native") not in line:
+                        elif "-mtune=" in line and "-march=native" not in line:
                             lines.append(line.strip())
                     lines = list(set(lines))  # to remove duplicate
                 else:
@@ -1835,7 +1835,7 @@ class GCC_compiler(object):
 
         try:
             p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
-            compile_stderr = p.communicate()[1]
+            compile_stderr = decode(p.communicate()[1])
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
             print_command_line_error()
@@ -1856,7 +1856,7 @@ class GCC_compiler(object):
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
-                            (status, compile_stderr.replace(b('\n'), b('. '))))
+                            (status, compile_stderr.replace('\n', '. ')))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print compile_stderr

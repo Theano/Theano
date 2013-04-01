@@ -30,7 +30,12 @@ if PY3:
     from itertools import combinations, product
     from sys import maxsize
 
+    def decode(x):
+        return x.decode()
 
+    def decode_iter(itr):
+        for x in itr:
+            yield x.decode()
 else:
 
     from operator import div as operator_div
@@ -44,3 +49,9 @@ else:
     from theano.compat.python2x import all, any, partial, defaultdict, deque
     from theano.compat.python2x import combinations, product, maxsize
     from theano.compat.python2x import DictMixin, OrderedDict
+
+    def decode(x):
+        return x
+
+    def decode_iter(x):
+        return x
