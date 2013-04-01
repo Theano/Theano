@@ -2366,8 +2366,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=2)
@@ -2376,8 +2376,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=4)
@@ -2386,8 +2386,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2396,8 +2396,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2406,8 +2406,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2416,8 +2416,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
     def test_hash(self):
