@@ -17,6 +17,7 @@ from theano.gof.python25 import any
 from theano.tests  import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.gof.python25 import OrderedDict
+from theano.compat import PY3
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -3515,12 +3516,20 @@ def test_speed():
     t0 = time.time()
     r_i = iter(r[1:])
     r_ii = iter(r[:-1])
-    while True:
-        try:
-            tmp = r_i.next()
-            tmp += r_ii.next()
-        except StopIteration:
-            break
+    if PY3:
+        while True:
+            try:
+                tmp = next(r_i)
+                tmp += next(r_ii)
+            except StopIteration:
+                break
+    else:
+        while True:
+            try:
+                tmp = r_i.next()
+                tmp += r_ii.next()
+            except StopIteration:
+                break
     t1 = time.time()
     print 'python with builtin iterator', t1 - t0
 
