@@ -3,6 +3,7 @@
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 """
+
 __authors__   = "theano-dev"
 __copyright__ = "(c) 2010, Universite de Montreal"
 __license__   = "3-clause BSD License"
@@ -373,7 +374,16 @@ class PureOp(object):
         `default_output`, but subclasses are free to override this function and ignore
         `default_output`.
 
+        :param inputs: The Op's inputs, forwarded to the call to `make_node()`.
+
+        :param kwargs: Additional keyword arguments to be forwarded to
+            `make_node()` *except* for optional argument `return_list` (which
+            defaults to False). If `return_list` is True, then the returned
+            value is always a list. Otherwise it is either a single Variable
+            when the output of `make_node()` contains a single element, or this
+            output (unchanged) when it contains multiple elements.
         """
+        return_list = kwargs.pop('return_list', False)
         node = self.make_node(*inputs, **kwargs)
         if self.add_stack_trace_on_call:
             self.add_tag_trace(node)
@@ -434,9 +444,14 @@ class PureOp(object):
                     output.tag.test_value = storage_map[output][0]
 
         if self.default_output is not None:
-            return node.outputs[self.default_output]
+            rval = node.outputs[self.default_output]
+            if return_list:
+                rval = [rval]
+            return rval
         else:
-            if len(node.outputs) == 1:
+            if return_list:
+                return list(node.outputs)
+            elif len(node.outputs) == 1:
                 return node.outputs[0]
             else:
                 return node.outputs
@@ -448,7 +463,6 @@ class PureOp(object):
     #########################
     # Python implementation #
     #########################
-
 
     def R_op(self, inputs, eval_points):
         """
@@ -479,7 +493,6 @@ class PureOp(object):
                 "theano-dev mailing list for assistance. If it is your "
                 "own op, implement the R_op method." %
                 (self, self.__class__.__name__))
-
 
     def perform(self, node, inputs, output_storage):
         """
@@ -609,6 +622,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
+
 
 def get_test_value(v):
     """
