@@ -3,6 +3,7 @@
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 """
+
 __authors__   = "theano-dev"
 __copyright__ = "(c) 2010, Universite de Montreal"
 __license__   = "3-clause BSD License"
@@ -463,7 +464,6 @@ class PureOp(object):
     # Python implementation #
     #########################
 
-
     def R_op(self, inputs, eval_points):
         """
 
@@ -493,7 +493,6 @@ class PureOp(object):
                 "theano-dev mailing list for assistance. If it is your "
                 "own op, implement the R_op method." %
                 (self, self.__class__.__name__))
-
 
     def perform(self, node, inputs, output_storage):
         """
@@ -623,6 +622,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
+
 
 def get_test_value(v):
     """
