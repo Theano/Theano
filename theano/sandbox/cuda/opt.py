@@ -1353,20 +1353,6 @@ def local_gpualloc_memset_0(node):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             return [new_out]
 
-@register_opt()
-@local_optimizer([None])
-def my_optimizer(node):
-    if isinstance(node.op, tensor.basic.AdvancedIncSubtensor1) and not node.op.inplace and str(node.op) == "GpuAdvancedIncSubtensor1{no_inplace,inc}":
-       x, y, z = node.inputs
-       if (str(x) == "GpuAlloc{memset_0=True}.0"):
-           new_x = GpuAlloc(memset_0=True)(*x.owner.inputs)
-           new_op = node.op.__class__(inplace=True, set_instead_of_inc = node.op.set_instead_of_inc)
-           new_node = new_op(new_x, y, z)
-           return [new_node]
-    return False
-
-
-
 def safe_to_gpu(x):
     if (isinstance(x.type, tensor.TensorType) and
         x.type.dtype == 'float32'):
