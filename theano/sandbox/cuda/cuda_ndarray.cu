@@ -1809,11 +1809,8 @@ void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, Py
      unsigned int num_blocks = size;
      dim3 n_blocks(num_blocks);
      dim3 n_threads(num_threads_per_block);
-     static long *d_indices_arr = NULL;
-     if (!d_indices_arr)
-     {
-         d_indices_arr = (long *)device_malloc(sizeof(long) * PyArray_SIZE(indices_arr));
-     }
+     long *d_indices_arr = NULL;
+     d_indices_arr = (long *)device_malloc(sizeof(long) * PyArray_SIZE(indices_arr));
      assert(d_indices_arr);
 
      cudaError_t err = cudaMemcpy(d_indices_arr,
@@ -1834,6 +1831,7 @@ void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, Py
                                                 d_indices_arr,
                                                 PyArray_SIZE(indices_arr)
                                                 );
+     device_free(d_indices_arr);
      return;
 }
 
