@@ -47,9 +47,9 @@ theano.configparser.AddConfigVar('on_shape_error',
                                  in_c_key=False)
 
 theano.configparser.AddConfigVar('assume_constants_shape_ok',
-                                 "True: allow optimized code to run"
-                                 "incorrectly for incorrect shapes",
-                                 theano.configparser.BoolParam(False),
+                                 "True: assume constants have correct shape"
+                                 " and can be removed by specializing ops",
+                                 theano.configparser.BoolParam(True),
                                  in_c_key=False)
 # Utilities
 
