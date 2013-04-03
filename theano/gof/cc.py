@@ -124,8 +124,19 @@ class CodeBlock:
 
 
 def failure_code(sub):
-    """WRITEME"""
-    return "{%(failure_var)s = %(id)s; goto __label_%(id)i;}" % sub
+    """Code contained in sub['fail'], usually substituted for %(fail)s.
+
+    It sets information about current error, then goto the code
+    actually handling the failure, which is defined in struct_gen().
+    """
+    return '''{
+        %(failure_var)s = %(id)s;
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError,
+                "Unexpected error in an Op's C code. "
+                "No Python exception was set");
+            }
+        goto __label_%(id)i;}''' % sub
 
 
 def code_gen(blocks):
