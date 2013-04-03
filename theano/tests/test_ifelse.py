@@ -367,6 +367,20 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 0),
                               vx2 + vy2 + vw2)
 
+    def test_grad_test_values(self):
+        """
+        Regression test for test values of `ifelse` gradient.
+        """
+        backup = theano.config.compute_test_value
+        theano.config.compute_test_value = 'raise'
+        try:
+            x = tensor.scalar('x')
+            x.tag.test_value = 1
+            # Used to crash due to undefined test value.
+            tensor.grad(ifelse(0, x, x), x)
+        finally:
+            theano.config.compute_test_value = backup
+
 
 if __name__ == '__main__':
     print ' Use nosetests to run these tests '
