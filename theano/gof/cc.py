@@ -134,7 +134,7 @@ def failure_code(sub):
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_RuntimeError,
                 "Unexpected error in an Op's C code. "
-                "No Python exception was set");
+                "No Python exception was set.");
             }
         goto __label_%(id)i;}''' % sub
 
