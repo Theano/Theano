@@ -43,7 +43,7 @@ class NaiveAlgo(object):
     def cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (16, self.verbose, self.sync, ver)
+            return (17, self.verbose, self.sync, ver)
         else:
             return ver
 
@@ -978,6 +978,15 @@ nd_collapse_[i]=0;
         for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
             if (dims[i] != CudaNdarray_HOST_DIMS(%(oname)s)[i])
             {
+                PyErr_Format(PyExc_ValueError,
+                             "GpuElemwise. Output dimension mis-match. Output"
+                             " %(idx)d (indices start at 0), working inplace"
+                             " on input %(input_idx)s, has shape[%%i] == %%i"
+                             ", but the output's size on that axis is %%i.",
+                             i,
+                             CudaNdarray_HOST_DIMS(%(oname)s)[i],
+                             dims[i]
+                            );
                 Py_DECREF(%(oname)s);
                 %(oname)s = NULL;
                 %(fail)s;
