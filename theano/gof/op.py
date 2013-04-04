@@ -793,7 +793,7 @@ int main( int argc, const char* argv[] )
 }
         """
         default_openmp = GCC_compiler.try_compile_tmp(
-                code=code,
+                src_code=code,
                 tmp_prefix='test_omp_',
                 flags=['-fopenmp'],
                 try_run=False)
