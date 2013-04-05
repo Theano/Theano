@@ -114,8 +114,8 @@ def traverse(out, x, x_copy, d, visited=None):
     This happens because initially shared variables are on GPU .. which is
     fine for the main computational graph but confuses things a bit for the
     inner graph of scan '''
-    # ``visited`` is a set of nodes that are already known and do not need
-    # to be checked again, speeding up the traversal of interconnected graphs.
+    # ``visited`` is a set of nodes that are already known and don't need to be
+    # checked again, speeding up the traversal of multiply-connected graphs.
     # if a ``visited`` set is given, it will be updated in-place so the callee
     # knows which nodes we have seen.
     if visited is None:
@@ -997,8 +997,8 @@ def forced_replace(out, x, y):
     if out is None:
         return None
 
-    # ``visited`` is a set of nodes that are already known and do not need
-    # to be checked again, speeding up the traversal of interconnected graphs.
+    # ``visited`` is a set of nodes that are already known and don't need to be
+    # checked again, speeding up the traversal of multiply-connected graphs.
     visited = set()
     def local_traverse(graph, x):
         if graph in visited:
