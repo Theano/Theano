@@ -758,7 +758,7 @@ class Elemwise(Op):
 
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
-            if isinstance(r.type, DisconnectedType):
+            if isinstance(r.type, (NullType, DisconnectedType)):
                 return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]

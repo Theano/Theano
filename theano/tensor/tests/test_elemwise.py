@@ -97,7 +97,8 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         x = tensor.dscalar()
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
         self.assertRaises(ValueError, y.eval, {x: 0})
-                          
+
+
 class test_Broadcast(unittest.TestCase):
     def setUp(self):
         unittest_tools.seed_rng()
@@ -749,7 +750,8 @@ class T_mean_dtype(unittest.TestCase):
             x = tensor.matrix(dtype=input_dtype)
             for sum_dtype in imap(str, theano.scalar.all_types):
                 axis = axes[idx % len(axes)]
-                # If the inner sum cannot be created, it will raise a TypeError.
+                # If the inner sum cannot be created, it will raise a
+                # TypeError.
                 try:
                     mean_var = x.mean(dtype=sum_dtype, axis=axis)
                 except TypeError:
@@ -757,10 +759,11 @@ class T_mean_dtype(unittest.TestCase):
                 else:
                     # Executed if no TypeError was raised
                     if sum_dtype in tensor.discrete_dtypes:
-                        assert mean_var.dtype == 'float64', (mean_var.dtype, sum_dtype)
+                        assert mean_var.dtype == 'float64', (
+                                (mean_var.dtype, sum_dtype))
                     else:
-                        assert mean_var.dtype == sum_dtype, (mean_var.dtype, sum_dtype)
-
+                        assert mean_var.dtype == sum_dtype, (
+                                (mean_var.dtype, sum_dtype))
                     # Check that we can take the gradient, when implemented
                     if "complex" in mean_var.dtype:
                         continue
@@ -920,7 +923,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
     def test_prod_without_zeros_custom_dtype(self):
         """
-        Test the ability to provide your own output dtype for a ProdWithoutZeros().
+        Test ability to provide your own output dtype for a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [0], [1], [0, 1]]
@@ -936,7 +939,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
     def test_prod_without_zeros_custom_acc_dtype(self):
         """
-        Test the ability to provide your own acc_dtype for a ProdWithoutZeros().
+        Test ability to provide your own acc_dtype for a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [0], [1], [0, 1]]
@@ -1000,7 +1003,8 @@ def test_gt_grad():
     T = theano.tensor
 
     input_ = T.vector(dtype=floatX)
-    random_values = numpy.random.RandomState(1234).uniform(low=-1, high=1, size=(2,2))
+    random_values = numpy.random.RandomState(1234).uniform(
+                                                low=-1, high=1, size=(2, 2))
     W_values = numpy.asarray(random_values, dtype=floatX)
     W = theano.shared(value=W_values, name='weights')
     correct_score = T.dot(input_, W)
@@ -1022,15 +1026,17 @@ if __name__ == '__main__':
     unittest.TextTestRunner().run(suite)
 """
 
+
 def test_clip_grad():
 
     # test the gradient of clip
-    def func(x,y,z):
-        return theano.tensor.clip(x,y,z)
+    def func(x, y, z):
+        return theano.tensor.clip(x, y, z)
     # use an x value less than y, an x value between y and z, and an x value
     # greater than z
     unittest_tools.verify_grad(func,
-            [ numpy.asarray([-1.,0.5,2.]), 0., 1.])
+            [numpy.asarray([-1., 0.5, 2.]), 0., 1.])
+
 
 def test_clip_grad_int():
 
@@ -1038,8 +1044,32 @@ def test_clip_grad_int():
     x = tensor.iscalar()
     y = tensor.iscalar()
     z = tensor.iscalar()
-    c = tensor.clip(x,y,z)
+    c = tensor.clip(x, y, z)
     tensor.grad(c, [x, y, z])
+
+
+def test_not_implemented_elemwise_grad():
+    """
+    Regression test for unimplemented gradient in an Elemwise Op.
+    """
+
+    class TestOp(scalar.ScalarOp):
+
+        def __init__(self):
+            self.output_types_preference = scalar.upgrade_to_float
+
+        def impl(self, n, x):
+            return x * n
+
+        def grad(self, (n, x), (gz,)):
+            dy_dx = n
+            return [theano.gradient.grad_not_implemented(self, 0, n),
+                    gz * dy_dx]
+
+    test_op = tensor.Elemwise(TestOp())
+    x = tensor.scalar()
+    # The call to `grad` used to crash.
+    tensor.grad(test_op(2, x), x)
 
 
 if __name__ == '__main__':
