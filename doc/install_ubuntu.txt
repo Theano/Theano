@@ -141,7 +141,7 @@ Then you install it like this:
     sudo ./XXX.sh
 
 You probably need to change the default version of gcc as 
-`explained by Benjamin J. McCann <http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_:
+`explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_:
 
 
 
