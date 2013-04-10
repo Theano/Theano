@@ -180,8 +180,8 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 
     """
     
-    if (len(kwargs) > 0) and (not "borrow" in kwargs):
-        raise Exception("Unknown argument: %s" % kwargs.pop())
+    if (len(kwargs) > 0) and (not kwargs.has_key("borrow")):
+        raise Exception("Unknown argument: %s" % kwargs.keys().pop())
     try:
         if isinstance(value, Variable):
             raise TypeError(" Shared variable constructor needs numeric values and not symbolic variables.")
