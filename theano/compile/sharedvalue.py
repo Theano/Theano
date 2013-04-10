@@ -179,7 +179,9 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
            `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
 
     """
-
+    
+    if (len(kwargs) > 0) and (not "borrow" in kwargs):
+        raise Exception("Unknown argument: %s" % kwargs.pop())
     try:
         if isinstance(value, Variable):
             raise TypeError(" Shared variable constructor needs numeric values and not symbolic variables.")
