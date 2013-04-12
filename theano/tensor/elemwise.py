@@ -1288,7 +1288,7 @@ class CAReduce(Op):
         variable = input
         to_reduce = reversed(sorted(axis))
 
-        if hasattr(self, 'acc_dtype'):
+        if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             acc_dtype = self.acc_dtype
         else:
             acc_dtype = node.outputs[0].type.dtype
@@ -1356,7 +1356,7 @@ class CAReduce(Op):
         idtype = input.type.dtype_specs()[1]
         odtype = output.type.dtype_specs()[1]
 
-        if hasattr(self, 'acc_dtype'):
+        if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             acc_type = TensorType(
                     broadcastable=node.outputs[0].broadcastable,
                     dtype=self.acc_dtype)
