@@ -1159,7 +1159,7 @@ class ScanMerge(gof.Optimizer):
         Questionable, we should also consider profile ?
         """
         rep = set_nodes[0]
-        if not rep.op.as_while and node.op.as_while:
+        if rep.op.as_while != node.op.as_while:
             return False
 
         nsteps = node.inputs[0]
