@@ -259,6 +259,7 @@ gemv_inplace = Gemv(inplace=True)
 # For the user interface. Opt will make them inplace later
 gemv = gemv_no_inplace
 
+
 class Ger(Op):
     """
     BLAS defines general rank-1 update GER as A <- A + alpha x y'
@@ -366,7 +367,6 @@ def default_blas_ldflags():
                         "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
                         "said value, this will disable this warning."
                         % new_path)
-
 
                     use_unix_epd = False
             if use_unix_epd:
@@ -729,17 +729,28 @@ class GemmRelated(Op):
                 //);
                 switch(unit)
                 {
-                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_0, &b, z, &sz_0); break;
-                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y, &sy_1, x, &sx_1, &b, z, &sz_0); break;
-                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_0, &b, z, &sz_1); break;
-                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_0, y, &sy_1, &b, z, &sz_1); break;
-                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x, &sx_1, y, &sy_1, &b, z, &sz_1); break;
-                    default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
+                    case 0x000: dgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y,
+                                       &sy_0, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x100: dgemm_(&N, &T, &Nz1, &Nz0, &Nx1, &a, y,
+                                       &sy_0, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x010: dgemm_(&T, &N, &Nz1, &Nz0, &Nx1, &a, y,
+                                       &sy_1, x, &sx_0, &b, z, &sz_0); break;
+                    case 0x110: dgemm_(&T, &T, &Nz1, &Nz0, &Nx1, &a, y,
+                                       &sy_1, x, &sx_1, &b, z, &sz_0); break;
+                    case 0x001: dgemm_(&T, &T, &Nz0, &Nz1, &Nx1, &a, x,
+                                       &sx_0, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x101: dgemm_(&N, &T, &Nz0, &Nz1, &Nx1, &a, x,
+                                       &sx_1, y, &sy_0, &b, z, &sz_1); break;
+                    case 0x011: dgemm_(&T, &N, &Nz0, &Nz1, &Nx1, &a, x,
+                                       &sx_0, y, &sy_1, &b, z, &sz_1); break;
+                    case 0x111: dgemm_(&N, &N, &Nz0, &Nz1, &Nx1, &a, x,
+                                       &sx_1, y, &sy_1, &b, z, &sz_1); break;
+                    default: PyErr_SetString(PyExc_ValueError,
+                                             "some matrix has no unit stride");
+                             %(fail)s;
                 };
-                //fprintf(stderr, "Calling dgemm %%i %%i %%i %%i took %%f\\n", unit, Nz1, Nz0, Nx1, time_time()- t0);
+                //fprintf(stderr, "Calling dgemm %%i %%i %%i %%i took %%f\\n",
+                //        unit, Nz1, Nz0, Nx1, time_time()- t0);
         """
 
     end_switch_typenum = """
