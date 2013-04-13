@@ -131,6 +131,7 @@ import time
 
 import numpy
 import numpy.distutils
+import numpy.distutils.__config__
 
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, DestroyHandler,
