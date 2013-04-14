@@ -44,7 +44,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values, inplace_increment,
-        matrix_of_scalars)
+        tensor_of_scalars)
 from theano.tests import unittest_tools as utt
 
 
@@ -6779,15 +6779,25 @@ def test_transpose():
     assert tensor.transpose(x3).name == 'x3.T'
     assert tensor.transpose(tensor.dmatrix()).name is None
 
-def test_matrix_of_scalars():
+def test_tensor_of_scalars():
     a,b,c,d = map(scalar, 'abcd')
-    X = matrix_of_scalars([[a, b],
+    X = tensor_of_scalars([[a, b],
                            [c, d]])
     f = function([a, b, c, d], X)
     result = f(1,2,3,4)
     assert result.shape == (2, 2)
     assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2],[3,4]]))
 
+    X = tensor_of_scalars([a,b,c,d])
+    f = function([a, b, c, d], X)
+    result = f(1,2,3,4)
+    assert result.shape == (4,)
+    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2,3,4]]))
+
+    X = tensor_of_scalars([[[a],[b]],[[c],[d]]])
+    f = function([a, b, c, d], X)
+    result = f(1,2,3,4)
+    assert result.shape == (2, 2, 1)
 
 class TestSpecifyShape(unittest.TestCase):
     def shortDescription(self):

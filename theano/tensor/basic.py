@@ -8225,18 +8225,20 @@ def diag(v, k=0):
     else:
         raise ValueError("Input must be 1- or 2-d.")
 
-def matrix_of_scalars(list_of_lists):
-    """ Returns a matrix of scalars
+def tensor_of_scalars(arg):
+    """ Returns a tensor of scalars
 
-    >>> from theano.tensor import matrix_of_scalars, scalar
+    >>> from theano.tensor import tensor_of_scalars, scalar
     >>> from theano import function
     >>> a,b,c,d = map(scalar, 'abcd')
-    >>> X = matrix_of_scalars([[a, b],
+    >>> X = tensor_of_scalars([[a, b],
     ...                        [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> f(1, 2, 3, 4)
     array([[ 1.,  2.],
            [ 3.,  4.]], dtype=float32)
     """
-    from functools import partial
-    return stack(*map(partial(apply, stack), list_of_lists))
+    if isinstance(arg, (tuple, list)):
+        return stack(*map(tensor_of_scalars, arg))
+    else:
+        return arg
