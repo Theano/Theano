@@ -43,7 +43,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean, IncSubtensor, AdvancedIncSubtensor1,
         itensor3, Tile, AdvancedIncSubtensor, switch, Diagonal, Diag,
-        nonzero, flatnonzero, nonzero_values, inplace_increment)
+        nonzero, flatnonzero, nonzero_values, inplace_increment,
+        stacklists)
 from theano.tests import unittest_tools as utt
 
 
@@ -3767,9 +3768,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
                 a.broadcastable, self.ix2.broadcastable)
 
     def test_inc_adv_subtensor_w_matrix(self):
-        if inplace_increment is None: 
+        if inplace_increment is None:
             raise inplace_increment_missing
-        
+
         subt = self.v[self.ix2]
         a = inc_subtensor(subt,subt)
 
@@ -3780,7 +3781,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert numpy.allclose(aval, [.4, .9 * 3, .1 * 3])
 
     def test_inc_adv_subtensor_w_2vec(self):
-        if inplace_increment is None: 
+        if inplace_increment is None:
             raise inplace_increment_missing
 
         subt = self.m[self.ix1, self.ix12]
@@ -3801,7 +3802,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
-        if inplace_increment is None: 
+        if inplace_increment is None:
             raise inplace_increment_missing
 
         a = inc_subtensor(self.m[self.ix1, self.ix12], 2.1)
@@ -3820,7 +3821,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [.5, .3 + 2.1, .15]]), aval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
-        if inplace_increment is None: 
+        if inplace_increment is None:
             raise inplace_increment_missing
 
         a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
@@ -6778,6 +6779,32 @@ def test_transpose():
     assert tensor.transpose(x3).name == 'x3.T'
     assert tensor.transpose(tensor.dmatrix()).name is None
 
+def test_stacklists():
+    a,b,c,d = map(scalar, 'abcd')
+    X = stacklists([[a, b],
+                    [c, d]])
+    f = function([a, b, c, d], X)
+    result = f(1,2,3,4)
+    assert result.shape == (2, 2)
+    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2],[3,4]]))
+
+    X = stacklists([a,b,c,d])
+    f = function([a, b, c, d], X)
+    result = f(1,2,3,4)
+    assert result.shape == (4,)
+    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2,3,4]]))
+
+    X = stacklists([[[a],[b]],[[c],[d]]])
+    f = function([a, b, c, d], X)
+    result = f(1,2,3,4)
+    assert result.shape == (2, 2, 1)
+
+    a,b,c,d = [matrix(a) for a in 'abcd']
+    X = stacklists([[a, b],
+                    [c, d]])
+    f = function([a, b, c, d], X)
+    x = numpy.ones((4, 4), 'float32')
+    assert f(x,x,x,x).shape == (2, 2, 4, 4)
 
 class TestSpecifyShape(unittest.TestCase):
     def shortDescription(self):
