@@ -279,7 +279,7 @@ class NVCC_compiler(object):
 
         if sys.platform == 'win32':
             # add flags for Microsoft compiler to create .pdb files
-            preargs2.append('/Zi')
+            preargs2.extend(['/Zi', '/MD'])
             cmd.extend(['-Xlinker', '/DEBUG'])
 
         if local_bitwidth() == 64:

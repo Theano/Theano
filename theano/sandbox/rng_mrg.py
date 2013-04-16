@@ -452,7 +452,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
                 y2 += x23;
                 y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
                 y2 += y1;
-                y2 -= (y2 < 0 or y2 >= M2) ? M2 : 0;
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
 
                 x23 = x22;
                 x22 = x21;
