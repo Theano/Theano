@@ -848,7 +848,7 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                 " implemented with n == 1 and pvals.ndim = 2"))
 
-    def normal(self, size=None, avg=0.0, std=1.0, ndim=None,
+    def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):
         """
         :param size: Can be a list of integers or Theano variables (ex: the
