@@ -821,7 +821,7 @@ class Elemwise(Op):
         # Determine the shape of outputs
         out_shape = []
         for values in izip(*[input.shape for input in inputs]):
-            if numpy.any(values == 0):
+            if any(v == 0 for v in values):
                 # All non-broadcasted dimensions should be zero
                 assert max(values) <= 1
                 out_shape.append(0)
