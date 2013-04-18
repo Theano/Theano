@@ -1070,6 +1070,12 @@ def test_not_implemented_elemwise_grad():
     x = tensor.scalar()
     # The call to `grad` used to crash.
     tensor.grad(test_op(2, x), x)
+    # Verify that trying to use the not implemented gradient fails.
+    try:
+        tensor.grad(test_op(x, 2), x)
+        assert False
+    except theano.gradient.NullTypeGradError:
+        pass
 
 
 if __name__ == '__main__':
