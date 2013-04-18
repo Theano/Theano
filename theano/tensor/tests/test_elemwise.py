@@ -986,6 +986,16 @@ class TestElemwise(unittest_tools.InferShapeTester):
                             [Elemwise(scalar.add)(t_left, t_right)],
                             [t_left_val, t_right_val], Elemwise)
 
+    def test_input_dimensions_overflow(self):
+        # Elemwise.perform used to compute the product
+        # of input shapes to check if there was a zero in them,
+        # it overflowed in this case.
+        a, b, c, d, e, f = tensor.vectors('abcdef')
+        s = a + b + c + d + e + f
+        g = theano.function([a, b, c, d, e, f], s,
+                             mode=theano.compile.Mode(linker='py'))
+        g(*[numpy.zeros(2 ** 11, config.floatX) for i in range(6)])
+
 
 def test_gt_grad():
     """A user test that failed.
