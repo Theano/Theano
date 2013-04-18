@@ -1647,7 +1647,7 @@ class CAReduceDtype(CAReduce):
         return CAReduce.__hash__(self) ^ hash((self.dtype, self.acc_dtype))
 
     def __setstate__(self, d):
-        super(CAReduceDtype, self).__setstate__(self, d)
+        super(CAReduceDtype, self).__setstate__(d)
         if not hasattr(self, "dtype"):
             # This is needed as old pickled will crash otherwise.
             # We need to keep the old dtype behavior as the op
