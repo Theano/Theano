@@ -127,7 +127,8 @@ class DimShuffle(Op):
 
         for i, j in enumerate(new_order):
             if j != 'x':
-                # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+                # There is a bug in numpy that results in isinstance(x, int)
+                # returning False for numpy integers.
                 # See <http://projects.scipy.org/numpy/ticket/2235>.
                 if not isinstance(j, (int, numpy.integer)):
                     raise TypeError(
@@ -135,7 +136,7 @@ class DimShuffle(Op):
                 if j >= len(input_broadcastable):
                     raise ValueError(("new_order[%d] is %d, but the input "
                         "only has %d axes.") %
-                        (i,j,len(input_broadcastable)))
+                        (i, j, len(input_broadcastable)))
                 if j in new_order[(i + 1):]:
                     raise ValueError((
                     "The same input dimension may not appear twice in the "
@@ -581,8 +582,8 @@ class Elemwise(Op):
                 ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern)))
 
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
-                for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
-                ]
+            for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
+            ]
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -659,11 +660,9 @@ class Elemwise(Op):
 
     def grad(self, inputs, ograds):
 
-
         outs = self(*inputs)
-        if not isinstance(outs, (list,tuple)):
-            outs = [ outs ]
-
+        if not isinstance(outs, (list, tuple)):
+            outs = [outs]
 
         #compute grad with respect to broadcasted input
         rval = self._bgrad(inputs, ograds)
@@ -693,7 +692,6 @@ class Elemwise(Op):
                     assert str(elem.type.dtype).find('int') == -1
                     new_rval.append(elem)
             return new_rval
-
 
         #sum out the broadcasted dimensions
         for i, ipt in enumerate(inputs):
@@ -758,7 +756,7 @@ class Elemwise(Op):
 
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
-            if isinstance(r.type, DisconnectedType):
+            if isinstance(r.type, (NullType, DisconnectedType)):
                 return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]
@@ -1183,7 +1181,8 @@ class CAReduce(Op):
 
         if axis is None:
             self.axis = axis
-        # There is a bug in numpy that results in isinstance(x, int) returning False for numpy integers.
+        # There is a bug in numpy that results in isinstance(x, int) returning
+        # False for numpy integers.
         # See <http://projects.scipy.org/numpy/ticket/2235>.
         elif isinstance(axis, (int, numpy.integer)):
             self.axis = (axis,)
