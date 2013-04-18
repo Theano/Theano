@@ -1287,7 +1287,7 @@ class CAReduce(Op):
         variable = input
         to_reduce = reversed(sorted(axis))
 
-        if hasattr(self, 'acc_dtype'):
+        if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             acc_dtype = self.acc_dtype
         else:
             acc_dtype = node.outputs[0].type.dtype
@@ -1355,7 +1355,7 @@ class CAReduce(Op):
         idtype = input.type.dtype_specs()[1]
         odtype = output.type.dtype_specs()[1]
 
-        if hasattr(self, 'acc_dtype'):
+        if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             acc_type = TensorType(
                     broadcastable=node.outputs[0].broadcastable,
                     dtype=self.acc_dtype)
@@ -1646,7 +1646,7 @@ class CAReduceDtype(CAReduce):
         return CAReduce.__hash__(self) ^ hash((self.dtype, self.acc_dtype))
 
     def __setstate__(self, d):
-        self.__dict__.update(d)
+        super(CAReduceDtype, self).__setstate__(d)
         if not hasattr(self, "dtype"):
             # This is needed as old pickled will crash otherwise.
             # We need to keep the old dtype behavior as the op
