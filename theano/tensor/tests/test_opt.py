@@ -782,6 +782,19 @@ def test_local_merge_abs():
     assert len(f.maker.fgraph.toposort()) == 2
 
 
+def test_merge_abs_bugfix():
+    # Test crash in optimization reported by Jeremiah Lowin at
+    # https://groups.google.com/d/topic/theano-users/TaXfqXP2Mj0/discussion
+    input = T.matrix()
+    # normalize on cols
+    step1 = input / input.sum(0)
+    # normalize on rows
+    step2 = step1 / step1.sum(1)
+    # get l1 norm
+    l1_norm = T.abs_(step2).sum()
+    theano.function([input], T.grad(l1_norm, input))
+
+
 def test_mixeddiv():
     """Test that int division is preserved"""
     i = iscalar()

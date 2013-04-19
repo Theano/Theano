@@ -3659,7 +3659,10 @@ def local_abs_merge(node):
             if i.owner and i.owner.op == T.abs_:
                 inputs.append(i.owner.inputs[0])
             else:
-                const = get_scalar_constant_value(i)
+                try:
+                    const = get_scalar_constant_value(i)
+                except NotScalarConstantError:
+                    return False
                 if not (const >= 0).all():
                     return False
                 inputs.append(i)
