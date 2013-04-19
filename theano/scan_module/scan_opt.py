@@ -1347,9 +1347,9 @@ def scan_merge_inouts(node):
                 if equal_computations([sh], [ssh]):
                     return so
                 try:
-                    vsh = int(opt.get_constant_value(sh))
-                    vssh = int(opt.get_constant_value(ssh))
-                except TypeError:
+                    vsh = int(opt.get_scalar_constant_value(sh))
+                    vssh = int(opt.get_scalar_constant_value(ssh))
+                except tensor.NotScalarConstantError:
                     return o
                 if vsh == vssh:
                     return so
