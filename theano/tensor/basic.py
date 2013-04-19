@@ -6483,7 +6483,14 @@ class Reshape(Op):
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
-        ndim = get_vector_length(newshape)
+        try:
+            ndim = get_vector_length(newshape)
+        except ValueError:
+            raise ValueError("The length of the provided shape (%s) cannot "
+                    "be automatically determined, so Theano is not able "
+                    "to know what the number of dimensions of the reshaped "
+                    "variable will be. You can provide the 'ndim' keyword "
+                    "argument to 'reshape' to avoid this problem." % newshape)
     op = Reshape(ndim, name)
     rval = op(x, newshape)
     return rval
