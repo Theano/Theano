@@ -1207,6 +1207,9 @@ class Scan(PureOp):
         return scan_outs
 
     def get_input_pos(self, output_index):
+        """ For a given ``output_index``, an index in the inner outputs of
+        scan, find a corresponding first index in the inner inputs of scan
+        """
         ipos = self.n_seqs
         opos = output_index
         for otaps, itaps in zip(self.mitmot_out_taps(), self.mitmot_taps()):
@@ -1227,6 +1230,9 @@ class Scan(PureOp):
             return -1
 
     def get_output_pos(self, input_index):
+        """ For a given ``input_index``, an index in the inner inputs of
+        scan, find a corresponding first index in the inner outputs of scan
+        """
         ipos = input_index
         opos = 0
         for otaps, itaps in zip(self.mitmot_out_taps(), self.mitmot_taps()):
@@ -1247,6 +1253,9 @@ class Scan(PureOp):
             return -1
 
     def get_output_slice_idx(self, output_index):
+        """ For an ``output_index``, an index in the outter ouputs of scan,
+        find a corresponding index in the inner outputs of scan.
+        """
         ipos = 0
         opos = output_index
         for otaps in zip(self.mitmot_out_taps()):
