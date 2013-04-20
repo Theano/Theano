@@ -3452,6 +3452,18 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
                               1.21000003815)
 
+    def test_grad_find_input(self):
+        w = theano.shared(numpy.array(0, dtype='float32'), name='w')
+        init = tensor.fscalar('init')
+
+        out, _ = theano.scan(
+                fn=lambda prev: w,
+                outputs_info=init,
+                n_steps=2,
+        )
+        tensor.grad(out[-1], w)
+
+
 
 def test_speed():
     #
