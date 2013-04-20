@@ -1356,6 +1356,7 @@ class Scan(PureOp):
         # Applying Floyd-Warshall to find all paths connecting inputs to
         # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
         # input to `z_t` then `x` is an input to `z_t`.
+
         n_outs = len(node.outputs)
         for steps in xrange(n_outs):
             for iidx in xrange(n_outs):
@@ -1446,13 +1447,15 @@ class Scan(PureOp):
             odx = get_out_idx(self_outputs.index(y))
             wrt = [x for x in theano.gof.graph.inputs([y])
                    if (x in diff_inputs) and
-                   connection_pattern[get_inp_idx(self_inputs.index(x))][odx]]
+                   (connection_pattern[
+                       get_inp_idx(self_inputs.index(x))][odx])]
             grads = gradient.grad(
-                    cost=None,
-                    known_grads={y: g_y},
-                    wrt=wrt, consider_constant=wrt,
-                    disconnected_inputs='ignore',
-                    return_disconnected='None')
+                cost=None,
+                known_grads={y: g_y},
+                wrt=wrt,
+                consider_constant=wrt,
+                disconnected_inputs='ignore',
+                return_disconnected='None')
             gmp = dict(zip(wrt, grads))
             rval = [gmp.get(p, None) for p in diff_inputs]
             return rval
