@@ -24,11 +24,13 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 from theano.tensor.utils import hash_from_ndarray
 
-import theano.gof.cutils  # needed to import cutils_ext
-try:
-    from cutils_ext.cutils_ext import inplace_increment
-except ImportError:
-    inplace_increment = None
+inplace_increment = None
+if config.cxx:
+    import theano.gof.cutils  # needed to import cutils_ext
+    try:
+        from cutils_ext.cutils_ext import inplace_increment
+    except ImportError:
+        pass
 
 # We use these exceptions as well.
 from theano.scalar import ComplexError, IntegerDivisionError
