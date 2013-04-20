@@ -234,17 +234,6 @@ class Scan(PureOp):
                     'and %d dimension(s). This could happen if the inner '
                     'graph of scan results in an upcast or downcast. '
                     'Please make sure that you use dtypes consistently')
-        # TODO make the assert exact
-        # TODO assert the type(dtype, nbdim of self.inputs and
-        #      inputs correspond)
-        #assert len(inputs) >= len(self.inputs)
-        #if self.info['as_while']:
-        #    assert len(inputs) == len(self.inputs) + 2 + \
-        #       self.info["n_nit_sot"]
-        #else:
-        #    assert len(inputs) == len(self.inputs) + 1 + \
-        #       self.info["n_nit_sot"]
-        # Flags that indicate which inputs are vectors
 
         self.vector_seqs = [seq.ndim == 1 for seq in
                              inputs[1:1 + self.n_seqs]]
