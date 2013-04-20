@@ -192,19 +192,18 @@ class Scan(PureOp):
     def make_node(self, *inputs):
         """
         Conventions:
-            inner_? - the variable corresponding to ? in the inner function
+            inner_X - the variable corresponding to X in the inner function
                       of scan (the lambda function executed at every time
                       step)
-            outer_? - the variable corresponding to ? in the outer graph,
+            outer_X - the variable corresponding to X in the outer graph,
                       i.e. the main graph (where the scan op lives)
-            inner_?_out - the variable representing the new value of ? after
+            inner_X_out - the variable representing the new value of X after
                           executing one step of scan (i.e. outputs given by
                           the inner function)
         """
         assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
         # Check that the number of inputs to the Scan node corresponds to
         # the number of inputs of the inner function of scan
-
         n_outer_ins = len(inputs) - len(self.outer_nitsot(inputs)) - 1
         n_inner_ins = (len(self.inner_seqs(self.inputs)) +
                        len(self.mitmot_taps()) +
