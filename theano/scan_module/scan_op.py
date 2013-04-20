@@ -235,12 +235,6 @@ class Scan(PureOp):
                     'graph of scan results in an upcast or downcast. '
                     'Please make sure that you use dtypes consistently')
 
-        self.vector_seqs = [seq.ndim == 1 for seq in
-                             inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [arg.ndim == 1 for arg in
-                             inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                    self.n_outs)]]
-        self.vector_outs += [False] * self.n_nit_sot
         def format(var, as_var):
             """ This functions ensures that ``out`` has the same dtype as
             ``inp`` as well as calling filter_variable to make sure they are
@@ -422,6 +416,13 @@ class Scan(PureOp):
                 outer_nitsot.ndim != 0):
                 raise ValueError('For output %s you need to provide a '
                                  'scalar int !', str(outer_nitsot))
+        assert len(new_inputs) == len(inputs)
+        self.vector_seqs = [seq.ndim == 1 for seq in
+                             new_inputs[1:1 + self.n_seqs]]
+        self.vector_outs = [arg.ndim == 1 for arg in
+                             new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
+                                                    self.n_outs)]]
+        self.vector_outs += [False] * self.n_nit_sot
 
         apply_node = Apply(self,
                            new_inputs,
