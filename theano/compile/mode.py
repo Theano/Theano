@@ -120,7 +120,7 @@ def register_optimizer(name, opt):
 class AddDestroyHandler(gof.Optimizer):
     """This optimizer performs two important functions:
 
-    1) it has a 'requirement' of the destroyhandler.  This means that the fgraph
+    1) It has a 'requirement' of the destroyhandler. This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
     enabled for subsequent optimizations.  All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that
