@@ -86,7 +86,7 @@ def register_linker(name, linker):
 # If a string is passed as the optimizer argument in the constructor
 # for Mode, it will be used as the key to retrieve the real optimizer
 # in this dictionary
-exclude=[]
+exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
