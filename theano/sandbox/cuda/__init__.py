@@ -244,7 +244,8 @@ class GpuOp(theano.gof.Op):
         return super(GpuOp, self).make_thunk(node, storage_map,
                                              compute_map, no_recycling)
 
-theano.compile.debugmode.default_make_thunk.append(get_unbound_function(GpuOp.make_thunk))
+theano.compile.debugmode.default_make_thunk.append(
+                                        get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available
@@ -271,15 +272,16 @@ if cuda_available:
     shared_constructor = float32_shared_constructor
 
     import basic_ops
-    from basic_ops import (GpuFromHost, HostFromGpu, GpuElemwise,
-                           GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
-                           GpuSubtensor, GpuIncSubtensor,
-                           GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
-                           GpuFlatten, GpuShape, GpuAlloc,
-                           GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
-                           ftensor3, ftensor4,
-                           scalar, vector, matrix, row, col,
-                           tensor3, tensor4)
+    from basic_ops import (
+            GpuFromHost, HostFromGpu, GpuElemwise,
+            GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
+            GpuSubtensor, GpuIncSubtensor,
+            GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
+            GpuFlatten, GpuShape, GpuAlloc,
+            GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
+            ftensor3, ftensor4,
+            scalar, vector, matrix, row, col,
+            tensor3, tensor4)
     from basic_ops import host_from_gpu, gpu_from_host, as_cuda_array
     import opt
     import cuda_ndarray
@@ -388,7 +390,7 @@ def use(device,
                 cuda_enabled = True
 
             if config.print_active_device:
-                print >> sys.stderr, "Using gpu device %d: %s" %(
+                print >> sys.stderr, "Using gpu device %d: %s" % (
                         active_device_number(), active_device_name())
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
