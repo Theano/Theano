@@ -993,7 +993,7 @@ class Test_rebuild_strict(unittest.TestCase):
         x, y = tensor.ivectors('x', 'y')
         z = x * y
         f = theano.function([w, y], z, givens=[(x, w)], rebuild_strict=False)
-        z_val = f(numpy.ones((3, 5), dtype='int32'), numpy.arange(5))
+        z_val = f(numpy.ones((3, 5), dtype='int32'), numpy.arange(5, dtype='int32'))
         assert z_val.ndim == 2
         assert numpy.all(z_val == numpy.ones((3, 5)) * numpy.arange(5))
 
