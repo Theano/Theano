@@ -479,7 +479,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                                          in_variables,
                                          replace=givens,
                                          updates=updates,
-                                         rebuild_strict=True,
+                                         rebuild_strict=rebuild_strict,
                                          copy_inputs_over=True,
                                          no_default_updates=no_default_updates)
     # extracting the arguments
