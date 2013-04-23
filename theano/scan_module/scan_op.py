@@ -248,9 +248,6 @@ class Scan(PureOp):
                 rval = rval.astype(as_var.type.dtype)
             if rval.ndim == as_var.ndim:
                 rval = as_var.type.filter_variable(rval)
-            else:
-                tmp = tensor.unbroadcast(tensor.shape_padleft(as_var), 0)
-                rval = tmp.type.filter_variable(rval)
             return rval
 
         # Check if input sequences and variables representing a slice of
