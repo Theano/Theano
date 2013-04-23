@@ -32,21 +32,8 @@ from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
 
 
 def init_dev(dev):
-    import globals
-    if dev.startswith('cuda'):
-        # format is cuda<devnum>
-        globals.kind = 'cuda'
-        devnum = int(dev[4:])
-    elif dev.startswith('opencl'):
-        # format is opencl<platnum>:<devnum>
-        globals.kind = 'opencl'
-        devspec = dev[6:]
-        plat, dev = devspec.split(':')
-        devnum = int(dev)|(int(plat)<<16)
-    else:
-        globals.kind = None
-    if globals.kind:
-        globals.context = pygpu.gpuarray.init(globals.kind, devnum)
+    context = pygpu.init(dev)
+    pygpu.set_default_context(context)
 
 if pygpu:
     try:

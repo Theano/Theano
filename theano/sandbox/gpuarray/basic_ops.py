@@ -20,8 +20,8 @@ def as_gpuarray_variable(x):
     return gpu_from_host(tensor_x)
 
 
-def as_gpuarray(x, kind, context):
-    return gpuarray.array(x, kind=kind, context=context, copy=False)
+def as_gpuarray(x):
+    return gpuarray.array(x, copy=False)
 
 
 class HostFromGpu(Op):
@@ -76,7 +76,7 @@ class HostFromGpu(Op):
                                     %(name)s_ga);
         if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
         if (%(name)serr != GA_NO_ERROR) {
-            PyErr_SetSring(PyExc_RuntimeError, "Could not read device data.");
+            PyErr_SetString(PyExc_RuntimeError, "Could not read device data.");
             %(fail)s
         }
         """ % {'name': name, 'fail': sub['fail'], 'inp': inputs[0],
@@ -120,7 +120,7 @@ class GpuFromHost(Op):
         x, = inp
         z, = out
         type = node.outputs[0].type
-        z[0] = gpuarray.array(x, kind=type.kind, context=type.context)
+        z[0] = gpuarray.array(x)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -141,17 +141,23 @@ class GpuFromHost(Op):
         return """
         PyArrayObject *%(name)s_tmp;
         int %(name)serr;
+        if ((PyObject *)GpuArray_default_context == Py_None) {
+            PyErr_SetString(PyExc_ValueError, "No default context, gpuarray not initialized?");
+            %(fail)s
+        }
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL) {
             %(fail)s
         }
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
             %(fail)s
         }
-        %(name)serr = GpuArray_empty(&%(out)s->ga, compyte_get_ops("%(kind)s"),
-                                     (void *)%(ctx)s, %(typecode)s,
+        %(name)serr = GpuArray_empty(&%(out)s->ga,
+                                     GpuArray_default_context->ops,
+                                     GpuArray_default_context->ctx,
+                                     %(typecode)s,
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
                                      GA_C_ORDER);
@@ -170,12 +176,12 @@ class GpuFromHost(Op):
             PyErr_SetString(PyExc_RuntimeError, "Could not copy array data to device");
             %(fail)s
         }
-        """ % {'name': name, 'kind': type.kind, 'ctx': hex(type.context),
-               'inp': inputs[0], 'out': outputs[0], 'fail': sub['fail'],
+        """ % {'name': name, 'inp': inputs[0],
+               'out': outputs[0], 'fail': sub['fail'],
                'typecode': type.typecode}
-    # Don't implement c_code_cache_version since we harcode the ctx address
-    # in the code block and this will not work across processes
 
+    def c_code_cache_version(self):
+        return (0,)
 
 gpu_from_host = GpuFromHost()
 
@@ -197,8 +203,7 @@ class GpuFromCuda(Op):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        z[0] = gpuarray.array(numpy.asarray(x), kind=globals.kind,
-                              context=globals.context)
+        z[0] = gpuarray.array(numpy.asarray(x))
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -247,9 +252,6 @@ class GpuFromCuda(Op):
         """
 
     def c_code(self, node, name, input, output, sub):
-        type = node.outputs[0].type
-        if type.kind != "cuda":
-            raise RuntimeError("GpuFromCuda for non-cuda dest")
         return """
         int %(name)serr;
         gpudata *%(name)sdata;
@@ -258,8 +260,8 @@ class GpuFromCuda(Op):
         ssize_t *%(name)sstr;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx((void *)%(ctx)s)) {
-            PyErr_SetString(PyErr_ValueError, "Ambient context is not the same as output context.");
+        if (%(name)scur != cuda_get_ctx(GpuArray_default_context->ctx)) {
+            PyErr_SetString(PyErr_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
         %(name)sdims = (size_t *)calloc(%(in)s->nd, sizeof(size_t));
@@ -286,7 +288,8 @@ class GpuFromCuda(Op):
             %(fail)s
         }
 
-        %(name)sdata = cuda_make_buf((void *)%(ctx)s, (CUdeviceptr)%(in)s->devdata,
+        %(name)sdata = cuda_make_buf(GpuArray_default_context->ctx,
+                                     (CUdeviceptr)%(in)s->devdata,
                                      (size_t)%(in)s->data_allocated);
         if (%(name)sdata == NULL) {
             Py_DECREF(%(out)s);
@@ -295,7 +298,8 @@ class GpuFromCuda(Op):
             PyErr_SetString(PyExc_MemoryError, "Could not allocate gpudata structure.");
             %(fail)s
         }
-        %(name)serr = GpuArray_fromdata(&%(out)s->ga, compyte_get_ops("cuda"),
+        %(name)serr = GpuArray_fromdata(&%(out)s->ga,
+                                        GpuArray_default_context->ops,
                                         %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
                                         %(name)sdims, %(name)sstr, 1);
         free(%(name)sdims);
@@ -307,11 +311,10 @@ class GpuFromCuda(Op):
         }
         Py_INCREF(%(in)s);
         %(out)s->base = %(in)s;
-        """ % {'name':name, 'ctx': hex(type.context), 'in': inputs[0],
-               'out': outputs[0], 'fail': sub['fail']}
+        """ % {'name':name, 'in': inputs[0], 'out': outputs[0],
+               'fail': sub['fail']}
 
-    # Don't implement c_code_cache_version since we harcode the ctx address
-    # in the code block and this will not work across processes
-
+    def c_code_cache_version(self):
+        return (0,)
 
 gpu_from_cuda = GpuFromCuda()

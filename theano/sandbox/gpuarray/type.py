@@ -15,21 +15,11 @@ except ImportError:
     pass
 
 class GpuArrayType(Type):
-    def __init__(self, dtype, broadcastable, kind=None, context=None,
-                 name=None):
-        import globals
-        if kind is None:
-            kind = globals.kind
-        if context is None:
-            context = globals.context
+    def __init__(self, dtype, broadcastable, name=None):
         # In case this was not provided and no global value is available
-        if kind is None:
-            raise RuntimeError("pygpu is not initialized")
         self.dtype = str(dtype)
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.ndim = len(self.broadcastable)
-        self.kind = kind
-        self.context = context
         self.name = name
         try:
             self.typecode = gpuarray.dtype_to_typecode(self.dtype)
@@ -42,10 +32,6 @@ class GpuArrayType(Type):
             if not isinstance(data, gpuarray.GpuArray):
                 raise TypeError("%s expected a GpuArray object." % self,
                                 data, type(data))
-            if self.kind != data.kind:
-                raise TypeError("kind of GpuArray does not match")
-            if self.context != data.context:
-                raise TypeError("context of GpuArray differs")
             if self.typecode != data.typecode:
                 raise TypeError("%s expected typecode %d (dtype %s), "
                                 "got %d (dtype %s)." %
@@ -54,13 +40,11 @@ class GpuArrayType(Type):
             # fallthrough to ndim check
         elif allow_downcast:
             data = gpuarray.array(data, dtype=self.typecode, copy=False,
-                                  kind=self.kind, context=self.context,
                                   ndmin=len(self.broadcastable))
         else:
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
-                data = gpuarray.array(data, dtype=self.typecode, copy=False,
-                                      kind=self.kind, context=self.context)
+                data = gpuarray.array(data, dtype=self.typecode, copy=False)
             else:
                 raise TypeError("%s cannot store a value of dtype %s "
                                 "without risking loss of precision." %
@@ -98,8 +82,7 @@ class GpuArrayType(Type):
             return numpy.asarray(res).all()
 
     def value_zeros(self, shape):
-        return pygpu.gpuarray.zeros(shape, dtype=self.typecode, kind=self.kind,
-                                    context=self.context)
+        return pygpu.gpuarray.zeros(shape, dtype=self.typecode)
 
     def make_variable(self, name=None):
         return self.Variable(self, name=name)
@@ -107,16 +90,13 @@ class GpuArrayType(Type):
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.typecode == other.typecode and
-                self.broadcastable == other.broadcastable and
-                self.kind == other.kind and
-                self.context == other.context)
+                self.broadcastable == other.broadcastable)
 
     def __hash__(self):
-        return (hash(self.typecode) ^ hash(self.broadcastable) ^
-                hash(self.kind) ^ hash(self.context))
+        return (hash(self.typecode) ^ hash(self.broadcastable))
 
     def __str__(self):
-        return "GpuArray[%s, %s]<%s>" % (self.kind, self.context, self.dtype)
+        return "GpuArray[%s, %s]<%s>" % (self.dtype,)
 
     def c_declare(self, name, sub):
         return "GpuArrayObject *%s;" % (name,)
@@ -144,7 +124,7 @@ class GpuArrayType(Type):
         """ % {'name': name, 'fail': sub['fail']}
 
     def c_cleanup(self, name, sub):
-        return ""
+        return "Py_XDECREF(%(name)s); %(name)s = NULL;" % {'name': name }
 
     def c_sync(self, name, sub):
         return """
@@ -167,7 +147,7 @@ class GpuArrayType(Type):
         return [pygpu.get_include()]
 
     def c_code_cache_version(self):
-        return () # TODO: This is temporary
+        return (0,)
 
 
 class _operators(tensor.basic._tensor_py_operators):
@@ -229,15 +209,14 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None, kind=None, context=None):
+                                broadcastable=None):
     """SharedVariable constructor for GpuArrayType"""
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
-    type = GpuArrayType(value.dtype, broadcastable, kind=kind, context=context)
-    deviceval = pygpu.gpuarray.array(value, copy=(not borrow), kind=type.kind,
-                                     context=type.context)
+    type = GpuArrayType(value.dtype, broadcastable)
+    deviceval = pygpu.gpuarray.array(value, copy=(not borrow))
     return GpuArraySharedVariable(type=type, value=deviceval, name=name,
                                   strict=strict)

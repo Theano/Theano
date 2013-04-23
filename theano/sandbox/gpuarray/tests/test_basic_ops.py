@@ -20,7 +20,7 @@ def test_transfer():
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
     
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av, kind=g.type.kind, context=g.type.context)
+    gv = gpuarray.array(av)
     
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
