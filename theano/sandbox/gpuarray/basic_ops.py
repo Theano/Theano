@@ -207,12 +207,12 @@ class GpuFromCuda(Op):
 
     def grad(self, inputs, grads):
         gz, = grads
-        return [host_from_gpu(gz)]
+        return [cuda_from_gpu(gz)]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
         if isintance(ev, GpuArrayType):
-            return [host_from_gpu(ev)]
+            return [cuda_from_gpu(ev)]
         else:
             return ev
 
@@ -247,8 +247,8 @@ class GpuFromCuda(Op):
 
     def c_support_code(self):
         return """
-        void (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
-        void (*cuda_make_buf)(void *c, CUdeviceptr p, size_t sz) = compyte_get_extension('cuda_make_buf');
+        CUcontext (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
+        gpudata *(*cuda_make_buf)(void *c, CUdeviceptr p, size_t sz) = compyte_get_extension('cuda_make_buf');
         """
 
     def c_code(self, node, name, input, output, sub):
@@ -281,6 +281,7 @@ class GpuFromCuda(Op):
             %(name)sstr[i] = (ssize_t)CudaNdArray_HOST_STRIDES(%(in)s)[i];
         }
 
+        Py_XDECREF(%(out)s);
         %(out)s = new_GpuArray((PyObject *)&GpuArrayType);
         if (%(out)s == NULL) {
             free(%(name)sdims);
@@ -318,3 +319,96 @@ class GpuFromCuda(Op):
         return (0,)
 
 gpu_from_cuda = GpuFromCuda()
+
+
+class CudaFromGpu(Op):
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        from theano.sandbox.cuda import CudaNdArrayType
+        if not isinstance(x.type, GpuArrayType):
+            raise TypeError(x)
+        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
+                                                 dtype=x.dtype)()])
+
+    def perform(self, node, inp, out):
+        from theano.sandbox.cuda import filter as cuda_filter
+        x, = inp
+        z, = out
+        z[0] = cuda_filter(theano._asarray(x, dtype='float32'),
+                           tuple([0] * x.ndim), 0, z[0])
+
+    def grad(self, inputs, grads):
+        gz, = grads
+        return [gpu_from_cuda(gz)]
+
+    def R_op(self, inputs, eval_points):
+        from theano.sandbox.cuda import CudaNdArrayType
+        ev, = eval_points
+        if (isinstance(ev, CudaNdarrayType)):
+            return [gpu_from_cuda(ev)]
+        else:
+            return [ev]
+
+    def infer_shape(self, node, shp):
+        return shp
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', 'compyte/extension.h', 'cuda.h']
+
+    def c_header_dirs(self):
+        import cuda_ndarray
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'include'))
+        return ret
+
+    def c_lib_dirs(self):
+        import cuda_ndarray
+        ret = [os.path.dirname(cuda_ndarray.__file__)]
+        cuda_root = config.cuda.root
+        if cuda_root:
+            ret.append(os.path.join(cuda_root, 'lib'))
+        return ret
+
+    def c_libraries(self):
+        return ['cudart', 'cublas', 'cuda']
+
+    def c_conpiler(self):
+        from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+        return NVCC_compiler
+
+    def c_support_code(self):
+        return """
+        CUcontext (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
+        CUdeviceptr (*cuda_get_ptr)(gpudata *g) = compyte_get_extension('cuda_get_ptr');
+        size_t (*cuda_get_sz)(gpudata *g) = compyte_get_extension('cuda_get_sz');
+        """
+
+    def c_code(self, node, name, input, output, sub):
+        return """
+        int err = 0, i;
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray *)CudaNdarray_new_nd(%(inp)s->nd);
+        if (!%(out)s) {
+            %(fail)s
+        }
+        for (i = 0; i < %(inp)s->nd; i++) {
+            CudaNdarray_set_dim(%(out)s, i, %(inp)s->dimensions[i]);
+            CudaNdarray_set_stride(%(out)s, i, %(inp)s->strides[i]);
+        }
+        err = CudaNdarray_set_device_data(%(out),
+          (float *)(((char *)cuda_get_ptr(%(inp)s.ga->data))+%(inp).ga.offset),
+                                          (PyObject *)%(inp)s);
+        if (err) {
+           %(fail)s
+        }
+        """ % {'inp': inputs[0], 'out': output[0], 'fail': sub['fail']}
+
+
+cuda_from_gpu = CudaFromGpu()
