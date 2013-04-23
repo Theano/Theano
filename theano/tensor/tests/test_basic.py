@@ -6392,6 +6392,30 @@ class T_long_tensor(unittest.TestCase):
 
     def test_too_big(self):
         val = 2L ** 63
+        #NumPy 1.7 this will raise an exception
+        #NumPy 1.7.1 this will work
+        try:
+            cst = constant(val)
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except Exception:
+            pass
+
+        try:
+            cst = constant([val, val])
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except Exception:
+            pass
+        try:
+            cst = constant([[val, val]])
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except Exception:
+            pass
+
+        val = 2L ** 64
+        # This fail for all NumPy version.
         self.assertRaises(Exception, constant, val)
         self.assertRaises(Exception, constant, [val, val])
         self.assertRaises(Exception, constant, [[val, val]])
