@@ -438,6 +438,14 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     This might be just a problem with the way Theano passes compilation
     arguments to g++, but the problem is not fixed yet.
 
+.. note::
+
+    If you have problems linking with MKL, `Intel Line Advisor
+    <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
+    and `MKL User Guide
+    <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
+    can help you find the correct flag to use.
+
 .. _gpu_linux:
 
 Using the GPU
