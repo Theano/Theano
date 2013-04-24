@@ -3690,8 +3690,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         theano_matrix = tensor.arange(9).reshape((3, 3))
         numpy_matrix = numpy.arange(9).reshape((3, 3))
         mask = numpy_matrix > 4
-        f = theano.function([], theano_matrix[mask])
-        assert numpy.allclose(f(), numpy_matrix[mask])
+        f1 = theano.function([], theano_matrix[mask])
+        f2 = theano.function([], theano_matrix[mask[1]])
+        assert numpy.allclose(f1(), numpy_matrix[mask])
+        assert numpy.allclose(f2(), numpy_matrix[mask[1]])
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
