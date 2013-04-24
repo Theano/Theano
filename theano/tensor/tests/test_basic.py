@@ -3687,13 +3687,23 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test_numpy_bool_mask(self):
         # test that numpy bool masks are treated as masks, not indices
 
-        theano_matrix = tensor.arange(9).reshape((3, 3))
-        numpy_matrix = numpy.arange(9).reshape((3, 3))
-        mask = numpy_matrix > 4
-        f1 = theano.function([], theano_matrix[mask])
-        f2 = theano.function([], theano_matrix[mask[1]])
-        assert numpy.allclose(f1(), numpy_matrix[mask])
-        assert numpy.allclose(f2(), numpy_matrix[mask[1]])
+        v = tensor.arange(9)
+        nv = numpy.arange(9)
+        mask = nv > 4
+        f1 = theano.function([], v[mask])
+        f2 = theano.function([], v[mask[1:]])
+        assert numpy.allclose(f1(), nv[mask])
+        assert numpy.allclose(f2(), nv[mask[1:]])
+
+        m = tensor.arange(9).reshape((3, 3))
+        nm = numpy.arange(9).reshape((3, 3))
+        mask = nm > 4
+        f1 = theano.function([], m[mask])
+        f2 = theano.function([], m[mask[1]])
+        f3 = theano.function([], m[mask[1:]])
+        assert numpy.allclose(f1(), nm[mask])
+        assert numpy.allclose(f2(), nm[mask[1]])
+        assert numpy.allclose(f3(), nm[mask[1:]])
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
