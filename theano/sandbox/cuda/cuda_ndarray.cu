@@ -260,7 +260,6 @@ __global__ void name (unsigned int numEls,  \
         for (unsigned int _d = 0; _d < nd; ++_d) \
         { \
             unsigned int d = nd - _d-1;  \
-            /* i_d used to be unsigned, but their is a bug in nvcc 3.0. making it signed fix the bug.*/\
             int i_d = ii % dim[d]; /* i_d is our position in the d'th dimension   */ \
             ii = ii / dim[d]; \
             a_i += i_d * a_str[d]; /* increment our a and z pointers by i_d elements */ \
