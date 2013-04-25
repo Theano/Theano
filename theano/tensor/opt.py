@@ -23,6 +23,7 @@ from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
 from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
+from theano.gof.utils import memoize
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano import scalar
@@ -34,7 +35,9 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
-from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import get_scalar_constant_value
+from theano.tensor.basic import ShapeError
+from theano.tensor.basic import NotScalarConstantError
 
 
 theano.configparser.AddConfigVar('on_shape_error',
@@ -43,6 +46,11 @@ theano.configparser.AddConfigVar('on_shape_error',
                                  theano.configparser.EnumStr("warn", "raise"),
                                  in_c_key=False)
 
+theano.configparser.AddConfigVar('assume_constants_shape_ok',
+                                 "True: assume constants have correct shape"
+                                 " and can be removed by specializing ops",
+                                 theano.configparser.BoolParam(True),
+                                 in_c_key=False)
 # Utilities
 
 
@@ -2514,6 +2522,7 @@ register_canonicalize(local_fill_sink)
 # Canonization #
 ################
 
+
 class Canonizer(gof.LocalOptimizer):
     """
     Simplification tool.
@@ -2799,25 +2808,27 @@ class Canonizer(gof.LocalOptimizer):
         """
 
         # Lists representing the numerator and denumerator
-        num, denum = list(orig_num), list(orig_denum)
+        #
+        # XXX: this is not a reliable estimate of the output type,
+        #      as evidenced by all that crap in transform()
         out_type = self.merge_num_denum(orig_num, orig_denum).type
 
-        # Lists representing the *constant* elements of num and denum
-        numct, denumct = [], []
+        num_const_val = [self.get_constant(v) for v in orig_num]
+        denum_const_val = [self.get_constant(v) for v in orig_denum]
 
-        for v in orig_num:
-            ct = self.get_constant(v)
-            if ct is not None:
-                # We found a constant in the numerator!
-                # We remove it from num
-                num.remove(v)
-                # We add it to numct
-                numct.append(ct)
-        for v in orig_denum:
-            ct = self.get_constant(v)
-            if ct is not None:
-                denum.remove(v)
-                denumct.append(ct)
+        removability = InputRemovabilityAnalysis(
+            fgraph=None,
+            inputs=orig_num + orig_denum)
+
+        num = [r for r, v in zip(orig_num, num_const_val)
+                if not ((v is not None) and removability.is_ok[r])]
+        numct = [v for r, v in zip(orig_num, num_const_val)
+                if ((v is not None) and removability.is_ok[r])]
+
+        denum = [r for r, v in zip(orig_denum, denum_const_val)
+                if not ((v is not None) and removability.is_ok[r])]
+        denumct = [v for r, v in zip(orig_denum, denum_const_val)
+                if ((v is not None) and removability.is_ok[r])]
 
         if self.use_reciprocal or num:
             # This will calculate either:
@@ -2924,6 +2935,74 @@ class Canonizer(gof.LocalOptimizer):
     def __str__(self):
         return getattr(self, 'name', 'Canonizer(%s, %s, %s)' % (
                 self.main, self.inverse, self.reciprocal))
+
+
+class InputRemovabilityAnalysis(object):
+    """
+    A graph analysis object - this class analyses whether the removal of an input
+    to an elementwise operator such as mul or add might mask a shape error.
+
+    """
+    def __init__(self, fgraph, inputs):
+        """
+        node: Apply node
+        """
+        # add will pad the shapes of all inputs to be same ndim
+        self.is_ok = {}
+        if inputs:
+            self.inputs = T.add(*inputs).owner.inputs
+        else:
+            self.inputs = []
+            return
+        ndim = self.inputs[0].ndim
+        assert all([invar.ndim == ndim for invar in self.inputs]), self.inputs
+        if hasattr(fgraph, 'shape_feature'):
+            def padleft(shp):
+                return (1,) * (ndim - len(shp)) + tuple(shp)
+            self.inputs_shapes = [padleft(fgraph.shape_feature.shape_of[v])
+                                  for v in inputs]
+        else:
+            self.inputs_shapes = [v.shape for v in self.inputs]
+        for ii, invar in enumerate(inputs):
+            self.is_ok[invar] = self._is_ok(ii)
+        #print self.is_ok
+
+    def _is_ok(self, ii):
+        """
+        Returns True only if node would not miss a shape error if
+        self.inputs[ii] were removed.
+        """
+        if config.assume_constants_shape_ok:
+            return True
+        invar = self.inputs[ii]
+        if len(self.inputs) == 1:
+            return True
+        if all(invar.broadcastable):
+            return True
+        else:
+            # The logic here in words is that:
+            # it is safe to remove invar if invar's shape on every non-broadcastable
+            # dimension is present in another input variable. The rationale is that
+            # any shape error that invar would have caused will therefore be
+            # triggered by the other variable.
+            inputs = self.inputs
+            inputs_shapes = self.inputs_shapes
+            assert invar.ndim
+            for dim in range(invar.ndim):
+                other_shapes = [vs for v, vs in zip(inputs, inputs_shapes)
+                        if v is not invar]
+                invar_dim = inputs_shapes[ii][dim]
+                if not invar.broadcastable[dim]:
+                    # Comparison based on '==' makes ether numeric match or
+                    # an exact symbolic variable match. Currently no attempt is
+                    # made to match symbolic vars based on e.g. two
+                    # tensorcontants that eval to the same thing
+                    # or two different graphs that could be merged and proved equal.
+                    shape_matches = [vs[dim] == invar_dim
+                                     for vs in other_shapes]
+                    if not any(shape_matches):
+                        return False
+            return True
 
 
 def mul_calculate(num, denum, aslist=False, out_type=None):
@@ -3510,23 +3589,26 @@ def local_mul_specialize(node):
         #the idea here is that we have pow(x, y)
         neg = False
         new_inputs = []
-        for input in node.inputs:
+        removability = InputRemovabilityAnalysis(
+            getattr(node, 'fgraph', None), node.inputs)
+        for node_input in node.inputs:
             # remove any neg arguments
-            while input.owner and input.owner.op == T.neg:
+            noneg_input = node_input
+            while noneg_input.owner and noneg_input.owner.op == T.neg:
                 neg ^= True
-                input = input.owner.inputs[0]
+                noneg_input = noneg_input.owner.inputs[0]
 
             # remove special case arguments of 1, -1 or 0
-            y = local_mul_canonizer.get_constant(input)
-            if N.all(y == 1.0):
+            y = local_mul_canonizer.get_constant(noneg_input)
+            if N.all(y == 1.0) and removability.is_ok[node_input]:
                 continue
-            elif N.all(y == -1.0):
+            elif N.all(y == -1.0) and removability.is_ok[node_input]:
                 neg ^= True  # toggles
-            elif N.all(y == 0.0):
+            elif N.all(y == 0.0) and removability.is_ok[node_input]:
                 # if we find any zero, we just return right away
                 return [broadcast_like(0, node.outputs[0], node.fgraph)]
             else:
-                new_inputs.append(input)
+                new_inputs.append(noneg_input)
 
         if new_inputs != node.inputs:
             if new_inputs:
@@ -3562,13 +3644,16 @@ def local_add_specialize(node):
     #here, we are past the point of canonicalization, so we don't want
     #to put in un-necessary fills.
     if node.op == T.add:
+        removability = InputRemovabilityAnalysis(
+            getattr(node, 'fgraph', None), node.inputs)
         new_inputs = []
-        for input in node.inputs:
+        for ii, input in enumerate(node.inputs):
             try:
                 y = get_scalar_constant_value(input)
             except NotScalarConstantError:
                 y = input
-            if numpy.all(y == 0.0):
+
+            if numpy.all(y == 0.0) and removability.is_ok[input]:
                 continue
             new_inputs.append(input)
 

@@ -10,6 +10,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
+from nose.tools import assert_raises
 
 import theano
 import theano.scalar as scal
@@ -756,6 +757,39 @@ class test_canonize(unittest.TestCase):
         # is modified in the future, we assert that there is no error
         # at all.
         assert not sio.getvalue()
+
+
+class TestCanonizeConstants(unittest.TestCase):
+    def setUp(self):
+        self.tmp = theano.config.assume_constants_shape_ok
+        theano.config.assume_constants_shape_ok = False
+
+    def tearDown(self):
+        theano.config.assume_constants_shape_ok = self.tmp
+
+    def test_1(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[True], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert f([2]).shape == (3,)
+
+    def test_2(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert_raises(ValueError, f, [2])
+
+    def test_3(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False, True], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert f(numpy.ones((2, 1))).shape == (2, 3)
+
+    def test_4(self):
+        ones = tensor.ones((3,), dtype='float64')
+        x = theano.tensor.TensorType(broadcastable=[False, False], dtype='float64')()
+        f = theano.function([x], ones * x)
+        assert_raises(ValueError, f, numpy.ones((2, 1)))
 
 
 def test_local_merge_abs():
