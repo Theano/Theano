@@ -204,20 +204,21 @@ if __name__ == "__main__":
         C1060                                         0.46s
 
         GTX Titan(D15U-50)0.06s  don't work
-        GTX680            0.12s  0.154s               0.218s
-        GTX580            0.16s  0.164s               0.203s
-        GTX480            0.19s  0.192s               0.237s 0.27s
-        GTX470            0.23s  0.238s               0.297s 0.34s
-        GTX660            0.20s  0.23s
-        GTX560                   0.30s
-        GTX460            0.37s                0.45s
-        GTX285                   0.452s        0.452s        0.40s # cuda 3.0 seam faster? driver version?
-        GTX550Ti                               0.57s
-        GT520                    2.68s                3.06s
+        GTX 680           0.12s  0.154s               0.218s
+        GTX 580           0.16s  0.164s               0.203s
+        GTX 480           0.19s  0.192s               0.237s 0.27s
+        GTX 470           0.23s  0.238s               0.297s 0.34s
+        GTX 660           0.20s  0.23s
+        GTX 560                  0.30s
+        GTX 650 Ti        0.27s
+        GTX 460           0.37s                0.45s
+        GTX 285                  0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
+        GTX 550 Ti                             0.57s
+        GT 520                   2.68s                3.06s
         520M                                          3.19s        # with bumblebee on Ubuntu 12.04
-        GT220                                         3.80s
-        GT210                                  6.35s
-        8500GT                                               10.68s
+        GT 220                                        3.80s
+        GT 210                                 6.35s
+        8500 GT                                              10.68s
         """
 
     t, impl = execute(not options.print_only, not options.quiet,
