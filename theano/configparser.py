@@ -314,6 +314,26 @@ class EnumStr(ConfigParam):
         return '%s (%s) ' % (self.fullname, self.all)
 
 
+class DeviceParam(ConfigParam):
+    def __init__(self, default, *options, **kwargs):
+        self.default = default
+
+        def filter(val):
+            if val.startswith('cpu') or val.startswith('gpu') \
+                    or val.startswith('opencl') or val.startswith('cuda'):
+                return val
+            else:
+                raise ValueError(('Invalid value ("%s") for configuration '
+                                  'variable "%s". Valid options start with '
+                                  'one of "cpu", "gpu", "opencl", "cuda"'
+                                  % (val, self.fullname)))
+        over = kwargs.get("allow_override", True)
+        super(DeviceParam, self).__init__(default, filter, over)
+
+    def __str__(self):
+        return '%s (cpu, gpu*, opencl*, cuda*) ' % (self.fullname,)
+
+
 class TypedParam(ConfigParam):
     def __init__(self, default, mytype, is_valid=None, allow_override=True):
         self.mytype = mytype

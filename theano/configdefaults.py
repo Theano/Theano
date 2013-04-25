@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from theano.configparser import (
-        AddConfigVar, BoolParam, ConfigParam, EnumStr, IntParam,
+        AddConfigVar, BoolParam, ConfigParam, DeviceParam, EnumStr, IntParam,
         TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen
@@ -49,12 +49,7 @@ AddConfigVar('device',
          "to move computation to it and to put shared variable of float32 "
          "on it. Do not use upper case letters, only lower case even if "
          "NVIDIA use capital letters."),
-        EnumStr('cpu', 'gpu',
-            'gpu0', 'gpu1', 'gpu2', 'gpu3',
-            'gpu4', 'gpu5', 'gpu6', 'gpu7',
-            'gpu8', 'gpu9', 'gpu10', 'gpu11',
-            'gpu12', 'gpu13', 'gpu14', 'gpu15',
-                allow_override=False),
+        DeviceParam('cpu', allow_override=False),
         in_c_key=False,
         )
 
