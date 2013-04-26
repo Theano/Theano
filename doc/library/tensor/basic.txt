@@ -829,7 +829,7 @@ Reductions
         inner summation. This will not necessarily be the dtype of the
         output (in particular if it is a discrete (int/uint) dtype, the
         output will be in a float type).  If None, then we use the same
-        rules as :ref:`sum()`.
+        rules as :func:`sum()`.
     :Returns: mean value of *x* along *axis*
 
     axis can be:
