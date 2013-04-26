@@ -8241,8 +8241,7 @@ def stacklists(arg):
     >>> from theano.tensor import stacklists, scalar, matrix
     >>> from theano import function
     >>> a,b,c,d = map(scalar, 'abcd')
-    >>> X = stacklists([[a, b],
-    ...                 [c, d]])
+    >>> X = stacklists([[a, b], [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> f(1, 2, 3, 4)
     array([[ 1.,  2.],
@@ -8252,8 +8251,7 @@ def stacklists(arg):
     a 2 by 2 grid.
     >>> from numpy import ones
     >>> a,b,c,d, = [tensor.matrix(a) for a in 'abcd']
-    >>> X = stacklists([[a, b],
-    ...                 [c, d]])
+    >>> X = stacklists([[a, b], [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> x = ones((4, 4), 'float32')
     >>> f(x, x, x, x).shape
