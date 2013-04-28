@@ -2199,10 +2199,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                     raise StochasticOrder(infolog.getvalue())
                 else:
                     if self.verbose:
-                        print >> sys.stderr, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
+                        print >> sys.stderr, "OPTCHECK: optimization", i, \
+                                 "of", len(li), "events was stable."
             else:
                 fgraph0 = fgraph
-
 
         del fgraph0
         self.fgraph = fgraph
@@ -2210,11 +2210,18 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         linker = _Linker(self)
 
+        # the 'no_borrow' outputs are the ones for which that we can't return
+        # the internal storage pointer.
 
-        #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        no_borrow = [output for output, spec in zip(fgraph.outputs, outputs+additional_outputs) if not spec.borrow]
+        no_borrow = [
+                output
+                for output, spec in izip(fgraph.outputs,
+                                         outputs + additional_outputs)
+                if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(fgraph, no_recycling = infer_reuse_pattern(fgraph, no_borrow))
+            self.linker = linker.accept(
+                    fgraph,
+                    no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
 
