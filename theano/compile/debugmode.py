@@ -886,8 +886,8 @@ def _lessbroken_deepcopy(a):
     """
     :param a: any object
 
-    Returns a copy of `a` that shares no internal storage with the original.
-    A deep copy.
+    Returns a copy of `a` that shares no internal storage with the original
+    (a deep copy).
     This function handles numpy arrays specially, because copy.deepcopy()
     called on a 0-d array will return a numpy scalar, not an array.
     """
