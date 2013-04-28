@@ -103,7 +103,7 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
                 theano_nose = path
                 break
     if theano_nose is None:
-        raise Exception("Not able to find theano-nose")
+        raise Exception("Unable to find theano-nose")
     if batch_size is None:
         batch_size = 100
     stdout_backup = sys.stdout
