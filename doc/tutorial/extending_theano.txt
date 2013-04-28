@@ -451,7 +451,7 @@ tutorial :ref:`Extending Theano<extending>`
 See :ref:`metadocumentation`, for some information on how to generate
 the documentation.
 
-Here is an example how to add docstring to an class.
+Here is an example how to add docstring to a class.
 
 .. code-block:: python
 
@@ -462,7 +462,7 @@ Here is an example how to add docstring to an class.
 
     :param x: input tensor.
 
-    :return: a tensor of the shape shape and dtype as the input with all
+    :return: a tensor of the same shape and dtype as the input with all
         values doubled.
 
     :note:
@@ -475,7 +475,8 @@ Here is an example how to add docstring to an class.
     .. versionadded:: 0.6
     """
 
-This is how it will show up for file that we auto list in the library documentation:
+This is how it will show up for files that we auto-list in the library
+documentation:
 
 
 .. automodule:: theano.misc.doubleop
