@@ -310,13 +310,13 @@ import theano and print the config variable, as in:
 
 .. attribute:: on_opt_error
 
-    String value: 'warn' or 'raise'
+    String value: 'warn', 'raise' or 'pdb'
 
     Default: 'warn'
 
     When a crash occurs while trying to apply some optimization, either warn
-    the user and skip this optimization ('warn'), or raise the exception
-    ('raise').
+    the user and skip this optimization ('warn'), raise the exception
+    ('raise'), or fall into the pdb debugger ('pdb').
 
 .. attribute:: on_shape_error
 
