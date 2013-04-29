@@ -456,7 +456,8 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
         elif flags and t1 == 'L':
             #to find it when we load the compiled op if the env of the
             #used is not well configured.
-            rval.append('-Wl,-rpath,' + t[2:])
+            if sys.platform != 'win32':
+                rval.append('-Wl,-rpath,' + t[2:])
     return rval
 
 
