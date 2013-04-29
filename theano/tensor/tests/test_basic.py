@@ -2918,11 +2918,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 oldlevel = _logger.level
                 _logger.setLevel(logging.CRITICAL)
                 try:
-                    try:
-                        tval = self.eval_output_and_check([t])
-                        assert 0
-                    except IndexError, e:
-                        pass
+                    self.assertRaises(IndexError,
+                                      self.eval_output_and_check, [t])
                 finally:
                     _logger.setLevel(oldlevel)
         finally:
@@ -2930,16 +2927,13 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test2_err_bounds1(self):
         n = self.shared((numpy.ones((2, 3), dtype=self.dtype) * 5))
-        t = n[4:5, 2]
+        t = n[4:5, 3]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            try:
-                tval = self.eval_output_and_check([t])
-            except Exception, e:
-                if e[0] != 'index out of bounds':
-                    raise
+            self.assertRaises(IndexError,
+                              self.eval_output_and_check, [t])
         finally:
             sys.stderr = old_stderr
 
