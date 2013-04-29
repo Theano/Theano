@@ -386,6 +386,8 @@ class GpuSoftmax (GpuOp):
 
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
+              //Those numbers are based on not too recent GPU to make them compatible with more GPU.
+              //TODO: read the information from the card.
               if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmax_%(nodename)s
                     <<<
