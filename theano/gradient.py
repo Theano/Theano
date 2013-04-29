@@ -1317,9 +1317,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     :param eps: stepsize used in the Finite Difference Method (Default
         None is type-dependent)
         Raising the value of eps can raise or lower the absolute and
-        relative error of the verification depending of the
-        Op. Raising the eps do not lower the verification quality. It
-        is better to raise eps then raising abs_tol or rel_tol.
+        relative errors of the verification depending on the
+        Op. Raising eps does not lower the verification quality. It
+        is better to raise eps than raising abs_tol or rel_tol.
     :param out_type: dtype of output, if complex (i.e. 'complex32' or
         'complex64')
     :param abs_tol: absolute tolerance used as threshold for gradient
