@@ -162,13 +162,15 @@ static struct PyModuleDef moduledef = {{
       MyMethods,
 }};
 """.format(name=self.hash_placeholder)
-            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.hash_placeholder
+            print >> stream, ("PyMODINIT_FUNC PyInit_%s(void) {" %
+                              self.hash_placeholder)
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
             print >> stream, "    return m;"
         else:
-            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.hash_placeholder
+            print >> stream, ("PyMODINIT_FUNC init%s(void){" %
+                              self.hash_placeholder)
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
