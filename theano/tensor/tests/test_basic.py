@@ -6398,20 +6398,20 @@ class T_long_tensor(unittest.TestCase):
             cst = constant(val)
             assert cst.value == val
             assert cst.dtype == "uint64"
-        except Exception:
+        except OverflowError:
             pass
 
         try:
             cst = constant([val, val])
             assert cst.value == val
             assert cst.dtype == "uint64"
-        except Exception:
+        except TypeError:
             pass
         try:
             cst = constant([[val, val]])
             assert cst.value == val
             assert cst.dtype == "uint64"
-        except Exception:
+        except TypeError:
             pass
 
         val = 2L ** 64
