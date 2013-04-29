@@ -45,13 +45,13 @@ AddConfigVar('cmodule.warn_no_version',
              in_c_key=False)
 
 AddConfigVar('cmodule.remove_gxx_opt',
-             "If True, will remove -O* parameter passed to g++."
-             "This is useful to debug in gdb module compiled by Theano."
+             "If True, will remove the -O* parameter passed to g++."
+             "This is useful to debug in gdb modules compiled by Theano."
              "The parameter -g is passed by default to g++",
              BoolParam(False))
 
 AddConfigVar('cmodule.compilation_warning',
-             "If True, will print compilation warning.",
+             "If True, will print compilation warnings.",
              BoolParam(False))
 
 
