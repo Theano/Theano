@@ -20,8 +20,8 @@ If you would like to add an additional optimization, refer to
 
     This list is partial.
 
-    The print_summary method allow several OpDBs and optimizers to list the optimization executed.
-    This allow to have an up-to-date list.
+    The print_summary method allows several OpDBs and optimizers to list the executed optimizations.
+    This makes it possible to have an up-to-date list.
 
     python -c 'import theano; theano.compile.FAST_RUN.optimizer.print_summary()'
 
@@ -255,6 +255,6 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 
     local_log_softmax
         This is a stabilization optimization.
-        It can happen due to rounding problem that the softmax probability of one value get to 0.
-        Taking the log of 0, would generate -inf that will probably generate NaN later.
+        It can happen due to rounding errors that the softmax probability of one value gets to 0.
+        Taking the log of 0 would generate -inf that will probably generate NaN later.
         We return a closer answer.

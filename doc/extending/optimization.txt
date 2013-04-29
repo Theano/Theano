@@ -21,9 +21,10 @@ In this section we will define a couple optimizations on doubles.
 
 .. note::
 
-   There is the optimization tag `cxx_only` that tell this
-   optimization will insert Op that only have c code. So we should not
-   run them when we don't have a c++ compiler.
+   The optimization tag `cxx_only` is used for optimizations that insert
+   Ops which have no Python implementation (so they only have C code).
+   Optimizations with this tag are skipped when there is no C++ compiler
+   available.
 
 Global and local optimizations
 ==============================

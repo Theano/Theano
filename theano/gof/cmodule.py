@@ -45,13 +45,13 @@ AddConfigVar('cmodule.warn_no_version',
              in_c_key=False)
 
 AddConfigVar('cmodule.remove_gxx_opt',
-             "If True, will remove -O* parameter passed to g++."
-             "This is useful to debug in gdb module compiled by Theano."
+             "If True, will remove the -O* parameter passed to g++."
+             "This is useful to debug in gdb modules compiled by Theano."
              "The parameter -g is passed by default to g++",
              BoolParam(False))
 
 AddConfigVar('cmodule.compilation_warning',
-             "If True, will print compilation warning.",
+             "If True, will print compilation warnings.",
              BoolParam(False))
 
 
@@ -162,13 +162,15 @@ static struct PyModuleDef moduledef = {{
       MyMethods,
 }};
 """.format(name=self.hash_placeholder)
-            print >> stream, "PyMODINIT_FUNC PyInit_%s(void) {" % self.hash_placeholder
+            print >> stream, ("PyMODINIT_FUNC PyInit_%s(void) {" %
+                              self.hash_placeholder)
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
             print >> stream, "    return m;"
         else:
-            print >> stream, "PyMODINIT_FUNC init%s(void){" % self.hash_placeholder
+            print >> stream, ("PyMODINIT_FUNC init%s(void){" %
+                              self.hash_placeholder)
             for block in self.init_blocks:
                 print >> stream, '  ', block
             print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'

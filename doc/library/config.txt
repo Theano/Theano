@@ -410,17 +410,18 @@ import theano and print the config variable, as in:
 .. attribute:: config.cxx
 
 
-    Default: 'g++' if g++ is present. '' Otherwise.
+    Default: 'g++' if g++ is present. Empty string otherwise.
 
-    Tell the c++ compiler to use. If empty, don't compile c++ code.
-    We automatically detect if g++ is present and disable it if not
-    present.
+    Indicates which C++ compiler to use. If empty, no C++ code is compiled.
+    Theano automatically detects whether g++ is present and disables
+    C++ compilation when it is not.
 
     We print a warning if we detect that g++ is not present. It is
-    recommended to run with c++ compilation as Theano will be much
+    recommended to run with C++ compilation as Theano will be much
     slower otherwise.
 
-    Currently only g++ is supported, but supporting others is easy.
+    Currently only g++ is supported, but supporting other compilers should
+    not be too difficult.
 
 .. attribute:: optimizer_excluding
 
@@ -636,12 +637,12 @@ import theano and print the config variable, as in:
 
     Bool value, default: False
 
-    If True, will remove -O* parameter passed to g++.
-    This is useful to debug in gdb module compiled by Theano.
+    If True, will remove the -O* parameter passed to g++.
+    This is useful to debug in gdb modules compiled by Theano.
     The parameter -g is passed by default to g++.
 
 .. attribute:: cmodule.compilation_warning
 
     Bool value, default: False
 
-    If True, will print compilation warning.
+    If True, will print compilation warnings.

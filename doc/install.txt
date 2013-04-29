@@ -442,9 +442,9 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
 
     If you have problems linking with MKL, `Intel Line Advisor
     <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
-    and `MKL User Guide
+    and the `MKL User Guide
     <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
-    can help you find the correct flag to use.
+    can help you find the correct flags to use.
 
 .. _gpu_linux:
 

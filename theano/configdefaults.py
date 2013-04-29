@@ -131,9 +131,10 @@ else:
     enum = EnumStr("")
 
 AddConfigVar('cxx',
-             "The c++ compiler to use. Currently only g++ is"
-             " supported. But supporting more is easy if someone want this."
-             "If it is empty, we don't compile c++ code.",
+             "The C++ compiler to use. Currently only g++ is"
+             " supported, but supporting additional compilers should not be "
+             "too difficult. "
+             "If it is empty, no C++ code is compiled.",
              enum,
              in_c_key=False)
 del enum

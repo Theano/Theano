@@ -397,8 +397,8 @@ have to be jointly optimized explicitly in the code.)
 SciPy
 -----
 
-We can wrap SciPy function in Theano. But Scipy is an optional dependency.
-Here is some code that allow to make the op Optional:
+We can wrap SciPy functions in Theano. But SciPy is an optional dependency.
+Here is some code that allows the Op to be optional:
 
 .. code-block:: python
 
@@ -413,17 +413,19 @@ Here is some code that allow to make the op Optional:
         ...
         def make_node(self, x):
             assert imported_scipy, (
-            "Scipy not available. Scipy is needed for the SomeOp op.")
+            "SciPy not available. SciPy is needed for the SomeOp op.")
+            ...
 
     from nose.plugins.skip import SkipTest
-    class test_Solve(utt.InferShapeTester):
+    class test_SomeOp(utt.InferShapeTester):
         ...
         def test_infer_shape(self):
             if not imported_scipy:
-                raise SkipTest("Scipy needed for the Cholesky op.")
+                raise SkipTest("SciPy needed for the SomeOp op.")
+            ...
 
-Random number in tests
-----------------------
+Random numbers in tests
+-----------------------
 
 Making tests errors more reproducible is a good practice. To make your
 tests more reproducible, you need a way to get the same random
@@ -449,7 +451,7 @@ tutorial :ref:`Extending Theano<extending>`
 See :ref:`metadocumentation`, for some information on how to generate
 the documentation.
 
-Here is an example how to add docstring to an class.
+Here is an example how to add docstring to a class.
 
 .. code-block:: python
 
@@ -460,7 +462,7 @@ Here is an example how to add docstring to an class.
 
     :param x: input tensor.
 
-    :return: a tensor of the shape shape and dtype as the input with all
+    :return: a tensor of the same shape and dtype as the input with all
         values doubled.
 
     :note:
@@ -473,7 +475,8 @@ Here is an example how to add docstring to an class.
     .. versionadded:: 0.6
     """
 
-This is how it will show up for file that we auto list in the library documentation:
+This is how it will show up for files that we auto-list in the library
+documentation:
 
 
 .. automodule:: theano.misc.doubleop

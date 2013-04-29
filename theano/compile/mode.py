@@ -86,7 +86,7 @@ def register_linker(name, linker):
 # If a string is passed as the optimizer argument in the constructor
 # for Mode, it will be used as the key to retrieve the real optimizer
 # in this dictionary
-exclude=[]
+exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
@@ -120,7 +120,7 @@ def register_optimizer(name, opt):
 class AddDestroyHandler(gof.Optimizer):
     """This optimizer performs two important functions:
 
-    1) it has a 'requirement' of the destroyhandler.  This means that the fgraph
+    1) It has a 'requirement' of the destroyhandler. This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
     enabled for subsequent optimizations.  All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that

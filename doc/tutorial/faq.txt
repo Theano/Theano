@@ -24,7 +24,8 @@ internals cannot be modified.
 Faster gcc optimization
 -----------------------
 
-You can enable faster gcc optimization with the ``cxxflags``. This list of flags was suggested on the mailing list::
+You can enable faster gcc optimization with the ``cxxflags`` option.
+This list of flags was suggested on the mailing list::
 
     -O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer
 
