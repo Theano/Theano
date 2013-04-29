@@ -2316,7 +2316,6 @@ class T_max_and_argmax(unittest.TestCase):
 
         x = matrix()
         cost = argmax(x, axis=0).sum()
-        value_error_raised = False
         gx = grad(cost, x)
         val = tensor.get_scalar_constant_value(gx)
         assert val == 0.0
@@ -4316,7 +4315,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert (out == [3, 13]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
-            for node in f.maker.fgraph.toposort():
+            for node in topo:
                 assert not isinstance(node.op, tensor.Join)
 
         # Test hide error
@@ -5164,7 +5163,6 @@ class T_reshape(unittest.TestCase):
     def test_bad_shape(self):
         a = matrix('a')
         shapes = ivector('shapes')
-        ndim = 2
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.uniform(size=(3, 4)).astype(config.floatX)
 
@@ -5175,7 +5173,7 @@ class T_reshape(unittest.TestCase):
         f = function([a, shapes], z.shape)
         self.assertRaises(ValueError, f, a_val, [13])
 
-        #Test reshape to 1 dim
+        #Test reshape to 2 dim
         r = a.reshape(shapes, ndim=2)
         z = zeros_like(r)
 
@@ -7082,7 +7080,6 @@ class TestInferShape(utt.InferShapeTester):
 
         # ScalarFromTensor
         aiscal = iscalar()
-        aconst = constant(45)
         self._compile_and_check([aiscal],
                             [TensorFromScalar()(ScalarFromTensor()(aiscal))],
                                 [45], ScalarFromTensor,
