@@ -8,7 +8,7 @@ class DoubleOp(theano.Op):
 
     :param x: input tensor.
 
-    :return: a tensor of the shape shape and dtype as the input with all
+    :return: a tensor of the same shape and dtype as the input with all
         values doubled.
 
     :note:
@@ -46,8 +46,8 @@ class DoubleOp(theano.Op):
 
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
-        # That mean there is no diferientiable path through that input
-        # If this imply that you cannot compute some outputs,
+        # That means there is no differentiable path through that input.
+        # If this implies that you cannot compute some outputs,
         # return None for those.
         if eval_points[0] is None:
             return eval_points

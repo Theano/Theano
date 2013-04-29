@@ -869,17 +869,19 @@ def _populate_grad_dict(var_to_app_to_idx,
                 for o, og in zip(node.outputs, output_grads):
                     o_dt = getattr(o.type, 'dtype', None)
                     og_dt = getattr(og.type, 'dtype', None)
-                    if o_dt not in theano.tensor.discrete_dtypes and og_dt and o_dt != og_dt:
+                    if (o_dt not in theano.tensor.discrete_dtypes and
+                        og_dt and o_dt != og_dt):
                         new_output_grads.append(og.astype(o_dt))
                     else:
                         new_output_grads.append(og)
 
-                # Make sure that, if new_output_grads[i] has a floating point dtype,
-                # it is the same dtype as outputs[i]
+                # Make sure that, if new_output_grads[i] has a floating point
+                # dtype, it is the same dtype as outputs[i]
                 for o, ng in zip(node.outputs, new_output_grads):
                     o_dt = getattr(o.type, 'dtype', None)
                     ng_dt = getattr(ng.type, 'dtype', None)
-                    if ng_dt is not None and o_dt not in theano.tensor.discrete_dtypes:
+                    if (ng_dt is not None and
+                        o_dt not in theano.tensor.discrete_dtypes):
                         assert ng_dt == o_dt
 
                 # Someone who had obviously not read the Op contract tried
@@ -890,7 +892,8 @@ def _populate_grad_dict(var_to_app_to_idx,
                 # 2) Talk to Ian Goodfellow
                 # (Both of these sources will tell you not to do it)
                 for ng in new_output_grads:
-                    assert getattr(ng.type, 'dtype', None) not in theano.tensor.discrete_dtypes
+                    assert (getattr(ng.type, 'dtype', None)
+                            not in theano.tensor.discrete_dtypes)
 
                 input_grads = node.op.grad(inputs, new_output_grads)
 
@@ -908,14 +911,12 @@ def _populate_grad_dict(var_to_app_to_idx,
 
             # Do type checking on the result
 
-
             # List of bools indicating if each input only has integer outputs
             only_connected_to_int = [(True not in
                 [in_to_out and out_to_cost and not out_int
                     for in_to_out, out_to_cost, out_int in
                     zip(in_to_outs, outputs_connected, output_is_int)])
                 for in_to_outs in connection_pattern]
-
 
             for i, term in enumerate(input_grads):
 
@@ -932,7 +933,6 @@ def _populate_grad_dict(var_to_app_to_idx,
                             ' or a NullType variable such as those made with '
                             'the grad_undefined or grad_unimplemented helper '
                             'functions.') % node.op)
-
 
                 if not isinstance(term.type,
                         (NullType, DisconnectedType)):
@@ -973,8 +973,8 @@ def _populate_grad_dict(var_to_app_to_idx,
                             msg += "evaluate to zeros, but it evaluates to"
                             msg += "%s."
 
-                            msg % (str(node.op), str(term), str(type(term)),
-                                    i, str(theano.get_scalar_constant_value(term)))
+                            msg % (node.op, term, type(term), i,
+                                   theano.get_scalar_constant_value(term))
 
                             raise ValueError(msg)
 
@@ -1010,8 +1010,6 @@ def _populate_grad_dict(var_to_app_to_idx,
             #cache the result
             term_dict[node] = input_grads
 
-
-
         return term_dict[node]
 
     # populate grad_dict[var] and return it
@@ -1040,7 +1038,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                         if isinstance(term.type, DisconnectedType):
                             continue
 
-                        if hasattr(var,'ndim') and term.ndim != var.ndim:
+                        if hasattr(var, 'ndim') and term.ndim != var.ndim:
                             raise ValueError(("%s.grad returned a term with"
                                 " %d dimensions, but %d are required.") % (
                                     str(node.op), term.ndim, var.ndim))
@@ -1058,8 +1056,8 @@ def _populate_grad_dict(var_to_app_to_idx,
                 if cost_name is not None and var.name is not None:
                     grad_dict[var].name = '(d%s/d%s)' % (cost_name, var.name)
             else:
-                # this variable isn't connected to the cost in the computational
-                # graph
+                # this variable isn't connected to the cost in the
+                # computational graph
                 grad_dict[var] = DisconnectedType()()
         # end if cache miss
         return grad_dict[var]
@@ -1067,6 +1065,7 @@ def _populate_grad_dict(var_to_app_to_idx,
     rval = [access_grad_cache(elem) for elem in wrt]
 
     return rval
+
 
 def _float_zeros_like(x):
     """ Like zeros_like, but forces the object to have a
@@ -1317,9 +1316,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     :param eps: stepsize used in the Finite Difference Method (Default
         None is type-dependent)
         Raising the value of eps can raise or lower the absolute and
-        relative error of the verification depending of the
-        Op. Raising the eps do not lower the verification quality. It
-        is better to raise eps then raising abs_tol or rel_tol.
+        relative errors of the verification depending on the
+        Op. Raising eps does not lower the verification quality. It
+        is better to raise eps than raising abs_tol or rel_tol.
     :param out_type: dtype of output, if complex (i.e. 'complex32' or
         'complex64')
     :param abs_tol: absolute tolerance used as threshold for gradient
@@ -1598,6 +1597,7 @@ def hessian(cost, wrt, consider_constant=None,
                  "script that generated the error)")
         hessians.append(hess)
     return format_as(using_list, using_tuple, hessians)
+
 
 def _is_zero(x):
     """

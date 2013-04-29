@@ -228,7 +228,7 @@ class Scan(PureOp):
                    )
         err_msg2 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
-                    'initial state (outputs_info in scan nomenclature)'
+                    'initial state (outputs_info in scan nomenclature) '
                     'of variable %s (argument number %d)'
                     ' has dtype %s and %d dimension(s), while the result '
                     'of the inner function for this output has dtype %s '
@@ -1387,6 +1387,7 @@ class Scan(PureOp):
                         self.inner_nitsot_outs(self_outputs))
         scan_node = outs[0].owner
         connection_pattern = self.connection_pattern(scan_node)
+
         def get_inp_idx(iidx):
             if iidx < self.n_seqs:
                 return 1 + iidx
@@ -1426,12 +1427,12 @@ class Scan(PureOp):
                         "has type " + str(g_y.type))
 
             odx = get_out_idx(self_outputs.index(y))
-            wrt  = [x for  x in theano.gof.graph.inputs([y])
-                    if (x in diff_inputs) and
-                    (connection_pattern[get_inp_idx(self_inputs.index(x))][odx])]
-            grads =  gradient.grad(
-                    cost = None,
-                    known_grads = {y : g_y },
+            wrt = [x for x in theano.gof.graph.inputs([y])
+                   if (x in diff_inputs) and
+                   connection_pattern[get_inp_idx(self_inputs.index(x))][odx]]
+            grads = gradient.grad(
+                    cost=None,
+                    known_grads={y: g_y},
                     wrt=wrt, consider_constant=wrt,
                     disconnected_inputs='ignore',
                     return_disconnected='None')

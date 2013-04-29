@@ -8236,24 +8236,25 @@ def diag(v, k=0):
 
 
 def stacklists(arg):
-    """ Recursivly stack lists of tensors to maintain similar structure
+    """
+    Recursively stack lists of tensors to maintain similar structure.
 
-    This function can create a tensor from a shaped list of scalars
+    This function can create a tensor from a shaped list of scalars:
 
     >>> from theano.tensor import stacklists, scalars, matrices
     >>> from theano import function
-    >>> a,b,c,d = scalars('abcd')
+    >>> a, b, c, d = scalars('abcd')
     >>> X = stacklists([[a, b], [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> f(1, 2, 3, 4)
     array([[ 1.,  2.],
            [ 3.,  4.]], dtype=float32)
 
-    We can also stack arbitrarily shaped tensors.  Here we stack matrices into
-    a 2 by 2 grid.
+    We can also stack arbitrarily shaped tensors. Here we stack matrices into
+    a 2 by 2 grid:
 
     >>> from numpy import ones
-    >>> a,b,c,d, = matrices('abcd')
+    >>> a, b, c, d = matrices('abcd')
     >>> X = stacklists([[a, b], [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> x = ones((4, 4), 'float32')
