@@ -5,6 +5,7 @@ amount of useful generic optimization tools.
 
 import copy
 import logging
+import pdb
 import sys
 import time
 
@@ -147,6 +148,8 @@ class SeqOptimizer(Optimizer, list):
         _logger.error(traceback.format_exc())
         if config.on_opt_error == 'raise':
             raise exc
+        elif config.on_opt_error == 'pdb':
+            pdb.post_mortem(sys.exc_info()[2])
 
     def __init__(self, *opts, **kw):
         """WRITEME"""
@@ -1084,7 +1087,11 @@ class NavigatorOptimizer(Optimizer):
         _logger.error("Optimization failure due to: %s" % str(local_opt))
         _logger.error("TRACEBACK:")
         _logger.error(traceback.format_exc())
-        if isinstance(exc, AssertionError) or config.on_opt_error == 'raise':
+        if config.on_opt_error == 'pdb':
+            pdb.post_mortem(sys.exc_info()[2])
+        elif isinstance(exc, AssertionError) or config.on_opt_error == 'raise':
+            # We always crash on AssertionError because something may be
+            # seriously wrong if such an exception is raised.
             raise exc
 
     @staticmethod
