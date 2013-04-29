@@ -2016,7 +2016,6 @@ def test_identity():
 
 class CastTester(unittest.TestCase):
     def test_good_between_real_types(self):
-        expected = lambda x, y: x.astype(y),
         good = itertools.chain(
                     multi_dtype_cast_checks((2,), dtypes=REAL_DTYPES),
                     # Casts from foo to foo
@@ -2028,6 +2027,10 @@ class CastTester(unittest.TestCase):
             out = tensor.cast(inp, dtype=dtype)
             f = function([inp], out)
             assert f(obj).dtype == numpy.dtype(dtype)
+
+            # Test astype too
+            out2 = inp.astype(dtype=dtype)
+            assert out2.type == out.type
 
     def test_cast_from_real_to_complex(self):
         for real_dtype in REAL_DTYPES:
