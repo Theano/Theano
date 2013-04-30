@@ -899,7 +899,8 @@ class T_fibby(unittest.TestCase):
                 return hash(type(self))
 
             def make_node(self, x):
-                x_ = tensor.as_tensor_variable(x)
+                x_ = theano.tensor.as_tensor_variable(x)
+                assert x_.ndim == 1
                 return theano.Apply(self,
                     inputs=[x_],
                     outputs=[x_.type()])
