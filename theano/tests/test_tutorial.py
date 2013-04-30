@@ -920,12 +920,18 @@ class T_fibby(unittest.TestCase):
                     Py_XDECREF(%(y)s);
                     %(y)s = (PyArrayObject*)PyArray_FromArray(
                             %(x)s, 0, NPY_ARRAY_ENSURECOPY);
-                    if (!(%y)s) %(fail)s;
-                    dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
-                    dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
-                    for (int i = 2; i < %(x)s->dimensions[0]; ++i)
-                        y[i] = y[i-1]*y[i-2] + x[i];
+                    if (!%(y)s)
+                        %(fail)s;
+                    {//New scope needed to make compilation work
+                        dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
+                        dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
+                        for (int i = 2; i < %(x)s->dimensions[0]; ++i)
+                            y[i] = y[i-1]*y[i-2] + x[i];
+                    }
                 """ % locals()
+
+            def c_code_cache_version(self):
+                return (1,)
 
         fibby = Fibby()
 
