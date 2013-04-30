@@ -928,6 +928,8 @@ class T_fibby(unittest.TestCase):
 
         fibby = Fibby()
 
+        from theano.tensor.opt import (get_scalar_constant_value,
+                                       NotScalarConstantError)
 
         # Remove any fibby(zeros(...))
         @theano.tensor.opt.register_specialize
@@ -938,7 +940,7 @@ class T_fibby(unittest.TestCase):
                 try:
                     if numpy.all(0 == get_scalar_constant_value(x)):
                         return [x]
-                except TypeError:
+                except NotScalarConstantError:
                     pass
 
 

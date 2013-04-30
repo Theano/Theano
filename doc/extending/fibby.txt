@@ -208,7 +208,7 @@ TODO: talk about OPTIMIZATION STAGES
 
 .. code-block:: python
 
-  from theano.tensor.opt import get_constant_value
+  from theano.tensor.opt import get_scalar_constant_value, NotScalarConstantError
 
   # Remove any fibby(zeros(...))
   @theano.tensor.opt.register_specialize
@@ -217,9 +217,9 @@ TODO: talk about OPTIMIZATION STAGES
     if node.op == fibby:
       x = node.inputs[0]
       try:
-        if numpy.all(0 == get_constant_value(x)):
+        if numpy.all(0 == get_scalar_constant_value(x)):
           return [x]
-      except TypeError:
+      except NotScalarConstantError:
         pass
 
 The ``register_specialize`` decorator is what activates our optimization, and
