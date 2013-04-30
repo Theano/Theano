@@ -591,24 +591,32 @@ class ProfileStats(object):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
         var_mem = {}  # varible->size in bytes; don't include input variables
-        node_mem = {}  # node->total outputs size
+        node_mem = {}  # node->total outputs size (only dense outputs)
 
         for node in self.apply_callcount.keys():
             fct_memory.setdefault(node.fgraph, {})
             fct_memory[node.fgraph].setdefault(node, [])
             fct_shapes.setdefault(node.fgraph, {})
             fct_shapes[node.fgraph].setdefault(node, [])
-
+            sum_dense = 0
             for out in node.outputs:
                 sh = self.variable_shape[out]
-                v = numpy.prod(sh)
-                dtype = str(out.dtype)
-                v *= numpy.dtype(dtype).itemsize
+                if isinstance(out.type, theano.sparse.SparseType):
+                    v = "Sparse"
+                elif isinstance(out.type,
+                                (theano.tensor.TensorType,
+                                 theano.sandbox.cuda.CudaNdarrayType)):
+                    v = numpy.prod(sh)
+                    dtype = str(out.dtype)
+                    v *= numpy.dtype(dtype).itemsize
+                    sum_dense += v
+                else:
+                    v = "Unknow"
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
                 fct_shapes[node.fgraph][node].append(sh)
-            node_mem[node] = sum([var_mem[var] for var in node.outputs])
+            node_mem[node] = sum_dense
 
         #Find the function that used the most of that statistic
         max_sum_size = 0
@@ -618,7 +626,7 @@ class ProfileStats(object):
         max_node_memory_saved_by_inplace = 0
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
-            sum_size = sum([sum(val)
+            sum_size = sum([sum([v for v in val if not isinstance(v, str)])
                             for key, val in nodes_mem.iteritems()])
             # Sum of the size of all variables that actually allocate
             # memory (excluding views, and inplace);
@@ -660,14 +668,16 @@ class ProfileStats(object):
                     # TODO check the op returned a view
                     elif vmap and idx in vmap:
                         node_memory_saved_by_view += v
-                    else:
+                    elif not isinstance(v, str):
                         node_memory_size += v
                         running_memory_size += v
                         if running_memory_size > running_max_memory_size:
                             running_max_memory_size = running_memory_size
                         old_storage = post_thunk_old_storage[order.index(node)]
                         for old_s in old_storage:
-                            running_memory_size -= var_mem[node.inputs[old_s]]
+                            old_v = var_mem[node.inputs[old_s]]
+                            if not isinstance(old_v, str):
+                                running_memory_size -= old_v
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
@@ -685,6 +695,9 @@ class ProfileStats(object):
                              "(the max between all function in that profile)")
         else:
             print >> file,  "Memory Profile"
+
+        print >> file, "(Sparse variables are ignored)"
+
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
@@ -728,17 +741,34 @@ class ProfileStats(object):
             for out, inp in getattr(node.op, 'view_map', {}).iteritems():
                 code[out] = "v"
             shapes = str(fct_shapes[node.fgraph][node])
-            print >> file,  '     %9dB  %s %s %s' % (node_outputs_size,
-                                                     shapes,
-                                                     ' '.join(code), node)
+
+            if any([isinstance(out.type, theano.sparse.SparseType)
+                    for out in node.outputs]):
+                size = "%10s" % "Sparse"
+            elif all([isinstance(out.type,
+                                 (theano.tensor.TensorType,
+                                  theano.sandbox.cuda.CudaNdarrayType))
+                    for out in node.outputs]):
+                size = "%9dB" % node_outputs_size
+            else:
+                size = "%10s" % "Unknow"
+
+            print >> file,  '     %s  %s %s %s' % (size,
+                                                   shapes,
+                                                   ' '.join(code), node)
 
         sum_remaining = sum(size for _, size in items[N:])
-        size_sum = sum(node_mem.values())
+        size_sum_dense = sum(node_mem.values())
+        if size_sum_dense == 0:
+            p = "inf%"
+        else:
+            p = "(%.2f%%)" % (sum_remaining / size_sum_dense * 100)
         print >> file,  (
-            '   ... (remaining %i Apply account for %.2f%%(%.2fs) of'
-            ' the runtime)') % (max(0, len(node_mem) - N),
-                                sum_remaining,
-                                sum_remaining / size_sum)
+            '   ... (remaining %i Apply account for %4dB/%dB (%s) of'
+            ' the Apply with dense outputs sizes)') % (max(0, len(node_mem) - N),
+                                                       sum_remaining,
+                                                       size_sum_dense, p
+                                                   )
         print >> file, ''
         print >> file,  (
             "    <created/inplace/view> is taked from the op declaration.")
