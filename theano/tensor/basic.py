@@ -1767,7 +1767,12 @@ class _tensor_py_operators:
                     axis = i
 
         if advanced:
-            if (axis is not None
+            if (len(args) == 1
+                and isinstance(args[0], numpy.ndarray)
+                and args[0].dtype == 'bool'):
+                # special case for single boolean mask arg
+                return AdvancedSubtensor()(self, *args[axis].nonzero())
+            elif (axis is not None
                 and numpy.all(a == slice(None) for a in args[:axis])
                 and numpy.all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
