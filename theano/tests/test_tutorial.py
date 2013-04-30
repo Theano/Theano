@@ -950,6 +950,22 @@ class T_fibby(unittest.TestCase):
                 except NotScalarConstantError:
                     pass
 
+        # Test it don't apply when not needed
+        x = T.dvector()
+        f = function([x], fibby(x))
+        #theano.printing.debugprint(f)
+        f(numpy.random.rand(5))
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Fibby)
+
+        # Test that the optimization get applied
+        f_zero = function([], fibby(T.zeros([5])))
+        #theano.printing.debugprint(f_zero)
+        f_zero()
+        topo = f_zero.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
 
 
 class T_graphstructures(unittest.TestCase):
