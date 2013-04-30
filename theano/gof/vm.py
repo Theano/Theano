@@ -655,7 +655,8 @@ class VM_Linker(link.LocalLinker):
             if self.use_cloop and self.callback is not None:
                 logger.warn('CVM does not support callback, using Stack VM.')
             if self.use_cloop and config.profile_memory:
-                logger.warn('CVM does not support memory profile, using Stack VM.')
+                warnings.warn(
+                    'CVM does not support memory profile, using Stack VM.')
             deps = None
             if self.allow_gc:
                 deps = self.compute_gc_dependencies(storage_map)
