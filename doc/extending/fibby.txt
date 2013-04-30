@@ -54,7 +54,7 @@ you should check the strides and alignment.
     def perform(self, node, inputs, output_storage):
       x, = inputs
       y = output_storage[0][0] = x.copy()
-      for i in range(2,len(x)):
+      for i in range(2, len(x)):
         y[i] = y[i-1] * y[i-2] + x[i]
 
     def c_code(self, node, name, inames, onames, sub):
