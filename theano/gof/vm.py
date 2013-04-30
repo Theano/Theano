@@ -333,6 +333,9 @@ class Stack(VM):
             st = getattr(data[0], 'strides', 'input no strides')
             if getattr(data[0], 'flags', False) and data[0].flags.c_contiguous:
                 st = 'c'
+            elif (hasattr(data[0], 'is_c_contiguous') and
+                  data[0].is_c_contiguous()):
+                st = "c"
             self.variable_strides[var] = st
 
         while apply_stack:
