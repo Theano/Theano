@@ -688,7 +688,8 @@ class ProfileStats(object):
                                                 node_memory_saved_by_view)
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
-        del fgraph, nodes_mem, post_thunk_old_storage, node
+
+            del fgraph, nodes_mem, post_thunk_old_storage, node
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
