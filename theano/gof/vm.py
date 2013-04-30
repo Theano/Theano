@@ -322,7 +322,6 @@ class Stack(VM):
         # apply_stack contains nodes
         apply_stack = list(self.base_apply_stack)
         last_apply_stack_len = -1
-        ls = []
 
         #This record all function inputs/shared varibles and constants
         for var, data in self.storage_map.iteritems():
@@ -636,7 +635,6 @@ class VM_Linker(link.LocalLinker):
             # XXX if k has no clients... what is it doing in the computation?
             if k.owner and k.clients:
                 ls = []
-                is_output = 0
                 for cl in k.clients:
                     if cl[0] is not 'output':
                         ls += cl[0].outputs
