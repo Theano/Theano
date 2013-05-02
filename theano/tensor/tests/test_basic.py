@@ -2016,7 +2016,6 @@ def test_identity():
 
 class CastTester(unittest.TestCase):
     def test_good_between_real_types(self):
-        expected = lambda x, y: x.astype(y),
         good = itertools.chain(
                     multi_dtype_cast_checks((2,), dtypes=REAL_DTYPES),
                     # Casts from foo to foo
@@ -2028,6 +2027,10 @@ class CastTester(unittest.TestCase):
             out = tensor.cast(inp, dtype=dtype)
             f = function([inp], out)
             assert f(obj).dtype == numpy.dtype(dtype)
+
+            # Test astype too
+            out2 = inp.astype(dtype=dtype)
+            assert out2.type == out.type
 
     def test_cast_from_real_to_complex(self):
         for real_dtype in REAL_DTYPES:
@@ -2313,7 +2316,6 @@ class T_max_and_argmax(unittest.TestCase):
 
         x = matrix()
         cost = argmax(x, axis=0).sum()
-        value_error_raised = False
         gx = grad(cost, x)
         val = tensor.get_scalar_constant_value(gx)
         assert val == 0.0
@@ -2916,11 +2918,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 oldlevel = _logger.level
                 _logger.setLevel(logging.CRITICAL)
                 try:
-                    try:
-                        tval = self.eval_output_and_check([t])
-                        assert 0
-                    except IndexError, e:
-                        pass
+                    self.assertRaises(IndexError,
+                                      self.eval_output_and_check, [t])
                 finally:
                     _logger.setLevel(oldlevel)
         finally:
@@ -2928,16 +2927,13 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test2_err_bounds1(self):
         n = self.shared((numpy.ones((2, 3), dtype=self.dtype) * 5))
-        t = n[4:5, 2]
+        t = n[4:5, 3]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
         sys.stderr = StringIO.StringIO()
         try:
-            try:
-                tval = self.eval_output_and_check([t])
-            except Exception, e:
-                if e[0] != 'index out of bounds':
-                    raise
+            self.assertRaises(IndexError,
+                              self.eval_output_and_check, [t])
         finally:
             sys.stderr = old_stderr
 
@@ -4313,7 +4309,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert (out == [3, 13]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
-            for node in f.maker.fgraph.toposort():
+            for node in topo:
                 assert not isinstance(node.op, tensor.Join)
 
         # Test hide error
@@ -5161,7 +5157,6 @@ class T_reshape(unittest.TestCase):
     def test_bad_shape(self):
         a = matrix('a')
         shapes = ivector('shapes')
-        ndim = 2
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.uniform(size=(3, 4)).astype(config.floatX)
 
@@ -5172,7 +5167,7 @@ class T_reshape(unittest.TestCase):
         f = function([a, shapes], z.shape)
         self.assertRaises(ValueError, f, a_val, [13])
 
-        #Test reshape to 1 dim
+        #Test reshape to 2 dim
         r = a.reshape(shapes, ndim=2)
         z = zeros_like(r)
 
@@ -6392,6 +6387,30 @@ class T_long_tensor(unittest.TestCase):
 
     def test_too_big(self):
         val = 2L ** 63
+        #NumPy 1.7 this will raise an exception
+        #NumPy 1.7.1 this will work
+        try:
+            cst = constant(val)
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except OverflowError:
+            pass
+
+        try:
+            cst = constant([val, val])
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except TypeError:
+            pass
+        try:
+            cst = constant([[val, val]])
+            assert cst.value == val
+            assert cst.dtype == "uint64"
+        except TypeError:
+            pass
+
+        val = 2L ** 64
+        # This fail for all NumPy version.
         self.assertRaises(Exception, constant, val)
         self.assertRaises(Exception, constant, [val, val])
         self.assertRaises(Exception, constant, [[val, val]])
@@ -7055,7 +7074,6 @@ class TestInferShape(utt.InferShapeTester):
 
         # ScalarFromTensor
         aiscal = iscalar()
-        aconst = constant(45)
         self._compile_and_check([aiscal],
                             [TensorFromScalar()(ScalarFromTensor()(aiscal))],
                                 [45], ScalarFromTensor,

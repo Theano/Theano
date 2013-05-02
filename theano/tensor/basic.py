@@ -366,9 +366,14 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             # Theano graph, because on Windows 64, all shapes are expressed
             # with longs.
             # If a long fits in int64, we convert it into an int64, like
-            # numpy.asarray() does.
+            # numpy.asarray() does up to 1.7. NumPy 1.7.1 upcaset to int64
+            # if possible, but fallback to uint64 if int64 isn't possible but
+            # uint64 is. We always do as NumPy 1.7.1  here.
             # If x is too big, an OverflowError will be raised by numpy.
-            x_ = theano._asarray(x, dtype='int64')
+            try:
+                x_ = theano._asarray(x, dtype='int64')
+            except OverflowError:
+                x_ = theano._asarray(x, dtype='uint64')
         elif isinstance(x, numpy.ndarray):
             x_ = x
             # Currently we do not have a bool dtype in Theano.
@@ -377,6 +382,10 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             if x.dtype == 'bool':
                 x_ = numpy.asarray(x_, dtype='uint8')
         else:
+            # Here x is probably a list or a tuple. If it contain a long,
+            # we will behave like the current NumPy version: 1.7 and bellow,
+            # it will only work if the long fit in int64. For NumPy 1.7.1+,
+            # it will work if the long git in int64 or uint64.
             x_ = numpy.asarray(x)
 
     assert type(x_) == numpy.ndarray
