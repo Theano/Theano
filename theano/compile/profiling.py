@@ -752,7 +752,7 @@ class ProfileStats(object):
                     for out in node.outputs]):
                 size = "%9dB" % node_outputs_size
             else:
-                size = "%10s" % "Unknow"
+                size = "%10s" % "Unknown"
 
             print >> file,  '     %s  %s %s %s' % (size,
                                                    shapes,
@@ -761,7 +761,7 @@ class ProfileStats(object):
         sum_remaining = sum(size for _, size in items[N:])
         size_sum_dense = sum(node_mem.values())
         if size_sum_dense == 0:
-            p = "inf%"
+            p = "0%"
         else:
             p = "(%.2f%%)" % (sum_remaining / size_sum_dense * 100)
         print >> file,  (
