@@ -954,6 +954,9 @@ class T_fibby(unittest.TestCase):
         x = T.dvector()
         f = function([x], fibby(x))
         #theano.printing.debugprint(f)
+
+        #We call the function to make sure it run.
+        #If you run in DebugMode, it will compare the C and Python output
         f(numpy.random.rand(5))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
@@ -962,7 +965,15 @@ class T_fibby(unittest.TestCase):
         # Test that the optimization get applied
         f_zero = function([], fibby(T.zeros([5])))
         #theano.printing.debugprint(f_zero)
+
+        #If you run in DebugMode, it will compare the output before
+        # and after the optimization
         f_zero()
+
+        #Check that the optimization remove the Fibby Op.
+        #For security, the Theano memory interface make that the output
+        #of the function is always memory not aliaced to the input.
+        #That is why there is a DeepCopyOp op.
         topo = f_zero.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
