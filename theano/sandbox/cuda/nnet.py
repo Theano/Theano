@@ -1,13 +1,11 @@
-from theano import Op, Type, Apply, Variable, Constant
-from theano import tensor, scalar
+from theano import Op, Apply
 import StringIO
 
-from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 
-from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel, inline_reduce_max,
-                                                inline_reduce_sum,
-                                                inline_softmax)
+from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
+                                                inline_softmax,
+                                                inline_softmax_fixed_shared)
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
@@ -111,7 +109,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(x)s)[0] != CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        if (CudaNdarray_HOST_DIMS(%(x)s)[0] !=
+            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "dimension mismatch in x,y_idx arguments");
@@ -124,56 +123,73 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
             %(fail)s;
         }
         if ((NULL == %(nll)s) //initial condition
-            || (CudaNdarray_HOST_DIMS(%(nll)s)[0] != CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
+            || (CudaNdarray_HOST_DIMS(%(nll)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(nll)s);
-            %(nll)s = (CudaNdarray*)CudaNdarray_NewDims(1, CudaNdarray_HOST_DIMS(%(y_idx)s));
+            %(nll)s = (CudaNdarray*)CudaNdarray_NewDims(1,
+                CudaNdarray_HOST_DIMS(%(y_idx)s));
             if(!%(nll)s)
             {
                 %(fail)s;
             }
         }
         if ((NULL == %(sm)s)
-            || (CudaNdarray_HOST_DIMS(%(sm)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(sm)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            || (CudaNdarray_HOST_DIMS(%(sm)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(sm)s)[1] !=
+                CudaNdarray_HOST_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(sm)s);
-            %(sm)s = (CudaNdarray*) CudaNdarray_NewDims(2, CudaNdarray_HOST_DIMS(%(x)s));
+            %(sm)s = (CudaNdarray*) CudaNdarray_NewDims(2,
+                CudaNdarray_HOST_DIMS(%(x)s));
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc sm output");
-                // no need to decref cnda_nll, the cleanup code should pick it up.
+                // no need to decref cnda_nll, the cleanup code should do it up
                 %(fail)s;
             }
         }
         if ((NULL == %(am)s)
-            || (CudaNdarray_HOST_DIMS(%(am)s)[0] != CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
+            || (CudaNdarray_HOST_DIMS(%(am)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(am)s);
-            %(am)s = (CudaNdarray*) CudaNdarray_NewDims(1, CudaNdarray_HOST_DIMS(%(y_idx)s));
+            %(am)s = (CudaNdarray*) CudaNdarray_NewDims(1,
+                CudaNdarray_HOST_DIMS(%(y_idx)s));
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc am output");
-                // no need to decref nll amd sm, the cleanup code should pick it up.
+                // no need to decref nll and sm,
+                // the cleanup code should do it up
                 %(fail)s;
             }
         }
         {
             int n_blocks = CudaNdarray_HOST_DIMS(%(sm)s)[0];
-            int n_threads = 1; //TODO: launch more threads per row and do parallel sum and max reductions.
+     //TODO: launch more threads per row and do parallel sum and max reductions
+            int n_threads = 1;
             int n_shared_bytes = 0; //n_threads * sizeof(float);
 
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 CudaNdarray_HOST_DIMS(%(x)s)[0],
                 CudaNdarray_HOST_DIMS(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(b)s), CudaNdarray_HOST_STRIDES(%(b)s)[0],
-                CudaNdarray_DEV_DATA(%(y_idx)s), CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
-                CudaNdarray_DEV_DATA(%(nll)s), CudaNdarray_HOST_STRIDES(%(nll)s)[0],
-                CudaNdarray_DEV_DATA(%(sm)s), CudaNdarray_HOST_STRIDES(%(sm)s)[0], CudaNdarray_HOST_STRIDES(%(sm)s)[1],
-                CudaNdarray_DEV_DATA(%(am)s), CudaNdarray_HOST_STRIDES(%(am)s)[0]);
+                CudaNdarray_DEV_DATA(%(x)s),
+                CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_DEV_DATA(%(b)s),
+                CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                CudaNdarray_DEV_DATA(%(y_idx)s),
+                CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
+                CudaNdarray_DEV_DATA(%(nll)s),
+                CudaNdarray_HOST_STRIDES(%(nll)s)[0],
+                CudaNdarray_DEV_DATA(%(sm)s),
+                CudaNdarray_HOST_STRIDES(%(sm)s)[0],
+                CudaNdarray_HOST_STRIDES(%(sm)s)[1],
+                CudaNdarray_DEV_DATA(%(am)s),
+                CudaNdarray_HOST_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if (cudaSuccess != err)
@@ -181,7 +197,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
                 PyErr_Format(PyExc_RuntimeError,
                              "Cuda error: %(classname)s %(nodename)s: %%s.\\n",
                              cudaGetErrorString(err));
-                // no need to decref output vars the cleanup code should pick them up.
+                // no need to decref output vars the cleanup code will do it
                 %(fail)s;
             }
         }
@@ -203,7 +219,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
     nout = 1
     """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
     def __init__(self, **kwargs):
-        Op.__init__(self,**kwargs)
+        Op.__init__(self, **kwargs)
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -233,26 +249,33 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] != CudaNdarray_HOST_DIMS(%(sm)s)[0])
+        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
+            CudaNdarray_HOST_DIMS(%(sm)s)[0])
         {
-            PyErr_Format(PyExc_ValueError, "dnll.shape[0] == %%i, but sm.shape[0] == %%i",
-            CudaNdarray_HOST_DIMS(%(dnll)s)[0],CudaNdarray_HOST_DIMS(%(sm)s)[0]);
+            PyErr_Format(PyExc_ValueError,
+                         "dnll.shape[0] == %%i, but sm.shape[0] == %%i",
+                         CudaNdarray_HOST_DIMS(%(dnll)s)[0],
+                         CudaNdarray_HOST_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] != CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
+            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (CudaNdarray_HOST_DIMS(%(dx)s)[0] != CudaNdarray_HOST_DIMS(%(sm)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(dx)s)[1] != CudaNdarray_HOST_DIMS(%(sm)s)[1]))
+            || (CudaNdarray_HOST_DIMS(%(dx)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(sm)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(dx)s)[1] !=
+                CudaNdarray_HOST_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
             %(dx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(dx)s)
-                || CudaNdarray_alloc_contiguous(%(dx)s, 2, CudaNdarray_HOST_DIMS(%(sm)s)))
+                || CudaNdarray_alloc_contiguous(%(dx)s, 2,
+                                                CudaNdarray_HOST_DIMS(%(sm)s)))
             {
                 Py_XDECREF(%(dx)s);
                 %(dx)s = NULL;
@@ -314,13 +337,16 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
                 {
                     if (y_i == j)
                     {
-                        dx[i * dx_s0 + j * dx_s1] = dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
+                        dx[i * dx_s0 + j * dx_s1] =
+                            dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
                     }
                     else
                     {
-                        dx[i * dx_s0 + j * dx_s1] = dnll_i * sm[i * sm_s0 + j * sm_s1];
+                        dx[i * dx_s0 + j * dx_s1] =
+                            dnll_i * sm[i * sm_s0 + j * sm_s1];
                     }
-                    //dx[i * dx_s0 + j * dx_s1] = dnll_i * sm[i * sm_s0 + j * sm_s1];
+                    //dx[i * dx_s0 + j * dx_s1] =
+                    //    dnll_i * sm[i * sm_s0 + j * sm_s1];
                     //dx[i*dx_s0+j*dx_s1] = 0;
                 }
             }
@@ -350,8 +376,7 @@ class GpuSoftmax (GpuOp):
         return shape
 
     def c_code_cache_version(self):
-        #return ()
-        return (7,) + inline_softmax.code_version
+        return (9,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -364,8 +389,10 @@ class GpuSoftmax (GpuOp):
             %(fail)s;
         }
         if ((NULL == %(z)s) ||
-            (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0]) ||
-            (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
+             CudaNdarray_HOST_DIMS(%(x)s)[0]) ||
+            (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
+             CudaNdarray_HOST_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
             %(z)s = (CudaNdarray*)CudaNdarray_New();
@@ -379,13 +406,19 @@ class GpuSoftmax (GpuOp):
             }
         }
         {
-            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], 32 * 1024);
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
+                                    32 * 1024);
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
-            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
+            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
+                                     2 * sizeof(float);
 
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
+              //Those numbers are based on not too recent GPU
+              //to make them compatible with more GPU.
+              //TODO: read the information from the card.
+              if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmax_%(nodename)s
                     <<<
                         n_blocks,
@@ -403,31 +436,52 @@ class GpuSoftmax (GpuOp):
                             CudaNdarray_HOST_STRIDES(%(z)s)[0],
                             CudaNdarray_HOST_STRIDES(%(z)s)[1]
                     );
-                CNDA_THREAD_SYNC;
-                cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
-                {
-                    PyErr_Format(PyExc_RuntimeError,
-                                 "Cuda error: %%s: %%s.\\n Used %%d blocks,"
-                                 " %%d threads %%d bytes of shared memory",
-                                 "kSoftmax_%(nodename)s", cudaGetErrorString(err),
-                                 n_blocks, n_threads, n_shared_bytes);
-                    %(fail)s;
-                }
+              }else{
+                kSoftmax_fixed_shared%(nodename)s
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        n_threads * sizeof(float)
+                    >>>(
+                            CudaNdarray_HOST_DIMS(%(x)s)[0],
+                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(x)s),
+                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(z)s),
+                            CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+              }
+              CNDA_THREAD_SYNC;
+              cudaError_t err = cudaGetLastError();
+              if( cudaSuccess != err)
+              {
+                  PyErr_Format(PyExc_RuntimeError,
+                               "Cuda error: %%s: %%s.\\n Used %%d blocks,"
+                               " %%d threads %%d bytes of shared memory",
+                               "kSoftmax[_fixed_shared]%(nodename)s",
+                               cudaGetErrorString(err),
+                               n_blocks, n_threads, n_shared_bytes);
+                  %(fail)s;
+              }
             }
         }
         assert(%(z)s);
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        return nvcc_kernel("kSoftmax_%s" % nodename,
+        ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
                     'const float * x', 'const int sx0', 'const int sx1',
                     'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
-                    "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                    "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
                         "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
                         "buf2[tx] = buf[tx]",
@@ -441,7 +495,24 @@ class GpuSoftmax (GpuOp):
                       "}",
                       "__syncthreads()",
                     "}",
+                ])
+        ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
+                params=['int M', 'int N',
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                body=[
+                    "extern __shared__ float buf[]",
+                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                    "     blockIDX += gridDim.x){",
+                      "const float *x_ptr = &x[blockIDX * sx0]",
+                      "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                      inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                                  'sm_ptr', 'sm_s1',
+                                                  'threadIdx.x', 'blockDim.x'),
+                      "__syncthreads()",
+                    "}",
                     ])
+        return ret1 + "\n" + ret2
 
 gpu_softmax = GpuSoftmax()
 
@@ -470,7 +541,7 @@ class GpuSoftmaxWithBias (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (7,) + inline_softmax.code_version
+        return (8,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -487,20 +558,27 @@ class GpuSoftmaxWithBias (GpuOp):
             PyErr_SetString(PyExc_ValueError, "rank error for the bias");
             %(fail)s;
         }
-        if ((CudaNdarray_HOST_DIMS(%(x)s)[1] != CudaNdarray_HOST_DIMS(%(b)s)[0]))
+        if ((CudaNdarray_HOST_DIMS(%(x)s)[1] !=
+            CudaNdarray_HOST_DIMS(%(b)s)[0]))
         {
-            PyErr_Format(PyExc_ValueError, "number of columns in x (%%ld) does not match length of b (%%ld)",
-                (long int)CudaNdarray_HOST_DIMS(%(x)s)[1], (long int)CudaNdarray_HOST_DIMS(%(b)s)[0]);
+            PyErr_Format(PyExc_ValueError,
+                         "number of columns in x (%%ld)"
+                         " does not match length of b (%%ld)",
+                         (long int)CudaNdarray_HOST_DIMS(%(x)s)[1],
+                         (long int)CudaNdarray_HOST_DIMS(%(b)s)[0]);
             %(fail)s;
         }
         if ((NULL == %(z)s)
-            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != CudaNdarray_HOST_DIMS(%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(x)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
+                CudaNdarray_HOST_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
             %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
-                || CudaNdarray_alloc_contiguous(%(z)s, 2, CudaNdarray_HOST_DIMS(%(x)s)))
+                || CudaNdarray_alloc_contiguous(%(z)s, 2,
+                       CudaNdarray_HOST_DIMS(%(x)s)))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
@@ -511,13 +589,13 @@ class GpuSoftmaxWithBias (GpuOp):
             int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024);
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
-            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] * 2 * sizeof(float);
+            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
+                                     2 * sizeof(float);
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
+              if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmaxWithBias_%(nodename)s
                     <<<
-                    // todo: cap these at the card limits,
-                    //       implement loops in kernel
                         n_blocks,
                         n_threads,
                         n_shared_bytes
@@ -536,6 +614,28 @@ class GpuSoftmaxWithBias (GpuOp):
                         CudaNdarray_HOST_STRIDES(%(z)s)[0],
                         CudaNdarray_HOST_STRIDES(%(z)s)[1]
                     );
+              }else{
+                kSoftmaxWithBias_fixed_shared%(nodename)s
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        n_threads * sizeof(float)
+                    >>>(
+                        CudaNdarray_HOST_DIMS(%(x)s)[0],
+                        CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                        CudaNdarray_DEV_DATA(%(b)s),
+                        CudaNdarray_HOST_STRIDES(%(b)s)[0],
+
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                    );
+              }
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err)
@@ -552,27 +652,52 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        return nvcc_kernel("kSoftmaxWithBias_%s"%nodename,
+        ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'const float * b', 'const int sb0',
-                    'float * sm', 'const int ssm0', 'const int ssm1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'const float * b', 'const int sb0',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
-                    "for (int blockIDX = blockIdx.x; blockIDX < M; blockIDX += gridDim.x){",
+                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                    "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
                          "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
                          "buf[tx] += b[tx * sb0]",
                          "buf2[tx] = buf[tx]",
                       "}",
                        "__syncthreads()",
-                       inline_softmax('N', 'buf', 'buf2', 'threadIdx.x', 'blockDim.x'),
+                       inline_softmax('N', 'buf', 'buf2',
+                                      'threadIdx.x', 'blockDim.x'),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * ssm0 + tx * ssm1] = buf[tx]",
+                         "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
                       "}",
                       "__syncthreads()",
                     "}",
                     ])
+        ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
+                           params=['int M', 'int N',
+                                   'const float * x',
+                                   'const int sx0', 'const int sx1',
+                                   'const float * b', 'const int sb0',
+                                   'float * sm',
+                                   'const int sm_s0', 'const int sm_s1'],
+                           body=[
+                               "extern __shared__ float buf[]",
+                               "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                               "     blockIDX += gridDim.x){",
+                               "const float *x_ptr = &x[blockIDX * sx0]",
+                               "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                               inline_softmax_fixed_shared('N', 'buf',
+                                                           'x_ptr', 'sx1',
+                                                           'sm_ptr', 'sm_s1',
+                                                           'threadIdx.x',
+                                                           'blockDim.x',
+                                                           'b', 'sb0'),
+                               "__syncthreads()",
+                               "}",
+                           ])
+        return ret1 + "\n" + ret2
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()

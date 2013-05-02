@@ -198,6 +198,8 @@ if __name__ == "__main__":
 
         cuda version      5.0    4.2    4.1    4.0    3.2    3.0   # note
         gpu
+        K20m/ECC          0.07s
+        K20/NOECC         0.07s
         M2070             0.25s         0.27s         0.32s
         M2050(Amazon)     0.25s
         C2075                    0.25s
@@ -215,7 +217,7 @@ if __name__ == "__main__":
         GTX 285                  0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
         GTX 550 Ti                             0.57s
         GT 520                   2.68s                3.06s
-        520M                                          3.19s        # with bumblebee on Ubuntu 12.04
+        520M              2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
         GT 220                                        3.80s
         GT 210                                 6.35s
         8500 GT                                              10.68s
