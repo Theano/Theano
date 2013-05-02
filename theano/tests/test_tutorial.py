@@ -899,7 +899,8 @@ class T_fibby(unittest.TestCase):
                 return hash(type(self))
 
             def make_node(self, x):
-                x_ = tensor.as_tensor_variable(x)
+                x_ = theano.tensor.as_tensor_variable(x)
+                assert x_.ndim == 1
                 return theano.Apply(self,
                     inputs=[x_],
                     outputs=[x_.type()])
@@ -908,7 +909,7 @@ class T_fibby(unittest.TestCase):
             def perform(self, node, inputs, output_storage):
                 x, = inputs
                 y = output_storage[0][0] = x.copy()
-                for i in range(2,len(x)):
+                for i in range(2, len(x)):
                     y[i] = y[i-1] * y[i-2] + x[i]
 
             def c_code(self, node, name, inames, onames, sub):
@@ -919,15 +920,23 @@ class T_fibby(unittest.TestCase):
                     Py_XDECREF(%(y)s);
                     %(y)s = (PyArrayObject*)PyArray_FromArray(
                             %(x)s, 0, NPY_ARRAY_ENSURECOPY);
-                    if (!(%y)s) %(fail)s;
-                    dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
-                    dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
-                    for (int i = 2; i < %(x)s->dimensions[0]; ++i)
-                        y[i] = y[i-1]*y[i-2] + x[i];
+                    if (!%(y)s)
+                        %(fail)s;
+                    {//New scope needed to make compilation work
+                        dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
+                        dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
+                        for (int i = 2; i < %(x)s->dimensions[0]; ++i)
+                            y[i] = y[i-1]*y[i-2] + x[i];
+                    }
                 """ % locals()
+
+            def c_code_cache_version(self):
+                return (1,)
 
         fibby = Fibby()
 
+        from theano.tensor.opt import (get_scalar_constant_value,
+                                       NotScalarConstantError)
 
         # Remove any fibby(zeros(...))
         @theano.tensor.opt.register_specialize
@@ -938,9 +947,36 @@ class T_fibby(unittest.TestCase):
                 try:
                     if numpy.all(0 == get_scalar_constant_value(x)):
                         return [x]
-                except TypeError:
+                except NotScalarConstantError:
                     pass
 
+        # Test it don't apply when not needed
+        x = T.dvector()
+        f = function([x], fibby(x))
+        #theano.printing.debugprint(f)
+
+        #We call the function to make sure it run.
+        #If you run in DebugMode, it will compare the C and Python output
+        f(numpy.random.rand(5))
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Fibby)
+
+        # Test that the optimization get applied
+        f_zero = function([], fibby(T.zeros([5])))
+        #theano.printing.debugprint(f_zero)
+
+        #If you run in DebugMode, it will compare the output before
+        # and after the optimization
+        f_zero()
+
+        #Check that the optimization remove the Fibby Op.
+        #For security, the Theano memory interface make that the output
+        #of the function is always memory not aliaced to the input.
+        #That is why there is a DeepCopyOp op.
+        topo = f_zero.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
 
 
 class T_graphstructures(unittest.TestCase):
