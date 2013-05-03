@@ -5074,8 +5074,8 @@ def batched_dot(x, y):
     iterating over the first dimension using scan.
     Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
     Example:
-    >>> first = T.tensor3('first')
-    >>> second = T.tensor3('second')
+    >>> first = tensor.tensor3('first')
+    >>> second = tensor.tensor3('second')
     >>> result = batched_dot(first, second)
     :note:  This is a subset of numpy.einsum, but we do not provide it for now.
     But numpy einsum is slower than dot or tensordot:
