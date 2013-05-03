@@ -1181,6 +1181,9 @@ class TensorType(Type):
         """
         return numpy.zeros(shape, dtype=self.dtype)
 
+    def get_size(self, shape_info):
+        return numpy.prod(shape_info, dtype=int) * numpy.dtype(self.dtype).itemsize
+
 theano.compile.ops.expandable_types += (TensorType,)
 
 # Register TensorType C code for ViewOp.

@@ -56,6 +56,22 @@ class RandomStateType(gof.Type):
                 return False
         return True
 
+    def get_size(self, shape_info):
+        # The size is the data, that have constant size.
+        state = numpy.random.RandomState().get_state()
+        size = 0
+        for elem in state:
+            if isinstance(elem, str):
+                size += len(elem)
+            elif isinstance(elem, numpy.ndarray):
+                size += elem.size * elem.itemsize
+            elif isinstance(elem, int):
+                size += numpy.dtype("int").itemsize
+            elif isinstance(elem, float):
+                size += numpy.dtype("float").itemsize
+            else:
+                raise NotImplementedError()
+        return size
 # Register RandomStateType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
         RandomStateType,

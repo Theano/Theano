@@ -603,12 +603,8 @@ class ProfileStats(object):
                 sh = self.variable_shape[out]
                 if isinstance(out.type, theano.sparse.SparseType):
                     v = "Sparse"
-                elif isinstance(out.type,
-                                (theano.tensor.TensorType,
-                                 theano.sandbox.cuda.CudaNdarrayType)):
-                    v = numpy.prod(sh)
-                    dtype = str(out.dtype)
-                    v *= numpy.dtype(dtype).itemsize
+                elif hasattr(out.type, 'get_size'):
+                    v = out.type.get_size(sh)
                     sum_dense += v
                 else:
                     v = "Unknow"
@@ -746,9 +742,7 @@ class ProfileStats(object):
             if any([isinstance(out.type, theano.sparse.SparseType)
                     for out in node.outputs]):
                 size = "%10s" % "Sparse"
-            elif all([isinstance(out.type,
-                                 (theano.tensor.TensorType,
-                                  theano.sandbox.cuda.CudaNdarrayType))
+            elif all([hasattr(out.type, 'get_size')
                     for out in node.outputs]):
                 size = "%9dB" % node_outputs_size
             else:
