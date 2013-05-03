@@ -626,7 +626,7 @@ class ProfileStats(object):
                     v = out.type.get_size(sh)
                     sum_dense += v
                 else:
-                    v = "Unknow"
+                    v = "Unknown"
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
@@ -778,12 +778,16 @@ class ProfileStats(object):
         else:
             p = "(%.2f%%)" % (float(sum_remaining) / size_sum_dense * 100)
         print >> file,  (
-            '   ... (remaining %i Apply account for %4dB/%dB (%s) of'
-            ' the Apply with dense outputs sizes)') % (max(0, len(node_mem) - N),
+            '   ... (remaining %i Apply account for %4dB/%dB (%s) of the'
+            ' Apply with dense outputs sizes)') % (max(0, len(node_mem) - N),
                                                        sum_remaining,
                                                        size_sum_dense, p
                                                    )
         print >> file, ''
+        if N == 0:
+            print >> file, ('    All Apply node have outputs size that take'
+                            ' less then %dB.' %
+                            config.profiling.min_memory_size)
         print >> file,  (
             "    <created/inplace/view> is taked from the op declaration.")
         print >> file,  ("    Apply nodes marked 'inplace' or 'view' may"

@@ -421,7 +421,10 @@ class CudaNdarrayType(Type):
         return obj.shape
 
     def get_size(self, shape_info):
-        return numpy.prod(shape_info, dtype=int) * numpy.dtype(self.dtype).itemsize
+        if shape_info:
+            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+        else:  # a scalar
+            return numpy.dtype(self.dtype).itemsize
 
 theano.compile.ops.expandable_types += (CudaNdarrayType,)
 

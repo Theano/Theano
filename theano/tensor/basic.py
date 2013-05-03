@@ -1209,8 +1209,10 @@ class TensorType(Type):
         :return: the number of bytes taken by the object described in
           shape_info.
         """
-        return numpy.prod(shape_info,
-                          dtype=int) * numpy.dtype(self.dtype).itemsize
+        if shape_info:
+            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+        else:  # a scalar
+            return numpy.dtype(self.dtype).itemsize
 theano.compile.ops.expandable_types += (TensorType,)
 
 # Register TensorType C code for ViewOp.
