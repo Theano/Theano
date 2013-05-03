@@ -60,7 +60,7 @@ from theano.compile import \
     FunctionMaker, function, OpFromGraph, \
     Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
-    ProfileMode, \
+    ProfileMode, ProfileStats, \
     Param, shared
 
 from theano.misc.safe_asarray import _asarray

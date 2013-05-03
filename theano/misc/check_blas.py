@@ -68,12 +68,13 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
                                  order=order))
     c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
                                  order=order))
-    f = theano.function([], updates=[(c, 0.4 * c + .8 * T.dot(a, b))],
-                        mode=theano.compile.ProfileMode())
+    f = theano.function([], updates=[(c, 0.4 * c + .8 * T.dot(a, b))])
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in
             f.maker.fgraph.toposort()]):
-        c_impl = f.profile.apply_cimpl.values()
+        c_impl = [hasattr(thunk, 'cthunk')
+                  for node, thunk in zip(f.fn.nodes, f.fn.thunks)
+                  if node.op.__class__.__name__ == "Gemm"]
         assert len(c_impl) == 1
         if c_impl[0]:
             impl = 'CPU (with direct Theano binding to blas)'

@@ -417,6 +417,15 @@ class CudaNdarrayType(Type):
     def c_compile_args(self):
         return []
 
+    def get_shape_info(self, obj):
+        return obj.shape
+
+    def get_size(self, shape_info):
+        if shape_info:
+            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+        else:  # a scalar
+            return numpy.dtype(self.dtype).itemsize
+
 theano.compile.ops.expandable_types += (CudaNdarrayType,)
 
 # Register C code for ViewOp on CudaNdarrayType

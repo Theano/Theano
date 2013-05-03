@@ -5,6 +5,7 @@ VM was a better name at some point.
 """
 import link
 import logging
+import os
 import sys
 import time
 import warnings
@@ -22,6 +23,9 @@ AddConfigVar('profile',
         BoolParam(False))
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
+        BoolParam(False))
+AddConfigVar('profile_memory',
+        "If VM should collect memory profile information and print it",
         BoolParam(False))
 
 
@@ -129,6 +133,10 @@ class VM(object):
             profile.apply_callcount[node] += c
 
             profile.apply_cimpl[node] = hasattr(thunk, 'cthunk')
+
+        if hasattr(self, 'variable_shape'):
+            profile.variable_shape = self.variable_shape.copy()
+            profile.variable_strides = self.variable_strides.copy()
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
@@ -244,8 +252,8 @@ class Stack(VM):
         self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
-        self.apply_time = {}
-        self.outputs_size = {}
+        self.variable_shape = {}  # Variable -> shape
+        self.variable_strides = {}  # Variable -> strides
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
         self.callback = callback
@@ -254,8 +262,7 @@ class Stack(VM):
 
         for i, node in enumerate(self.nodes):
             node_idx[node] = i
-            self.apply_time[node] = 0
-            self.outputs_size[node] = []
+
             # XXX: inconsistent style - why modify node here rather
             #      than track destroy_dependencies with dictionary like
             #      storage_map?
@@ -280,10 +287,6 @@ class Stack(VM):
         if self.allow_gc and self.dependencies is None:
             raise ValueError("Must set dependencies when using GC")
 
-        if config.profile:
-            self.memory_size_map = {"nt8": 1, "t16": 2, "t32": 4,
-                                    "t64": 8, "128": 16}
-            atexit.register(self.atexit_print_all)
 
     def run_thunk_of_node(self, node):
         """Run the thunk corresponding to Apply instance `node`
@@ -319,7 +322,24 @@ class Stack(VM):
         # apply_stack contains nodes
         apply_stack = list(self.base_apply_stack)
         last_apply_stack_len = -1
-        ls = []
+
+        #This record all function inputs/shared varibles and constants
+        for var, data in self.storage_map.iteritems():
+            if data[0] is None:
+                continue
+            if hasattr(var.type, 'get_shape_info'):
+                sh = var.type.get_shape_info(data[0])
+            else:
+                sh = 'input no shape'
+            self.variable_shape[var] = sh
+            st = getattr(data[0], 'strides', 'input no strides')
+            if getattr(data[0], 'flags', False) and data[0].flags.c_contiguous:
+                st = 'c'
+            elif (hasattr(data[0], 'is_c_contiguous') and
+                  data[0].is_c_contiguous()):
+                st = "c"
+            self.variable_strides[var] = st
+
         while apply_stack:
             # Make sure something happened last time round.  This is
             # just a safety check to make sure the op is written
@@ -356,25 +376,27 @@ class Stack(VM):
                         _, dt = self.run_thunk_of_node(current_apply)
                         del _
                         if config.profile:
-                            self.apply_time[current_apply] += dt
+                            current_idx = self.node_idx[current_apply]
+                            self.call_counts[current_idx] += 1
+                            self.call_times[current_idx] += dt
                             ## Computing the memory footprint of the the op
                             # ?? What about inplace .. if the op is inplace
                             # you don't actually ask for more memory!
-                            size = []
                             for (idx, o) in enumerate(
                                     thunks[self.node_idx[
                                         current_apply]].outputs):
-                                if not hasattr(o[0], 'size'):
-                                    size.append(-1)
-                                    continue
-                                s = o[0].size
-                                dtype = str(o[0].dtype)
-                                dtype2 = dtype[-3:]
-                                # KeyError here: couldn't determine
-                                # the dtype memory size
-                                s *= self.memory_size_map[dtype2]
-                                size.append(s)
-                            self.outputs_size[current_apply] = size
+                                var = self.nodes[current_idx].outputs[idx]
+                                if hasattr(var.type, 'get_shape_info'):
+                                    sh = var.type.get_shape_info(o[0])
+                                else:
+                                    sh = 'input no shape'
+                                self.variable_shape[var] = sh
+                                st = getattr(o[0], 'strides',
+                                             'input no strides')
+                                if (getattr(o[0], 'flags', False) and
+                                    o[0].flags.c_contiguous):
+                                    st = 'c'
+                                self.variable_strides[var] = st
                     except Exception:
                         raise_with_op(current_apply)
                     for o in current_apply.outputs:
@@ -429,7 +451,9 @@ class Stack(VM):
 
                 try:
                     requires, dt = self.run_thunk_of_node(current_apply)
-                    self.apply_time[current_apply] += dt
+                    current_idx = self.node_idx[current_apply]
+                    self.call_counts[current_idx] += 1
+                    self.call_times[current_idx] += dt
 
                 except Exception:
                     raise_with_op(current_apply)
@@ -444,20 +468,22 @@ class Stack(VM):
                             apply_stack.append(current_apply.inputs[r].owner)
                 else:
                     if config.profile:
-                        size = []
                         for (idx, o) in enumerate(thunks[
                                 self.node_idx[current_apply]].outputs):
-                            if not hasattr(o[0], 'size'):
-                                size.append(-1)
-                                continue
-                            s = o[0].size
-                            dtype = str(o[0].dtype)
-                            dtype2 = dtype[-2:]
-                            # KeyError here: couldn't determine the
-                            # dtype memory size
-                            s *= self.memory_size_map[dtype2]
-                            size.append(s)
-                        self.outputs_size[current_apply] = size
+                            var = self.nodes[
+                                self.node_idx[current_apply]].outputs[idx]
+
+                            if hasattr(var.type, 'get_shape_info'):
+                                sh = var.type.get_shape_info(o[0])
+                            else:
+                                sh = 'input no shape'
+                            self.variable_shape[var] = sh
+                            st = getattr(o[0], 'strides', 'input no strides')
+                            if (getattr(o[0], 'flags', False) and
+                                o[0].flags.c_contiguous):
+                                st = 'c'
+                            self.variable_strides[var] = st
+
                     if self.allow_gc:
                         for i in current_apply.inputs:
                             if (dependencies[i] and i.owner and
@@ -550,6 +576,19 @@ class VM_Linker(link.LocalLinker):
         :returns: self if fgraph is the first FunctionGraph that has ever been
             associated to self, else, a new VM_Linker associated to fgraph.
         """
+        if (config.profile and
+            hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            theano.sandbox.cuda.cuda_enabled):
+            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
+                raise Exception(
+                    "You are running Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution are asynchron by default."
+                    " So by default, the profile is useless."
+                    " You must use set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
+                    " synchonize the execution to get meaning full profile.")
+
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
@@ -606,7 +645,6 @@ class VM_Linker(link.LocalLinker):
             # XXX if k has no clients... what is it doing in the computation?
             if k.owner and k.clients:
                 ls = []
-                is_output = 0
                 for cl in k.clients:
                     if cl[0] is not 'output':
                         ls += cl[0].outputs
@@ -623,9 +661,12 @@ class VM_Linker(link.LocalLinker):
 
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
-        if self.callback is not None:
-            if self.use_cloop:
-                logger.warn('CLoop does not support callback, using Stack VM.')
+        if self.callback is not None or (config.profile and config.profile_memory):
+            if self.use_cloop and self.callback is not None:
+                logger.warn('CVM does not support callback, using Stack VM.')
+            if self.use_cloop and config.profile_memory:
+                warnings.warn(
+                    'CVM does not support memory profile, using Stack VM.')
             deps = None
             if self.allow_gc:
                 deps = self.compute_gc_dependencies(storage_map)

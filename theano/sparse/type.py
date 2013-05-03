@@ -147,6 +147,17 @@ class SparseType(gof.Type):
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
 
+    def get_shape_info(self, obj):
+        obj = self.filter(obj)
+        assert obj.indices.dtype == 'int32'
+        assert obj.indptr.dtype == 'int32'
+        return (obj.shape, obj.data.size,
+                obj.indices.size, obj.indptr.size, obj.nnz)
+
+    def get_size(self, shape_info):
+        return (shape_info[1] * numpy.dtype(self.dtype).itemsize +
+                (shape_info[2] + shape_info[3]) * numpy.dtype('int32').itemsize)
+
 # Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
         SparseType,
