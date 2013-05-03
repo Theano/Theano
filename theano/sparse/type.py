@@ -149,6 +149,8 @@ class SparseType(gof.Type):
 
     def get_shape_info(self, obj):
         obj = self.filter(obj)
+        assert obj.indices.dtype == 'int32'
+        assert obj.indptr.dtype == 'int32'
         return (obj.shape, obj.data.size,
                 obj.indices.size, obj.indptr.size, obj.nnz)
 
