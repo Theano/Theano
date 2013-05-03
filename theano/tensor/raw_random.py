@@ -56,6 +56,9 @@ class RandomStateType(gof.Type):
                 return False
         return True
 
+    def get_shape_info(self, obj):
+        return None
+
     def get_size(self, shape_info):
         # The size is the data, that have constant size.
         state = numpy.random.RandomState().get_state()

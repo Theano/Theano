@@ -327,7 +327,10 @@ class Stack(VM):
         for var, data in self.storage_map.iteritems():
             if data[0] is None:
                 continue
-            sh = getattr(data[0], 'shape', 'input no shape')
+            if hasattr(var.type, 'get_shape_info'):
+                sh = var.type.get_shape_info(data[0])
+            else:
+                sh = 'input no shape'
             self.variable_shape[var] = sh
             st = getattr(data[0], 'strides', 'input no strides')
             if getattr(data[0], 'flags', False) and data[0].flags.c_contiguous:
@@ -383,7 +386,10 @@ class Stack(VM):
                                     thunks[self.node_idx[
                                         current_apply]].outputs):
                                 var = self.nodes[current_idx].outputs[idx]
-                                sh = getattr(o[0], 'shape', 'input no shape')
+                                if hasattr(var.type, 'get_shape_info'):
+                                    sh = var.type.get_shape_info(o[0])
+                                else:
+                                    sh = 'input no shape'
                                 self.variable_shape[var] = sh
                                 st = getattr(o[0], 'strides',
                                              'input no strides')
@@ -466,7 +472,11 @@ class Stack(VM):
                                 self.node_idx[current_apply]].outputs):
                             var = self.nodes[
                                 self.node_idx[current_apply]].outputs[idx]
-                            sh = getattr(o[0], 'shape', 'input no shape')
+
+                            if hasattr(var.type, 'get_shape_info'):
+                                sh = var.type.get_shape_info(o[0])
+                            else:
+                                sh = 'input no shape'
                             self.variable_shape[var] = sh
                             st = getattr(o[0], 'strides', 'input no strides')
                             if (getattr(o[0], 'flags', False) and

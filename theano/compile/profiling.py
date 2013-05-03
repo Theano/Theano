@@ -601,9 +601,7 @@ class ProfileStats(object):
             sum_dense = 0
             for out in node.outputs:
                 sh = self.variable_shape[out]
-                if isinstance(out.type, theano.sparse.SparseType):
-                    v = "Sparse"
-                elif hasattr(out.type, 'get_size'):
+                if hasattr(out.type, 'get_size'):
                     v = out.type.get_size(sh)
                     sum_dense += v
                 else:
@@ -739,10 +737,7 @@ class ProfileStats(object):
                 code[out] = "v"
             shapes = str(fct_shapes[node.fgraph][node])
 
-            if any([isinstance(out.type, theano.sparse.SparseType)
-                    for out in node.outputs]):
-                size = "%10s" % "Sparse"
-            elif all([hasattr(out.type, 'get_size')
+            if all([hasattr(out.type, 'get_size')
                     for out in node.outputs]):
                 size = "%9dB" % node_outputs_size
             else:
