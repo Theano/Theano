@@ -776,7 +776,7 @@ class ProfileStats(object):
         if size_sum_dense == 0:
             p = "0%"
         else:
-            p = "(%.2f%%)" % (sum_remaining / size_sum_dense * 100)
+            p = "(%.2f%%)" % (float(sum_remaining) / size_sum_dense * 100)
         print >> file,  (
             '   ... (remaining %i Apply account for %4dB/%dB (%s) of'
             ' the Apply with dense outputs sizes)') % (max(0, len(node_mem) - N),
@@ -793,18 +793,18 @@ class ProfileStats(object):
         print >> file, ''
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
-                n_applies_to_print=20):
+                n_apply_to_print=20):
         self.summary_function(file)
         local_time = sum(self.apply_time.values())
         if local_time > 0:
             self.summary_class(file, n_ops_to_print)
             self.summary_ops(file, n_ops_to_print)
-            self.summary_nodes(file, n_applies_to_print)
+            self.summary_nodes(file, n_apply_to_print)
         elif self.fct_callcount > 0:
             print >> file, ("  No execution time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
         if config.profile_memory:
-            self.summary_memory(file, n_ops_to_print)
+            self.summary_memory(file, n_apply_to_print)
         if self.optimizer_profile:
             print "Optimizer Profile"
             print "-----------------"
