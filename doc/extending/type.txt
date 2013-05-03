@@ -106,6 +106,38 @@ default values.
 
       *Default:* ``id(self)``
 
+    .. method:: get_shape_info(obj)
+
+      Optional. Only needed to profile the memory of this Type of object
+
+      Return the information needed to compute the memory size of obj.
+
+      The memory size is only the data, so this exclude the container.
+      For an ndarray, this is the data, but not the ndarray object and
+      others data structures as shape and strides.
+
+      get_shape_info() and get_size() work in tendem for the memory profiler.
+
+      get_shape_info() is called during the execution of the function.
+      So it is better that it is not too slow.
+
+      get_size() will be called with the output of this function
+      when printing the memory profile.
+
+      :param obj: The object that this Type represent during execution
+      :return: Python object that self.get_size() understand
+
+
+    .. method:: get_size(shape_info)
+
+        Number of bytes taken by the object represented by shape_info
+
+        Optional. Only needed to profile the memory of this Type of object
+
+	:param shape_info: the output of the call to get_shape_info()
+        :return: the number of bytes taken by the object described in
+          shape_info.
+        """
 For each method, the *default* is what ``Type`` defines
 for you. So, if you create an instance of ``Type`` or an
 instance of a subclass of ``Type``, you
