@@ -422,6 +422,12 @@ class Scalar(Type):
         return (4,)  # explicit T given in specialization of operator=
                      # lines.  This makes it compile with open64
 
+    def get_shape_info(self, obj):
+        return obj.itemsize
+
+    def get_size(self, shape_info):
+        return shape_info
+
 # Register C code for ViewOp on Scalars.
 theano.compile.register_view_op_c_code(
         Scalar,
