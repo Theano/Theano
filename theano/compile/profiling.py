@@ -23,7 +23,8 @@ import time
 import numpy
 
 import theano
-from theano.configparser import AddConfigVar, BoolParam
+from theano.configparser import AddConfigVar, BoolParam, IntParam
+
 
 import_time = time.time()
 config = theano.config
@@ -33,7 +34,23 @@ _atexit_print_file = sys.stderr
 
 AddConfigVar('profiling.time_thunks',
              """Time individual thunks when profiling""",
-        BoolParam(True))
+             BoolParam(True))
+
+AddConfigVar('profiling.n_apply',
+             "Number of apply instances to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.n_ops',
+             "Number of ops to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.min_memory_size',
+             """For the memory profile, do not print apply nodes if the size
+             of their outputs (in bytes) is lower then this threshold""",
+             IntParam(1024, lambda i: i >= 0),
+             in_c_key=False)
 
 
 def _atexit_print_fn():
@@ -42,7 +59,9 @@ def _atexit_print_fn():
     printed = 0
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
-            ps.summary(file=_atexit_print_file)
+            ps.summary(file=_atexit_print_file,
+                       n_ops_to_print=config.profiling.n_ops,
+                       n_apply_to_print=config.profiling.n_apply)
             printed += 1
         else:
             print 'Skipping empty Profile'
@@ -74,7 +93,9 @@ def _atexit_print_fn():
             else:
                 cum.optimizer_profile = None
 
-        cum.summary(file=_atexit_print_file)
+        cum.summary(file=_atexit_print_file,
+                    n_ops_to_print=config.profiling.n_ops,
+                    n_apply_to_print=config.profiling.n_apply)
 
 
 atexit.register(_atexit_print_fn)
@@ -729,7 +750,7 @@ class ProfileStats(object):
         items = node_mem.items()
         items.sort(key=lambda a: a[1])
         items.reverse()
-        for node, node_outputs_size in items[:N]:
+        for idx, (node, node_outputs_size) in enumerate(items[:N]):
             code = ['c'] * len(node.outputs)
             for out, inp in getattr(node.op, 'destroy_map', {}).iteritems():
                 code[out] = "i"
@@ -740,6 +761,9 @@ class ProfileStats(object):
             if all([hasattr(out.type, 'get_size')
                     for out in node.outputs]):
                 size = "%9dB" % node_outputs_size
+                if node_outputs_size < config.profiling.min_memory_size:
+                    N = idx
+                    break
             else:
                 size = "%10s" % "Unknown"
 
