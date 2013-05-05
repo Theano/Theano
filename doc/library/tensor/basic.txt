@@ -904,23 +904,23 @@ Theano fully supports basic indexing
 `Integer advanced indexing
 <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_
 will be supported in 0.6rc4 (or the development version). We do not
-support boolean masks, as Theano do not have a boolean type (we use
-int8 for the output of logic operator). To imitate boolean advanced
+support boolean masks, as Theano does not have a boolean type (we use
+int8 for the output of logic operators). To imitate boolean advanced
 indexing, you can do::
 
     # NumPy indexing with a mask
     n = np.arange(9).reshape(3,3)
-    n[n>4] # array([5, 6, 7, 8])
+    n[n > 4] # array([5, 6, 7, 8])
 
-    # Theano indexing with a "mask"
-    t = tt.arange(9).reshape((3,3))
-    t[t>4].eval()  # an array with shape (3, 3, 3)
+    # Theano indexing with a "mask" (incorrect approach)
+    t = theano.tensor.arange(9).reshape((3,3))
+    t[t > 4].eval()  # an array with shape (3, 3, 3)
 
     # getting a Theano result like NumPy
-    t[(t>4).nonzero()].eval() # array([5, 6, 7, 8])
+    t[(t > 4).nonzero()].eval() # array([5, 6, 7, 8])
 
-The gradient of Advanced indexing need in many cases NumPy
-1.8. It isn't released as of April 30, 2013. You can use NumPy
+The gradient of Advanced indexing needs in many cases NumPy
+1.8. It is not released yet as of April 30th, 2013. You can use NumPy
 development version to have this feature now.
 
 

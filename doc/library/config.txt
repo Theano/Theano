@@ -271,7 +271,7 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the vm/cvm linkers profile the execution of Theano functions?
+    Do the vm/cvm linkers profile the execution time of Theano functions?
 
 .. attribute:: profile_memory
 
@@ -279,8 +279,8 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the vm/cvm linkers profile the memory of Theano functions get printed?
-    It only work when profile=True.
+    Do the vm/cvm linkers profile the memory usage of Theano functions?
+    It only works when profile=True.
 
 .. attribute:: profile_optimizer
 
@@ -289,26 +289,26 @@ import theano and print the config variable, as in:
     Default False
 
     Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
-    It only work when profile=True.
+    It only works when profile=True.
 
 .. attribute:: profiling.n_apply
 
     Positive int value, default: 20.
 
-    The number of apply node to print in the profiler output
+    The number of Apply nodes to print in the profiler output
 
 .. attribute:: profiling.n_ops
 
     Positive int value, default: 20.
 
-    The number of ops to print in the profiler output
+    The number of Ops to print in the profiler output
 
 .. attribute:: profiling.min_memory_size
 
     Positive int value, default: 1024.
 
-    For the memory profile, do not print apply nodes if the size
-    of their outputs (in bytes) is lower then this.
+    For the memory profile, do not print Apply nodes if the size
+    of their outputs (in bytes) is lower than this.
 
 .. attribute:: config.lib.amdlibm
 

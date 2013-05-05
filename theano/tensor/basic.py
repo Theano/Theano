@@ -366,8 +366,8 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             # Theano graph, because on Windows 64, all shapes are expressed
             # with longs.
             # If a long fits in int64, we convert it into an int64, like
-            # numpy.asarray() does up to 1.7. NumPy 1.7.1 upcaset to int64
-            # if possible, but fallback to uint64 if int64 isn't possible but
+            # numpy.asarray() does up to 1.7. NumPy 1.7.1 upcasts to int64
+            # if possible, but falls back to uint64 if int64 isn't possible but
             # uint64 is. We always do as NumPy 1.7.1  here.
             # If x is too big, an OverflowError will be raised by numpy.
             try:
@@ -382,10 +382,10 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             if x.dtype == 'bool':
                 x_ = numpy.asarray(x_, dtype='uint8')
         else:
-            # Here x is probably a list or a tuple. If it contain a long,
-            # we will behave like the current NumPy version: 1.7 and bellow,
-            # it will only work if the long fit in int64. For NumPy 1.7.1+,
-            # it will work if the long git in int64 or uint64.
+            # Here x is probably a list or a tuple. If it contains a long,
+            # we will behave like the current NumPy version: 1.7 and below,
+            # it will only work if the long fits in int64. For NumPy 1.7.1+,
+            # it will work if the long fits in int64 or uint64.
             x_ = numpy.asarray(x)
 
     assert type(x_) == numpy.ndarray
@@ -1199,32 +1199,33 @@ class TensorType(Type):
         return numpy.zeros(shape, dtype=self.dtype)
 
     def get_shape_info(self, obj):
-        """Return the information needed to compute the memory size of obj.
+        """
+        Return the information needed to compute the memory size of ``obj``.
 
-
-        The memory size is only the data, so this exclude the container.
+        The memory size is only the data, so this excludes the container.
         For an ndarray, this is the data, but not the ndarray object and
-        others data structures as shape and strides.
+        other data structures such as shape and strides.
 
-        get_shape_info() and get_size() work in tendem for the memory profiler.
+        ``get_shape_info()`` and ``get_size()`` work in tandem for the memory
+        profiler.
 
-        get_shape_info() is called during the execution of the function.
+        ``get_shape_info()`` is called during the execution of the function.
         So it is better that it is not too slow.
 
-        get_size() will be called with the output of this function
+        ``get_size()`` will be called on the output of this function
         when printing the memory profile.
 
-        :param obj: The object that this Type represent during execution
-        :return: Python object that self.get_size() understand
+        :param obj: The object that this Type represents during execution
+        :return: Python object that ``self.get_size()`` understands
         """
         return obj.shape
 
     def get_size(self, shape_info):
-        """ Number of bytes taken by the object represented by shape_info
+        """ Number of bytes taken by the object represented by shape_info.
 
         :param shape_info: the output of the call to get_shape_info()
-        :return: the number of bytes taken by the object described in
-          shape_info.
+        :return: the number of bytes taken by the object described by
+            ``shape_info``.
         """
         if shape_info:
             return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
