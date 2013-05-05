@@ -582,12 +582,12 @@ class VM_Linker(link.LocalLinker):
             theano.sandbox.cuda.cuda_enabled):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
-                    "You are running Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution are asynchron by default."
+                    "You are running the Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution is asynchronous by default."
                     " So by default, the profile is useless."
-                    " You must use set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
-                    " synchonize the execution to get meaning full profile.")
+                    " You must set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                    " synchronize the execution to get a meaningful profile.")
 
         if no_recycling is None:
             no_recycling = []

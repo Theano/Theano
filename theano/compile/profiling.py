@@ -37,18 +37,18 @@ AddConfigVar('profiling.time_thunks',
              BoolParam(True))
 
 AddConfigVar('profiling.n_apply',
-             "Number of apply instances to print by default",
+             "Number of Apply instances to print by default",
              IntParam(20, lambda i: i > 0),
              in_c_key=False)
 
 AddConfigVar('profiling.n_ops',
-             "Number of ops to print by default",
+             "Number of Ops to print by default",
              IntParam(20, lambda i: i > 0),
              in_c_key=False)
 
 AddConfigVar('profiling.min_memory_size',
-             """For the memory profile, do not print apply nodes if the size
-             of their outputs (in bytes) is lower then this threshold""",
+             """For the memory profile, do not print Apply nodes if the size
+             of their outputs (in bytes) is lower than this threshold""",
              IntParam(1024, lambda i: i >= 0),
              in_c_key=False)
 
@@ -185,12 +185,12 @@ class ProfileStats(object):
             theano.sandbox.cuda.cuda_enabled):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
-                    "You are running Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution are asynchron by default."
+                    "You are running the Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution is asynchronous by default."
                     " So by default, the profile is useless."
-                    " You must use set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
-                    " synchonize the execution to get meaning full profile.")
+                    " You must set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                    " synchronize the execution to get a meaningful profile.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -708,7 +708,7 @@ class ProfileStats(object):
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
-                             "(the max between all function in that profile)")
+                             "(the max between all functions in that profile)")
         else:
             print >> file,  "Memory Profile"
 
@@ -717,15 +717,15 @@ class ProfileStats(object):
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
-        print >> file,  "    Max if linker=cvm (default): unknow"
+        print >> file,  "    Max if linker=cvm (default): unknown"
         print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
                              max_node_memory_size / 1024.))
         print >> file,  "    Max if linker=c|py: %dKB" % int(round(
             max_running_max_memory_size / 1024.))
-#        print >> file,  "    Memory saved if view are used: %dKB" % int(round(
-#            max_node_memory_saved_by_view / 1024.))
-#        print >> file,  "    Memory saved if inplace op are used: %dKB" % int(
-#            round(max_node_memory_saved_by_inplace / 1024.))
+#        print >> file,  "    Memory saved if views are used: %dKB" % int(
+#            round(max_node_memory_saved_by_view / 1024.))
+#        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
+#            int(round(max_node_memory_saved_by_inplace / 1024.))
         print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
             round(max_node_memory_size - max_running_max_memory_size) / 1024.)
         if (hasattr(theano, 'sandbox') and
@@ -734,7 +734,7 @@ class ProfileStats(object):
             hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
                     'theano_allocated')):
             _, gpu_max = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
-            print >> file,  ("    Max Memory allocated on the GPU"
+            print >> file,  ("    Max Memory allocated on the GPU "
                              "(for all functions): %dKB" %
                              int(round(gpu_max / 1024.)))
 
@@ -785,11 +785,11 @@ class ProfileStats(object):
                                                    )
         print >> file, ''
         if N == 0:
-            print >> file, ('    All Apply node have outputs size that take'
-                            ' less then %dB.' %
+            print >> file, ('    All Apply nodes have output sizes that take'
+                            ' less than %dB.' %
                             config.profiling.min_memory_size)
         print >> file,  (
-            "    <created/inplace/view> is taked from the op declaration.")
+            "    <created/inplace/view> is taken from the Op's declaration.")
         print >> file,  ("    Apply nodes marked 'inplace' or 'view' may"
                          " actually allocate memory, this is not reported"
                          " here. If you use DebugMode, warnings will be"

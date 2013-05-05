@@ -1199,32 +1199,33 @@ class TensorType(Type):
         return numpy.zeros(shape, dtype=self.dtype)
 
     def get_shape_info(self, obj):
-        """Return the information needed to compute the memory size of obj.
+        """
+        Return the information needed to compute the memory size of ``obj``.
 
-
-        The memory size is only the data, so this exclude the container.
+        The memory size is only the data, so this excludes the container.
         For an ndarray, this is the data, but not the ndarray object and
-        others data structures as shape and strides.
+        other data structures such as shape and strides.
 
-        get_shape_info() and get_size() work in tendem for the memory profiler.
+        ``get_shape_info()`` and ``get_size()`` work in tandem for the memory
+        profiler.
 
-        get_shape_info() is called during the execution of the function.
+        ``get_shape_info()`` is called during the execution of the function.
         So it is better that it is not too slow.
 
-        get_size() will be called with the output of this function
+        ``get_size()`` will be called on the output of this function
         when printing the memory profile.
 
-        :param obj: The object that this Type represent during execution
-        :return: Python object that self.get_size() understand
+        :param obj: The object that this Type represents during execution
+        :return: Python object that ``self.get_size()`` understands
         """
         return obj.shape
 
     def get_size(self, shape_info):
-        """ Number of bytes taken by the object represented by shape_info
+        """ Number of bytes taken by the object represented by shape_info.
 
         :param shape_info: the output of the call to get_shape_info()
-        :return: the number of bytes taken by the object described in
-          shape_info.
+        :return: the number of bytes taken by the object described by
+            ``shape_info``.
         """
         if shape_info:
             return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
