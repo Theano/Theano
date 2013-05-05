@@ -844,10 +844,9 @@ class T_using_gpu(unittest.TestCase):
 
             assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
-
     def test_using_gpu_3(self):
 
-        if theano.config.device.find('gpu') >-1:
+        if theano.config.device.find('gpu') > -1:
 
             from theano import function, config, shared, sandbox, Out
             import theano.tensor as T
@@ -870,12 +869,14 @@ class T_using_gpu(unittest.TestCase):
             print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise)
+                          for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any([isinstance(x.op, T.Elemwise)
+                                  for x in f.maker.fgraph.toposort()])
 
 
 class T_fibby(unittest.TestCase):
@@ -904,13 +905,14 @@ class T_fibby(unittest.TestCase):
                 return theano.Apply(self,
                     inputs=[x_],
                     outputs=[x_.type()])
-                # using x_.type() is dangerous, it copies x's broadcasting behaviour
+                # using x_.type() is dangerous, it copies x's broadcasting
+                # behaviour
 
             def perform(self, node, inputs, output_storage):
                 x, = inputs
                 y = output_storage[0][0] = x.copy()
                 for i in range(2, len(x)):
-                    y[i] = y[i-1] * y[i-2] + x[i]
+                    y[i] = y[i - 1] * y[i - 2] + x[i]
 
             def c_code(self, node, name, inames, onames, sub):
                 x, = inames
@@ -1002,35 +1004,35 @@ class T_graphstructures(unittest.TestCase):
         from theano.tensor import add, mul, Apply, Variable, TensorType
 
         # Instantiate a type that represents a matrix of doubles
-        float64_matrix = TensorType(dtype = 'float64',              # double
-                                    broadcastable = (False, False)) # matrix
+        float64_matrix = TensorType(dtype='float64',               # double
+                                    broadcastable=(False, False))  # matrix
 
         # We make the Variable instances we need.
-        x = Variable(type = float64_matrix, name = 'x')
-        y = Variable(type = float64_matrix, name = 'y')
-        z = Variable(type = float64_matrix, name = 'z')
+        x = Variable(type=float64_matrix, name='x')
+        y = Variable(type=float64_matrix, name='y')
+        z = Variable(type=float64_matrix, name='z')
 
         # This is the Variable that we want to symbolically represents y*z
-        mul_variable = Variable(type = float64_matrix)
+        mul_variable = Variable(type=float64_matrix)
         assert mul_variable.owner is None
 
         # Instantiate a symbolic multiplication
-        node_mul = Apply(op = mul,
-                         inputs = [y, z],
-                         outputs = [mul_variable])
+        node_mul = Apply(op=mul,
+                         inputs=[y, z],
+                         outputs=[mul_variable])
         # Fields 'owner' and 'index' are set by Apply
         assert mul_variable.owner is node_mul
         # 'index' is the position of mul_variable in mode_mul's outputs
         assert mul_variable.index == 0
 
         # This is the Variable that we want to symbolically represents x+(y*z)
-        add_variable = Variable(type = float64_matrix)
+        add_variable = Variable(type=float64_matrix)
         assert add_variable.owner is None
 
         # Instantiate a symbolic addition
-        node_add = Apply(op = add,
-                         inputs = [x, mul_variable],
-                         outputs = [add_variable])
+        node_add = Apply(op=add,
+                         inputs=[x, mul_variable],
+                         outputs=[add_variable])
         # Fields 'owner' and 'index' are set by Apply
         assert add_variable.owner is node_add
         assert add_variable.index == 0
