@@ -287,7 +287,6 @@ class Stack(VM):
         if self.allow_gc and self.dependencies is None:
             raise ValueError("Must set dependencies when using GC")
 
-
     def run_thunk_of_node(self, node):
         """Run the thunk corresponding to Apply instance `node`
 
@@ -661,7 +660,9 @@ class VM_Linker(link.LocalLinker):
 
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
-        if self.callback is not None or (config.profile and config.profile_memory):
+        if (self.callback is not None or
+            (config.profile and config.profile_memory)):
+
             if self.use_cloop and self.callback is not None:
                 logger.warn('CVM does not support callback, using Stack VM.')
             if self.use_cloop and config.profile_memory:

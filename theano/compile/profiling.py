@@ -999,16 +999,25 @@ if 0: # old code still to be ported from ProfileMode
         #tip 4
         for a, t in apply_time.iteritems():
             node = a
-            if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
-                print "  - You have a dot operation that was not optimized to dot22 that is faster. Make sure the inputs are float32 or 64 and are the same for both input. Currently they are:",[i.type for i in node.inputs]
+            if (isinstance(node.op, T.Dot) and
+                all([len(i.type.broadcastable) == 2 for i in node.inputs])):
+                print ("  - You have a dot operation that was not optimized "
+                       "to dot22 that is faster. Make sure the inputs are "
+                       "float32 or float64 and are the same for both inputs. "
+                       "Currently they are: %s" %
+                       [i.type for i in node.inputs])
 
         #tip 5
         for a, t in apply_time.iteritems():
             node = a
             if isinstance(node.op, RandomFunction):
-                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams' as this is is faster. It is still experimental, but seam to work correctly."
+                print ("  - Replace the default random number generator by "
+                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
+                       "as RandomStreams' as this is is faster. It is still "
+                       "experimental, but seams to work correctly.")
                 if config.device.startswith("gpu"):
-                    print "     - MRG_RandomStreams is the only random number supported on the GPU."
+                    print ("     - MRG_RandomStreams is the only random number"
+                           " supported on the GPU.")
                 break
 
     def print_summary(self,
