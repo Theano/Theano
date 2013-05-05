@@ -241,34 +241,34 @@ Variable (``x``) is guaranteed to be a constant, and if so, what constant.
 Test the optimization
 =====================
 
-Here is some code that test the optimization is applied only when needed.
+Here is some code to test that the optimization is applied only when needed.
 
 .. code-block:: python
 
-        # Test it don't apply when not needed
+        # Test it does not apply when not needed
         x = T.dvector()
         f = function([x], fibby(x))
         #theano.printing.debugprint(f)
 
-        #We call the function to make sure it run.
-        #If you run in DebugMode, it will compare the C and Python output
+        # We call the function to make sure it runs.
+        # If you run in DebugMode, it will compare the C and Python outputs.
         f(numpy.random.rand(5))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Fibby)
 
-        # Test that the optimization get applied
+        # Test that the optimization gets applied.
         f_zero = function([], fibby(T.zeros([5])))
         #theano.printing.debugprint(f_zero)
 
-        #If you run in DebugMode, it will compare the output before
-        # and after the optimization
+        # If you run in DebugMode, it will compare the output before
+        # and after the optimization.
         f_zero()
 
-        #Check that the optimization remove the Fibby Op.
-        #For security, the Theano memory interface make that the output
-        #of the function is always memory not aliaced to the input.
-        #That is why there is a DeepCopyOp op.
+        # Check that the optimization removes the Fibby Op.
+        # For security, the Theano memory interface ensures that the output
+        # of the function is always memory not aliased to the input.
+        # That is why there is a DeepCopyOp op.
         topo = f_zero.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
