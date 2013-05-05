@@ -235,7 +235,7 @@ function.  The ``[fibby]`` argument is a hint that our optimizer works on nodes
 whose ``.op`` attribute equals ``fibby``.
 The function here (``fibby_of_zero``) expects an ``Apply`` instance as an
 argument for parameter ``node``. It tests using
-function ``get_constant_value``, which determines if a
+function ``get_scalar_constant_value``, which determines if a
 Variable (``x``) is guaranteed to be a constant, and if so, what constant.
 
 Test the optimization
