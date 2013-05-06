@@ -49,12 +49,12 @@ class Profile_Maker(FunctionMaker):
             theano.sandbox.cuda.cuda_enabled):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
-                    "You are running Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution are asynchron by default."
+                    "You are running the Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution is asynchronous by default."
                     " So by default, the profile is useless."
-                    " You must use set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA drvier to"
-                    " synchonize the execution to get meaning full profile.")
+                    " You must set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                    " synchronize the execution to get a meaningful profile.")
 
         # create a function-specific storage container for profiling info
         profile = ProfileStats(atexit_print=False)
@@ -584,14 +584,21 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
                                            for i, a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower than in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
+            print ("  - With the default gcc libm, exp in float32 is slower "
+                   "than in float64! Try Theano flag floatX=float64, or "
+                   "install amdlibm and set the theano flags lib.amdlibm=True")
             printed_tip = True
 
         #tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
-            if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
-                print "  - You have a dot operation that was not optimized to dot22 (which is faster). Make sure the inputs are float32 or 64, and are the same for both inputs. Currently they are:",[i.type for i in node.inputs]
+            if (isinstance(node.op, T.Dot) and
+                all([len(i.type.broadcastable) == 2 for i in node.inputs])):
+                print ("  - You have a dot operation that was not optimized to"
+                       " dot22 (which is faster). Make sure the inputs are "
+                       "float32 or float64, and are the same for both inputs. "
+                       "Currently they are: %s" %
+                       [i.type for i in node.inputs])
                 printed_tip = True
 
         #tip 5
@@ -599,9 +606,13 @@ Test them first, as they are not guaranteed to always provide a speedup."""
             node = a[1]
             if isinstance(node.op, RandomFunction):
                 printed_tip = True
-                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams', as this is is faster. It is still experimental, but seems to work correctly."
+                print ("  - Replace the default random number generator by "
+                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
+                       "as RandomStreams', as this is is faster. It is still "
+                       "experimental, but seems to work correctly.")
                 if config.device.startswith("gpu"):
-                    print "     - MRG_RandomStreams is the only random number generator supported on the GPU."
+                    print ("     - MRG_RandomStreams is the only random number"
+                           " generator supported on the GPU.")
                 break
 
         if not printed_tip:
