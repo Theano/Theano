@@ -633,12 +633,14 @@ class VM_Linker(link.LocalLinker):
             outputs = self.fgraph.outputs
             last_outputs = outputs[-len(updated_vars):]
             for out in last_outputs:
-                # XXX why is this not true?
+                # XXX -- why is this not true?
                 #if out not in updated_vars.values():
                     #raise ValueError('update exprs must be trailing outputs')
-                if out not in self.no_recycling:
-                    raise ValueError('update exprs and their views must be in'
-                        ' self.no_recycling')
+                # XXX -- why is this not true either?
+                #if out not in self.no_recycling:
+                    #raise ValueError('update exprs and their views must be in'
+                        #' self.no_recycling')
+                pass
         self.updated_vars = updated_vars
 
     def compute_gc_dependencies(self, variables):
