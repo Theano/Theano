@@ -437,6 +437,29 @@ def use(device,
 use.device_number = None
 
 
+def unuse():
+    """
+    This undo what was done by the call to
+
+    use('gpu[0-9]', default_to_move_computation_to_gpu=True,
+        move_shared_float32_to_gpu=True,
+        enable_cuda=True)
+
+    This is used in Pylearn2 tests to enable/disable the GPU when needed.
+
+    After this call, the rest of Theano think the GPU shouldn't be used by default.
+    """
+    global cuda_enabled
+    cuda_enabled = False
+    handle_shared_float32(False)
+    optdb.remove_tags('gpu_opt',
+                   'fast_run',
+                   'inplace')
+    optdb.remove_tags('gpu_after_fusion',
+                   'fast_run',
+                   'inplace')
+
+
 def handle_shared_float32(tf):
     """Set the default shared type for float32 tensor to CudaNdarrayType
 
