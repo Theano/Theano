@@ -6398,13 +6398,17 @@ class T_long_tensor(unittest.TestCase):
 
         try:
             cst = constant([val, val])
-            assert cst.value == val
+            assert cst.value[0] == val
+            assert cst.value[1] == val
+            assert cst.value.size == 2
             assert cst.dtype == "uint64"
         except TypeError:
             pass
         try:
             cst = constant([[val, val]])
-            assert cst.value == val
+            assert cst.value[0, 0] == val
+            assert cst.value[0, 1] == val
+            assert cst.value.size == 2
             assert cst.dtype == "uint64"
         except TypeError:
             pass
