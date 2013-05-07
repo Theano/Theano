@@ -181,10 +181,12 @@ class Loop(VM):
                     thunk()
             except:
                 raise_with_op(node, thunk)
-        # -- apply updates
-        storage_map = self.storage_map
-        for (ivar, ovar) in self.updated_vars.items():
-            storage_map[ivar][0] = storage_map[ovar][0]
+
+        if not self.need_update_inputs:
+            # -- apply updates
+            storage_map = self.storage_map
+            for (ivar, ovar) in self.updated_vars.items():
+                storage_map[ivar][0] = storage_map[ovar][0]
         # XXX: return the same thing as CLoop (some outputs? all outputs?)
 
 
@@ -229,6 +231,13 @@ class LoopGC(VM):
                         old_s[0] = None
             except:
                 raise_with_op(node, thunk)
+
+        if not self.need_update_inputs:
+            # -- apply updates
+            storage_map = self.storage_map
+            for (ivar, ovar) in self.updated_vars.items():
+                storage_map[ivar][0] = storage_map[ovar][0]
+        # XXX: return the same thing as CLoop (some outputs? all outputs?)
 
 
 class Stack(VM):
@@ -860,7 +869,8 @@ class VM_Linker(link.LocalLinker):
                             nodes,
                             thunks,
                             pre_call_clear,
-                            post_thunk_clear)
+                            post_thunk_clear,
+                            need_update_inputs=False)
                 else:
                     vm = Loop(
                             nodes,
