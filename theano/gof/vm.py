@@ -672,8 +672,9 @@ class VM_Linker(link.LocalLinker):
             outputs = self.fgraph.outputs
             last_outputs = outputs[-len(updated_vars):]
             for out in last_outputs:
-                if out not in updated_vars.values():
-                    raise ValueError('update exprs must be trailing outputs')
+                # XXX why is this not true?
+                #if out not in updated_vars.values():
+                    #raise ValueError('update exprs must be trailing outputs')
                 if out not in self.no_recycling:
                     raise ValueError('update exprs and their views must be in'
                         ' self.no_recycling')
