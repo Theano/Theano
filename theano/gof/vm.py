@@ -183,8 +183,14 @@ class LoopGC(VM):
     Unconditional start-to-finish program execution in Python.
     Garbage collection is possible on intermediate results.
     """
-    def __init__(self, nodes, thunks, pre_call_clear, post_thunk_clear):
-        super(LoopGC, self).__init__(nodes, thunks, pre_call_clear)
+    def __init__(self, nodes, thunks, pre_call_clear, post_thunk_clear,
+                 updated_vars,
+                 storage_map,
+                 need_update_inputs):
+        super(LoopGC, self).__init__(nodes, thunks, pre_call_clear,
+                                     updated_vars=updated_vars,
+                                     storage_map=storage_map,
+                                     need_update_inputs=need_update_inputs)
         self.post_thunk_clear = post_thunk_clear
         if not (len(nodes) == len(thunks) == len(post_thunk_clear)):
             raise ValueError()
@@ -822,6 +828,8 @@ class VM_Linker(link.LocalLinker):
                             thunks,
                             pre_call_clear,
                             post_thunk_clear,
+                            updated_vars=updated_vars,
+                            storage_map=storage_map,
                             need_update_inputs=False)
                 else:
                     vm = Loop(
