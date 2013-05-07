@@ -466,9 +466,7 @@ def handle_shared_float32(tf):
     This function is intended to be called from use(gpu_index), not directly.
     """
     if tf:
-        import theano.compile
         theano.compile.shared_constructor(float32_shared_constructor)
-
     else:
         theano.compile.shared_constructor(float32_shared_constructor, True)
         assert (float32_shared_constructor not in
