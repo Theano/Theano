@@ -383,11 +383,6 @@ def use(device,
                                  " the Theano mailing list to tell us about"
                                  " this new GPU as we don't know any with"
                                  " this property")
-            if move_shared_float32_to_gpu:
-                handle_shared_float32(True)
-
-            if enable_cuda:
-                cuda_enabled = True
 
             if config.print_active_device:
                 print >> sys.stderr, "Using gpu device %d: %s" % (
@@ -412,10 +407,16 @@ def use(device,
                             " No fallback to the cpu or other gpu device."),)
                 raise
 
-    elif use.device_number != device:
+    elif use.device_number != device and device != 'gpu':
         _logger.warning(("Ignoring call to use(%s), GPU number %i "
             "is already in use."),
             str(device), use.device_number)
+
+    if move_shared_float32_to_gpu:
+        handle_shared_float32(True)
+
+    if enable_cuda:
+        cuda_enabled = True
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu_opt',
