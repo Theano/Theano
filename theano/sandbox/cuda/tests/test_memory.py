@@ -1,3 +1,4 @@
+import copy
 import gc
 
 import numpy as np
@@ -17,6 +18,11 @@ if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+
+# The GC need to be enabled for those tests to work correctly.
+if mode_with_gpu.linker.allow_gc != True:
+    mode_with_gpu.linker = copy.copy(mode_with_gpu.linker)
+    mode_with_gpu.linker.allow_gc = True
 
 
 def freemem(extra_alloc=0):
