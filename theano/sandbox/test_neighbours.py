@@ -9,11 +9,7 @@ from neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
 
-if theano.config.mode == 'FAST_COMPILE':
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
-else:
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 if not theano.config.cxx:
     raise SkipTest("G++ not available, so we need to skip this test.")

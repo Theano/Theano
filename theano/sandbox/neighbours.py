@@ -1,5 +1,5 @@
 """
-TODO: implement Images2Neibs.{perform,infer_shape}() methods
+TODO: implement Images2Neibs.infer_shape() methods
 
 """
 from theano import Op, Apply
@@ -7,6 +7,7 @@ import theano.tensor as T
 from theano.gradient import grad_not_implemented
 from theano.gradient import grad_undefined
 
+import numpy
 
 class Images2Neibs(Op):
     def __init__(self, mode='valid'):
@@ -99,6 +100,103 @@ class Images2Neibs(Op):
 
     def c_code_cache_version(self):
         return (5,)
+
+    def perform(self, node, inp, out_):
+        ten4, neib_shape, neib_step = inp
+        z, = out_
+
+        def CEIL_INTDIV(a, b):
+            if a % b:
+                return (a // b) + 1
+            else:
+                return a // b
+
+        grid_c = -1  # number of patch in height
+        grid_d = -1  # number of patch in width
+        assert ten4.ndim == 4
+        assert neib_shape.ndim == 1
+        assert neib_shape.shape[0] == 2
+        assert neib_step.ndim == 1
+        assert neib_step.shape[0] == 2
+        c, d = neib_shape
+        step_x, step_y = neib_step
+        mode = self.mode
+
+        if mode == "wrap_centered":
+            if (c % 2 != 1) or (d % 2 != 1):
+                raise TypeError(
+                    "Images2Neibs:"
+                    " in mode wrap_centered need patch with odd shapes")
+
+            if (ten4.shape[2] < c) or (ten4.shape[3] < d):
+                raise TypeError(
+                    "Images2Neibs: in wrap_centered mode, don't support"
+                    " image shapes smaller then the patch shapes:"
+                    " neib_shape=(%d,%d), ten4[2:]=[%d,%d]" %
+                    (c, d, ten4.shape[2], ten4.shape[3]))
+            grid_c = CEIL_INTDIV(ten4.shape[2], step_x)
+            grid_d = CEIL_INTDIV(ten4.shape[3], step_y)
+
+        elif mode == "valid":
+            if (ten4.shape[2] < c) or (((ten4.shape[2] - c) % step_x) != 0):
+                raise TypeError(
+                    "neib_shape[0]=%d, neib_step[0]=%d and"
+                    " ten4.shape[2]=%d not consistent" %
+                    (c, step_x, ten4.shape[2]))
+            if (ten4.shape[3] < d) or (((ten4.shape[3] - d) % step_y) != 0):
+                raise TypeError(
+                    "neib_shape[1]=%d, neib_step[1]=%d and"
+                    " ten4.shape[3]=%d not consistent" %
+                    (d, step_y, ten4.shape[3]))
+            # number of patch in height
+            grid_c = 1 + ((ten4.shape[2] - c) // step_x)
+            # number of patch in width
+            grid_d = 1 + ((ten4.shape[3] - d) // step_y)
+        elif mode == "ignore_borders":
+            # number of patch in height
+            grid_c = 1 + ((ten4.shape[2] - c) // step_x)
+            # number of patch in width
+            grid_d = 1 + ((ten4.shape[3] - d) // step_y)
+        else:
+            raise TypeError("Images2Neibs: unknow mode '%s'" % mode)
+
+        z_dim0 = grid_c * grid_d * ten4.shape[1] * ten4.shape[0]
+        z_dim1 = c * d
+        z[0] = numpy.empty((z_dim0, z_dim1), dtype=node.outputs[0].dtype)
+
+        nb_batch = ten4.shape[0]
+        nb_stack = ten4.shape[1]
+        height = ten4.shape[2]
+        width = ten4.shape[3]
+
+        wrap_centered_idx_shift_x = c // 2
+        wrap_centered_idx_shift_y = d // 2
+        for n in range(nb_batch):
+            for s in range(nb_stack):
+                # loop over the number of patch in height
+                for a in range(grid_c):
+                    # loop over the number of patch in width
+                    for b in range(grid_d):
+                        z_row = b + grid_d * (a + grid_c * (s + nb_stack * n))
+                        for i in range(c):
+                            ten4_2 = i + a * step_x
+                            if mode == "wrap_centered":
+                                ten4_2 -= wrap_centered_idx_shift_x
+                                if ten4_2 < 0:
+                                    ten4_2 += height
+                                elif ten4_2 >= height:
+                                    ten4_2 -= height
+                            for j in range(d):
+                                ten4_3 = j + b * step_y
+                                if mode == "wrap_centered":
+                                    ten4_3 -= wrap_centered_idx_shift_y
+                                    if ten4_3 < 0:
+                                        ten4_3 += width
+                                    elif ten4_3 >= width:
+                                        ten4_3 -= width
+                                z_col = j + d * i
+
+                                z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
 
     def c_code(self, node, name, inp, out, sub):
         ten4, neib_shape, neib_step = inp
