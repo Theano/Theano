@@ -873,7 +873,6 @@ class VM_Linker(link.LocalLinker):
             if not lazy:
                 # there is no conditional in the graph
                 if self.allow_gc:
-                    # XXX pass updated vars, storage_map
                     vm = LoopGC(
                             nodes,
                             thunks,
