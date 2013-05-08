@@ -1,5 +1,6 @@
 from nose.plugins.skip import SkipTest
 import numpy
+import unittest
 
 import theano
 from theano import shared, function
@@ -306,7 +307,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
     def test_grad_ignore_border(self):
         shape = (2, 3, 5, 5)
-        images = T.dtensor4()
         images_val = numpy.random.rand(*shape).astype('float32')
 
         def fn(images):
@@ -319,7 +319,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
     def test_neibs2images_grad(self):
         # say we had images of size (2, 3, 20, 20)
         # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
-        neibs = T.dmatrix()
         neibs_val = numpy.random.rand(600, 4)
 
         def fn(neibs):
