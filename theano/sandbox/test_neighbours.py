@@ -22,10 +22,10 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
     dtypes = ['int64', 'float32', 'float64']
 
     def test_neibs(self):
-        for shape, pshape in [((100, 40, 18, 18), (2, 2)),
-                              ((100, 40, 6, 18), (3, 2)),
-                              ((10, 40, 66, 66), (33, 33)),
-                              ((10, 40, 68, 66), (34, 33))
+        for shape, pshape in [((10, 7, 18, 18), (2, 2)),
+                              ((10, 7, 6, 18), (3, 2)),
+                              ((5, 7, 66, 66), (33, 33)),
+                              ((5, 7, 68, 66), (34, 33))
                                   ]:
             for border in ['valid', 'ignore_borders']:
                 for dtype in self.dtypes:
@@ -318,12 +318,12 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                    eps=0.1)
 
     def test_neibs2images_grad(self):
-        # say we had images of size (2, 3, 20, 20)
-        # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
-        neibs_val = numpy.random.rand(600, 4)
+        # say we had images of size (2, 3, 10, 10)
+        # then we extracted 2x2 neighbors on this, we get (2 * 3 * 5 * 5, 4)
+        neibs_val = numpy.random.rand(150, 4)
 
         def fn(neibs):
-            return neibs2images(neibs, (2, 2), (2, 3, 20, 20))
+            return neibs2images(neibs, (2, 2), (2, 3, 10, 10))
         unittest_tools.verify_grad(fn, [neibs_val], mode=self.mode,
                                    eps=0.1)
 
