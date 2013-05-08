@@ -9,15 +9,21 @@ from theano.gradient import grad_undefined
 
 import numpy
 
+
 class Images2Neibs(Op):
     def __init__(self, mode='valid'):
         """
-        Modes:
-            valid : Reshapes the input as a a 2D tensor where each row is a pooling example.
-                Requires an input that is a multiple of the pooling factor (in each direction)
-            ignore_borders : Same as valid, but will ignore the borders if the shape(s) of the input
+        :type mode: str
+        :param mode: Possible values:
+            'valid': Requires an input that is a multiple of the
+                pooling factor (in each direction)
+            'ignore_borders': Same as valid, but will ignore the borders
+                if the shape(s) of the input
                 is not a multiple of the pooling factor(s)
-            wrap_centered : ?? TODO comment
+            'wrap_centered' : ?? TODO comment
+        :return:
+            Reshapes the input as a 2D tensor where each row is an
+            pooling example
         """
         if mode not in ['valid', 'wrap_centered', 'ignore_borders']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
@@ -64,7 +70,8 @@ class Images2Neibs(Op):
                                  = flattened version of ten4[i,j,l:l+r,k:k+c]
                             idx += 1
             (note: the op isn't necessarily implemented internally with these
-            for loops, they're just the easiest way to describe the output pattern)
+            for loops, they're just the easiest way to describe the output
+            pattern)
         """
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
@@ -249,38 +256,59 @@ class Images2Neibs(Op):
 
         if ( "%(mode)s" == "wrap_centered") {
             if (c%%2!=1 || d%%2!=1){
-                PyErr_Format(PyExc_TypeError, "Images2Neibs: in mode wrap_centered need patch with odd shapes");
+                PyErr_Format(PyExc_TypeError,
+                             "Images2Neibs: in mode wrap_centered"
+                             " need patch with odd shapes");
                 %(fail)s;
             }
-            if ( (PyArray_DIMS(%(ten4)s))[2] < c || (PyArray_DIMS(%(ten4)s))[3] < d)
+            if ( (PyArray_DIMS(%(ten4)s))[2] < c ||
+                 (PyArray_DIMS(%(ten4)s))[3] < d)
             {
-                PyErr_Format(PyExc_TypeError, "Images2Neibs: in wrap_centered mode, don't support image shapes smaller then the patch shapes: neib_shape=(%%ld,%%ld), ten4[2:]=[%%ld,%%ld]",
-                             (long int)c, (long int)d, (long int)(PyArray_DIMS(%(ten4)s)[2]), (long int)(PyArray_DIMS(%(ten4)s)[3]));
+                PyErr_Format(PyExc_TypeError,
+                    "Images2Neibs: in wrap_centered mode, don't support image"
+                    " shapes smaller then the patch shapes:"
+                    " neib_shape=(%%ld,%%ld), ten4[2:]=[%%ld,%%ld]",
+                    (long int)c, (long int)d,
+                    (long int)(PyArray_DIMS(%(ten4)s)[2]),
+                    (long int)(PyArray_DIMS(%(ten4)s)[3]));
                 %(fail)s;
             }
             grid_c = CEIL_INTDIV(((PyArray_DIMS(%(ten4)s))[2]),step_x);
             grid_d = CEIL_INTDIV(((PyArray_DIMS(%(ten4)s))[3]),step_y);
 
         }else if ( "%(mode)s" == "valid") {
-            if ( ((PyArray_DIMS(%(ten4)s))[2] < c) ||( (((PyArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
+            if ( ((PyArray_DIMS(%(ten4)s))[2] < c) ||
+                 ( (((PyArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
             {
-                PyErr_Format(PyExc_TypeError, "neib_shape[0]=%%ld, neib_step[0]=%%ld and ten4.shape[2]=%%ld not consistent",
-                             (long int)c, (long int)step_x, (long int)(PyArray_DIMS(%(ten4)s)[2]));
+                PyErr_Format(PyExc_TypeError,
+                             "neib_shape[0]=%%ld, neib_step[0]=%%ld and"
+                             " ten4.shape[2]=%%ld not consistent",
+                             (long int)c, (long int)step_x,
+                             (long int)(PyArray_DIMS(%(ten4)s)[2]));
                 %(fail)s;
             }
-            if ( ((PyArray_DIMS(%(ten4)s))[3] < d) ||( (((PyArray_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
+            if ( ((PyArray_DIMS(%(ten4)s))[3] < d) ||
+                 ( (((PyArray_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
             {
-                PyErr_Format(PyExc_TypeError, "neib_shape[1]=%%ld, neib_step[1]=%%ld and ten4.shape[3]=%%ld not consistent",
-                             (long int)d, (long int)step_y, (long int)(PyArray_DIMS(%(ten4)s)[3]));
+                PyErr_Format(PyExc_TypeError,
+                             "neib_shape[1]=%%ld, neib_step[1]=%%ld and"
+                             " ten4.shape[3]=%%ld not consistent",
+                             (long int)d, (long int)step_y,
+                             (long int)(PyArray_DIMS(%(ten4)s)[3]));
                 %(fail)s;
             }
-            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
-            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y); //number of patch in width
+            //number of patch in height
+            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x);
+            //number of patch in width
+            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y);
         }else if ( "%(mode)s" == "ignore_borders") {
-            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x); //number of patch in height
-            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y); //number of patch in width
+            //number of patch in height
+            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x);
+            //number of patch in width
+            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y);
         }else{
-            PyErr_Format(PyExc_TypeError, "Images2Neibs: unknow mode '%(mode)s'");
+            PyErr_Format(PyExc_TypeError,
+                         "Images2Neibs: unknow mode '%(mode)s'");
             %(fail)s;
         }
 
@@ -359,7 +387,8 @@ class Images2Neibs(Op):
                                 dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
                                 *curr_z = *( (dtype_%(ten4)s*) PyArray_GETPTR4(%(ten4)s, n, s, ten4_2, ten4_3));
 
-                                //printf("\\n(%%i,%%i,%%i,%%i) --> (%%i,%%i)",n,s, ten4_2, ten4_3, z_row, z_col);
+                                //printf("\\n(%%i,%%i,%%i,%%i) --> (%%i,%%i)",
+                                //       n, s, ten4_2, ten4_3, z_row, z_col);
                                 //printf("%%f ", *curr_z);
                             }
                         }
