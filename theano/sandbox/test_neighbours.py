@@ -66,7 +66,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 #print images.get_value(borrow=True)
                 neibs = f()
                 #print neibs
-                assert numpy.allclose(neibs,[[ 0,  1,  4,  5],
+                assert numpy.allclose(neibs,
+                   [[ 0,  1,  4,  5],
                    [ 2,  3,  6,  7],
                    [ 8,  9, 12, 13],
                    [10, 11, 14, 15],
@@ -271,7 +272,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
             neib_shape = T.as_tensor_variable((3, 3))
 
-            f = function([], images2neibs(images, neib_shape, mode="wrap_centered"),
+            f = function([],
+                         images2neibs(images, neib_shape, mode="wrap_centered"),
                          mode=self.mode)
             f()
 
@@ -285,7 +287,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
         self.assertRaises(TypeError, unittest_tools.verify_grad,
                           fn, [images_val], mode=self.mode)
-
 
     def test_grad_valid(self):
         shape = (2, 3, 4, 4)
