@@ -403,7 +403,8 @@ class Scan(PureOp):
         for inner_nonseq, outer_nonseq in zip(
                             self.inner_non_seqs(self.inputs),
                             self.outer_non_seqs(inputs)):
-            if inner_nonseq.type != outer_nonseq.type:
+            if (inner_nonseq.ndim != outer_nonseq.ndim or
+                inner_nonseq.dtype != outer_nonseq.dtype):
                 raise ValueError(('Argument %s given to scan node does not'
                                  ' match its correspondance %s') %
                                   (str(outer_nonseq), str(inner_nonseq)))
