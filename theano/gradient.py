@@ -22,6 +22,7 @@ from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
 from theano.gof.null_type import NullType
+from theano.gof.op import get_debug_values
 
 # we can't do "import theano.tensor"
 # tensor depends on theano.compile
@@ -895,6 +896,27 @@ def _populate_grad_dict(var_to_app_to_idx,
                     assert (getattr(ng.type, 'dtype', None)
                             not in theano.tensor.discrete_dtypes)
 
+                # If config.compute_test_value is turned on, check that the gradients
+                # on the outputs of this node have the right shape.
+                # We also check the gradient on the inputs later--both checks are needed,
+                # because some gradients are only ever specified by the user, not computed
+                # by Op.grad, and some gradients are only computed and returned, but never
+                # passed as another node's output grads.
+                for idx, packed in enumerate(izip(node.outputs,
+                    new_output_grads)):
+                    orig_output, new_output_grad = packed
+                    if not hasattr(orig_output, 'shape'):
+                        continue
+                    for orig_output_v, new_output_grad_v in get_debug_values(
+                            node.outputs, new_output_grads):
+                        o_shape = orig_output_v.shape
+                        g_shape = new_output_grad_v.shape
+                        if o_shape != g_shape:
+                            raise ValueError("Got a gradient of shape " + \
+                                    str(o_shape) + " on an output of shape " + \
+                                    str(g_shape))
+
+
                 input_grads = node.op.grad(inputs, new_output_grads)
 
                 if input_grads is None:
@@ -933,6 +955,17 @@ def _populate_grad_dict(var_to_app_to_idx,
                             ' or a NullType variable such as those made with '
                             'the grad_undefined or grad_unimplemented helper '
                             'functions.') % node.op)
+
+                # Check that the gradient term for this input has the right shape
+                if hasattr(term, 'shape'):
+                    orig_ipt = inputs[i]
+                    for orig_ipt_v, term_v in get_debug_values(orig_ipt, term):
+                        i_shape = orig_ipt_v.shape
+                        t_shape = term_v.shape
+                        if i_shape != t_shape:
+                            raise ValueError("%s.grad returned object of "
+                                    "shape %s as gradient term on input of "
+                                    "shape %s" % (node.op, t_shape, i_shape))
 
                 if not isinstance(term.type,
                         (NullType, DisconnectedType)):
