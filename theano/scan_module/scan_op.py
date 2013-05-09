@@ -400,6 +400,14 @@ class Scan(PureOp):
                                            str(inner_shared),
                                            inner_shared.dtype,
                                            inner_shared.ndim))
+        # We do not need to call `format` on outer_nisot arguments.
+        # outer_nitsot stands for no input tap single output tap. This means
+        # these are states that do not feed anything back in the recurrent
+        # computation, and hence they do not have an initial state. The scan
+        # node however receives an input for each such argument, the input
+        # in this case is just a int saying how many steps of this output we
+        # need to store. This input does not have the same dtype, nor is it the same
+        # type of tensor as the output, it is always a scalar int.
         new_inputs += self.outer_nitsot(inputs)
         for inner_nonseq, _outer_nonseq in zip(
                             self.inner_non_seqs(self.inputs),
