@@ -966,8 +966,9 @@ def _populate_grad_dict(var_to_app_to_idx,
                         t_shape = term_v.shape
                         if i_shape != t_shape:
                             raise ValueError("%s.grad returned object of "
-                                    "shape %s as gradient term on input of "
-                                    "shape %s" % (node.op, t_shape, i_shape))
+                                    "shape %s as gradient term on input %d "
+                                    "of shape %s" % (node.op, t_shape, i,
+                                        i_shape))
 
                 if not isinstance(term.type,
                         (NullType, DisconnectedType)):
