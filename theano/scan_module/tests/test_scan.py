@@ -3452,6 +3452,39 @@ class T_Scan(unittest.TestCase):
         assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
                               1.21000003815)
 
+    def test_grad_find_input(self):
+        w = theano.shared(numpy.array(0, dtype='float32'), name='w')
+        init = tensor.fscalar('init')
+
+        out, _ = theano.scan(
+                fn=lambda prev: w,
+                outputs_info=init,
+                n_steps=2,
+        )
+        tensor.grad(out[-1], w)
+
+    def test_scan_merge_nodes(self):
+        inps = tensor.vector()
+        state = tensor.scalar()
+        y1, _ = theano.scan(lambda x,y: x*y,
+                            sequences = inps,
+                            outputs_info = state,
+                            n_steps = 5)
+
+        y2, _ = theano.scan(lambda x,y : (x+y, theano.scan_module.until(x>0)),
+                            sequences = inps,
+                            outputs_info = state,
+                            n_steps = 5)
+        scan_node1 = y1.owner.inputs[0].owner
+        assert isinstance(scan_node1.op, theano.scan_module.scan_op.Scan)
+        scan_node2 = y2.owner.inputs[0].owner
+        assert isinstance(scan_node2.op, theano.scan_module.scan_op.Scan)
+        opt_obj = theano.scan_module.scan_opt.ScanMerge()
+        # Test the method belongs_to of this class. Specifically see if it
+        # detects the two scan_nodes as not being similar
+        assert not opt_obj.belongs_to_set(scan_node1, [scan_node2])
+        assert not opt_obj.belongs_to_set(scan_node2, [scan_node1])
+
 
 def test_speed():
     #
