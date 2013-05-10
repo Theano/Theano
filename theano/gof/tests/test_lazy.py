@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import numpy
 
+import theano
 from theano.gof.op import PureOp
 from theano.gof import Apply, generic, Container
 from theano.gof.link import LocalLinker, map_storage, add_clear_storage
@@ -99,22 +100,28 @@ def test_ifelse():
     c = generic()
 
     notimpl = NotImplementedOp()
+    lazys = [True]
+    # We need lazy to end up being True for this test.
+    if theano.config.vm.lazy in [True, None]:
+        lazys = [True, None]
+    for cloop in [True, False]:
+        for lazy in lazys:
+            linker = theano.gof.vm.VM_Linker(use_cloop=cloop, lazy=lazy)
+            f = function([a, b, c], ifelse(a, notimpl(b), c),
+                         mode=Mode(linker=linker, optimizer='fast_run'))
 
-    f = function([a,b,c], ifelse(a, notimpl(b), c),
-            mode=Mode(linker='vm', optimizer='fast_run'))
+            try:
+                print "case 1"
+                f(1, 'a', 'b')
+                assert False
+            except NotImplementedOp.E:
+                pass
+            print "... passed"
 
-    try:
-        print "case 1"
-        f( 1, 'a', 'b')
-        assert False
-    except NotImplementedOp.E:
-        pass
-    print "... passed"
-
-    print "case 2"
-    print f( 0, 'a', 'b')
-    assert f( 0, 'a', 'b') == 'b'
-    print "... passed"
+            print "case 2"
+            print f(0, 'a', 'b')
+            assert f(0, 'a', 'b') == 'b'
+            print "... passed"
 
 
 def more_complex_test():
