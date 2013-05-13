@@ -922,7 +922,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         # condition: either there was no c_code, or it failed
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
-
+        
 def get_test_value(v):
     """
     Extract test value from `v`. Raises AttributeError if there is none.
