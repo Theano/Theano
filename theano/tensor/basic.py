@@ -609,6 +609,7 @@ def get_scalar_constant_value(v):
                 ret = get_scalar_constant_value(ret)
                 # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
+
             if (v.owner.inputs[0].owner and
                 isinstance(v.owner.inputs[0].owner.op,
                            theano.tensor.opt.MakeVector) and
@@ -616,8 +617,9 @@ def get_scalar_constant_value(v):
                 # We put this check in case there is change in the future
                 python_all(var.ndim == 0 for var in
                            v.owner.inputs[0].owner.inputs) and
-                len(v.owner.op.idx_list) == 1):
-
+                len(v.owner.op.idx_list) == 1 and
+                #idx_list can contain Scalar Type object.
+                isinstance(v.owner.op.idx_list[0], (int, long))):
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.

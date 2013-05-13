@@ -6664,6 +6664,21 @@ class T_get_scalar_constant_value(unittest.TestCase):
                 get_scalar_constant_value,
                 numpy.array([]))
 
+    def test_make_vector(self):
+        mv = opt.make_vector(1, 2, 3)
+        self.assertRaises(
+            tensor.NotScalarConstantError,
+            get_scalar_constant_value,
+            mv)
+        assert get_scalar_constant_value(mv[0])
+        assert get_scalar_constant_value(mv[1])
+        assert get_scalar_constant_value(mv[2])
+        t = theano.scalar.Scalar('int64')
+        self.assertRaises(
+            tensor.NotScalarConstantError,
+            get_scalar_constant_value,
+            mv[t()])
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """
