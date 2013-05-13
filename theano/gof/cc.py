@@ -1106,17 +1106,18 @@ class CLinker(link.Linker):
                 output_storage.append(map[variable])
         input_storage = tuple(input_storage)
         output_storage = tuple(output_storage)
-        thunk = self.cthunk_factory(error_storage,
-                                    input_storage,
-                                    output_storage,
-                                    storage_map,
-                                    keep_lock=keep_lock)
+        thunk, filename = self.cthunk_factory(error_storage,
+                                              input_storage,
+                                              output_storage,
+                                              storage_map,
+                                              keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True) for output, storage in
                  izip(self.fgraph.outputs, output_storage)],
-                error_storage)
+                error_storage,
+                filename)
 
     def get_init_tasks(self):
         init_tasks = []
@@ -1170,13 +1171,13 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(
+        cthunk, in_storage, out_storage, error_storage, filename= self.__compile__(
             input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
-        res = _CThunk(cthunk, init_tasks, tasks, error_storage)
+        res = _CThunk(cthunk, init_tasks, tasks, error_stor, filename)
         res.nodes = self.node_order
-        return res, in_storage, out_storage
+        return res, in_stor, out_stor
 
     def cmodule_key(self):
         """
@@ -1565,7 +1566,7 @@ class CLinker(link.Linker):
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
 
-        return ret
+        return ret, module.__file__
 
     def instantiate_code(self, n_args):
         code = StringIO()
@@ -1613,7 +1614,16 @@ class _CThunk(object):
 
     """
 
-    def __init__(self, cthunk, init_tasks, tasks, error_storage):
+    def __init__(self, cthunk, init_tasks, tasks, error_storage, filename):
+        """
+        Parameters
+        ----------
+        cthunk: the CObject pointer used by run_cthunk
+        init_tasks: WRITEME
+        tasks: WRITEME
+        error_storage: WRITEME
+        filename: the dynamic lib that where this thunk is compiled.
+        """
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
@@ -1622,6 +1632,7 @@ class _CThunk(object):
         self.init_tasks = init_tasks
         self.tasks = tasks
         self.error_storage = error_storage
+        self.filename = filename
 
     def find_task(self, failure_code):
         """
