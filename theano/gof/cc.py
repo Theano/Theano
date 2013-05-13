@@ -224,6 +224,12 @@ def struct_gen(args, struct_builders, blocks, sub):
     storage_decl = "\n".join(["PyObject* %s;" % arg for arg in args])
     # in the constructor, sets the storage to the arguments
     storage_set = "\n".join(["this->%s = %s;" % (arg, arg) for arg in args])
+    # Storage assert(Assert are fine, as this is fixed code that
+    # should always be True). No user code should change this, so no
+    # need to develop better error reporting.
+    storage_assert = "\n".join(["assert(PyList_Check(%s));" % arg
+                                for arg in args])
+
     # increments the storage's refcount in the constructor
     storage_incref = "\n".join(["Py_XINCREF(%s);" % arg for arg in args])
     # decrements the storage's refcount in the destructor
@@ -282,6 +288,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         }
 
         int init(PyObject* __ERROR, %(args_decl)s) {
+            %(storage_assert)s
             %(storage_incref)s
             %(storage_set)s
             %(struct_init_head)s
