@@ -169,8 +169,16 @@ try:
             }
 except ImportError, e:
     have_fblas = False
-    _logger.warning('Failed to import scipy.linalg.blas. '
-            'Falling back on slower implementations (%s)', str(e))
+    # This is used in Gemv and ScipyGer. We use CGemv and CGer
+    # when theano.config.blas.ldflags is defined. So we don't need a
+    # warning in that case.
+    if not config.blas.ldflags:
+        _logger.warning('Failed to import scipy.linalg.blas and '
+                        'Theano flag blas.ldflags empty. '
+                        'Falling back on slower implementations for '
+                        'dot(matrix, vector), dot(vector, matrix) and '
+                        'dot(vector, vector) (%s)',
+                        str(e))
 
 
 class Gemv(Op):
