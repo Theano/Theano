@@ -1,4 +1,5 @@
 """WRITEME"""
+import theano
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
@@ -419,8 +420,9 @@ class PerformLinker(LocalLinker):
     the L{FunctionGraph} in the order given by L{Linker.schedule}.
     """
 
-    def __init__(self, allow_gc=True, schedule=None):
-        #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
+    def __init__(self, allow_gc=None, schedule=None):
+        if allow_gc is None:
+            allow_gc = theano.config.allow_gc
         self.fgraph = None
         self.allow_gc = allow_gc
         if schedule:

@@ -1502,8 +1502,7 @@ class OpWiseCLinker(link.LocalLinker):
                 finally:
                     node.op._op_use_c_code = old_value
 
-            for node_idx, node in enumerate(order):
-
+            for node in order:
                 if self.allow_gc:
                     post_thunk_old_storage.append([storage_map[input]
                         for input in node.inputs
