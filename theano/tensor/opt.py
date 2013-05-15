@@ -544,6 +544,32 @@ class MakeVector(T.Op):
             # assume that out has correct dtype. there is no cheap way to check
             out[0][...] = inputs
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inp, out_, sub):
+        out, = out_
+        # Shouldn't use PyArray_TYPE(inp[0]) for the dtype
+        # when len(inp) == 0 (we need to support this case.
+        # So there will be (1 * nb_dtype) + ((nb len(inp) - 1 ))
+        # different c code with the following algo
+        out_shape = len(inp)
+        out_dtype = numpy.dtype(node.outputs[0].dtype).num
+        if len(inp) > 0:
+            assert self.dtype == node.inputs[0].dtype
+            out_dtype = 'PyArray_TYPE(%s)' % inp[0]
+
+        ret = """
+        npy_intp dims[1];
+        dims[0] = %(out_shape)s;
+        %(out)s = (PyArrayObject*)PyArray_EMPTY(1, dims, %(out_dtype)s, 0);
+        """ % locals()
+        for idx, i in enumerate(inp):
+            ret += """
+            *((dtype_%(out)s *)PyArray_GETPTR1(%(out)s, %(idx)s)) = *((dtype_%(out)s *) PyArray_DATA(%(i)s));
+            """ % locals()
+        return ret
+
     def infer_shape(self, node, ishapes):
         return [(len(ishapes),)]
 

@@ -683,7 +683,7 @@ Reductions
 .. function:: max(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *axis* - axis or axes along which to compute the maximum
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
@@ -697,7 +697,7 @@ Reductions
 .. function:: argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *axis* - axis along which to compute the index of the maximum
     :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
 		left in the result as a dimension with size one. With this option, the result
 		will broadcast correctly against the original tensor.
@@ -709,7 +709,7 @@ Reductions
 .. function:: max_and_argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *axis* - axis along which to compute the maximum and its index
     :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
 		left in the result as a dimension with size one. With this option, the result
 		will broadcast correctly against the original tensor.
@@ -721,7 +721,7 @@ Reductions
 .. function:: min(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *axis* - axis or axes along which to compute the minimum
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
@@ -735,7 +735,7 @@ Reductions
 .. function:: argmin(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the minimum
+    :Parameter: *axis* - axis along which to compute the index of the minimum
     :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
 		left in the result as dimensions with size one. With this option, the result
 		will broadcast correctly against the original tensor.
