@@ -82,11 +82,13 @@ def test_cholesky_grad():
     if config.floatX == "float64":
         eps = 2e-8
     # Check the default.
-    utt.verify_grad(cholesky, [pd], 3, rng, eps=eps)
+    yield (lambda: utt.verify_grad(cholesky, [pd], 3, rng, eps=eps))
     # Explicit lower-triangular.
-    utt.verify_grad(Cholesky(lower=True), [pd], 3, rng, eps=eps)
+    yield (lambda: utt.verify_grad(Cholesky(lower=True), [pd], 3,
+                                   rng, eps=eps))
     # Explicit upper-triangular.
-    utt.verify_grad(Cholesky(lower=False), [pd], 3, rng, eps=eps)
+    yield (lambda: utt.verify_grad(Cholesky(lower=False), [pd], 3,
+                                   rng, eps=eps))
 
 
 def test_cholesky_and_cholesky_grad_shape():
