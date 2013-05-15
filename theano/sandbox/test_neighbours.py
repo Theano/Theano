@@ -1,5 +1,6 @@
 from nose.plugins.skip import SkipTest
 import numpy
+import unittest
 
 import theano
 from theano import shared, function
@@ -9,14 +10,7 @@ from neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
 
-if theano.config.mode == 'FAST_COMPILE':
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
-else:
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
-
-if not theano.config.cxx:
-    raise SkipTest("G++ not available, so we need to skip this test.")
+mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
 class T_Images2Neibs(unittest_tools.InferShapeTester):
@@ -25,10 +19,10 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
     dtypes = ['int64', 'float32', 'float64']
 
     def test_neibs(self):
-        for shape, pshape in [((100, 40, 18, 18), (2, 2)),
-                              ((100, 40, 6, 18), (3, 2)),
-                              ((10, 40, 66, 66), (33, 33)),
-                              ((10, 40, 68, 66), (34, 33))
+        for shape, pshape in [((10, 7, 18, 18), (2, 2)),
+                              ((10, 7, 6, 18), (3, 2)),
+                              ((5, 7, 66, 66), (33, 33)),
+                              ((5, 7, 68, 66), (34, 33))
                                   ]:
             for border in ['valid', 'ignore_borders']:
                 for dtype in self.dtypes:
@@ -69,7 +63,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 #print images.get_value(borrow=True)
                 neibs = f()
                 #print neibs
-                assert numpy.allclose(neibs,[[ 0,  1,  4,  5],
+                assert numpy.allclose(neibs,
+                   [[ 0,  1,  4,  5],
                    [ 2,  3,  6,  7],
                    [ 8,  9, 12, 13],
                    [10, 11, 14, 15],
@@ -274,7 +269,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             images = shared(numpy.arange(numpy.prod(shape)).reshape(shape))
             neib_shape = T.as_tensor_variable((3, 3))
 
-            f = function([], images2neibs(images, neib_shape, mode="wrap_centered"),
+            f = function([],
+                         images2neibs(images, neib_shape, mode="wrap_centered"),
                          mode=self.mode)
             f()
 
@@ -288,7 +284,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
         self.assertRaises(TypeError, unittest_tools.verify_grad,
                           fn, [images_val], mode=self.mode)
-
 
     def test_grad_valid(self):
         shape = (2, 3, 4, 4)
@@ -310,7 +305,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
     def test_grad_ignore_border(self):
         shape = (2, 3, 5, 5)
-        images = T.dtensor4()
         images_val = numpy.random.rand(*shape).astype('float32')
 
         def fn(images):
@@ -321,13 +315,12 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                    eps=0.1)
 
     def test_neibs2images_grad(self):
-        # say we had images of size (2, 3, 20, 20)
-        # then we extracted 2x2 neighbors on this, we get (2 * 3 * 10 * 10, 4)
-        neibs = T.dmatrix()
-        neibs_val = numpy.random.rand(600, 4)
+        # say we had images of size (2, 3, 10, 10)
+        # then we extracted 2x2 neighbors on this, we get (2 * 3 * 5 * 5, 4)
+        neibs_val = numpy.random.rand(150, 4)
 
         def fn(neibs):
-            return neibs2images(neibs, (2, 2), (2, 3, 20, 20))
+            return neibs2images(neibs, (2, 2), (2, 3, 10, 10))
         unittest_tools.verify_grad(fn, [neibs_val], mode=self.mode,
                                    eps=0.1)
 
