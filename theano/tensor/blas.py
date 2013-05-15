@@ -151,6 +151,84 @@ from theano.tensor.opt import local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
 
+
+# We need to define blas.ldflag before we try to import scipy.
+# Otherwise, we give an optimization warning for no reason in some cases.
+def default_blas_ldflags():
+    try:
+        # If we are in a EPD installation, mkl is available
+        blas_info = numpy.distutils.__config__.blas_opt_info
+        if "EPD" in sys.version:
+            use_unix_epd = True
+            if sys.platform == 'win32':
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in
+                    # blas_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
+            elif sys.platform == 'darwin':
+                # The env variable is needed to link with mkl
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # Explicit version could be replaced by a symbolic
+                    # link called 'Current' created by EPD installer
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we warn the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    _logger.warning(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano use a slow version of BLAS. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will disable this warning."
+                        % new_path)
+
+                    use_unix_epd = False
+            if use_unix_epd:
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
+        #if numpy was linked with library that are not installed, we
+        #can't reuse them.
+        if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
+            return ' '.join(
+                        #TODO: the Gemm op below should separate the
+                        # -L and -l arguments into the two callbacks
+                        # that CLinker uses for that stuff.  for now,
+                        # we just pass the whole ldflags as the -l
+                        # options part.
+                        ['-L%s' % l for l in blas_info['library_dirs']] +
+                        ['-l%s' % l for l in blas_info['libraries']] +
+                        [])
+#                       ['-I%s' % l for l in blas_info['include_dirs']])
+    except KeyError:
+        pass
+
+    # Even if we could not detect what was used for numpy, or if these
+    # libraries are not found, most Linux systems have a libblas.so
+    # readily available. We try to see if that's the case, rather
+    # than disable blas.
+    if GCC_compiler.try_flags(["-lblas"]):
+        return "-lblas"
+    else:
+        return ""
+
+
+AddConfigVar('blas.ldflags',
+        "lib[s] to include for [Fortran] level-3 blas implementation",
+        StrParam(default_blas_ldflags))
+
+
 try:
     import scipy.linalg.blas
     have_fblas = True
@@ -336,81 +414,6 @@ class Ger(Op):
 
 ger = Ger(destructive=False)
 ger_destructive = Ger(destructive=True)
-
-
-def default_blas_ldflags():
-    try:
-        # If we are in a EPD installation, mkl is available
-        blas_info = numpy.distutils.__config__.blas_opt_info
-        if "EPD" in sys.version:
-            use_unix_epd = True
-            if sys.platform == 'win32':
-                return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
-                    # Why on Windows, the library used are not the
-                    # same as what is in
-                    # blas_info['libraries']?
-                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
-                                          "mk2_rt"]])
-            elif sys.platform == 'darwin':
-                # The env variable is needed to link with mkl
-                new_path = os.path.join(sys.prefix, "lib")
-                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
-                if v is not None:
-                    # Explicit version could be replaced by a symbolic
-                    # link called 'Current' created by EPD installer
-                    # This will resolve symbolic links
-                    v = os.path.realpath(v)
-
-                # The python __import__ don't seam to take into account
-                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
-                # when we set with os.environ['...'] = X or os.putenv()
-                # So we warn the user and tell him what todo.
-                if v is None or new_path not in v.split(":"):
-                    _logger.warning(
-                        "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
-                        "the '%s' path in its value. This will make "
-                        "Theano use a slow version of BLAS. Update "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value, this will disable this warning."
-                        % new_path)
-
-                    use_unix_epd = False
-            if use_unix_epd:
-                return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
-                    ['-l%s' % l for l in blas_info['libraries']])
-
-        #if numpy was linked with library that are not installed, we
-        #can't reuse them.
-        if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
-            return ' '.join(
-                        #TODO: the Gemm op below should separate the
-                        # -L and -l arguments into the two callbacks
-                        # that CLinker uses for that stuff.  for now,
-                        # we just pass the whole ldflags as the -l
-                        # options part.
-                        ['-L%s' % l for l in blas_info['library_dirs']] +
-                        ['-l%s' % l for l in blas_info['libraries']] +
-                        [])
-#                       ['-I%s' % l for l in blas_info['include_dirs']])
-    except KeyError:
-        pass
-
-    # Even if we could not detect what was used for numpy, or if these
-    # libraries are not found, most Linux systems have a libblas.so
-    # readily available. We try to see if that's the case, rather
-    # than disable blas.
-    if GCC_compiler.try_flags(["-lblas"]):
-        return "-lblas"
-    else:
-        return ""
-
-
-AddConfigVar('blas.ldflags',
-        "lib[s] to include for [Fortran] level-3 blas implementation",
-        StrParam(default_blas_ldflags))
 
 
 @utils.memoize
