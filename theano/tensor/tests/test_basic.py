@@ -4330,6 +4330,15 @@ class T_Join_and_Split(unittest.TestCase):
 
 
 class test_comparison(unittest.TestCase):
+    """Test <, >, <=, >=, == and !=
+
+     Test that we can do the comparison with different
+     combination of tensor(shared and constant variable) with
+     ndarray. ndarray cmp tensor was crashing.  In a NumPy PR (should
+     be in the release 1.8 of NumPy), it will work.  So we assert it
+     work(futur behavior) or raise an error(current NumPy release).
+
+    """
     def test_gt(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
