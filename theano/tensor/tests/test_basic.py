@@ -6736,6 +6736,9 @@ class T_get_scalar_constant_value(unittest.TestCase):
         assert get_scalar_constant_value(mv[0]) == 1
         assert get_scalar_constant_value(mv[1]) == 2
         assert get_scalar_constant_value(mv[2]) == 3
+        assert get_scalar_constant_value(mv[numpy.int8(0)]) == 1
+        assert get_scalar_constant_value(mv[numpy.int64(1)]) == 2
+        assert get_scalar_constant_value(mv[numpy.uint(2)]) == 3
         t = theano.scalar.Scalar('int64')
         self.assertRaises(
             tensor.NotScalarConstantError,

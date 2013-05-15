@@ -619,7 +619,8 @@ def get_scalar_constant_value(v):
                            v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1 and
                 #idx_list can contain Scalar Type object.
-                isinstance(v.owner.op.idx_list[0], (int, long))):
+                isinstance(v.owner.op.idx_list[0], (int, long,
+                                                    numpy.integer))):
                 ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
