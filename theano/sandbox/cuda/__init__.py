@@ -282,7 +282,8 @@ if cuda_available:
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,
             tensor3, tensor4)
-    from basic_ops import host_from_gpu, gpu_from_host, as_cuda_array
+    from basic_ops import (host_from_gpu, gpu_from_host,
+            as_cuda_array, as_cuda_ndarray_variable)
     import opt
     import cuda_ndarray
     from rng_curand import CURAND_RandomStreams
