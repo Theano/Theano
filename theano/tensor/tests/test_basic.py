@@ -4332,57 +4332,111 @@ class T_Join_and_Split(unittest.TestCase):
 class test_comparison(unittest.TestCase):
     def test_gt(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], x > y)
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l > r)), (v, (l > r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], x > y)
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l > r)), (v, (l > r)))
+                except TypeError:
+                    assert err
 
     def test_lt(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], x < y)
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l < r)), (v, (l < r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], x < y)
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l < r)), (v, (l < r)))
+                except TypeError:
+                    assert err
 
     def test_le(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], x <= y)
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l <= r)), (v, (l <= r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], x <= y)
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l <= r)), (v, (l <= r)))
+                except TypeError:
+                    assert err
 
     def test_ge(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], x >= y)
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l >= r)), (v, (l >= r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], x >= y)
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l >= r)), (v, (l >= r)))
+                except TypeError:
+                    assert err
 
     def test_eq(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], eq(x, y))
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l == r)), (v, (l == r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], eq(x, y))
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l == r)), (v, (l == r)))
+                except TypeError:
+                    assert err
 
     def test_neq(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
-            x, y = vector(dtype=dtype), vector(dtype=dtype)
-            fn = inplace_func([x, y], neq(x, y))
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
-            v = fn(l, r)
-            self.assertTrue(numpy.all(v == (l != r)), (v, (l != r)))
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (tensor.constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), tensor.constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], neq(x, y))
+                    v = fn()
+                    self.assertTrue(numpy.all(v == (l != r)), (v, (l != r)))
+                except TypeError:
+                    assert err
 
 
 class test_bitwise(unittest.TestCase):
