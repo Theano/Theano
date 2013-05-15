@@ -78,12 +78,17 @@ def test_cholesky_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
     pd = numpy.dot(r, r.T)
+    eps = None
+    if config.floatX == "float64":
+        eps = 2e-8
     # Check the default.
-    yield utt.verify_grad, cholesky, [pd], 3, rng
+    yield (lambda: utt.verify_grad(cholesky, [pd], 3, rng, eps=eps))
     # Explicit lower-triangular.
-    yield utt.verify_grad, Cholesky(lower=True), [pd], 3, rng
+    yield (lambda: utt.verify_grad(Cholesky(lower=True), [pd], 3,
+                                   rng, eps=eps))
     # Explicit upper-triangular.
-    yield utt.verify_grad, Cholesky(lower=False), [pd], 3, rng
+    yield (lambda: utt.verify_grad(Cholesky(lower=False), [pd], 3,
+                                   rng, eps=eps))
 
 
 def test_cholesky_and_cholesky_grad_shape():
