@@ -12,9 +12,6 @@ from theano.tests import unittest_tools
 
 mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
-if not theano.config.cxx:
-    raise SkipTest("G++ not available, so we need to skip this test.")
-
 
 class T_Images2Neibs(unittest_tools.InferShapeTester):
     mode = mode_without_gpu
