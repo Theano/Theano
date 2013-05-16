@@ -135,6 +135,7 @@ class GpuFromHost(GpuOp):
 
     def grad(self, inputs, grads):
         gz, = grads
+        gz = as_cuda_ndarray_variable(gz)
         return [host_from_gpu(gz)]
 
     def R_op(self, inputs, eval_points):
@@ -2921,6 +2922,7 @@ class GpuContiguous(GpuOp):
 
         x, = inputs
         dout, = dout
+        dout = as_cuda_ndarray_variable(dout)
 
         return [dout]
 
