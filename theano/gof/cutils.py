@@ -117,11 +117,9 @@ map_increment(PyArrayMapIterObject *mit, PyObject *op, inplace_map_binop add_inp
         return -1;
     }
     if ((mit->subspace != NULL) && (mit->consec)) {
-        if (mit->iteraxes[0] > 0) {
-            PyArray_MapIterSwapAxes(mit, (PyArrayObject **)&arr, 0);
-            if (arr == NULL) {
-                return -1;
-            }
+        PyArray_MapIterSwapAxes(mit, (PyArrayObject **)&arr, 0);
+        if (arr == NULL) {
+            return -1;
         }
     }
     it = (PyArrayIterObject*)
