@@ -935,7 +935,7 @@ Theano is to download and execute this `Windows installer
 for Theano on AnacondaCE for Windows
 <https://github.com/Theano/Theano-wininstaller/raw/master/bin/theano_installer_latest.msi>`__.
 
-.. note
+.. note::
 
     This installer was tested on Windows 7, 64-bit edition, and AnacondaCE
     version 1.3.1. Please get back to us if you experience trouble with it.
