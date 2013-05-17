@@ -250,7 +250,11 @@ class PushOutNonSeqScan(gof.Optimizer):
         for nd in existent_nodes:
             to_keep += nd.inputs
         for idx, out in enumerate(to_replace):
-            if out in to_keep and out.owner not in existent_nodes:
+            if (out in to_keep
+                    and out.owner not in existent_nodes
+                    # If types are different, conversion Op will be inserted,
+                    # and it may trigger an infinite loop.
+                    and replace_with_in[idx].type == out.type):
                 clean_to_replace += [out]
                 clean_replace_with_in += [replace_with_in[idx]]
                 clean_replace_with_out += [replace_with_out[idx]]
