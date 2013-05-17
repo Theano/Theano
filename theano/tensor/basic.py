@@ -621,7 +621,11 @@ def get_scalar_constant_value(v):
                 #idx_list can contain Scalar Type object.
                 isinstance(v.owner.op.idx_list[0], (int, long,
                                                     numpy.integer))):
-                ret = v.owner.inputs[0].owner.inputs[v.owner.op.idx_list[0]]
+
+                # Python 2.4 don't support indexing with numpy.integer
+                # So we cast it.
+                idx = int(v.owner.op.idx_list[0])
+                ret = v.owner.inputs[0].owner.inputs[idx]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
