@@ -9,7 +9,7 @@ Update files
 
 Update the NEWS.txt and move the old stuff in the HISTORY.txt file.
 To update the NEWS.txt file, check all ticket closed for this release
-and all commit log messages.
+and all commit log messages. Update the index.txt *News* section.
 
 For the final release, copy the file ``Theano/NEWS.txt`` to
 ``Theano/doc/NEWS.txt``.
