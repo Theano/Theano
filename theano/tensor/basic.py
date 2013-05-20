@@ -6436,11 +6436,11 @@ class Reshape(Op):
                              (x.shape, shp))
         if not out[0].flags.aligned:
             raise RuntimeError("numpy.reshape returned a not aligned tensor."
-                               " NumPy version 1.6.2, 1.7.0 and 1.7.1 have"
+                               " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
                                " this problem for some input shape/new shape"
-                               " combination. Use another NumPy version."
-                               " Input shape: %s, input stride %s,"
-                               " new_shape %s new_strides %s." % (
+                               " combinations. Use another NumPy version."
+                               " Input shape: %s, input stride: %s,"
+                               " new_shape: %s, new_strides: %s." % (
                                    x.shape, x.strides, shp, out[0].strides))
 
     def connection_pattern(self, node):
@@ -6545,9 +6545,9 @@ class Reshape(Op):
                 PyErr_Format(
                     PyExc_RuntimeError,
                     "PyArray_Newshape returned an object that isn't aligned!"
-                    " NumPy version 1.6.2, 1.7.0 and 1.7.1 have"
+                    " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
                     " this problem for some input shape/new shape"
-                    " combination. Use another NumPy version.");
+                    " combinations. Use another NumPy version.");
                 %(fail)s;
             }
             """ % locals()
