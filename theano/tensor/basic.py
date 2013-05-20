@@ -622,7 +622,7 @@ def get_scalar_constant_value(v):
                 isinstance(v.owner.op.idx_list[0], (int, long,
                                                     numpy.integer))):
 
-                # Python 2.4 don't support indexing with numpy.integer
+                # Python 2.4 does not support indexing with numpy.integer
                 # So we cast it.
                 idx = int(v.owner.op.idx_list[0])
                 ret = v.owner.inputs[0].owner.inputs[idx]
