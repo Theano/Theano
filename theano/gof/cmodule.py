@@ -2060,7 +2060,8 @@ class GCC_compiler(Compiler):
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, shared=True,
-                    header=False):
+                    header=False, code_filename='mod.cpp',
+                    out_filename=None):
         """
 
         Parameters
@@ -2101,6 +2102,11 @@ class GCC_compiler(Compiler):
         :param header: bool, if True, create an header file with the function
             interface to call it and the command line used to compile the file.
 
+        :param code_filename: The filename to store src_code for the
+            compilation
+
+        :param out_filename: The filename of the output of g++ when not doing
+            a shared module
 
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
@@ -2134,7 +2140,7 @@ class GCC_compiler(Compiler):
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
 
-        cppfilename = os.path.join(location, 'mod.cpp')
+        cppfilename = os.path.join(location, code_filename)
         cppfile = open(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
@@ -2146,17 +2152,19 @@ class GCC_compiler(Compiler):
         cppfile.close()
 
         if shared:
-            lib_filename = os.path.join(location, '%s.%s' %
+            assert out_filename is None
+            out_filename = os.path.join(location, '%s.%s' %
                                         (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
-        
+
         if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
         cmd.extend('-I%s' % idir for idir in include_dirs)
+
         if hide_symbols and sys.platform != 'win32':
             # This has been available since gcc 4.0 so we suppose it
             # is always available. We pass it here since it
@@ -2214,8 +2222,8 @@ class GCC_compiler(Compiler):
         if py_module:
             # touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
-            assert os.path.isfile(lib_filename)
-            return dlimport(lib_filename)
+            assert os.path.isfile(out_filename)
+            return dlimport(out_filename)
 
 
 def icc_module_compile_str(*args):
