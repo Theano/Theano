@@ -20,7 +20,7 @@ for inps, out in [([a], theano.tensor.exp(a)),  # 1 input/1 outputs
 
 #theano.shared_lib(f, name='libtheano_exp')
 #f(np.arange(10))
-    x = os.system(filename[:-3])
+    x = os.system(os.path.join(os.path.split(filename)[0], 'exec'))
     if x != 0:
         exit(x)
 
