@@ -170,6 +170,7 @@ class DynamicModule(object):
         self.hash_placeholder = '<<<<HASH_PLACEHOLDER>>>>'
 
         self.support_code = []
+        self.header_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>", '"theano_mod_helper.h"']
         self.init_blocks = []
@@ -220,9 +221,26 @@ static struct PyModuleDef moduledef = {{
         if code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
+    def add_header_code(self, code):
+        """
+        This add code that will be inserted in the header file
+        generated when self.gen_header() is called.
+        """
+        assert not self.finalized
+        if code not in self.header_code:  # TODO: KLUDGE
+            self.header_code.append(code)
+
     def add_function(self, fn):
         assert not self.finalized
         self.functions.append(fn)
+
+    def gen_header(self, filename):
+        assert self.finalized
+        f = open(filename, 'a')
+        for code in self.header_code:
+            code = re.sub(self.hash_placeholder, self.code_hash, code)
+            print >>f, code
+        f.close()
 
     def code(self):
         sio = StringIO()
