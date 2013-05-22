@@ -2057,10 +2057,50 @@ class GCC_compiler(Compiler):
                                    theano.config.cxx)
 
     @staticmethod
+    def compile_command(module_name, location=None,
+                        include_dirs=None, lib_dirs=None, libs=None,
+                        preargs=None, py_module=True, shared=True,
+                        code_filename='mod.cpp',
+                        out_filename=None):
+        """
+        The parameters are the same as compile_str
+
+        :return: a tuple(cpp_filename, out_filename, command line)
+        """
+        cpp_filename = os.path.join(location, code_filename)
+        if shared:
+            assert out_filename is None
+            out_filename = os.path.join(location, '%s.%s' %
+                                        (module_name, get_lib_extension()))
+
+            _logger.debug('Generating shared lib %s', out_filename)
+            cmd = ['g++', get_gcc_shared_library_arg(), '-g']
+        else:
+            assert not py_module
+            if out_filename is None:
+                out_filename = os.path.join(location, module_name)
+            else:
+                module_name = out_filename
+                out_filename = os.path.join(location, out_filename)
+            _logger.debug('Generating exec %s', out_filename)
+            cmd = ['g++', '-g']
+
+        if config.cmodule.remove_gxx_opt:
+            cmd.extend(p for p in preargs if not p.startswith('-O'))
+        else:
+            cmd.extend(preargs)
+        cmd.extend('-I%s' % idir for idir in include_dirs)
+        cmd.extend(['-o', out_filename])
+        cmd.append(cpp_filename)
+        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
+        cmd.extend(['-l%s' % l for l in libs])
+        return cpp_filename, out_filename, cmd
+
+    @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, shared=True,
-                    header=False, code_filename='mod.cpp',
+                    code_filename='mod.cpp',
                     out_filename=None):
         """
 
@@ -2098,9 +2138,6 @@ class GCC_compiler(Compiler):
         :param shared: bool, if True, generate a shared library,
             otherwise, generate an executable.
             You also need to set py_module=False.
-
-        :param header: bool, if True, create an header file with the function
-            interface to call it and the command line used to compile the file.
 
         :param code_filename: The filename to store src_code for the
             compilation
@@ -2140,10 +2177,20 @@ class GCC_compiler(Compiler):
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
 
-        cppfilename = os.path.join(location, code_filename)
-        cppfile = open(cppfilename, 'w')
+        cpp_filename, out_filename, cmd = GCC_compiler.compile_command(
+            module_name,
+            location,
+            include_dirs,
+            lib_dirs, libs,
+            preargs, py_module,
+            shared,
+            code_filename,
+            out_filename)
 
-        _logger.debug('Writing module C++ code to %s', cppfilename)
+
+        cppfile = open(cpp_filename, 'w')
+
+        _logger.debug('Writing module C++ code to %s', cpp_filename)
 
         cppfile.write(src_code)
         # Avoid gcc warning "no newline at end of file".
@@ -2213,11 +2260,6 @@ class GCC_compiler(Compiler):
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print(compile_stderr)
-
-        if header:
-            filename = os.path.join(location, '%s.h' % module_name)
-            f = open(filename, 'w')
-            print >> f, "//" + " ".join(cmd)
 
         if py_module:
             # touch the __init__ file
