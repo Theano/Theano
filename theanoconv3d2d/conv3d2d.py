@@ -65,10 +65,16 @@ class IncDiagonalSubtensor(Op):
         xview = get_diagonal_subtensor_view(x, i0, i1)
         xview += amt
         output_storage[0][0] = x
+
     def grad(self, inputs, g_outputs):
         x, i0, i1, amt = inputs
         gy = g_outputs[0]
-        return [gy, None, None, diagonal_subtensor(gy, i0, i1)]
+        return [gy, DisconnectedType()(), DisconnectedType()(),
+                diagonal_subtensor(gy, i0, i1)]
+
+    def connection_pattern(self, node):
+        rval = [[True], [False], [False], [True]]
+        return rval
 inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 
 def conv3d(signals, filters,
