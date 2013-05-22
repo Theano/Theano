@@ -1609,6 +1609,46 @@ class CLinker(link.Linker):
         print("  return thunk; }", file=code)
         return code.getvalue()
 
+    def cinit_code(self, n_args):
+        code = StringIO.StringIO()
+        struct_name = self.struct_name
+        param = ','.join('PyObject * arg_%i' % n for n in xrange(n_args)), ');'
+
+        in_out_list = ""
+        in_out_param = ["io%d_list" % idx for idx in range(n_args)]
+        for idx in range(n_args):
+            var = in_out_param[idx]
+            in_out_list += """
+                PyObject* %(var)s = PyList_New(1);
+                Py_INCREF(Py_None);
+                PyList_SetItem(%(var)s, 0, Py_None);
+            """ % locals()
+        in_out_param = ', '.join(in_out_param)
+        print >> code, """
+static %(struct_name)s* cinit() {
+
+    // Define the list for error information.
+    PyObject* err_list = PyList_New(3);
+    PyList_SetItem(err_list, 0, Py_None);
+    PyList_SetItem(err_list, 1, Py_None);
+    PyList_SetItem(err_list, 2, Py_None);
+    Py_INCREF(Py_None);
+    Py_INCREF(Py_None);
+    Py_INCREF(Py_None);
+
+    %(in_out_list)s
+
+    //TODO error handling
+    %(struct_name)s* struct_ptr = new %(struct_name)s();
+
+    //TODO error handling
+    struct_ptr->init(err_list, %(in_out_param)s);
+    return struct_ptr;
+}
+        """ % locals()
+
+        return code.getvalue()
+
 
 class _CThunk(object):
     """
