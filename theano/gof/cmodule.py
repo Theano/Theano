@@ -2041,7 +2041,8 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True, hide_symbols=True):
+                    preargs=None, py_module=True, shared=True,
+                    header=False):
         """
 
         Parameters
@@ -2075,6 +2076,16 @@ class GCC_compiler(Compiler):
             Dynamically-imported python module of the compiled code (unless
             py_module is False, in that case returns None).
 
+        :param shared: bool, if True, generate a shared library,
+            otherwise, generate an executable.
+            You also need to set py_module=False.
+
+        :param header: bool, if True, create an header file with the function
+            interface to call it and the command line used to compile the file.
+
+
+        :returns: dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
         """
         # TODO: Do not do the dlimport in this function
 
@@ -2116,12 +2127,13 @@ class GCC_compiler(Compiler):
             cppfile.write('\n')
         cppfile.close()
 
-        lib_filename = os.path.join(location, '%s.%s' %
-                                    (module_name, get_lib_extension()))
+        if shared:
+            lib_filename = os.path.join(location, '%s.%s' %
+                                        (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
-
+        
         if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
@@ -2175,6 +2187,11 @@ class GCC_compiler(Compiler):
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print(compile_stderr)
+
+        if header:
+            filename = os.path.join(location, '%s.h' % module_name)
+            f = open(filename, 'w')
+            print >> f, "//" + " ".join(cmd)
 
         if py_module:
             # touch the __init__ file

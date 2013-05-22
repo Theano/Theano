@@ -853,8 +853,7 @@ class CLinker(link.Linker):
         # are mapped to the same name.  Duplicates are defined by (a
         # is b), rather than (a==b) since Constant instances can
         # compare equal to equivalent Constant instances.
-        args = []
-        args += ["storage_%s" % symbol[variable] for variable
+        args = ["storage_%s" % symbol[variable] for variable
                  in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
         # <<<<HASH_PLACEHOLDER>>>> will be replaced by a hash of the whole
@@ -1077,7 +1076,9 @@ class CLinker(link.Linker):
         return utils.uniq(ret)
 
     def __compile__(self, input_storage=None, output_storage=None,
-                    storage_map=None, keep_lock=False):
+                    storage_map=None, keep_lock=False,
+                    c_callable=False):
+
         """WRITEME
         Compiles this linker's fgraph.
 
@@ -1117,7 +1118,9 @@ class CLinker(link.Linker):
                                               input_storage,
                                               output_storage,
                                               storage_map,
-                                              keep_lock=keep_lock)
+                                              keep_lock=keep_lock,
+                                              keep_lock=keep_lock,
+                                              c_callable=c_callable)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
@@ -1178,9 +1181,10 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage, filename= self.__compile__(
+
+        cthunk, in_storage, out_storage, error_storage, filename = self.__compile__(
             input_storage, output_storage, storage_map,
-            keep_lock=keep_lock)
+            keep_lock=keep_lock, c_callable=True)
 
         res = _CThunk(cthunk, init_tasks, tasks, error_stor, filename)
         res.nodes = self.node_order
@@ -1469,6 +1473,7 @@ class CLinker(link.Linker):
         except Exception as e:
             e.args += (str(self.fgraph),)
             raise
+
         finally:
             release_lock()
         return module
@@ -1533,7 +1538,7 @@ class CLinker(link.Linker):
         return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
-                       storage_map=None, keep_lock=False):
+                       storage_map=None, keep_lock=False, c_callable=False):
         """WRITEME
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
@@ -1549,9 +1554,10 @@ class CLinker(link.Linker):
             key = self.cmodule_key()
         except KeyError:
             key = None
-        if key is None:
+        # TODO: enable the cache when c_callable is True.
+        if key is None or c_callable:
             # If we can't get a key, then forget the cache mechanism.
-            module = self.compile_cmodule()
+            module = self.compile_cmodule(c_callable=c_callable)
         else:
             module = get_module_cache().module_from_key(
                 key=key, lnk=self, keep_lock=keep_lock)
