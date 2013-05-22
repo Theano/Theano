@@ -1509,7 +1509,7 @@ class CLinker(link.Linker):
                         shared=False, py_module=False,
                         code_filename='exec.cpp',
                         out_filename='exec')
-                    mod_exec.gen_header('exec.h')
+                    mod_exec.gen_header(os.path.join(location, 'exec.h'))
             except Exception, e:
                 e.args += (str(self.fgraph),)
                 raise

@@ -236,7 +236,7 @@ static struct PyModuleDef moduledef = {{
 
     def gen_header(self, filename):
         assert self.finalized
-        f = open(filename, 'a')
+        f = open(filename, 'w')
         for code in self.header_code:
             code = re.sub(self.hash_placeholder, self.code_hash, code)
             print >>f, code
