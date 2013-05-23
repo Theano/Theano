@@ -197,6 +197,19 @@ def default_blas_ldflags():
                 return ' '.join(
                     ['-L%s' % os.path.join(sys.prefix, "lib")] +
                     ['-l%s' % l for l in blas_info['libraries']])
+        #Canopy
+        if "Canopy" in sys.prefix:
+            if sys.platform == "linux2":
+                p = os.path.join(sys.prefix, "..", "..", "..",
+                                 "Canopy", "appdata")
+                assert os.path.exists(p), "Canopy changed where is MKL"
+                p2 = os.listdir(p)
+                assert len(p2) == 1, "Canopy changed where is install MKL"
+                p2 = os.path.join(p, p2[0], "lib")
+                assert os.path.exists(p2), "Canopy changed where is MKL"
+                return ' '.join(
+                    ['-L%s' % p2] +
+                    ['-l%s' % l for l in blas_info['libraries']])
 
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
