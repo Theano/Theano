@@ -3880,6 +3880,57 @@ def test_compute_test_value_nonseq():
         theano.config.compute_test_value = backup
 
 
+def test_compute_test_value_grad():
+    # Test case originally reported by Bitton Tenessi
+    # https://groups.google.com/d/msg/theano-users/fAP3i2CbskQ/3OgBf4yjqiQJ
+    WEIGHT = numpy.array([1, 2, 1, 3, 4, 1, 5, 6, 1, 7, 8, 1],
+                         dtype='float32')
+
+    old_compute_test_val = theano.config.compute_test_value
+    old_exception_verbosity = theano.config.exception_verbosity
+    try:
+        theano.config.compute_test_value = 'raise'
+        theano.config.exception_verbosity = 'high'
+
+        W_flat = tensor.fvector(name='W')
+        W_flat.tag.test_value = WEIGHT
+        W = W_flat.reshape((2, 2, 3))
+
+        outputs_mi = tensor.as_tensor_variable(
+                numpy.asarray(0, dtype='float32'))
+        outputs_mi.tag.test_value = numpy.asarray(0, dtype='float32')
+
+        def loss_mi(mi, sum_mi, W):
+            outputs_ti = tensor.as_tensor_variable(
+                    numpy.asarray(0, dtype='float32'))
+            outputs_ti.tag.test_value = numpy.asarray(0, dtype='float32')
+
+            def loss_ti(ti, sum_ti, mi, W):
+                return W.sum().sum().sum() + sum_ti
+
+            result_ti, _ = theano.scan(
+                    fn=loss_ti,
+                    outputs_info=outputs_ti,
+                    sequences=tensor.arange(W.shape[1], dtype='int32'),
+                    non_sequences=[mi, W],
+                    )
+            lossmi = result_ti[-1]
+            return sum_mi + lossmi
+
+        result_mi, _ = theano.scan(
+                fn=loss_mi,
+                outputs_info=outputs_mi,
+                sequences=tensor.arange(W.shape[0], dtype='int32'),
+                non_sequences=[W],
+                )
+
+        loss = result_mi[-1]
+        grad = tensor.grad(loss, W_flat)
+    finally:
+        theano.config.compute_test_value = old_compute_test_val
+        theano.config.exception_verbosity = old_exception_verbosity
+
+
 def test_constant_folding_n_steps():
     # The following code used to crash at revision 2060b8f, in the constant
     # folding optimization step.
