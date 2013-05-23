@@ -1355,10 +1355,15 @@ class Scan(PureOp):
                             # Note that we do not care about the output of
                             # this compute gradient. We just care to see if
                             # it is None or not. (i.e. disconnected or not)
-                            tmp = compute_gradient(
-                                inner_out,
-                                safe_new(inner_out, dtype='float64'),
-                                ils)
+                            try:
+                                old = theano.config.compute_test_value
+                                theano.config.compute_test_value = 'off'
+                                tmp = compute_gradient(
+                                    inner_out,
+                                    safe_new(inner_out, dtype='float64'),
+                                    ils)
+                            finally:
+                                theano.config.compute_test_value = old
                         else:
                             # It should be undefined not disconnected
                             tmp = ils
