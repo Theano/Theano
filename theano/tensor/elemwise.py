@@ -1079,8 +1079,19 @@ class Elemwise(Op):
             %(undefs)s
         }
         """ % locals()
+        if all([o.ndim <= 1 for o in node.outputs]):
+            if nnested:
+                all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
+            else:
+                all_code = [code]
 
-        loop = cgen.make_reordered_loop(
+            loop = cgen.make_loop(
+                loop_orders=orders + [range(nnested)] * len(real_onames),
+                dtypes=(idtypes + list(real_odtypes)),
+                loop_tasks=all_code,
+                sub=sub)
+        else:
+            loop = cgen.make_reordered_loop(
                 init_loop_orders=orders + [range(nnested)] * len(real_onames),
                 olv_index=olv_index,
                 dtypes=(idtypes + list(real_odtypes)),
@@ -1104,7 +1115,7 @@ class Elemwise(Op):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [6]  # the version corresponding to the c code in this Op
+        version = [7]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
