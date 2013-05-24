@@ -845,10 +845,44 @@ class ScalarOp(Op):
     def c_code_cache_version(self):
         return (4,)
 
+    def c_code_contiguous(self, node, name, inp, out, sub):
+        """This function is called by Elemwise when all inputs and
+        outputs are c_contiguous. This allow to use SIMD version
+        of this op.
+
+        The inputs are the same as c_code EXCEPT that inp and out MUST
+        be the variable name of the ndarray, not the current element.
+
+        """
+        raise theano.gof.utils.MethodNotDefined()
+
 
 class UnaryScalarOp(ScalarOp):
     nin = 1
+    amd_float32 = None
+    amd_float64 = None
 
+    def c_code_contiguous(self, node, name, (x, ), (z, ), sub):
+        if (not theano.config.lib.amdlibm or
+            # We compare the dtype AND the broadcast flag
+            # as this function do not broadcast
+            node.inputs[0].type != node.outputs[0].type):
+            raise theano.gof.utils.MethodNotDefined()
+
+        if node.inputs[0].type == float32 and self.amd_float32 is not None:
+            dtype = 'float'
+            fct = self.amd_float32
+        elif node.inputs[0].type == float64 and self.amd_float64 is not None:
+            dtype = 'double'
+            fct = self.amd_float64
+        else:
+            raise theano.gof.utils.MethodNotDefined()
+        return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct)s(n, x, z);
+        """ % locals()
 
 class BinaryScalarOp(ScalarOp):
     # One may define in subclasses the following fields:
@@ -2100,6 +2134,9 @@ log1p = Log1p(upgrade_to_float, name='log1p')
 
 
 class Exp(UnaryScalarOp):
+    amd_float32 = "amd_vrsa_expf"
+    amd_float64 = "amd_vrda_exp"
+
     def impl(self, x):
         return numpy.exp(x)
 
