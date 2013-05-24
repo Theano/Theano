@@ -850,8 +850,11 @@ class ScalarOp(Op):
         outputs are c_contiguous. This allow to use SIMD version
         of this op.
 
-        The inputs are the same as c_code EXCEPT that inp and out MUST
-        be the variable name of the ndarray, not the current element.
+        The inputs are the same as c_code except:
+
+            - inp and out must be the variable name of the ndarray
+            - node must be the elemwise node. This is needed to know
+              the inputs/outputs type.
 
         """
         raise theano.gof.utils.MethodNotDefined()
@@ -869,10 +872,11 @@ class UnaryScalarOp(ScalarOp):
             node.inputs[0].type != node.outputs[0].type):
             raise theano.gof.utils.MethodNotDefined()
 
-        if node.inputs[0].type == float32 and self.amd_float32 is not None:
+        dtype = node.inputs[0].dtype
+        if dtype == 'float32' and self.amd_float32 is not None:
             dtype = 'float'
             fct = self.amd_float32
-        elif node.inputs[0].type == float64 and self.amd_float64 is not None:
+        elif dtype == 'float64' and self.amd_float64 is not None:
             dtype = 'double'
             fct = self.amd_float64
         else:
@@ -1650,29 +1654,42 @@ class Pow(BinaryScalarOp):
         return (first_part, second_part)
 
     def c_code_contiguous(self, node, name, (x, y), (z, ), sub):
-        if (not theano.config.lib.amdlibm or
-            # We compare the dtype AND the broadcast flag
-            # as this function do not broadcast
-            node.inputs[0].type != node.outputs[0].type or
-            node.inputs[1].type != node.outputs[0].type):
+        if not theano.config.lib.amdlibm:
             raise theano.gof.utils.MethodNotDefined()
 
-        if node.inputs[0].type == float32 and self.amd_float32 is not None:
+        # We compare the dtype AND the broadcast flag
+        # as this function do not broadcast
+        if (node.inputs[0].type == node.outputs[0].type and
+            node.inputs[1].type == node.outputs[0].type and
+            # amdlibm 3.0 do not have a float64 version of this SIMD function
+            node.inputs[0].dtype == 'float32'):
             dtype = 'float'
             fct = "amd_vrsa_powf"
-        # amdlibm 3.0 do not have a float64 version of this SIMD function
-        #elif node.inputs[0].type == float64 and self.amd_float64 is not None:
-        #    dtype = 'double'
-        #    fct = self.amd_float64
-        else:
-            raise theano.gof.utils.MethodNotDefined()
-        return """
+            return """
         npy_intp n = PyArray_SIZE(%(z)s);
         %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
         %(dtype)s * y = (%(dtype)s*) PyArray_DATA(%(y)s);
         %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
         %(fct)s(n, x, y, z);
         """ % locals()
+        # We compare the dtype and check we broadcast a scalar
+        elif (node.inputs[0].type == node.outputs[0].type and
+            node.inputs[1].dtype == node.outputs[0].dtype and
+            all(node.inputs[1].broadcastable) and
+            # amdlibm 3.0 do not have a float64 version of this SIMD function
+            node.inputs[0].dtype == 'float32'):
+            dtype = 'float'
+            fct = "amd_vrsa_powxf"
+            return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * y = (%(dtype)s*) PyArray_DATA(%(y)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct)s(n, x, *y, z);
+        """ % locals()
+
+        raise theano.gof.utils.MethodNotDefined()
+
 
 pow = Pow(upcast_out, name='pow')
 
