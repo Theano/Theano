@@ -2,6 +2,7 @@
 TODO: implement Images2Neibs.infer_shape() methods
 
 """
+import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gradient import grad_not_implemented
@@ -111,6 +112,9 @@ class Images2Neibs(Op):
     def perform(self, node, inp, out_):
         ten4, neib_shape, neib_step = inp
         z, = out_
+        # GpuImages2Neibs should not run this perform in DebugMode
+        if type(self) != Images2Neibs:
+            raise theano.gof.utils.MethodNotDefined()
 
         def CEIL_INTDIV(a, b):
             if a % b:
