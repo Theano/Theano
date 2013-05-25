@@ -1339,11 +1339,15 @@ __global__ void k_vector_add_fast(int numRowsX,
                                   long *d_indices_arr,
                                   int num)
 {
-     int i = (blockIdx.x);
-     int j = (threadIdx.x);
-     int x_row = d_indices_arr[i];
-     int y_row = i;
-     atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+     for (int i = (blockIdx.x); i < num; i += gridDim.x)
+     {
+          for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
+          {
+              int x_row = d_indices_arr[i];
+              int y_row = i;
+              atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+          }
+     }
      return;
 }
 
@@ -1804,18 +1808,31 @@ void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, Py
      const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
      const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
      const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
+
      unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
-     unsigned int num_threads_per_block = shapeY[1];
-     unsigned int num_blocks = size;
+     unsigned int numcolsX = shapeX[1];
+     unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+     unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
+
      dim3 n_blocks(num_blocks);
      dim3 n_threads(num_threads_per_block);
      long *d_indices_arr = NULL;
+
+     long *cpu_indices_arr = (long*)malloc(sizeof(long) * PyArray_SIZE(indices_arr));
+     assert(cpu_indices_arr);
+
      d_indices_arr = (long *)device_malloc(sizeof(long) * PyArray_SIZE(indices_arr));
      assert(d_indices_arr);
 
+     for (int j = 0; j < size; j++)
+     {
+	  long *el = (long*)PyArray_GETPTR1(indices_arr, j);
+          cpu_indices_arr[j] = *el;
+     }
+
      cudaError_t err = cudaMemcpy(d_indices_arr,
-                                  PyArray_DATA(indices_arr) ,
-                                  sizeof(long) * PyArray_SIZE(indices_arr),
+                                  cpu_indices_arr,
+                                  sizeof(long) * size,
                                   cudaMemcpyHostToDevice);
 
      k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
