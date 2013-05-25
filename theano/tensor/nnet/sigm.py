@@ -23,6 +23,9 @@ from theano.tensor import elemwise, opt, NotScalarConstantError
 #
 
 class ScalarSigmoid(scalar.UnaryScalarOp):
+    """
+    This is just speed opt. Not for stability.
+    """
     @staticmethod
     def st_impl(x):
         if x < -30.0:
@@ -64,6 +67,44 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
             return (2,) + v
         else:
             return v
+
+    # This fct is disabled as it is slower then the normal code!
+    def c_code_contiguous_disabled(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if (not theano.config.lib.amdlibm or
+            node.inputs[0].dtype != node.outputs[0].dtype):
+            raise theano.gof.utils.MethodNotDefined()
+        dtype = node.inputs[0].dtype
+        if dtype == 'float32' and self.amd_float32 is not None:
+            dtype = 'float'
+            fct = "amd_vrsa_expf"
+        elif dtype == 'float64' and self.amd_float64 is not None:
+            dtype = 'double'
+            fct = "amd_vrda_exp"
+        else:
+            raise theano.gof.utils.MethodNotDefined()
+        return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        // We block to keep the data in l1
+        // normal l1 size = 32k: 32k/2(input + output)/8(nb bytes of double)=2k
+        // We stay bellow the 2k limit to let space for
+        // This is faster then the not blocking version
+        for(int i=0;i<n;i+=2048){
+            npy_intp nb = (n-i<2048)?n-i:2048;
+            for(int j=0;j<nb;j++){
+                z[i+j] = -x[i+j];
+            }
+            %(fct)s(nb, z+i, z+i);
+            for(int j=0;j<nb;j++){
+                z[i+j] = 1.0 /(1.0+z[i+j]);
+            }
+        }
+        """ % locals()
+        raise theano.gof.utils.MethodNotDefined()
+
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
