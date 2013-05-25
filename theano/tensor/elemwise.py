@@ -1146,9 +1146,9 @@ class Elemwise(Op):
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1561,9 +1561,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
