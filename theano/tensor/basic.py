@@ -1529,7 +1529,18 @@ class _tensor_py_operators:
         if self._is_nonzero:
             return True
         else:
-            raise TypeError("Variable does not support boolean operations.")
+            raise TypeError(
+                "Variable does not support boolean operations. This"
+                "can happen if you do logical operator (<, <=, >, <=,"
+                "==, !=) between numpy.ndarray and theano tensor"
+                "variable. Due NumPy implementation before NumPy 1.8,"
+                "we can't make the python syntax work when the ndarray"
+                "is on the left, and this end with this error. To work"
+                "around that, just call"
+                "theano.tensor.{lt,le,eq,ne,gt,ge}(ndarray, tensor) or"
+                "use the python syntax with the theano tensor on the"
+                "left. Or update to NumPy 1.8 or above."
+            )
 
     # BITWISE
     def __invert__(self):

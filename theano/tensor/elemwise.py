@@ -1079,13 +1079,49 @@ class Elemwise(Op):
             %(undefs)s
         }
         """ % locals()
+        if all([o.ndim <= 1 for o in node.outputs]):
+            if nnested:
+                all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
+            else:
+                all_code = [code]
 
-        loop = cgen.make_reordered_loop(
+            loop = cgen.make_loop(
+                loop_orders=orders + [range(nnested)] * len(real_onames),
+                dtypes=(idtypes + list(real_odtypes)),
+                loop_tasks=all_code,
+                sub=sub)
+        else:
+            loop = cgen.make_reordered_loop(
                 init_loop_orders=orders + [range(nnested)] * len(real_onames),
                 olv_index=olv_index,
                 dtypes=(idtypes + list(real_odtypes)),
                 inner_task=code,
                 sub=sub)
+
+        # If all inputs and outputs are contiguous
+        # and the scalar op define optimized code for that case
+        # use it!
+        if all([o.ndim >= 1 for o in node.outputs]):
+            try:
+                contig = self.scalar_op.c_code_contiguous(
+                    node,
+                    nodename + '_scalar_contig_',
+                    _inames,
+                    onames,
+                    sub)
+                # PyArray_ISONESEGMENT(arr)
+                #   return true if arr is fortran or c contiguous.
+                cond = ' && '.join(["PyArray_ISONESEGMENT(%s)" % arr
+                                    for arr in _inames + onames])
+                loop = """
+            if(%(cond)s){
+                %(contig)s
+            }else{
+                %(loop)s
+            }
+            """ % locals()
+            except theano.gof.utils.MethodNotDefined:
+                pass
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):
@@ -1104,15 +1140,15 @@ class Elemwise(Op):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [6]  # the version corresponding to the c code in this Op
+        version = [8]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1525,9 +1561,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         scalar_node = Apply(self.scalar_op,
                 [Scalar(dtype=input.type.dtype)() for input in node.inputs],
                 [Scalar(dtype=output.type.dtype)() for output in node.outputs])
-        version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
+        version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:

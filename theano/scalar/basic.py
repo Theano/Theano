@@ -845,10 +845,48 @@ class ScalarOp(Op):
     def c_code_cache_version(self):
         return (4,)
 
+    def c_code_contiguous(self, node, name, inp, out, sub):
+        """This function is called by Elemwise when all inputs and
+        outputs are c_contiguous. This allow to use SIMD version
+        of this op.
+
+        The inputs are the same as c_code except:
+
+            - inp and out must be the variable name of the ndarray
+            - node must be the elemwise node. This is needed to know
+              the inputs/outputs type.
+
+        """
+        raise theano.gof.utils.MethodNotDefined()
+
 
 class UnaryScalarOp(ScalarOp):
     nin = 1
+    amd_float32 = None
+    amd_float64 = None
 
+    def c_code_contiguous(self, node, name, (x, ), (z, ), sub):
+        if (not theano.config.lib.amdlibm or
+            # We compare the dtype AND the broadcast flag
+            # as this function do not broadcast
+            node.inputs[0].type != node.outputs[0].type):
+            raise theano.gof.utils.MethodNotDefined()
+
+        dtype = node.inputs[0].dtype
+        if dtype == 'float32' and self.amd_float32 is not None:
+            dtype = 'float'
+            fct = self.amd_float32
+        elif dtype == 'float64' and self.amd_float64 is not None:
+            dtype = 'double'
+            fct = self.amd_float64
+        else:
+            raise theano.gof.utils.MethodNotDefined()
+        return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct)s(n, x, z);
+        """ % locals()
 
 class BinaryScalarOp(ScalarOp):
     # One may define in subclasses the following fields:
@@ -1615,6 +1653,44 @@ class Pow(BinaryScalarOp):
 
         return (first_part, second_part)
 
+    def c_code_contiguous(self, node, name, (x, y), (z, ), sub):
+        if not theano.config.lib.amdlibm:
+            raise theano.gof.utils.MethodNotDefined()
+
+        # We compare the dtype AND the broadcast flag
+        # as this function do not broadcast
+        if (node.inputs[0].type == node.outputs[0].type and
+            node.inputs[1].type == node.outputs[0].type and
+            # amdlibm 3.0 do not have a float64 version of this SIMD function
+            node.inputs[0].dtype == 'float32'):
+            dtype = 'float'
+            fct = "amd_vrsa_powf"
+            return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * y = (%(dtype)s*) PyArray_DATA(%(y)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct)s(n, x, y, z);
+        """ % locals()
+        # We compare the dtype and check we broadcast a scalar
+        elif (node.inputs[0].type == node.outputs[0].type and
+            node.inputs[1].dtype == node.outputs[0].dtype and
+            all(node.inputs[1].broadcastable) and
+            # amdlibm 3.0 do not have a float64 version of this SIMD function
+            node.inputs[0].dtype == 'float32'):
+            dtype = 'float'
+            fct = "amd_vrsa_powxf"
+            return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * y = (%(dtype)s*) PyArray_DATA(%(y)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct)s(n, x, *y, z);
+        """ % locals()
+
+        raise theano.gof.utils.MethodNotDefined()
+
+
 pow = Pow(upcast_out, name='pow')
 
 
@@ -2019,6 +2095,9 @@ inv = Inv(upgrade_to_float, name='inv')
 
 class Log(UnaryScalarOp):
     """ log base e """
+    amd_float32 = "amd_vrsa_logf"
+    amd_float64 = "amd_vrda_log"
+
     def impl(self, x):
         return numpy.log(x)
 
@@ -2042,6 +2121,9 @@ log = Log(upgrade_to_float, name='log')
 
 class Log2(UnaryScalarOp):
     """ log base 2 """
+    amd_float32 = "amd_vrsa_log2f"
+    amd_float64 = "amd_vrda_log2"
+
     def impl(self, x):
         return numpy.log2(x)
 
@@ -2062,6 +2144,9 @@ log2 = Log2(upgrade_to_float, name='log2')
 
 class Log10(UnaryScalarOp):
     """ log base 10 """
+    amd_float32 = "amd_vrsa_log10f"
+    amd_float64 = "amd_vrda_log10"
+
     def impl(self, x):
         return numpy.log10(x)
 
@@ -2100,6 +2185,9 @@ log1p = Log1p(upgrade_to_float, name='log1p')
 
 
 class Exp(UnaryScalarOp):
+    amd_float32 = "amd_vrsa_expf"
+    amd_float64 = "amd_vrda_exp"
+
     def impl(self, x):
         return numpy.exp(x)
 
@@ -2231,6 +2319,9 @@ rad2deg = Rad2Deg(upgrade_to_float, name='rad2deg')
 
 
 class Cos(UnaryScalarOp):
+    amd_float32 = "amd_vrsa_cosf"
+    amd_float64 = "amd_vrda_cos"
+
     def impl(self, x):
         return numpy.cos(x)
 
@@ -2269,6 +2360,9 @@ arccos = ArcCos(upgrade_to_float, name='arccos')
 
 
 class Sin(UnaryScalarOp):
+    amd_float32 = "amd_vrsa_sinf"
+    amd_float64 = "amd_vrda_sin"
+
     def impl(self, x):
         return numpy.sin(x)
 
