@@ -10,9 +10,8 @@ import numpy
 
 import theano
 from theano import config, gof, printing, scalar
-from theano.compile import optdb
 from theano.configparser import AddConfigVar, BoolParam
-from theano.printing import pprint, debugprint
+from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
 
@@ -50,11 +49,19 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
+        # We add boundary checks prevent exp from generating inf or
+        # 0. The reset of the logic always generate 0 or 1 in those
+        # cases. This is a speed optimization.
+        # The constants were obtained by looking at the output of python commands like:
+        """
+import numpy, theano
+dt='float32'  # or float64
+for i in xrange(750):
+    print i, repr(theano._asarray(1.0, dtype=dt) /
+                              (theano._asarray(1.0, dtype=dt) +
+                              numpy.exp(-theano._asarray([i,-i], dtype=dt))))
+        """
         if node.inputs[0].type == scalar.float32:
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( theano._asarray(1.0, dtype=dt) / (theano._asarray(1.0, dtype=dt) + numpy.exp(-theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:
             return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
@@ -115,6 +122,105 @@ sigmoid_inplace = elemwise.Elemwise(
         )
 
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
+
+
+class UltraFastScalarSigmoid(scalar.UnaryScalarOp):
+    """
+    This is just speed opt. Not for stability.
+    """
+    @staticmethod
+    def st_impl(x):
+        x = 0.5 * x
+        # The if is a tanh approximate.
+        if x >= 0:
+            if x < 1.7:
+                z = (1.5 * x / (1 + x))
+            elif x < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (x - 1.7))
+            else:
+                z = 0.99505475368673
+        else:
+            xx = -x
+            if xx < 1.7:
+                z = (1.5 * xx / (1 + xx))
+            elif xx < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (xx - 1.7))
+            else:
+                z = 0.99505475368673
+            z = -z
+
+        return 0.5 * (z + 1.)
+
+    def impl(self, x):
+        return UltraFastScalarSigmoid.st_impl(x)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        dtype = node.outputs[0].type.dtype_specs()[1]
+
+        return """
+        %(dtype)s x = 0.5 * %(x)s;
+   // The if is a tanh approximate.
+   if(x>=0) {
+        %(z)s = (x<1.7 ? (1.5*x/(1+x)) :
+                         (x<3 ? (0.935409070603099 + 0.0458812946797165*(x-1.7)):
+                         0.99505475368673));
+    } else {
+        %(dtype)s xx = -x;
+        %(z)s = -(xx<1.7 ? (1.5*xx/(1+xx)) :
+                           (xx<3 ? (0.935409070603099 + 0.0458812946797165*(xx-1.7)):
+                                   0.99505475368673));
+    }
+
+        //%(z)s = 0.5*(ultrafasttanh(0.5*x)+1.);
+        %(z)s = 0.5*(%(z)s+1.);
+        """ % locals()
+
+ultra_fast_scalar_sigmoid = UltraFastScalarSigmoid(
+    scalar.upgrade_to_float, name='ultra_fast_scalar_sigmoid')
+ultra_fast_sigmoid = elemwise.Elemwise(ultra_fast_scalar_sigmoid,
+                                       name='ultra_fast_sigmoid')
+
+ultra_fast_sigmoid_inplace = elemwise.Elemwise(
+    UltraFastScalarSigmoid(scalar.transfer_type(0)),
+    inplace_pattern={0: 0},
+    name='ultra_fast_sigmoid_inplace',
+)
+
+pprint.assign(ultra_fast_sigmoid,
+              printing.FunctionPrinter('ultra_fast_sigmoid'))
+
+
+#@opt.register_uncanonicalize
+@gof.local_optimizer([sigmoid])
+def local_ultra_fast_sigmoid(node):
+    """
+    When enabled, change all sigmoid to ultra_fast_sigmoid.
+
+    To example do mode.including('local_ultra_fast_sigmoid')
+    or use the Theano flag optimizer_including=local_ultra_fast_sigmoid
+
+    This speed up the sigmoid op by using an approximation.
+
+    This is done after the stabilization and specialize phase
+    to don't interact with them.
+
+    """
+    if (isinstance(node.op, tensor.Elemwise) and
+            node.op.scalar_op == scalar_sigmoid):
+        out = ultra_fast_sigmoid(node.inputs[0])
+        out2 = ultra_fast_sigmoid(node.inputs[0])
+
+        def values_eq_approx_remove_low_prec(a, b):
+            # atol is found by trial/error.
+            # Other test could fail without good reason.
+            return tensor.TensorType.values_eq_approx(a, b, atol=0.02)
+        # Let DebugMode know that there this opt approx the values.
+        out.values_eq_approx = values_eq_approx_remove_low_prec
+        return [out]
+theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
+                                                local_ultra_fast_sigmoid)
 
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
