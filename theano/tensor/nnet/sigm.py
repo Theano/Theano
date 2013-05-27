@@ -50,11 +50,19 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
+        # We add boundary checks prevent exp from generating inf or
+        # 0. The reset of the logic always generate 0 or 1 in those
+        # cases. This is a speed optimization.
+        # The constants were obtained by looking at the output of python commands like:
+        """
+import numpy, theano
+dt='float32'  # or float64
+for i in xrange(750):
+    print i, repr(theano._asarray(1.0, dtype=dt) /
+                              (theano._asarray(1.0, dtype=dt) +
+                              numpy.exp(-theano._asarray([i,-i], dtype=dt))))
+        """
         if node.inputs[0].type == scalar.float32:
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( theano._asarray(1.0, dtype=dt) / (theano._asarray(1.0, dtype=dt) + numpy.exp(-theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:
             return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
