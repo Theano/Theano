@@ -14,7 +14,8 @@
    Returns the standard sigmoid nonlinearity applied to x
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
-    :Returns: element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`. 
+    :Returns: element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
+    :note: see :func:`ultra_fast_sigmoid` for a faster version
 
 Example:
 
@@ -25,6 +26,18 @@ Example:
     y = T.nnet.sigmoid(T.dot(W,x) + b)
 
 .. note:: The underlying code will return an exact 0 or 1 if an element of x is too small or too big.
+
+.. function:: ultra_fast_sigmoid(x)
+
+   Returns the standard sigmoid nonlinearity applied to x
+    :Parameters: *x* - symbolic Tensor (or compatible)
+    :Return type: same as x
+    :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
+    :note: To automatically change all sigmoid op to this version, use
+      the Theano optimization ``local_ultra_fast_sigmoid``. This can be done
+      with the Theano flag ``optimizer_including=local_ultra_fast_sigmoid``.
+      This optimization is done late, so it shouldn't affect
+      stabilization optimization.
 
 .. function:: softplus(x)
 

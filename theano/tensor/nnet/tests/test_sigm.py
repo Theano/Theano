@@ -4,13 +4,19 @@ from itertools import imap
 import numpy
 
 import theano.tensor.inplace
+from theano.tensor import basic as tensor
 from theano import tensor as T
 from theano import config
 from theano.tests import unittest_tools as utt
-from theano.tensor.nnet import sigmoid, sigmoid_inplace, softplus, tensor
+from theano.tensor.nnet import (sigmoid, sigmoid_inplace,
+                                softplus, ultra_fast_sigmoid)
 from theano.tensor.nnet.sigm import (
-        compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
-        register_local_1msigmoid, simplify_mul)
+    compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
+    register_local_1msigmoid, simplify_mul,
+)
+from theano.tensor.tests.test_basic import (makeBroadcastTester, rand,
+                                            check_floatX,
+                                            _good_broadcast_unary_normal_no_complex)
 
 
 class T_sigmoid(unittest.TestCase):
@@ -19,6 +25,36 @@ class T_sigmoid(unittest.TestCase):
 
     def test_elemwise(self):
         utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
+
+
+SigmoidTester = makeBroadcastTester(
+    op=sigmoid,
+    expected=lambda inputs: check_floatX(
+        inputs, 1/(1+numpy.exp(-inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='SigmoidTester',
+)
+
+UltraFastSigmoidTester = makeBroadcastTester(
+    op=ultra_fast_sigmoid,
+    expected=lambda inputs: check_floatX(
+        inputs, 1/(1+numpy.exp(-inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='UltraFastSigmoidTester',
+# This is an approx of the sigmoid. That is why we raise eps
+    eps=5e-2)
+
+
+SoftplusTester = makeBroadcastTester(
+    op=softplus,
+    expected=lambda inputs: check_floatX(
+        inputs, numpy.log1p(numpy.exp(inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='SoftplusTester',
+)
 
 
 class T_softplus(unittest.TestCase):
@@ -252,6 +288,19 @@ class T_sigmoid_opts(unittest.TestCase):
             f = theano.function([x, lr], ux, mode=mode)
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
+
+    def test_local_ultra_fast_sigmoid(self):
+        x = tensor.matrix('x')
+        s = sigmoid(x)
+
+        mode = self.get_mode('local_ultra_fast_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        assert f.maker.fgraph.toposort()[0].op == sigmoid
+
+        mode = self.get_mode().including('local_ultra_fast_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        assert f.maker.fgraph.toposort()[0].op == ultra_fast_sigmoid
+        ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
 
 class T_softplus_opts(unittest.TestCase):
