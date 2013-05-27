@@ -9,8 +9,13 @@ from theano import config
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import sigmoid, sigmoid_inplace, softplus, tensor
 from theano.tensor.nnet.sigm import (
-        compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
-        register_local_1msigmoid, simplify_mul)
+    compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
+    register_local_1msigmoid, simplify_mul,
+    ultra_fast_sigmoid,
+)
+from theano.tensor.tests.test_basic import (makeBroadcastTester, rand,
+                                            check_floatX,
+                                            _good_broadcast_unary_normal_no_complex)
 
 
 class T_sigmoid(unittest.TestCase):
@@ -19,6 +24,18 @@ class T_sigmoid(unittest.TestCase):
 
     def test_elemwise(self):
         utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
+
+
+UltraFastSigmoidTester = makeBroadcastTester(
+    op=ultra_fast_sigmoid,
+    expected=lambda inputs: check_floatX(
+        inputs, 1/(1+numpy.exp(-inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='UltraFastSigmoidTester',
+    #test_name=False,
+  # This is an approx of the sigmoid. That is why we raise eps
+    eps=5e-2)
 
 
 class T_softplus(unittest.TestCase):

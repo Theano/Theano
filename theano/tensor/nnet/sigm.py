@@ -124,6 +124,74 @@ sigmoid_inplace = elemwise.Elemwise(
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
 
 
+class UltraFastScalarSigmoid(scalar.UnaryScalarOp):
+    """
+    This is just speed opt. Not for stability.
+    """
+    @staticmethod
+    def st_impl(x):
+        x = 0.5 * x
+        # The if is a tanh approximate.
+        if x >= 0:
+            if x < 1.7:
+                z = (1.5 * x / (1 + x))
+            elif x < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (x - 1.7))
+            else:
+                z = 0.99505475368673
+        else:
+            xx = -x
+            if xx < 1.7:
+                z = (1.5 * xx / (1 + xx))
+            elif xx < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (xx - 1.7))
+            else:
+                z = 0.99505475368673
+            z = -z
+
+        return 0.5 * (z + 1.)
+
+    def impl(self, x):
+        return UltraFastScalarSigmoid.st_impl(x)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        dtype = node.outputs[0].type.dtype_specs()[1]
+
+        return """
+        %(dtype)s x = 0.5 * %(x)s;
+   // The if is a tanh approximate.
+   if(x>=0) {
+        %(z)s = (x<1.7 ? (1.5*x/(1+x)) :
+                         (x<3 ? (0.935409070603099 + 0.0458812946797165*(x-1.7)):
+                         0.99505475368673));
+    } else {
+        %(dtype)s xx = -x;
+        %(z)s = -(xx<1.7 ? (1.5*xx/(1+xx)) :
+                           (xx<3 ? (0.935409070603099 + 0.0458812946797165*(xx-1.7)):
+                                   0.99505475368673));
+    }
+
+        //%(z)s = 0.5*(ultrafasttanh(0.5*x)+1.);
+        %(z)s = 0.5*(%(z)s+1.);
+        """ % locals()
+
+ultra_fast_scalar_sigmoid = UltraFastScalarSigmoid(
+    scalar.upgrade_to_float, name='ultra_fast_scalar_sigmoid')
+ultra_fast_sigmoid = elemwise.Elemwise(ultra_fast_scalar_sigmoid,
+                                       name='ultra_fast_sigmoid')
+
+ultra_fast_sigmoid_inplace = elemwise.Elemwise(
+    UltraFastScalarSigmoid(scalar.transfer_type(0)),
+    inplace_pattern={0: 0},
+    name='ultra_fast_sigmoid_inplace',
+)
+
+pprint.assign(ultra_fast_sigmoid,
+              printing.FunctionPrinter('ultra_fast_sigmoid'))
+
+
 class ScalarSoftplus(scalar.UnaryScalarOp):
     @staticmethod
     def static_impl(x):
