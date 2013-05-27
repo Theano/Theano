@@ -15,59 +15,92 @@
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: see :func:`ultra_fast_sigmoid` for a faster version
+    :note: see :func:`ultra_fast_sigmoid` or :func:`hard_sigmoid` for faster version.
+        Speed comparison for 100M float64 element on a Core2 Duo @ 3.16 GHz.
 
-Example:
+          - hard_sigmoid: 1.1s
+          - ultra_fast_sigmoid: 1.4s
+          - sigmoid (with amdlibm): 2.3s
+          - sigmoid (without amdlibm): 3.7s
 
-.. code-block:: python
+        Precision: sigmoid(without or without amdlibm) > ultra_fast_sigmoid > hard_sigmoid.
 
-    x,y,b = T.dvectors('x','y','b')
-    W = T.dmatrix('W')
-    y = T.nnet.sigmoid(T.dot(W,x) + b)
+   .. image:: sigmoid_prec.png
 
-.. note:: The underlying code will return an exact 0 or 1 if an element of x is too small or too big.
+   Example:
+
+   .. code-block:: python
+
+       x,y,b = T.dvectors('x','y','b')
+       W = T.dmatrix('W')
+       y = T.nnet.sigmoid(T.dot(W,x) + b)
+
+   .. note:: The underlying code will return an exact 0 or 1 if an
+      element of x is too small or too big.
 
 .. function:: ultra_fast_sigmoid(x)
 
-   Returns the standard sigmoid nonlinearity applied to x
+   Returns the *approximated* standard :func:`sigmoid` nonlinearity applied to x.
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: To automatically change all sigmoid op to this version, use
+    :note: To automatically change all :func:`sigmoid` op to this version, use
       the Theano optimization ``local_ultra_fast_sigmoid``. This can be done
       with the Theano flag ``optimizer_including=local_ultra_fast_sigmoid``.
       This optimization is done late, so it shouldn't affect
       stabilization optimization.
+
+   .. note:: The underlying code will return 0.00247262315663 as the
+       minimum value and 0.997527376843 as the maximum value. So it
+       never return 0 or 1.
+
+
+
+
+.. function:: hard_sigmoid(x)
+
+   Returns the *approximated* standard :func:`sigmoid` nonlinearity applied to x.
+    :Parameters: *x* - symbolic Tensor (or compatible)
+    :Return type: same as x
+    :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
+    :note: To automatically change all :func:`sigmoid` op to this version, use
+      the Theano optimization ``local_hard_sigmoid``. This can be done
+      with the Theano flag ``optimizer_including=local_hard_sigmoid``.
+      This optimization is done late, so it shouldn't affect
+      stabilization optimization.
+
+   .. note:: The underlying code will return an exact 0 or 1 if an
+      element of x is too small or too big.
 
 .. function:: softplus(x)
 
    Returns the softplus nonlinearity applied to x
     :Parameter: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
-    :Returns: elementwise softplus: :math:`softplus(x) = \log_e{\left(1 + \exp(x)\right)}`. 
+    :Returns: elementwise softplus: :math:`softplus(x) = \log_e{\left(1 + \exp(x)\right)}`.
 
-.. note:: The underlying code will return an exact 0 if an element of x is too small.
+   .. note:: The underlying code will return an exact 0 if an element of x is too small.
 
-.. code-block:: python
+   .. code-block:: python
 
-    x,y,b = T.dvectors('x','y','b')
-    W = T.dmatrix('W')
-    y = T.nnet.softplus(T.dot(W,x) + b)
+       x,y,b = T.dvectors('x','y','b')
+       W = T.dmatrix('W')
+       y = T.nnet.softplus(T.dot(W,x) + b)
 
 .. function:: softmax(x)
 
    Returns the softmax function of x:
-    :Parameter: *x* symbolic **2D** Tensor (or compatible). 
+    :Parameter: *x* symbolic **2D** Tensor (or compatible).
     :Return type: same as x
-    :Returns: a symbolic 2D tensor whose ijth element is  :math:`softmax_{ij}(x) = \frac{\exp{x_{ij}}}{\sum_k\exp(x_{ik})}`. 
+    :Returns: a symbolic 2D tensor whose ijth element is  :math:`softmax_{ij}(x) = \frac{\exp{x_{ij}}}{\sum_k\exp(x_{ik})}`.
 
-The softmax function will, when applied to a matrix, compute the softmax values row-wise. 
+   The softmax function will, when applied to a matrix, compute the softmax values row-wise.
 
-.. code-block:: python
+   .. code-block:: python
 
-    x,y,b = T.dvectors('x','y','b')
-    W = T.dmatrix('W')
-    y = T.nnet.softmax(T.dot(W,x) + b)
+       x,y,b = T.dvectors('x','y','b')
+       W = T.dmatrix('W')
+       y = T.nnet.softmax(T.dot(W,x) + b)
 
 .. function:: binary_crossentropy(output,target)
 
@@ -78,27 +111,27 @@ The softmax function will, when applied to a matrix, compute the softmax values 
        * *output* - symbolic Tensor (or compatible)
 
     :Return type: same as target
-    :Returns: a symbolic tensor, where the following is applied elementwise :math:`crossentropy(t,o) = -(t\cdot log(o) + (1 - t) \cdot log(1 - o))`. 
+    :Returns: a symbolic tensor, where the following is applied elementwise :math:`crossentropy(t,o) = -(t\cdot log(o) + (1 - t) \cdot log(1 - o))`.
 
-The following block implements a simple auto-associator with a sigmoid
-nonlinearity and a reconstruction error which corresponds to the binary
-cross-entropy (note that this assumes that x will contain values between 0 and
-1):
+   The following block implements a simple auto-associator with a
+   sigmoid nonlinearity and a reconstruction error which corresponds
+   to the binary cross-entropy (note that this assumes that x will
+   contain values between 0 and 1):
 
-.. code-block:: python
+   .. code-block:: python
 
-    x, y, b = T.dvectors('x', 'y', 'b')
-    W = T.dmatrix('W') 
-    h = T.nnet.sigmoid(T.dot(W, x) + b)
-    x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
-    recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
+       x, y, b = T.dvectors('x', 'y', 'b')
+       W = T.dmatrix('W')
+       h = T.nnet.sigmoid(T.dot(W, x) + b)
+       x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
+       recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
 
 .. function:: categorical_crossentropy(coding_dist,true_dist)
 
-    Return the cross-entropy between an approximating distribution and a true distribution. 
+    Return the cross-entropy between an approximating distribution and a true distribution.
     The cross entropy between two probability distributions measures the average number of bits
     needed to identify an event from a set of possibilities, if a coding scheme is used based
-    on a given probability distribution q, rather than the "true" distribution p. Mathematically, this 
+    on a given probability distribution q, rather than the "true" distribution p. Mathematically, this
     function computes :math:`H(p,q) = - \sum_x p(x) \log(q(x))`, where
     p=true_dist and q=coding_dist.
 
@@ -112,15 +145,17 @@ cross-entropy (note that this assumes that x will contain values between 0 and
 
     :Return type: tensor of rank one-less-than `coding_dist`
 
-.. note:: An application of the scenario where *true_dist* has a 1-of-N representation
-    is in classification with softmax outputs. If `coding_dist` is the output of
-    the softmax and `true_dist` is a vector of correct labels, then the function
-    will compute ``y_i = - \log(coding_dist[i, one_of_n[i]])``, which corresponds
-    to computing the neg-log-probability of the correct class (which is typically
-    the training criterion in classification settings).
+   .. note:: An application of the scenario where *true_dist* has a
+       1-of-N representation is in classification with softmax
+       outputs. If `coding_dist` is the output of the softmax and
+       `true_dist` is a vector of correct labels, then the function
+       will compute ``y_i = - \log(coding_dist[i, one_of_n[i]])``,
+       which corresponds to computing the neg-log-probability of the
+       correct class (which is typically the training criterion in
+       classification settings).
 
-.. code-block:: python
+   .. code-block:: python
 
-    y = T.nnet.softmax(T.dot(W, x) + b)
-    cost = T.nnet.categorical_crossentropy(y, o)
-    # o is either the above-mentioned 1-of-N vector or 2D tensor
+       y = T.nnet.softmax(T.dot(W, x) + b)
+       cost = T.nnet.categorical_crossentropy(y, o)
+       # o is either the above-mentioned 1-of-N vector or 2D tensor

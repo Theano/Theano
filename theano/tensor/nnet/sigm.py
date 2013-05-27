@@ -112,6 +112,42 @@ for i in xrange(750):
         """ % locals()
         raise theano.gof.utils.MethodNotDefined()
 
+    @staticmethod
+    def gen_graph():
+        """
+        This method was used to generate the graph: sigmoid_prec.png in the doc
+        """
+        import matplotlib
+        data = numpy.arange(-15, 15, .1)
+        val = 1/(1+numpy.exp(-data))
+
+        def hard_sigmoid(x):
+            return theano.tensor.nnet.hard_sigmoid(x)
+
+        def ultra_fast_sigmoid(x):
+            return theano.tensor.nnet.ultra_fast_sigmoid(x)
+
+        val_hard = hard_sigmoid(data).eval()
+        val_ultra = ultra_fast_sigmoid(data).eval()
+
+        import matplotlib.pyplot as plt
+        import os
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(data, val)#, 'o-')
+        ax.plot(data, val_ultra)#, '-')
+        ax.plot(data, val_hard)#, '-')
+        ax.grid(True)
+        ax.legend(("sigmoid", "ultra_fast", "hard"), "upper left")
+        fname = os.path.join(os.path.dirname(theano.__file__), '..',
+                             'doc', 'library', 'tensor', 'nnet',
+                             'sigmoid_prec.png')
+        plt.savefig(fname)
+        print "New picture saved at", fname
+        print val_ultra.max()
+        print val_ultra.min()
+
+
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
@@ -210,7 +246,6 @@ def local_ultra_fast_sigmoid(node):
     if (isinstance(node.op, tensor.Elemwise) and
             node.op.scalar_op == scalar_sigmoid):
         out = ultra_fast_sigmoid(node.inputs[0])
-        out2 = ultra_fast_sigmoid(node.inputs[0])
 
         def values_eq_approx_remove_low_prec(a, b):
             # atol is found by trial/error.
@@ -221,6 +256,41 @@ def local_ultra_fast_sigmoid(node):
         return [out]
 theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
                                                 local_ultra_fast_sigmoid)
+
+
+def hard_sigmoid(x):
+    """An approximation of sigmoid.
+
+    More approximate and faster then ultra_fast_sigmoid.
+
+    Approx in 3 parts: 0, scaled linear, 1
+
+    Removing the slop and shift don't make it faster.
+
+    """
+    slop = 0.2
+    shift = 0.5
+    x = (x * 0.2) + shift
+    x = tensor.clip(x, 0, 1)
+    return x
+
+
+#@opt.register_uncanonicalize
+@gof.local_optimizer([sigmoid])
+def local_hard_sigmoid(node):
+    if (isinstance(node.op, tensor.Elemwise) and
+            node.op.scalar_op == scalar_sigmoid):
+        out = hard_sigmoid(node.inputs[0])
+
+        def values_eq_approx_remove_low_prec(a, b):
+            # atol is found by trial/error.
+            # Other test could fail without good reason.
+            return tensor.TensorType.values_eq_approx(a, b, atol=0.1)
+        # Let DebugMode know that there this opt approx the values.
+        out.values_eq_approx = values_eq_approx_remove_low_prec
+        return [out]
+theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
+                                                local_hard_sigmoid)
 
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
