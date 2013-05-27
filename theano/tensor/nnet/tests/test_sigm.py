@@ -289,6 +289,19 @@ class T_sigmoid_opts(unittest.TestCase):
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
 
+    def test_local_ultra_fast_sigmoid(self):
+        x = tensor.matrix('x')
+        s = sigmoid(x)
+
+        mode = self.get_mode('local_ultra_fast_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        assert f.maker.fgraph.toposort()[0].op == sigmoid
+
+        mode = self.get_mode().including('local_ultra_fast_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        assert f.maker.fgraph.toposort()[0].op == ultra_fast_sigmoid
+        ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
+
 
 class T_softplus_opts(unittest.TestCase):
     def setUp(self):

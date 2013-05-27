@@ -192,6 +192,37 @@ pprint.assign(ultra_fast_sigmoid,
               printing.FunctionPrinter('ultra_fast_sigmoid'))
 
 
+#@opt.register_uncanonicalize
+@gof.local_optimizer([sigmoid])
+def local_ultra_fast_sigmoid(node):
+    """
+    When enabled, change all sigmoid to ultra_fast_sigmoid.
+
+    To example do mode.including('local_ultra_fast_sigmoid')
+    or use the Theano flag optimizer_including=local_ultra_fast_sigmoid
+
+    This speed up the sigmoid op by using an approximation.
+
+    This is done after the stabilization and specialize phase
+    to don't interact with them.
+
+    """
+    if (isinstance(node.op, tensor.Elemwise) and
+            node.op.scalar_op == scalar_sigmoid):
+        out = ultra_fast_sigmoid(node.inputs[0])
+        out2 = ultra_fast_sigmoid(node.inputs[0])
+
+        def values_eq_approx_remove_low_prec(a, b):
+            # atol is found by trial/error.
+            # Other test could fail without good reason.
+            return tensor.TensorType.values_eq_approx(a, b, atol=0.02)
+        # Let DebugMode know that there this opt approx the values.
+        out.values_eq_approx = values_eq_approx_remove_low_prec
+        return [out]
+theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
+                                                local_ultra_fast_sigmoid)
+
+
 class ScalarSoftplus(scalar.UnaryScalarOp):
     @staticmethod
     def static_impl(x):
