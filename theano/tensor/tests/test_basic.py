@@ -219,7 +219,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
         def setUp(self):
             # Verify that the test's name is correctly set.
-            assert eval(self.__class__.__name__) is self.__class__
+            # Some tests reuse it outside this module.
+            eval(self.__class__.__module__ + '.' + self.__class__.__name__)
 
             # We keep a list of temporary files created in add_memmap_values,
             # to remove them at the end of the test.
