@@ -4,14 +4,15 @@ from itertools import imap
 import numpy
 
 import theano.tensor.inplace
+from theano.tensor import basic as tensor
 from theano import tensor as T
 from theano import config
 from theano.tests import unittest_tools as utt
-from theano.tensor.nnet import sigmoid, sigmoid_inplace, softplus, tensor
+from theano.tensor.nnet import (sigmoid, sigmoid_inplace,
+                                softplus, ultra_fast_sigmoid)
 from theano.tensor.nnet.sigm import (
     compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
     register_local_1msigmoid, simplify_mul,
-    ultra_fast_sigmoid,
 )
 from theano.tensor.tests.test_basic import (makeBroadcastTester, rand,
                                             check_floatX,
@@ -26,6 +27,15 @@ class T_sigmoid(unittest.TestCase):
         utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
 
 
+SigmoidTester = makeBroadcastTester(
+    op=sigmoid,
+    expected=lambda inputs: check_floatX(
+        inputs, 1/(1+numpy.exp(-inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='SigmoidTester',
+)
+
 UltraFastSigmoidTester = makeBroadcastTester(
     op=ultra_fast_sigmoid,
     expected=lambda inputs: check_floatX(
@@ -33,9 +43,18 @@ UltraFastSigmoidTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_no_complex,
     #grad=_grad_broadcast_unary_normal,
     name='UltraFastSigmoidTester',
-    #test_name=False,
-  # This is an approx of the sigmoid. That is why we raise eps
+# This is an approx of the sigmoid. That is why we raise eps
     eps=5e-2)
+
+
+SoftplusTester = makeBroadcastTester(
+    op=softplus,
+    expected=lambda inputs: check_floatX(
+        inputs, numpy.log1p(numpy.exp(inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='SoftplusTester',
+)
 
 
 class T_softplus(unittest.TestCase):
