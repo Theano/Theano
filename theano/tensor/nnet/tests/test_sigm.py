@@ -9,7 +9,7 @@ from theano import tensor as T
 from theano import config
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import (sigmoid, sigmoid_inplace,
-                                softplus, ultra_fast_sigmoid)
+                                softplus, ultra_fast_sigmoid, hard_sigmoid)
 from theano.tensor.nnet.sigm import (
     compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
     register_local_1msigmoid, simplify_mul,
@@ -45,6 +45,16 @@ UltraFastSigmoidTester = makeBroadcastTester(
     name='UltraFastSigmoidTester',
 # This is an approx of the sigmoid. That is why we raise eps
     eps=5e-2)
+
+HardSigmoidTester = makeBroadcastTester(
+    op=hard_sigmoid,
+    expected=lambda inputs: check_floatX(
+        inputs, 1/(1+numpy.exp(-inputs))),
+    good=_good_broadcast_unary_normal_no_complex,
+    #grad=_grad_broadcast_unary_normal,
+    name='UltraFastSigmoidTester',
+# This is an approx of the sigmoid. That is why we raise eps
+    eps=1e-1)
 
 
 SoftplusTester = makeBroadcastTester(
@@ -295,11 +305,32 @@ class T_sigmoid_opts(unittest.TestCase):
 
         mode = self.get_mode('local_ultra_fast_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert f.maker.fgraph.toposort()[0].op == sigmoid
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert topo[0].op == sigmoid
 
         mode = self.get_mode().including('local_ultra_fast_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert f.maker.fgraph.toposort()[0].op == ultra_fast_sigmoid
+        topo = f.maker.fgraph.toposort()
+        assert topo[0].op == ultra_fast_sigmoid
+        assert len(topo) == 1
+        ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
+
+    def test_local_hard_sigmoid(self):
+        x = tensor.matrix('x')
+        s = sigmoid(x)
+
+        mode = self.get_mode('local_hard_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert topo[0].op == sigmoid
+        assert len(topo) == 1
+
+        mode = self.get_mode().including('local_hard_sigmoid')
+        f = theano.function([x], s, mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) > 1
+        assert not any([n.op == sigmoid for n in topo])
         ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
 

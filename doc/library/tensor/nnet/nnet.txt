@@ -15,29 +15,62 @@
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: see :func:`ultra_fast_sigmoid` for a faster version
+    :note: see :func:`ultra_fast_sigmoid` or :func:`hard_sigmoid` for faster version.
+        Speed comparison for 100M float64 element on a Core2 Duo @ 3.16 GHz.
 
-Example:
+          - hard_sigmoid: 1.1s
+          - ultra_fast_sigmoid: 1.4s
+          - sigmoid (with amdlibm): 2.3s
+          - sigmoid (without amdlibm): 3.7s
 
-.. code-block:: python
+        Precision: sigmoid(without or without amdlibm) > ultra_fast_sigmoid > hard_sigmoid.
 
-    x,y,b = T.dvectors('x','y','b')
-    W = T.dmatrix('W')
-    y = T.nnet.sigmoid(T.dot(W,x) + b)
+   .. image:: sigmoid_prec.png
 
-.. note:: The underlying code will return an exact 0 or 1 if an element of x is too small or too big.
+   Example:
+
+   .. code-block:: python
+
+       x,y,b = T.dvectors('x','y','b')
+       W = T.dmatrix('W')
+       y = T.nnet.sigmoid(T.dot(W,x) + b)
+
+   .. note:: The underlying code will return an exact 0 or 1 if an
+      element of x is too small or too big.
 
 .. function:: ultra_fast_sigmoid(x)
 
-   Returns the standard sigmoid nonlinearity applied to x
+   Returns the *approximated* standard :func:`sigmoid` nonlinearity applied to x.
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: To automatically change all sigmoid op to this version, use
+    :note: To automatically change all :func:`sigmoid` op to this version, use
       the Theano optimization ``local_ultra_fast_sigmoid``. This can be done
       with the Theano flag ``optimizer_including=local_ultra_fast_sigmoid``.
       This optimization is done late, so it shouldn't affect
       stabilization optimization.
+
+   .. note:: The underlying code will return 0.00247262315663 as the
+       minimum value and 0.997527376843 as the maximum value. So it
+       never return 0 or 1.
+
+
+
+
+.. function:: hard_sigmoid(x)
+
+   Returns the *approximated* standard :func:`sigmoid` nonlinearity applied to x.
+    :Parameters: *x* - symbolic Tensor (or compatible)
+    :Return type: same as x
+    :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
+    :note: To automatically change all :func:`sigmoid` op to this version, use
+      the Theano optimization ``local_hard_sigmoid``. This can be done
+      with the Theano flag ``optimizer_including=local_hard_sigmoid``.
+      This optimization is done late, so it shouldn't affect
+      stabilization optimization.
+
+   .. note:: The underlying code will return an exact 0 or 1 if an
+      element of x is too small or too big.
 
 .. function:: softplus(x)
 
