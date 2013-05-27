@@ -10,9 +10,8 @@ import numpy
 
 import theano
 from theano import config, gof, printing, scalar
-from theano.compile import optdb
 from theano.configparser import AddConfigVar, BoolParam
-from theano.printing import pprint, debugprint
+from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
 
