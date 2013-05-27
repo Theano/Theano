@@ -1776,7 +1776,6 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
     return 0;
 }
 
-
 /*
  * We need this inplace Add to support IncSubTensor
  * It returns py_self on success with an additional reference. Else NULL.

@@ -2516,11 +2516,11 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
      		unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
      		unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
 
-    		dim3 n_blocks(num_blocks);
+     		dim3 n_blocks(num_blocks);
      		dim3 n_threads(num_threads_per_block);
      		long *d_indices_arr = NULL;
 
-		PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
+    		PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
 
     		d_indices_arr = (long *)device_malloc(PyArray_NBYTES(cpu_indices_arr));
      		assert(d_indices_arr);
@@ -2530,7 +2530,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                                              PyArray_NBYTES(cpu_indices_arr),
                                              cudaMemcpyHostToDevice);
 
-		assert(err == cudaSuccess);
+    		assert(err == cudaSuccess);
 
      		k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
                                                            shapeX[1],

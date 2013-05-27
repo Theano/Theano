@@ -1353,6 +1353,7 @@ def local_gpualloc_memset_0(node):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             return [new_out]
 
+
 def safe_to_gpu(x):
     if (isinstance(x.type, tensor.TensorType) and
         x.type.dtype == 'float32'):
