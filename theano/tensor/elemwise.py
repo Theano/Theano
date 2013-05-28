@@ -1140,14 +1140,14 @@ class Elemwise(Op):
                         if not all(var.broadcastable):
                             contig += """
             dtype_%(x)s * %(x)s_ptr = (dtype_%(x)s*) PyArray_DATA(%(x)s);
-                        """ % locals()
+                            """ % locals()
                             index += """
             dtype_%(x)s& %(x)s_i = %(x)s_ptr[i];
-                        """ % locals()
+                            """ % locals()
                         else:
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
-                        """ % locals()
+                            """ % locals()
 
                     contig += """
                     for(int i=0; i<n; i++){

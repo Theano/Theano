@@ -116,8 +116,9 @@ def make_checks(loop_orders, dtypes, sub):
 def make_alloc(loop_orders, dtype, sub, fortran='0'):
     """Generate C code to allocate outputs.
 
-    :param fortran: if non-zero, will create a ndarray in fortran
-        order.
+    :param fortran: a string included in the generated code. If it
+        evaludate to non-zero, an ndarray in fortran order will be
+        created, otherwise it will be c order.
 
     """
 
