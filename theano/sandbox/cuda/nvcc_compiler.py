@@ -247,7 +247,7 @@ class NVCC_compiler(object):
                 lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cu')
-        cppfile = file(cppfilename, 'w')
+        cppfile = open(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
 
@@ -401,7 +401,7 @@ class NVCC_compiler(object):
 
         if py_module:
             #touch the __init__ file
-            file(os.path.join(location, "__init__.py"), 'w').close()
+            open(os.path.join(location, "__init__.py"), 'w').close()
             return dlimport(lib_filename)
 
 
