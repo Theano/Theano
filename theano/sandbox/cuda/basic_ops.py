@@ -635,10 +635,8 @@ class GpuCAReduce(GpuOp):
         # but tensor.elemwise.CAReduce has this exact same check so I guess
         # this is OK to do
         if self.scalar_op in [scal.minimum, scal.maximum]:
-            conds = []
-            for i in xrange(nd_in):
-                if self.reduce_mask[i]:
-                    conds.append("(CudaNdarray_HOST_DIMS(%(x)s)[%(i)s] == 0)" % locals())
+            conds = ["(CudaNdarray_HOST_DIMS(%s)[%d] == 0)" % (x, i) for i in xrange(nd_in) \
+                    if self.reduce_mask[i]]
             assert len(conds) > 0
             cond = "(" + " || ".join(conds) + ")"
             print >> sio, """
@@ -663,7 +661,7 @@ class GpuCAReduce(GpuOp):
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]:
-                print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]) " % locals()
+                print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%s)[%d]) " % (x, i)
                 j += 1
 
         print >> sio, """
@@ -791,7 +789,7 @@ class GpuCAReduce(GpuOp):
             """ % locals()
 
         shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
+        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
                                 for i in range(node.inputs[0].ndim)])
         print >> sio, """
                     );
