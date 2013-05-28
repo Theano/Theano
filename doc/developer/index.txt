@@ -11,3 +11,4 @@ Theano Design and Implementation Documentation
 
    tensor
    scan
+   compat
