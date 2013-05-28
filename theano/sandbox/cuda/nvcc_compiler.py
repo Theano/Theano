@@ -9,6 +9,7 @@ import warnings
 
 import numpy
 
+from theano.compat import decode, decode_iter
 from theano.gof import local_bitwidth
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -69,10 +70,13 @@ def is_nvcc_available():
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         p.wait()
-        s = p.stdout.readlines()[-1].split(',')[1].strip().split()
-        assert s[0] == 'release'
+
+        ver_line = decode(p.stdout.readlines()[-1])
+        build, version = ver_line.split(',')[1].strip().split()
+
+        assert build == 'release'
         global nvcc_version
-        nvcc_version = s[1]
+        nvcc_version = version
     try:
         set_version()
         return True
@@ -354,7 +358,7 @@ class NVCC_compiler(object):
             os.chdir(location)
             p = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            nvcc_stdout, nvcc_stderr = p.communicate()[:2]
+            nvcc_stdout, nvcc_stderr = decode_iter(p.communicate()[:2])
         finally:
             os.chdir(orig_dir)
 
