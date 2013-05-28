@@ -113,9 +113,13 @@ def make_checks(loop_orders, dtypes, sub):
     return init % sub + check % sub
 
 
-def make_alloc(loop_orders, dtype, sub):
-    """
-    Generate C code to allocate outputs.
+def make_alloc(loop_orders, dtype, sub, fortran='0'):
+    """Generate C code to allocate outputs.
+
+    :param fortran: a string included in the generated code. If it
+        evaludate to non-zero, an ndarray in fortran order will be
+        created, otherwise it will be c order.
+
     """
 
     nd = len(loop_orders[0])
@@ -133,7 +137,6 @@ def make_alloc(loop_orders, dtype, sub):
                 break
         else:
             init_dims += "dims[%(i)s] = 1;\n" % locals()
-            #raise Exception("For each looping dimension, at least one input must have a non-broadcastable dimension.")
 
     # TODO: it would be interesting to allocate the output in such a
     # way that its contiguous dimensions match one of the input's
@@ -146,7 +149,9 @@ def make_alloc(loop_orders, dtype, sub):
         //npy_intp* dims = (npy_intp*)malloc(%(nd)s * sizeof(npy_intp));
         %(init_dims)s
         if (!%(olv)s) {
-            %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims, type_num_%(olv)s, 0);
+            %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims,
+                                                    type_num_%(olv)s,
+                                                    %(fortran)s);
         }
         else {
             PyArray_Dims new_dims;
