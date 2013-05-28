@@ -1011,6 +1011,17 @@ class Elemwise(Op):
         decl = cgen.make_declare(orders, idtypes, sub)
         checks = cgen.make_checks(orders, idtypes, sub)
 
+        # Check if all inputs (except broadcasted scalar) are fortran.
+        # In that case, create an fortran output ndarray.
+        z = zip(inames, inputs)
+        alloc_fortran = ' && '.join(["PyArray_ISFORTRAN(%s)" % arr
+                                     for arr, var in z
+                                     if not all(var.broadcastable)])
+        # If it is a scalar, make it c contig to prevent problem with
+        # NumPy C and F contig not always set as both of them.
+        if len(alloc_fortran) == 0:
+            alloc_fortran = '0'
+
         alloc = ""
         # We loop over the "real" outputs, i.e., those that are not
         # inplace (must be allocated) and we declare/allocate/check
@@ -1022,7 +1033,8 @@ class Elemwise(Op):
             sub['olv'] = oname
             alloc += cgen.make_declare([range(nnested)], [odtype],
                                        dict(sub, lv0=oname))
-            alloc += cgen.make_alloc(orders, odtype, sub)
+            alloc += cgen.make_alloc(orders, odtype, sub,
+                                     fortran=alloc_fortran)
             alloc += cgen.make_checks([range(nnested)], [odtype],
                                       dict(sub, lv0=oname))
         olv_index = i  # index of the last output
@@ -1176,7 +1188,7 @@ class Elemwise(Op):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [9]  # the version corresponding to the c code in this Op
+        version = [10]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,

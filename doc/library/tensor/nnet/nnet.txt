@@ -18,8 +18,8 @@
     :note: see :func:`ultra_fast_sigmoid` or :func:`hard_sigmoid` for faster version.
         Speed comparison for 100M float64 element on a Core2 Duo @ 3.16 GHz.
 
-          - hard_sigmoid: 1.1s
-          - ultra_fast_sigmoid: 1.4s
+          - hard_sigmoid: 1.0s
+          - ultra_fast_sigmoid: 1.3s
           - sigmoid (with amdlibm): 2.3s
           - sigmoid (without amdlibm): 3.7s
 
