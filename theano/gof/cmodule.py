@@ -1449,7 +1449,23 @@ def std_lib_dirs_and_libs():
         python_lib_dirs = [os.path.join(os.path.dirname(python_inc), 'libs')]
         if "Canopy" in python_lib_dirs[0]:
             # Canopy store libpython27.a and libmsccr90.a in this directory.
-            python_lib_dirs.append(os.path.join(sys.prefix, '..', 'libs'))
+            #python_lib_dirs.append(os.path.join(sys.prefix, 'libs'))
+            # This do not work, but if we copy those 2 files in the
+            # python_lib_dirs, it work.
+            src = os.path.join(sys.prefix, 'libs')
+            dest = os.path.join(sys.prefix, '..', 'App', 'appdata')
+            dest = os.path.join(dest, os.listdir(dest)[0], 'libs')
+            for f, lib in [('libpython27.a', 'libpython 1.2'),
+                           ('libmsvcr90.a', 'mingw 4.5.2')]:
+                if not os.path.exists(os.path.join(dest, f)):
+                    if not os.path.exists(os.path.join(src, f)):
+                        print ("Your python version is from Canopy. " +
+                               "You need to install the package '" + lib +
+                               "' from Canopy package manager."
+                               )
+                    else:
+                        shutil.copyfile(os.path.join(src, f),
+                                        os.path.join(dest, f))
         return [libname], python_lib_dirs
 
     # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
