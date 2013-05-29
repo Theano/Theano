@@ -57,10 +57,19 @@ directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
-Master Tests Status:
+Status
+======
 
 .. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
     :target: http://travis-ci.org/Theano/Theano/builds
+
+.. image:: https://pypip.in/v/Theano/badge.png
+    :target: https://crate.io/packages/Theano/
+    :alt: Latest PyPI version
+
+.. image:: https://pypip.in/d/Theano/badge.png
+    :target: https://crate.io/packages/Theano/
+    :alt: Number of PyPI downloads
 
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
 .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
