@@ -199,17 +199,26 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in blas_info['libraries']])
         #Canopy
         if "Canopy" in sys.prefix:
+            p = os.path.join(sys.prefix, "..", "..", "..",
+                             "Canopy", "appdata")
+            assert os.path.exists(p), "Canopy changed where is MKL"
+            p2 = os.listdir(p)
+            assert len(p2) == 1, "Canopy changed where is install MKL"
             if sys.platform == "linux2":
-                p = os.path.join(sys.prefix, "..", "..", "..",
-                                 "Canopy", "appdata")
-                assert os.path.exists(p), "Canopy changed where is MKL"
-                p2 = os.listdir(p)
-                assert len(p2) == 1, "Canopy changed where is install MKL"
                 p2 = os.path.join(p, p2[0], "lib")
                 assert os.path.exists(p2), "Canopy changed where is MKL"
                 return ' '.join(
                     ['-L%s' % p2] +
                     ['-l%s' % l for l in blas_info['libraries']])
+            elif sys.platform == 'win32':
+                p2 = os.path.join(p, p2[0], "Scripts")
+                assert os.path.exists(p2), "Canopy changed where is MKL"
+                return ' '.join(
+                    ['-L%s' % p2] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in blas_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
 
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
