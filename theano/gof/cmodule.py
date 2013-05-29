@@ -1446,8 +1446,11 @@ def std_lib_dirs_and_libs():
         libname = 'python' + python_version.replace('.', '')
         # Also add directory containing the Python library to the library
         # directories.
-        python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
-        return [libname], [python_lib_dir]
+        python_lib_dirs = [os.path.join(os.path.dirname(python_inc), 'libs')]
+        if "Canopy" in python_lib_dirs[0]:
+            # Canopy store libpython27.a and libmsccr90.a in this directory.
+            python_lib_dirs.append(os.path.join(sys.prefix, '..', 'libs'))
+        return [libname], python_lib_dirs
 
     # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
     # makes it unnecessary.
