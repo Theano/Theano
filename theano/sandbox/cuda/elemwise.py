@@ -864,7 +864,7 @@ nd_collapse_[i]=0;
         return defines + kernels
 
     def c_support_code(self):
-        raise gof.utils.MethodNotDefined()
+        return self.scalar_op.c_support_code()
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         d = dict(sub)
