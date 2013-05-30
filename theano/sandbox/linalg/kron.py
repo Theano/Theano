@@ -2,6 +2,15 @@ from theano import tensor
 
 
 def kron(a, b):
+    """ Kronecker product
+
+    Same as scipy.linalg.kron(a, b) or numpy.kron(a, b)
+
+    :param a: array_like
+    :param b: array_like
+    :return: array_like with a.ndim + b.ndim - 2 dimensinos.
+
+    """
     a = tensor.as_tensor_variable(a)
     b = tensor.as_tensor_variable(b)
     if (a.ndim + b.ndim <= 2):
