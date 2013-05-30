@@ -900,15 +900,15 @@ class test_fusion(unittest.TestCase):
             (fx*fy*fz*fw+fx+fy+fz+fw, (fw, fx, fy, fz), (fwv, fxv,
                 fyv, fzv), 1, fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv, 'float32'),  # 15
             #test with constant
-            ((fw+fx)+(fy+fz)+ 2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv)
+            ((fw+fx)+(fy+fz)+ 2.,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv)
                 ,1,fwv+fxv+fyv+fzv+2,'float32'),
-            (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            (((fw+fx)+2.+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            ((fw+(fx+2.+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
             ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
-            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            (fw+(fx+(fy+fz)+2.),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),  # 20
             (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
@@ -1036,7 +1036,7 @@ class test_fusion(unittest.TestCase):
             print "new cases", id
 
             if shared_fn is None:
-                assert gpu == False
+                assert gpu is False
                 f = compile.function(list(sym_inputs), g, mode=mode)
                 for x in range(nb_repeat):
                     out = f(*val_inputs)
