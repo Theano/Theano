@@ -506,8 +506,8 @@ class T_AddMul(unittest.TestCase):
             elif op is mul:
                 self.assertTrue(_is_sparse_variable(apb))
                 self.assertTrue(numpy.all(val.todense() == (b.multiply(a))))
-                self.assertTrue(numpy.all(val.todense() == numpy.array([[1, 0],
-[9, 0], [0, 36]])))
+                self.assertTrue(numpy.all(val.todense() == numpy.array(
+                    [[1, 0], [9, 0], [0, 36]])))
 
     def _testDS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
