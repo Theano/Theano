@@ -1733,7 +1733,10 @@ class AddSD(gof.op.Op):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "AddSD support inputs with the same dtype only."
+                " You passed %s and %s inputs dtype." % (x.type.dtype,
+                                                         y.type.dtype))
 
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
 
