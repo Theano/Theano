@@ -8185,7 +8185,14 @@ def tensordot(a, b, axes=2):
 
 
 def outer(x, y):
-    """Return vector-vector outer product."""
+    """Return vector-vector outer product.
+
+    If an input isn't a vector, we flatten it first.
+    """
+    if x.ndim != 1:
+        x = x.flatten()
+    if y.ndim != 1:
+        y = y.flatten()
     return dot(
             x.dimshuffle(0, 'x'),
             y.dimshuffle('x', 0))
