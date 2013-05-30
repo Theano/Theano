@@ -1,7 +1,9 @@
-"""
-This file implement 3 different version of the elemwise op on the gpu. Only NaiveAlgo is used and it is not very naive now.
+"""This file implement 3 different version of the elemwise op on the
+gpu. Only NaiveAlgo is used and it is not very naive now.
 
-The elemwise fct are also used with scalar operation! So it can happen that ndim is 0 as with all scalar type.
+The elemwise fct are also used with scalar operation! So it can happen
+that ndim is 0 as with all scalar type.
+
 """
 
 
@@ -25,20 +27,26 @@ _logger.addHandler(logging.StreamHandler()) #TO REMOVE
 def _logical_scalar(x):
     return numpy.all(x.type.broadcastable)
 
-def get_str_list_logical_scalar(node, value_str='ii_i%i_value', data_str='ii_i%i_data[0]'):
-    l=[]
+
+def get_str_list_logical_scalar(node, value_str='ii_i%i_value',
+                                data_str='ii_i%i_data[0]'):
+    l = []
     for ipos, i in enumerate(node.inputs):
         if _logical_scalar(i):
-            l+=[value_str%ipos]
-        else: l+=[data_str%ipos]
+            l += [value_str % ipos]
+        else:
+            l += [data_str % ipos]
     return l
+
 
 class SupportCodeError(Exception):
     """It is currently not possible to auto-generate a GPU implementation for
-    an elementwise Op with support code."""
+    an elementwise Op with c_support_code_apply().
+    But we support Op.c_support_code."""
+
 
 class NaiveAlgo(object):
-    verbose = 0 # 1, 2 or 3 for more verbose output.
+    verbose = 0  # 1, 2 or 3 for more verbose output.
 
     @property
     def cache_version(self):
@@ -73,16 +81,20 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (self.scalar_op.__class__.__name__,nodename, nd)
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
+            self.scalar_op.__class__.__name__, nodename, nd)
         if (nd):
-            print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
+            print >> sio, "\t,", ", ".join("const int dim%i" % i
+                                           for i in xrange(nd))
         #declare inputs
         for ipos, i in enumerate(node.inputs):
-            s = ", ".join(["const float * i%i_data" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            s = ", ".join(["const float * i%i_data" % ipos] +
+                          ["int i%i_str_%i" % (ipos, d) for d in xrange(nd)])
             print >> sio, "\t,", s
         #declare outputs
         for ipos, i in enumerate(node.outputs):
-            s = ", ".join(["float * o%i_data" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
+            s = ", ".join(["float * o%i_data" % ipos] +
+                          ["int o%i_str_%i" % (ipos, d) for d in xrange(nd)])
             print >> sio, "\t,", s
             #print >> sio, "\t,", ", ".join("int o%i_str_%i" % (ipos, d) for d in xrange(nd))
             #print >> sio, "\t,", "float * o%i_data" % ipos
@@ -121,13 +133,15 @@ class NaiveAlgo(object):
         # perform the scalar operation on the input and output references
         #TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
-                Apply(self.scalar_op,
-                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
-                , nodename + '_scalar_'
-                , get_str_list_logical_scalar(node)
-                , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)]
-                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+            Apply(self.scalar_op,
+                  [scalar.Scalar(dtype=input.type.dtype)()
+                   for input in node.inputs],
+                  [scalar.Scalar(dtype=output.type.dtype)()
+                   for output in node.outputs]),
+            nodename + '_scalar_',
+            get_str_list_logical_scalar(node),
+            ['ii_o%i_data[0]' % ipos for ipos, i in enumerate(node.outputs)],
+            sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
         print >> sio, "    }"
 
@@ -837,10 +851,9 @@ nd_collapse_[i]=0;
         #N.B. cudaGetLastError is called by c_code
         return sio.getvalue()
 
-
     def c_support_code_apply(self, node, nodename):
         nd = node.outputs[0].type.ndim
-        defines =  """
+        defines = """
 #define INTDIV_POW2(a, b) (a >> b)
 #define INTMOD_POW2(a, b) (a & ((1<<b)-1))
         """
@@ -867,7 +880,7 @@ nd_collapse_[i]=0;
             print >> sio, """
         //std::cerr << "C_CODE %(opname)s START\\n";
         //standard elemwise size checks
-            """ %locals()
+            """ % locals()
         if nd > 0:
             print >> sio, """
             int dims[%(nd)s] = {%(initial_dims)s};
@@ -931,11 +944,11 @@ nd_collapse_[i]=0;
                 %(fail)s;
             }
         }
-            """ %locals()
+            """ % locals()
             emitted_inames[iname] = True
 
         #check that all outputs have valid dimensions
-        for idx,oname in enumerate(outputs):
+        for idx, oname in enumerate(outputs):
             if idx not in self.inplace_pattern.keys():
                 print >> sio, """
         for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
@@ -1037,7 +1050,7 @@ nd_collapse_[i]=0;
 class ErfinvGPU(Erfinv):
     """
     Provides a c-code implementation of the inverse error function for GPU.
-    
+
     Note: We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
     currently rely on Nvidia's cublas library to provide the erfinv
     c-implementation (which requires different c_headers). As it stands,
