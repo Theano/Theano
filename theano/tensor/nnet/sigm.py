@@ -98,7 +98,7 @@ for i in xrange(750):
         // We block to keep the data in l1
         // normal l1 size = 32k: 32k/2(input + output)/8(nb bytes of double)=2k
         // We stay bellow the 2k limit to let space for
-        // This is faster then the not blocking version
+        // This is faster than the not blocking version
         for(int i=0;i<n;i+=2048){
             npy_intp nb = (n-i<2048)?n-i:2048;
             for(int j=0;j<nb;j++){
@@ -261,16 +261,16 @@ theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
 def hard_sigmoid(x):
     """An approximation of sigmoid.
 
-    More approximate and faster then ultra_fast_sigmoid.
+    More approximate and faster than ultra_fast_sigmoid.
 
     Approx in 3 parts: 0, scaled linear, 1
 
-    Removing the slop and shift don't make it faster.
+    Removing the slope and shift does not make it faster.
 
     """
-    slop = 0.2
+    slope = 0.2
     shift = 0.5
-    x = (x * 0.2) + shift
+    x = (x * slope) + shift
     x = tensor.clip(x, 0, 1)
     return x
 
