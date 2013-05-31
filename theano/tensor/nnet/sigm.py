@@ -234,13 +234,13 @@ def local_ultra_fast_sigmoid(node):
     """
     When enabled, change all sigmoid to ultra_fast_sigmoid.
 
-    To example do mode.including('local_ultra_fast_sigmoid')
+    For example do mode.including('local_ultra_fast_sigmoid')
     or use the Theano flag optimizer_including=local_ultra_fast_sigmoid
 
-    This speed up the sigmoid op by using an approximation.
+    This speeds up the sigmoid op by using an approximation.
 
-    This is done after the stabilization and specialize phase
-    to don't interact with them.
+    This is done after the stabilization and specialize phases
+    to avoid interacting with them.
 
     """
     if (isinstance(node.op, tensor.Elemwise) and
