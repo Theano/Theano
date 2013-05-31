@@ -251,8 +251,8 @@ except ImportError, e:
     # when theano.config.blas.ldflags is defined. So we don't need a
     # warning in that case.
     if not config.blas.ldflags:
-        _logger.warning('Failed to import scipy.linalg.blas and '
-                        'Theano flag blas.ldflags empty. '
+        _logger.warning('Failed to import scipy.linalg.blas, and '
+                        'Theano flag blas.ldflags is empty. '
                         'Falling back on slower implementations for '
                         'dot(matrix, vector), dot(vector, matrix) and '
                         'dot(vector, vector) (%s)',
