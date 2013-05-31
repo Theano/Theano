@@ -1189,8 +1189,9 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
-        if not isinstance(self.scalar_op, (scal.Add, scal.Minimum,
-                                           scal.Maximum)):
+        if not isinstance(self.scalar_op, (scal.Add,
+                                           scal.Maximum,
+                                           scal.Minimum)):
             raise NotImplementedError()
         print >> sio, """
         {
@@ -1738,40 +1739,25 @@ class GpuCAReduce(GpuOp):
             # extra 0, I would need to change the behavior of the sum reduction
             # code to do that. I don't want to benchmark and test changes to the
             # sum code so I will leave that for later.
-            # max reduction is also a special case that is simple to implement.
+            # max/min reduction is also a special case that is simple to implement.
             # this is the special case where reduction is idempotent so it doesn't
             # matter if we reduce with the first element multiple times.
-            if isinstance(self.scalar_op, scal.Add):
-                # special cased sum code (special case because starts the
-                # reduction with 0)
-                print >> sio, """
-                %(decl)s{
-                    %(init)s
-                    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      myresult = 0;
-                      %(for_i1)s{
-                        %(for_i2)s{
-                          %(for_i3)s{
-                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            myresult += Ai;
-                          }
-                        }
-                      }
-                      %(reducebuf)s
-                    }
-                }
-                """ % locals()
-            elif isinstance(self.scalar_op, (scal.Maximum, scal.Minimum)):
-                # special cased max code (special case because visits first
+            if isinstance(self.scalar_op, (scal.Add, scal.Maximum, scal.Minimum)):
+                # special cased max/min code (special case because visits first
                 # member of each row twice)
-                reduce_fct = self._assign_reduce(node, nodename, "myresult",
-                                                 "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
-                                                 {})
+                if isinstance(self.scalar_op, scal.Add):
+                    reduce_init = "0.f;"
+                else:
+                    reduce_init = "A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0];" % locals()
+                reduce_fct = self._assign_reduce(
+                    node, nodename, "myresult",
+                    "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
+                    {})
                 print >> sio, """
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      myresult = A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0];
+                      myresult = %(reduce_init)s;
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
@@ -1795,8 +1781,9 @@ class GpuCAReduce(GpuOp):
                 # code to make sure it does not cause a slowdown
                 raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
-            if not isinstance(self.scalar_op, (scal.Add, scal.Minimum,
-                                               scal.Maximum)):
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
                 raise NotImplementedError()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
