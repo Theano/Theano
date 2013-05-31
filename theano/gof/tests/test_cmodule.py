@@ -1,6 +1,6 @@
-"""We don't have real test for the cache, but it would be great to make them!
+"""We don't have real tests for the cache, but it would be great to make them!
 
-But this one test a current behavior that isn't good: the c_code isn't
+But this one tests a current behavior that isn't good: the c_code isn't
 deterministic based on the input type and the op.
 
 """

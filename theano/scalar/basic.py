@@ -847,14 +847,15 @@ class ScalarOp(Op):
 
     def c_code_contiguous(self, node, name, inp, out, sub):
         """This function is called by Elemwise when all inputs and
-        outputs are c_contiguous. This allow to use SIMD version
+        outputs are c_contiguous. This allows to use the SIMD version
         of this op.
 
-        The inputs are the same as c_code except:
+        The inputs are the same as c_code except that:
 
-            - inp and out must be the variable name of the ndarray
-            - node must be the elemwise node. This is needed to know
-              the inputs/outputs type.
+            - inp and out must be the names of the variables associated to the
+              ndarrays in the C code
+            - node must be the elemwise node (this is needed to know
+              the inputs/outputs types)
 
         """
         raise theano.gof.utils.MethodNotDefined()

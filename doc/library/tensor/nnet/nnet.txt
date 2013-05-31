@@ -15,8 +15,8 @@
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: see :func:`ultra_fast_sigmoid` or :func:`hard_sigmoid` for faster version.
-        Speed comparison for 100M float64 element on a Core2 Duo @ 3.16 GHz.
+    :note: see :func:`ultra_fast_sigmoid` or :func:`hard_sigmoid` for faster versions.
+        Speed comparison for 100M float64 elements on a Core2 Duo @ 3.16 GHz:
 
           - hard_sigmoid: 1.0s
           - ultra_fast_sigmoid: 1.3s
@@ -44,15 +44,15 @@
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: To automatically change all :func:`sigmoid` op to this version, use
+    :note: To automatically change all :func:`sigmoid` ops to this version, use
       the Theano optimization ``local_ultra_fast_sigmoid``. This can be done
       with the Theano flag ``optimizer_including=local_ultra_fast_sigmoid``.
-      This optimization is done late, so it shouldn't affect
+      This optimization is done late, so it should not affect
       stabilization optimization.
 
    .. note:: The underlying code will return 0.00247262315663 as the
        minimum value and 0.997527376843 as the maximum value. So it
-       never return 0 or 1.
+       never returns 0 or 1.
 
 
 
@@ -63,10 +63,10 @@
     :Parameters: *x* - symbolic Tensor (or compatible)
     :Return type: same as x
     :Returns: approximated element-wise sigmoid: :math:`sigmoid(x) = \frac{1}{1 + \exp(-x)}`.
-    :note: To automatically change all :func:`sigmoid` op to this version, use
+    :note: To automatically change all :func:`sigmoid` ops to this version, use
       the Theano optimization ``local_hard_sigmoid``. This can be done
       with the Theano flag ``optimizer_including=local_hard_sigmoid``.
-      This optimization is done late, so it shouldn't affect
+      This optimization is done late, so it should not affect
       stabilization optimization.
 
    .. note:: The underlying code will return an exact 0 or 1 if an

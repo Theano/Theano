@@ -622,7 +622,7 @@ def get_scalar_constant_value(v):
                 isinstance(v.owner.op.idx_list[0], (int, long,
                                                     numpy.integer))):
 
-                # Python 2.4 don't support indexing with numpy.integer
+                # Python 2.4 does not support indexing with numpy.integer
                 # So we cast it.
                 idx = int(v.owner.op.idx_list[0])
                 ret = v.owner.inputs[0].owner.inputs[idx]
@@ -1533,15 +1533,15 @@ class _tensor_py_operators:
             return True
         else:
             raise TypeError(
-                "Variable does not support boolean operations. This"
-                "can happen if you do logical operator (<, <=, >, <=,"
-                "==, !=) between numpy.ndarray and theano tensor"
-                "variable. Due NumPy implementation before NumPy 1.8,"
-                "we can't make the python syntax work when the ndarray"
-                "is on the left, and this end with this error. To work"
-                "around that, just call"
-                "theano.tensor.{lt,le,eq,ne,gt,ge}(ndarray, tensor) or"
-                "use the python syntax with the theano tensor on the"
+                "Variables do not support boolean operations. This "
+                "can happen if you do a logical operation (<, <=, >, <=, "
+                "==, !=) between a numpy.ndarray and a Theano tensor"
+                "variable. Due to NumPy implementation before NumPy 1.8, "
+                "we cannot make the Python syntax work when the ndarray "
+                "is on the left, and this results in this error. To work "
+                "around that, either call "
+                "theano.tensor.{lt,le,eq,ne,gt,ge}(ndarray, tensor), or "
+                "use the Python syntax with the Theano tensor on the "
                 "left. Or update to NumPy 1.8 or above."
             )
 
@@ -6436,11 +6436,11 @@ class Reshape(Op):
                              (x.shape, shp))
         if not out[0].flags.aligned:
             raise RuntimeError("numpy.reshape returned a not aligned tensor."
-                               " NumPy version 1.6.2, 1.7.0 and 1.7.1 have"
+                               " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
                                " this problem for some input shape/new shape"
-                               " combination. Use another NumPy version."
-                               " Input shape: %s, input stride %s,"
-                               " new_shape %s new_strides %s." % (
+                               " combinations. Use another NumPy version."
+                               " Input shape: %s, input stride: %s,"
+                               " new_shape: %s, new_strides: %s." % (
                                    x.shape, x.strides, shp, out[0].strides))
 
     def connection_pattern(self, node):
@@ -6545,9 +6545,9 @@ class Reshape(Op):
                 PyErr_Format(
                     PyExc_RuntimeError,
                     "PyArray_Newshape returned an object that isn't aligned!"
-                    " NumPy version 1.6.2, 1.7.0 and 1.7.1 have"
+                    " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
                     " this problem for some input shape/new shape"
-                    " combination. Use another NumPy version.");
+                    " combinations. Use another NumPy version.");
                 %(fail)s;
             }
             """ % locals()
