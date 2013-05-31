@@ -1,6 +1,7 @@
 import os, unittest, sys
 import nose.plugins.builtin
 
+from nose.config import Config
 from numpy.testing.nosetester import import_nose, NoseTester
 from numpy.testing.noseclasses import KnownFailure, NumpyTestProgram
 
@@ -122,7 +123,8 @@ class TheanoNoseTester(NoseTester):
         argv, plugins = self.prepare_test_args(verbose, extra_argv, coverage,
                 capture, knownfailure)
 
-        t = NumpyTestProgram(argv=argv, exit=False, plugins=plugins)
+        cfg = Config(includeExe=True)
+        t = NumpyTestProgram(argv=argv, exit=False, plugins=plugins, config=cfg)
         return t.result
 
 
