@@ -488,7 +488,6 @@ class GpuDimShuffle(GpuOp):
             print sio.getvalue()
             print '--------------------------------------'
             if 0:
-                import sys
                 sys.exit()
 
         return sio.getvalue()
@@ -911,7 +910,8 @@ class GpuCAReduce(GpuOp):
         dummy_name = name + '_scalar_op'+ str(self._n_scalar_op_calls)
         self._n_scalar_op_calls += 1
 
-        return self.scalar_op.c_code(node, name, (left, right), (left, ), sub)
+        return self.scalar_op.c_code(dummy_node, dummy_name, (left, right),
+                                     (left,), sub)
 
     def _k_reduce_buf(self, z_pos, node, name, sub):
         """
