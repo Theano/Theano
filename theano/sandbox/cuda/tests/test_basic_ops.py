@@ -66,7 +66,8 @@ def test_careduce():
     """
     for scalar_op, careduce_op in [
             (theano.scalar.add, tensor.elemwise.CAReduceDtype),
-            (theano.scalar.maximum, tensor.CAReduce)]:
+            (theano.scalar.maximum, tensor.CAReduce),
+            (theano.scalar.minimum, tensor.CAReduce)]:
         for shape, pattern in [((1,1),(1,)),
                                ((1,0),(1,)),
                                ((0,1),(1,)),
@@ -123,9 +124,10 @@ def test_careduce():
 
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
@@ -191,10 +193,12 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
+
             a = tensor.TensorType('float32', (False,) * len(shape))()
             dim_pattern = range(len(shape))
             dim_pattern[0] = 1
@@ -223,10 +227,12 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
+
             shape = numpy.asarray(shape) * 2
             a = tensor.TensorType('float32', (False,) * len(shape))()
             a2 = tcn.CudaNdarrayType((False,) * len(shape))()

@@ -1189,7 +1189,9 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
-        self._op_guard()
+        if not isinstance(self.scalar_op, (scal.Add, scal.Minimum,
+                                           scal.Maximum)):
+            raise NotImplementedError()
         print >> sio, """
         {
             int verbose = 0;
@@ -1759,9 +1761,12 @@ class GpuCAReduce(GpuOp):
                     }
                 }
                 """ % locals()
-            elif isinstance(self.scalar_op, scal.Maximum):
+            elif isinstance(self.scalar_op, (scal.Maximum, scal.Minimum)):
                 # special cased max code (special case because visits first
                 # member of each row twice)
+                reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                                 "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
+                                                 {})
                 print >> sio, """
                 %(decl)s{
                     %(init)s
@@ -1770,8 +1775,7 @@ class GpuCAReduce(GpuOp):
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
-                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            myresult = max(myresult, Ai);
+                            %(reduce_fct)s;
                           }
                         }
                       }
@@ -1791,14 +1795,24 @@ class GpuCAReduce(GpuOp):
                 # code to make sure it does not cause a slowdown
                 raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add, scal.Minimum,
+                                               scal.Maximum)):
+                raise NotImplementedError()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]', node, nodename, sub = {})
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]',
+                                           node, nodename, sub={})
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + threadIdx.x * sA1 + i2 * sA2];"
             print >> sio, """
             static __global__ void kernel_reduce_010_%(nodename)s(
                     const int d0,
@@ -1822,10 +1836,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
-                        float myresult = 0.0f;
+                        float myresult = %(reduce_init)s;
                         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            %(reduce_fct)s;
                         }
                         %(reducebuf)s
                     }
@@ -2306,6 +2320,7 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
         if len(hv) == 0:
             return ()
         return (3, hv)
+
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
