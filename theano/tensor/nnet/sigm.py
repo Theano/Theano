@@ -134,9 +134,9 @@ for i in xrange(750):
         import os
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.plot(data, val)#, 'o-')
-        ax.plot(data, val_ultra)#, '-')
-        ax.plot(data, val_hard)#, '-')
+        ax.plot(data, val)  # , 'o-')
+        ax.plot(data, val_ultra)  # , '-')
+        ax.plot(data, val_hard)  # , '-')
         ax.grid(True)
         ax.legend(("sigmoid", "ultra_fast", "hard"), "upper left")
         fname = os.path.join(os.path.dirname(theano.__file__), '..',
@@ -330,7 +330,8 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
             return (2,) + v
         else:
             return v
-scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name=                                                                                                                                                                                                        'scalar_softplus')
+scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float,
+                                 name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
