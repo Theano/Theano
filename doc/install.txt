@@ -18,7 +18,7 @@ to be installed (MacOS and Windows users should refer to platform-specific
 instructions below for detailed installation steps):
 
     Linux, Mac OS X or Windows operating system
-        We develop mainly on 64-bit Linux machines. 32-bit architectures are
+        We develop mainly on 64-bit Linux machines. other architectures are
         not well-tested.
 
     Python_ >= 2.4
@@ -837,9 +837,8 @@ MinGW, but this has not been tested yet.
 
 - For 32 bit MinGW: from `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
   download the latest version of the ``Automated MinGW Installer``
-  (``mingw-get-inst``) and install it with all optional components (although
-  you probably do not need them all: if you feel like figuring out exactly
-  which ones are required, let us know!).
+  (``mingw-get-inst``) and install it (you should install all optional components,
+  except the Objective C and Ada compilers which are not needed).
 
 - For 64 bit MinGW (**note that manual installation for 64 bit is experimental**):
   download the latest version of MinGW-w64 from the project's
@@ -1103,48 +1102,41 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
 
 .. note::
 
-   GotoBLAS is no longer maintained and has been released under the BSD
-   license. `OpenBLAS
-   <https://github.com/xianyi/OpenBLAS>`_ is a new project that
-   continues GotoBLAS: it has a better installation process and implements
-   additional functions (not currently used by Theano).
-   We did not try OpenBLAS on Windows. When installed, you probably need to
-   use this Theano flags: ``theano.config.blas.ldflags = "-lopenblas"``
-
-.. note::
-
    The instructions below have not been tested in a Windows 64 bit environment.
 
 If you want a faster and/or multithreaded BLAS library, you can
-compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
+compile OpenBLAS (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
-GotoBLAS2 can be downloaded
-`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2>`__
-(we tested v1.13).
-To compile it, you will also need MSYS and Perl (installation steps are
+OpenBLAS can be downloaded as a zip file from
+`its website <http://xianyi.github.io/OpenBLAS/>`__
+(we tested v0.2.6).
+To compile it, you will also need MSYS and wget (installation steps are
 described below).
-The GotoBLAS makefiles actually expect a full UNIX environment (like
-Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
-(LAPACK compilation fails, but Theano does not need it).
 
-If you installed MinGW manually as described above, you should already
-have MSYS included in your MinGW install, and should be able to start a
-shell (Start / MinGW / MinGW Shell), in which case you can skip the MSYS
-installation.
-If instead you installed Python(x,y), you will need to install MSYS on
-top of the MinGW installation included within Python(x,y), as follows:
+If you already have a full install of MinGW, you should
+have MSYS included in it, and thus should be able to start a MinGW shell.
+If that is the case, you can skip the following MSYS installation steps.
+Note that these steps were written for Python(x,y), but should also work
+for other bundle Python distributions like EPD (changing paths accordingly,
+for instance in EPD 7.3.2 the MinGW folder is
+``EPD7.3.2\EGG-INFO\mingw\usr\i686-w64-mingw32``).
+To install MSYS on top of the MinGW installation included within Python(x,y),
+do as follows:
 
 - Download the `mingw-get command-line installer binary
-  <http://sourceforge.net/projects/mingw/files/Automated%20MinGW%20Installer/mingw-get/>`_.
+  <http://sourceforge.net/projects/mingw/files/Installer/mingw-get/>`__.
 
-- Unpack it into your ``pythonxy\mingw`` directory.
+- Unpack its content into your ``pythonxy\mingw`` directory.
 
 - In a prompt (``cmd``), install MSYS with
 
     .. code-block:: bash
 
         mingw-get install msys-base
+
+  If ``mingw-get`` cannot be found automatically, just navigate first into the
+  folder were it was extracted (it is found in the ``bin`` subfolder).
 
 - Edit ``pythonxy\mingw\msys\1.0\msys.bat`` (e.g. in Wordpad) and add as first
   line ``set HOME=%USERPROFILE%``. Then create an easily accessible shortcut
@@ -1156,56 +1148,56 @@ top of the MinGW installation included within Python(x,y), as follows:
         /postinstall/pi.sh
 
   It will ask for your MinGW installation directory (e.g.
-  ``c:/pythonxy/mingw``).
+  ``c:/pythonxy/mingw``; note the forward slashes).
 
 Once you have a working MinGW/MSYS shell environment, you can go on as
 follows:
 
-  a) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
-     install it (other Perl interpreters should also work, but were not
-     tested). In a MSYS shell, type ``perl --version`` just to make sure the Perl
-     executable is found automatically. If this is not the case, you may need to
-     restart your MSYS shell, or even restart your computer if that is not enough.
+  a) Install ``wget`` by running the setup program you can download on the
+     `wget website <http://gnuwin32.sourceforge.net/packages/wget.htm>`__.
+     Note that this setup does not add ``wget`` into the system PATH, so you
+     will need to modify the ``PATH`` environment variable accordingly (either in
+     Windows or in a ``.profile`` startup file in your MinGW home). Once this is done,
+     type ``wget --version`` in a MinGW shell to verify that it is working
+     properly. Note also that if you are behind a proxy, you should set up your
+     ``HTTP_PROXY`` environment variable, or use a custom ``wgetrc`` config file
+     for wget to be able to download files.
 
-  b) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
-     a shell with:
+  b) Unzip OpenBLAS and, in a MinGW shell, go into the corresponding directory.
 
-    .. code-block:: bash
-
-        tar zxvf /path/to/GotoBLAS2-1.13.tar.gz
-
-  c) In a MSYS shell, go into the GotoBLAS2 directory that was unpacked.
-
-  d) Compile GotoBLAS2 with:
+  c) Compile OpenBLAS with:
 
     .. code-block:: bash
 
       quickbuild.win32 1>log.txt 2>err.txt
 
-    Compilation should take a few minutes. Afterwards, you will probably
-    find many error messages in err.txt, but there should be an ``exports``
-    folder containing in particular ``libgoto2.dll``.
+    (use ``quickbuild.win64`` for 64-bit Windows).
+    Compilation can take a while, so now is a good time to take a break.
+    When it is done, you should have ``libopenblas.dll`` in your OpenBLAS
+    folder. If that is not the case, check the ``err.txt`` log for build errors.
 
-  e) Copy ``libgoto2.dll`` from the ``exports`` folder to both your ``bin`` and
-     ``lib`` subdirectories of your MinGW installation (which may be under
-     ``pythonxy\mingw`` if you used Python(x,y)).
+  d) Make sure that ``libopenblas.dll`` is in a folder that is in your ``PATH``.
 
-  f) Modify your .theanorc (or .theanorc.txt) with ``ldflags = -lgoto2``.
+  e) Modify your .theanorc (or .theanorc.txt) with
+     ``ldflags = -LX:\\YYY\\ZZZ -lopenblas`` where ``X:\\YYY\\ZZZ`` is the path
+     to the folder containing ``libopenblas.dll``.
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
     .. code-block:: python
 
-        theano.config.blas.ldflags = "-lgoto2"
+        theano.config.blas.ldflags = "-LX:\\YYY\\YYY -lopenblas"
 
-  g) To test the BLAS performance, you can run the script
+  f) To test the BLAS performance, you can run the script
      ``theano/misc/check_blas.py``.
-     Note that you may control the number of threads used by GotoBLAS2 with
-     the ``GOTO_NUM_THREADS`` environment variable (default behavior is to use
+     Note that you may control the number of threads used by OpenBLAS with
+     the ``OPENBLAS_NUM_THREADS`` environment variable (default behavior is to use
      all available cores).
      Here are some performance results on an Intel Core2 Duo 1.86 GHz,
      compared to using Numpy's BLAS or the un-optimized standard BLAS
-     (compiled manually from its source code):
+     (compiled manually from its source code).
+     Note that we report here results for GotoBLAS2 which is the ancestor of
+     OpenBLAS (this benchmark still needs to be updated with OpenBLAS results):
 
          * GotoBLAS2 (2 threads): 16s
          * NumPy (1 thread): 48s
@@ -1215,6 +1207,16 @@ follows:
         * The unoptimized standard BLAS is very slow and should not be used.
         * The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
         * GotoBLAS2 is even faster, in particular if you can use multiple cores.
+
+.. note::
+
+   If you get a ``DLL load failed`` error message, it typically means that
+   a required DLL was not found in the PATH. If it happens only when you are
+   using OpenBLAS, it means it is either ``libopenblas.dll`` itself or one of its
+   dependencies. In the case where it is a dependency, you can use the
+   `Dependency Walker <http://www.dependencywalker.com/>`__ utility to figure out
+   which one.
+
 
 .. _gpu_windows:
 
