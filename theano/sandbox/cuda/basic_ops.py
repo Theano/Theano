@@ -3106,3 +3106,95 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                                for i in node.inputs]),
                     print str([getattr(i, 'dtype', None)
                                for i in node.outputs])
+
+
+class GpuEye(GpuOp):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
+        assert dtype == 'float32'
+        self.dtype = dtype
+
+    def make_node(self, n, m, k):
+        n = tensor.as_tensor_variable(n)
+        m = tensor.as_tensor_variable(m)
+        k = tensor.as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
+
+        # k != 0 isn't implemented on the GPU yet.
+        assert tensor.get_scalar_constant_value(k) == 0
+        return Apply(self, [n, m], [matrix(dtype=self.dtype)])
+
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(type(self))
+
+    def c_support_code_apply(self, node, nodename):
+        return """
+//Only 1 block is used.
+__global__ void kEye(float* a, int n, int m) {
+    int nb_elem = min(n, m);
+    for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
+        a[i*m + i] = 1;
+    }
+}"""
+
+    def c_code(self, node, name, inp, out, sub):
+        n, m = inp
+        z, = out
+        fail = sub['fail']
+        s = """
+        int dims[] = {0, 0};
+
+        dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
+        dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
+        int total_size = dims[0] * dims[1] * sizeof(float);
+        cudaError_t sts;
+        void * orig_z = %(z)s;
+
+        if (CudaNdarray_prep_output(&%(z)s, 2, dims))
+        {
+            %(fail)s;
+        }
+
+        sts = cudaMemset(CudaNdarray_DEV_DATA(%(z)s), 0, total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuEye: Error in memset %%d bytes of device memory.",
+                         total_size);
+            if(orig_z == NULL)
+                Py_XDECREF(%(z)s);
+            %(fail)s;
+        }
+
+        kEye<<<1, 256>>>(CudaNdarray_DEV_DATA(%(z)s), dims[0], dims[1]);
+        CNDA_THREAD_SYNC;
+
+        sts = cudaGetLastError();
+        if (cudaSuccess != sts)
+        {
+               PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: kEye: %%s. n=%%d, m=%%d.",
+                    cudaGetErrorString(sts),
+                    dims[0], dims[1]);
+            %(fail)s;
+         }
+        """ % locals()
+
+        return s
+
+    def c_code_cache_version(self):
+        return (2,)
+gpu_eye = GpuEye(dtype='float32')

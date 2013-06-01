@@ -1354,6 +1354,27 @@ def local_gpualloc_memset_0(node):
             return [new_out]
 
 
+@register_opt()
+@local_optimizer([])
+def local_gpu_eye(node):
+    """
+    gpu_from_host(eye) -> gpueye(gpu_from_host)
+
+    eye(host_from_gpu) -> host_from_gpu(gpueye)
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, tensor.Eye) and
+            host_input.owner.op.dtype == "float32"):
+            return [gpu_eye(*host_input.owner.inputs)]
+    if isinstance(node.op, tensor.Eye) and node.op.dtype == "float32":
+        if numpy.any([(i.owner and i.owner.op == host_from_gpu)
+                      for i in node.inputs]):
+            return [host_from_gpu(gpu_eye(*node.inputs))]
+    return False
+
+
 def safe_to_gpu(x):
     if (isinstance(x.type, tensor.TensorType) and
         x.type.dtype == 'float32'):
