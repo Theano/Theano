@@ -4,7 +4,11 @@ from theano import tensor
 def kron(a, b):
     """ Kronecker product
 
-    Same as scipy.linalg.kron(a, b) or numpy.kron(a, b)
+    Same as scipy.linalg.kron(a, b).
+
+    :note: numpy.kron(a, b) != scipy.linalg.kron(a, b)!
+        They don't have the same shape and order when
+        a.ndim != b.ndim != 2.
 
     :param a: array_like
     :param b: array_like
