@@ -155,6 +155,8 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     data = cPickle.load(open(noseids_file, 'rb'))
     ids = data['ids']
     n_tests = len(ids)
+    if n_tests == 0:
+        raise Exception("0 test selected")
     assert n_tests == max(ids)
 
     # Standard batch testing is called for
