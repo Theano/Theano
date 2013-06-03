@@ -8,7 +8,7 @@ def kron(a, b):
 
     :param a: array_like
     :param b: array_like
-    :return: array_like with a.ndim + b.ndim - 2 dimensinos.
+    :return: array_like with a.ndim + b.ndim - 2 dimensions.
 
     """
     a = tensor.as_tensor_variable(a)

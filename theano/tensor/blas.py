@@ -201,18 +201,18 @@ def default_blas_ldflags():
         if "Canopy" in sys.prefix:
             p = os.path.join(sys.prefix, "..", "..", "..",
                              "Canopy", "appdata")
-            assert os.path.exists(p), "Canopy changed where is MKL"
+            assert os.path.exists(p), "Canopy changed the location of MKL"
             p2 = os.listdir(p)
-            assert len(p2) == 1, "Canopy changed where is install MKL"
+            assert len(p2) == 1, "Canopy changed the location of MKL"
             if sys.platform == "linux2":
                 p2 = os.path.join(p, p2[0], "lib")
-                assert os.path.exists(p2), "Canopy changed where is MKL"
+                assert os.path.exists(p2), "Canopy changed the location of MKL"
                 return ' '.join(
                     ['-L%s' % p2] +
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 p2 = os.path.join(p, p2[0], "Scripts")
-                assert os.path.exists(p2), "Canopy changed where is MKL"
+                assert os.path.exists(p2), "Canopy changed the location of MKL"
                 return ' '.join(
                     ['-L%s' % p2] +
                     # Why on Windows, the library used are not the

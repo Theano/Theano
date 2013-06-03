@@ -807,16 +807,19 @@ Another software from Enthought that install all Theano dependancy.
 If you are affiliated with a university (as student or employee), you
 can download the installation for free.
 
-- Install Canopy x64 (and update it as older Canopy version had problem when installing pip).
-- Then install pip from Canopy Package Manager.
-- "pip install theano" in the Windows shell: "In the Windows start menu execute the `cmd` command".
-- in Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
-- (Needed only for Theano 0.6rc3 or older) The "libpython 1.2" package installs files "libpython27.a" and "libmsvcr90.a" to "C:\Users\<USER>\AppData\Local\Enthought\Canopy\User\libs" (on my computer)
-  copy the two files to "C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\libs"
-
-  When doing "import theano" g++ links to directory "C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\libs"
-  and "C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64". Not where "libpython27.a" is installed.
-- (Needed only for Theano 0.6rc3 or older) Set the Theano flags ``blas.ldflags=C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\Scripts -lmk2_core -lmk2_intel_thread -lmk2_rt``.
+- Install Canopy x64, and update it to the latest version (`Help /
+  Software updates...`), as older Canopy versions have trouble installing
+  `pip`.
+- Then install `pip` from Canopy Package Manager.
+- In the Windows shell (type `cmd` in the Windows start menu to bring it up),
+  type `pip install theano`.
+- In Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
+- (Needed only for Theano 0.6rc3 or earlier)
+  The "libpython 1.2" package installs files `libpython27.a` and `libmsvcr90.a` to
+  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\User\libs`. Copy the two files to
+  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\libs`.
+- (Needed only for Theano 0.6rc3 or earlier) Set the Theano flags
+  ``blas.ldflags=-LC:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\Scripts -lmk2_core -lmk2_intel_thread -lmk2_rt``.
 
 
 
