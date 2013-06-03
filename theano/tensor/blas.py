@@ -199,8 +199,7 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in blas_info['libraries']])
         #Canopy
         if "Canopy" in sys.prefix:
-            p = os.path.join(sys.prefix, "..", "..", "..",
-                             "Canopy", "appdata")
+            p = os.path.join(sys.base_prefix, "..", "..", "appdata")
             assert os.path.exists(p), "Canopy changed the location of MKL"
             p2 = os.listdir(p)
             assert len(p2) == 1, "Canopy changed the location of MKL"

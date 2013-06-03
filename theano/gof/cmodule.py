@@ -1453,21 +1453,16 @@ def std_lib_dirs_and_libs():
             # modules, even when libpython27.lib and python27.dll are
             # available, and the *.a files have to be found earlier than
             # the other ones.
-            #python_lib_dirs.append(os.path.join(sys.prefix, 'libs'))
-            # This do not work, but if we copy those 2 files in the
-            # python_lib_dirs, it work.
-            #src = os.path.join(sys.prefix, 'libs')
-            #dest = os.path.join(sys.prefix, '..', 'App', 'appdata')
-            #dest = os.path.join(dest, os.listdir(dest)[0], 'libs')
+            libdir = os.path.join(sys.base_prefix, '..', '..', '..',
+                                  'User', 'libs')
             for f, lib in [('libpython27.a', 'libpython 1.2'),
                            ('libmsvcr90.a', 'mingw 4.5.2')]:
-                if not os.path.exists(os.path.join(dest, f)):
-                    if not os.path.exists(os.path.join(src, f)):
-                        print ("Your python version is from Canopy. " +
-                               "You need to install the package '" + lib +
-                               "' from Canopy package manager."
-                               )
-            python_lib_dirs.insert(0, os.path.join(sys.prefix, 'libs'))
+                if not os.path.exists(os.path.join(libdir, f)):
+                    print ("Your python version is from Canopy. " +
+                           "You need to install the package '" + lib +
+                           "' from Canopy package manager."
+                           )
+            python_lib_dirs.insert(0, libdir)
 
         return [libname], python_lib_dirs
 
