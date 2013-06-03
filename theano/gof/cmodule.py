@@ -1448,14 +1448,10 @@ def std_lib_dirs_and_libs():
         python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
         return [libname], [python_lib_dir]
 
-    # DSE Patch 2 for supporting OSX frameworks.
-    # Suppress -lpython2.x when frameworks are present
+    # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
+    # makes it unnecessary.
     elif sys.platform == 'darwin':
-        if python_inc.count('Python.framework'):
-            return [], []
-        else:
-            libname = os.path.basename(python_inc)
-            return [libname], []
+        return [], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
