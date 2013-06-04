@@ -3140,7 +3140,7 @@ class GpuEye(GpuOp):
     def __hash__(self):
         return hash(self.dtype) ^ hash(type(self))
 
-    def c_support_code_apply(self, node, nodename):
+    def c_support_code(self):
         return """
 //Only 1 block is used.
 __global__ void kEye(float* a, int n, int m) {
@@ -3196,5 +3196,5 @@ __global__ void kEye(float* a, int n, int m) {
         return s
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 gpu_eye = GpuEye(dtype='float32')
