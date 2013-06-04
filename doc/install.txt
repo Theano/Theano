@@ -150,9 +150,8 @@ directory; see the `virtualenv documentation`_ for details.
 
 .. note::
 
-    Theano *can* be installed with easy_install_, however we recommend pip_ as
-    a long-standing bug in ``easy_install`` prevents ``theano.test()`` from
-    running the Theano test suite; ``pip`` offers many other benefits over
+    Theano *can* be installed with easy_install_, however we recommend pip_.
+    ``pip`` offers many benefits over
     ``easy_install`` such as more intelligent dependency management, better
     error messages and a ``pip uninstall`` command for easily removing
     packages.
