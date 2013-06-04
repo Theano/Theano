@@ -4609,12 +4609,13 @@ class Subtensor(Op):
         # There is a bug in numpy that results in isinstance(x, int) returning
         # False for numpy integers.
         # See <http://projects.scipy.org/numpy/ticket/2235>.
-        elif isinstance(entry, (numpy.integer, int)):
+        elif isinstance(entry, numpy.integer):
             return entry
         # On Windows 64-bit, shapes are returned as Python long, as they can
         # be bigger than what a Python int can hold.
         # Shapes should always fit in a numpy.int64, and we support them better
-        elif isinstance(entry, long):
+        # 2) In Python3, long replaced int. So we must assert it fit in int64.
+        elif isinstance(entry, (int, long)):
             entry64 = numpy.int64(entry)
             return entry64
         else:
