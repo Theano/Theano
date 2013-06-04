@@ -3621,6 +3621,9 @@ class Eye(gof.Op):
         n = as_tensor_variable(n)
         m = as_tensor_variable(m)
         k = as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
         return gof.Apply(self, [n, m, k],
                 [TensorType(dtype=self.dtype, broadcastable=(False, False))()])
 
