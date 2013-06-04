@@ -4,16 +4,158 @@
 Release Notes
 =============
 
+Theano 0.6rc3 (February 14th, 2013)
+===================================
+
+Highlights:
+ * Windows related fixes.
+ * Speed-ups.
+ * Crash fixes.
+ * A few small interface changes.
+ * GPU memory leak fix.
+ * A few corner cases fixes without incidence.
+ * More Theano determinism
+ * tensor.{dot,tensordot} more complete/faster/GPU friendly.
+ * tensor.tensordot now support Rop/Lop
+ * tensor.dot support n-dimensional inputs as NumPy
+ * To support more NumPy syntax:
+     * Add theano.tensor.take()
+     * Add a_tensor_variable.{sort,dot,std,argmin,argmax,argsort,clip,conj,conjugate,repeat,round,trace,real,imag,take}
+
+Commiters for this rc3 only:
+Frederic Bastien
+Ian Goodfellow
+Pascal Lamblin
+Jeremiah Lowin
+abalkin
+Olivier Delalleau
+Razvan Pascanu
+Rami Al-Rfou'
+Vivek Kulkarni
+Guillaume Desjardins
+David Warde-Farley
+Eric Hunsberger
+Amir Elaguizy
+James Bergstra
+
+Bug fix:
+ * Fix memory leak on the GPU in some corner cases with the Theano flags `allow_gc=False`. (Frederic B., reported by Jonas Gehring)
+ * Fix copy of random state between graph. (Guillaume D.)
+   http://deeplearning.net/software/theano/tutorial/examples.html#copying-random-state-between-theano-graphs
+ * Fix wrong dtype in sandbox.linalg.ExtractDiag with shape of 0. (Frederic B., reported by abalkin)
+ * Correctly support array with more then 2*10e32 element in AdvancedSubtensor1. (Abalkin)
+ * Fix wrong broadcast dimensions of output of Repeat op. (Abalkin)
+   We where using the inputs broadcasting pattern in some cases when we shouldn't.
+ * Fix theano.sandbox.linalg.eigh grad that didn't always returned the right dtype. (Frederic B., Olivier D.)
+
+New Features:
+ * More Theano determinism (Ian G., Olivier D., Pascal L.)
+     * Add and use a new class OrderedSet.
+     * theano.grad is now deterministic.
+     * Warn when the user uses a (non ordered) dictionary and this causes non-determinism in Theano.
+     * The Updates class was non-deterministic; replaced it with the OrderedUpdates class.
+ * tensor.tensordot now support Rop/Lop (Jeremiah Lowin)
+   This remove the class TensorDot and TensorDotGrad. It is the Dot/Elemwise ops that are used.
+ * tensor.dot support n-dimensional inputs as NumPy (Jeremiah Lowin)
+   Work on the GPU too.
+ * The Theano flag `nvcc.flags` now accept `-ftz=true`, `--prec-div=false` and `--prec=sqrt=false` as value. (Frederic B.)
+   To enable all of them, use the Theano flag `nvcc.flags=--use_fast_math`.
+ * New op theano.sparse.ConstructSparseFromList (Rami Al-Rfou'  Vivek Kulkarni)
+ * Make Theano work with Anaconda on Windows. (Pascal L.)
+ * Add tensor_var.diagonal and theano.tensor.{diag,diagonal}. (abalkin)
+ * AdvencedSubtensor1 can now have a sparse gradient. (Rami Al-Rfou', Vivek Kulkarni)
+ * Implemented GpuContiguous.grad. (Ian G.)
+
+Interface Deprecation (a warning is printed):
+ * theano.misc.strutil.renderString -> render_string (Ian G.)
+ * Print a warning when using dictionary and this makes Theano non-deterministic.
+
+Interface Change:
+ * Raise an error when theano.shared called with a theano variable. (Frederic B.)
+ * Don't print warning for bug before Theano 0.5 by default. (Frederic B.)
+ * Theano functions now always have a field name, default to None. (Frederic B.)
+ * Theano function fct.fgraph have a copy of the Theano function name field. (Ian G.)
+   This is needed to allow the fgraph to know it.
+ * In the grad method, if it were asked to raise an error if there is no path between the variables, we didn't always returned an error. (Ian G.)
+   We returned the mathematical right answer 0 in those cases.
+ * get_constant_value() renamed get_scalar_constant_value() and raise a new exception tensor.basic.NotScalarConstantError. (Ian G.)
+ * theano.function raises an error when trying to replace inputs with the 'given' parameter. (Olivier D.)
+   This was doing nothing, the error message explains what the user probably wants to do.
+
+New Interface (reuse existing functionality):
+ * tensor_var.sort() as a shortcut for theano.tensor.sort. (Jeremiah Lowin)
+   We where already doing this for argsort.
+ * Add theano.tensor.take() and a_tensor_var.take() to support NumPy syntax. (abalkin) 
+ * Add a_tensor_variable.{dot,std,argmin,argmax,argsort,clip,conj,conjugate,repeat,round,trace,real,imag}. (abalkin)
+
+New debug feature:
+ * DebugMode print more info when there is an error. (Frederic B.)
+ * Better profiling of test time with `theano-nose --time-profile`. (Frederic B.)
+ * Detection of infinite loop with global optimizer. (Pascal L.)
+ * DebugMode.check_preallocated_output now also work on Theano function output. (Pascal L.)
+ * DebugMode will now complain when the strides of CudaNdarray of dimensions of 1 are not 0. (Frederic B.)
+
+Speed-ups:
+ * c_code for SpecifyShape op. (Frederic B.)
+ * cross-entropy optimization now work when specify_shape is used. (Pascal L.)
+ * The Scan optimization ScanSaveMem and PushOutDot1 applied more frequently. (Razvan P, reported Abalkin)
+   A skipped optimization warning was printed.
+ * dot(vector, vector) now faster with some BLAS implementation. (Eric Hunsberger)
+   OpenBLAS and possibly others didn't call {s,d}dot internally when we called {s,d}gemv.
+   MKL was doing this.
+ * Compilation speed up: Take the compiledir lock only for op that generate c_code. (Frederic B)
+ * More scan optimization (Razvan P.)
+     * Opt to make RNN fast in Theano.
+     * Optimize some case of dot, by moving them outside of Scan.
+     * Move some sequences outside of scan too.
+     * Merge more scan inputs, mostly byproduct of other Scan optimizations.
+ * c_code for theano.sparse.AddSD. (Rami Al-Rfou',  Vivek Kulkarni)
+
+Crash Fixes:
+ * Fix crash about dimshuffle. (abalkin)
+ * Fix crash at compilation. (Olivier D.)
+ * Fix openmp detection. (Pascal L.)
+   Resulted in a crash with EPD on Windows.
+ * Fix for new BLAS interface in SciPy. (Olivier D.)
+   Fix crash with some development version of SciPy.
+ * GpuSum work with bigger shape when summing on the first dim on 3d tensor. (Frederic B., reported Chris Currivan)
+ * Windows compilation crash fix. (Frederic B.)
+ * Make CrossentropySoftmax1HotWithBiasDx and CrossentropySoftmaxArgmax1HotWithBias support uint* dtype. (Frederic B., reported by Mark Fenner)
+ * Fix GpuSoftmax and GpuSoftmaxWithBias crash on GTX285. (Frederic B.)
+ * Fix crash due to a race condition when importing theano. (Ian G.)
+ * Fix crash from path problem with `theano-nose --batch`. (Abalkin) 
+ * Fix crash with tensor.roll(Var, iscalar). (Frederic B., reported by Jeremiah Lowin)
+ * Fix compilation crash with llvm on Mac. (Abalkin)
+ * Fix the grad of Scan that told wrongly that there is no connection between cost and parameters. (Razvan P.)
+ * The infer shape mechanism now force that broadcasted dimensions have a shape know to be equivalent to one during compilation.
+   Sometimes, we where not able knowing this before run time and resulted in crash. (Frederic B.)
+ * Fix compilation problems on GPU on Windows. (Frederic B.)
+ * Fix copy on the GPU with big shape for 4d tensor (Pascal L.)
+ * GpuSubtensor didn't set the stride to 0 for dimensions of 1. This could lead to check failing later that caused a crash. (Frederic B., reported by vmichals)
+
+Theoretical bugfix (bug that won't happen with current Theano code, but if you messed with the internal, could have affected you):
+ * GpuContiguous, GpuAlloc, GpuDownSampleGrad, Conv2d now check the preallocated outputs strides before using it. (Pascal L.)
+ * GpuDownSample, GpuDownSampleGrad didn't work correctly with negative strides in their output due to problem with nvcc (Pascal L, reported by abalkin?)
+
+Others:
+ * Fix race condition when determining if g++ is available. (Abalkin)
+ * Documentation improvements. (Many people including David W-F, abalkin, Amir Elaguizy, Olivier D., Frederic B.)
+ * The current GPU back-end have a new function CudaNdarray_prep_output(CudaNdarray ** arr, int nd, const int * dims) (Ian G)
+
+=============
+Release Notes
+=============
+
 Theano 0.6rc2 (November 21th, 2012)
 ===================================
 
-Highlight:
- * Fix a few regression inserted in 0.6rc1.
+Highlights:
+ * Fix for a few regressions introduced in 0.6rc1.
  * A few new features.
- * Speed up.
- * Scan fix.
- * Crash fix.
- * A few small interface change.
+ * Speed-ups.
+ * Scan fixes.
+ * Crash fixes.
+ * A few small interface changes.
 
 Commiters for this rc2 only:
 Razvan Pascanu
@@ -27,53 +169,53 @@ Matthew Rocklin
 abalkin
 
 
-Regression in 0.6rc1 fixed:
- * Fix the scan gradient dtype issue. In 0.6rc1, some upcast where inserted. (Razvan P.)
- * Now grad() will do as before the 0.6rc1 for float, i.e. the grad dtype will be the same as the inputs inside the graph. If you ask for the direct grad, it will return the computed dtype. (Pascal L.)
+Regressions in 0.6rc1 fixed:
+ * Fixed the scan gradient dtype issue. In 0.6rc1, some upcast were inserted. (Razvan P.)
+ * Now grad() will do as before 0.6rc1 for float, i.e. the grad dtype will be the same as the inputs inside the graph. If you ask for the direct grad, it will return the computed dtype. (Pascal L.)
 
-Wrong results fix:
+Wrong results fixes:
  * Scan fix in some case didn't returned the good results. (Razvan P., reported by Jeremiah L.)
-   This happen if you have a state with only neg tap and the outputs of the state is a function of some sequence.
-   If you have multiple state, there was no problem.
+   This happened if you had a state with only neg tap and the output of the state was a function of some sequence.
+   If you had multiple states, there was no problem.
  * Fixed bug in Scan with multiple outputs,
    where one output would sometimes overwrite another one. (Razvan P.)
  * Clip.grad treated the gradient with respect to the clipping boundary as always 0. (Ian G.)
 
-Interface change:
- * Now we do not support unaligned ndarray in python code. (Frederic B.)
-   We did not support it in c code and supporting it in python code made
+Interface changes:
+ * We do not support anymore unaligned ndarray in Python code. (Frederic B.)
+   We did not support it in C code and supporting it in Python code made
    the detection harder.
- * Now we only officially support scipy 0.7.2 and numpy 1.5.0 (Frederic B.)
+ * Now we only officially support SciPy 0.7.2 and NumPy 1.5.0 (Frederic B.)
    We weren't and aren't testing with older versions.
- * The theano.sparse.SparseType is available even when scipy is not (Frederic B.)
- * Fixes issue where members of consider_constant grad parameter
+ * The theano.sparse.SparseType is available even when SciPy is not (Frederic B.)
+ * Fixed issue where members of consider_constant grad parameter
    were treated differently from Constant variables. (Ian G.)
- * Remove the parameter g_cost from theano.grad(). (Ian G.)
+ * Removed the parameter g_cost from theano.grad(). (Ian G.)
    Use the new more powerful parameter known_grads instead.
 
 NumPy interface support:
  * theano.tensor.where is an alias for theano.tensor.switch to support NumPy semantic. (Ian G.)
  * TensorVariable objects now have dot, argmin, argmax, clip, conj, repeat, trace, std, round,
-   ravel and argsort functions and the real and imag properties as numpy.ndarray object.
+   ravel and argsort functions and the real and imag properties as numpy.ndarray objects.
    The functionality was already available in Theano. (abalkin)
 
-Speed up:
+Speed-ups:
  * A C version of the SoftMax op (Razvan P.)
-   There was c code for the softmax with bias code.
+   There was C code for the softmax with bias code.
  * Faster GpuIncSubtensor (Ian G.)
  * Faster copy on the GPU for 4d tensor. (Ian G.)
- * The fix of flatten infer_shape re-enable an optimization (Pascal L.)
+ * The fix of flatten infer_shape re-enables an optimization (Pascal L.)
    * The bug was introduced in 0.6rc1.
  * Enable inc_subtensor on the GPU when updating it with a float64 dtype. (Ian G.)
    It was causing an optimization warning.
  * Make DeepCopy reuse preallocated memory. (Frederic B.)
- * Move then convolution to the GPU when the image shape and logical image shape differ. (Frederic Bastien)
+ * Move the convolution to the GPU when the image shape and logical image shape differ. (Frederic Bastien)
  * C code for the View Op (Razvan P., Pascal L.)
 
-New Feature:
+New Features:
  * Added a monitoring mode "MonitorMode" as a debugging tool. (Olivier D.)
  * Allow integer axes when keepdims==True (Jeremiah Lowin)
- * Add erfinv and erfcinv op. (Jey Kottalam)
+ * Added erfinv and erfcinv op. (Jey Kottalam)
  * Added tensor.batched_dot(). (Caglar Gulcehre)
    It uses scan behind the scenes, but makes doing this easier.
  * theano.get_constant_value(x) (Frederic B.)
@@ -81,15 +223,15 @@ New Feature:
    This does some constant folding to try to convert x into an int.
    Used by some optimizations.
  * Add theano.tensor.io.{MPIRecv,MPIRecvWait,MPISend,MPISendWait} (Matthew Rocklin)
-   Theano does not automatically use them. It is up to you to use them and split your computation.
+   Theano does not automatically use them. It is up to you to use them and split your computations.
  * Added theano.sandbox.linalg.eig (abalkin)
  * Started some support for Python3 (abalkin)
    setup.py supports python3 now.
    It calls 2to3 during the setup.
-   Python3 is not fully supported as we didn't update the c code.
+   Python3 is not fully supported as we didn't update the C code.
 
 
-Crash Fix:
+Crash Fixes:
  * Fix a crash related to scan.grad due to the new mechanism. (Ian G.)
  * Fix an optimization warning. Now it gets optimized. (Frederic B.)
  * Fix crash introduced in 0.6rc1 in theano.grad (Ian G.)
@@ -101,16 +243,16 @@ Crash Fix:
  * Fix crash as sometimes sparse.dot would return a different dtype number
    that is equivalent but not the one expected. (Pascal L., reported by Rami Al-Rfou)
  * Better error msg (Ian G.)
- * Move all sparse random function back to sandbox as it don't have a state inside Theano. (Pascal L.)
-   They where moved outside the sandbox in 0.6rc1
- * LoadFromDisk now is allowed to take only support some memmap mode. (Pascal L.)
+ * Move all sparse random functions back to sandbox as they don't have a state inside Theano. (Pascal L.)
+   They were moved outside the sandbox in 0.6rc1
+ * LoadFromDisk now is allowed to only support some memmap mode. (Pascal L.)
    Otherwise, this was causing errors, segmentation faults or wrong results.
  * Fix import problem on PiCloud (Jeremiah Lowin)
     * You need to use the c|py linker with the default
       environment. Otherwise, you need to create your own environment.
  * Fix a crash during optimization when we take a subtensor of a constant with a non constant index. (Ian G.)
  * Better handling and error message of gradients on integer. (Ian G.)
- * Fixes a crash where Scan assumed all TypeErrors raised by the grad function were due to undefined gradients (Ian G.)
+ * Fixed a crash where Scan assumed all TypeErrors raised by the grad function were due to undefined gradients (Ian G.)
 
 Other:
  * Doc typo fixes, Doc updates, Better error messages: Olivier D., David W.F., Frederic B., James B., Matthew Rocklin, Ian G., abalkin.
