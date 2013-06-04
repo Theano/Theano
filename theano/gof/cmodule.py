@@ -13,13 +13,14 @@ import subprocess
 import sys
 import tempfile
 import time
+import itertools
 
 import distutils.sysconfig
 
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import PY3, b, next
+from theano.compat import PY3, next, decode, decode_iter
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -1470,6 +1471,34 @@ def gcc_version():
     return gcc_version_str
 
 
+def gcc_llvm():
+    """ Detect if the g++ version used is the llvm one or not.
+
+    It don't support all g++ parameters even if it support many of them.
+    """
+    if gcc_llvm.is_llvm is None:
+        pass
+        p = None
+        try:
+            p = call_subprocess_Popen(['g++', '--version'],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            p.wait()
+            output = p.stdout.read() + p.stderr.read()
+        except OSError:
+            # Typically means g++ cannot be found.
+            # So it is not an llvm compiler.
+
+            # Normally this should not happen as we should not try to
+            # compile when g++ is not available. If this happen, it
+            # will crash later so supposing it is not llvm is "safe".
+            output = b('')
+        del p
+        gcc_llvm.is_llvm = b("llvm") in output
+    return gcc_llvm.is_llvm
+gcc_llvm.is_llvm = None
+
+
 class GCC_compiler(object):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
@@ -1515,11 +1544,11 @@ class GCC_compiler(object):
                 if p.returncode != 0:
                     return None
 
-                stdout = p.stdout.readlines()
-                stderr = p.stderr.readlines()
+                stdout = decode_iter(p.stdout.readlines())
+                stderr = decode_iter(p.stderr.readlines())
                 lines = []
                 if parse:
-                    for line in stdout + stderr:
+                    for line in itertools.chain(stdout, stderr):
                         if "COLLECT_GCC_OPTIONS=" in line:
                             continue
                         elif "-march=" in line and "-march=native" not in line:
@@ -1528,8 +1557,8 @@ class GCC_compiler(object):
                             lines.append(line.strip())
                     lines = list(set(lines))  # to remove duplicate
                 else:
-                    lines = stdout + stderr
-                return lines
+                    lines = itertools.chain(stdout, stderr)
+                    return list(lines)
 
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
@@ -1804,7 +1833,7 @@ class GCC_compiler(object):
 
         try:
             p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
-            compile_stderr = p.communicate()[1]
+            compile_stderr = decode(p.communicate()[1])
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
             print_command_line_error()
@@ -1825,7 +1854,7 @@ class GCC_compiler(object):
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
-                            (status, compile_stderr.replace(b('\n'), b('. '))))
+                            (status, compile_stderr.replace('\n', '. ')))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
             print compile_stderr

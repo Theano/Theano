@@ -17,6 +17,7 @@ from theano.gof.python25 import any
 from theano.tests  import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.gof.python25 import OrderedDict
+from theano.compat import PY3
 
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -2366,8 +2367,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=2)
@@ -2376,8 +2377,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=4)
@@ -2386,8 +2387,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x, y], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n: isinstance(
-            n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2396,8 +2397,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2406,8 +2407,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 1)
 
         sx, upx = theano.scan(sum, sequences=[x])
@@ -2416,8 +2417,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], [sx, sy],
                             mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
         topo = f.maker.fgraph.toposort()
-        scans = filter(lambda n:
-                       isinstance(n.op, theano.scan_module.scan_op.Scan), topo)
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
     def test_hash(self):
@@ -3515,12 +3516,20 @@ def test_speed():
     t0 = time.time()
     r_i = iter(r[1:])
     r_ii = iter(r[:-1])
-    while True:
-        try:
-            tmp = r_i.next()
-            tmp += r_ii.next()
-        except StopIteration:
-            break
+    if PY3:
+        while True:
+            try:
+                tmp = next(r_i)
+                tmp += next(r_ii)
+            except StopIteration:
+                break
+    else:
+        while True:
+            try:
+                tmp = r_i.next()
+                tmp += r_ii.next()
+            except StopIteration:
+                break
     t1 = time.time()
     print 'python with builtin iterator', t1 - t0
 
