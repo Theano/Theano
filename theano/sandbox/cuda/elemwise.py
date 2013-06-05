@@ -5,12 +5,13 @@ The elemwise fct are also used with scalar operation! So it can happen that ndim
 """
 
 
-import copy, logging, StringIO, sys
+import copy, logging, sys
 
 import numpy
 
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 from theano.scalar.basic_scipy import Erfinv
+from theano.compat.six import StringIO
 from theano import Apply, Constant, Op, Type, Variable
 from theano import gof, scalar, tensor
 
@@ -65,7 +66,7 @@ class NaiveAlgo(object):
         self.inplace_pattern = inplace_pattern
 
     def c_src_kernel(self, node, nodename, nd):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
 
         for ipos, i in enumerate(node.inputs):
@@ -166,7 +167,7 @@ class NaiveAlgo(object):
         """
 
         nd = node.outputs[0].type.ndim
-        sio = StringIO.StringIO()
+        sio = StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
 
         if nd in (4,):
@@ -267,7 +268,7 @@ class NaiveAlgo(object):
         nd = node.outputs[0].type.ndim
         n_in = len(node.inputs)
         n_out = len(node.outputs)
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         if nd not in (2,):
             return sio.getvalue()
@@ -418,7 +419,7 @@ class NaiveAlgo(object):
 
     def c_src_kernel_Ccontiguous(self, node, nodename):
         nd = node.outputs[0].type.ndim
-        sio = StringIO.StringIO()
+        sio = StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
 
         for ipos, i in enumerate(node.inputs):
@@ -503,7 +504,7 @@ class NaiveAlgo(object):
 
         scalar_op=self.scalar_op.__class__.__name__
 
-        sio = StringIO.StringIO()
+        sio = StringIO()
         print >> sio, """
         static void can_collapse_%(nodename)s(int nd, const int * dims, const int * strides, int collapse[])
         {
@@ -856,7 +857,7 @@ nd_collapse_[i]=0;
         d = dict(sub)
         nd = node.outputs[0].type.ndim
         d.update(locals())
-        sio = StringIO.StringIO()
+        sio = StringIO()
         nin = len(inputs)
         nout = len(outputs)
         fail = sub['fail']

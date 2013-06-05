@@ -1,7 +1,6 @@
 """Provide CudaNdarrayType
 """
 import os
-import StringIO
 import copy_reg
 
 import numpy
@@ -10,6 +9,7 @@ import theano
 from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
+from theano.compat.six import StringIO
 
 try:
     # We must do those import to be able to create the full doc when nvcc
@@ -274,7 +274,7 @@ class CudaNdarrayType(Type):
         return "%(name)s = NULL;" % locals()
 
     def c_extract(self, name, sub):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         fail = sub['fail']
         nd = self.ndim
         print >> sio, """

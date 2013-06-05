@@ -5,13 +5,13 @@ Defines Linkers that deal with C implementations.
 # Python imports
 from copy import copy
 import os
-import StringIO
 import sys
 from itertools import izip
 
 import numpy
 
 from theano.compat import PY3
+from theano.compat.six import StringIO
 
 if PY3:
     import hashlib
@@ -1320,7 +1320,7 @@ class CLinker(link.Linker):
         return ret
 
     def instantiate_code(self, n_args):
-        code = StringIO.StringIO()
+        code = StringIO()
         struct_name = self.struct_name
         print >> code, "static PyObject * instantiate(PyObject * self, PyObject *argtuple) {"
         print >> code, '  assert(PyTuple_Check(argtuple));'

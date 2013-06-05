@@ -5,12 +5,11 @@ from theano.tests import disturb_mem
 import numpy as np
 import theano
 from theano.printing import var_descriptor
-from cStringIO import StringIO
 from nose.plugins.skip import SkipTest
 
 from theano import config
 from theano import shared
-
+from theano.compat.six import StringIO
 
 def sharedX(x, name=None):
     x = np.cast[config.floatX](x)

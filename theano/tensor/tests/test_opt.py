@@ -2,7 +2,6 @@
 
 import copy
 import logging
-import StringIO
 import time
 import unittest
 
@@ -13,6 +12,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.scalar as scal
+from theano.compat.six import StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
 from theano import config
@@ -742,7 +742,7 @@ class test_canonize(unittest.TestCase):
         This bug caused an infinite loop which was caught by the equilibrium
         optimizer, resulting in an error log message.
         """
-        sio = StringIO.StringIO()
+        sio = StringIO()
         handler = logging.StreamHandler(sio)
         handler.setLevel(logging.ERROR)
         logging.getLogger('theano.gof.opt').addHandler(handler)
