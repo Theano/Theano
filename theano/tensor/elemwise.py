@@ -961,6 +961,12 @@ class Elemwise(Op):
 
         inames = gof.utils.uniq(inames)
         inputs = gof.utils.uniq(node.inputs)
+        # assert that inames and inputs order stay consistent.
+        # This is to protect again futur change of uniq.
+        assert len(inames) == len(inputs)
+        ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
+        assert all([x == y for x,y in zip(ii, inames)])
+        assert all([x == y for x,y in zip(iii, inputs)])
 
         defines = ""
         undefs = ""

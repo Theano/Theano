@@ -39,7 +39,7 @@ probably do something similar on older computer.
 Installation steps
 ~~~~~~~~~~~~~~~~~~
 
-Ubuntu 11.10/12.04/12.10:
+Ubuntu 11.10/12.04/12.10/13.04:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
  2) ``sudo pip install Theano``
 
@@ -62,6 +62,13 @@ Test the newly installed packages
  2) SciPy (~1m): ``python -c "import scipy; scipy.test()"``
  3) Theano (~30m): ``python -c "import theano; theano.test()"``
 
+NumPy 1.6.2, 1.7.0 and 1.7.1, have a bug where it marks some ndarrays
+as not aligned. Theano does not support unaligned arrays, and raises
+an Exception when that happens.  This can cause one test to fail with
+an unaligned error with those versions of NumPy. You can ignore that
+test error as at worst, your code will crash. If this happens, you can
+install another NumPy version to fix this problem. NumPy 1.6.2 is used
+in Ubuntu 12.10 and NumPy 1.7.1 is used in Ubuntu 13.04.
 
 Speed test Theano/BLAS
 ~~~~~~~~~~~~~~~~~~~~~~

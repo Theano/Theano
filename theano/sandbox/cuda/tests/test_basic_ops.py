@@ -66,7 +66,8 @@ def test_careduce():
     """
     for scalar_op, careduce_op in [
             (theano.scalar.add, tensor.elemwise.CAReduceDtype),
-            (theano.scalar.maximum, tensor.CAReduce)]:
+            (theano.scalar.maximum, tensor.CAReduce),
+            (theano.scalar.minimum, tensor.CAReduce)]:
         for shape, pattern in [((1,1),(1,)),
                                ((1,0),(1,)),
                                ((0,1),(1,)),
@@ -123,9 +124,10 @@ def test_careduce():
 
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
@@ -191,10 +193,12 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
+
             a = tensor.TensorType('float32', (False,) * len(shape))()
             dim_pattern = range(len(shape))
             dim_pattern[0] = 1
@@ -223,10 +227,12 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum} support only those patterns
-            if scalar_op is theano.scalar.maximum and pat not in [
-                (0, 1), (0, 1, 1), (0, 1, 1)]:
+            #GpuCAReduce{maximum/minimum} support only those patterns
+            if scalar_op in [theano.scalar.maximum,
+                             theano.scalar.minimum] and pat not in [
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
                 continue
+
             shape = numpy.asarray(shape) * 2
             a = tensor.TensorType('float32', (False,) * len(shape))()
             a2 = tcn.CudaNdarrayType((False,) * len(shape))()
@@ -1129,6 +1135,35 @@ def test_shared_cudandarray():
     CudaNdarray'''
     a = cuda.shared_constructor(cuda.CudaNdarray.zeros((2, 3)))
     assert isinstance(a.type, tcn.CudaNdarrayType)
+
+
+def test_gpueye():
+    def check(dtype, N, M_=None):
+        # Theano does not accept None as a tensor.
+        # So we must use a real value.
+        M = M_
+        # Currently DebugMode does not support None as inputs even if this is
+        # allowed.
+        if M is None:
+            M = N
+        N_symb = T.iscalar()
+        M_symb = T.iscalar()
+        k_symb = numpy.asarray(0)
+        out = T.eye(N_symb, M_symb, k_symb, dtype=dtype)
+        f = theano.function([N_symb, M_symb],
+                            B.as_cuda_ndarray_variable(out),
+                            mode=mode_with_gpu)
+        result = numpy.asarray(f(N, M))
+        assert numpy.allclose(result, numpy.eye(N, M_, dtype=dtype))
+        assert result.dtype == numpy.dtype(dtype)
+        assert any([isinstance(node.op, B.GpuEye)
+                    for node in f.maker.fgraph.toposort()])
+
+    for dtype in ['float32']:
+        yield check, dtype, 3
+        # M != N, k = 0
+        yield check, dtype, 3, 5
+        yield check, dtype, 5, 3
 
 
 class test_size(unittest.TestCase):

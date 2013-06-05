@@ -1733,7 +1733,10 @@ class AddSD(gof.op.Op):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "AddSD support inputs with the same dtype only."
+                " You passed %s and %s inputs dtype." % (x.type.dtype,
+                                                         y.type.dtype))
 
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
 
@@ -1750,7 +1753,7 @@ class AddSD(gof.op.Op):
 
     def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
         inplace = int(self.inplace)
-        format = {'csc': 0, 'csr':1}[self.format]
+        format = {'csc': 0, 'csr': 1}[self.format]
         code = """
                 Py_XDECREF(%(z)s);
                 if (!%(inplace)s){
@@ -1759,7 +1762,7 @@ class AddSD(gof.op.Op):
                   %(z)s = %(y)s;
                   Py_XINCREF(%(z)s);
                 }
-                
+
                 npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
                 const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
                 const npy_int32 * __restrict__ indices = (npy_int32*)%(_indices)s->data;
@@ -1795,9 +1798,9 @@ class AddSD(gof.op.Op):
         assert _is_dense(y)
 
         if self.format == 'csr':
-            x = scipy.sparse.csr_matrix((data, indices, indptr), shape = y.shape)
+            x = scipy.sparse.csr_matrix((data, indices, indptr), shape=y.shape)
         elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix((data, indices, indptr), shape = y.shape)
+            x = scipy.sparse.csc_matrix((data, indices, indptr), shape=y.shape)
 
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.

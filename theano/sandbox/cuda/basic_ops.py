@@ -488,7 +488,6 @@ class GpuDimShuffle(GpuOp):
             print sio.getvalue()
             print '--------------------------------------'
             if 0:
-                import sys
                 sys.exit()
 
         return sio.getvalue()
@@ -911,7 +910,8 @@ class GpuCAReduce(GpuOp):
         dummy_name = name + '_scalar_op'+ str(self._n_scalar_op_calls)
         self._n_scalar_op_calls += 1
 
-        return self.scalar_op.c_code(node, name, (left, right), (left, ), sub)
+        return self.scalar_op.c_code(dummy_node, dummy_name, (left, right),
+                                     (left,), sub)
 
     def _k_reduce_buf(self, z_pos, node, name, sub):
         """
@@ -1189,7 +1189,10 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
-        self._op_guard()
+        if not isinstance(self.scalar_op, (scal.Add,
+                                           scal.Maximum,
+                                           scal.Minimum)):
+            raise NotImplementedError()
         print >> sio, """
         {
             int verbose = 0;
@@ -1736,42 +1739,29 @@ class GpuCAReduce(GpuOp):
             # extra 0, I would need to change the behavior of the sum reduction
             # code to do that. I don't want to benchmark and test changes to the
             # sum code so I will leave that for later.
-            # max reduction is also a special case that is simple to implement.
+            # max/min reduction is also a special case that is simple to implement.
             # this is the special case where reduction is idempotent so it doesn't
             # matter if we reduce with the first element multiple times.
-            if isinstance(self.scalar_op, scal.Add):
-                # special cased sum code (special case because starts the
-                # reduction with 0)
-                print >> sio, """
-                %(decl)s{
-                    %(init)s
-                    for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      myresult = 0;
-                      %(for_i1)s{
-                        %(for_i2)s{
-                          %(for_i3)s{
-                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            myresult += Ai;
-                          }
-                        }
-                      }
-                      %(reducebuf)s
-                    }
-                }
-                """ % locals()
-            elif isinstance(self.scalar_op, scal.Maximum):
-                # special cased max code (special case because visits first
+            if isinstance(self.scalar_op, (scal.Add, scal.Maximum, scal.Minimum)):
+                # special cased max/min code (special case because visits first
                 # member of each row twice)
+                if isinstance(self.scalar_op, scal.Add):
+                    reduce_init = "0.f;"
+                else:
+                    reduce_init = "A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0];" % locals()
+                reduce_fct = self._assign_reduce(
+                    node, nodename, "myresult",
+                    "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
+                    {})
                 print >> sio, """
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
-                      myresult = A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0];
+                      myresult = %(reduce_init)s;
                       %(for_i1)s{
                         %(for_i2)s{
                           %(for_i3)s{
-                            float Ai = A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0];
-                            myresult = max(myresult, Ai);
+                            %(reduce_fct)s;
                           }
                         }
                       }
@@ -1791,14 +1781,25 @@ class GpuCAReduce(GpuOp):
                 # code to make sure it does not cause a slowdown
                 raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
             #TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]', node, nodename, sub = {})
+            reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]',
+                                           node, nodename, sub={})
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + threadIdx.x * sA1 + i2 * sA2];"
             print >> sio, """
             static __global__ void kernel_reduce_010_%(nodename)s(
                     const int d0,
@@ -1822,10 +1823,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
-                        float myresult = 0.0f;
+                        float myresult = %(reduce_init)s;
                         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            %(reduce_fct)s;
                         }
                         %(reducebuf)s
                     }
@@ -2306,6 +2307,7 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
         if len(hv) == 0:
             return ()
         return (3, hv)
+
 
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
@@ -3104,3 +3106,95 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                                for i in node.inputs]),
                     print str([getattr(i, 'dtype', None)
                                for i in node.outputs])
+
+
+class GpuEye(GpuOp):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
+        assert dtype == 'float32'
+        self.dtype = dtype
+
+    def make_node(self, n, m, k):
+        n = tensor.as_tensor_variable(n)
+        m = tensor.as_tensor_variable(m)
+        k = tensor.as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
+
+        # k != 0 isn't implemented on the GPU yet.
+        assert tensor.get_scalar_constant_value(k) == 0
+        return Apply(self, [n, m], [matrix(dtype=self.dtype)])
+
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(type(self))
+
+    def c_support_code(self):
+        return """
+//Only 1 block is used.
+__global__ void kEye(float* a, int n, int m) {
+    int nb_elem = min(n, m);
+    for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
+        a[i*m + i] = 1;
+    }
+}"""
+
+    def c_code(self, node, name, inp, out, sub):
+        n, m = inp
+        z, = out
+        fail = sub['fail']
+        s = """
+        int dims[] = {0, 0};
+
+        dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
+        dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
+        int total_size = dims[0] * dims[1] * sizeof(float);
+        cudaError_t sts;
+        void * orig_z = %(z)s;
+
+        if (CudaNdarray_prep_output(&%(z)s, 2, dims))
+        {
+            %(fail)s;
+        }
+
+        sts = cudaMemset(CudaNdarray_DEV_DATA(%(z)s), 0, total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuEye: Error in memset %%d bytes of device memory.",
+                         total_size);
+            if(orig_z == NULL)
+                Py_XDECREF(%(z)s);
+            %(fail)s;
+        }
+
+        kEye<<<1, 256>>>(CudaNdarray_DEV_DATA(%(z)s), dims[0], dims[1]);
+        CNDA_THREAD_SYNC;
+
+        sts = cudaGetLastError();
+        if (cudaSuccess != sts)
+        {
+               PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: kEye: %%s. n=%%d, m=%%d.",
+                    cudaGetErrorString(sts),
+                    dims[0], dims[1]);
+            %(fail)s;
+         }
+        """ % locals()
+
+        return s
+
+    def c_code_cache_version(self):
+        return (3,)
+gpu_eye = GpuEye(dtype='float32')

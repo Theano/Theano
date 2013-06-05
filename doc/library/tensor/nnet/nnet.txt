@@ -4,10 +4,22 @@
 :mod:`nnet` -- Ops for neural networks
 ======================================================
 
-.. module:: nnet
+.. module:: tensor.nnet
    :platform: Unix, Windows
    :synopsis: Ops for neural networks
 .. moduleauthor:: LISA
+
+
+- Sigmoid
+   - :func:`sigmoid`
+   - :func:`ultra_fast_sigmoid`
+   - :func:`hard_sigmoid`
+
+- Others
+   - :func:`softplus`
+   - :func:`softmax`
+   - :func:`binary_crossentropy`
+   - :func:`.categorical_crossentropy`
 
 .. function:: sigmoid(x)
 
@@ -71,6 +83,7 @@
 
    .. note:: The underlying code will return an exact 0 or 1 if an
       element of x is too small or too big.
+
 
 .. function:: softplus(x)
 

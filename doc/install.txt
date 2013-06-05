@@ -150,9 +150,8 @@ directory; see the `virtualenv documentation`_ for details.
 
 .. note::
 
-    Theano *can* be installed with easy_install_, however we recommend pip_ as
-    a long-standing bug in ``easy_install`` prevents ``theano.test()`` from
-    running the Theano test suite; ``pip`` offers many other benefits over
+    Theano *can* be installed with easy_install_, however we recommend pip_.
+    ``pip`` offers many benefits over
     ``easy_install`` such as more intelligent dependency management, better
     error messages and a ``pip uninstall`` command for easily removing
     packages.
@@ -533,6 +532,7 @@ it differently and it worked, please let us know the details on the
 `theano-users`_ mailing-list, so that we can add alternate instructions
 here.
 
+
 In academia: Enthought Python Distribution (EPD)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -798,12 +798,36 @@ pip is not included in EPD, but you can simply install it with::
 You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_edge`.
 
 
+
+Alternative: Canopy
+###################
+
+Another software from Enthought that install all Theano dependancy.
+If you are affiliated with a university (as student or employee), you
+can download the installation for free.
+
+- Install Canopy x64, and update it to the latest version (`Help /
+  Software updates...`), as older Canopy versions have trouble installing
+  `pip`.
+- Then install `pip` from Canopy Package Manager.
+- In the Windows shell (type `cmd` in the Windows start menu to bring it up),
+  type `pip install theano`.
+- In Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
+- (Needed only for Theano 0.6rc3 or earlier)
+  The "libpython 1.2" package installs files `libpython27.a` and `libmsvcr90.a` to
+  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\User\libs`. Copy the two files to
+  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\libs`.
+- (Needed only for Theano 0.6rc3 or earlier) Set the Theano flags
+  ``blas.ldflags=-LC:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\Scripts -lmk2_core -lmk2_intel_thread -lmk2_rt``.
+
+
+
 Alternative: AnacondaCE
 #######################
 
 ContinuumIO_ is providing a free Python distribution for Windows (32-bit
 and 64-bit), including all dependencies of Theano. If you are not
-eligible for a download of EPD (via a commercial, or free academic
+eligible for a download of EPD or Canopy (via a commercial, or free academic
 licence), this is the easiest way to install
 Theano's dependencies. Simply download and execute the installer from
 `AnacondaCE downlowad page <http://continuum.io/anacondace.html>`__,
