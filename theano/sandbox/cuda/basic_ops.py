@@ -661,7 +661,7 @@ class GpuCAReduce(GpuOp):
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]:
-                print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] !=CudaNdarray_HOST_DIMS(%s)[%d]) " % (x, i)
+                print >> sio, " || (CudaNdarray_HOST_DIMS(%(z)s)[%(j)s] != CudaNdarray_HOST_DIMS(%(x)s)[%(i)d]) " % locals()
                 j += 1
 
         print >> sio, """
