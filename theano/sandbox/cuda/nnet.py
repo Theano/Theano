@@ -1,5 +1,5 @@
 from theano import Op, Apply
-import StringIO
+from theano.compat.six import StringIO
 
 from theano.sandbox.cuda import GpuOp
 
@@ -92,7 +92,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
         nll, sm, am = out
         classname = self.__class__.__name__
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
         print >> sio, """
         if (%(y_idx)s->nd != 1)
         {

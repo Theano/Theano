@@ -1,6 +1,5 @@
 import copy
 import logging
-import StringIO
 import sys
 
 import numpy
@@ -8,6 +7,7 @@ import numpy
 import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar, config
+from theano.compat.six import StringIO
 from theano.scalar import Scalar
 scal = scalar # somewhere scalar gets reassigned to be a function
 
@@ -385,7 +385,7 @@ class GpuDimShuffle(GpuOp):
 
         nd_in = len(self.input_broadcastable)
         nd_out = len(self.new_order)
-        sio = StringIO.StringIO()
+        sio = StringIO()
         fail = sub['fail']
 
         #check input
@@ -618,7 +618,7 @@ class GpuCAReduce(GpuOp):
 
         assert nd_in - nd_out == sum(self.reduce_mask)
 
-        sio = StringIO.StringIO()
+        sio = StringIO()
         fail = sub['fail']
 
         #check input
@@ -750,7 +750,7 @@ class GpuCAReduce(GpuOp):
                     %(fail)s;
                 }
         """
-        sio = StringIO.StringIO()
+        sio = StringIO()
         if pattern is None:
             pattern = ''.join(str(c) for c in self.reduce_mask)
         ndim = len(self.reduce_mask)
@@ -843,7 +843,7 @@ class GpuCAReduce(GpuOp):
             ndim = len(reduce_mask)
         if pattern is None:
             pattern = ''.join(str(i) for i in reduce_mask)
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
             static __global__ void kernel_reduce_%(pattern)s_%(nodename)s(
@@ -1590,7 +1590,7 @@ class GpuCAReduce(GpuOp):
             raise NotImplementedError()
 
     def c_support_code_apply(self, node, nodename):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         nd_in = len(self.reduce_mask)
         if all(i == 1 for i in self.reduce_mask):
             self._op_guard()

@@ -7,13 +7,13 @@ __docformat__ = "restructuredtext en"
 
 import copy, sys, copy_reg, gc
 from itertools import izip
-from StringIO import StringIO
 
 import numpy
 
 import theano
 from theano import gof
 from theano.compat import get_unbound_function
+from theano.compat.six import StringIO
 from theano.gof import FunctionGraph,graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker

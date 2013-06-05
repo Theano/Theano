@@ -2,7 +2,6 @@ import itertools
 import logging
 import operator
 import os
-import StringIO
 import sys
 from tempfile import mkstemp
 import unittest
@@ -20,6 +19,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 from theano.compat import PY3, exc_message, operator_div
+from theano.compat.six import StringIO
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
@@ -2269,7 +2269,7 @@ class T_max_and_argmax(unittest.TestCase):
     def test2_invalid_neg(self):
         n = as_tensor_variable(rand(2, 3))
         old_stderr = sys.stderr
-        sys.stderr = StringIO.StringIO()
+        sys.stderr = StringIO()
         try:
             try:
                 eval_outputs(max_and_argmax(n, -3))
@@ -2463,7 +2463,7 @@ class T_argmin_argmax(unittest.TestCase):
         for fct, nfct in [(argmax, numpy.argmax), (argmin, numpy.argmin)]:
             n = as_tensor_variable(rand(2, 3))
             old_stderr = sys.stderr
-            sys.stderr = StringIO.StringIO()
+            sys.stderr = StringIO()
             try:
                 try:
                     eval_outputs(fct(n, -3))
@@ -2596,7 +2596,7 @@ class T_min_max(unittest.TestCase):
         for fct in [max, min]:
             n = as_tensor_variable(rand(2, 3))
             old_stderr = sys.stderr
-            sys.stderr = StringIO.StringIO()
+            sys.stderr = StringIO()
             try:
                 try:
                     eval_outputs(fct(n, -3))
@@ -2931,7 +2931,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         t = n[4:5, 3]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         old_stderr = sys.stderr
-        sys.stderr = StringIO.StringIO()
+        sys.stderr = StringIO()
         try:
             self.assertRaises(IndexError,
                               self.eval_output_and_check, [t])

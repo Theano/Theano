@@ -1,10 +1,10 @@
 import copy
 import os
-import StringIO
 
 import theano
 from theano import Apply
 from theano import tensor
+from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 
@@ -226,7 +226,7 @@ class GpuGemm(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
 
@@ -341,7 +341,7 @@ class GpuGemv(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
@@ -438,7 +438,7 @@ class GpuGer(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];

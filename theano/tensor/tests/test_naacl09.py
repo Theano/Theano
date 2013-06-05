@@ -652,10 +652,10 @@ def profile_main():
     # We've renamed our original main() above to real_main()
     import cProfile
     import pstats
-    import StringIO
+    from theano.compat.six import StringIO
     prof = cProfile.Profile()
     prof = prof.runctx("real_main()", globals(), locals())
-    stream = StringIO.StringIO()
+    stream = StringIO()
     stats = pstats.Stats(prof)
     stats.sort_stats("time")  # Or cumulative
     stats.print_stats(80)  # 80 = how many to print

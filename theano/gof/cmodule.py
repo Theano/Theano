@@ -8,7 +8,6 @@ import os
 import re
 import shutil
 import stat
-import StringIO
 import subprocess
 import sys
 import tempfile
@@ -21,6 +20,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, next, decode, decode_iter
+from theano.compat.six import StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -196,7 +196,7 @@ static struct PyModuleDef moduledef = {{
         self.functions.append(fn)
 
     def code(self):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         for inc in self.includes:
             if not inc:
                 continue
