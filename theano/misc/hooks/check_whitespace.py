@@ -5,7 +5,6 @@ import difflib
 import operator
 import os
 import string
-from StringIO import StringIO
 from subprocess import Popen, PIPE
 import sys
 import tabnanny
@@ -13,6 +12,7 @@ import tokenize
 
 import argparse
 import reindent
+from theano.compat.six.StringIO import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 

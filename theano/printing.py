@@ -6,7 +6,6 @@ in a graph(Print Op)
 from copy import copy
 import logging
 import os
-import StringIO
 import sys
 # Not available on all platforms
 hashlib = None
@@ -26,6 +25,7 @@ except ImportError:
 import theano
 from theano import gof
 from theano import config
+from theano.compat.six import StringIO
 from theano.gof import Op, Apply
 from theano.gof.python25 import any
 from theano.compile import Function, debugmode
@@ -74,7 +74,7 @@ def debugprint(obj, depth=-1, print_type=False,
 
     """
     if file == 'str':
-        _file = StringIO.StringIO()
+        _file = StringIO()
     elif file is None:
         _file = sys.stdout
     else:

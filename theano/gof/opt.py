@@ -274,7 +274,7 @@ class SeqOptimizer(Optimizer, list):
                 new_sub_profile.append(None)
 
         # merge not common opt
-        import StringIO
+        from theano.compat.six import StringIO
         for l in set(prof1[0]).symmetric_difference(set(prof2[0])):
             #The set trick above only work for the same object optimization
             #It don't work for equivalent optimization.
@@ -282,8 +282,8 @@ class SeqOptimizer(Optimizer, list):
             new_l_names = [o.name for o in new_l]
             if l.name in new_l_names:
                 idx = new_l_names.index(l.name)
-                io1 = StringIO.StringIO()
-                io2 = StringIO.StringIO()
+                io1 = StringIO()
+                io2 = StringIO()
                 l.print_summary(io1)
                 new_l[idx].print_summary(io2)
                 if io1.read() == io2.read():

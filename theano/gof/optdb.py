@@ -1,9 +1,9 @@
-import StringIO
 import sys
 
 from theano.gof.python25 import DefaultOrderedDict
 
 import numpy
+from theano.compat.six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
@@ -258,7 +258,7 @@ class SequenceDB(DB):
         print >> stream, "  db", self.__db__
 
     def __str__(self):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         self.print_summary(sio)
         return sio.getvalue()
 

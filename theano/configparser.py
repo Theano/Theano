@@ -7,7 +7,7 @@ import os
 import sys
 import warnings
 
-import StringIO
+from theano.compat.six import StringIO
 
 import theano
 from theano.compat import configparser as ConfigParser
@@ -150,7 +150,7 @@ class TheanoConfigParser(object):
     _i_am_a_config_class = True
 
     def __str__(self):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         _config_print(self.__class__, sio)
         return sio.getvalue()
 

@@ -720,9 +720,10 @@ def test_pickle_aliased_memory():
     m.x[0,0] = 3.14
     assert m.y[0,0] == 3.14
 
-    import StringIO, logging
+    import logging
+    from theano.compat.six import StringIO
 
-    sio = StringIO.StringIO()
+    sio = StringIO()
     handler = logging.StreamHandler(sio)
     logging.getLogger('theano.compile.function_module').addHandler(handler)
     # Silence original handler when intentionnally generating warning messages

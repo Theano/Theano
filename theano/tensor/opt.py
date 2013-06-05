@@ -9,7 +9,6 @@ _logger = logging.getLogger('theano.tensor.opt')
 
 import operator
 import itertools
-import StringIO
 import sys
 import traceback
 from itertools import izip
@@ -35,7 +34,7 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
-
+from theano.compat.six import StringIO
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -836,7 +835,7 @@ class ShapeFeature(object):
                 raise TypeError('shapes must be tuple/list', (r, s))
 
             if r.ndim != len(s):
-                sio = StringIO.StringIO()
+                sio = StringIO()
                 theano.printing.debugprint(r, file=sio, print_type=True)
                 raise AssertionError(
                     "Something inferred a shape with %d dimensions "

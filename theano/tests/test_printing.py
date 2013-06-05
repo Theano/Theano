@@ -1,10 +1,7 @@
 """
 Tests of printing functionality
 """
-
-
 import logging
-import StringIO
 
 from nose.plugins.skip import SkipTest
 
@@ -12,7 +9,7 @@ import theano
 import theano.tensor as tensor
 
 from theano.printing import min_informative_str, debugprint
-
+from theano.compat.six import StringIO
 
 def test_pydotprint_cond_highlight():
     """
@@ -29,7 +26,7 @@ def test_pydotprint_cond_highlight():
     f = theano.function([x], x * 2)
     f([1, 2, 3, 4])
 
-    s = StringIO.StringIO()
+    s = StringIO()
     new_handler = logging.StreamHandler(s)
     new_handler.setLevel(logging.DEBUG)
     orig_handler = theano.logging_default_handler
@@ -65,7 +62,7 @@ def test_pydotprint_long_name():
     f = theano.function([x], [x * 2, x + x], mode=mode)
     f([1, 2, 3, 4])
 
-    s = StringIO.StringIO()
+    s = StringIO()
     new_handler = logging.StreamHandler(s)
     new_handler.setLevel(logging.DEBUG)
     orig_handler = theano.logging_default_handler
@@ -131,7 +128,7 @@ def test_debugprint():
     debugprint(G)
 
     # test ids=int
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='int')
     s = s.getvalue()
     # The additional white space are needed!
@@ -151,7 +148,7 @@ def test_debugprint():
     assert s == reference
 
     # test ids=CHAR
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='CHAR')
     s = s.getvalue()
     # The additional white space are needed!
@@ -171,7 +168,7 @@ def test_debugprint():
     assert s == reference
 
     # test ids=CHAR, stop_on_name=True
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='CHAR', stop_on_name=True)
     s = s.getvalue()
     # The additional white space are needed!
@@ -189,7 +186,7 @@ def test_debugprint():
     assert s == reference
 
     # test ids=
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='')
     s = s.getvalue()
     # The additional white space are needed!
