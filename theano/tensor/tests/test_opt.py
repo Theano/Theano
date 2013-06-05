@@ -875,8 +875,8 @@ class test_fusion(unittest.TestCase):
                 fyv * fzv, 'float32'),  # 2
             (fx * fy + fz, (fx, fy, fz), (fxv, fyv, fzv), 1, fxv *
                 fyv + fzv, 'float32'),  # 3
-            (fw + fx + fy + fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1, fwv +
-                fxv + fyv + fzv, 'float32'),
+            (fw + fx + fy + fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
+                 fwv + fxv + fyv + fzv, 'float32'),
             ((fw + fx) + (fy + fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
                 fwv + fxv + fyv + fzv, 'float32'),  # 5
             (((fw + fx) + fy) + fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
@@ -886,29 +886,29 @@ class test_fusion(unittest.TestCase):
             ((fw + (fx + fy) + fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
                 fwv + fxv + fyv + fzv, 'float32'),
             (fw + (fx + (fy + fz)), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
-                fwv + fxv + fyv +fzv, 'float32'),
+                fwv + fxv + fyv + fzv, 'float32'),
             ((fw+fx)+(fy+fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
                 fwv+fxv+fyv+fzv, 'float32'),  # 10
-            (fw*fx*fy*fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1, fwv*
-                fxv*fyv*fzv, 'float32'),
-            (fw+fx*fy*fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1, fwv+
-                fxv*fyv*fzv, 'float32'),
+            (fw*fx*fy*fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
+                fwv * fxv * fyv * fzv, 'float32'),
+            (fw+fx*fy*fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv), 1,
+                fwv + fxv * fyv * fzv, 'float32'),
             (fx+fy*fz*fx, (fx, fy, fz), (fxv, fyv, fzv), 1,
-                 fxv+fyv*fzv*fxv, 'float32'),
+                fxv + fyv * fzv * fxv, 'float32'),
             (fx*fy+fz+fy, (fx, fy, fz), (fxv, fyv, fzv), 1,
-                 fxv*fyv+fzv+fyv, 'float32'),
+                fxv * fyv + fzv + fyv, 'float32'),
             (fx*fy*fz*fw+fx+fy+fz+fw, (fw, fx, fy, fz), (fwv, fxv,
                 fyv, fzv), 1, fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv, 'float32'),  # 15
             #test with constant
-            ((fw+fx)+(fy+fz)+ 2,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv)
-                ,1,fwv+fxv+fyv+fzv+2,'float32'),
-            (((fw+fx)+2+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            ((fw+fx)+(fy+fz)+ 2.,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+2+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            (((fw+fx)+2.+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+                1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+(fx+2.+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
             ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
-            (fw+(fx+(fy+fz)+2),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
+            (fw+(fx+(fy+fz)+2.),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),  # 20
             (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
                 1,fwv+fxv+fyv+fzv+2,'float32'),
@@ -1027,16 +1027,18 @@ class test_fusion(unittest.TestCase):
         fail2 = []
         fail3 = []
         fail4 = []
-        for id, [g, sym_inputs, val_inputs, nb_elemwise, answer, out_dtype] in enumerate(cases):
+        for id, [g, sym_inputs, val_inputs,
+                 nb_elemwise, answer, out_dtype] in enumerate(cases):
             if isinstance(out_dtype, dict):
                 out_dtype = out_dtype[config.cast_policy]
-            if gpu and (out_dtype!='float32' or any(i.dtype != 'float32' for i in g.owner.inputs)):
+            if (gpu and (out_dtype != 'float32' or
+                         any(i.dtype != 'float32' for i in g.owner.inputs))):
                 print "Skip test %d as the gpu code currently supports only float32" % id
                 continue
             print "new cases", id
 
             if shared_fn is None:
-                assert gpu == False
+                assert gpu is False
                 f = compile.function(list(sym_inputs), g, mode=mode)
                 for x in range(nb_repeat):
                     out = f(*val_inputs)

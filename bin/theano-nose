@@ -106,7 +106,7 @@ def main():
                 'Use --without-knownfailure to disable this warning.')
     else:
         sys.argv.remove('--without-knownfailure')
-        
+
     # When 'theano-nose' is called-back under the time-profile option, an
     # instance of the custom Nosetests plugin class 'DisabDocString' (see
     # below) is loaded. The latter ensures that the test name will not be
@@ -114,7 +114,22 @@ def main():
     if '--disabdocstring' in sys.argv:
         addplugins.append(DisabDocString())
 
-    return nose.main(addplugins=addplugins)
+    try:
+        if addplugins:
+            ret = nose.main(addplugins=addplugins)
+        else:
+            ret = nose.main()
+        return ret
+    except TypeError, e:
+        if "got an unexpected keyword argument 'addplugins'" in e.message:
+            # This means nose is too old and does not support plugins
+            _logger.warn(
+                'KnownFailure plugin from NumPy can\'t'
+                ' be used as nosetests is too old. '
+                'Use --without-knownfailure to disable this warning.')
+            nose.main()
+        else:
+            raise
 
 
 def help():

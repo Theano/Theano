@@ -2729,6 +2729,42 @@ class T_min_max(unittest.TestCase):
         #axis=1)[0], n)),axis=1)
 
 
+class T_outer(unittest.TestCase):
+    def test_outer(self):
+        for m in range(4):
+            for n in range(4):
+                x = tensor.tensor(dtype='floatX', broadcastable=(False,) * m)
+                y = tensor.tensor(dtype='floatX', broadcastable=(False,) * n)
+                s1 = numpy.random.randint(1, 10, m)
+                s2 = numpy.random.randint(1, 10, n)
+                v1 = numpy.asarray(numpy.random.rand(*s1)).astype(floatX)
+                v2 = numpy.asarray(numpy.random.rand(*s2)).astype(floatX)
+                o = tensor.outer(x, y).eval({x: v1, y: v2})
+                assert_allclose(o, numpy.outer(v1, v2))
+
+    def test_grad(self):
+        """
+        Test the combined graph of the graph of outer
+        with broadcastable dimensions, just in case.
+        """
+        for shp0, shp1 in [((1,), (2,)),
+                           ((3,), (1,)),
+                           ((1,), (1,)),
+                           ((3,), (2,)),
+                           ((3, 2), (1, 1)),
+                           ((3, 2), (1, 4)),
+                           ((3, 2), (4, 1)),
+                           ((3, 2), (4, 5)),
+                           ((1, 2), (4, 5)),
+                           ((3, 1), (4, 5)),
+                           ((1, 1), (4, 5)),
+                           ((1, 1), (1, 1)),
+                       ]:
+            data0 = numpy.random.rand(*shp0).astype(floatX)
+            data1 = numpy.random.rand(*shp1).astype(floatX)
+            utt.verify_grad(tensor.outer, [data0, data1])
+
+
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     """
     This is build in a way that allow to reuse it to test the

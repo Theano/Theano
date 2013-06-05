@@ -3621,6 +3621,9 @@ class Eye(gof.Op):
         n = as_tensor_variable(n)
         m = as_tensor_variable(m)
         k = as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
         return gof.Apply(self, [n, m, k],
                 [TensorType(dtype=self.dtype, broadcastable=(False, False))()])
 
@@ -8185,7 +8188,14 @@ def tensordot(a, b, axes=2):
 
 
 def outer(x, y):
-    """Return vector-vector outer product."""
+    """Return vector-vector outer product.
+
+    If an input isn't a vector, we flatten it first.
+    """
+    if x.ndim != 1:
+        x = x.flatten()
+    if y.ndim != 1:
+        y = y.flatten()
     return dot(
             x.dimshuffle(0, 'x'),
             y.dimshuffle('x', 0))

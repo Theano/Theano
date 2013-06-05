@@ -197,6 +197,34 @@ def default_blas_ldflags():
                 return ' '.join(
                     ['-L%s' % os.path.join(sys.prefix, "lib")] +
                     ['-l%s' % l for l in blas_info['libraries']])
+        #Canopy
+        if "Canopy" in sys.prefix:
+            if sys.platform == "darwin":
+                p2 = os.path.join(sys.base_prefix, "lib")
+                assert os.path.exists(p2), "Canopy changed the location of MKL"
+                return ' '.join(
+                    ['-L%s' % p2] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
+            p = os.path.join(sys.base_prefix, "..", "..", "appdata")
+            assert os.path.exists(p), "Canopy changed the location of MKL"
+            p2 = os.listdir(p)
+            assert len(p2) == 1, "Canopy changed the location of MKL"
+            if sys.platform == "linux2":
+                p2 = os.path.join(p, p2[0], "lib")
+                assert os.path.exists(p2), "Canopy changed the location of MKL"
+                return ' '.join(
+                    ['-L%s' % p2] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+            elif sys.platform == 'win32':
+                p2 = os.path.join(p, p2[0], "Scripts")
+                assert os.path.exists(p2), "Canopy changed the location of MKL"
+                return ' '.join(
+                    ['-L%s' % p2] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in blas_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
 
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
@@ -1921,9 +1949,9 @@ def local_dot22_to_dot22scalar(node):
 
     scalar_idx = -1
     for i, x in enumerate(node.inputs):
-        if (i_scalar[i] is not None
-                and (theano.scalar.upcast(x.type.dtype, d.type.dtype)
-                    == d.type.dtype)):
+        if (i != dot22_idx and i_scalar[i] is not None and
+            (theano.scalar.upcast(x.type.dtype, d.type.dtype) ==
+             d.type.dtype)):
             scalar_idx = i
             break
     if scalar_idx < 0:

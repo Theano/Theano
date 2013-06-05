@@ -220,9 +220,16 @@ class Psi(UnaryScalarOp):
     def c_support_code(self):
         return (
 """
+// For GPU support
+#ifdef __CUDACC__
+#define DEVICE __device__
+#else
+#define DEVICE
+#endif
+
 #ifndef _PSIFUNCDEFINED
 #define _PSIFUNCDEFINED
-double _psi(double x){
+DEVICE double _psi(double x){
 
     /*taken from
     Bernardo, J. M. (1976). Algorithm AS 103:

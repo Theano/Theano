@@ -5,6 +5,7 @@ import platform
 import re
 import shutil
 import struct
+import socket
 import subprocess
 import sys
 import textwrap
@@ -67,6 +68,7 @@ compiledir_format_dict = {
         "theano_version": theano.__version__,
         "numpy_version": numpy.__version__,
         "gxx_version": gcc_version_str.replace(" ", "_"),
+        "hostname": socket.gethostname(),
         }
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(platform)s-%(processor)s-"
