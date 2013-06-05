@@ -1949,9 +1949,9 @@ def local_dot22_to_dot22scalar(node):
 
     scalar_idx = -1
     for i, x in enumerate(node.inputs):
-        if (i_scalar[i] is not None
-                and (theano.scalar.upcast(x.type.dtype, d.type.dtype)
-                    == d.type.dtype)):
+        if (i != dot22_idx and i_scalar[i] is not None and
+            (theano.scalar.upcast(x.type.dtype, d.type.dtype) ==
+             d.type.dtype)):
             scalar_idx = i
             break
     if scalar_idx < 0:
