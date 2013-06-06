@@ -1074,7 +1074,7 @@ class Elemwise(Op):
         # the element-wise computation. Aliased scalar variables need
         # not be declared, as they are #defined in defines
         task_decl = "".join([
-            "%(dtype)s& %(name)s_i = *%(name)s_iter;\n" % locals()
+            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
                 for name, dtype in izip(inames + list(real_onames),
                                        idtypes + list(real_odtypes))])
 
