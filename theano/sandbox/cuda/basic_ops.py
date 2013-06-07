@@ -1133,10 +1133,10 @@ class GpuCAReduce(GpuOp):
         assert N in [1, 2, 3]
         makecall = self._makecall(node, name, x, z, fail)
         N_pattern = ''.join(['1'] * N)
-        param_dim = ",".join(["CudaNdarray_HOST_DIMS(%(x)s)[%(i)s]" % locals()
+        param_dim = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
                               for i in xrange(N + 1)])
-        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]"
-                                % locals() for i in xrange(N + 1)])
+        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%s)[%d]"
+                                % (x, i) for i in xrange(N + 1)])
 
         threads_y = """
             //get as many y threads as we can fit
@@ -1728,9 +1728,9 @@ class GpuCAReduce(GpuOp):
                 sA3 = 'sA3'
 
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0]', node, nodename, sub = {})
-            param_dim = ",".join(["const int d%(i)s" % locals()
+            param_dim = ",".join(["const int d%d" % i
                                   for i in xrange(nd_in)])
-            param_strides = ",".join(["const int sA%(i)s" % locals()
+            param_strides = ",".join(["const int sA%d" % i
                                       for i in xrange(nd_in)])
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)

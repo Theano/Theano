@@ -230,6 +230,7 @@ fail:
 
         PyMODINIT_FUNC
         PyInit_cutils_ext(void) {
+            import_array();
             return PyModule_Create(&moduledef);
         }
         }
