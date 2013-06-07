@@ -48,7 +48,7 @@ def test__toposort():
 def test_posort_easy():
     nodes = "asdfghjkl"
 
-    def cmp(a, b):
+    def mycmp(a, b):
         if a < b:
             return -1
         elif a > b:
@@ -56,7 +56,7 @@ def test_posort_easy():
         else:
             return 0
 
-    assert posort(nodes, cmp) == list("adfghjkls")
+    assert posort(nodes, mycmp) == list("adfghjkls")
 
 
 def test_posort():
