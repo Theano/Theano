@@ -30,7 +30,10 @@ def test_sort_apply_nodes():
 
 def test_reverse_dict():
     d = {'a': (1, 2), 'b': (2, 3), 'c': ()}
-    assert reverse_dict(d) == {1: ('a',), 2: ('a', 'b'), 3: ('b',)}
+    # Python 3.3 enable by default random hash for dict.
+    # This change the order of traversal, so this can give 2 outputs
+    assert (reverse_dict(d) == {1: ('a',), 2: ('a', 'b'), 3: ('b',)} or
+            reverse_dict(d) == {1: ('a',), 2: ('b', 'a'), 3: ('b',)})
 
 
 def test__toposort():
