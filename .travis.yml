@@ -5,7 +5,7 @@ language: python
 python:
   - "2.5"
 #  - "2.7"
-#  - "3.2"
+  - "3.2"
 # command to install dependencies
 before_install:
   - sudo apt-get install -qq libatlas3gf-base libatlas-dev liblapack-dev gfortran
