@@ -1,11 +1,12 @@
 from theano.gof.sched import (make_dependence_cmp, sort_apply_nodes,
-        reverse_dict, _toposort, posort)
+                              reverse_dict, _toposort, posort)
 
 import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
 from theano.gof.python25 import any
 from theano.compat import cmp
+
 
 def test_dependence():
     dependence = make_dependence_cmp()
