@@ -286,6 +286,41 @@ can be achieved as follows:
     #   Inputs : [array(0.0)]
     #   Outputs: [array(nan)]
 
+To help understand what is happening in your graph, you can
+disable the ``local_elemwise_fusion`` and all ``inplace``
+optimizations. The first is a speed optimization that merge elemwise
+operations together. This make it harder to know which particular
+elemwise cause the problem. The second optimization make some ops
+output overwrite its input. So, if an op create a bad output, you
+won't be able see the input that was overwriten in the ``post_fun``
+function. To disable those optimization (with a Theano version after
+0.6rc3), define the MonitorMode like this:
+
+.. code-block:: python
+
+   mode = theano.compile.MonitorMode(post_func=detect_nan).excluding(
+       'local_elemwise_fusion', 'inplace)
+    f = theano.function([x], [theano.tensor.log(x) * x],
+                        mode=mode)
+
+.. note::
+
+    The Theano flags ``optimizer_including``, ``optimizer_excluding``
+    and ``optimizer_requiring`` aren't used by the MonitorMode, they
+    are used only by the ``default`` mode. You can't use the ``default``
+    mode with MonitorMode, as you need to define what you monitor.
+
+To be sure all inputs of the node are available during the call to
+``post_func``, you also must disable the garbage collector. Otherwise,
+the execution of the node can garbage collect its inputs that aren't
+needed anymore by the Theano function. This can be done with the Theano
+flag:
+
+.. code-block:: cfg
+
+   allow_gc=False
+
+
 
 .. TODO: documentation for link.WrapLinkerMany
 
