@@ -20,7 +20,8 @@ class MonitorMode(Mode):
     For an example of such a use case, see doc/tutorial/debug_faq.txt.
     """
 
-    def __init__(self, pre_func=None, post_func=None, optimizer='fast_run'):
+    def __init__(self, pre_func=None, post_func=None,
+                 optimizer='fast_run', linker=None):
         """
         Constructor.
 
@@ -35,11 +36,18 @@ class MonitorMode(Mode):
 
         :param optimizer: The optimizer to use. One may use for instance
             'fast_compile' to skip optimizations.
+
+        :param linker: DO NOT USE. This mode use its own linker.
+            The parameter is needed to allow selecting optimizers to use.
         """
         self.pre_func = pre_func
         self.post_func = post_func
         wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
                                                 [self.eval])
+        if (linker is not None and
+            not isinstance(linker.mode, MonitorMode)):
+            raise Exception("MonitorMode can only use its own linker! You "
+                            "should not provide one.", linker)
         super(MonitorMode, self).__init__(wrap_linker, optimizer=optimizer)
 
     def eval(self, i, node, fn):
