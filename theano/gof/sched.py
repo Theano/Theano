@@ -60,11 +60,17 @@ def make_dependence_cmp():
     return dependence
 
 def reverse_dict(d):
-    """ Reverses direction of dependence dict
+    """Reverses direction of dependence dict
 
     >>> d = {'a': (1, 2), 'b': (2, 3), 'c':()}
     >>> reverse_dict(d)
     {1: ('a',), 2: ('a', 'b'), 3: ('b',)}
+
+    :note: dict order are not deterministic. As we iterate on the
+        input dict, it make the output of this function depend on the
+        dict order. So this function output order should be considered
+        as undeterministic.
+
     """
     result = {}
     for key in d:
