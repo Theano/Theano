@@ -850,7 +850,7 @@ You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_e
 Alternative: Canopy
 ###################
 
-Another software from Enthought that install all Theano dependancy.
+Another software from Enthought that installs all Theano dependencies.
 If you are affiliated with a university (as student or employee), you
 can download the installation for free.
 
@@ -863,8 +863,8 @@ can download the installation for free.
 - In Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
 - (Needed only for Theano 0.6rc3 or earlier)
   The "libpython 1.2" package installs files `libpython27.a` and `libmsvcr90.a` to
-  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\User\libs`. Copy the two files to
-  `C:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\libs`.
+  `C:\\Users\\<USER>\\AppData\\Local\\Enthought\\Canopy\\User\\libs`. Copy the two files to
+  `C:\\Users\\<USER>\\AppData\\Local\\Enthought\\Canopy\\App\\appdata\\canopy-1.0.0.1160.win-x86_64\libs`.
 - (Needed only for Theano 0.6rc3 or earlier) Set the Theano flags
   ``blas.ldflags=-LC:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\Scripts -lmk2_core -lmk2_intel_thread -lmk2_rt``.
 
