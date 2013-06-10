@@ -296,7 +296,6 @@ def map_storage(fgraph, order, input_storage, output_storage):
         for r, storage in zip(fgraph.outputs, output_storage):
             storage_map[r] = storage
 
-    thunks = []
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
