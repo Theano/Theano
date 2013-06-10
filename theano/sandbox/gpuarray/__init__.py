@@ -43,6 +43,8 @@ if pygpu:
             # TODO add optimization tags here (when we will have some)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
+            optdb.add_tags('gpuarray_opt', 'fast_run', 'inplace')
+            optdb.add_tags('gpuarray_after_fusion', 'fast_run', 'inplace')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
         else:

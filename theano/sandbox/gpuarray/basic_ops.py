@@ -31,6 +31,9 @@ class HostFromGpu(Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return 'HostFromGpu(gpuarray)'
+
     def make_node(self, x):
         if not isinstance(x.type, GpuArrayType):
             raise TypeError(x)
@@ -109,6 +112,9 @@ class GpuFromHost(Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return 'GpuFromHost(gpuarray)'
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
@@ -192,6 +198,9 @@ class GpuFromCuda(Op):
 
     def __hash__(self):
         return hash(type(self))
+
+    def __str__(self):
+        return 'GpuFromCuda'
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdArrayType
@@ -328,6 +337,9 @@ class CudaFromGpu(Op):
     def __hash__(self):
         return hash(type(self))
 
+    def __str__(self):
+        return 'GpuFromCuda'
+
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdArrayType
         if not isinstance(x.type, GpuArrayType):
@@ -412,3 +424,44 @@ class CudaFromGpu(Op):
 
 
 cuda_from_gpu = CudaFromGpu()
+
+
+class GpuAlloc(Op):
+
+    def __str__(self):
+        return 'GpuAlloc'
+
+    def make_node(self, value, *shape):
+        v = as_gpuarray_variable(value)
+        sh = [tensor.as_tensor_variable(s) for s in shape]
+        if v.ndim = len(shape):
+            raise TypeError(
+                'GpuAlloc requires value of same dimensions as shape',
+                value len(shape))
+        bcast = []
+        for s in sh:
+            if s.type.dtype[:3] not in ('int', 'uint'):
+                raise TypeError('Shape arguments must be integers', s)
+            try:
+                const_shp = tensor.get_constant_value(s)
+            except TypeError:
+                const_shp = None
+            bcast.append(numpy.all(1 == const_shp))
+        otype = GpuArrayType(dtype=v.dtype, broadcastable=bcast)
+        return Apply(self, [v] + sh, [otype()])
+
+    def perform(self, node, inputs, outs):
+        out, = outs
+        v = inputs[0]
+        sh = tuple(map(int, inputs[1:]))
+        if out[0] is None or out[0].shape != sh:
+            out[0] = gpuarray.empty(sh, dtype=v.dtype)
+        out[0][...] = v
+
+    def infer_shape(self, node, input_shapes):
+        return [node.inputs[1:]]
+
+    def grad(self, input, grads):
+        return [None for i in inputs]
+
+gpu_alloc = GpuAlloc()
