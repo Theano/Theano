@@ -438,7 +438,8 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
             and not isinstance(no_default_updates, list):
         raise TypeError("no_default_update should be either a boolean or a list")
 
-    if len(updates) > 0 and isinstance(iter_over_pairs(updates)[0], Variable):
+    if len(updates) > 0 and any(isinstance(v, Variable)
+                                for v in iter_over_pairs(updates)):
         raise ValueError(
             "The updates parameter must an OrderedDict/dict or a list of list/tuple with 2 elements")
 
