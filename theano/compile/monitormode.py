@@ -21,7 +21,7 @@ class MonitorMode(Mode):
     """
 
     def __init__(self, pre_func=None, post_func=None,
-                 optimizer='fast_run', linker=None):
+                 optimizer='default', linker=None):
         """
         Constructor.
 
@@ -44,10 +44,13 @@ class MonitorMode(Mode):
         self.post_func = post_func
         wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
                                                 [self.eval])
+        if optimizer is 'default':
+            optimizer = theano.config.optimizer
         if (linker is not None and
             not isinstance(linker.mode, MonitorMode)):
             raise Exception("MonitorMode can only use its own linker! You "
                             "should not provide one.", linker)
+
         super(MonitorMode, self).__init__(wrap_linker, optimizer=optimizer)
 
     def eval(self, i, node, fn):
