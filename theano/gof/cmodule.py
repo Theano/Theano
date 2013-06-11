@@ -16,6 +16,12 @@ import itertools
 
 import distutils.sysconfig
 
+importlib = None
+try:
+    import importlib
+except ImportError:
+    pass
+
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
@@ -278,6 +284,9 @@ def dlimport(fullpath, suffix=None):
 
     sys.path[0:0] = [workdir]  # insert workdir at beginning (temporarily)
     try:
+        if importlib is not None:
+            if hasattr(importlib, "invalidate_caches"):
+                importlib.invalidate_caches()
         rval = __import__(module_name, {}, {}, [module_name])
         if not rval:
             raise Exception('__import__ failed', fullpath)

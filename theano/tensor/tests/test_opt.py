@@ -3988,6 +3988,35 @@ def test_local_div_to_inv():
     assert numpy.allclose(out_val, 0.5)
 
 
+def test_local_flatten_lift():
+    for i in range(1, 4):
+        op = tensor.Flatten(i)
+        x = tensor.tensor4()
+        out = op(T.exp(x))
+        assert out.ndim == i
+        mode = compile.mode.get_default_mode()
+        mode = mode.including('local_flatten_lift')
+        f = theano.function([x], out, mode=mode)
+        f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 2
+        assert isinstance(topo[0].op, tensor.Flatten)
+        assert isinstance(topo[1].op, tensor.Elemwise)
+
+
+def test_local_reshape_lift():
+    x = tensor.tensor4()
+    out = T.exp(x).reshape([x.size])
+    assert out.ndim == 1
+    mode = compile.mode.get_default_mode()
+    mode = mode.including('local_reshape_lift')
+    f = theano.function([x], out, mode=mode)
+    f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[-2].op, tensor.Reshape)
+    assert isinstance(topo[-1].op, tensor.Elemwise)
+
+
 class Test_lift_transpose_through_dot(unittest.TestCase):
     def simple_optimize(self, g):
         out2in(opt.local_useless_elemwise).optimize(g)

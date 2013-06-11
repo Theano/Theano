@@ -20,7 +20,8 @@ class MonitorMode(Mode):
     For an example of such a use case, see doc/tutorial/debug_faq.txt.
     """
 
-    def __init__(self, pre_func=None, post_func=None, optimizer='fast_run'):
+    def __init__(self, pre_func=None, post_func=None,
+                 optimizer='default', linker=None):
         """
         Constructor.
 
@@ -35,11 +36,21 @@ class MonitorMode(Mode):
 
         :param optimizer: The optimizer to use. One may use for instance
             'fast_compile' to skip optimizations.
+
+        :param linker: DO NOT USE. This mode use its own linker.
+            The parameter is needed to allow selecting optimizers to use.
         """
         self.pre_func = pre_func
         self.post_func = post_func
         wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
                                                 [self.eval])
+        if optimizer is 'default':
+            optimizer = theano.config.optimizer
+        if (linker is not None and
+            not isinstance(linker.mode, MonitorMode)):
+            raise Exception("MonitorMode can only use its own linker! You "
+                            "should not provide one.", linker)
+
         super(MonitorMode, self).__init__(wrap_linker, optimizer=optimizer)
 
     def eval(self, i, node, fn):
@@ -51,3 +62,21 @@ class MonitorMode(Mode):
         fn()
         if self.post_func is not None:
             self.post_func(i, node, fn)
+
+    def including(self, *tags):
+        ret = super(MonitorMode, self).including(*tags)
+        ret.pre_func = self.pre_func
+        ret.post_func = self.post_func
+        return ret
+
+    def excluding(self, *tags):
+        ret = super(MonitorMode, self).excluding(*tags)
+        ret.pre_func = self.pre_func
+        ret.post_func = self.post_func
+        return ret
+
+    def requiring(self, *tags):
+        ret = super(MonitorMode, self).requiring(*tags)
+        ret.pre_func = self.pre_func
+        ret.post_func = self.post_func
+        return ret

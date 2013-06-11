@@ -360,7 +360,7 @@ class T_softplus_opts(unittest.TestCase):
         f(numpy.random.rand(54).astype(config.floatX))
 
     def test_log1msigm_to_softplus(self):
-        x = T.vector()
+        x = T.matrix()
 
         out = T.log(1 - sigmoid(x))
         f = theano.function([x], out, mode=self.m)
@@ -369,7 +369,29 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[0].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[1].op.scalar_op, theano.scalar.Neg)
-        f(numpy.random.rand(54).astype(config.floatX))
+        f(numpy.random.rand(54, 11).astype(config.floatX))
+
+        # Same test with a flatten
+        out = T.log(1 - T.flatten(sigmoid(x)))
+        f = theano.function([x], out, mode=self.m)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 3
+        assert isinstance(topo[0].op, T.Flatten)
+        assert isinstance(topo[1].op.scalar_op,
+                          theano.tensor.nnet.sigm.ScalarSoftplus)
+        assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
+        f(numpy.random.rand(54, 11).astype(config.floatX))
+
+        # Same test with a reshape
+        out = T.log(1 - sigmoid(x).reshape([x.size]))
+        f = theano.function([x], out, mode=self.m)
+        topo = f.maker.fgraph.toposort()
+        #assert len(topo) == 3
+        assert any(isinstance(node.op, T.Reshape) for node in topo)
+        assert any(isinstance(getattr(node.op, 'scalar_op', None),
+                              theano.tensor.nnet.sigm.ScalarSoftplus)
+                   for node in topo)
+        f(numpy.random.rand(54, 11).astype(config.floatX))
 
     def test_log1pexp_to_softplus(self):
         m = theano.config.mode
