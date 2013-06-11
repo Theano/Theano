@@ -382,6 +382,17 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
         f(numpy.random.rand(54, 11).astype(config.floatX))
 
+        # Same test with a reshape
+        out = T.log(1 - sigmoid(x).reshape([x.size]))
+        f = theano.function([x], out, mode=self.m)
+        topo = f.maker.fgraph.toposort()
+        #assert len(topo) == 3
+        assert any(isinstance(node.op, T.Reshape) for node in topo)
+        assert any(isinstance(getattr(node.op, 'scalar_op', None),
+                              theano.tensor.nnet.sigm.ScalarSoftplus)
+                   for node in topo)
+        f(numpy.random.rand(54, 11).astype(config.floatX))
+
     def test_log1pexp_to_softplus(self):
         m = theano.config.mode
         if m == 'FAST_COMPILE':

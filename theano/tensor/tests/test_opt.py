@@ -4004,6 +4004,19 @@ def test_local_flatten_lift():
         assert isinstance(topo[1].op, tensor.Elemwise)
 
 
+def test_local_reshape_lift():
+    x = tensor.tensor4()
+    out = T.exp(x).reshape([x.size])
+    assert out.ndim == 1
+    mode = compile.mode.get_default_mode()
+    mode = mode.including('local_reshape_lift')
+    f = theano.function([x], out, mode=mode)
+    f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[-2].op, tensor.Reshape)
+    assert isinstance(topo[-1].op, tensor.Elemwise)
+
+
 class Test_lift_transpose_through_dot(unittest.TestCase):
     def simple_optimize(self, g):
         out2in(opt.local_useless_elemwise).optimize(g)

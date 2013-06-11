@@ -2436,6 +2436,26 @@ def local_reshape_chain(node):
         return False
 register_canonicalize(local_reshape_chain)
 
+
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([])
+def local_reshape_lift(node):
+    """
+    Reshape(UnaryElemwise(x)) -> UnaryElemwise(Reshape(x))
+
+    This optimization is needed by optimization
+    nnet/sigm.py:log1msigm_to_softplus to get applied when there is a reshape.
+    """
+    if (isinstance(node.op, T.Reshape) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, T.Elemwise) and
+        len(node.inputs[0].owner.inputs) == 1):
+        r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+        e = node.inputs[0].owner.op(r)
+        return [e]
+
+
 if 0:
     # TODO: Test that this optimziation works.
     @register_canonicalize
