@@ -127,11 +127,21 @@ def remove_constants_and_unused_inputs_scan(node):
                                   if scan_utils.equal_computations(
                                       [x], [nw_out])]
             if identical_non_seqs:
+                identical_idx = outer_non_seqs.index(identical_non_seqs[0])
+                # If we have identical non sequences, the previous one
+                # must be in nw_inner or be a constant.
+                assert (non_seqs[identical_idx] in nw_inner or
+                        isinstance(identical_non_seqs[0], tensor.Constant))
                 index = outer_non_seqs.index(identical_non_seqs[0])
                 givens[nw_in] = non_seqs[index]
             else:
                 nw_inner += [nw_in]
                 nw_outer += [nw_out]
+        else:
+            # How this can happen? This case happened and if we remove
+            # this else, the assert in the elif will fail.
+            nw_inner += [nw_in]
+            nw_outer += [nw_out]
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
