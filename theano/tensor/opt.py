@@ -273,8 +273,8 @@ def inplace_elemwise_optimizer_op(OP):
     return inplace_elemwise_optimizer
 
 inplace_elemwise_optimizer = inplace_elemwise_optimizer_op(T.Elemwise)
-
 compile.optdb.register('inplace_opt', inplace_elemwise_optimizer, 75,
+                       'inplace_elemwise_optimizer',
                        'fast_run', 'inplace')
 
 
@@ -2385,6 +2385,27 @@ def local_div_switch_sink(node):
     return False
 
 
+################
+# Flatten Opts #
+################
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([])
+def local_flatten_lift(node):
+    """
+    Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
+
+    This optimization is needed by optimization
+    nnet/sigm.py:log1msigm_to_softplus to get applied when there is a flatten.
+    """
+    if (isinstance(node.op, T.Flatten) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, T.Elemwise) and
+        len(node.inputs[0].owner.inputs) == 1):
+        f = node.op(node.inputs[0].owner.inputs[0])
+        e = node.inputs[0].owner.op(f)
+        return [e]
+
 ##################
 # Reshape opts   #
 ##################
@@ -2414,6 +2435,26 @@ def local_reshape_chain(node):
     else:
         return False
 register_canonicalize(local_reshape_chain)
+
+
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([])
+def local_reshape_lift(node):
+    """
+    Reshape(UnaryElemwise(x)) -> UnaryElemwise(Reshape(x))
+
+    This optimization is needed by optimization
+    nnet/sigm.py:log1msigm_to_softplus to get applied when there is a reshape.
+    """
+    if (isinstance(node.op, T.Reshape) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, T.Elemwise) and
+        len(node.inputs[0].owner.inputs) == 1):
+        r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+        e = node.inputs[0].owner.op(r)
+        return [e]
+
 
 if 0:
     # TODO: Test that this optimziation works.
