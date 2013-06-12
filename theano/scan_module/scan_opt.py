@@ -123,7 +123,7 @@ def remove_constants_and_unused_inputs_scan(node):
         if isinstance(nw_out, tensor.Constant):
             givens[nw_in] = nw_out.clone()
         elif nw_in in all_ins:
-            identical_non_seqs = [x for x in outer_non_seqs[:idx]
+            identical_non_seqs = [x for x in nw_outer
                                   if scan_utils.equal_computations(
                                       [x], [nw_out])]
             if identical_non_seqs:
@@ -137,11 +137,6 @@ def remove_constants_and_unused_inputs_scan(node):
             else:
                 nw_inner += [nw_in]
                 nw_outer += [nw_out]
-        else:
-            # How this can happen? This case happened and if we remove
-            # this else, the assert in the elif will fail.
-            nw_inner += [nw_in]
-            nw_outer += [nw_out]
 
     if len(nw_inner) != len(op_ins):
         op_outs = scan_utils.clone(op_outs, replace=givens)
