@@ -3486,6 +3486,51 @@ class T_Scan(unittest.TestCase):
         assert not opt_obj.belongs_to_set(scan_node1, [scan_node2])
         assert not opt_obj.belongs_to_set(scan_node2, [scan_node1])
 
+    def test_remove_constants_and_unused_inputs_scan(self):
+        """
+        Test the opt remove_constants_and_unused_inputs_scan
+
+        TODO: currently we only test non_seqs, should test 
+        """
+        W = theano.tensor.matrix(name='W')
+        v = theano.tensor.ivector(name='v')
+        y1, _ = theano.scan(lambda i, W: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W])
+        y2, _ = theano.scan(lambda i, _, W: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W[0], W])
+        y3, _ = theano.scan(lambda i, W, _: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W, W[0]])
+        y4, _ = theano.scan(lambda i, _, _2, W: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W[0], W[0], W])
+        y5, _ = theano.scan(lambda i, _, W, _2: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W[0], W, W[0]])
+        y6, _ = theano.scan(lambda i, W, _, _2: W[i], sequences=v,
+                            outputs_info=None, non_sequences=[W, W[0], W[0]])
+        # TODO: y7 have problem during run time. I think it should
+        # raise an error during the scan construction.
+        #y7, _ = theano.scan(lambda i, W, _, _2: W[i], sequences=v,
+        #                    outputs_info=None, non_sequences=[v, W[0], W])
+        for out in [y1, y2, y3, y4, y5, y6]:
+            print
+            print "Begin test"
+            print
+            #This used to raise an exception
+            f = theano.function([W, v], out)
+            f(numpy.zeros((3, 3)), [1, 2])
+            scan_node = f.maker.fgraph.toposort()[-1]
+
+            # TODO: Why this assert always fail?
+#            assert (len(scan_node.inputs) ==
+#                    len(set(scan_node.inputs)))
+            inp = scan_node.op.inner_non_seqs(scan_node.op.inputs)
+            assert len(inp) == 1
+            assert (len(inp) == len(set(inp)))
+            inp = scan_node.op.outer_non_seqs(scan_node)
+            assert len(inp) == 1
+            assert (len(inp) == len(set(inp)))
+            #import pdb;pdb.set_trace()
+            #assert numpy.allclose(f([1, 2]), [[0, 0, 0], [1, 1, 1], [1, 1, 1]])
+
 
 def test_speed():
     #
