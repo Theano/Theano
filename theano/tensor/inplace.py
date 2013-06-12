@@ -230,6 +230,10 @@ def psi_inplace(a):
     """derivative of log gamma function"""
 
 @_scal_inplace
+def chi2sf_inplace(x, k):
+    """chi squared survival function"""
+
+@_scal_inplace
 def second_inplace(a):
     """Fill `a` with `b`"""
 

@@ -3260,6 +3260,11 @@ def gammaln(a):
 def psi(a):
     """derivative of log gamma function"""
 
+@_scal_elemwise
+def chi2sf(x, k):
+    """chi squared survival function"""
+
+
 
 @_scal_elemwise_with_nfunc('real', 1, -1)
 def real(z):
