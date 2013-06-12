@@ -558,13 +558,14 @@ class Chi2SF(BinaryScalarOp):
                    {
                    return 1 - GammaP(k/2., x/2.);
                    }
+                   #endif
                    """)
 
     def c_code(self, node, name, inp, out, sub):
         x, k = inp
         z, = out
         if node.inputs[0].type in float_types:
-            dtype = node.outputs[0].dtype
+            dtype = 'npy_' + node.outputs[0].dtype
             return """%(z)s =
                 (%(dtype)s)Chi2SF(%(k)s, %(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
