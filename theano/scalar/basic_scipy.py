@@ -289,20 +289,23 @@ DEVICE double _psi(double x){
         return hash(type(self))
 psi = Psi(upgrade_to_float, name='psi')
 
+
 class Chi2SF(BinaryScalarOp):
     """
     Compute (1 - chi2_cdf(x))
         ie. chi2 pvalue (chi2 'survival function')
     """
-    
+
     @staticmethod
     def st_impl(x, k):
         return scipy.stats.chi2.sf(x, k)
+
     def impl(self, x, k):
         if imported_scipy_special:
             return Chi2SF.st_impl(x, k)
         else:
             super(Chi2SF, self).impl(x, k)
+
     def c_support_code(self):
         return(
                """
@@ -312,10 +315,10 @@ class Chi2SF(BinaryScalarOp):
                    #else
                    #define DEVICE
                    #endif
-                   
+
                    #ifndef _CHI2FUNCDEFINED
                    #define _CHI2FUNCDEFINED
-                   
+
                    /*----------------------------------------------------------------------
                    File    : gamma.c
                    Contents: computation of the (incomplete/regularized) gamma function
@@ -328,8 +331,8 @@ class Chi2SF(BinaryScalarOp):
                    ----------------------------------------------------------------------*/
                    #include <stdio.h>
                    #include <stdlib.h>
-                   
-                   
+
+
                    #include <assert.h>
                    #include <float.h>
                    #include <math.h>
@@ -346,23 +349,23 @@ class Chi2SF(BinaryScalarOp):
                    #define MAXFACT      170
                    #define MAXITER      1024
                    #define TINY         (EPSILON *EPSILON *EPSILON)
-                   
+
                    /*----------------------------------------------------------------------
                    Table of Factorials/Gamma Values
                    ----------------------------------------------------------------------*/
-                   static double _facts[MAXFACT+1] = { 0 };
-                   static double _logfs[MAXFACT+1];
-                   static double _halfs[MAXFACT+1];
-                   static double _loghs[MAXFACT+1];
-                   
+                   DEVICE static double _facts[MAXFACT+1] = { 0 };
+                   DEVICE static double _logfs[MAXFACT+1];
+                   DEVICE static double _halfs[MAXFACT+1];
+                   DEVICE static double _loghs[MAXFACT+1];
+
                    /*----------------------------------------------------------------------
                    Functions
                    ----------------------------------------------------------------------*/
-                   static void _init (void)
+                   DEVICE static void _init (void)
                    {                               /* --- init. factorial tables */
                    int    i;                     /* loop variable */
                    double x = 1;                 /* factorial */
-                   
+
                    _facts[0] = _facts[1] = 1;    /* store factorials for 0 and 1 */
                    _logfs[0] = _logfs[1] = 0;    /* and their logarithms */
                    for (i = 1; ++i <= MAXFACT; ) {
@@ -376,14 +379,14 @@ class Chi2SF(BinaryScalarOp):
                    _loghs[i] = log(x);         /* the Gamma function of half numbers */
                    }                             /* and the table of their logarithms */
                    }  /* _init() */
-                   
+
                    /*--------------------------------------------------------------------*/
                    #if 0
-                   
+
                    double logGamma (double n)
                    {                               /* --- compute ln(Gamma(n))         */
                    double s;                     /*           = ln((n-1)!), n \in IN */
-                   
+
                    assert(n > 0);                /* check the function argument */
                    if (_facts[0] <= 0) _init();  /* initialize the tables */
                    if (n < MAXFACT +1 +4 *EPSILON) {
@@ -401,13 +404,13 @@ class Chi2SF(BinaryScalarOp):
                    -  0.5395239384953e-5    /(n+6);
                    return (n+0.5) *log((n+5.5)/LN_BASE) +(LN_SQRT_2PI +log(s/n) -5.0);
                    }  /* logGamma() */
-                   
+
                    #else /*--------------------------------------------------------------*/
-                   
-                   double logGamma (double n)
+
+                   DEVICE double logGamma (double n)
                    {                               /* --- compute ln(Gamma(n))         */
                    double s;                     /*           = ln((n-1)!), n \in IN */
-                   
+
                    assert(n > 0);                /* check the function argument */
                    if (_facts[0] <= 0) _init();  /* initialize the tables */
                    if (n < MAXFACT +1 +4 *EPSILON) {
@@ -427,7 +430,7 @@ class Chi2SF(BinaryScalarOp):
                    +    1.50563273514931155834e-7        /(n+8);
                    return (n+0.5) *log((n+7.5)/LN_BASE) +(LN_SQRT_2PI +log(s/n) -7.0);
                    }  /* logGamma() */
-                   
+
                    #endif
                    /*----------------------------------------------------------------------
                    Use Lanczos' approximation
@@ -437,20 +440,20 @@ class Chi2SF(BinaryScalarOp):
                    * (c_0 +c_1/(n+1) +c_2/(n+2) +...+c_n/(n+k) +\epsilon)
                    and exploit the recursion \Gamma(n+1) = n *\Gamma(n) once,
                    i.e., compute \Gamma(n) as \Gamma(n+1) /n.
-                   
+
                    For the choices \gamma = 5, k = 6, and c_0 to c_6 as defined
                    in the first version, it is |\epsilon| < 2e-10 for all n > 0.
-                   
+
                    Source: W.H. Press, S.A. Teukolsky, W.T. Vetterling, and B.P. Flannery
                    Numerical Recipes in C - The Art of Scientific Computing
                    Cambridge University Press, Cambridge, United Kingdom 1992
                    pp. 213-214
-                   
+
                    For the choices gamma = 7, k = 8, and c_0 to c_8 as defined
                    in the second version, the value is slightly more accurate.
                    ----------------------------------------------------------------------*/
-                   
-                   double Gamma (double n)
+
+                   DEVICE double Gamma (double n)
                    {                               /* --- compute Gamma(n) = (n-1)! */
                    assert(n > 0);                /* check the function argument */
                    if (_facts[0] <= 0) _init();  /* initialize the tables */
@@ -462,14 +465,14 @@ class Chi2SF(BinaryScalarOp):
                    }                             /* try to get the value from a table */
                    return exp(logGamma(n));      /* compute through natural logarithm */
                    }  /* Gamma() */
-                   
+
                    /*--------------------------------------------------------------------*/
-                   
-                   static double _series (double n, double x)
+
+                   DEVICE static double _series (double n, double x)
                    {                               /* --- series approximation */
                    int    i;                     /* loop variable */
                    double t, sum;                /* buffers */
-                   
+
                    sum = t = 1/n;                /* compute initial values */
                    for (i = MAXITER; --i >= 0; ) {
                    sum += t *= x/++n;          /* add one term of the series */
@@ -477,25 +480,25 @@ class Chi2SF(BinaryScalarOp):
                    }                             /* if term is small enough, abort */
                    return sum;                   /* return the computed factor */
                    }  /* _series() */
-                   
+
                    /*----------------------------------------------------------------------
                    series approximation:
                    P(a,x) =    \gamma(a,x)/\Gamma(a)
                    \gamma(a,x) = e^-x x^a \sum_{n=0}^\infty (\Gamma(a)/\Gamma(a+1+n)) x^n
-                   
+
                    Source: W.H. Press, S.A. Teukolsky, W.T. Vetterling, and B.P. Flannery
                    Numerical Recipes in C - The Art of Scientific Computing
                    Cambridge University Press, Cambridge, United Kingdom 1992
                    formula: pp. 216-219
-                   
+
                    The factor exp(n *log(x) -x) is added in the functions below.
                    ----------------------------------------------------------------------*/
-                   
-                   static double _cfrac (double n, double x)
+
+                   DEVICE static double _cfrac (double n, double x)
                    {                               /* --- continued fraction approx. */
                    int    i;                     /* loop variable */
                    double a, b, c, d, e, f;      /* buffers */
-                   
+
                    b = x+1-n; c = 1/TINY; f = d = 1/b;
                    for (i = 1; i < MAXITER; i++) {
                    a = i*(n-i);                /* use Lentz's algorithm to compute */
@@ -508,68 +511,67 @@ class Chi2SF(BinaryScalarOp):
                    }                             /* if factor is small enough, abort */
                    return f;                     /* return the computed factor */
                    }  /* _cfrac() */
-                   
+
                    /*----------------------------------------------------------------------
                    continued fraction approximation:
                    P(a,x) = 1 -\Gamma(a,x)/\Gamma(a)
                    \Gamma(a,x) = e^-x x^a (1/(x+1-a- 1(1-a)/(x+3-a- 2*(2-a)/(x+5-a- ...))))
-                   
+
                    Source: W.H. Press, S.A. Teukolsky, W.T. Vetterling, and B.P. Flannery
                    Numerical Recipes in C - The Art of Scientific Computing
                    Cambridge University Press, Cambridge, United Kingdom 1992
                    formula:           pp. 216-219
                    Lentz's algorithm: p.  171
-                   
+
                    The factor exp(n *log(x) -x) is added in the functions below.
                    ----------------------------------------------------------------------*/
-                   
-                   double lowerGamma (double n, double x)
+
+                   DEVICE double lowerGamma (double n, double x)
                    {                               /* --- lower incomplete Gamma fn. */
                    assert((n > 0) && (x > 0));   /* check the function arguments */
                    return _series(n, x) *exp(n *log(x) -x);
                    }  /* lowerGamma() */
-                   
+
                    /*--------------------------------------------------------------------*/
-                   
-                   double upperGamma (double n, double x)
+
+                   DEVICE double upperGamma (double n, double x)
                    {                               /* --- upper incomplete Gamma fn. */
                    assert((n > 0) && (x > 0));   /* check the function arguments */
                    return _cfrac(n, x) *exp(n *log(x) -x);
                    }  /* upperGamma() */
-                   
+
                    /*--------------------------------------------------------------------*/
-                   
-                   
-                   double GammaP (double n, double x)
+
+                   DEVICE double GammaP (double n, double x)
                    {                               /* --- regularized Gamma function P */
                    assert((n > 0) && (x >= 0));  /* check the function arguments */
                    if (x <=  0) return 0;        /* treat x = 0 as a special case */
                    if (x < n+1) return _series(n, x) *exp(n *log(x) -x -logGamma(n));
                    return 1 -_cfrac(n, x) *exp(n *log(x) -x -logGamma(n));
                    }  /* GammaP() */
-                   
-                   
+
+
                    //ebuchman: this function is equivalent to scipy.stats.chi2.sf
                    //it's the pvalue (survival function) of a chi2 distribution
                    DEVICE double Chi2SF (double k, double x)
                    {
                    return 1 - GammaP(k/2., x/2.);
                    }
+                   #endif
                    """)
-    
-    
+
     def c_code(self, node, name, inp, out, sub):
-        
         x, k = inp
         z, = out
         if node.inputs[0].type in float_types:
-            dtype = z.dtype
+            dtype = 'npy_' + node.outputs[0].dtype
             return """%(z)s =
                 (%(dtype)s)Chi2SF(%(k)s, %(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
-    
+
     def __eq__(self, other):
         return type(self) == type(other)
+
     def __hash__(self):
         return hash(type(self))
 

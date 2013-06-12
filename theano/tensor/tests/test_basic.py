@@ -69,14 +69,15 @@ utt.seed_rng()
 
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
-        on_unused_input='raise'):
+                 on_unused_input='raise', name=None):
     if mode is None:
         mode = get_default_mode()
     return function(inputs, outputs,
             mode=mode,
             allow_input_downcast=allow_input_downcast,
             accept_inplace=True,
-            on_unused_input=on_unused_input)
+            on_unused_input=on_unused_input,
+            name=name)
 
 
 def eval_outputs(outputs):
@@ -292,7 +293,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     raise
 
                 try:
-                    f = inplace_func(inputrs, node.outputs, mode=mode)
+                    f = inplace_func(inputrs, node.outputs, mode=mode, name='test_good')
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
@@ -382,7 +383,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     raise
 
                 try:
-                    f = inplace_func([], node.outputs, mode=mode)
+                    f = inplace_func([], node.outputs, mode=mode, name="test_bad_runtime")
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a Function") % (self.op, testname)
@@ -536,7 +537,8 @@ _good_broadcast_binary_normal = dict(
     # Disabled as we test the case where we reuse the same output as the
     # first inputs.
     # complex3=(rand(2,3),randcomplex(2,3)),
-    empty=(numpy.asarray([]), numpy.asarray([1])),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([1], dtype=config.floatX)),
     )
 
 _bad_build_broadcast_binary_normal = dict()
@@ -740,7 +742,8 @@ if PY3:
 else:
     _good_broadcast_div_mod_normal_float_inplace = copymod(
         _good_broadcast_div_mod_normal_float_no_complex,
-        empty1=(numpy.asarray([]), numpy.asarray([1])),
+        empty1=(numpy.asarray([], dtype=config.floatX),
+                numpy.asarray([1], dtype=config.floatX)),
         complex1=(randcomplex(2, 3), randcomplex_nonzero((2, 3))),
         complex2=(randcomplex(2, 3), rand_nonzero((2, 3))),
         # Inplace on the first element. Must have the same type.
@@ -749,7 +752,8 @@ else:
 
 _good_broadcast_div_mod_normal_float = copymod(
     _good_broadcast_div_mod_normal_float_inplace,
-    empty2=(numpy.asarray([0]), numpy.asarray([]))
+    empty2=(numpy.asarray([0], dtype=config.floatX),
+            numpy.asarray([], dtype=config.floatX))
     )
 
 
@@ -842,8 +846,13 @@ _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3))
                                         complex1 = (randcomplex(2,3),randcomplex(2,3)),
                                         complex2 = (randcomplex(2,3),rand(2,3)),
                                         #complex3 = (rand(2,3),randcomplex(2,3)), # Inplace on the first element.
-                                        empty1 = (numpy.asarray([]), numpy.asarray([1])),
-                                        empty2 = (numpy.asarray([0]), numpy.asarray([])),)
+                                        empty1 = (numpy.asarray([], dtype=config.floatX),
+                                                  numpy.asarray([1], dtype=config.floatX)),
+                                        empty2 = (numpy.asarray([0], dtype=config.floatX),
+                                                  numpy.asarray([], dtype=config.floatX)),
+                                        empty3 = (numpy.asarray([], dtype=config.floatX),
+                                                  numpy.asarray([], dtype=config.floatX)),
+)
 _grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
                                   scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
                                   row = (
@@ -889,7 +898,7 @@ _good_broadcast_unary_normal_float = dict(
         normal=[rand_ranged(-5, 5, (2, 3))],
         corner_case=[corner_case],
         complex=[randcomplex(2, 3)],
-        empty=[numpy.asarray([])])
+        empty=[numpy.asarray([], dtype=config.floatX)])
 
 _good_broadcast_unary_normal_float_no_empty = copymod(
         _good_broadcast_unary_normal_float,
@@ -909,14 +918,14 @@ _good_broadcast_unary_normal = dict(
         integers=[randint_ranged(-5, 5, (2, 3))],
         corner_case=[corner_case],
         complex=[randcomplex(2, 3)],
-        empty=[numpy.asarray([])],
+        empty=[numpy.asarray([], dtype=config.floatX)],
         )
 
 _good_broadcast_unary_normal_no_complex = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
         integers=[randint_ranged(-5, 5, (2, 3))],
         corner_case=[corner_case],
-        empty=[numpy.asarray([])],
+        empty=[numpy.asarray([], dtype=config.floatX)],
         )
 
 _grad_broadcast_unary_normal_no_complex = dict(
@@ -1123,7 +1132,7 @@ Expm1InplaceTester = makeBroadcastTester(op=inplace.expm1_inplace,
 _good_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),
                                       integers=(randint_ranged(1, 5, (2, 3)),),
                                       complex=(randc128_ranged(1, 5, (2, 3)),),
-                                      empty=(numpy.asarray([]),),
+                                      empty=(numpy.asarray([], dtype=config.floatX),),
                                       )
 
 _grad_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),)
@@ -1182,7 +1191,7 @@ _good_broadcast_unary_wide = dict(
     normal=(rand_ranged(-1000, 1000, (2, 3)),),
     integers=(randint_ranged(-1000, 1000, (2, 3)),),
     complex=(randc128_ranged(-1000, 1000, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
 
 if theano.config.floatX == 'float32':
@@ -1231,7 +1240,7 @@ SinInplaceTester = makeBroadcastTester(op=inplace.sin_inplace,
 _good_broadcast_unary_arcsin = dict(normal=(rand_ranged(-1, 1, (2, 3)),),
                                     integers=(randint_ranged(-1, 1, (2, 3)),),
                                     complex=(randc128_ranged(-1, 1, (2, 3)),),
-                                    empty=(numpy.asarray([]),),)
+                                    empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_arcsin = dict(normal=(rand_ranged(-1, 1, (2, 3)),),)
 
 ArcsinTester = makeBroadcastTester(op=tensor.arcsin,
@@ -1269,7 +1278,7 @@ _good_broadcast_unary_tan = dict(
     shifted=(rand_ranged(3.15, 6.28, (2, 3)),),
     integers=(randint_ranged(-3, 3, (2, 3)),),
     complex=(randc128_ranged(-3.14, 3.14, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 #We do not want to test around the discontinuity.
 _grad_broadcast_unary_tan = dict(normal=(rand_ranged(-1.5, 1.5, (2, 3)),),
                                  shifted=(rand_ranged(1.6, 4.6, (2, 3)),))
@@ -1304,7 +1313,8 @@ _good_broadcast_binary_arctan2 = dict(
     integers=(randint(2, 3), randint(2, 3)),
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
-    empty=(numpy.asarray([]), numpy.asarray([1])),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([1], dtype=config.floatX)),
     )
 
 _grad_broadcast_binary_arctan2 = dict(
@@ -1338,7 +1348,7 @@ _good_broadcast_unary_arccosh = dict(
     normal=(rand_ranged(1, 1000, (2, 3)),),
     integers=(randint_ranged(1, 1000, (2, 3)),),
     complex=(randc128_ranged(1, 1000, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_arccosh = dict(normal=(rand_ranged(1, 1000, (2, 3)),),)
 
 ArccoshTester = makeBroadcastTester(op=tensor.arccosh,
@@ -1386,7 +1396,7 @@ _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     complex=(randc128_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),)
 
@@ -1420,7 +1430,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
-    expected_chi2sf = scipy.stats.chi2.sf
+    expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     skip_scipy = False
 else:
     expected_erf = []
@@ -1489,7 +1499,7 @@ ErfcinvTester = makeBroadcastTester(
 
 _good_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-8, 8, (2, 3)),),)
@@ -1532,7 +1542,7 @@ GammalnInplaceTester = makeBroadcastTester(
 
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
-    empty=(numpy.asarray([]),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),)
 
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
@@ -1551,13 +1561,13 @@ PsiInplaceTester = makeBroadcastTester(
     skip=skip_scipy)
 
 
-'''
 #chi2sf takes two inputs, a value (x) and a degrees of freedom (k).
 # not sure how to deal with that here...
-    
+
 _good_broadcast_unary_chi2sf = dict(
-     normal=(rand_ranged(1, 10, (2, 3)),),
-     empty=(numpy.asarray([]),),)
+    normal=(rand_ranged(1, 10, (2, 3)), numpy.asarray(1, dtype=config.floatX)),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray(1, dtype=config.floatX)))
 
 Chi2SFTester = makeBroadcastTester(
     op=tensor.chi2sf,
@@ -1565,16 +1575,17 @@ Chi2SFTester = makeBroadcastTester(
     good=_good_broadcast_unary_chi2sf,
     eps=2e-10,
     mode=mode_no_scipy,
-    skip=skip_scipy)
+    skip=skip_scipy,
+    name='Chi2SF')
 Chi2SFInplaceTester = makeBroadcastTester(
-   op=inplace.chi2sf_inplace,
-   expected=expected_chi2sf,
-   good=_good_broadcast_unary_chi2sf,
-   eps=2e-10,
-   mode=mode_no_scipy,
-   inplace=True,
-   skip=skip_scipy)
-'''
+    op=inplace.chi2sf_inplace,
+    expected=expected_chi2sf,
+    good=_good_broadcast_unary_chi2sf,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy,
+    name='Chi2SF')
 
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,
@@ -1598,7 +1609,8 @@ _good_complex_from_polar = dict(
     row=(abs(rand(2, 3)), rand(1, 3)),
     column=(abs(rand(2, 3)), rand(2, 1)),
     integers=(abs(randint(2, 3)), randint(2, 3)),
-    empty=(numpy.asarray([]), numpy.asarray([1])),)
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([1], dtype=config.floatX)),)
 _grad_complex_from_polar = dict(
     same_shapes=(abs(rand(2, 3)), rand(2, 3)),
     scalar=(abs(rand(2, 3)), rand(1, 1)),
@@ -1637,8 +1649,8 @@ DotTester = makeTester(name='DotTester',
                                               randcomplex(7)),
                                     complex2=(rand(5, 7), randcomplex(7)),
                                     complex3=(randcomplex(5, 7), rand(7)),
-                                    empty1=(numpy.asarray([]),
-                                            numpy.asarray([])),
+                                    empty1=(numpy.asarray([], dtype=config.floatX),
+                                            numpy.asarray([], dtype=config.floatX)),
                                     empty2=(rand(5, 0), rand(0, 2)),
                                     empty3=(rand(0, 5), rand(5, 0)),
                                     ),
