@@ -1555,7 +1555,7 @@ PsiInplaceTester = makeBroadcastTester(
 #chi2sf takes two inputs, a value (x) and a degrees of freedom (k).
 # not sure how to deal with that here...
     
-_good_broadcast_unary_psi = dict(
+_good_broadcast_unary_chi2sf = dict(
      normal=(rand_ranged(1, 10, (2, 3)),),
      empty=(numpy.asarray([]),),)
 
