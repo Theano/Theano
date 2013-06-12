@@ -353,15 +353,15 @@ class Chi2SF(BinaryScalarOp):
                    /*----------------------------------------------------------------------
                    Table of Factorials/Gamma Values
                    ----------------------------------------------------------------------*/
-                   static double _facts[MAXFACT+1] = { 0 };
-                   static double _logfs[MAXFACT+1];
-                   static double _halfs[MAXFACT+1];
-                   static double _loghs[MAXFACT+1];
+                   DEVICE static double _facts[MAXFACT+1] = { 0 };
+                   DEVICE static double _logfs[MAXFACT+1];
+                   DEVICE static double _halfs[MAXFACT+1];
+                   DEVICE static double _loghs[MAXFACT+1];
 
                    /*----------------------------------------------------------------------
                    Functions
                    ----------------------------------------------------------------------*/
-                   static void _init (void)
+                   DEVICE static void _init (void)
                    {                               /* --- init. factorial tables */
                    int    i;                     /* loop variable */
                    double x = 1;                 /* factorial */
@@ -407,7 +407,7 @@ class Chi2SF(BinaryScalarOp):
 
                    #else /*--------------------------------------------------------------*/
 
-                   double logGamma (double n)
+                   DEVICE double logGamma (double n)
                    {                               /* --- compute ln(Gamma(n))         */
                    double s;                     /*           = ln((n-1)!), n \in IN */
 
@@ -453,7 +453,7 @@ class Chi2SF(BinaryScalarOp):
                    in the second version, the value is slightly more accurate.
                    ----------------------------------------------------------------------*/
 
-                   double Gamma (double n)
+                   DEVICE double Gamma (double n)
                    {                               /* --- compute Gamma(n) = (n-1)! */
                    assert(n > 0);                /* check the function argument */
                    if (_facts[0] <= 0) _init();  /* initialize the tables */
@@ -468,7 +468,7 @@ class Chi2SF(BinaryScalarOp):
 
                    /*--------------------------------------------------------------------*/
 
-                   static double _series (double n, double x)
+                   DEVICE static double _series (double n, double x)
                    {                               /* --- series approximation */
                    int    i;                     /* loop variable */
                    double t, sum;                /* buffers */
@@ -494,7 +494,7 @@ class Chi2SF(BinaryScalarOp):
                    The factor exp(n *log(x) -x) is added in the functions below.
                    ----------------------------------------------------------------------*/
 
-                   static double _cfrac (double n, double x)
+                   DEVICE static double _cfrac (double n, double x)
                    {                               /* --- continued fraction approx. */
                    int    i;                     /* loop variable */
                    double a, b, c, d, e, f;      /* buffers */
@@ -526,7 +526,7 @@ class Chi2SF(BinaryScalarOp):
                    The factor exp(n *log(x) -x) is added in the functions below.
                    ----------------------------------------------------------------------*/
 
-                   double lowerGamma (double n, double x)
+                   DEVICE double lowerGamma (double n, double x)
                    {                               /* --- lower incomplete Gamma fn. */
                    assert((n > 0) && (x > 0));   /* check the function arguments */
                    return _series(n, x) *exp(n *log(x) -x);
@@ -534,7 +534,7 @@ class Chi2SF(BinaryScalarOp):
 
                    /*--------------------------------------------------------------------*/
 
-                   double upperGamma (double n, double x)
+                   DEVICE double upperGamma (double n, double x)
                    {                               /* --- upper incomplete Gamma fn. */
                    assert((n > 0) && (x > 0));   /* check the function arguments */
                    return _cfrac(n, x) *exp(n *log(x) -x);
@@ -542,8 +542,7 @@ class Chi2SF(BinaryScalarOp):
 
                    /*--------------------------------------------------------------------*/
 
-
-                   double GammaP (double n, double x)
+                   DEVICE double GammaP (double n, double x)
                    {                               /* --- regularized Gamma function P */
                    assert((n > 0) && (x >= 0));  /* check the function arguments */
                    if (x <=  0) return 0;        /* treat x = 0 as a special case */
