@@ -1421,7 +1421,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
-    expected_chi2sf = scipy.stats.chi2.sf
+    expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     skip_scipy = False
 else:
     expected_erf = []
@@ -1552,13 +1552,13 @@ PsiInplaceTester = makeBroadcastTester(
     skip=skip_scipy)
 
 
-'''
 #chi2sf takes two inputs, a value (x) and a degrees of freedom (k).
 # not sure how to deal with that here...
-    
+
 _good_broadcast_unary_chi2sf = dict(
-     normal=(rand_ranged(1, 10, (2, 3)),),
-     empty=(numpy.asarray([]),),)
+    normal=(rand_ranged(1, 10, (2, 3)), numpy.asarray(1, dtype=config.floatX)),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray(1, dtype=config.floatX)))
 
 Chi2SFTester = makeBroadcastTester(
     op=tensor.chi2sf,
@@ -1566,16 +1566,17 @@ Chi2SFTester = makeBroadcastTester(
     good=_good_broadcast_unary_chi2sf,
     eps=2e-10,
     mode=mode_no_scipy,
-    skip=skip_scipy)
+    skip=skip_scipy,
+    name='Chi2SF')
 Chi2SFInplaceTester = makeBroadcastTester(
-   op=inplace.chi2sf_inplace,
-   expected=expected_chi2sf,
-   good=_good_broadcast_unary_chi2sf,
-   eps=2e-10,
-   mode=mode_no_scipy,
-   inplace=True,
-   skip=skip_scipy)
-'''
+    op=inplace.chi2sf_inplace,
+    expected=expected_chi2sf,
+    good=_good_broadcast_unary_chi2sf,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy,
+    name='Chi2SF')
 
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,
