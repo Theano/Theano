@@ -69,14 +69,15 @@ utt.seed_rng()
 
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
-        on_unused_input='raise'):
+                 on_unused_input='raise', name=None):
     if mode is None:
         mode = get_default_mode()
     return function(inputs, outputs,
             mode=mode,
             allow_input_downcast=allow_input_downcast,
             accept_inplace=True,
-            on_unused_input=on_unused_input)
+            on_unused_input=on_unused_input,
+            name=name)
 
 
 def eval_outputs(outputs):
@@ -292,7 +293,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     raise
 
                 try:
-                    f = inplace_func(inputrs, node.outputs, mode=mode)
+                    f = inplace_func(inputrs, node.outputs, mode=mode, name='test_good')
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
@@ -382,7 +383,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     raise
 
                 try:
-                    f = inplace_func([], node.outputs, mode=mode)
+                    f = inplace_func([], node.outputs, mode=mode, name="test_bad_runtime")
                 except Exception, exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a Function") % (self.op, testname)
