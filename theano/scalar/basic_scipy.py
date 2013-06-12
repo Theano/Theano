@@ -564,7 +564,7 @@ class Chi2SF(BinaryScalarOp):
         x, k = inp
         z, = out
         if node.inputs[0].type in float_types:
-            dtype = z.dtype
+            dtype = node.outputs[0].dtype
             return """%(z)s =
                 (%(dtype)s)Chi2SF(%(k)s, %(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
