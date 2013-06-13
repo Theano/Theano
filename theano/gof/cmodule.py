@@ -1703,6 +1703,7 @@ class GCC_compiler(object):
 
         flags = list(flags)
         compilation_ok = True
+        run_ok = False
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
@@ -1719,7 +1720,6 @@ class GCC_compiler(object):
                     compilation_ok = False
                 elif try_run:
                     # Try to execute the program
-                    run_ok = False
                     try:
                         proc = call_subprocess_Popen([exe_path],
                                 stdout=subprocess.PIPE,
