@@ -49,7 +49,7 @@ def test_optimizer():
     f = theano.function([x], [theano.tensor.log(x) * x],
                         mode=mode)
     # Test that the fusion wasn't done
-    assert len(f.maker.fgraph.nodes) == 2
+    assert len(f.maker.fgraph.apply_nodes) == 2
     f(0)  # log(0) * 0 = -inf * 0 = NaN
 
     # Test that we still detect the nan
@@ -83,7 +83,7 @@ def test_not_inplace():
                         mode=mode)
 
     # Test that the fusion wasn't done
-    assert len(f.maker.fgraph.nodes) == 5
+    assert len(f.maker.fgraph.apply_nodes) == 5
     assert not f.maker.fgraph.toposort()[-1].op.destroy_map
     f([0, 0])  # log(0) * 0 = -inf * 0 = NaN
 
