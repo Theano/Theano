@@ -4,7 +4,8 @@
 
 # Python 3.x compatibility
 from theano.compat.six import PY3, b, BytesIO, next, get_unbound_function
-from theano.compat.six.moves import reload_module as reload, configparser
+from theano.compat.six.moves import configparser
+from theano.compat.six.moves import reload_module as reload
 
 if PY3:
 
