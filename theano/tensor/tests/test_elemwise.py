@@ -617,11 +617,12 @@ class T_sum_dtype(unittest.TestCase):
         Test the default dtype of a sum().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
-            x = tensor.matrix(dtype=dtype).sum(axis=axis)
-            assert x.dtype == dict(
+            x = tensor.matrix(dtype=dtype)
+            s = x.sum(axis=axis)
+            assert s.dtype == dict(
                     int8='int64',
                     int16='int64',
                     int32='int64',
@@ -629,15 +630,20 @@ class T_sum_dtype(unittest.TestCase):
                     uint16='uint64',
                     uint32='uint64',
                     ).get(dtype, dtype)
+            f = theano.function([x], s)
+            data = numpy.random.rand(3, 4) * 10
+            data = data.astype(dtype)
+            f(data)
 
     def test_sum_default_acc_dtype(self):
         ##Test the default acc_dtype of a sum().
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
-            x = tensor.matrix(dtype=dtype).sum(axis=axis)
-            assert x.owner.op.acc_dtype == dict(
+            x = tensor.matrix(dtype=dtype)
+            s = x.sum(axis=axis)
+            assert s.owner.op.acc_dtype == dict(
                     int8='int64',
                     int16='int64',
                     int32='int64',
@@ -647,13 +653,17 @@ class T_sum_dtype(unittest.TestCase):
                     float32='float64',
                     complex64='complex128',
                     ).get(dtype, dtype)
+            f = theano.function([x], s)
+            data = numpy.random.rand(3, 4) * 10
+            data = data.astype(dtype)
+            f(data)
 
     def test_sum_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a sum.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -675,13 +685,17 @@ class T_sum_dtype(unittest.TestCase):
                 tensor.grad(sum_var.sum(), x,
                             disconnected_inputs='ignore')
                 idx += 1
+                f = theano.function([x], sum_var)
+                data = numpy.random.rand(3, 4) * 10
+                data = data.astype(input_dtype)
+                f(data)
 
     def test_sum_custom_acc_dtype(self):
         """
         Test the ability to provide your own accumulator dtype for a sum.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -730,7 +744,7 @@ class T_mean_dtype(unittest.TestCase):
         Test the default dtype of a mean().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype).mean(axis=axis)
@@ -744,7 +758,7 @@ class T_mean_dtype(unittest.TestCase):
         Test the ability to provide your own output dtype for a mean.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -795,7 +809,7 @@ class T_prod_dtype(unittest.TestCase):
         Test the default dtype of a prod().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype).prod(axis=axis)
@@ -813,7 +827,7 @@ class T_prod_dtype(unittest.TestCase):
         Test the default acc_dtype of a prod().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype).prod(axis=axis)
@@ -833,7 +847,7 @@ class T_prod_dtype(unittest.TestCase):
         Test the ability to provide your own output dtype for a prod.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -854,7 +868,7 @@ class T_prod_dtype(unittest.TestCase):
         Test the ability to provide your own acc_dtype for a prod.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -888,7 +902,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
         Test the default dtype of a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = ProdWithoutZeros(axis=axis)(tensor.matrix(dtype=dtype))
@@ -906,7 +920,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
         Test the default dtype of a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
             axis = axes[idx % len(axes)]
             x = ProdWithoutZeros(axis=axis)(tensor.matrix(dtype=dtype))
@@ -926,7 +940,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
         Test ability to provide your own output dtype for a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -942,7 +956,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
         Test ability to provide your own acc_dtype for a ProdWithoutZeros().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [0], [1], [0, 1]]
+        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
