@@ -2391,6 +2391,14 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         x_ = as_cuda_ndarray_variable(x)
         y_ = as_cuda_ndarray_variable(y)
         ilist_ = tensor.as_tensor_variable(ilist)
+        
+        convert_map = { 8:tensor.basic._convert_to_int8, 
+                       16:tensor.basic._convert_to_int16, 
+                       32:tensor.basic._convert_to_int32, 
+                       64:tensor.basic._convert_to_int64
+                      }
+        intwidth = theano.gof.compiledir.python_int_bitwidth()
+        ilist_ = convert_map[intwidth](ilist_)
 
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
@@ -2546,6 +2554,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                                                            PyArray_SIZE(indices_arr)
                                                           );
      		device_free(d_indices_arr);
+		Py_XDECREF(cpu_indices_arr);
      		return;
 	}
 
