@@ -2554,7 +2554,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                                                            PyArray_SIZE(indices_arr)
                                                           );
      		device_free(d_indices_arr);
-		Py_XDECREF(cpu_indices_arr);
+     		Py_XDECREF(cpu_indices_arr);
      		return;
 	}
 
