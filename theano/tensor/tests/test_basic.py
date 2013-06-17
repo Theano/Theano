@@ -2323,8 +2323,32 @@ def test_batched_dot():
     result_fn = theano.function([first_mat, second_mat], output)
     result = result_fn(first_mat_val, second_mat_val)
 
-    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[0] == first_mat_val.shape[0]
 
+def test_batched_tensordot():
+    first = theano.tensor.tensor4("first")
+    second = theano.tensor.tensor4("second")
+    axes = [[1,2], [3,1]]
+    output = theano.tensor.basic.batched_tensordot(first, second, axes)
+    first_val = numpy.random.rand(8, 10, 20, 3).astype(config.floatX)
+    second_val = numpy.random.rand(8, 20, 5, 10).astype(config.floatX)
+    result_fn = theano.function([first, second], output)
+    result = result_fn(first_val, second_val)
+    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[1] == first_val.shape[3]
+    assert result.shape[2] == second_val.shape[2]
+
+    first_mat = theano.tensor.dmatrix("first")
+    second_mat = theano.tensor.dmatrix("second")
+    axes = 1
+    output = theano.tensor.basic.batched_tensordot(first_mat, second_mat, axes)
+    first_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    second_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    result_fn = theano.function([first_mat, second_mat], output)
+    result = result_fn(first_mat_val, second_mat_val)
+    print(result.shape)
+    assert result.shape[0] == first_mat_val.shape[0]
+    assert len(result.shape) == 1
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself

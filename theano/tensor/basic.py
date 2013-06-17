@@ -3106,6 +3106,48 @@ def batched_dot(x, y):
     return result
 
 
+def batched_tensordot(x, y, axes=2):
+    """
+    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor (excluding the first 
+                 (batch) dimension):
+                     axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 4]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 5th axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 5th axis of b.
+    :type axes: int or array-like of length 2
+    
+    A hybrid of batch_dot and tensordot, this function computes the 
+    tensordot product between the two tensors, by iterating over the 
+    first dimension using scan to perform a sequence of tensordots.    
+    """
+    if isinstance(axes, (list, numpy.ndarray)):
+        if isinstance(axes, list):
+            axes = numpy.asarray(axes)
+        else:
+            axes = axes.copy()
+        assert numpy.greater(axes,0).all(), "All axes should be greater than one, as the first axis is iterated over (batch-wise scan)"
+        axes -= 1
+    
+    result, updates = theano.scan(fn=lambda x_mat, y_mat:
+            theano.tensor.tensordot(x_mat, y_mat, axes),
+            outputs_info=None,
+            sequences=[x, y],
+            non_sequences=None)
+    return result
+   
+
 def split(x, splits_size, n_splits, axis=0):
     the_split = Split(n_splits)
     return the_split(x, axis, splits_size)
