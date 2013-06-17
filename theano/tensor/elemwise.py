@@ -1463,8 +1463,13 @@ class CAReduce(Op):
             axis = range(len(input.type.broadcastable))
 
         if len(axis) == 0:
-            op = Elemwise(scalar.identity)
-            return op._c_all(op.make_node(input), name, inames, onames, sub)
+            # The acc_dtype is never a downcast compared to the input dtype
+            # So we just need a cast to the output dtype.
+            var = theano.tensor.cast(input, node.outputs[0].dtype)
+            if var is input:
+                var = Elemwise(scalar.identity)(input)
+            assert var.dtype == node.outputs[0].dtype
+            return var.owner.op._c_all(var.owner, name, inames, onames, sub)
 
         order1 = [i for i in xrange(input.type.ndim) if i not in axis]
         order = order1 + list(axis)

@@ -301,6 +301,12 @@ class Scalar(Type):
                     ret.imag = -this->imag;
                     return ret;
                 }
+                bool operator ==(const complex_type &y) const {
+                    return (this->real == y.real) && (this->imag == y.imag);
+                }
+                bool operator ==(const npy_float%(nbits)s &y) const {
+                    return (this->real == y) && (this->imag == 0);
+                }
                 complex_type operator -(const complex_type &y) const {
                     complex_type ret;
                     ret.real = this->real - y.real;
