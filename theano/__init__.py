@@ -81,6 +81,10 @@ from theano.updates import Updates, OrderedUpdates
 
 from theano.gradient import Rop, Lop, grad
 
+if config.device.startswith('cuda') or config.device.startswith('opencl') or \
+        config.gpuarray.init_device != '':
+    import theano.sandbox.gpuarray
+
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
     # We can't test the driver during import of theano.sandbox.cuda as
