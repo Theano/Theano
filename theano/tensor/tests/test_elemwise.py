@@ -679,16 +679,16 @@ class T_sum_dtype(unittest.TestCase):
                 sum_var = x.sum(dtype=output_dtype, axis=axis)
                 assert sum_var.dtype == output_dtype
 
+                f = theano.function([x], sum_var)
+                data = numpy.random.rand(3, 4) * 10
+                data = data.astype(input_dtype)
+                f(data)
                 if "complex" in input_dtype:
                     continue
                 # Check that we can take the gradient
                 tensor.grad(sum_var.sum(), x,
                             disconnected_inputs='ignore')
                 idx += 1
-                f = theano.function([x], sum_var)
-                data = numpy.random.rand(3, 4) * 10
-                data = data.astype(input_dtype)
-                f(data)
 
     def test_sum_custom_acc_dtype(self):
         """
@@ -783,11 +783,14 @@ class T_mean_dtype(unittest.TestCase):
                     else:
                         assert mean_var.dtype == sum_dtype, (
                                 (mean_var.dtype, sum_dtype))
-                    if ("complex" not in sum_dtype and "complex" not in input_dtype):
-                        f = theano.function([x], mean_var)
-                        data = numpy.random.rand(3, 4) * 10
-                        data = data.astype(input_dtype)
-                        f(data)
+                    if (('complex' in input_dtype or
+                         'complex' in sum_dtype) and
+                        input_dtype != sum_dtype):
+                        continue
+                    f = theano.function([x], mean_var)
+                    data = numpy.random.rand(3, 4) * 10
+                    data = data.astype(input_dtype)
+                    f(data)
                     # Check that we can take the gradient, when implemented
                     if "complex" in mean_var.dtype:
                         continue
@@ -873,19 +876,25 @@ class T_prod_dtype(unittest.TestCase):
             x = tensor.matrix(dtype=input_dtype)
             for output_dtype in imap(str, theano.scalar.all_types):
                 axis = axes[idx % len(axes)]
+                idx += 1
                 prod_var = x.prod(dtype=output_dtype, axis=axis)
                 assert prod_var.dtype == output_dtype
+
+                if (('complex' in output_dtype or
+                    'complex' in input_dtype) and
+                    input_dtype != output_dtype):
+                    continue
+
+                f = theano.function([x], prod_var)
+                data = numpy.random.rand(3, 4) * 10
+                data = data.astype(input_dtype)
+                f(data)
 
                 if "complex" in output_dtype or "complex" in input_dtype:
                     continue
                 # Check that we can take the gradient
                 tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')
-                f = theano.function([x], prod_var)
-                data = numpy.random.rand(3, 4) * 10
-                data = data.astype(input_dtype)
-                f(data)
-                idx += 1
 
     def test_prod_custom_acc_dtype(self):
         """
@@ -908,15 +917,19 @@ class T_prod_dtype(unittest.TestCase):
                     prod_var = x.prod(acc_dtype=acc_dtype, axis=axis)
                     assert prod_var.owner.op.acc_dtype == acc_dtype
 
+                    if (acc_dtype.startswith('complex') and
+                        input_dtype != acc_dtype):
+                        continue
+                    f = theano.function([x], prod_var)
+                    data = numpy.random.rand(3, 4) * 10
+                    data = data.astype(input_dtype)
+                    f(data)
+
                     if "complex" in acc_dtype:
                         continue
                     # Check that we can take the gradient
                     tensor.grad(prod_var.sum(), x,
                                 disconnected_inputs='ignore')
-                    f = theano.function([x], prod_var)
-                    data = numpy.random.rand(3, 4) * 10
-                    data = data.astype(input_dtype)
-                    f(data)
                 else:
                     self.assertRaises(TypeError,
                             x.prod, acc_dtype=acc_dtype, axis=axis)
@@ -967,7 +980,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             if 'complex' in dtype:
                 continue
             f = theano.function([x], p)
-            data = numpy.random.rand(3, 4) * 10
+            data = numpy.random.rand(2, 3) * 3
             data = data.astype(dtype)
             f(data)
 
@@ -985,13 +998,14 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 prod_woz_var = ProdWithoutZeros(
                         axis=axis, dtype=output_dtype)(x)
                 assert prod_woz_var.dtype == output_dtype
-                if ('complex' not in input_dtype and
-                    'complex' not in output_dtype):
-                    f = theano.function([x], prod_woz_var)
-                    data = numpy.random.rand(3, 4) * 10
-                    data = data.astype(input_dtype)
-                    f(data)
                 idx += 1
+                if ('complex' in output_dtype or
+                    'complex' in input_dtype):
+                    continue
+                f = theano.function([x], prod_woz_var)
+                data = numpy.random.rand(2, 3) * 3
+                data = data.astype(input_dtype)
+                f(data)
 
     def test_prod_without_zeros_custom_acc_dtype(self):
         """
@@ -1015,7 +1029,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                             axis=axis, acc_dtype=acc_dtype)(x)
                     assert prod_woz_var.owner.op.acc_dtype == acc_dtype
 
-                    if acc_dtype.startswith('complex') and input_dtype != acc_dtype:
+                    if (acc_dtype.startswith('complex') and
+                        input_dtype != acc_dtype):
                         continue
                     f = theano.function([x], prod_woz_var)
                     data = numpy.random.rand(2, 3) * 3
