@@ -74,9 +74,40 @@ def local_cut_gpu_host_gpu(node):
         return [node.inputs[0].owner.inputs[0]]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
-                        'fast_run', 'inplace', 'gpu')
+                        'fast_run', 'inplace', 'gpuarray')
 gpu_cut_copies.register('cut_gpu_constant_transfers',
                         tensor.opt.constant_folding,
-                        'fast_run', 'gpu')
+                        'fast_run', 'gpuarray')
 optdb['canonicalize'].register('local_cut_gpu_host_gpu',
-                               local_cut_gpu_host_gpu, 'fast_run', 'gpu')
+                               local_cut_gpu_host_gpu, 'fast_run', 'gpuarray')
+
+@register_opt()
+@local_optimizer([tensor.Alloc])
+def local_gpualloc(node):
+    replace = False
+    if node.op == tensor.alloc:
+        if node.inputs[0].owner and node.inputs[0].owner.op == host_from_gpu:
+            replace = True
+        elif all([c != 'output' and c.op == gpu_from_host
+                  for c, idx in node.outputs[0].clients]):
+            replace = True
+        elif all([c != 'output' and c.op == tensor.join and
+                  all([i.owner and i.owner.op in [host_from_gpu, tensor.alloc]
+                       for i in c.inputs[1:]])
+                  for c, idx in node.outputs[0].clients]):
+            replace = True
+    if replace:
+        val = node.inputs[0]
+        shp = node.inputs[1:]
+        old_out = node.outputs[0]
+        val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
+        new_out = host_from_gpu(gpu_alloc(val, *shp))
+        if new_out.type != out_out.type:
+            assert new_out.type.ndim == old_out.type.ndim
+            assert new_out.type.dtype == old_out.type.dtype
+            for b_old, b_new in zip(old_out.type.broadcastable,
+                                    new_out.type.broadcastable):
+                assert b_new or (not b_old)
+            new_out = tensor.patternbroadcast(new_out. old_out.broadcastable)
+
+        return [new_out]
