@@ -1,3 +1,5 @@
+import theano
+from theano import tensor
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
@@ -5,6 +7,8 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
 
 from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
+
+from basic_ops import host_from_gpu, gpu_from_host, gpu_alloc
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -16,18 +20,19 @@ gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_run', 'gpuarray')
 
+# do not add 'fast_run' to these two as this would always enable gpuarray mode
 optdb.register('gpuarray_opt', gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
-               'gpu')
+               'gpuarray')
 
 optdb.register('gpuarray_after_fusion', ProxyDB(gpu_seqopt),
                optdb.__position__.get('elemwise_fusion', 71) + 1,
-               'gpu')
+               'gpuarray')
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        gpu_optimizer.register(name, local_opt, 'fast_run', 'gpu', *tags)
+        gpu_optimizer.register(name, local_opt, 'fast_run', 'gpuarray', *tags)
         return local_opt
     return f
 

@@ -8,11 +8,12 @@ from theano.compile import SharedVariable
 # (it will not work though)
 try:
     import pygpu
+except ImportError:
+    pygpu = None
+
+if pygpu:
     from pygpu import gpuarray
     from pygpu.elemwise import compare, elemwise2
-    from basic_ops import host_from_gpu, gpu_from_host
-except ImportError:
-    pass
 
 
 class GpuArrayType(Type):
@@ -97,7 +98,7 @@ class GpuArrayType(Type):
         return (hash(self.typecode) ^ hash(self.broadcastable))
 
     def __str__(self):
-        return "GpuArray[%s, %s]<%s>" % (self.dtype,)
+        return "GpuArray<%s>" % (self.dtype,)
 
     def c_declare(self, name, sub):
         return "GpuArrayObject *%s;" % (name,)
@@ -153,6 +154,7 @@ class GpuArrayType(Type):
 
 class _operators(tensor.basic._tensor_py_operators):
     def _as_TensorVariable(self):
+        from basic_ops import host_from_gpu
         return host_from_gpu(self)
 
     def _as_GpuArrayVariable(self):

@@ -434,10 +434,10 @@ class GpuAlloc(Op):
     def make_node(self, value, *shape):
         v = as_gpuarray_variable(value)
         sh = [tensor.as_tensor_variable(s) for s in shape]
-        if v.ndim = len(shape):
+        if v.ndim != len(shape):
             raise TypeError(
                 'GpuAlloc requires value of same dimensions as shape',
-                value len(shape))
+                value, len(shape))
         bcast = []
         for s in sh:
             if s.type.dtype[:3] not in ('int', 'uint'):

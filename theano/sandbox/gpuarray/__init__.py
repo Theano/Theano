@@ -3,6 +3,7 @@ import logging
 import theano
 from theano.configparser import config, AddConfigVar, StrParam, \
     BoolParam, IntParam
+from theano.compile import optdb
 
 _logger_name = 'theano.sandbox.gpuarray'
 _logger = logging.getLogger(_logger_name)
@@ -29,6 +30,7 @@ AddConfigVar('gpuarray.init_device',
 # This is for documentation not to depend on the availability of pygpu
 from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
+import opt
 
 
 def init_dev(dev):
