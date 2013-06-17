@@ -258,8 +258,9 @@ def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
 
     logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d(tuple(
         shape_img[2:]), tuple(shape_kern[2:]), 'valid')
-    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((
-        logical_hid_shape[0]/2, logical_hid_shape[1]/2), tuple(shape_kern1[2:]), 'valid')
+    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d(
+        (logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
+        tuple(shape_kern1[2:]), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 
@@ -342,10 +343,11 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     n_kern1 = 30  # 16 were used in LeNet5
     shape_kern1 = (n_kern1, n_kern, ksize, ksize)
 
-    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d((
-        isize1, isize2), (ksize, ksize), 'valid')
-    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d((logical_hid_shape[0]/2,
-        logical_hid_shape[1]/2), (ksize, ksize), 'valid')
+    logical_hid_shape = tcn.blas.GpuConv.logical_output_shape_2d(
+        (isize1, isize2), (ksize, ksize), 'valid')
+    logical_hid_shape1 = tcn.blas.GpuConv.logical_output_shape_2d(
+        (logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
+        (ksize, ksize), 'valid')
     n_hid = n_kern1 * logical_hid_shape1[0] * logical_hid_shape1[1]
     n_out = 10
 

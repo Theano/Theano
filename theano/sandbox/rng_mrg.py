@@ -763,7 +763,7 @@ class MRG_RandomStreams(object):
             # these *SHOULD NEVER BE USED AS FLOATS*
             tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
             assert tmp_float_buf.shape == rstates.shape
-            assert tmp_float_buf.data[:24] == rstates.data[:24]
+            assert (tmp_float_buf.view('int32') == rstates).all()
             # transfer to device
             node_rstate = float32_shared_constructor(tmp_float_buf)
             assert isinstance(node_rstate.type, CudaNdarrayType)
