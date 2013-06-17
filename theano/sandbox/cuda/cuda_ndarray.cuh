@@ -2,7 +2,7 @@
 #define _CUDA_NDARRAY_H
 
 // Defines for Python 2/3 compatibility.
-#if PY_MAJOR_VERSION == 3
+#if PY_MAJOR_VERSION >= 3
 // Py3k treats all ints as longs.
 #define PyInt_Check PyLong_Check
 #define PyInt_CheckExact PyLong_CheckExact
@@ -17,6 +17,7 @@
 #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
 #define PyString_Size PyUnicode_GET_SIZE
 
+#include "numpy/npy_3kcompat.h"
 #define PyCObject_AsVoidPtr NpyCapsule_AsVoidPtr
 #define PyCObject_GetDesc NpyCapsule_GetDesc
 #define PyCObject_Check NpyCapsule_Check
