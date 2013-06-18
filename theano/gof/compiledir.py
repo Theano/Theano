@@ -80,7 +80,8 @@ AddConfigVar("compiledir_format",
                  module subdirectory (relative to base_compiledir).
                  Available keys: %s. Defaults to %r.
              """ % (compiledir_format_keys, default_compiledir_format))),
-             StrParam(default_compiledir_format, allow_override=False))
+             StrParam(default_compiledir_format, allow_override=False),
+             in_c_key=False)
 
 
 def default_compiledirname():
@@ -160,7 +161,8 @@ AddConfigVar('base_compiledir',
         ConfigParam(
             default_base_compiledir,
             filter=filter_base_compiledir,
-            allow_override=False))
+            allow_override=False),
+             in_c_key=False)
 
 AddConfigVar('compiledir',
         "platform-dependent cache directory for compiled modules",
@@ -169,7 +171,8 @@ AddConfigVar('compiledir',
                 config.base_compiledir,
                 default_compiledirname()),
             filter=filter_compiledir,
-            allow_override=False))
+            allow_override=False),
+             in_c_key=False)
 
 
 def cleanup():
