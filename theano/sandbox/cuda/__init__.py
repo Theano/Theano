@@ -27,7 +27,8 @@ AddConfigVar('cuda.root',
         linker directives.  Default: environment variable "CUDA_ROOT"
         or else "AUTO".
         """,
-        StrParam(os.getenv('CUDA_ROOT', "AUTO")))
+        StrParam(os.getenv('CUDA_ROOT', "AUTO")),
+        in_c_key=False)
 
 AddConfigVar('pycuda.init',
         """If True, always initialize PyCUDA when Theano want to
@@ -37,7 +38,8 @@ AddConfigVar('pycuda.init',
            manually by importing theano.misc.pycuda_init before theano
            initialize the GPU device.
              """,
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 
 if config.cuda.root == "AUTO":
     # set nvcc_path correctly and get the version

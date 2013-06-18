@@ -34,7 +34,8 @@ _atexit_print_file = sys.stderr
 
 AddConfigVar('profiling.time_thunks',
              """Time individual thunks when profiling""",
-             BoolParam(True))
+             BoolParam(True),
+             in_c_key=False)
 
 AddConfigVar('profiling.n_apply',
              "Number of Apply instances to print by default",
