@@ -20,14 +20,16 @@ logger = logging.getLogger(__name__)
 
 AddConfigVar('profile',
         "If VM should collect profile information",
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 AddConfigVar('profile_optimizer',
         "If VM should collect optimizer profile information",
-        BoolParam(False))
+        BoolParam(False),
+        in_c_key=False)
 AddConfigVar('profile_memory',
         "If VM should collect memory profile information and print it",
-        BoolParam(False))
-
+        BoolParam(False),
+        in_c_key=False)
 
 def filter_vm_lazy(val):
     if val == 'False' or val is False:
@@ -45,7 +47,8 @@ AddConfigVar('vm.lazy',
              " auto detect if lazy evaluation is needed and use the apropriate"
              " version. If lazy is True/False, force the version used between"
              " Loop/LoopGC and Stack.",
-         ConfigParam('None', filter_vm_lazy))
+             ConfigParam('None', filter_vm_lazy),
+             in_c_key=False)
 
 raise_with_op = link.raise_with_op
 

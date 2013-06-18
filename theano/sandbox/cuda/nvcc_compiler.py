@@ -27,7 +27,8 @@ from theano.configparser import (config, AddConfigVar, StrParam,
 AddConfigVar('nvcc.compiler_bindir',
              "If defined, nvcc compiler driver will seek g++ and gcc"
              " in this directory",
-        StrParam(""))
+             StrParam(""),
+             in_c_key=False)
 
 AddConfigVar('cuda.nvccflags',
         "DEPRECATED, use nvcc.flags instead",
@@ -51,13 +52,21 @@ def filter_nvcc_flags(s):
             " nvcc.flags value is '%s'" % s)
     return ' '.join(flags)
 AddConfigVar('nvcc.flags',
-        "Extra compiler flags for nvcc",
-        ConfigParam(config.cuda.nvccflags, filter_nvcc_flags))
+             "Extra compiler flags for nvcc",
+             ConfigParam(config.cuda.nvccflags, filter_nvcc_flags),
+             # Not needed in c key as it is already added.
+             # We remove it as we don't make the md5 of config to change
+             # if theano.sandbox.cuda is loaded or not.
+             in_c_key=False)
 
 
 AddConfigVar('nvcc.fastmath',
-        "",
-        BoolParam(False))
+             "",
+             BoolParam(False),
+             # Not needed in c key as it is already added.
+             # We remove it as we don't make the md5 of config to change
+             # if theano.sandbox.cuda is loaded or not.
+             in_c_key=False)
 
 nvcc_path = 'nvcc'
 nvcc_version = None

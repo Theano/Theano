@@ -66,7 +66,10 @@
        minimum value and 0.997527376843 as the maximum value. So it
        never returns 0 or 1.
 
-
+   .. note:: Using directly the ultra_fast_sigmoid in the graph will
+       disable stabilization optimization associated with it. But
+       using the optimization to insert them won't disable the
+       stability optimization.
 
 
 .. function:: hard_sigmoid(x)
@@ -84,6 +87,10 @@
    .. note:: The underlying code will return an exact 0 or 1 if an
       element of x is too small or too big.
 
+   .. note:: Using directly the ultra_fast_sigmoid in the graph will
+       disable stabilization optimization associated with it. But
+       using the optimization to insert them won't disable the
+       stability optimization.
 
 .. function:: softplus(x)
 
