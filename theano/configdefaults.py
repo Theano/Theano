@@ -234,7 +234,8 @@ AddConfigVar('op.set_flops',
 
 AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
-        BoolParam(True))
+        BoolParam(True),
+        in_c_key=False)
 
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
