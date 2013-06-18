@@ -3,24 +3,20 @@
 
 // Defines for Python 2/3 compatibility.
 #if PY_MAJOR_VERSION >= 3
-// Py3k treats all ints as longs.
-#define PyInt_Check PyLong_Check
-#define PyInt_CheckExact PyLong_CheckExact
-#define PyInt_AsLong PyLong_AsLong
-#define PyInt_FromLong PyLong_FromLong
+// Py3k treats all ints as longs. This one is not caught by npy_3kcompat.h.
 #define PyNumber_Int PyNumber_Long
 
+#include "numpy/npy_3kcompat.h"
+
 // Py3k strings are unicode, these mimic old functionality.
+//
+// NOTE: npy_3kcompat.h replaces PyString_X with PyBytes_X, which breaks
+// compatibility with some functions returning text.
 #define PyString_Check PyUnicode_Check
 #define PyString_FromString PyUnicode_FromString
 #define PyString_AsString PyUnicode_AsUTF8
 #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
 #define PyString_Size PyUnicode_GET_SIZE
-
-#include "numpy/npy_3kcompat.h"
-#define PyCObject_AsVoidPtr NpyCapsule_AsVoidPtr
-#define PyCObject_GetDesc NpyCapsule_GetDesc
-#define PyCObject_Check NpyCapsule_Check
 
 // Python 3 expects a PyObject* as the first argument to PySlice_GetIndicesEx().
 #define SLICE_CAST(x) (x)

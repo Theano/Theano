@@ -2479,7 +2479,7 @@ class Shape(Op):
             #TODO: if your type is not listed here, make a damn registry of
             #      shape_i ops for various types of variables.
             #      Do not continue this madness.
-            return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
+            return super(Shape, self).c_code(node, nodename, (x,), (out,), sub)
 
     def c_code_cache_version(self):
         return (1,)
