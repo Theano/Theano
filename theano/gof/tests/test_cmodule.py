@@ -41,13 +41,19 @@ def test_inter_process_cache():
 
     """
 
-    x, y = theano.tensor.vectors('xy')
+    x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
     f(numpy.arange(60), numpy.arange(60))
-    assert MyOp.nb_called == 1
+    if theano.config.mode == 'FAST_COMPILE':
+        assert MyOp.nb_called == 0
+    else:
+        assert MyOp.nb_called == 1
 
     # What if we compile a new function with new variables?
-    x, y = theano.tensor.vectors('xy')
+    x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
     f(numpy.arange(60), numpy.arange(60))
-    assert MyOp.nb_called == 1
+    if theano.config.mode == 'FAST_COMPILE':
+        assert MyOp.nb_called == 0
+    else:
+        assert MyOp.nb_called == 1
