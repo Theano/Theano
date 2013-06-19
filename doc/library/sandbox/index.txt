@@ -15,6 +15,7 @@
 
     cuda/index
     linalg
+    neighbours
 
 
 
