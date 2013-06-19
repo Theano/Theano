@@ -12,9 +12,11 @@ me='lisa@iro.umontreal.ca'
 #Those file contain the output of the do_nightly_build script.
 files=["/tmp/do_nightly_build_theano", "/tmp/do_nightly_build_pylearn",
        "/tmp/do_nightly_build_deeplearning", "/tmp/do_nightly_build_pylearn2",
-       "/tmp/do_nightly_build_theano_python2.4"]
+       "/tmp/do_nightly_build_theano_python2.4",
+       "/tmp/do_nightly_build_theano_python3.3.0",
+]
 msgs=['Theano buildbot', 'Pylearn buildbot', 'Deep Learning Tutorial buildbot',
-      'Pylearn2 buildbot', 'Theano Python2.4 buildbot']
+      'Pylearn2 buildbot', 'Theano Python2.4 buildbot', 'Theano Python3.3.0 buildbot']
 
 print files
 print msgs

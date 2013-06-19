@@ -479,7 +479,7 @@ class KeyData(object):
                          protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
-                    self.keys)
+                            self.keys)
             os.remove(self.key_pkl)
             raise
 
@@ -664,8 +664,8 @@ class ModuleCache(object):
                             # os. So it is normal that this happens from time
                             # to time.
                             _logger.warning("ModuleCache.refresh() Found key "
-                                    "without dll in cache, deleting it. %s",
-                                    key_pkl)
+                                            "without dll in cache, deleting it. %s",
+                                            key_pkl)
                         _rmtree(root, ignore_nocleanup=True,
                                 msg="missing module file", level=logging.INFO)
                         continue
@@ -674,7 +674,7 @@ class ModuleCache(object):
 
                         def unpickle_failure():
                             _logger.info("ModuleCache.refresh() Failed to "
-                                    "unpickle cache file %s", key_pkl)
+                                         "unpickle cache file %s", key_pkl)
 
                         try:
                             key_data = cPickle.load(open(key_pkl, 'rb'))
@@ -779,9 +779,9 @@ class ModuleCache(object):
                                         level=logging.DEBUG)
                             else:
                                 _logger.debug('Found duplicated module not '
-                                        'old enough yet to be deleted '
-                                        '(age: %s): %s',
-                                        age, entry)
+                                              'old enough yet to be deleted '
+                                              '(age: %s): %s',
+                                              age, entry)
                             continue
 
                         # Remember the map from a module's hash to the KeyData
@@ -870,7 +870,7 @@ class ModuleCache(object):
             compilelock.release_lock()
 
         _logger.debug('Time needed to refresh cache: %s',
-                (time.time() - start_time))
+                      (time.time() - start_time))
 
         return too_old_to_use
 
@@ -934,8 +934,8 @@ class ModuleCache(object):
                     _logger.error(e)
                     if e.errno == 31:
                         _logger.error('There are %i files in %s',
-                                len(os.listdir(config.compiledir)),
-                                config.compiledir)
+                                      len(os.listdir(config.compiledir)),
+                                      config.compiledir)
                     raise
                 try:
                     compile_steps = fn(location=location).__iter__()
@@ -958,7 +958,7 @@ class ModuleCache(object):
 
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
-                                "previous one")
+                                      "previous one")
                         duplicated_module = True
                         # Load the already existing module.
                         key_data = self.module_hash_to_key_data[module_hash]
@@ -966,7 +966,7 @@ class ModuleCache(object):
                         # should not be used considering that the module should
                         # already be compiled.
                         module = self.module_from_key(key=None,
-                                key_data=key_data)
+                                                      key_data=key_data)
                         name = module.__file__
                         # Add current key to the set of keys associated to the
                         # same module. We only save the KeyData object of
@@ -1007,7 +1007,7 @@ class ModuleCache(object):
                         name = module.__file__
 
                         _logger.debug("Adding module to cache %s %s",
-                                key, name)
+                                      key, name)
                         assert name.startswith(location)
                         assert name not in self.module_from_name
                         # Changing the hash of the key is not allowed during
@@ -1251,7 +1251,7 @@ class ModuleCache(object):
         compilelock.get_lock()
         try:
             for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
-                    'scan_perform'):
+                             'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
@@ -1266,7 +1266,7 @@ class ModuleCache(object):
                         shutil.move(to_rename, to_delete)
                     except Exception:
                         _logger.warning('Could not move %s to %s',
-                                to_rename, to_delete)
+                                        to_rename, to_delete)
         finally:
             compilelock.release_lock()
 
@@ -1370,7 +1370,7 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
         _logger.debug('Time spent checking keys: %s',
-                self.time_spent_in_check_key)
+                      self.time_spent_in_check_key)
 
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
@@ -1391,14 +1391,14 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()
         _logger.debug('In _rmtree, encountered exception: %s(%s)',
-                type(e), e)
+                      type(e), e)
         if os.path.exists(parent):
             try:
                 _logger.info('placing "delete.me" in %s', parent)
                 open(os.path.join(parent, 'delete.me'), 'w').close()
             except Exception, ee:
                 _logger.warning("Failed to remove or mark cache directory %s "
-                        "for removal %s", parent, ee)
+                                "for removal %s", parent, ee)
 
 _module_cache = None
 
@@ -1416,7 +1416,7 @@ def get_module_cache(dirname, init_args=None):
         atexit.register(_module_cache._on_atexit)
     elif init_args:
         _logger.warning('Ignoring init arguments for module cache because it '
-                'was created prior to this call')
+                        'was created prior to this call')
     if _module_cache.dirname != dirname:
         _logger.warning("Returning module cache instance with different "
                 "dirname (%s) than you requested (%s)",
@@ -1682,6 +1682,26 @@ class GCC_compiler(object):
             if (python_inc.count('Python.framework') > 0 and
                 config.cmodule.mac_framework_link):
                 cxxflags.extend(['-framework', 'Python'])
+            if 'Anaconda' in sys.version:
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we tell the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    raise Exception(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano unable to compile c code. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will fix this error."
+                        % new_path)
 
         return cxxflags
 
@@ -1815,8 +1835,8 @@ class GCC_compiler(object):
         # sometimes, the linker cannot find -lpython so we need to tell it
         # explicitly where it is located
         # this returns somepath/lib/python2.x
-        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                        standard_lib=1)
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
         python_lib = os.path.dirname(python_lib)
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
@@ -1833,7 +1853,7 @@ class GCC_compiler(object):
         cppfile.close()
 
         lib_filename = os.path.join(location, '%s.%s' %
-                (module_name, get_lib_extension()))
+                                    (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = ['g++', get_gcc_shared_library_arg(), '-g']
