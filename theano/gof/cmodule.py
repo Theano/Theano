@@ -1682,6 +1682,26 @@ class GCC_compiler(object):
             if (python_inc.count('Python.framework') > 0 and
                 config.cmodule.mac_framework_link):
                 cxxflags.extend(['-framework', 'Python'])
+            if 'Anaconda' in sys.version:
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we tell the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    raise Exception(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano unable to compile c code. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will fix this error."
+                        % new_path)
 
         return cxxflags
 
