@@ -156,23 +156,25 @@ else:
     default_base_compiledir = os.path.join(get_home_dir(), '.theano')
 
 
-AddConfigVar('base_compiledir',
-        "platform-independent root directory for compiled modules",
-        ConfigParam(
-            default_base_compiledir,
-            filter=filter_base_compiledir,
-            allow_override=False),
-             in_c_key=False)
+AddConfigVar(
+    'base_compiledir',
+    "platform-independent root directory for compiled modules",
+    ConfigParam(
+        default_base_compiledir,
+        filter=filter_base_compiledir,
+        allow_override=False),
+    in_c_key=False)
 
-AddConfigVar('compiledir',
-        "platform-dependent cache directory for compiled modules",
-        ConfigParam(
-            os.path.join(
-                config.base_compiledir,
-                default_compiledirname()),
-            filter=filter_compiledir,
-            allow_override=False),
-             in_c_key=False)
+AddConfigVar(
+    'compiledir',
+    "platform-dependent cache directory for compiled modules",
+    ConfigParam(
+        os.path.join(
+            config.base_compiledir,
+            default_compiledirname()),
+        filter=filter_compiledir,
+        allow_override=False),
+    in_c_key=False)
 
 
 def cleanup():
