@@ -51,7 +51,7 @@ class Images2Neibs(Op):
         :param ten4:     a list of lists of images
                          ten4 is of shape (list 1 dim, list 2 dim,
                                            row, col)
-        :param neigb:    (r,c) where r is the height of the neighborhood
+        :param neib_shape: (r,c) where r is the height of the neighborhood
                         in rows and c is the width of the neighborhood
                         in columns
         :param neib_step: (dr,dc) where dr is the number of rows to
@@ -402,6 +402,46 @@ class Images2Neibs(Op):
 
 
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
+    """
+        :param ten4:     a list of lists of images
+                         ten4 is of shape (list 1 dim, list 2 dim,
+                                           row, col)
+        :type ten4:      A 4d tensor-like.
+        :param neib_shape: (r,c) where r is the height of the neighborhood
+                        in rows and c is the width of the neighborhood
+                        in columns
+        :type neib_shape: A 1d tensor-like of 2 values.
+        :param neib_step: (dr,dc) where dr is the number of rows to
+                          skip between patch and dc is the number of
+                          columns. When None, this is the same as
+                          neib_shape(patch are disjoint)
+        :type neib_step: A 1d tensor-like of 2 values.
+        :param mode: Possible values:
+            'valid': Requires an input that is a multiple of the
+                pooling factor (in each direction)
+            'ignore_borders': Same as valid, but will ignore the borders
+                if the shape(s) of the input
+                is not a multiple of the pooling factor(s)
+            'wrap_centered' : ?? TODO comment
+        :type mode: str
+        :return:
+            Reshapes the input as a 2D tensor where each row is an
+            pooling example. Pseudo-code of the output:
+
+            .. code-block:: python
+
+                idx = 0
+                for i in xrange(list 1 dim)
+                    for j in xrange(list 2 dim)
+                        for k in <image column coordinates>
+                            for l in <image row coordinates>
+                                output[idx,:]
+                                     = flattened version of ten4[i,j,l:l+r,k:k+c]
+                                idx += 1
+                (note: the op isn't necessarily implemented internally with these
+                for loops, they're just the easiest way to describe the output
+                pattern)
+    """
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
 
@@ -409,11 +449,11 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     """
     Inverse of images2neib.
 
-    neibs : matrix like the one obtained by images2neib
-    neib_shape : neib_shape that was used in images2neib
-    original_shape : original shape of the 4d tensor given to images2neib
+    :param neibs: matrix like the one obtained by images2neib
+    :param neib_shape: neib_shape that was used in images2neib
+    :param original_shape: original shape of the 4d tensor given to images2neib
 
-    Return a 4d tensor of shape `original_shape`.
+    :return: Return a 4d tensor of shape `original_shape`.
     """
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
