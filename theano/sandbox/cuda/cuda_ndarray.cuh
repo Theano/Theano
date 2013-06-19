@@ -23,6 +23,13 @@
 #else
 // Python 2 expects a PySliceObject* as the first argument to PySlice_GetIndicesEx().
 #define SLICE_CAST(x) ((PySliceObject*)(x))
+#endif // end #if PY_MAJOR_VERSION >= 3
+
+#ifndef Py_TYPE
+#  define Py_TYPE(o) ((o)->ob_type)
+#endif
+#ifndef Py_REFCNT
+#  define Py_REFCNT(o) ((o)->ob_refcnt)
 #endif
 
 #include <numpy/arrayobject.h>
