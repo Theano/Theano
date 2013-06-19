@@ -428,17 +428,19 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
             Reshapes the input as a 2D tensor where each row is an
             pooling example. Pseudo-code of the output:
 
-            idx = 0
-            for i in xrange(list 1 dim)
-                for j in xrange(list 2 dim)
-                    for k in <image column coordinates>
-                        for l in <image row coordinates>
-                            output[idx,:]
-                                 = flattened version of ten4[i,j,l:l+r,k:k+c]
-                            idx += 1
-            (note: the op isn't necessarily implemented internally with these
-            for loops, they're just the easiest way to describe the output
-            pattern)
+            .. code-block:: python
+
+                idx = 0
+                for i in xrange(list 1 dim)
+                    for j in xrange(list 2 dim)
+                        for k in <image column coordinates>
+                            for l in <image row coordinates>
+                                output[idx,:]
+                                     = flattened version of ten4[i,j,l:l+r,k:k+c]
+                                idx += 1
+                (note: the op isn't necessarily implemented internally with these
+                for loops, they're just the easiest way to describe the output
+                pattern)
     """
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
@@ -447,11 +449,11 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     """
     Inverse of images2neib.
 
-    neibs : matrix like the one obtained by images2neib
-    neib_shape : neib_shape that was used in images2neib
-    original_shape : original shape of the 4d tensor given to images2neib
+    :param neibs: matrix like the one obtained by images2neib
+    :param neib_shape: neib_shape that was used in images2neib
+    :param original_shape: original shape of the 4d tensor given to images2neib
 
-    Return a 4d tensor of shape `original_shape`.
+    :return: Return a 4d tensor of shape `original_shape`.
     """
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
