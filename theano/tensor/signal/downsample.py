@@ -142,10 +142,10 @@ class DownsampleFactorMax(Op):
         zz -= numpy.inf
         ds0, ds1 = self.ds
         if self.ignore_border:
-            x_usable2 = (x.shape[2] / ds0 * ds0)
+            x_usable2 = (x.shape[2] // ds0 * ds0)
         else: x_usable2 = x.shape[2]
         if self.ignore_border:
-            x_usable3 = (x.shape[3] / ds1 * ds1)
+            x_usable3 = (x.shape[3] // ds1 * ds1)
         else: x_usable3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
@@ -270,9 +270,9 @@ class DownsampleFactorMaxGrad(Op):
         gx = numpy.zeros_like(x)
 
         ds0, ds1 = self.ds
-        shape2 = (x.shape[2] / ds0 * ds0)
+        shape2 = (x.shape[2] // ds0 * ds0)
         if not self.ignore_border: shape2 = x.shape[2]
-        shape3 = (x.shape[3] / ds1 * ds1)
+        shape3 = (x.shape[3] // ds1 * ds1)
         if not self.ignore_border: shape3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
