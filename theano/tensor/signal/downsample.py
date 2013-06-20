@@ -5,15 +5,19 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 """
 #This file should move along with conv.py
-
-from theano import gof, Op, tensor, Variable, Apply
-import numpy, theano
 import __builtin__
+
+import numpy
+
+import theano
+from theano import gof, Op, tensor, Variable, Apply
+
 
 def max_pool2D(*args, **kwargs):
     import sys
     print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
     return max_pool_2d(*args, **kwargs)
+
 
 def max_pool_2d(input, ds, ignore_border=False):
     """
@@ -36,11 +40,12 @@ def max_pool_2d(input, ds, ignore_border=False):
 
     # count the number of "leading" dimensions, store as dmatrix
     batch_size = tensor.prod(input.shape[:-2])
-    batch_size = tensor.shape_padright(batch_size,1)
+    batch_size = tensor.shape_padright(batch_size, 1)
 
     # store as 4D tensor with shape: (batch_size,1,height,width)
     new_shape = tensor.cast(tensor.join(0, batch_size,
-        tensor.as_tensor([1,]), img_shape), 'int64')
+                                        tensor.as_tensor([1,]),
+                                        img_shape), 'int64')
     input_4D = tensor.reshape(input, new_shape, ndim=4)
 
     # downsample mini-batch of images
@@ -53,10 +58,11 @@ def max_pool_2d(input, ds, ignore_border=False):
 
 
 class DownsampleFactorMax(Op):
-    """
-    For N-dimensional tensors, consider that the last two dimensions span images.
-    This Op downsamples these images by a factor ds, by taking the max over non-
-    overlapping rectangular regions.
+    """For N-dimensional tensors, consider that the last two
+    dimensions span images.  This Op downsamples these images by a
+    factor ds, by taking the max over non- overlapping rectangular
+    regions.
+
     """
 
     @staticmethod
@@ -83,7 +89,7 @@ class DownsampleFactorMax(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements (rows, cols)')
         r, c = imgshape[-2:]
-        rval = list(imgshape[:-2]) + [ r // ds[0], c // ds[1] ]
+        rval = list(imgshape[:-2]) + [r // ds[0], c // ds[1]]
 
         if not ignore_border:
             if isinstance(r, theano.Variable):
@@ -111,13 +117,16 @@ class DownsampleFactorMax(Op):
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+        return (type(self) == type(other) and
+                self.ds == other.ds and
+                self.ignore_border == other.ignore_border)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+        return '%s{%s,%s}' % (self.__class__.__name__,
+                              self.ds, self.ignore_border)
 
     def make_node(self, x):
         if x.type.ndim != 4:
@@ -130,30 +139,35 @@ class DownsampleFactorMax(Op):
         """
         x, = inp
         z, = out
-        if len(x.shape)!=4:
-            raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
+        if len(x.shape) != 4:
+            raise NotImplementedError(
+                'DownsampleFactorMax requires 4D input for now')
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border))
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
+                                              self.ignore_border))
             z[0] = theano._asarray(z[0], dtype=x.dtype)
-        zz=z[0]
+        zz = z[0]
 
         ## zz needs to be initialized with -inf for the following to work
         zz -= numpy.inf
         ds0, ds1 = self.ds
         if self.ignore_border:
             x_usable2 = (x.shape[2] // ds0 * ds0)
-        else: x_usable2 = x.shape[2]
+        else:
+            x_usable2 = x.shape[2]
         if self.ignore_border:
             x_usable3 = (x.shape[3] // ds1 * ds1)
-        else: x_usable3 = x.shape[3]
+        else:
+            x_usable3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(x_usable2):
                     zi = i / ds0
                     for j in xrange(x_usable3):
                         zj = j / ds1
-                        zz[n,k,zi,zj] = __builtin__.max(zz[n,k,zi,zj], x[n,k,i,j])
+                        zz[n, k, zi, zj] = __builtin__.max(zz[n, k, zi, zj],
+                                                           x[n, k, i, j])
 
     def infer_shape(self, node, in_shapes):
         shp = self.out_shape(in_shapes[0], self.ds, self.ignore_border)
@@ -163,12 +177,14 @@ class DownsampleFactorMax(Op):
         x, = inp
         gz, = grads
         maxout = self(x)
-        return [DownsampleFactorMaxGrad(self.ds, ignore_border=self.ignore_border)(x, maxout, gz)]
+        return [DownsampleFactorMaxGrad(self.ds,
+                                        ignore_border=self.ignore_border)(
+                                            x, maxout, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        fail=sub['fail']
+        fail = sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
         return """
@@ -209,7 +225,8 @@ class DownsampleFactorMax(Op):
           dims[1]=PyArray_DIMS(%(x)s)[1];
           dims[2]=z_shp0;
           dims[3]=z_shp1;
-          %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
+          //TODO: zeros not necessary
+          %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0);
         }
 
         if (z_shp0 && z_shp1)
@@ -237,7 +254,7 @@ class DownsampleFactorMax(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0,1)
+        return (0, 1)
 
 
 class DownsampleFactorMaxGrad(Op):
@@ -247,20 +264,23 @@ class DownsampleFactorMaxGrad(Op):
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+        return (type(self) == type(other) and
+                self.ds == other.ds and
+                self.ignore_border == other.ignore_border)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+        return '%s{%s,%s}' % (self.__class__.__name__,
+                              self.ds, self.ignore_border)
 
     def make_node(self, x, maxout, gz):
-        # make_node should only be called by the grad function of DownsampleFactorMax,
-        # so these asserts should not fail.
-        assert isinstance(x, Variable) and x.ndim==4
-        assert isinstance(maxout, Variable) and maxout.ndim==4
-        assert isinstance(gz, Variable) and gz.ndim==4
+        # make_node should only be called by the grad function of
+        # DownsampleFactorMax, so these asserts should not fail.
+        assert isinstance(x, Variable) and x.ndim == 4
+        assert isinstance(maxout, Variable) and maxout.ndim == 4
+        assert isinstance(gz, Variable) and gz.ndim == 4
 
         return Apply(self, [x, maxout, gz], [x.type()])
 
@@ -271,9 +291,11 @@ class DownsampleFactorMaxGrad(Op):
 
         ds0, ds1 = self.ds
         shape2 = (x.shape[2] // ds0 * ds0)
-        if not self.ignore_border: shape2 = x.shape[2]
+        if not self.ignore_border:
+            shape2 = x.shape[2]
         shape3 = (x.shape[3] // ds1 * ds1)
-        if not self.ignore_border: shape3 = x.shape[3]
+        if not self.ignore_border:
+            shape3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(shape2):
