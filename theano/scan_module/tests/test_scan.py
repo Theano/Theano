@@ -3511,12 +3511,9 @@ class T_Scan(unittest.TestCase):
         #y7, _ = theano.scan(lambda i, W, _, _2: W[i], sequences=v,
         #                    outputs_info=None, non_sequences=[v, W[0], W])
         for out in [y1, y2, y3, y4, y5, y6]:
-            print
-            print "Begin test"
-            print
             #This used to raise an exception
-            f = theano.function([W, v], out)
-            f(numpy.zeros((3, 3)), [1, 2])
+            f = theano.function([W, v], out, mode=mode_with_opt)
+            f(numpy.zeros((3, 3), dtype=theano.config.floatX), [1, 2])
             scan_node = f.maker.fgraph.toposort()[-1]
 
             # TODO: Why this assert always fail?
