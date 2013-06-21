@@ -4907,9 +4907,6 @@ class t_dot(unittest.TestCase):
                     # Reported by Theano perform
                     e0.split()[0:4]
                          == ['Incompatible', 'shapes', 'for', 'gemv'] or
-                    # Reported by Theano when 'exception_verbosity' is set
-                    # to 'high'.
-                    e0.split()[0:3] == ['dot', 'product', 'failed.'],
                     e)
         finally:
             _logger.setLevel(oldlevel)

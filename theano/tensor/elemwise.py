@@ -807,14 +807,7 @@ class Elemwise(Op):
 
                 base_exc_str = 'Dimension mismatch; shapes are %s' % (
                                ', '.join(msg))
-                if config.exception_verbosity == 'high':
-                    msg_chunks = [base_exc_str]
-                    for i, ipt in enumerate(node.inputs):
-                        msg_chunks.append('input %d: %s' %
-                                          (i, min_informative_str(ipt)))
-                    raise ValueError('\n'.join(msg_chunks))
-                else:
-                    raise ValueError(base_exc_str)
+                raise ValueError(base_exc_str)
 
         # Determine the shape of outputs
         out_shape = []
@@ -875,29 +868,7 @@ class Elemwise(Op):
                                       self.scalar_op.nout))
             nout = ufunc.nout
 
-        try:
-            variables = ufunc(*ufunc_args)
-        except Exception, e:
-            errormsg = ('While computing ' + str(node.outputs) +
-                        ': Failed calling ufunc for op ' +
-                        str(self.scalar_op) +
-                        ' for params of shape ' +
-                        str([arg.shape for arg in ufunc_args]))
-
-            if config.exception_verbosity == 'high':
-                errormsg += 'inputs are: \n'
-                for i, ipt in enumerate(node.inputs):
-                    errormsg += '(' + str(i) + ') ' + \
-                            min_informative_str(ipt) + '\n'
-                errormsg += 'outputs are: \n'
-                for i, output in enumerate(node.outputs):
-                    errormsg += '(' + str(i) + ') ' + \
-                            min_informative_str(output) + '\n'
-                errormsg += 'original exception was: ' + '\n'.join(
-                        traceback.format_exception_only(*sys.exc_info()[0:2]))
-
-            e.args = e.args + (errormsg, )
-            raise
+        variables = ufunc(*ufunc_args)
 
         if nout == 1:
             variables = [variables]
