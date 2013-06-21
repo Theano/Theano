@@ -534,7 +534,7 @@ class Elemwise(Op):
             inputs = map(as_tensor_variable, inputs)
         except TypeError:
             # __{add,sub,mul,div,mod,pow}__
-            # need to raise NotImplemented to make
+            # need to return NotImplemented to make
             # TensorVariable op SparseVariable work.
             return NotImplemented
         shadow = self.scalar_op.make_node(
