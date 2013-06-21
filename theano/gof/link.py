@@ -108,6 +108,10 @@ def raise_with_op(op, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
+    if hasattr(op, "outputs"):
+        exc_value = exc_type(exc_value, op, op.outputs)
+    else:
+        exc_value = exc_type(exc_value, op)
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
