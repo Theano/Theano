@@ -580,8 +580,8 @@ class Function(object):
             outputs = self.fn()
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
-                # this is a new vm-provided function
-                # the C VM needs this because the exception manipulation
+                # this is a new vm-provided function or c linker
+                # they need this because the exception manipulation
                 # done by raise_with_op is not implemented in C.
                 if hasattr(self.fn, 'thunks'):
                     # For the CVM

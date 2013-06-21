@@ -63,8 +63,8 @@ def raise_with_op(op, thunk=None, exc_info=None):
 
     Parameters
     ----------
-    op : object
-        The Op object that resulted in the raised exception.
+    op : Apply node
+        The Apply node object that resulted in the raised exception.
     exc_info : tuple, optional
         A tuple containing the exception type, exception object and
         associated traceback, as would be returned by a call to
