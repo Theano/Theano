@@ -165,7 +165,7 @@ class Loop(VM):
                     self.call_counts[i] += 1
                     self.call_times[i] += t1 - t0
             except:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         else:
             for cont in self.pre_call_clear:
                 cont[0] = None
@@ -173,7 +173,7 @@ class Loop(VM):
                 for thunk, node in zip(self.thunks, self.nodes):
                     thunk()
             except:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
 
 
 class LoopGC(VM):
@@ -205,7 +205,7 @@ class LoopGC(VM):
                         old_s[0] = None
                     i += 1
             except:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         else:
             for cont in self.pre_call_clear:
                 cont[0] = None
@@ -216,7 +216,7 @@ class LoopGC(VM):
                     for old_s in old_storage:
                         old_s[0] = None
             except:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
 
 
 class Stack(VM):
@@ -400,7 +400,8 @@ class Stack(VM):
                                     st = 'c'
                                 self.variable_strides[var] = st
                     except Exception:
-                        raise_with_op(current_apply)
+                        raise_with_op(current_apply,
+                                      self.thunks[self.node_idx[current_apply]])
                     for o in current_apply.outputs:
                         compute_map[o][0] = 1
                     if self.allow_gc:
@@ -458,7 +459,8 @@ class Stack(VM):
                     self.call_times[current_idx] += dt
 
                 except Exception:
-                    raise_with_op(current_apply)
+                    raise_with_op(current_apply,
+                                  self.thunks[self.node_idx[current_apply]])
 
                 if requires:
                     for r in requires:

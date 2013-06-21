@@ -1908,7 +1908,7 @@ class _Linker(gof.link.LocalLinker):
                         try:
                             thunk_c()
                         except Exception:
-                            raise_with_op(node)
+                            raise_with_op(node, thunk_c)
 
                         for r in node.outputs:
                             # check output values for type-correctness
@@ -1958,7 +1958,7 @@ class _Linker(gof.link.LocalLinker):
                                 try:
                                     thunk_c()
                                 except Exception:
-                                    raise_with_op(node)
+                                    raise_with_op(node, thunk_c)
                             _logger.debug(
                                     '%i - calling _check_preallocated_output '
                                     'with thunk_c', i)

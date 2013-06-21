@@ -1,5 +1,6 @@
 """WRITEME"""
 from copy import copy
+import StringIO
 import sys
 import traceback
 
@@ -55,7 +56,7 @@ sys.excepthook = thunk_hook
 
 
 # TODO: Make this work with linker defined schedule
-def raise_with_op(op, exc_info=None):
+def raise_with_op(op, thunk=None, exc_info=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.
@@ -95,7 +96,10 @@ def raise_with_op(op, exc_info=None):
     try:
         trace = op.tag.trace
     except AttributeError:
-        trace = ()
+        try:
+            trace = op.op.tag.trace
+        except AttributeError:
+            trace = ()
     exc_value.__thunk_trace__ = trace
     exc_value.__op_instance__ = op
     if op in op.fgraph.toposort():
@@ -108,10 +112,29 @@ def raise_with_op(op, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
-    if hasattr(op, "outputs"):
-        exc_value = exc_type(exc_value, op, op.outputs)
+    if theano.config.exception_verbosity == 'high':
+        f = StringIO.StringIO()
+        theano.printing.debugprint(op, file=f, stop_on_name=True)
+        if thunk is not None:
+            shapes = [getattr(ipt[0], 'shape', 'No shapes')
+                      for ipt in thunk.inputs]
+            strides = [getattr(ipt[0], 'strides', 'No strides')
+                       for ipt in thunk.inputs]
+            detailed_err_msg = ("\nInputs shapes: %s \n" % shapes +
+                                "Inputs strides: %s \n" % strides +
+                                "Debugprint of the apply node: \n" +
+                                f.getvalue())
+        else:
+            detailed_err_msg = "\nDebugprint of the apply node: \n" + f.getvalue()
     else:
-        exc_value = exc_type(exc_value, op)
+        detailed_err_msg = ("\nUse the Theano flag"
+                            " 'exception_verbosity=high' for more"
+                            " information on the inputs of this apply"
+                            " node.")
+
+    exc_value = exc_type(str(exc_value) +
+                         "\nApply node that caused the error: " + str(op) +
+                         detailed_err_msg)
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
@@ -364,7 +387,7 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                     for old_s in old_storage:
                         old_s[0] = None
             except Exception:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         f = streamline_default_f
     elif nice_errors:
         thunk_node_list = zip(thunks, order)
@@ -376,7 +399,7 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                 for thunk, node in thunk_node_list:
                     thunk()
             except Exception:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         f = streamline_nice_errors_f
     else:
         # don't worry about raise_with_op, just go a little faster.
@@ -670,7 +693,7 @@ class WrapLinker(Linker):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:
-                    raise_with_op(node)
+                    raise_with_op(node, thunk)
         f.thunk_groups = thunk_groups
 
         return f, inputs0, outputs0
