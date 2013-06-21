@@ -1584,9 +1584,9 @@ class _tensor_py_operators:
         # Otherwise this will convert error when Theano flags
         # compute_test_value is used
         # Evidently, we need to catch NotImplementedError
-        # But we also need to catch TypeError
+        # TypeError from as_tensor_variable are caught in Elemwise.make_node
         # Oterwise TensorVariable * SparseVariable won't work!
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             # We must return NotImplemented and not an
             # NotImplementedError or raise an NotImplementedError.
             # That way python will give a good error message like this
@@ -1599,7 +1599,7 @@ class _tensor_py_operators:
         # and the return value in that case
         try:
             return sub(self, other)
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             return NotImplemented
 
     def __mul__(self, other):
@@ -1607,7 +1607,7 @@ class _tensor_py_operators:
         # and the return value in that case
         try:
             return mul(self, other)
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             return NotImplemented
 
     def __div__(self, other):
@@ -1619,7 +1619,7 @@ class _tensor_py_operators:
             # This is to raise the exception that occurs when trying to divide
             # two integer arrays (currently forbidden).
             raise
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             return NotImplemented
     if PY3:
         __truediv__ = __div__
@@ -1629,7 +1629,7 @@ class _tensor_py_operators:
         # adn the return value in that case
         try:
             return pow(self, other)
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             return NotImplemented
 
     def __mod__(self, other):
@@ -1641,7 +1641,7 @@ class _tensor_py_operators:
             # This is to raise the exception that occurs when trying to compute
             # x % y with either x or y a complex number.
             raise
-        except (NotImplementedError, TypeError):
+        except NotImplementedError:
             return NotImplemented
 
     def __truediv__(self, other):
