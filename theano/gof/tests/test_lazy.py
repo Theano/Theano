@@ -148,10 +148,16 @@ def more_complex_test():
     t4.name = 't4'
 
     f = function([c1, c2, x1, x2], t4, mode=Mode(linker='vm',
-         optimizer='fast_run'))
-
-    print f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
-    assert f(1, 0, numpy.array(10, dtype=x1.dtype), 0) == 20.5
+                                                 optimizer='fast_run'))
+    if theano.config.vm.lazy is False:
+        try:
+            f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
+            assert False
+        except NotImplementedOp.E:
+            pass
+    else:
+        print f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
+        assert f(1, 0, numpy.array(10, dtype=x1.dtype), 0) == 20.5
     print '... passed'
 
 if __name__ == '__main__':
