@@ -13,9 +13,14 @@ class TestKeepDims:
         elif isinstance(axis, int):
             axis = [axis]
         i = 0
+        newaxis = []
+        for a in axis:
+            if a < 0:
+                a += x.type.ndim
+            newaxis.append(a)
         new_dims = []
         for j, _ in enumerate(x.shape):
-            if j in axis:
+            if j in newaxis:
                 new_dims.append('x')
             else:
                 new_dims.append(i)
@@ -30,7 +35,8 @@ class TestKeepDims:
 
         # 'max_and_argmax' has two outputs and can be specified with either
         # a single or every axis:
-        for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2]]:
+        for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2],
+                     [-1], [-2], [-3]]:
 
             op = tensor.max_and_argmax
             keep_param = function([x], op(x, axis=axis, keepdims=True)[0])
@@ -50,8 +56,8 @@ class TestKeepDims:
         # the following ops can be specified with either a single axis or every
         # axis:
         for op in ([tensor.argmax, tensor.argmin]):
-
-            for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2]]:
+            for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2],
+                         [-1], [-2], [-3], [-1, -2, -3]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
                 keep_synth = function([x], self.makeKeepDims_local(x,
@@ -72,7 +78,8 @@ class TestKeepDims:
         for op in ([tensor.sum, tensor.prod, tensor.mean, tensor.var,
                     tensor.std, tensor.all, tensor.any,
                     tensor.max, tensor.min]):
-            for axis in [0, 1, 2, [0], [1], [2], [0, 1], [1, 2], [0, 1, 2]]:
+            for axis in [0, 1, 2, [0], [1], [2], [0, 1], [1, 2], [0, 1, 2],
+                         [-1], [-2], [-3], [-1, -2], [-1, -2, -3]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
                 keep_synth = function([x], self.makeKeepDims_local(x,
