@@ -2653,8 +2653,13 @@ class MaxAndArgmax(Op):
             axis = [axis]
         elif isinstance(axis, (tuple, list)):
             if len(axis) != 1:
-                list(axis)
+                axis = list(axis)
+                for idx in range(len(axis)):
+                    if axis[idx] < 0:
+                        axis[idx] += x.type.ndim
                 axis.sort()
+                if axis == range(-x.type.ndim, 0, 1):
+                    axis = range(x.type.ndim)
                 assert axis == range(x.type.ndim), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it.")
@@ -2806,10 +2811,17 @@ def makeKeepDims(x, y, axis):
         axis = range(x.type.ndim)
     elif isinstance(axis, int):
         axis = [axis]
+    newaxis = []
+    for a in axis:
+        if not isinstance(a, int):
+            raise ValueError("keepdims option can be used only with constant axis")
+        if a < 0:
+            a += x.type.ndim
+        newaxis.append(a)
     i = 0
     new_dims = []
     for j, _ in enumerate(x.type.broadcastable):
-        if j in axis:
+        if j in newaxis:
             new_dims.append('x')
         else:
             new_dims.append(i)
