@@ -36,7 +36,8 @@ class TestKeepDims:
         # 'max_and_argmax' has two outputs and can be specified with either
         # a single or every axis:
         for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2],
-                     [-1], [-2], [-3]]:
+                     [-1], [-2], [-3], [-1, -2, -3], [0, -1, -2],
+                     [-2, -3, 2]]:
 
             op = tensor.max_and_argmax
             keep_param = function([x], op(x, axis=axis, keepdims=True)[0])
@@ -57,7 +58,7 @@ class TestKeepDims:
         # axis:
         for op in ([tensor.argmax, tensor.argmin]):
             for axis in [0, 1, 2, [0], [1], [2], None, [0, 1, 2],
-                         [-1], [-2], [-3], [-1, -2, -3]]:
+                         [-1], [-2], [-3], [-1, -2, -3], [0, -2, 2]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
                 keep_synth = function([x], self.makeKeepDims_local(x,
@@ -79,7 +80,7 @@ class TestKeepDims:
                     tensor.std, tensor.all, tensor.any,
                     tensor.max, tensor.min]):
             for axis in [0, 1, 2, [0], [1], [2], [0, 1], [1, 2], [0, 1, 2],
-                         [-1], [-2], [-3], [-1, -2], [-1, -2, -3]]:
+                         [-1], [-2], [-3], [-1, -2], [-1, -2, -3], [0, -2, 2]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
                 keep_synth = function([x], self.makeKeepDims_local(x,

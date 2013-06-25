@@ -2653,7 +2653,10 @@ class MaxAndArgmax(Op):
             axis = [axis]
         elif isinstance(axis, (tuple, list)):
             if len(axis) != 1:
-                list(axis)
+                axis = list(axis)
+                for idx in range(len(axis)):
+                    if axis[idx] < 0:
+                        axis[idx] += x.type.ndim
                 axis.sort()
                 if axis == range(-x.type.ndim, 0, 1):
                     axis = range(x.type.ndim)
