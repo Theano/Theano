@@ -530,13 +530,7 @@ class Elemwise(Op):
         is left-completed to the greatest number of dimensions with 1s
         using DimShuffle.
         """
-        try:
-            inputs = map(as_tensor_variable, inputs)
-        except TypeError:
-            # __{add,sub,mul,div,mod,pow}__
-            # need to return NotImplemented to make
-            # TensorVariable op SparseVariable work.
-            return NotImplemented
+        inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
                 *[Scalar(dtype=i.type.dtype)() for i in inputs])
 
