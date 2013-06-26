@@ -69,7 +69,7 @@ class ShapeError(Exception):
     pass
 
 
-class AsTensorError(Exception):
+class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
     TensorVariable.
     """
