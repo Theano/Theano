@@ -63,3 +63,16 @@ def test2(shape=(3, 4, 5)):
     assert A_cnd.gpudata == B.gpudata
     v = numpy.asarray(B)
     assert (v == A).all()
+
+
+def test_broadcast_dims():
+    """
+    Test with some dimensions being 1.
+    CudaNdarray use 0 for strides for those dimensions.
+    """
+    test((1, 2, 3))
+    test((2, 1, 3))
+    test((2, 3, 1))
+    test2((1, 2, 3))
+    test2((2, 1, 3))
+    test2((2, 3, 1))
