@@ -933,6 +933,7 @@ class CLinker(link.Linker):
             keep_lock=keep_lock)
 
         res = _CThunk(cthunk, init_tasks, tasks, error_storage)
+        res.nodes = self.node_order
         return res, in_storage, out_storage
 
     def cmodule_key(self):
@@ -1391,11 +1392,9 @@ class _CThunk(object):
                 trace = ()
             try:
                 exc_type, _exc_value, exc_trace = self.error_storage
-                if hasattr(task, "outputs"):
-                    exc_value = exc_type(_exc_value, task, task.outputs)
-                else:
-                    exc_value = exc_type(_exc_value, task)
+                self.position_of_error = self.nodes.index(task)
                 # this can be used to retrieve the location the Op was declared
+                exc_value = exc_type(_exc_value)
                 exc_value.__thunk_trace__ = trace
             except Exception:
                 print >> sys.stderr, ('ERROR retrieving error_storage.'
