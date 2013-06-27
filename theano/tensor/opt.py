@@ -3209,7 +3209,7 @@ def local_sum_sum(node):
                 for i in node.op.axis:
                     new_i = i
                     for ii in summed.owner.op.axis:
-                        if i >= ii:
+                        if new_i >= ii:
                             new_i += 1
                     assert new_i not in newaxis
                     newaxis.append(new_i)
