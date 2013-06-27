@@ -2395,14 +2395,14 @@ CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
     if (PyTuple_Check(value)){
         if (PyTuple_Size(value) != CudaNdarray_NDIM(self)){
             PyErr_SetString(PyExc_ValueError,
-                            "The new strides tuple must have the same lenght"
+                            "The new strides tuple must have the same length"
                             " as the number of dimensions");
             return -1;
         }
     }else if (PyList_Check(value)){
         if (PyList_Size(value) != CudaNdarray_NDIM(self)){
             PyErr_SetString(PyExc_ValueError,
-                            "The new strides tuple must have the same lenght"
+                            "The new strides list must have the same length"
                             " as the number of dimensions");
             return -1;
         }

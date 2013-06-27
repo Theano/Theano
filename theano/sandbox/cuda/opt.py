@@ -289,7 +289,7 @@ def local_gpu_dimshuffle_0(node):
 def local_gpu_specifyShape_0(node):
     """
     specify_shape(host_from_gpu()) -> host_from_gpu(specify_shape)
-    gpu_from_host(specify_shape) -> specifyshape(gpu_from_host)
+    gpu_from_host(specify_shape) -> specify_shape(gpu_from_host)
     """
     if isinstance(node.op, tensor.SpecifyShape):
         input = node.inputs[0]
@@ -1443,7 +1443,7 @@ def tensor_to_cuda(x):
 def local_gpu_extract_diagonal(node):
     """
     extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
-    gpu_from_host(extract_diagonal) -> specifyshape(gpu_from_host)
+    gpu_from_host(extract_diagonal) -> extract_diagonal(gpu_from_host)
     """
     from theano.sandbox import linalg
     if (isinstance(node.op, linalg.ops.ExtractDiag) and
