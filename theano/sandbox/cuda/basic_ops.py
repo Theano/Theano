@@ -2308,6 +2308,7 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
             return ()
         return (3, hv)
 
+
 class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
@@ -2391,14 +2392,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         x_ = as_cuda_ndarray_variable(x)
         y_ = as_cuda_ndarray_variable(y)
         ilist_ = tensor.as_tensor_variable(ilist)
-        
-        convert_map = { 8:tensor.basic._convert_to_int8, 
-                       16:tensor.basic._convert_to_int16, 
-                       32:tensor.basic._convert_to_int32, 
-                       64:tensor.basic._convert_to_int64
-                      }
-        intwidth = theano.gof.compiledir.python_int_bitwidth()
-        ilist_ = convert_map[intwidth](ilist_)
 
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
@@ -2451,15 +2444,12 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        active_device_no = theano.sandbox.cuda.active_device_number()
-        compute_capability =  theano.sandbox.cuda.device_properties(active_device_no)['major']
         if (self.set_instead_of_inc) or \
-           (node.inputs[0].ndim != node.inputs[1].ndim) or \
-           (compute_capability < 2):
-             raise NotImplementedError("This case does not have C code yet.")
+           (node.inputs[0].ndim != node.inputs[1].ndim):
+            raise NotImplementedError("This case does not have C code yet.")
 
         x = inputs[0]
         y = inputs[1]
@@ -2469,6 +2459,19 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         inplace = int(self.inplace)
 
         return """
+        PyObject *x_obj, *y_obj, *row_x, *row_y;
+        PyObject *x_rowind_obj, *y_rowind_obj;
+        dtype_%(ind)s *p_index;
+        int num_indices, j;
+        int ret;
+
+        num_indices = PyArray_SIZE(%(ind)s);
+        if ((num_indices - 1) > LONG_MAX) {
+            PyErr_Format(PyExc_AssertionError,
+                         "num_indices %%d exceeds LONG_MAX + 1", num_indices);
+            %(fail)s;
+        }
+
         Py_XDECREF(%(out)s);
         if (!%(inplace)s) {
             %(out)s = (CudaNdarray*)CudaNdarray_Copy(%(x)s);
@@ -2477,12 +2480,136 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             Py_XINCREF(%(out)s);
         }
 
-        CudaNdarray_vector_add_fast(%(x)s, %(y)s, %(ind)s);
+        x_obj = (PyObject*)CudaNdarray_View(%(out)s);
+        y_obj = (PyObject*)CudaNdarray_View(%(y)s);
+
+        for (j = 0;j < num_indices; j++) {
+
+             p_index = (dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
+
+             x_rowind_obj = PyInt_FromLong(*p_index);
+
+             if (PyInt_AsLong(x_rowind_obj) != (*p_index)) {
+                 PyErr_Format(PyExc_AssertionError,
+                              "Error in converting row index to integer from long");
+                 // Dec Ref what ever we have increfed or allocated so far
+                 // We deallocate objects exactly in the reverse order they were allocated.
+                 Py_XDECREF(x_rowind_obj);
+                 Py_XDECREF(y_obj);
+                 Py_XDECREF(x_obj);
+                 %(fail)s;
+             }
+
+             y_rowind_obj = PyInt_FromLong(j);
+
+             row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
+             row_y = CudaNdarray_Subscript(y_obj, y_rowind_obj);
+
+             if ((row_x == NULL) || (row_y == NULL)) {
+                  Py_XDECREF(row_y);
+                  Py_XDECREF(row_x);
+                  Py_XDECREF(y_rowind_obj);
+                  Py_XDECREF(x_rowind_obj);
+                  Py_XDECREF(y_obj);
+                  Py_XDECREF(x_obj);
+                  %(fail)s;
+             }
+
+             ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
+             if (ret != 0) {
+                 Py_XDECREF(row_y);
+                 Py_XDECREF(row_x);
+                 Py_XDECREF(y_rowind_obj);
+                 Py_XDECREF(x_rowind_obj);
+                 Py_XDECREF(y_obj);
+                 Py_XDECREF(x_obj);
+                 %(fail)s;
+             }
+
+             Py_XDECREF(row_y);
+             Py_XDECREF(row_x);
+             Py_XDECREF(y_rowind_obj);
+             Py_XDECREF(x_rowind_obj);
+        }
+
+        Py_XDECREF(y_obj);
+        Py_XDECREF(x_obj);
 
         if (!%(out)s) {
             %(fail)s
         }
-        """ %locals()
+        """ % locals()
+
+
+class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
+    """Implement AdvancedIncSubtensor1 on the gpu, but use function
+    only avail on compute capability 2.0 and more recent.
+    """
+
+    def make_node(self, x, y, ilist):
+        """It defer from GpuAdvancedIncSubtensor1 in that it make sure
+        the index are of type long.
+        """
+        x_ = as_cuda_ndarray_variable(x)
+        y_ = as_cuda_ndarray_variable(y)
+        ilist_ = tensor.as_tensor_variable(ilist)
+
+        convert_map = {8: tensor.basic._convert_to_int8,
+                       16: tensor.basic._convert_to_int16,
+                       32: tensor.basic._convert_to_int32,
+                       64: tensor.basic._convert_to_int64
+        }
+        intwidth = theano.gof.compiledir.python_int_bitwidth()
+        ilist_ = convert_map[intwidth](ilist_)
+
+        assert x_.type.dtype == y_.type.dtype
+        assert x_.type.ndim >= y_.type.ndim
+
+        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist_.type.broadcastable != (False,):
+            raise TypeError('index must be vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+        if x_.type.broadcastable[0]:
+            # the caller should have made a copy of x len(ilist) times
+            raise TypeError('cannot index into a broadcastable dimension')
+
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
+
+    def c_code_cache_version(self):
+        return (2,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        active_device_no = theano.sandbox.cuda.active_device_number()
+        compute_capability = device_properties(active_device_no)['major']
+        if ((self.set_instead_of_inc) or
+            (node.inputs[0].ndim != node.inputs[1].ndim) or
+            (node.inputs[0].ndim != 2) or
+            (compute_capability < 2)):
+            raise NotImplementedError("This case does not have C code yet.")
+
+        x = inputs[0]
+        y = inputs[1]
+        ind = inputs[2]
+        out = outputs[0]
+        fail = sub['fail']
+        inplace = int(self.inplace)
+        return """
+        Py_XDECREF(%(out)s);
+        if (!%(inplace)s) {
+            %(out)s = (CudaNdarray*)CudaNdarray_Copy(%(x)s);
+        } else {
+            %(out)s = %(x)s;
+            Py_XINCREF(%(out)s);
+        }
+
+        CudaNdarray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
+
+        if (!%(out)s) {
+            %(fail)s
+        }
+        """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return """
