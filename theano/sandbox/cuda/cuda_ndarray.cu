@@ -2391,22 +2391,37 @@ CudaNdarray_get_strides(CudaNdarray *self, void *closure)
 static int
 CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
 {
-    if (!PyTuple_Check(value)){
-        PyErr_SetString(PyExc_ValueError,
-                        "The new strides need to be encoded in a tupe");
-        return -1;
-    }
-    if (PyTuple_Size(value) != CudaNdarray_NDIM(self)){
-        PyErr_SetString(PyExc_ValueError,
-                        "The new strides tuple must have the same lenght"
-                        " as the number of dimensions");
-        return -1;
-    }
-    npy_intp newstrides[PyTuple_Size(value)];
     //npy_intp newstrides_bytes[PyTuple_Size(value)];
-    for(int i=0; i < CudaNdarray_NDIM(self); i++){
-        newstrides[i] = PyInt_AsLong(PyTuple_GetItem(value, Py_ssize_t(i)));
-        //newstrides_bytes[i] = newstrides[i] * 4;
+    if (PyTuple_Check(value)){
+        if (PyTuple_Size(value) != CudaNdarray_NDIM(self)){
+            PyErr_SetString(PyExc_ValueError,
+                            "The new strides tuple must have the same lenght"
+                            " as the number of dimensions");
+            return -1;
+        }
+    }else if (PyList_Check(value)){
+        if (PyList_Size(value) != CudaNdarray_NDIM(self)){
+            PyErr_SetString(PyExc_ValueError,
+                            "The new strides tuple must have the same lenght"
+                            " as the number of dimensions");
+            return -1;
+        }
+    }else{
+        PyErr_SetString(PyExc_ValueError,
+                        "The new strides need to be encoded in a tuple or list");
+        return -1;
+    }
+    npy_intp newstrides[CudaNdarray_NDIM(self)];
+    if (PyTuple_Check(value)){
+        for(int i=0; i < CudaNdarray_NDIM(self); i++){
+            newstrides[i] = PyInt_AsLong(PyTuple_GetItem(value, Py_ssize_t(i)));
+            //newstrides_bytes[i] = newstrides[i] * 4;
+        }
+    }else if (PyList_Check(value)){
+        for(int i=0; i < CudaNdarray_NDIM(self); i++){
+            newstrides[i] = PyInt_AsLong(PyList_GetItem(value, Py_ssize_t(i)));
+            //newstrides_bytes[i] = newstrides[i] * 4;
+        }
     }
     /*
     // Don't do the check as ExtractDiag need that and NumPy seam to don't do

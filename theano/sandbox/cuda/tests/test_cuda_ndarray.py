@@ -944,12 +944,16 @@ def test_base():
 
 def test_set_strides():
     a = cuda_ndarray.CudaNdarray.zeros((5, 5))
-    a.strides = (a.strides[1], a.strides[0])
-    try:
-        a.strides = [a.strides[1], a.strides[0]]
-        assert False
-    except ValueError:
-        pass
+
+    # Test with tuple
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = new_strides
+    assert a.strides == new_strides
+
+    # Test with list
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = [a.strides[1], a.strides[0]]
+    assert a.strides == new_strides
 
     try:
         a.strides = (a.strides[1],)
