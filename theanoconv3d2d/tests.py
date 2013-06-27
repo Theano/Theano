@@ -8,6 +8,14 @@ from theano.sandbox import cuda
 from conv3d2d import *
 
 
+if theano.config.mode == 'FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+
+
 def test_get_diagonal_subtensor_view():
 
     x = numpy.arange(20).reshape(5, 4)
@@ -106,15 +114,21 @@ def test_conv3d():
     pyconv3d(signals, filters)
     print time.time() - t0
 
-    s_signals = theano.shared(signals)
-    s_filters = theano.shared(filters)
-    s_output = theano.shared(signals*0)
+    modes = [(mode_without_gpu, theano.tensor._shared)]
+    if cuda.cuda_available:
+        modes.append((mode_with_gpu, cuda.shared_constructor))
 
-    newconv3d = theano.function([],[],
-            updates={s_output: conv3d(s_signals, s_filters,
-                signals_shape=signals.shape,
-                filters_shape=filters.shape)})
+    for mode, shared in modes:
+        s_signals = shared(signals)
+        s_filters = shared(filters)
+        s_output = shared(signals*0)
 
-    t0 = time.time()
-    newconv3d()
-    print time.time() - t0
+        newconv3d = theano.function([], [],
+                                    updates={s_output: conv3d(s_signals, s_filters,
+                                                              signals_shape=signals.shape,
+                                                              filters_shape=filters.shape)},
+                                    mode=mode)
+
+        t0 = time.time()
+        newconv3d()
+        print time.time() - t0
