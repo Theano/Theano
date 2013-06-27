@@ -44,6 +44,10 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print '    compiledir=', theano.config.compiledir
         print '    floatX=', theano.config.floatX
         print '    device=', theano.config.device
+        print 'Some OS information:'
+        print '    sys.platform=', sys.platform
+        print '    sys.version=', sys.version
+        print '    sys.prefix=', sys.prefix
         print 'Some environment variables:'
         print '    MKL_NUM_THREADS=', os.getenv('MKL_NUM_THREADS')
         print '    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS')
