@@ -1438,6 +1438,32 @@ def tensor_to_cuda(x):
         return x
 
 
+@register_opt()
+@local_optimizer([])
+def local_gpu_extract_diagonal(node):
+    """
+    extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
+    gpu_from_host(extract_diagonal) -> specifyshape(gpu_from_host)
+    """
+    from theano.sandbox import linalg
+    if (isinstance(node.op, linalg.ops.ExtractDiag) and
+        isinstance(node.inputs[0].type,
+                   theano.tensor.TensorType)):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            return [host_from_gpu(linalg.extract_diag(gpu_from_host(inp)))]
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, linalg.ops.ExtractDiag) and
+            isinstance(host_input.owner.inputs[0].type,
+                       theano.tensor.TensorType)):
+            diag_node = host_input.owner
+            return [linalg.extract_diag(
+                gpu_from_host(diag_node.inputs[0]))]
+    return False
+
+
 @register_opt('scan')
 @local_optimizer([])
 def gpuScanOptimization(node):

@@ -4,9 +4,10 @@ import numpy
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 
+import theano
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
-import theano
+import theano.sandbox.linalg.tests
 
 from theano.tests import unittest_tools as utt
 
@@ -379,6 +380,17 @@ def test_erfinvgpu():
     assert isinstance(f.maker.fgraph.toposort()[1].op.scalar_op, cuda.elemwise.ErfinvGPU)
     xv=numpy.random.rand(7,8).astype('float32')
     assert numpy.allclose(f(xv),f2(xv))
+
+
+class test_diag(theano.sandbox.linalg.tests.test_linalg.test_diag):
+    mode = mode_with_gpu
+    shared = staticmethod(cuda.shared_constructor)
+    floatX = 'float32'
+    type = CudaNdarrayType
+
+    def __init__(self, name):
+        super(theano.sandbox.linalg.tests.test_linalg.test_diag,
+              self).__init__(name)
 
 
 if __name__ == '__main__':
