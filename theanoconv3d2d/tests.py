@@ -1,20 +1,30 @@
 import time
-from conv3d2d import *
+
 import numpy
-
 from scipy import ndimage
-
 import theano
+from theano.sandbox import cuda
+
+from conv3d2d import *
+
+
+if theano.config.mode == 'FAST_COMPILE':
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
+else:
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+
 
 def test_get_diagonal_subtensor_view():
 
-    x = numpy.arange(20).reshape(5,4)
+    x = numpy.arange(20).reshape(5, 4)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
 
     # test that it works in 2d
     assert numpy.all(xv01 == [[12, 9, 6, 3], [16, 13, 10, 7]])
 
-    x = numpy.arange(24).reshape(4,3,2)
+    x = numpy.arange(24).reshape(4, 3, 2)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
     xv02 = get_diagonal_subtensor_view(x, 0, 2)
     xv12 = get_diagonal_subtensor_view(x, 1, 2)
@@ -22,20 +32,55 @@ def test_get_diagonal_subtensor_view():
     #print 'x', x
     #print 'xv01', xv01
     #print 'xv02', xv02
-    assert numpy.all(xv01 ==[
+    assert numpy.all(xv01 == [
         [[12, 13], [8, 9], [4, 5]],
         [[18, 19], [14, 15], [10, 11]]])
 
     assert numpy.all(xv02 == [
-        [[6, 1], [8,3], [10, 5]],
+        [[6, 1], [8, 3], [10, 5]],
         [[12, 7], [14, 9], [16, 11]],
         [[18, 13], [20, 15], [22, 17]],
         ])
 
     # diagonal views of each leading matrix is the same
     # as the slices out of the diagonal view of the entire 3d tensor
-    for xi,xvi in zip(x, xv12):
-        assert numpy.all( xvi == get_diagonal_subtensor_view(xi, 0, 1))
+    for xi, xvi in zip(x, xv12):
+        assert numpy.all(xvi == get_diagonal_subtensor_view(xi, 0, 1))
+
+
+def test_get_diagonal_subtensor_view_gpu():
+    x = numpy.arange(20, dtype='float32').reshape(5, 4)
+    x = cuda.CudaNdarray(x)
+    xv01 = get_diagonal_subtensor_view(x, 0, 1)
+
+    # test that it works in 2d
+    assert numpy.all(numpy.asarray(xv01) ==
+                     [[12, 9, 6, 3], [16, 13, 10, 7]])
+
+    x = numpy.arange(24).reshape(4, 3, 2)
+    xv01 = get_diagonal_subtensor_view(x, 0, 1)
+    xv02 = get_diagonal_subtensor_view(x, 0, 2)
+    xv12 = get_diagonal_subtensor_view(x, 1, 2)
+
+    #print 'x', x
+    #print 'xv01', xv01
+    #print 'xv02', xv02
+    assert numpy.all(numpy.asarray(xv01) == [
+        [[12, 13], [8, 9], [4, 5]],
+        [[18, 19], [14, 15], [10, 11]]])
+
+    assert numpy.all(numpy.asarray(xv02) == [
+        [[6, 1], [8, 3], [10, 5]],
+        [[12, 7], [14, 9], [16, 11]],
+        [[18, 13], [20, 15], [22, 17]],
+        ])
+
+    # diagonal views of each leading matrix is the same
+    # as the slices out of the diagonal view of the entire 3d tensor
+    for xi, xvi in zip(x, numpy.asarray(xv12)):
+        assert numpy.all(numpy.asarray(xvi) ==
+                         numpy.asarray(get_diagonal_subtensor_view(xi, 0, 1)))
+
 
 def pyconv3d(signals, filters):
     Ns, Ts, C, Hs, Ws = signals.shape
@@ -56,6 +101,7 @@ def pyconv3d(signals, filters):
                 #print s_i.shape, f_i.shape, r_i.shape, o_i.shape
                 r_i += o_i[Tf2:-Tf2, Hf2:-Hf2, Wf2:-Wf2]
 
+
 def test_conv3d():
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -68,15 +114,21 @@ def test_conv3d():
     pyconv3d(signals, filters)
     print time.time() - t0
 
-    s_signals = theano.shared(signals)
-    s_filters = theano.shared(filters)
-    s_output = theano.shared(signals*0)
+    modes = [(mode_without_gpu, theano.tensor._shared)]
+    if cuda.cuda_available:
+        modes.append((mode_with_gpu, cuda.shared_constructor))
 
-    newconv3d = theano.function([],[],
-            updates={s_output: conv3d(s_signals, s_filters,
-                signals_shape=signals.shape,
-                filters_shape=filters.shape)})
+    for mode, shared in modes:
+        s_signals = shared(signals)
+        s_filters = shared(filters)
+        s_output = shared(signals*0)
 
-    t0 = time.time()
-    newconv3d()
-    print time.time() - t0
+        newconv3d = theano.function([], [],
+                                    updates={s_output: conv3d(s_signals, s_filters,
+                                                              signals_shape=signals.shape,
+                                                              filters_shape=filters.shape)},
+                                    mode=mode)
+
+        t0 = time.time()
+        newconv3d()
+        print time.time() - t0

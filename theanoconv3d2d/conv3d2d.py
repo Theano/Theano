@@ -1,6 +1,8 @@
+import theano
 from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply
 from theano import tensor
+import theano.sandbox.cuda as cuda
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
@@ -16,6 +18,9 @@ def get_diagonal_subtensor_view(x, i0, i1):
 
 
 class DiagonalSubtensor(Op):
+    """
+    Work on the GPU.
+    """
     def __init__(self, inplace):
         self.inplace = inplace
         if inplace:
@@ -169,3 +174,26 @@ def conv3d(signals, filters,
     else:
         raise ValueError('invalid border mode', border_mode[1])
     return out_5d
+
+
+@cuda.opt.register_opt()
+@theano.gof.local_optimizer([])
+def local_gpu_diagonal_subtensor(node):
+    """
+    diagonal_subtensor(host_from_gpu()) -> host_from_gpu(diagonal_subtensor)
+    gpu_from_host(diagonal_subtensor) -> diagonal_subtensor(gpu_from_host)
+    """
+    if isinstance(node.op, DiagonalSubtensor):
+        input = node.inputs[0]
+        if input.owner and isinstance(input.owner.op, cuda.HostFromGpu):
+            return [cuda.host_from_gpu(diagonal_subtensor(cuda.gpu_from_host(input),
+                                                     *node.inputs[1:]))]
+    if node.op == cuda.gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           DiagonalSubtensor):
+            diag_node = host_input.owner
+            return [tensor.diagonal_subtensor(
+                cuda.gpu_from_host(diag_node.inputs[0]),
+                *diag_node.inputs[1:])]
+    return False
