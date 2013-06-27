@@ -941,6 +941,33 @@ def test_base():
     e = b.reshape((5,2,2,3))
     assert e.base is a
 
+
+def test_set_strides():
+    a = cuda_ndarray.CudaNdarray.zeros((5, 5))
+
+    # Test with tuple
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = new_strides
+    assert a.strides == new_strides
+
+    # Test with list
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = [a.strides[1], a.strides[0]]
+    assert a.strides == new_strides
+
+    try:
+        a.strides = (a.strides[1],)
+        assert False
+    except ValueError:
+        pass
+
+    try:
+        a.strides = (1, 1, 1)
+        assert False
+    except ValueError:
+        pass
+
+
 def test_is_c_contiguous():
     a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
     assert a.is_c_contiguous()

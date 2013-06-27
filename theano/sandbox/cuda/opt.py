@@ -289,7 +289,7 @@ def local_gpu_dimshuffle_0(node):
 def local_gpu_specifyShape_0(node):
     """
     specify_shape(host_from_gpu()) -> host_from_gpu(specify_shape)
-    gpu_from_host(specify_shape) -> specifyshape(gpu_from_host)
+    gpu_from_host(specify_shape) -> specify_shape(gpu_from_host)
     """
     if isinstance(node.op, tensor.SpecifyShape):
         input = node.inputs[0]
@@ -1436,6 +1436,32 @@ def tensor_to_cuda(x):
         return y
     else:
         return x
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_extract_diagonal(node):
+    """
+    extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
+    gpu_from_host(extract_diagonal) -> extract_diagonal(gpu_from_host)
+    """
+    from theano.sandbox import linalg
+    if (isinstance(node.op, linalg.ops.ExtractDiag) and
+        isinstance(node.inputs[0].type,
+                   theano.tensor.TensorType)):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            return [host_from_gpu(linalg.extract_diag(gpu_from_host(inp)))]
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, linalg.ops.ExtractDiag) and
+            isinstance(host_input.owner.inputs[0].type,
+                       theano.tensor.TensorType)):
+            diag_node = host_input.owner
+            return [linalg.extract_diag(
+                gpu_from_host(diag_node.inputs[0]))]
+    return False
 
 
 @register_opt('scan')

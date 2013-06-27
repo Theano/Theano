@@ -2391,8 +2391,58 @@ CudaNdarray_get_strides(CudaNdarray *self, void *closure)
 static int
 CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
 {
-    PyErr_SetString(PyExc_NotImplementedError, "");
-    return -1;
+    //npy_intp newstrides_bytes[PyTuple_Size(value)];
+    if (PyTuple_Check(value)){
+        if (PyTuple_Size(value) != CudaNdarray_NDIM(self)){
+            PyErr_SetString(PyExc_ValueError,
+                            "The new strides tuple must have the same length"
+                            " as the number of dimensions");
+            return -1;
+        }
+    }else if (PyList_Check(value)){
+        if (PyList_Size(value) != CudaNdarray_NDIM(self)){
+            PyErr_SetString(PyExc_ValueError,
+                            "The new strides list must have the same length"
+                            " as the number of dimensions");
+            return -1;
+        }
+    }else{
+        PyErr_SetString(PyExc_ValueError,
+                        "The new strides need to be encoded in a tuple or list");
+        return -1;
+    }
+    npy_intp newstrides[CudaNdarray_NDIM(self)];
+    if (PyTuple_Check(value)){
+        for(int i=0; i < CudaNdarray_NDIM(self); i++){
+            newstrides[i] = PyInt_AsLong(PyTuple_GetItem(value, Py_ssize_t(i)));
+            //newstrides_bytes[i] = newstrides[i] * 4;
+        }
+    }else if (PyList_Check(value)){
+        for(int i=0; i < CudaNdarray_NDIM(self); i++){
+            newstrides[i] = PyInt_AsLong(PyList_GetItem(value, Py_ssize_t(i)));
+            //newstrides_bytes[i] = newstrides[i] * 4;
+        }
+    }
+    /*
+    // Do not do this check, as ExtractDiag needs that, and NumPy does not seem
+    // to do it.
+    npy_intp dims[PyTuple_Size(value)];
+    for(int i=0; i < CudaNdarray_NDIM(self); i++){
+        dims[i] = CudaNdarray_HOST_DIMS(self)[i];
+    }
+    if (!PyArray_CheckStrides(4,
+                              CudaNdarray_NDIM(self),
+                              0, 0,
+                              dims,
+                              newstrides_bytes)){
+        PyErr_SetString(PyExc_ValueError, "bad new strides");
+        return -1;
+        }
+    */
+    for(int i=0; i < CudaNdarray_NDIM(self); i++){
+        CudaNdarray_set_stride(self, i, newstrides[i]);
+    }
+    return 0;
 }
 
 static PyObject *

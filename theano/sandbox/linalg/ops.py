@@ -684,7 +684,10 @@ solve = Solve()  # general solve
 
 
 class ExtractDiag(Op):
-    """ Return the diagonal of a matrix. """
+    """ Return the diagonal of a matrix.
+
+    :note: work on the GPU.
+    """
     def __init__(self, view=False):
         self.view = view
         if self.view:
@@ -697,10 +700,15 @@ class ExtractDiag(Op):
         return hash(type(self)) ^ hash(self.view)
 
     def make_node(self, _x):
-        x = as_tensor_variable(_x)
+        if not isinstance(_x, theano.Variable):
+            x = as_tensor_variable(_x)
+        else:
+            x = _x
+
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
-        return Apply(self, [x], [tensor.vector(dtype=x.type.dtype)])
+        return Apply(self, [x], [x.type.__class__(broadcastable=(False,),
+                                                  dtype=x.type.dtype)()])
 
     def perform(self, node, ins, outs):
         """ For some reason numpy.diag(x) is really slow, so we
