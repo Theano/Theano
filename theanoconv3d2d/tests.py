@@ -2,7 +2,6 @@ import time
 
 import numpy
 from scipy import ndimage
-
 import theano
 from theano.sandbox import cuda
 
@@ -11,13 +10,13 @@ from conv3d2d import *
 
 def test_get_diagonal_subtensor_view():
 
-    x = numpy.arange(20).reshape(5,4)
+    x = numpy.arange(20).reshape(5, 4)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
 
     # test that it works in 2d
     assert numpy.all(xv01 == [[12, 9, 6, 3], [16, 13, 10, 7]])
 
-    x = numpy.arange(24).reshape(4,3,2)
+    x = numpy.arange(24).reshape(4, 3, 2)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
     xv02 = get_diagonal_subtensor_view(x, 0, 2)
     xv12 = get_diagonal_subtensor_view(x, 1, 2)
@@ -25,7 +24,7 @@ def test_get_diagonal_subtensor_view():
     #print 'x', x
     #print 'xv01', xv01
     #print 'xv02', xv02
-    assert numpy.all(xv01 ==[
+    assert numpy.all(xv01 == [
         [[12, 13], [8, 9], [4, 5]],
         [[18, 19], [14, 15], [10, 11]]])
 
@@ -93,6 +92,7 @@ def pyconv3d(signals, filters):
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
                 #print s_i.shape, f_i.shape, r_i.shape, o_i.shape
                 r_i += o_i[Tf2:-Tf2, Hf2:-Hf2, Wf2:-Wf2]
+
 
 def test_conv3d():
 
