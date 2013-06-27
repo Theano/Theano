@@ -2451,13 +2451,14 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
-        compute_capability =  theano.sandbox.cuda.device_properties(active_device_no)['major']
+        compute_capability =  device_properties(active_device_no)['major']
         if (self.set_instead_of_inc) or \
            (node.inputs[0].ndim != node.inputs[1].ndim) or \
+           (node.inputs[0].ndim != 2) or \
            (compute_capability < 2):
              raise NotImplementedError("This case does not have C code yet.")
 
@@ -2477,12 +2478,12 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             Py_XINCREF(%(out)s);
         }
 
-        CudaNdarray_vector_add_fast(%(x)s, %(y)s, %(ind)s);
+        CudaNdarray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
 
         if (!%(out)s) {
             %(fail)s
         }
-        """ %locals()
+        """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return """
