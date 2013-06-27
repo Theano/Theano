@@ -1,10 +1,13 @@
 import time
-from conv3d2d import *
-import numpy
 
+import numpy
 from scipy import ndimage
 
 import theano
+from theano.sandbox import cuda
+
+from conv3d2d import *
+
 
 def test_get_diagonal_subtensor_view():
 
@@ -27,15 +30,50 @@ def test_get_diagonal_subtensor_view():
         [[18, 19], [14, 15], [10, 11]]])
 
     assert numpy.all(xv02 == [
-        [[6, 1], [8,3], [10, 5]],
+        [[6, 1], [8, 3], [10, 5]],
         [[12, 7], [14, 9], [16, 11]],
         [[18, 13], [20, 15], [22, 17]],
         ])
 
     # diagonal views of each leading matrix is the same
     # as the slices out of the diagonal view of the entire 3d tensor
-    for xi,xvi in zip(x, xv12):
-        assert numpy.all( xvi == get_diagonal_subtensor_view(xi, 0, 1))
+    for xi, xvi in zip(x, xv12):
+        assert numpy.all(xvi == get_diagonal_subtensor_view(xi, 0, 1))
+
+
+def test_get_diagonal_subtensor_view_gpu():
+    x = numpy.arange(20, dtype='float32').reshape(5, 4)
+    x = cuda.CudaNdarray(x)
+    xv01 = get_diagonal_subtensor_view(x, 0, 1)
+
+    # test that it works in 2d
+    assert numpy.all(numpy.asarray(xv01) ==
+                     [[12, 9, 6, 3], [16, 13, 10, 7]])
+
+    x = numpy.arange(24).reshape(4, 3, 2)
+    xv01 = get_diagonal_subtensor_view(x, 0, 1)
+    xv02 = get_diagonal_subtensor_view(x, 0, 2)
+    xv12 = get_diagonal_subtensor_view(x, 1, 2)
+
+    #print 'x', x
+    #print 'xv01', xv01
+    #print 'xv02', xv02
+    assert numpy.all(numpy.asarray(xv01) == [
+        [[12, 13], [8, 9], [4, 5]],
+        [[18, 19], [14, 15], [10, 11]]])
+
+    assert numpy.all(numpy.asarray(xv02) == [
+        [[6, 1], [8, 3], [10, 5]],
+        [[12, 7], [14, 9], [16, 11]],
+        [[18, 13], [20, 15], [22, 17]],
+        ])
+
+    # diagonal views of each leading matrix is the same
+    # as the slices out of the diagonal view of the entire 3d tensor
+    for xi, xvi in zip(x, numpy.asarray(xv12)):
+        assert numpy.all(numpy.asarray(xvi) ==
+                         numpy.asarray(get_diagonal_subtensor_view(xi, 0, 1)))
+
 
 def pyconv3d(signals, filters):
     Ns, Ts, C, Hs, Ws = signals.shape
