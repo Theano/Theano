@@ -106,8 +106,11 @@ try:
             strides = [1]
             for i in x.shape[::-1][:-1]:
                 strides.append(strides[-1]*i)
-            strides = tuple(strides[::-1])
-
+            strides = strides[::-1]
+            for i in range(len(strides)):
+                if x.shape[i] == 1:
+                    strides[i] = 0
+            strides = tuple(strides)
 
             import ctypes
             ptr_long = long(ctypes.cast(x._base.mat.data_device, ctypes.c_void_p).value)
