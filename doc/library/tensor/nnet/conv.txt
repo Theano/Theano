@@ -16,6 +16,9 @@
     present in convolutional neural networks (where filters are 3D and pool
     over several input channels).
 
+    The project `TheanoConv3d2d <https://github.com/jaberg/TheanoConv3d2d>`_
+    is probably faster then the Conv3d documented here.
+
 .. module:: conv
    :platform: Unix, Windows
    :synopsis: ops for signal processing
