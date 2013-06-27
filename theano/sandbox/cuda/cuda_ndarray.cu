@@ -2424,8 +2424,8 @@ CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
         }
     }
     /*
-    // Don't do the check as ExtractDiag need that and NumPy seam to don't do
-    // it.
+    // Do not do this check, as ExtractDiag needs that, and NumPy does not seem
+    // to do it.
     npy_intp dims[PyTuple_Size(value)];
     for(int i=0; i < CudaNdarray_NDIM(self); i++){
         dims[i] = CudaNdarray_HOST_DIMS(self)[i];
