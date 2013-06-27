@@ -2391,8 +2391,43 @@ CudaNdarray_get_strides(CudaNdarray *self, void *closure)
 static int
 CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
 {
-    PyErr_SetString(PyExc_NotImplementedError, "");
-    return -1;
+    if (!PyTuple_Check(value)){
+        PyErr_SetString(PyExc_ValueError,
+                        "The new strides need to be encoded in a tupe");
+        return -1;
+    }
+    if (PyTuple_Size(value) != CudaNdarray_NDIM(self)){
+        PyErr_SetString(PyExc_ValueError,
+                        "The new strides tuple must have the same lenght"
+                        " as the number of dimensions");
+        return -1;
+    }
+    npy_intp newstrides[PyTuple_Size(value)];
+    //npy_intp newstrides_bytes[PyTuple_Size(value)];
+    for(int i=0; i < CudaNdarray_NDIM(self); i++){
+        newstrides[i] = PyInt_AsLong(PyTuple_GetItem(value, Py_ssize_t(i)));
+        //newstrides_bytes[i] = newstrides[i] * 4;
+    }
+    /*
+    // Don't do the check as ExtractDiag need that and NumPy seam to don't do
+    // it.
+    npy_intp dims[PyTuple_Size(value)];
+    for(int i=0; i < CudaNdarray_NDIM(self); i++){
+        dims[i] = CudaNdarray_HOST_DIMS(self)[i];
+    }
+    if (!PyArray_CheckStrides(4,
+                              CudaNdarray_NDIM(self),
+                              0, 0,
+                              dims,
+                              newstrides_bytes)){
+        PyErr_SetString(PyExc_ValueError, "bad new strides");
+        return -1;
+        }
+    */
+    for(int i=0; i < CudaNdarray_NDIM(self); i++){
+        CudaNdarray_set_stride(self, i, newstrides[i]);
+    }
+    return 0;
 }
 
 static PyObject *
