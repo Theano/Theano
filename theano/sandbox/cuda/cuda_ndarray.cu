@@ -1478,7 +1478,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
         case CPY:
             k3 = k_ielem_3<CPY>;
             k4 = k_ielem_4<CPY>;
-             k6 = k_ielem_6<CPY>;
+            k6 = k_ielem_6<CPY>;
            break;
         default:
             assert (0);
