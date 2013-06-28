@@ -21,6 +21,11 @@ class DiagonalSubtensor(Op):
     """
     Work on the GPU.
     """
+    def __str__(self):
+        if self.inplace:
+            return "%s{inplace}" % self.__class__.__name__
+        return "%s" % self.__class__.__name__
+
     def __init__(self, inplace):
         self.inplace = inplace
         if inplace:
@@ -57,6 +62,11 @@ diagonal_subtensor = DiagonalSubtensor(False)
 
 
 class IncDiagonalSubtensor(Op):
+    def __str__(self):
+        if self.inplace:
+            return "%s{inplace}" % self.__class__.__name__
+        return "%s" % self.__class__.__name__
+
     def __init__(self, inplace):
         self.inplace = inplace
         if inplace:
