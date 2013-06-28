@@ -20,7 +20,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 # The GC need to be enabled for those tests to work correctly.
-if mode_with_gpu.linker.allow_gc != True:
+if not getattr(mode_with_gpu.linker, 'allow_gc', False):
     mode_with_gpu.linker = copy.copy(mode_with_gpu.linker)
     mode_with_gpu.linker.allow_gc = True
 
