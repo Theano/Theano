@@ -53,6 +53,16 @@ def test_add_iadd_idiv():
                   (3,34,35,36,37),
                   (33,34,3,36,37),
                   (33,34,35,36,3),
+                  (0,0,0,0,0,0),
+                  (3,34,35,36,37,2),
+                  (33,34,3,36,37,2),
+                  (33,34,35,36,3,2),
+                  (3,4,5,6,7,1025),
+                  (3,4,5,6,1025,7),
+                  (3,4,5,1025,6,7),
+                  (3,4,1025,5,6,7),
+                  (3,1025,4,5,6,7),
+                  (1025,3,4,5,6,7),
                   ):
         if isinstance(shapes, tuple):
             shape = shapes
@@ -105,6 +115,10 @@ def test_add_iadd_idiv():
             _b = b1[::, ::, ::, ::-1]
         elif len(shape) == 5:
             _b = b1[::, ::, ::, ::, ::-1]
+        elif len(shape) == 6:
+            _b = b1[::, ::, ::, ::, ::, ::-1]
+        else:
+            raise Exception("You need to modify this case!")
         # TODO: b0[...,::-1] don't work
 
         if shape == shape2:
