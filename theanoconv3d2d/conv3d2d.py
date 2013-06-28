@@ -26,7 +26,7 @@ class DiagonalSubtensor(Op):
             return "%s{inplace}" % self.__class__.__name__
         return "%s" % self.__class__.__name__
 
-    def __init__(self, inplace):
+    def __init__(self, inplace=False):
         self.inplace = inplace
         if inplace:
             self.view_map = {0: [0]}
@@ -67,7 +67,7 @@ class IncDiagonalSubtensor(Op):
             return "%s{inplace}" % self.__class__.__name__
         return "%s" % self.__class__.__name__
 
-    def __init__(self, inplace):
+    def __init__(self, inplace=False):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
