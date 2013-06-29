@@ -2517,7 +2517,7 @@ CudaNdarray_set_strides(CudaNdarray *self, PyObject *value, void *closure)
                         "The new strides need to be encoded in a tuple or list");
         return -1;
     }
-    npy_intp newstrides[CudaNdarray_NDIM(self)];
+    npy_intp* newstrides = (npy_intp*) alloca(CudaNdarray_NDIM(self) * sizeof(npy_intp));
     if (PyTuple_Check(value)){
         for(int i=0; i < CudaNdarray_NDIM(self); i++){
             newstrides[i] = PyInt_AsLong(PyTuple_GetItem(value, Py_ssize_t(i)));
