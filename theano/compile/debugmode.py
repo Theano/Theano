@@ -1636,7 +1636,7 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
                 e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.apply_nodes  # WARNING: STOCHASTIC ORDER
+                e.toposort = lambda: list(e.apply_nodes)  # WARNING: STOCHASTIC ORDER
                 #  Specifically... e.nodes is a set, but of only 1 element
 
                 cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
