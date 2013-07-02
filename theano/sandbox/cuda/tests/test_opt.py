@@ -7,7 +7,7 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
-import theano.sandbox.linalg.tests
+import theano.sandbox.linalg.tests.test_linalg
 
 from theano.tests import unittest_tools as utt
 
