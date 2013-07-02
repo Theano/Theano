@@ -1,4 +1,4 @@
-import sys, time, unittest
+import sys
 
 import numpy
 # Skip test if cuda_ndarray is not available.
@@ -48,24 +48,25 @@ def test_int_pow():
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
     assert op_names == ['GpuCAReduce', 'GpuElemwise', 'HostFromGpu']
 
-    f = theano.function([a], tensor.pow(a,4).sum(), mode=mode_with_gpu)
+    f = theano.function([a], tensor.pow(a, 4).sum(), mode=mode_with_gpu)
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
     assert op_names == ['GpuElemwise', 'GpuCAReduce', 'HostFromGpu']
 
     #theano.printing.debugprint(f)
 
+
 def test_gpualloc():
     '''
     This tests tries to catch the scenario when, due to infer_shape,
-    the input of the alloc changes from tesnor scalar to a constant
+    the input of the alloc changes from tensor scalar to a constant
     1. In this case the original constracted broadcastable pattern will
     have a False for that dimension, but the new broadcastable pattern
     that will be inserted by gpualloc will have  a True since it knows the
     dimension is 1 and therefore broadcastable.
     '''
 
-    x = theano.shared(numpy.ones(3,dtype='float32'), 'x')
-    m = (x).dimshuffle(['x',0])
+    x = theano.shared(numpy.ones(3, dtype='float32'), 'x')
+    m = (x).dimshuffle(['x', 0])
     v = tensor.alloc(1., *m.shape)
     f = theano.function([], v+x)
     l = f.maker.fgraph.toposort()
