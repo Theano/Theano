@@ -172,10 +172,10 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         p = [p0, p1, p2, p3]
 
         # in my code these vars are the result of applying scan
-        ften0 = tensor.ftensor3('ft0')
-        fmat1 = tensor.fmatrix('fm1')
-        ften2 = tensor.ftensor3('ft2')
-        fmat3 = tensor.fmatrix('fm3')
+        ften0 = tensor.tensor3('ft0', dtype=self.dtype)
+        fmat1 = tensor.matrix('fm1', dtype=self.dtype)
+        ften2 = tensor.tensor3('ft2', dtype=self.dtype)
+        fmat3 = tensor.matrix('fm3', dtype=self.dtype)
 
         # then I keep only the last iteration
         fsub0 = ften0[-1]
