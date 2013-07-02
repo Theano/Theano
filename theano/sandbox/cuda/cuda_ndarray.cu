@@ -1832,8 +1832,11 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         );
                 while (n_blocks.x * n_blocks.y > NUM_VECTOR_OP_BLOCKS)
                     n_blocks.y /= 2;
-                while (n_blocks.x * n_blocks.y * n_blocks.z > NUM_VECTOR_OP_BLOCKS)
-                    n_blocks.z /= 2;
+                // GTX285(compute capabilities 1.3) don't support n_blocks.z > 1
+                // (compute capabilities 2.0) support 65535 for n_blocks.z
+                //while (n_blocks.x * n_blocks.y * n_blocks.z > NUM_VECTOR_OP_BLOCKS)
+                //    n_blocks.z /= 2;
+                n_blocks.z = 1;
                 dim3 n_threads(
                         std::min(
                             CudaNdarray_HOST_DIMS(self)[3],
