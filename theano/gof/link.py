@@ -112,29 +112,32 @@ def raise_with_op(op, thunk=None, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
+    detailed_err_msg = "\nApply node that caused the error: " + str(op)
+
+    if thunk is not None:
+        shapes = [getattr(ipt[0], 'shape', 'No shapes')
+                  for ipt in thunk.inputs]
+        strides = [getattr(ipt[0], 'strides', 'No strides')
+                   for ipt in thunk.inputs]
+        types = [getattr(ipt[0], 'type', 'No type')
+                 for ipt in op.inputs]
+        detailed_err_msg += ("\nInputs shapes: %s" % shapes +
+                             "\nInputs strides: %s" % strides +
+                             "\nInputs types: %s" % types)
+    else:
+        detailed_err_msg += ("\nUse another linker then the c linker to"
+                             " have the inputs shapes and strides printed.")
+
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
-        theano.printing.debugprint(op, file=f, stop_on_name=True)
-        if thunk is not None:
-            shapes = [getattr(ipt[0], 'shape', 'No shapes')
-                      for ipt in thunk.inputs]
-            strides = [getattr(ipt[0], 'strides', 'No strides')
-                       for ipt in thunk.inputs]
-            detailed_err_msg = ("\nInputs shapes: %s \n" % shapes +
-                                "Inputs strides: %s \n" % strides +
-                                "Debugprint of the apply node: \n" +
-                                f.getvalue())
-        else:
-            detailed_err_msg = "\nDebugprint of the apply node: \n" + f.getvalue()
+        theano.printing.debugprint(op, file=f, stop_on_name=True,
+                                   print_type=True)
+        detailed_err_msg += "\nDebugprint of the apply node: \n" + f.getvalue()
     else:
-        detailed_err_msg = ("\nUse the Theano flag"
-                            " 'exception_verbosity=high' for more"
-                            " information on the inputs of this apply"
-                            " node.")
+        detailed_err_msg += ("\nUse the Theano flag 'exception_verbosity=high'"
+                             " for a debugprint of this apply node.")
 
-    exc_value = exc_type(str(exc_value) +
-                         "\nApply node that caused the error: " + str(op) +
-                         detailed_err_msg)
+    exc_value = exc_type(str(exc_value) + detailed_err_msg)
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
