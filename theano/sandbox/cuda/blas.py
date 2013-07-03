@@ -704,6 +704,7 @@ class GpuConv(GpuOp):
         return NULL;
     }
 
+    // TODO, make out be decref before we alloc out2!
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
