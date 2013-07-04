@@ -115,10 +115,15 @@ def raise_with_op(op, thunk=None, exc_info=None):
     detailed_err_msg = "\nApply node that caused the error: " + str(op)
 
     if thunk is not None:
-        shapes = [getattr(ipt[0], 'shape', 'No shapes')
-                  for ipt in thunk.inputs]
-        strides = [getattr(ipt[0], 'strides', 'No strides')
-                   for ipt in thunk.inputs]
+        if hasattr(thunk, 'inputs'):
+            shapes = [getattr(ipt[0], 'shape', 'No shapes')
+                      for ipt in thunk.inputs]
+            strides = [getattr(ipt[0], 'strides', 'No strides')
+                       for ipt in thunk.inputs]
+        else:
+            shapes = "The thunk don't have an inputs attributes."
+            strides = "So we can't access the storage inputs value"
+
         types = [getattr(ipt, 'type', 'No type')
                  for ipt in op.inputs]
         detailed_err_msg += ("\nInputs shapes: %s" % shapes +
