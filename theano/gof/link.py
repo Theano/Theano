@@ -119,7 +119,7 @@ def raise_with_op(op, thunk=None, exc_info=None):
                   for ipt in thunk.inputs]
         strides = [getattr(ipt[0], 'strides', 'No strides')
                    for ipt in thunk.inputs]
-        types = [getattr(ipt[0], 'type', 'No type')
+        types = [getattr(ipt, 'type', 'No type')
                  for ipt in op.inputs]
         detailed_err_msg += ("\nInputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
