@@ -1680,6 +1680,8 @@ class _Linker(gof.link.LocalLinker):
                                            storage_map,
                                            compute_map,
                                            no_recycling)
+                thunk.inputs = [storage_map[v] for v in node.inputs]
+                thunk.outputs = [storage_map[v] for v in node.outputs]
 
                 # Right now there is no op that when called check if
                 # its ouputs are computed and don't recompute itself.

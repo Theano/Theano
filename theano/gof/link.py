@@ -526,6 +526,8 @@ class PerformLinker(LocalLinker):
                                               storage_map,
                                               compute_map,
                                               no_recycling)]
+                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
             finally:
                 node.op._op_use_c_code = old_value
 
