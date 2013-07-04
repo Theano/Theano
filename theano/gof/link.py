@@ -112,29 +112,37 @@ def raise_with_op(op, thunk=None, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
-    if theano.config.exception_verbosity == 'high':
-        f = StringIO.StringIO()
-        theano.printing.debugprint(op, file=f, stop_on_name=True)
-        if thunk is not None:
+    detailed_err_msg = "\nApply node that caused the error: " + str(op)
+
+    if thunk is not None:
+        if hasattr(thunk, 'inputs'):
             shapes = [getattr(ipt[0], 'shape', 'No shapes')
                       for ipt in thunk.inputs]
             strides = [getattr(ipt[0], 'strides', 'No strides')
                        for ipt in thunk.inputs]
-            detailed_err_msg = ("\nInputs shapes: %s \n" % shapes +
-                                "Inputs strides: %s \n" % strides +
-                                "Debugprint of the apply node: \n" +
-                                f.getvalue())
         else:
-            detailed_err_msg = "\nDebugprint of the apply node: \n" + f.getvalue()
-    else:
-        detailed_err_msg = ("\nUse the Theano flag"
-                            " 'exception_verbosity=high' for more"
-                            " information on the inputs of this apply"
-                            " node.")
+            shapes = "The thunk don't have an inputs attributes."
+            strides = "So we can't access the storage inputs value"
 
-    exc_value = exc_type(str(exc_value) +
-                         "\nApply node that caused the error: " + str(op) +
-                         detailed_err_msg)
+        types = [getattr(ipt, 'type', 'No type')
+                 for ipt in op.inputs]
+        detailed_err_msg += ("\nInputs shapes: %s" % shapes +
+                             "\nInputs strides: %s" % strides +
+                             "\nInputs types: %s" % types)
+    else:
+        detailed_err_msg += ("\nUse another linker then the c linker to"
+                             " have the inputs shapes and strides printed.")
+
+    if theano.config.exception_verbosity == 'high':
+        f = StringIO.StringIO()
+        theano.printing.debugprint(op, file=f, stop_on_name=True,
+                                   print_type=True)
+        detailed_err_msg += "\nDebugprint of the apply node: \n" + f.getvalue()
+    else:
+        detailed_err_msg += ("\nUse the Theano flag 'exception_verbosity=high'"
+                             " for a debugprint of this apply node.")
+
+    exc_value = exc_type(str(exc_value) + detailed_err_msg)
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
@@ -523,6 +531,8 @@ class PerformLinker(LocalLinker):
                                               storage_map,
                                               compute_map,
                                               no_recycling)]
+                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
             finally:
                 node.op._op_use_c_code = old_value
 

@@ -843,6 +843,9 @@ class VM_Linker(link.LocalLinker):
                     compute_map,
                     no_recycling)
                         for node in order]
+        for node, thunk in zip(order, thunks):
+            thunk.inputs = [storage_map[v] for v in node.inputs]
+            thunk.outputs = [storage_map[v] for v in node.outputs]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:

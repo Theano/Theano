@@ -431,6 +431,8 @@ class PureOp(object):
                 # compute output value once with test inputs to validate graph
                 thunk = node.op.make_thunk(node, storage_map, compute_map,
                         no_recycling=[])
+                thunk.inputs = [storage_map[v] for v in node.inputs]
+                thunk.outputs = [storage_map[v] for v in node.outputs]
 
                 required = thunk()
                 assert not required  # We provided all inputs
