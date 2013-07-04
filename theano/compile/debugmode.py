@@ -1636,7 +1636,8 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
                 e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.apply_nodes  # WARNING: STOCHASTIC ORDER
+                # The toposort isn't a stochastic order as it contain only one node.
+                e.toposort = lambda: list(e.apply_nodes)
                 #  Specifically... e.nodes is a set, but of only 1 element
 
                 cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
@@ -1679,6 +1680,8 @@ class _Linker(gof.link.LocalLinker):
                                            storage_map,
                                            compute_map,
                                            no_recycling)
+                thunk.inputs = [storage_map[v] for v in node.inputs]
+                thunk.outputs = [storage_map[v] for v in node.outputs]
 
                 # Right now there is no op that when called check if
                 # its ouputs are computed and don't recompute itself.

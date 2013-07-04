@@ -652,7 +652,7 @@ class GpuConv(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 19)
+        return (0, 20)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -704,6 +704,7 @@ class GpuConv(GpuOp):
         return NULL;
     }
 
+    // TODO, make out be decref before we alloc out2!
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
@@ -711,6 +712,10 @@ class GpuConv(GpuOp):
                                                          %(max_threads_dim0)s);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
+
+    if (%(out)s==NULL){
+        %(fail)s
+    }
 """ % sub
 
 

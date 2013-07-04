@@ -1811,9 +1811,10 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                     {
                         PyErr_Format(
                             PyExc_RuntimeError,
-                            "Cuda error: %s: %s.\n",
-                            "k4",
-                            cudaGetErrorString(err));
+                            "Cuda error: %s: %s. n_block=(%ld,%ld) n_threads=%ld\n",
+                            "k5 with loop over k4",
+                            cudaGetErrorString(err),
+                            (long) n_blocks.x, (long) n_blocks.y, (long) n_threads.x);
                         Py_XDECREF(new_other);
                         return -1;
                     }
@@ -1831,14 +1832,17 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                         );
                 while (n_blocks.x * n_blocks.y > NUM_VECTOR_OP_BLOCKS)
                     n_blocks.y /= 2;
-                while (n_blocks.x * n_blocks.y * n_blocks.z > NUM_VECTOR_OP_BLOCKS)
-                    n_blocks.z /= 2;
+                // GTX285(compute capabilities 1.3) don't support n_blocks.z > 1
+                // (compute capabilities 2.0) support 65535 for n_blocks.z
+                //while (n_blocks.x * n_blocks.y * n_blocks.z > NUM_VECTOR_OP_BLOCKS)
+                //    n_blocks.z /= 2;
+                n_blocks.z = 1;
                 dim3 n_threads(
                         std::min(
                             CudaNdarray_HOST_DIMS(self)[3],
                             NUM_VECTOR_OP_THREADS_PER_BLOCK)
-                    //TODO: DON"T YOU NEED OT PUT DIMS[4] in here???
-                    //TODO: DON"T YOU NEED OT PUT DIMS[5] in here???
+                    //TODO: DON'T YOU NEED TO PUT DIMS[4] in here???
+                    //TODO: DON'T YOU NEED TO PUT DIMS[5] in here???
                             );
                 k6<<<n_blocks, n_threads>>>(
                         CudaNdarray_HOST_DIMS(self)[0],
@@ -1867,9 +1871,11 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
-                        "k4",
-                        cudaGetErrorString(err));
+                        "Cuda error: %s: %s. n_blocks=(%ld, %ld, %ld) n_threads=(%ld)\n",
+                        "k6",
+                        cudaGetErrorString(err),
+                        (long) n_blocks.x, (long) n_blocks.y, (long) n_blocks.z,
+                        (long) n_threads.x);
                     Py_XDECREF(new_other);
                     return -1;
                 }

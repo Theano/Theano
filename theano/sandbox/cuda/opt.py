@@ -403,7 +403,12 @@ def local_gpu_lazy_ifelse(node):
         host_input = node.inputs[0]
         if (host_input.owner and
             isinstance(host_input.owner.op, theano.ifelse.IfElse) and
-            not host_input.owner.op.gpu):
+            not host_input.owner.op.gpu and
+            # If there is more then 1 outputs, we can't replace it
+            # here with a local optimizer as we replace the
+            # GpuFromHost node and the other output of the if won't be
+            # replaced.
+            host_input.owner.op.n_outs == 1):
             gpu_ifelse = theano.ifelse.IfElse(host_input.owner.op.n_outs,
                                                   gpu=True)
 
