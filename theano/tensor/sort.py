@@ -144,7 +144,17 @@ class ArgSortOp(theano.Op):
 
     def grad(self, inputs, output_grads):
         #No grad defined for intergers.
-        return [None, None]
+        inp, axis = inputs
+        inp_grad = theano.gradient.grad_not_implemented(
+            self, 0, axis,
+            "I'm not sure if argsort should have its gradient"
+            " implemented or is should be marked as undefined."
+            " So I mark it as not implemented for now.")
+        axis_grad = theano.gradient.grad_undefined(
+            self, 1, axis,
+            "argsort is not defined for non-integer axes so"
+            " argsort(x, axis+eps) is undefined")
+        return [inp_grad, axis_grad]
     """
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
