@@ -25,7 +25,6 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias
 
     We check that we loop when their is too much threads
-    TODO: check that we loop when their is too much block(>32*1024)
 
     """
 
@@ -100,12 +99,15 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     This is basic test for GpuCrossentropySoftmax1HotWithBiasDx
 
     We check that we loop when their is too much threads
-    TODO: check that we loop when their is too much block(>32*1024)
 
     """
     n_in = 1000
     batch_size = 4097
     n_out = 1250
+
+    if not isinstance(mode_with_gpu, theano.compile.DebugMode):
+        n_in = 4098
+        n_out = 4099
 
     # Seed numpy.random with config.unittests.rseed
     utt.seed_rng()

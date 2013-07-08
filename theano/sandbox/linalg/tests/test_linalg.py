@@ -204,8 +204,8 @@ def test_rop_lop():
     rop_f = function([mx, mv], yv)
 
     sy, _ = theano.scan(lambda i, y, x, v: (tensor.grad(y[i], x) * v).sum(),
-                       sequences=tensor.arange(y.shape[0]),
-                       non_sequences=[y, mx, mv])
+                        sequences=tensor.arange(y.shape[0]),
+                        non_sequences=[y, mx, mv])
     scan_f = function([mx, mv], sy)
 
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -560,6 +560,7 @@ class test_Eigh(test_Eig):
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
+
 
 def test_matrix_inverse_solve():
     if not imported_scipy:

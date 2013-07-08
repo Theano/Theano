@@ -41,7 +41,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
             float * sm_data, int sms0, int sms1,
             float * am_data, int ams0)
         {
-            const int row = blockIdx.x;
+          for (int row = blockIdx.x; row < M; row += gridDim.x){
 
             const float * x = x_data + xs0 * row;
             const int y_idx = (int)y_idx_data[row * y_idxs0];
@@ -83,6 +83,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
                            + log(sum);
             }
             am_data[row*ams0] = row_max_j;
+          }
         }
 
         """
@@ -168,7 +169,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
             }
         }
         {
-            int n_blocks = CudaNdarray_HOST_DIMS(%(sm)s)[0];
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
+                                    NUM_VECTOR_OP_BLOCKS);
      //TODO: launch more threads per row and do parallel sum and max reductions
             int n_threads = 1;
             int n_shared_bytes = 0; //n_threads * sizeof(float);
@@ -195,8 +197,11 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
             if (cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %(classname)s %(nodename)s: %%s.\\n",
-                             cudaGetErrorString(err));
+                             "Cuda error: %(classname)s %(nodename)s: %%s.\\n"
+                             "The kernel was launched with %%d threads,"
+                             " %%d blocks and %%d shared memory\\n",
+                             cudaGetErrorString(err),
+                             n_threads, n_blocks, n_shared_bytes);
                 // no need to decref output vars the cleanup code will do it
                 %(fail)s;
             }
@@ -206,7 +211,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (3,)
+        return (4,)
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
@@ -235,7 +240,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (5,)
+        return (6,)
 
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -283,11 +288,12 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
             }
         }
         {
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(dx)s)[0],
+                                    NUM_VECTOR_OP_BLOCKS);
+            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256);
+
             kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s
-                <<<
-                    CudaNdarray_HOST_DIMS(%(dx)s)[0],
-                    std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256)
-                >>>(
+                <<<n_blocks, n_threads>>>(
                         CudaNdarray_HOST_DIMS(%(dx)s)[0],
                         CudaNdarray_HOST_DIMS(%(dx)s)[1],
 
@@ -310,9 +316,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
             if( cudaSuccess != err)
             {
                 PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %%s: %%s.\\n",
+                             "Cuda error: %%s: %%s.\\n"
+                             "The kernel was launched with %%d threads and"
+                             " %%d blocks\\n",
                              "kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s",
-                             cudaGetErrorString(err));
+                             cudaGetErrorString(err), n_threads, n_blocks);
                 %(fail)s;
             }
         }
