@@ -1421,24 +1421,32 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     grad_fn = function(tensor_pt, symbolic_grad)
 
     for test_num in xrange(n_tests):
-        num_grad = numeric_grad(cost_fn, [p.copy() for p in pt], eps, out_type)
+        try:
+            num_grad = numeric_grad(cost_fn, [p.copy() for p in pt],
+                                    eps, out_type)
 
-        analytic_grad = grad_fn(*[p.copy() for p in pt])
+            analytic_grad = grad_fn(*[p.copy() for p in pt])
 
-        # Since `tensor_pt` is a list, `analytic_grad` should be one too.
-        assert isinstance(analytic_grad, list)
+            # Since `tensor_pt` is a list, `analytic_grad` should be one too.
+            assert isinstance(analytic_grad, list)
 
-        max_arg, max_err_pos, max_abs_err, max_rel_err =\
-                num_grad.max_err(analytic_grad, abs_tol, rel_tol)
+            max_arg, max_err_pos, max_abs_err, max_rel_err = num_grad.max_err(
+                analytic_grad, abs_tol, rel_tol)
 
-        if max_abs_err > abs_tol and max_rel_err > rel_tol:
+            if max_abs_err > abs_tol and max_rel_err > rel_tol:
 
-            raise verify_grad.E_grad(max_arg, max_err_pos,
-                    max_abs_err, max_rel_err, abs_tol, rel_tol)
+                raise verify_grad.E_grad(max_arg, max_err_pos,
+                                         max_abs_err, max_rel_err,
+                                         abs_tol, rel_tol)
 
-        # get new random projection for next test
-        if test_num < n_tests - 1:
-            t_r.set_value(random_projection(), borrow=True)
+            # get new random projection for next test
+            if test_num < n_tests - 1:
+                t_r.set_value(random_projection(), borrow=True)
+        except Exception, e:
+            e.args += ("\nThe error happened with the following inputs:", pt,
+                       "\nThe value of eps is:", eps,
+                       "\nThe out_type is:", out_type)
+            raise
 
 
 class GradientError(Exception):
