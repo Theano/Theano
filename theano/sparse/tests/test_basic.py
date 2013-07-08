@@ -2248,6 +2248,7 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
             else:
                 self.gap_grad = gap
             # Ensure the test's name is correct.
+            utt.seed_rng()
             assert eval(self.__class__.__name__) is self.__class__
 
         def test_op(self):
@@ -2449,7 +2450,8 @@ TanTester = elemwise_checker(
 ArcsinTester = elemwise_checker(
     sparse.arcsin,
     numpy.arcsin,
-    gap=(-1, 1))
+    gap=(-1, 1),
+    gap_grad=(-0.99, 0.99))
 
 ArctanTester = elemwise_checker(
     sparse.arctan,
