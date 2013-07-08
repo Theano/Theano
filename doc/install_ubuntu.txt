@@ -124,6 +124,27 @@ Do like in the section "Updating Theano", but use
 
 .. _install_ubuntu_gpu:
 
+Manual Openblas instruction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The openblas included in Ubuntu is limited to 2 threads. If you want
+to use more cores at the same time, you will need to compile it
+yourself. Here is some code that will help you.
+
+.. code-block:: bash
+
+    # remove openblas if you installed it
+    sudo apt-get remove libopenblas-base
+    # Download the development version of OpenBLAS
+    git clone git://github.com/xianyi/OpenBLAS
+    cd OpenBLAS
+    make FC=gfortran
+    sudo make PREFIX=/usr/local/ install
+    cd /usr/local/lib
+    ln -s libopenblas.so /usr/lib/libblas.so
+    ln -s libopenblas.so.0 /usr/lib/libblas.so.3gf
+
+
 Contributed GPU instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
