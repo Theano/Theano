@@ -185,7 +185,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                 subprocess_extra_args.update(dict(
                     stdout=dummy_out.fileno(),
                     stderr=dummy_out.fileno()))
+            t0 = time.time()
             subprocess.call(cmd, **subprocess_extra_args)
+            t1 = time.time()
             # Recover failed test indices from the 'failed' field of the
             # '.noseids' file. We need to do it after each batch because
             # otherwise this field may get erased. We use a set because it
@@ -193,8 +195,8 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             # to avoid duplicates.
             failed = failed.union(cPickle.load(open(noseids_file, 'rb'))
                                   ['failed'])
-            print '%s%% done (failed: %s)' % ((test_range[-1] * 100) //
-                                n_tests, len(failed))
+            print '%s%% done in %.3fs (failed: %s)' % (
+                (test_range[-1] * 100) // n_tests, t1 - t0, len(failed))
         # Sort for cosmetic purpose only.
         failed = sorted(failed)
         if failed:
