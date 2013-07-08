@@ -8,6 +8,7 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import __builtin__
+from itertools import izip
 import logging
 import warnings
 _logger = logging.getLogger('theano.gradient')
@@ -17,7 +18,6 @@ np = numpy
 
 import theano
 
-from itertools import izip
 from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
@@ -1287,7 +1287,7 @@ class numeric_grad(object):
         # max over the arrays in g_pt
         max_arg = numpy.argmax(errs)
         max_pos = pos[max_arg]
-        return (max_arg, pos[max_arg], abs_errs[max_arg], rel_errs[max_arg])
+        return (max_arg, max_pos, abs_errs[max_arg], rel_errs[max_arg])
 
 
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
@@ -1336,9 +1336,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         covers that case as well by using random projections.
 
     """
+    # The import is here to prevent circular import.
     from theano import compile, shared
     import theano.tensor
-    from theano.tensor import as_tensor_variable, cast, TensorType
+    from theano.tensor import as_tensor_variable, TensorType
     assert isinstance(pt, (list, tuple))
     pt = [numpy.array(p) for p in pt]
 
