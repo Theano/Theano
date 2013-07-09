@@ -36,7 +36,7 @@ def filter_vm_lazy(val):
         return False
     elif val == 'True' or val is True:
         return True
-    elif val == 'None':
+    elif val == 'None' or val is None:
         return None
     else:
         raise ValueError('Valid values for an vm.lazy parameter '
