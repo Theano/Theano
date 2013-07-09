@@ -1,5 +1,6 @@
 from copy import copy, deepcopy
 import logging
+from StringIO import StringIO
 import sys
 import unittest
 
@@ -239,3 +240,94 @@ class InferShapeTester(unittest.TestCase):
         numeric_shapes = shapes_function(*numeric_inputs)
         for out, shape in zip(numeric_outputs, numeric_shapes):
             assert numpy.all(out.shape == shape)
+
+
+def str_diagnostic(expected, value, rtol, atol):
+    """Return a pretty multiline string representating the cause
+    of the exception"""
+    sio = StringIO()
+
+    try:
+        ssio = StringIO()
+        print >> ssio, "           : shape, dtype, strides, min, max, n_inf, n_nan:"
+        print >> ssio, "  Expected :",
+        print >> ssio, expected.shape,
+        print >> ssio, expected.dtype,
+        print >> ssio, expected.strides,
+        print >> ssio, expected.min(),
+        print >> ssio, expected.max(),
+        print >> ssio, numpy.isinf(expected).sum(),
+        print >> ssio, numpy.isnan(expected).sum(),
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+    try:
+        ssio = StringIO()
+        print >> ssio, "  Value    :",
+        print >> ssio, value.shape,
+        print >> ssio, value.dtype,
+        print >> ssio, value.strides,
+        print >> ssio, value.min(),
+        print >> ssio, value.max(),
+        print >> ssio, numpy.isinf(value).sum(),
+        print >> ssio, numpy.isnan(value).sum(),
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+
+    print >> sio, "  expected    :", expected
+    print >> sio, "  value    :", value
+
+    try:
+        ov = numpy.asarray(expected)
+        nv = numpy.asarray(value)
+        ssio = StringIO()
+        absdiff = numpy.absolute(nv - ov)
+        print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
+        print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
+        print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
+        print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
+        reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
+                                             numpy.absolute(ov))
+        print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
+        print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
+        print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
+        print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+    #Use the same formula as in _allclose to find the tolerance used
+    narrow = 'float32', 'complex64'
+    if ((str(expected.dtype) in narrow) or
+        (str(value.dtype) in narrow)):
+        atol_ = T.basic.float32_atol
+        rtol_ = T.basic.float32_rtol
+    else:
+        atol_ = T.basic.float64_atol
+        rtol_ = T.basic.float64_rtol
+    if rtol is not None:
+        rtol_ = rtol
+    if atol is not None:
+        atol_ = atol
+    print >> sio, "  rtol, atol:", rtol_, atol_
+    return sio.getvalue()
+
+
+class WrongValue(Exception):
+    def __init__(self, expected_val, val, rtol, atol):
+        self.val1 = expected_val
+        self.val2 = val
+        self.rtol = rtol
+        self.atol = atol
+
+    def __str__(self):
+        s = "WrongValue\n"
+        return s + str_diagnostic(self.val1, self.val2, self.rtol, self.atol)
+
+
+def assert_allclose(val1, val2, rtol=None, atol=None):
+    if not T.basic._allclose(val1, val2, rtol, atol):
+        raise WrongValue(val1, val2, rtol, atol)

@@ -258,7 +258,7 @@ class T_Scan(unittest.TestCase):
         numpy_values = numpy.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        assert numpy.allclose(numpy_values, theano_values)
+        utt.assert_allclose(numpy_values, theano_values)
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
@@ -287,7 +287,7 @@ class T_Scan(unittest.TestCase):
         numpy_values = numpy.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        assert numpy.allclose(numpy_values, theano_values)
+        utt.assert_allclose(numpy_values, theano_values)
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
@@ -359,7 +359,7 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        utt.assert_allclose(theano_values, v_out)
 
     # as test_one_sequence_one_output_weights, but on the gpu
     # This first version test the first case in the optimizer to the gpu.
@@ -413,8 +413,7 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out), (theano_values, v_out,
-                                                      theano_values - v_out)
+        utt.assert_allclose(theano_values, v_out)
 
         # TO DEL
         topo = f2.maker.fgraph.toposort()
@@ -484,7 +483,7 @@ class T_Scan(unittest.TestCase):
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        utt.assert_allclose(theano_values, v_out)
 
         topo = f2.maker.fgraph.toposort()
         assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
@@ -553,8 +552,8 @@ class T_Scan(unittest.TestCase):
             v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
 
         theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_out1, v_out1)
-        assert numpy.allclose(theano_out2, v_out2)
+        utt.assert_allclose(theano_out1, v_out1)
+        utt.assert_allclose(theano_out2, v_out2)
 
         topo = f2.maker.fgraph.toposort()
         scan_node = [node for node in topo
@@ -651,8 +650,8 @@ class T_Scan(unittest.TestCase):
             v_y[i] = numpy.dot(v_x[i - 1], vWout)
 
         (theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
-        assert numpy.allclose(theano_x, v_x), (theano_x, v_x, theano_x - v_x)
-        assert numpy.allclose(theano_y, v_y), (theano_y, v_y, theano_y - v_y)
+        utt.assert_allclose(theano_x, v_x)
+        utt.assert_allclose(theano_y, v_y)
 
     def test_multiple_outs_taps(self):
         l = 5
@@ -797,7 +796,7 @@ class T_Scan(unittest.TestCase):
         numpy_out = numpy.zeros((2,))
         numpy_out[0] = vu[0] * vW_in + vx0[1] * vW + vx0[0]
         numpy_out[1] = vu[1] * vW_in + numpy_out[0] * vW + vx0[1]
-        assert numpy.allclose(numpy_out, theano_out)
+        utt.assert_allclose(numpy_out, theano_out)
 
     # simple rnn, one input, one state, weights for each; input/state are
     # vectors, weights are scalars; using shared variables and past
@@ -836,7 +835,7 @@ class T_Scan(unittest.TestCase):
         # and vx0[0] as vx0[-2], vx0[1] as vx0[-1]
         numpy_out[0] = (vu[0] + vu[4]) * vW_in + vx0[1] * vW + vx0[0]
         numpy_out[1] = (vu[1] + vu[5]) * vW_in + numpy_out[0] * vW + vx0[1]
-        assert numpy.allclose(numpy_out, theano_out)
+        utt.assert_allclose(numpy_out, theano_out)
 
     # simple rnn ; compute inplace version 1
     def test_inplace1(self):
@@ -899,18 +898,16 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0,
-                                                     theano_x0 - numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1,
-                                                     theano_x1 - numpy_x1)
+        utt.assert_allclose(theano_x0, numpy_x0)
+        utt.assert_allclose(theano_x1, numpy_x1)
         # assert that it was done in place
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # Old way of doing inplace operations is deprecated .. tests don't
         # make sense anymore.
 
-        ##assert numpy.allclose( theano_x0 , vu2)
-        ## assert numpy.allclose( theano_x1 , vu1)
+        ##utt.assert_allclose( theano_x0 , vu2)
+        ## utt.assert_allclose( theano_x1 , vu1)
 
     # simple rnn ; compute inplace version 2
     def test_inplace2(self):
@@ -981,8 +978,8 @@ class T_Scan(unittest.TestCase):
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        assert numpy.allclose(theano_x0, numpy_x0), (theano_x0, numpy_x0)
-        assert numpy.allclose(theano_x1, numpy_x1), (theano_x1, numpy_x1)
+        utt.assert_allclose(theano_x0, numpy_x0)
+        utt.assert_allclose(theano_x1, numpy_x1)
         # assert that it was done in place
         # not that x0 should not be inplace of vu2 because you are using
         # past values of u2, and therefore you are not allowed to work
@@ -992,7 +989,7 @@ class T_Scan(unittest.TestCase):
         # Old way of doing inplace operations is deprecated .. tests don't
         # make sense anymore.
         #assert not numpy.allclose( theano_x0 , vu2[1:4])
-        #assert numpy.allclose( theano_x1 , vu1[0:3])
+        #utt.assert_allclose( theano_x1 , vu1[0:3])
 
     def test_inplace3(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1119,11 +1116,11 @@ class T_Scan(unittest.TestCase):
             numpy_W1 = numpy_W1 + .1
             numpy_W2 = numpy_W2 + .05
 
-        assert numpy.allclose(theano_y0, numpy_y0[3:])
-        assert numpy.allclose(theano_y1, numpy_y1[1:])
-        assert numpy.allclose(theano_y2, numpy_y2)
-        assert numpy.allclose(W1.get_value(), numpy_W1)
-        assert numpy.allclose(W2.get_value(), numpy_W2)
+        utt.assert_allclose(theano_y0, numpy_y0[3:])
+        utt.assert_allclose(theano_y1, numpy_y1[1:])
+        utt.assert_allclose(theano_y2, numpy_y2)
+        utt.assert_allclose(W1.get_value(), numpy_W1)
+        utt.assert_allclose(W2.get_value(), numpy_W2)
 
     def test_grad_dtype_change(self):
         x = tensor.fscalar('x')
@@ -1191,9 +1188,9 @@ class T_Scan(unittest.TestCase):
             numpy_v[i] = rng.uniform(-1, 1, size=(2,))
 
         theano_v = my_f()
-        assert numpy.allclose(theano_v, numpy_v[:5, :])
+        utt.assert_allclose(theano_v, numpy_v[:5, :])
         theano_v = my_f()
-        assert numpy.allclose(theano_v, numpy_v[5:, :])
+        utt.assert_allclose(theano_v, numpy_v[5:, :])
 
     def test_cuda_gibbs_chain(self):
         from theano.sandbox import cuda
@@ -1293,7 +1290,7 @@ class T_Scan(unittest.TestCase):
 
         t_result = my_f(v_vsample)
         n_result = numpy_implementation(v_vsample)
-        assert numpy.allclose(t_result, n_result)
+        utt.assert_allclose(t_result, n_result)
 
     def test_only_shared_no_input_no_output(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1317,7 +1314,7 @@ class T_Scan(unittest.TestCase):
         n_steps = 3
         this_f(n_steps)
         numpy_state = v_state * (2 ** (n_steps))
-        assert numpy.allclose(state.get_value(), numpy_state)
+        utt.assert_allclose(state.get_value(), numpy_state)
 
     def test_map_functionality(self):
         def f_rnn(u_t):
@@ -1342,7 +1339,7 @@ class T_Scan(unittest.TestCase):
         v_u = rng.uniform(size=(5,), low=-5., high=5.)
         numpy_result = v_u + 3
         theano_result = f2(v_u)
-        assert numpy.allclose(theano_result, numpy_result)
+        utt.assert_allclose(theano_result, numpy_result)
 
     def test_map(self):
         v = theano.tensor.vector('v')
@@ -1362,7 +1359,7 @@ class T_Scan(unittest.TestCase):
         vals = rng.uniform(size=(10,), low=-5., high=5.)
         abs_vals = abs(vals)
         theano_vals = f(vals)
-        assert numpy.allclose(abs_vals, theano_vals)
+        utt.assert_allclose(abs_vals, theano_vals)
 
     def test_backwards(self):
         def f_rnn(u_t, x_tm1, W_in, W):
@@ -1399,7 +1396,7 @@ class T_Scan(unittest.TestCase):
             v_out[step] = v_u[3 - step] * W_in + v_out[step - 1] * W
 
         theano_values = f2(v_u, v_x0, W_in, W)
-        assert numpy.allclose(theano_values, v_out)
+        utt.assert_allclose(theano_values, v_out)
 
     def test_reduce(self):
         v = theano.tensor.vector('v')
@@ -1780,7 +1777,7 @@ class T_Scan(unittest.TestCase):
         num_grad = multiple_outputs_numeric_grad(
             reset_rng_cost_fn, [v_u, v_x0, vW_in])
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
-        assert numpy.allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
+        utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
 
     def test_draw_as_input_to_scan(self):
         trng = theano.tensor.shared_randomstreams.RandomStreams(123)
@@ -1799,8 +1796,8 @@ class T_Scan(unittest.TestCase):
         ny1, nz1 = f(nx)
         ny2, nz2 = f(nx)
 
-        assert numpy.allclose([ny1, ny1], nz1)
-        assert numpy.allclose([ny2, ny2], nz2)
+        utt.assert_allclose([ny1, ny1], nz1)
+        utt.assert_allclose([ny2, ny2], nz2)
         assert not numpy.allclose(ny1, ny2)
 
     def test_grad_of_shared(self):
@@ -1813,7 +1810,7 @@ class T_Scan(unittest.TestCase):
         m = theano.tensor.grad(y.sum(), x1)
 
         f = theano.function([x2], m, allow_input_downcast=True)
-        assert numpy.allclose(f([2, 3]), 5)
+        utt.assert_allclose(f([2, 3]), 5)
 
     def test_computing_gradient(self):
         x1 = theano.tensor.scalar('x1')
@@ -1918,7 +1915,7 @@ class T_Scan(unittest.TestCase):
         vR = numpy.array([[3.6, 1.8], [1.8, 0.9]], dtype=theano.config.floatX)
         out = f(vx, vA)
 
-        assert numpy.allclose(out, vR)
+        utt.assert_allclose(out, vR)
 
     def test_cloning_no_replace_strict_copy_inputs(self):
         # This has nothing to do with scan, but it refers to the clone
@@ -2097,8 +2094,8 @@ class T_Scan(unittest.TestCase):
                                                               v_y0,
                                                               vW_in1)
 
-        assert numpy.allclose(theano_x, v_x)
-        assert numpy.allclose(theano_y, v_y)
+        utt.assert_allclose(theano_x, v_x)
+        utt.assert_allclose(theano_y, v_y)
 
     def test_scan_as_tensor_on_gradients(self):
         """
@@ -2182,8 +2179,8 @@ class T_Scan(unittest.TestCase):
 
         (theano_dump, theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
 
-        assert numpy.allclose(theano_x, v_x[-1:])
-        assert numpy.allclose(theano_y, v_y[-1:])
+        utt.assert_allclose(theano_x, v_x[-1:])
+        utt.assert_allclose(theano_y, v_y[-1:])
 
     def caching_nsteps_by_scan_op(self):
         W = tensor.matrix('weights')
@@ -2220,7 +2217,7 @@ class T_Scan(unittest.TestCase):
         rval = numpy.asarray([[5187989] * 5] * 5, dtype=theano.config.floatX)
         arg1 = numpy.ones((5, 5), dtype=theano.config.floatX)
         arg2 = numpy.ones((10, 5), dtype=theano.config.floatX)
-        assert numpy.allclose(f(arg1, arg2), rval)
+        utt.assert_allclose(f(arg1, arg2), rval)
 
     def test_save_mem_reduced_number_of_steps(self):
         def f_rnn(u_t):
@@ -2259,13 +2256,13 @@ class T_Scan(unittest.TestCase):
         # compute the output in numpy
         tx1, tx2, tx3, tx4, tx5, tx6, tx7 = f2(v_u, 3, 15)
 
-        assert numpy.allclose(tx1, v_u[:2] + 1.)
-        assert numpy.allclose(tx2, v_u[4] + 2.)
-        assert numpy.allclose(tx3, v_u[3] + 3.)
-        assert numpy.allclose(tx4, v_u[:3] + 4.)
-        assert numpy.allclose(tx5, v_u[-10] + 5.)
-        assert numpy.allclose(tx6, v_u[-15] + 6.)
-        assert numpy.allclose(tx7, v_u[:-15] + 7.)
+        utt.assert_allclose(tx1, v_u[:2] + 1.)
+        utt.assert_allclose(tx2, v_u[4] + 2.)
+        utt.assert_allclose(tx3, v_u[3] + 3.)
+        utt.assert_allclose(tx4, v_u[:3] + 4.)
+        utt.assert_allclose(tx5, v_u[-10] + 5.)
+        utt.assert_allclose(tx6, v_u[-15] + 6.)
+        utt.assert_allclose(tx7, v_u[:-15] + 7.)
         scan_node = f2.maker.fgraph.outputs[0].owner.inputs[0]
 
         # Maybe ugly, way to check if the optimization had
@@ -2315,11 +2312,11 @@ class T_Scan(unittest.TestCase):
         # compute the output in numpy
         tx1, tx2, tx3, tx4, tx5 = f2(v_u, [0, 0], 0, [0, 0], 0)
 
-        assert numpy.allclose(tx1, v_u[-7] + 1.)
-        assert numpy.allclose(tx2, v_u[-3:-1] + 2.)
-        assert numpy.allclose(tx3, v_u[-6:] + 3.)
-        assert numpy.allclose(tx4, v_u[-1] + 4.)
-        assert numpy.allclose(tx5, v_u[-1] + 5.)
+        utt.assert_allclose(tx1, v_u[-7] + 1.)
+        utt.assert_allclose(tx2, v_u[-3:-1] + 2.)
+        utt.assert_allclose(tx3, v_u[-6:] + 3.)
+        utt.assert_allclose(tx4, v_u[-1] + 4.)
+        utt.assert_allclose(tx5, v_u[-1] + 5.)
 
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
@@ -2456,7 +2453,7 @@ class T_Scan(unittest.TestCase):
         f_vals = f(x_val)
         memory.set_value(mem_val.copy())
         f2_vals = f2(x_val)
-        assert numpy.allclose(f_vals, f2_vals)
+        utt.assert_allclose(f_vals, f2_vals)
 
     def test_reduce_memory_consumption(self):
 
@@ -2479,7 +2476,7 @@ class T_Scan(unittest.TestCase):
         assert f1().shape[0] == 1
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        assert numpy.allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), numpy.ones((10,)))
 
     def test_foldl_memory_consumption(self):
         x = theano.shared(numpy.asarray(
@@ -2502,7 +2499,7 @@ class T_Scan(unittest.TestCase):
         assert f1().shape[0] == 1
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        assert numpy.allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), numpy.ones((10,)))
 
     def test_foldr_memory_consumption(self):
 
@@ -2526,7 +2523,7 @@ class T_Scan(unittest.TestCase):
         assert f1().shape[0] == 1
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        assert numpy.allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), numpy.ones((10,)))
 
     def test_rop2(self):
         seed = utt.fetch_seed()
@@ -2600,9 +2597,9 @@ class T_Scan(unittest.TestCase):
 
         vnu, vnh0, vnW, vno = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu, tnh0, tnW, tno = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
-        assert numpy.allclose(vnu, tnu, atol=1e-6)
-        assert numpy.allclose(vnh0, tnh0, atol=1e-6)
-        assert numpy.allclose(vnW, tnW, atol=1e-6)
+        utt.assert_allclose(vnu, tnu, atol=1e-6)
+        utt.assert_allclose(vnh0, tnh0, atol=1e-6)
+        utt.assert_allclose(vnW, tnW, atol=1e-6)
 
     def test_rop(self):
         seed = utt.fetch_seed()
@@ -2673,9 +2670,9 @@ class T_Scan(unittest.TestCase):
         vnu, vnh0, vnW = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu, tnh0, tnW = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
 
-        assert numpy.allclose(vnu, tnu, atol=1e-6)
-        assert numpy.allclose(vnh0, tnh0, atol=1e-6)
-        assert numpy.allclose(vnW, tnW, atol=1e-6)
+        utt.assert_allclose(vnu, tnu, atol=1e-6)
+        utt.assert_allclose(vnh0, tnh0, atol=1e-6)
+        utt.assert_allclose(vnW, tnW, atol=1e-6)
 
     def test_pushout_all(self):
         W1 = tensor.matrix('W1')
@@ -2709,7 +2706,7 @@ class T_Scan(unittest.TestCase):
         # theano. Note that what we ask theano to do is to repeat the 2
         # elements vector v_out 5 times
         sol[:, :] = v_out
-        assert numpy.allclose(sol, f(v_h, v_W1, v_W2))
+        utt.assert_allclose(sol, f(v_h, v_W1, v_W2))
 
     def test_pushout(self):
         W1 = tensor.matrix('W1')
@@ -3085,8 +3082,8 @@ class T_Scan(unittest.TestCase):
 
         (theano_dump, theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
 
-        assert numpy.allclose(theano_x, v_x[-2:])
-        assert numpy.allclose(theano_y, v_y[-4:])
+        utt.assert_allclose(theano_x, v_x[-2:])
+        utt.assert_allclose(theano_y, v_y[-4:])
 
     def test_opt_order(self):
         """
@@ -3113,7 +3110,7 @@ class T_Scan(unittest.TestCase):
         vA = numpy.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
         vR = numpy.array([[[2, 1], [4, 2]], [[2, 1], [4, 2]]],
                          dtype=theano.config.floatX)
-        assert numpy.allclose(f(vx, vA), vR)
+        utt.assert_allclose(f(vx, vA), vR)
 
     def test_savemem_opt(self):
         y0 = theano.shared(numpy.ones((2, 10)))
@@ -3334,7 +3331,7 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vA = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
-        assert numpy.allclose(f(vA, vB), numpy.dot(vA.T, vB))
+        utt.assert_allclose(f(vA, vB), numpy.dot(vA.T, vB))
 
 
     def test_pregreedy_optimizer(self):
@@ -3390,10 +3387,10 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_u = asarrayX(rng.uniform(size=(5,)))
         outs = f(v_u, [0, 0, 0], 0)
-        assert numpy.allclose(outs[0], v_u + 1)
-        assert numpy.allclose(outs[1], v_u + 2)
-        assert numpy.allclose(outs[2], v_u + 3)
-        assert numpy.allclose(sh.get_value(), v_u[-1] + 4)
+        utt.assert_allclose(outs[0], v_u + 1)
+        utt.assert_allclose(outs[1], v_u + 2)
+        utt.assert_allclose(outs[2], v_u + 3)
+        utt.assert_allclose(sh.get_value(), v_u[-1] + 4)
 
     def test_eliminate_nonseqs(self):
         W = tensor.scalar('W')
@@ -3423,10 +3420,10 @@ class T_Scan(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_w = asarrayX(rng.uniform())
         outs = f(v_w, [0, 0, 0], 0)
-        assert numpy.allclose(outs[0], v_w + 1)
-        assert numpy.allclose(outs[1], v_w + 2)
-        assert numpy.allclose(outs[2], v_w + 3)
-        assert numpy.allclose(sh.get_value(), v_w + 4)
+        utt.assert_allclose(outs[0], v_w + 1)
+        utt.assert_allclose(outs[1], v_w + 2)
+        utt.assert_allclose(outs[2], v_w + 3)
+        utt.assert_allclose(sh.get_value(), v_w + 4)
 
     def test_grad_bug_disconnected_input(self):
         W = theano.shared(numpy.zeros((3, 3)), name='W')
@@ -3435,7 +3432,7 @@ class T_Scan(unittest.TestCase):
 
         #This used to raise an exception
         f = theano.function([v], theano.tensor.grad(y.sum(), W))
-        assert numpy.allclose(f([1,2]), [[0,0,0],[1,1,1],[1,1,1]])
+        utt.assert_allclose(f([1,2]), [[0,0,0],[1,1,1],[1,1,1]])
 
     def test_clone(self):
         def test(x, y, mention_y):
@@ -3448,9 +3445,9 @@ class T_Scan(unittest.TestCase):
             return theano.function([], out)()
 
         x = theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
-        assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=False),
+        utt.assert_allclose(test(x, tensor.sum((x+1)**2), mention_y=False),
                               1.21000003815)
-        assert numpy.allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
+        utt.assert_allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
                               1.21000003815)
 
     def test_grad_find_input(self):
@@ -3526,7 +3523,7 @@ class T_Scan(unittest.TestCase):
             assert len(inp) == 1
             assert (len(inp) == len(set(inp)))
             #import pdb;pdb.set_trace()
-            #assert numpy.allclose(f([1, 2]), [[0, 0, 0], [1, 1, 1], [1, 1, 1]])
+            #utt.assert_allclose(f([1, 2]), [[0, 0, 0], [1, 1, 1], [1, 1, 1]])
 
 
 def test_speed():

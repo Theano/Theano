@@ -48,7 +48,6 @@ from theano.sparse import (
 from theano.sparse.opt import (StructuredDotCSC, UsmmCscDense, CSMGradC)
 
 from theano.tests import unittest_tools as utt
-from theano.tensor.basic import _allclose
 
 
 def as_sparse_format(data, format):
@@ -886,7 +885,7 @@ class test_structureddot(unittest.TestCase):
                 scipy_result = spmat * mat
                 assert theano_result.shape == scipy_result.shape
                 assert theano_result.dtype == scipy_result.dtype
-                assert _allclose(theano_result, scipy_result)
+                utt.assert_allclose(scipy_result, theano_result)
 
     def test_opt_unpack(self):
         #
@@ -999,7 +998,7 @@ class test_structureddot(unittest.TestCase):
             # fail if Theano is slower than scipy by more than a certain amount
             overhead_tol = 0.003  # seconds overall
             overhead_rtol = 1.2  # times as long
-            self.assertTrue(numpy.allclose(theano_result, scipy_result))
+            utt.assert_allclose(scipy_result, theano_result)
             if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
@@ -1035,7 +1034,7 @@ class test_structureddot(unittest.TestCase):
             # print 'scipy took', scipy_time
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
-            self.assertTrue(numpy.allclose(theano_result, scipy_result))
+            utt.assert_allclose(scipy_result, theano_result)
             if (not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and
                 theano.config.cxx):
                     self.assertFalse(theano_time > overhead_rtol * scipy_time +
@@ -1075,7 +1074,7 @@ class DotTests(utt.InferShapeTester):
             f_a = theano.function([x, y], theano.sparse.dot(x, y))
             f_b = lambda x, y: x * y
 
-            assert _allclose(f_a(x_v, y_v), f_b(x_v, y_v))
+            utt.assert_allclose(f_a(x_v, y_v), f_b(x_v, y_v))
 
             # Test infer_shape
             self._compile_and_check([x, y], [theano.sparse.dot(x, y)],
@@ -1094,7 +1093,7 @@ class DotTests(utt.InferShapeTester):
             f_a = theano.function([x, y], theano.sparse.dot(x, y))
             f_b = lambda x, y: x * y
 
-            assert _allclose(f_a(x_v, y_v), f_b(x_v, y_v))
+            utt.assert_allclose(f_a(x_v, y_v), f_b(x_v, y_v))
 
             # Test infer_shape
             self._compile_and_check([x, y], [theano.sparse.dot(x, y)],
@@ -1117,12 +1116,12 @@ class DotTests(utt.InferShapeTester):
                 x = theano.sparse.SparseType(format=x_f, dtype=d1)('x')
                 y = theano.sparse.SparseType(format=x_f, dtype=d2)('x')
 
-                f_a = theano.function([x, y], theano.sparse.dot(x, y))
-                f_b = lambda x, y: x * y
+                f_a = lambda x, y: x * y
+                f_b = theano.function([x, y], theano.sparse.dot(x, y))
 
                 vx = getattr(self, 'x_' + x_f).astype(d1)
                 vy = getattr(self, 'y_' + y_f).astype(d2)
-                assert _allclose(f_a(vx, vy), f_b(vx, vy).toarray())
+                utt.assert_allclose(f_a(vx, vy).toarray(), f_b(vx, vy))
 
                 # Test infer_shape
                 f_a = theano.function([x, y], theano.sparse.dot(x, y).shape)
@@ -1150,7 +1149,7 @@ class DotTests(utt.InferShapeTester):
         a_val = scipy.sparse.csr_matrix(random_lil((5, 3), 'float32', 5))
         d_theano = f(a_val)
         d_numpy = a_val * b.get_value()
-        assert numpy.allclose(d_theano, d_numpy)
+        utt.assert_allclose(d_numpy, d_theano)
 
     def test_int32_dtype(self):
         # Reported on the theano-user mailing-list:
@@ -1256,7 +1255,7 @@ class UsmmTests(unittest.TestCase):
                     theano.tensor.basic.float64_atol = orig_atol
                     theano.tensor.basic.float64_rtol = orig_rtol
 
-            assert _allclose(f_a_out, f_b_out, rtol=1e-5), (f_a_out, f_b_out)
+            utt.assert_allclose(f_a_out, f_b_out, rtol=1e-5)
             topo = f_a.maker.fgraph.toposort()
             up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
 
@@ -1492,7 +1491,7 @@ class ColScaleCSCTester(utt.InferShapeTester):
             expected = x * s
 
             assert tested.format == format
-            assert numpy.allclose(tested.toarray(), expected)
+            utt.assert_allclose(expected, tested.toarray())
 
     def test_infer_shape(self):
         for format, cls in [('csc', sparse.ColScaleCSC),
@@ -1533,7 +1532,7 @@ class RowScaleCSCTester(utt.InferShapeTester):
             expected = x * s
 
             assert tested.format == format
-            assert numpy.allclose(tested.toarray(), expected)
+            utt.assert_allclose(expected, tested.toarray())
 
     def test_infer_shape(self):
         for format, cls in [('csc', sparse.RowScaleCSC),
@@ -1579,7 +1578,7 @@ class SpSumTester(utt.InferShapeTester):
                 f = theano.function(variable, self.op(variable[0], axis=axis))
                 tested = f(*data)
                 expected = data[0].todense().sum(axis).ravel()
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(expected, tested)
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
@@ -1621,7 +1620,7 @@ class DiagTester(utt.InferShapeTester):
             tested = f(*data)
             expected = data[0].toarray().diagonal()
 
-            assert numpy.allclose(tested, expected)
+            utt.assert_allclose(expected, tested)
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
@@ -1659,7 +1658,7 @@ class SquareDiagonalTester(utt.InferShapeTester):
                 tested = f(*data).toarray()
 
                 expected = numpy.diag(*data)
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(expected, tested)
                 assert tested.dtype == expected.dtype
                 assert tested.shape == expected.shape
 
@@ -1701,7 +1700,7 @@ class EnsureSortedIndicesTester(utt.InferShapeTester):
                 tested = f(*data).toarray()
                 expected = data[0].sorted_indices().toarray()
 
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(expected, tested)
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
@@ -1744,7 +1743,7 @@ class CleanTester(utt.InferShapeTester):
 
                 tested = tested.toarray()
                 expected = expected.toarray()
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(expected, tested)
 
     def test_grad(self):
         for format in sparse.sparse_formats:
@@ -2048,9 +2047,9 @@ class CastTester(utt.InferShapeTester):
                     t_cls = t_cls.toarray()
                     t_prop = t_prop.toarray()
 
-                    assert numpy.allclose(t_func, expected)
-                    assert numpy.allclose(t_cls, expected)
-                    assert numpy.allclose(t_prop, expected)
+                    utt.assert_allclose(expected, t_func)
+                    utt.assert_allclose(expected, t_cls)
+                    utt.assert_allclose(expected, t_prop)
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
@@ -2120,7 +2119,7 @@ class _HVStackTester(utt.InferShapeTester):
                                                format=out_f,
                                                dtype=dtype)
 
-                    assert numpy.allclose(tested.toarray(), expected.toarray())
+                    utt.assert_allclose(expected.toarray(), tested.toarray())
                     assert tested.format == expected.format
                     assert tested.dtype == expected.dtype
 
@@ -2191,7 +2190,7 @@ class AddSSDataTester(utt.InferShapeTester):
             tested = f(*self.a[format])
             expected = 2 * self.a[format][0]
 
-            assert numpy.allclose(tested.toarray(), expected.toarray())
+            utt.assert_allclose(expected.toarray(), tested.toarray())
             assert tested.format == expected.format
             assert tested.dtype == expected.dtype
 
@@ -2286,7 +2285,7 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                     tested = tested.toarray()
 
                     try:
-                        assert numpy.allclose(tested, expected)
+                        utt.assert_allclose(expected, tested)
                     except AssertionError:
                         raise AssertionError(self.__name__)
 
@@ -2348,7 +2347,7 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                         tested = tested.toarray()
 
                         try:
-                            assert numpy.allclose(tested, expected, rtol=1e-2)
+                            utt.assert_allclose(tested, expected, rtol=1e-2)
                         except AssertionError:
                             raise AssertionError(self.__name__)
 
@@ -2578,7 +2577,7 @@ class MulSVTester(unittest.TestCase):
 
                 out = f(spmat, mat)
 
-                assert numpy.allclose(out.toarray(), spmat.toarray() * mat)
+                utt.assert_allclose(spmat.toarray() * mat, out.toarray())
 
 
 class StructuredAddSVTester(unittest.TestCase):
@@ -2615,8 +2614,8 @@ class StructuredAddSVTester(unittest.TestCase):
 
                 out = f(spmat, mat)
 
-                assert numpy.allclose(out.toarray(),
-                                      spones.multiply(spmat + mat))
+                utt.assert_allclose(spones.multiply(spmat + mat),
+                                    out.toarray())
 
 
 class SamplingDotTester(utt.InferShapeTester):
@@ -2645,7 +2644,7 @@ class SamplingDotTester(utt.InferShapeTester):
         x, y, p = self.a
         expected = p.multiply(numpy.dot(x, y.T))
 
-        assert numpy.allclose(tested.toarray(), expected)
+        utt.assert_allclose(expected, tested.toarray())
         assert tested.format == 'csr'
         assert tested.dtype == expected.dtype
 
