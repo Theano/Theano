@@ -11,6 +11,8 @@ import copy, logging, sys
 
 import numpy
 
+from theano import config
+from theano.printing import min_informative_str
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 from theano.scalar.basic_scipy import Erfinv
 from theano.compat.six import StringIO
@@ -50,9 +52,14 @@ class NaiveAlgo(object):
 
     @property
     def cache_version(self):
+        if config.exception_verbosity == 'high':
+            # For verbose exceptions, we compile descriptions of the symbolic variables
+            # into the node, so we must disable caching
+            return ()
+
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (17, self.verbose, self.sync, ver)
+            return (18, self.verbose, self.sync, ver)
         else:
             return ver
 
@@ -887,6 +894,17 @@ nd_collapse_[i]=0;
             int *dims = NULL;
             """
 
+        if config.exception_verbosity == 'high':
+            input_strings = [min_informative_str(ipt) for ipt in node.inputs]
+            inputs_string = 'Inputs = [' + ','.join(input_strings) + ']'
+            output_strings = [min_informative_str(opt) for opt in node.outputs]
+            outputs_string = 'outputs = [' + ','.join(output_strings) + ']'
+            detailed_err_msg = inputs_string + ', ' + outputs_string
+            detailed_err_msg = detailed_err_msg.replace('\n', '\\n')
+        else:
+            detailed_err_msg = ''
+        detailed_err_msg = detailed_err_msg.join(['"']*2)
+
         #check that all inputs have valid dimensions
         emitted_inames = {}
         for id, iname in enumerate(inputs):
@@ -933,10 +951,10 @@ nd_collapse_[i]=0;
                 PyErr_Format(PyExc_ValueError,
                              "GpuElemwise. Input dimension mis-match. Input"
                              " %(id)d (indices start at 0) has shape[%%i] == %%i"
-                             ", but the output's size on that axis is %%i.",
+                             ", but the output's size on that axis is %%i.%%s",
                              i,
                              CudaNdarray_HOST_DIMS(%(iname)s)[i],
-                             dims[i]
+                             dims[i], %(detailed_err_msg)s
                             );
                 %(fail)s;
             }
