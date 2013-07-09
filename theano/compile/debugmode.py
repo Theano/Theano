@@ -171,7 +171,8 @@ class BadThunkOutput(DebugModeError):
         of the exception"""
         sio = StringIO()
         print >> sio, "BadThunkOutput"
-        print >> sio, "  variable    :", self.r
+        print >> sio, "  Apply   :", self.r.owner
+        print >> sio, "  op      :", self.offending_op()
         print >> sio, "  Outputs Type:", self.r.type
         print >> sio, "  Outputs Shape:", getattr(self.val1, 'shape', None)
         print >> sio, "  Outputs Strides:", getattr(self.val1, 'strides', None)
@@ -180,60 +181,15 @@ class BadThunkOutput(DebugModeError):
                                           for val in self.inputs_val]
         print >> sio, "  Inputs Strides:", [getattr(val, 'strides', None)
                                             for val in self.inputs_val]
-        print >> sio, "  Apply   :", self.r.owner
+        print >> sio, "  Bad Variable:", self.r
         print >> sio, "  thunk1  :", self.thunk1
         print >> sio, "  thunk2  :", self.thunk2
-        print >> sio, "  val1    :", self.val1
-        print >> sio, "  val2    :", self.val2
-        print >> sio, "  op      :", self.offending_op()
-        try:
-            ssio = StringIO()
-            print >> ssio, "  Value 1 : shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val1.shape,
-            print >> ssio, self.val1.dtype,
-            print >> ssio, self.val1.strides,
-            print >> ssio, self.val1.min(),
-            print >> ssio, self.val1.max(),
-            print >> ssio, numpy.isinf(self.val1).sum(),
-            print >> ssio, numpy.isnan(self.val1).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ssio = StringIO()
-            print >> ssio, "  Value 2 : shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val2.shape,
-            print >> ssio, self.val2.dtype,
-            print >> ssio, self.val2.strides,
-            print >> ssio, self.val2.min(),
-            print >> ssio, self.val2.max(),
-            print >> ssio, numpy.isinf(self.val2).sum(),
-            print >> ssio, numpy.isnan(self.val2).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ov = numpy.asarray(self.val1)
-            nv = numpy.asarray(self.val2)
-            ssio = StringIO()
-            absdiff = numpy.absolute(nv - ov)
-            print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
-            print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
-            print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
-            print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
-            reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
-                                                 numpy.absolute(ov))
-            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
-            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
-            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
-            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        return sio.getvalue()
+
+        #Don't import it at the top of the file to prevent circular import.
+        utt = theano.tests.unittest_tools
+        print >> sio, utt.str_diagnostic(self.val1, self.val2, None, None)
+        ret = sio.getvalue()
+        return ret
 
 
 class BadOptimization(DebugModeError):
