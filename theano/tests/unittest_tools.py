@@ -242,6 +242,80 @@ class InferShapeTester(unittest.TestCase):
             assert numpy.all(out.shape == shape)
 
 
+def str_diagnostic(val1, val2, rtol, atol):
+    """Return a pretty multiline string representating the cause
+    of the exception"""
+    sio = StringIO()
+
+    try:
+        ssio = StringIO()
+        print >> ssio, "           : shape, dtype, strides, min, max, n_inf, n_nan:"
+        print >> ssio, "  Expected :",
+        print >> ssio, val1.shape,
+        print >> ssio, val1.dtype,
+        print >> ssio, val1.strides,
+        print >> ssio, val1.min(),
+        print >> ssio, val1.max(),
+        print >> ssio, numpy.isinf(val1).sum(),
+        print >> ssio, numpy.isnan(val1).sum(),
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+    try:
+        ssio = StringIO()
+        print >> ssio, "  Value    :",
+        print >> ssio, val2.shape,
+        print >> ssio, val2.dtype,
+        print >> ssio, val2.strides,
+        print >> ssio, val2.min(),
+        print >> ssio, val2.max(),
+        print >> ssio, numpy.isinf(val2).sum(),
+        print >> ssio, numpy.isnan(val2).sum(),
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+
+    print >> sio, "  val1    :", val1
+    print >> sio, "  val2    :", val2
+
+    try:
+        ov = numpy.asarray(val1)
+        nv = numpy.asarray(val2)
+        ssio = StringIO()
+        absdiff = numpy.absolute(nv - ov)
+        print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
+        print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
+        print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
+        print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
+        reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
+                                             numpy.absolute(ov))
+        print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
+        print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
+        print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
+        print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
+        # only if all succeeds to we add anything to sio
+        print >> sio, ssio.getvalue()
+    except Exception:
+        pass
+    #Use the same formula as in _allclose to find the tolerance used
+    narrow = 'float32', 'complex64'
+    if ((str(val1.dtype) in narrow) or
+        (str(val2.dtype) in narrow)):
+        atol_ = T.basic.float32_atol
+        rtol_ = T.basic.float32_rtol
+    else:
+        atol_ = T.basic.float64_atol
+        rtol_ = T.basic.float64_rtol
+    if rtol is not None:
+        rtol_ = rtol
+    if atol is not None:
+        atol_ = atol
+    print >> sio, "  rtol, atol:", rtol_, atol_
+    return sio.getvalue()
+
+
 class WrongValue(Exception):
     def __init__(self, expected_val, val, rtol, atol):
         self.val1 = expected_val
@@ -250,77 +324,8 @@ class WrongValue(Exception):
         self.atol = atol
 
     def __str__(self):
-        return self.str_diagnostic()
-
-    def str_diagnostic(self):
-        """Return a pretty multiline string representating the cause
-        of the exception"""
-        sio = StringIO()
-        print >> sio, self.__class__.__name__
-
-        try:
-            ssio = StringIO()
-            print >> ssio, "           : shape, dtype, strides, min, max, n_inf, n_nan:"
-            print >> ssio, "  Expected :",
-            print >> ssio, self.val1.shape,
-            print >> ssio, self.val1.dtype,
-            print >> ssio, self.val1.strides,
-            print >> ssio, self.val1.min(),
-            print >> ssio, self.val1.max(),
-            print >> ssio, numpy.isinf(self.val1).sum(),
-            print >> ssio, numpy.isnan(self.val1).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ssio = StringIO()
-            print >> ssio, "  Value    :",
-            print >> ssio, self.val2.shape,
-            print >> ssio, self.val2.dtype,
-            print >> ssio, self.val2.strides,
-            print >> ssio, self.val2.min(),
-            print >> ssio, self.val2.max(),
-            print >> ssio, numpy.isinf(self.val2).sum(),
-            print >> ssio, numpy.isnan(self.val2).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ov = numpy.asarray(self.val1)
-            nv = numpy.asarray(self.val2)
-            ssio = StringIO()
-            absdiff = numpy.absolute(nv - ov)
-            print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
-            print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
-            print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
-            print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
-            reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
-                                                 numpy.absolute(ov))
-            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
-            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
-            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
-            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        #Use the same formula as in _allclose to find the tolerance used
-        narrow = 'float32', 'complex64'
-        if ((str(self.val1.dtype) in narrow) or
-            (str(self.val2.dtype) in narrow)):
-            atol_ = T.basic.float32_atol
-            rtol_ = T.basic.float32_rtol
-        else:
-            atol_ = T.basic.float64_atol
-            rtol_ = T.basic.float64_rtol
-        if self.rtol is not None:
-            rtol_ = self.rtol
-        if self.atol is not None:
-            atol_ = self.atol
-        print >> sio, "  rtol, atol:", rtol_, atol_
-        return sio.getvalue()
+        s = "WrongValue\n"
+        return s + str_diagnostic(self.val1, self.val2, self.rtol, self.atol)
 
 
 def assert_allclose(val1, val2, rtol=None, atol=None):
