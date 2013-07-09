@@ -474,6 +474,8 @@ else:
 
 
 def _allclose(a, b, rtol=None, atol=None):
+    a = numpy.asarray(a)
+    b = numpy.asarray(b)
     narrow = 'float32', 'complex64'
     if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
         atol_ = float32_atol
