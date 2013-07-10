@@ -1457,7 +1457,9 @@ class T_Scan(unittest.TestCase):
 
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1518,7 +1520,9 @@ class T_Scan(unittest.TestCase):
 
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs_taps(self):
         l = 5
@@ -1588,7 +1592,9 @@ class T_Scan(unittest.TestCase):
         max_err, max_err_pos = num_grad.max_err(analytic_grad)
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
@@ -1654,7 +1660,9 @@ class T_Scan(unittest.TestCase):
         max_err, max_err_pos = num_grad.max_err(analytic_grad)
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs_some_uncomputable(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1719,7 +1727,9 @@ class T_Scan(unittest.TestCase):
 
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs_some_truncate(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -3163,7 +3173,9 @@ class T_Scan(unittest.TestCase):
         max_err, max_err_pos = num_grad.max_err(analytic_grad)
         if max_err > 1e-2:
             raise Exception(theano.tensor.verify_grad.E_grad,
-                    (max_err, 1e-2, max_err_pos))
+                            (max_err, 1e-2, max_err_pos,
+                             analytic_grad[max_err_pos],
+                             num_grad.gx[max_err_pos]))
 
     def test_grad_numeric_shared(self):
         shared_var = theano.shared(numpy.float32(1.))
