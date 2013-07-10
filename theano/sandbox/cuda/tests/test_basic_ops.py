@@ -1005,20 +1005,23 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
 
 def test_advinc_subtensor1():
     """ Test the second case in the opt local_gpu_advanced_incsubtensor1 """
-    shared = cuda.shared_constructor
-    #shared = tensor.shared
-    xval = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                      dtype='float32')
-    yval = numpy.asarray([[10, 10, 10], [10, 10, 10]],
-                      dtype='float32')
-    x = shared(xval, name='x')
-    y = T.fmatrices('y')
-    expr = T.advanced_inc_subtensor1(x, y, [0, 2])
-    f = theano.function([y], expr, mode=mode_with_gpu)
-    assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
-                for node in f.maker.fgraph.toposort()]) == 1
-    assert numpy.allclose(f(yval), [[11., 12., 13.], [4., 5., 6.],
-                                    [17., 18., 19.]])
+    for shp in [(3, 3), (3, 3, 3)]:
+        shared = cuda.shared_constructor
+        xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
+        yval = numpy.empty((2,) + shp[1:], dtype='float32')
+        yval[:] = 10
+        x = shared(xval, name='x')
+        y = T.tensor(dtype='float32',
+                     broadcastable=(False,) * len(shp),
+                     name='y')
+        expr = T.advanced_inc_subtensor1(x, y, [0, 2])
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        rep = xval.copy()
+        rep[[0, 2]] += yval
+        assert numpy.allclose(rval, rep)
 
 
 def test_inc_subtensor():
