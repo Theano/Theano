@@ -7214,6 +7214,10 @@ class AdvancedSubtensor1(Op):
         assert len(inputs) == 2
 
         if x.type.sparse_grad:
+            if x.type.ndim != 2:
+                raise TypeError(
+                    "AdvancedSubtensor1: you can't take the sparse grad"
+                    " from a tensor with ndim != 2. ndim is " + str(x.type.ndim))
             if sparse_module_ref is None:
                 import theano.sparse as sparse_module_ref
 
