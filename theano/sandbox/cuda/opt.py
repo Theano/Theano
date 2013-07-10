@@ -781,9 +781,16 @@ def local_gpu_advanced_incsubtensor1(node):
                     'either set the `warn.gpu_set_subtensor1` config '
                     'option to False, or `warn.ignore_bug_before` to at '
                     'least \'0.6\'.', stacklevel=1)
-
-            gpu_op = GpuAdvancedIncSubtensor1(
-                set_instead_of_inc=set_instead_of_inc)
+            active_device_no = theano.sandbox.cuda.active_device_number()
+            compute_capability = device_properties(active_device_no)['major']
+            if (compute_capability < 2 or
+                x.ndim != 2 or
+                y.ndim != 2):
+                gpu_op = GpuAdvancedIncSubtensor1(
+                    set_instead_of_inc=set_instead_of_inc)
+            else:
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(
+                    set_instead_of_inc=set_instead_of_inc)
             return [gpu_op(gpu_from_host(x), gpu_from_host(y), *coords)]
 
     # Should not execute for GpuAdvancedIncSubtensor1
@@ -814,8 +821,16 @@ def local_gpu_advanced_incsubtensor1(node):
                     'option to False, or `warn.ignore_bug_before` to at '
                     'least \'0.6\'.', stacklevel=1)
 
-            gpu_op = GpuAdvancedIncSubtensor1(
-                set_instead_of_inc=set_instead_of_inc)
+            active_device_no = theano.sandbox.cuda.active_device_number()
+            compute_capability = device_properties(active_device_no)['major']
+            if (compute_capability < 2 or
+                x.ndim != 2 or
+                y.ndim != 2):
+                gpu_op = GpuAdvancedIncSubtensor1(
+                    set_instead_of_inc=set_instead_of_inc)
+            else:
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(
+                    set_instead_of_inc=set_instead_of_inc)
             return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
     return False
 

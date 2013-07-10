@@ -522,7 +522,6 @@ DllExport PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_ot
 DllExport PyObject * CudaNdarray_Subscript(PyObject * py_self, PyObject * key);
 DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t fct_nb);
 
-
 // Ensures that *arr is a pointer to a contiguous ndarray of the specified
 // dimensions.
 // *arr may initially be NULL, a pointer to an ndarray of the wrong size,
