@@ -256,18 +256,30 @@ class MPISendWait(Op):
 
 
 def isend(var, dest, tag):
+    """
+    Non blocking send
+    """
     return MPISend(dest, tag)(var)
 
 
 def send(var, dest, tag):
+    """
+    blocking send
+    """
     return MPISendWait(tag)(*isend(var, dest, tag))
 
 
 def irecv(shape, dtype, source, tag):
+    """
+    non-blocking receive
+    """
     return MPIRecv(source, tag, shape, dtype)()
 
 
 def recv(shape, dtype, source, tag):
+    """
+    blocking receive
+    """
     return MPIRecvWait(tag)(*irecv(shape, dtype, source, tag))
 
 
