@@ -176,10 +176,8 @@ def sparse_grad(var):
 
     """
     assert isinstance(var.owner.op, tensor.AdvancedSubtensor1)
-    # TODO change the internal representation!!!
-    # It work, but bad as out.type is shared with var.type!!!
-    var.owner.inputs[0].tag.sparse_grad = True
-    return var
+    ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
+    return ret
 
 
 import theano.tests

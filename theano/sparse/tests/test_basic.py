@@ -450,6 +450,14 @@ class TestConstructSparseFromList(unittest.TestCase):
         g = theano.grad(sub.sum(), m)
         assert isinstance(g.owner.op, ConstructSparseFromList)
 
+        # Test that we create a sparse grad when asked
+        # Op INTERFACE
+        m = theano.tensor.matrix()
+        v = theano.tensor.ivector()
+        sub = theano.tensor.AdvancedSubtensor1(sparse_grad=True)(m, v)
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, ConstructSparseFromList)
+
         # Test the sparse grad
         valm = numpy.random.rand(5, 4).astype(config.floatX)
         valv = numpy.random.random_integers(0, 4, 10)
