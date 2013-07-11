@@ -1255,7 +1255,15 @@ class UsmmTests(unittest.TestCase):
                     theano.tensor.basic.float64_atol = orig_atol
                     theano.tensor.basic.float64_rtol = orig_rtol
 
-            utt.assert_allclose(f_a_out, f_b_out, rtol=1e-5)
+            # As we do a dot product of 2 vector of 100 element,
+            # This mean we can have 2*100*eps abs error.
+            if f_a_out.dtype in ['float64', 'complex128']:
+                atol = 3e-8
+                rtol = 1e-5
+            else:
+                atol = None
+                rtol = None
+            utt.assert_allclose(f_a_out, f_b_out, rtol=rtol, atol=atol)
             topo = f_a.maker.fgraph.toposort()
             up = theano.scalar.upcast(dtype1, dtype2, dtype3, dtype4)
 
