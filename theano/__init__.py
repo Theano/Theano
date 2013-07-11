@@ -168,6 +168,20 @@ def get_scalar_constant_value(v):
     return tensor.get_scalar_constant_value(v)
 
 
+def sparse_grad(var):
+    """This function return a new variable whose gradient will be
+    stored in a sparse format instead of dense.
+
+    Currently only AdvancedSubtensor1 is supported.
+
+    """
+    assert isinstance(var.owner.op, tensor.AdvancedSubtensor1)
+    # TODO change the internal representation!!!
+    # It work, but bad as out.type is shared with var.type!!!
+    var.owner.inputs[0].tag.sparse_grad = True
+    return var
+
+
 import theano.tests
 if hasattr(theano.tests, "TheanoNoseTester"):
     test = theano.tests.TheanoNoseTester().test
