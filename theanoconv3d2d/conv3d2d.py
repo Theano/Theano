@@ -21,7 +21,12 @@ class DiagonalSubtensor(Op):
     """
     Work on the GPU.
     """
-    def __init__(self, inplace):
+    def __str__(self):
+        if self.inplace:
+            return "%s{inplace}" % self.__class__.__name__
+        return "%s" % self.__class__.__name__
+
+    def __init__(self, inplace=False):
         self.inplace = inplace
         if inplace:
             self.view_map = {0: [0]}
@@ -57,7 +62,12 @@ diagonal_subtensor = DiagonalSubtensor(False)
 
 
 class IncDiagonalSubtensor(Op):
-    def __init__(self, inplace):
+    def __str__(self):
+        if self.inplace:
+            return "%s{inplace}" % self.__class__.__name__
+        return "%s" % self.__class__.__name__
+
+    def __init__(self, inplace=False):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
@@ -176,24 +186,49 @@ def conv3d(signals, filters,
     return out_5d
 
 
-@cuda.opt.register_opt()
-@theano.gof.local_optimizer([])
-def local_gpu_diagonal_subtensor(node):
+def make_gpu_optimizer(op, to_gpu):
+    """This function create optimizer that move some inputs to the GPU
+    for op that work on both CPU and GPU.
+
+    The op object is created by calling op(), so good default value
+    are needed.
+
+    We suppose the same op work with CPU and GPU inputs.
+
+    :param op: the op that support GPU inputs
+    :param to_gpu: a list of op inputs that are moved to the GPU.
+
     """
-    diagonal_subtensor(host_from_gpu()) -> host_from_gpu(diagonal_subtensor)
-    gpu_from_host(diagonal_subtensor) -> diagonal_subtensor(gpu_from_host)
-    """
-    if isinstance(node.op, DiagonalSubtensor):
-        input = node.inputs[0]
-        if input.owner and isinstance(input.owner.op, cuda.HostFromGpu):
-            return [cuda.host_from_gpu(diagonal_subtensor(cuda.gpu_from_host(input),
-                                                     *node.inputs[1:]))]
-    if node.op == cuda.gpu_from_host:
-        host_input = node.inputs[0]
-        if host_input.owner and isinstance(host_input.owner.op,
-                                           DiagonalSubtensor):
-            diag_node = host_input.owner
-            return [tensor.diagonal_subtensor(
-                cuda.gpu_from_host(diag_node.inputs[0]),
-                *diag_node.inputs[1:])]
-    return False
+    @theano.gof.local_optimizer([])
+    def local_to_gpu(node):
+        """
+        op(host_from_gpu()) -> host_from_gpu(op)
+        gpu_from_host(op) -> op(gpu_from_host)
+        """
+        if isinstance(node.op, op):
+            #op(host_from_gpu()) -> host_from_gpu(op)
+            #If any of the input that go on the GPU are on the GPU,
+            #move the op to the gpu.
+            if any(node.inputs[idx].owner and
+                   isinstance(node.inputs[idx].owner.op, cuda.HostFromGpu)
+                   for idx in to_gpu):
+                new_inp = list(node.inputs)
+                for idx in to_gpu:
+                    new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
+                return [cuda.host_from_gpu(op()(*new_inp))]
+        if node.op == cuda.gpu_from_host:
+            #gpu_from_host(op) -> op(gpu_from_host)
+            host_input = node.inputs[0]
+            if host_input.owner and isinstance(host_input.owner.op,
+                                               op):
+                op_node = host_input.owner
+                new_inp = list(op_node.inputs)
+                for idx in to_gpu:
+                    new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
+                return [op()(*new_inp)]
+        return False
+    local_to_gpu.__name__ = "local_to_gpu_" + op.__name__
+    cuda.opt.register_opt()(local_to_gpu)
+
+make_gpu_optimizer(DiagonalSubtensor, [0])
+make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])

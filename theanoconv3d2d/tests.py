@@ -123,12 +123,24 @@ def test_conv3d():
         s_filters = shared(filters)
         s_output = shared(signals*0)
 
+        out = conv3d(s_signals, s_filters,
+                     signals_shape=signals.shape,
+                     filters_shape=filters.shape)
+
         newconv3d = theano.function([], [],
-                                    updates={s_output: conv3d(s_signals, s_filters,
-                                                              signals_shape=signals.shape,
-                                                              filters_shape=filters.shape)},
+                                    updates={s_output: out},
                                     mode=mode)
 
         t0 = time.time()
         newconv3d()
         print time.time() - t0
+        gsignals, gfilters = theano.grad(out.sum(), [s_signals, s_filters])
+        gnewconv3d = theano.function([], [],
+                                     updates=[(s_filters, gfilters),
+                                              (s_signals, gsignals)],
+                                     mode=mode,
+                                     name='grad')
+
+        t0 = time.time()
+        gnewconv3d()
+        print 'grad', time.time() - t0
