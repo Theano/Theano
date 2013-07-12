@@ -417,6 +417,75 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 )
 
 
+class TestConstructSparseFromList(unittest.TestCase):
+    def test_adv_sub1_sparse_grad(self):
+        v = theano.tensor.ivector()
+
+        # Assert we don't create a sparse grad by default
+        m = theano.tensor.matrix()
+        sub = m[v]
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, tensor.AdvancedIncSubtensor1)
+
+        # Test that we create a sparse grad when asked
+        # OLD INTERFACE
+        m = theano.tensor.matrix()
+        sub = m[v]
+        m.type.sparse_grad = True
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, ConstructSparseFromList)
+
+        # Test that we create a sparse grad when asked
+        # OLD INTERFACE CONSEQUENCE
+        m = theano.tensor.matrix()
+        sub = m[v]
+        sub.type.sparse_grad = True
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, ConstructSparseFromList)
+
+        # Test that we create a sparse grad when asked
+        # USER INTERFACE
+        m = theano.tensor.matrix()
+        v = theano.tensor.ivector()
+        sub = theano.sparse_grad(m[v])
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, ConstructSparseFromList)
+
+        # Test that we create a sparse grad when asked
+        # Op INTERFACE
+        m = theano.tensor.matrix()
+        v = theano.tensor.ivector()
+        sub = theano.tensor.AdvancedSubtensor1(sparse_grad=True)(m, v)
+        g = theano.grad(sub.sum(), m)
+        assert isinstance(g.owner.op, ConstructSparseFromList)
+
+        # Test the sparse grad
+        valm = numpy.random.rand(5, 4).astype(config.floatX)
+        valv = numpy.random.random_integers(0, 4, 10)
+        m = theano.tensor.matrix()
+        shared_v = theano.shared(valv)
+
+        def fn(m):
+            return theano.sparse_grad(m[shared_v])
+        verify_grad_sparse(fn, [valm])
+
+    def test_err(self):
+        for ndim in [1, 3]:
+            t = theano.tensor.TensorType(dtype=config.floatX,
+                                         broadcastable=(False,) * ndim)()
+            v = theano.tensor.ivector()
+            sub = t[v]
+
+            # Assert we don't create a sparse grad by default
+            g = theano.grad(sub.sum(), t)
+            assert isinstance(g.owner.op, tensor.AdvancedIncSubtensor1)
+
+            # Test that we raise an error, as we can't create a sparse
+            # grad from tensors that don't have 2 dimensions.
+            sub = theano.sparse_grad(sub)
+            self.assertRaises(TypeError, theano.grad, sub.sum(), t)
+
+
 class T_AddMul(unittest.TestCase):
     def testAddSS(self):
         self._testSS(add)
