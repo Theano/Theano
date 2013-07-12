@@ -2697,6 +2697,18 @@ class TrueDot(gof.op.Op):
 
 
 def true_dot(x, y, grad_preserves_dense=True):
+    """
+    Operation for efficiently calculating the dot product when
+    one or all operands is sparse. Supported format are CSC and CSR.
+    The output of the operation is sparse.
+
+    :param x: Matrix variable.
+    :param y: Matrix variable.
+    :param grad_preserves_dense: if True and one on the input is dense,
+        make the output dense.
+
+    :return: The dot product `x`.`y` in a sparse format.
+    """
     # TODO
     # Maybe the triple-transposition formulation
     # (when x is dense) is slow. See if there is a
