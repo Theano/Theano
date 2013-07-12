@@ -114,11 +114,8 @@ def conv3d(signals, filters,
             shape: [Nf, Tf, C, Hf, Wf]
     :param signals_shape: None or a tuple/list with the shape of signals
     :param filters_shape: None or a tuple/list with the shape of filters
-    :param border_mode: tuple of 3 string mode names (or just a mode name,
-            which means a homogenous tuple). A mode name can be one of
-            'full', 'valid', and 'same'.
+    :param border_mode: The only one tested is 'valid'.
 
-    :note: the border_mode 'same' is not implemented.
     """
 
     if isinstance(border_mode, str):
