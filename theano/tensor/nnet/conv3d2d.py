@@ -125,9 +125,6 @@ def conv3d(signals, filters,
     if isinstance(border_mode, str):
         border_mode = (border_mode, border_mode, border_mode)
 
-    #TODO: support variables in the shape
-    if signals_shape is None or filters_shape is None:
-        raise NotImplementedError('need shapes for now')
     _signals_shape_5d = signals.shape if signals_shape is None else signals_shape
     _filters_shape_5d = filters.shape if filters_shape is None else filters_shape
 
@@ -146,12 +143,18 @@ def conv3d(signals, filters,
 
     if border_mode[1] != border_mode[2]:
         raise NotImplementedError('height and width bordermodes must match')
+    conv2d_signal_shape = _signals_shape_4d
+    conv2d_filter_shape = _filters_shape_4d
+    if signals_shape is None:
+        conv2d_signal_shape = None
+    if filters_shape is None:
+        conv2d_filter_shape = None
 
     out_4d = tensor.nnet.conv2d(
         signals.reshape(_signals_shape_4d),
         filters.reshape(_filters_shape_4d),
-        image_shape=_signals_shape_4d,
-        filter_shape=_filters_shape_4d,
+        image_shape=conv2d_signal_shape,
+        filter_shape=conv2d_filter_shape,
         border_mode = border_mode[1])  # ignoring border_mode[2]
 
     # reshape the output to restore its original size
