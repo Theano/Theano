@@ -7165,6 +7165,10 @@ class AdvancedSubtensor1(Op):
         return hash(type(self))
 
     def __eq__(self, other):
+        # Don't check the sparse_grad attribute as
+        # This don't change the output of this op
+        # So we want the merge optimier to merge two op
+        # that differ from there sparse_grad attribute.
         return type(self) == type(other)
 
     def __str__(self):
