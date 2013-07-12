@@ -103,7 +103,7 @@ def local_gpualloc(node):
         old_out = node.outputs[0]
         val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
         new_out = host_from_gpu(gpu_alloc(val, *shp))
-        if new_out.type != out_out.type:
+        if new_out.type != old_out.type:
             assert new_out.type.ndim == old_out.type.ndim
             assert new_out.type.dtype == old_out.type.dtype
             for b_old, b_new in zip(old_out.type.broadcastable,
