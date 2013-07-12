@@ -105,9 +105,8 @@ inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 
 def conv3d(signals, filters,
            signals_shape=None, filters_shape=None,
-           border_mode='valid', subsample=(1, 1, 1), **kwargs):
-    """
-    Convolve spatio-temporal filters with a movie.
+           border_mode='valid'):
+    """Convolve spatio-temporal filters with a movie.
 
     :param signals: timeseries of images whose pixels have color channels.
             shape: [Ns, Ts, C, Hs, Ws]

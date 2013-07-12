@@ -147,3 +147,10 @@ def test_conv3d():
         t0 = time.time()
         gnewconv3d()
         print 'grad', time.time() - t0
+
+    Ns, Ts, C, Hs, Ws = 3, 3, 3, 5, 5
+    Nf, Tf, C, Hf, Wf = 4, 2, 3, 2, 2
+
+    signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
+    utt.verify_grad(conv3d, [signals, filters])
