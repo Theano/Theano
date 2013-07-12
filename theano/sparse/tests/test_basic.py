@@ -479,7 +479,8 @@ class TestConstructSparseFromList(unittest.TestCase):
             g = theano.grad(sub.sum(), t)
             assert isinstance(g.owner.op, tensor.AdvancedIncSubtensor1)
 
-            # Test that we create a sparse grad when asked
+            # Test that we raise an error, as we can't create a sparse
+            # grad from tensors that don't have 2 dimensions.
             sub = theano.sparse_grad(sub)
             self.assertRaises(TypeError, theano.grad, sub.sum(), t)
 
