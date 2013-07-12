@@ -103,7 +103,6 @@ def pyconv3d(signals, filters):
     return rval
 
 
-# TODO test with mode = full.
 def test_conv3d():
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
