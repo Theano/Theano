@@ -172,8 +172,10 @@ def sparse_grad(var):
     """This function return a new variable whose gradient will be
     stored in a sparse format instead of dense.
 
-    Currently only AdvancedSubtensor1 is supported.
+    Currently only variable created by AdvancedSubtensor1 is supported.
+    i.e. a_tensor_var[an_int_vector].
 
+    .. versionadded:: 0.6rc4
     """
     assert isinstance(var.owner.op, tensor.AdvancedSubtensor1)
     ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
