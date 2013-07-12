@@ -194,14 +194,33 @@ List of Implemented Operations
 - Dot Product
     - :class:`Dot <theano.sparse.basic.Dot>` and
       :func:`dot <theano.sparse.basic.dot>`.
-      The grad implemented is regular.
+        - The grad implemented is regular.
+        - No C code for perform and no C code for grad.
+        - Return a dense for perform and a dense for grad.
     - :class:`StructuredDot <theano.sparse.basic.StructuredDot>`
       and :func:`structured_dot <theano.sparse.basic.structured_dot>`.
-      The grad implemented is structured.
-    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and ``sampling_dot``.
-      The grad implemented is structured for `p`.
+        - The grad implemented is structured.
+        - C code for perform and grad.
+        - Return a dense for perforn and a sparse for grad.
+    - :class:`TrueDot <theano.sparse.basic.TrueDot>` and
+      :func:`true_dot <theano.sparse.basic.true_dot>`.
+        - The grad implemented is regular.
+        - No C code for perform and no C code for grad.
+        - Return a Sparse for perform and a Sparse for grad.
+        - Flags trough constructor can change the output of
+          grad to be dense if the second input of the op is dense.
+    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and
+      ``sampling_dot``.
+        - The grad implemented is structured for `p`.
+        - Sample of the dot and sample of the gradient.
+        - C code for perform but not for grad.
+        - Return sparse for perform and grad.
     - :class:`Usmm <theano.sparse.basic.Usmm>` and ``usmm``.
-      There is no grad implemented for this op.
+        - This op is the equivalent of gemm for sparse dot.
+        - There is no grad implemented for this op.
+        - There is optimization that transform a
+          :class:`Dot <theano.sparse.basic.Dot>` to ``Usmm`` when possible.
+          You shouldn't need to insert it yourself.
 
 - Slice Operations
     - sparse_variable[N, N], return a tensor scalar.
