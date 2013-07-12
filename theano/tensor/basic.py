@@ -706,6 +706,11 @@ class TensorType(Type):
         self.name = name
         self.numpy_dtype = numpy.dtype(self.dtype)
         self.sparse_grad = sparse_grad
+        if sparse_grad:
+            warnings.warn(
+                "DEPRECATION WARNING: You use an old interface to"
+                " AdvancedSubtensor1 sparse_grad. Now use"
+                " theano.sparse_grad(a_tensor[an_int_vector]).")
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Convert `data` to something which can be associated to a
@@ -7153,10 +7158,17 @@ def inverse_permutation(perm):
 class AdvancedSubtensor1(Op):
     """Implement x[ilist] where ilist is a vector of integers."""
 
+    def __init__(self, sparse_grad=False):
+        self.sparse_grad = sparse_grad
+
     def __hash__(self):
         return hash(type(self))
 
     def __eq__(self, other):
+        # Don't check the sparse_grad attribute as
+        # This don't change the output of this op
+        # So we want the merge optimier to merge two op
+        # that differ from there sparse_grad attribute.
         return type(self) == type(other)
 
     def __str__(self):
@@ -7212,8 +7224,18 @@ class AdvancedSubtensor1(Op):
         x, ilist = inputs
         gz, = grads
         assert len(inputs) == 2
-
-        if x.type.sparse_grad:
+        sparse = False
+        if getattr(x.type, 'sparse_grad', False):
+            sparse = True
+            warnings.warn(
+                "DEPRECATION WARNING: AdvancedSubtensor1, you are using"
+                " an old interface to the sparse grad. You should use"
+                " theano.sparse_grad(a_tensor[an_int_vector]). ")
+        if sparse or self.sparse_grad:
+            if x.type.ndim != 2:
+                raise TypeError(
+                    "AdvancedSubtensor1: you can't take the sparse grad"
+                    " from a tensor with ndim != 2. ndim is " + str(x.type.ndim))
             if sparse_module_ref is None:
                 import theano.sparse as sparse_module_ref
 

@@ -1266,6 +1266,12 @@ class numeric_grad(object):
         """
         abs_err = abs(a - b)
         rel_err = abs_err / numpy.maximum(abs(a) + abs(b), 1e-8)
+        # The numpy.asarray are needed as if a or b is a sparse matrix
+        # this would result in a numpy.matrix and not a numpy.ndarray
+        # and the behave differently causing problem later.
+        # In particular a_npy_matrix.flatten().shape == (1, n_element)
+        abs_err = numpy.asarray(abs_err)
+        rel_err = numpy.asarray(rel_err)
         return (abs_err, rel_err)
 
     def abs_rel_errors(self, g_pt):
