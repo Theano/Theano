@@ -4,6 +4,7 @@ import numpy
 from scipy import ndimage
 import theano
 from theano.tensor.nnet.conv3d2d import *
+import theano.tests.unittest_tools as utt
 from theano.sandbox import cuda
 
 
@@ -99,8 +100,10 @@ def pyconv3d(signals, filters):
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
                 #print s_i.shape, f_i.shape, r_i.shape, o_i.shape
                 r_i += o_i[Tf2:-Tf2, Hf2:-Hf2, Wf2:-Wf2]
+    return rval
 
 
+# TODO test with mode = full.
 def test_conv3d():
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -110,7 +113,7 @@ def test_conv3d():
     filters = numpy.arange(Nf*Tf*C*Hf*Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
 
     t0 = time.time()
-    pyconv3d(signals, filters)
+    pyres = pyconv3d(signals, filters)
     print time.time() - t0
 
     modes = [(mode_without_gpu, theano.tensor._shared)]
@@ -133,6 +136,7 @@ def test_conv3d():
         t0 = time.time()
         newconv3d()
         print time.time() - t0
+        utt.assert_allclose(pyres, s_output.get_value(borrow=True))
         gsignals, gfilters = theano.grad(out.sum(), [s_signals, s_filters])
         gnewconv3d = theano.function([], [],
                                      updates=[(s_filters, gfilters),
