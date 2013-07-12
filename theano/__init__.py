@@ -183,5 +183,6 @@ from theano import tensor
 from theano.tensor.randomstreams import RandomStreams
 # Imitate the numpy.random symbol with a tensor.random one
 tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)
+tensor.RandomStreams = RandomStreams
 del RandomStreams
 __import__('theano.tensor.shared_randomstreams')
