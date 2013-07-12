@@ -1,4 +1,4 @@
-import theano
+import theano, numpy
 from theano import tensor
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
@@ -9,6 +9,7 @@ from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from basic_ops import host_from_gpu, gpu_from_host, gpu_alloc
+from elemwise import GpuElemwise, _is_scalar
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -111,3 +112,37 @@ def local_gpualloc(node):
             new_out = tensor.patternbroadcast(new_out. old_out.broadcastable)
 
         return [new_out]
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_elemwise(node):
+    do_replace = False
+    gpu_out = False
+    # check for gpu_from_host(Elemwise)) and extract the Elemwise node
+    if node.op == gpu_from_host:
+        host_i, = node.inputs
+        if (host_i.owner and
+            isinstance(host_i.owner.op, tensor.Elemwise) and
+            len(host_i.clients) == 1):
+            node = host_i.owner
+            do_replace = True
+            gpu_out = True
+    # check for elemwise(..., host_from_gpu, ...)
+    if isinstance(node.op, tensor.Elemwise):
+        if numpy.any([i.owner and
+                      i.owner.op == host_from_gpu
+                      for i in node.inputs]):
+                do_replace = True
+    if numpy.all([_is_scalar(i)
+                  for i in node.inputs]):
+            do_replace = False
+
+    if do_replace:
+        new_op = GpuElemwise(node.op.scalar_op)
+        gpu_elemwise = new_op(*(gpu_from_host(i) for i in node.inputs))
+        if gpu_out:
+            return [gpu_elemwise]
+        else:
+            return [host_from_gpu(gpu_elemwise)]
+    else:
+        return False
