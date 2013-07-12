@@ -4,7 +4,7 @@ import subprocess
 
 from theano.configparser import (
         AddConfigVar, BoolParam, ConfigParam, DeviceParam, EnumStr, IntParam,
-        TheanoConfigParser)
+        StrParam, TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen
 
@@ -52,6 +52,14 @@ AddConfigVar('device',
         DeviceParam('cpu', allow_override=False),
         in_c_key=False,
         )
+
+AddConfigVar('gpuarray.init_device',
+             """
+             Device to initialize for gpuarray use without moving
+             computations automatically.
+             """,
+             StrParam(''),
+             in_c_key=False)
 
 AddConfigVar('init_gpu_device',
         ("Initialize the gpu device to use, works only if device=cpu. "

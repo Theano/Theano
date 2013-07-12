@@ -1,8 +1,7 @@
 import logging
 
 import theano
-from theano.configparser import config, AddConfigVar, StrParam, \
-    BoolParam, IntParam
+from theano.configparser import config
 from theano.compile import optdb
 
 _logger_name = 'theano.sandbox.gpuarray'
@@ -17,15 +16,6 @@ try:
     import pygpu.gpuarray
 except ImportError:
     pygpu = None
-
-
-AddConfigVar('gpuarray.init_device',
-             """
-             Device to initialize for gpuarray use without moving
-             computations automatically.
-             """,
-             StrParam(''))
-
 
 # This is for documentation not to depend on the availability of pygpu
 from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
