@@ -3,9 +3,8 @@ import time
 import numpy
 from scipy import ndimage
 import theano
+from theano.tensor.nnet.conv3d2d import *
 from theano.sandbox import cuda
-
-from conv3d2d import *
 
 
 if theano.config.mode == 'FAST_COMPILE':
