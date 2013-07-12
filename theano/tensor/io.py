@@ -23,7 +23,7 @@ class LoadFromDisk(Op):
         self.broadcastable = broadcastable
         if mmap_mode not in (None, 'c'):
             raise ValueError("The only supported values for mmap_mode "
-                    "are None and 'c', got %s" % mmap_mode)
+                             "are None and 'c', got %s" % mmap_mode)
         self.mmap_mode = mmap_mode
         self._info = (dtype, broadcastable, mmap_mode)
 
@@ -46,11 +46,12 @@ class LoadFromDisk(Op):
         result = numpy.load(path, mmap_mode=self.mmap_mode)
         if result.dtype != self.dtype:
             raise TypeError("Expected an array of type %s, got %s instead" %
-                    (self.dtype, result.dtype))
+                            (self.dtype, result.dtype))
         out[0][0] = result
 
     def __str__(self):
         return "Load{dtype: %s, broadcastable: %s, mmep: %s}" % self._info
+
 
 def load(path, dtype, broadcastable, mmap_mode=None):
     """
@@ -91,6 +92,7 @@ else:
     comm = MPI.COMM_WORLD
     mpi_enabled = True
 
+
 class MPIRecv(Op):
     """
     An operation to asynchronously receive an array to a remote host using MPI
@@ -104,9 +106,9 @@ class MPIRecv(Op):
 
     def __init__(self, source, tag, shape, dtype):
         self.source = source
-        self.tag  = tag
+        self.tag = tag
         self.shape = shape
-        self.dtype = numpy.dtype(dtype) # turn "float64" into numpy.float64
+        self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = (False,) * len(shape)
         self._info = (source, tag, shape, dtype)
 
@@ -120,6 +122,7 @@ class MPIRecv(Op):
         return gof.Apply(self, [], [theano.Variable(Generic()),
                                     tensor(self.dtype,
                                            broadcastable=self.broadcastable)])
+
     def perform(self, node, inp, out):
 
         data = numpy.zeros(self.shape, dtype=self.dtype)
@@ -136,6 +139,7 @@ class MPIRecv(Op):
 
     def do_constant_folding(self, node):
         return False
+
 
 class MPIRecvWait(Op):
     """
@@ -160,10 +164,11 @@ class MPIRecvWait(Op):
         return gof.Apply(self, [request, data],
                                [tensor(data.dtype,
                                        broadcastable=data.broadcastable)])
+
     def perform(self, node, inp, out):
 
         request = inp[0]
-        data    = inp[1]
+        data = inp[1]
 
         request.wait()
 
@@ -176,6 +181,7 @@ class MPIRecvWait(Op):
         return [shapes[1]]
 
     view_map = {0: [1]}
+
 
 class MPISend(Op):
     """
@@ -190,7 +196,7 @@ class MPISend(Op):
 
     def __init__(self, dest, tag):
         self.dest = dest
-        self.tag  = tag
+        self.tag = tag
         self._info = (dest, tag)
 
     def __eq__(self, other):
@@ -215,6 +221,7 @@ class MPISend(Op):
 
     def __str__(self):
         return "MPISend{dest: %d, tag: %d}" % self._info
+
 
 class MPISendWait(Op):
     """
@@ -247,17 +254,34 @@ class MPISendWait(Op):
     def __str__(self):
         return "MPISendWait"
 
+
 def isend(var, dest, tag):
+    """
+    Non blocking send
+    """
     return MPISend(dest, tag)(var)
 
+
 def send(var, dest, tag):
+    """
+    blocking send
+    """
     return MPISendWait(tag)(*isend(var, dest, tag))
 
+
 def irecv(shape, dtype, source, tag):
+    """
+    non-blocking receive
+    """
     return MPIRecv(source, tag, shape, dtype)()
 
+
 def recv(shape, dtype, source, tag):
+    """
+    blocking receive
+    """
     return MPIRecvWait(tag)(*irecv(shape, dtype, source, tag))
+
 
 # Ordering keys for scheduling
 def mpi_send_wait_key(a):
@@ -267,6 +291,7 @@ def mpi_send_wait_key(a):
     if isinstance(a.op, (MPIRecv, MPISend)):
         return -1
     return 0
+
 
 def mpi_tag_key(a):
     """ Break MPI ties by using the variable tag - prefer lower tags first """
