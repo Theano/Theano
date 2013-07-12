@@ -16,9 +16,6 @@
     present in convolutional neural networks (where filters are 3D and pool
     over several input channels).
 
-    The project `TheanoConv3d2d <https://github.com/jaberg/TheanoConv3d2d>`_
-    is probably faster then the Conv3d documented here.
-
 .. module:: conv
    :platform: Unix, Windows
    :synopsis: ops for signal processing
@@ -31,6 +28,11 @@ TODO: Give examples for how to use these things! They are pretty complicated.
     - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
+    - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
+      Another conv3d implementation that use the conv2d with datareshaping.
+      It is faster in some case then conv3d, specificaly on the GPU.
+      But it support all the gradient cases that conv2d don't implement.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
+.. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
