@@ -506,7 +506,7 @@ class PushOutSeqScan(gof.Optimizer):
                     replace_with[x] = y
 
             # We need to add one extra dimension to the outputs
-            if replace_with:
+            if replace_with and len(replace_with) == len(node.outputs):
                 fgraph.replace_all_validate_remove(
                     replace_with.items(),
                     remove=[node],
