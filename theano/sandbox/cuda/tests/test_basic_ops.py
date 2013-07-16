@@ -127,9 +127,17 @@ def test_careduce():
             #GpuCAReduce{maximum/minimum} support only those patterns
             if scalar_op in [theano.scalar.maximum,
                              theano.scalar.minimum] and pat not in [
-                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0),
+                                 (1,), (1, 1), (0, 1), (1, 0),
+                                 (0, 1, 0), (0, 1, 1), (1, 1, 1),
                                  (1, 0, 0, 0), (0, 1, 0, 0),
-                                 (0, 0, 1, 0), (0, 0, 0, 1)]:
+                                 (0, 0, 1, 0), (0, 0, 0, 1),
+                                 (1, 1, 1, 1), (1, 1, 1, 1, 1),
+                                 (0, 0, 1), (0, 1, 0), (1, 0, 0), (1, 1, 0),
+                                 (0, 0, 1, 1), # by reshape
+                                 # (0, 1, 0, 1), #not supported for max/min
+                                 (0, 1, 1, 1), # by reshape
+                                 #(1, 0, 1, 1) #not supported for max/min
+                             ]:
                 continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
@@ -141,7 +149,8 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()]
+                                       for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, pat)
             assert op.__class__ in [x.op.__class__
                                     for x in f2.maker.fgraph.toposort()]
             f_caused_value_error = False
