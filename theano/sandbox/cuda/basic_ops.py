@@ -1026,8 +1026,8 @@ class GpuCAReduce(GpuOp):
 
     #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
     #nb_reduce<=warpSize
-    def _k_reduce_buf_multiple(self, z_pos, nb_reduce):
-        self._op_guard()
+    def _k_reduce_buf_multiple(self, z_pos, node, name, nb_reduce):
+        reduce_fct = self._assign_reduce(node, name, 'myresult', 'buf[i]', {})
         return """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = myresult;
@@ -1039,7 +1039,7 @@ class GpuCAReduce(GpuOp):
             //round up all the partial sums into the first `nb_reduce` elements
             for (int i = threadNum + %(nb_reduce)s; i < threadCount; i += %(nb_reduce)s)
             {
-                myresult += buf[i];
+                %(reduce_fct)s;
             }
             %(z_pos)s = myresult;
         }
@@ -1242,7 +1242,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_010(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         makecall_inner = self._makecall(node, name, x, z, fail,
                                         pattern="010_inner")
@@ -1835,7 +1834,17 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "X[a * sX0 + b * sX1 + c * sX2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "X[a * sX0 + 0 * sX1 + c * sX2];"
             print >> sio, """
             static __global__ void kernel_reduce_010_AD_%(nodename)s(
                     const int A,
@@ -1863,10 +1872,10 @@ class GpuCAReduce(GpuOp):
                         int c = i2_D * 32 + threadIdx.x;
                         if (c < C)
                         {
-                            myresult = 0;
+                            myresult = %(reduce_init)s;
                             for (int b = 0; b < B; ++b)
                             {
-                                myresult += X[a * sX0 + b * sX1 + c * sX2];
+                                %(reduce_fct)s;
                             }
                             Z[a * sZ0 + c * sZ1] = myresult;
                         }
