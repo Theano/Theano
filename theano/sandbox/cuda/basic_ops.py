@@ -1361,7 +1361,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_0101(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1381,7 +1380,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_100(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         # use threadIdx.x for i0
         # use blockIdx.x for i1
@@ -1402,7 +1400,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_110(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1424,7 +1421,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_001(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1479,7 +1475,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_0011(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1542,7 +1537,6 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
-        self._op_guard()
         makecall = self._makecall(node, name, x, z, fail)
         print >> sio, """
         {
@@ -1960,7 +1954,10 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
@@ -1968,6 +1965,13 @@ class GpuCAReduce(GpuOp):
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub = {})
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[blockIdx.x * sA2];"
             print >> sio, """
             static __global__ void kernel_reduce_110_%(nodename)s(
                     const int d0,
@@ -1980,7 +1984,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y;
                 const int threadNum = threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float myresult = 0.0f;
+                float myresult = %(reduce_init)s;
 
                 if (warpSize != 32)
                 {
@@ -1993,8 +1997,7 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x)
                     {
-                        float Ai = A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2];
-                        myresult += Ai;
+                        %(reduce_fct)s;
                     }
                 }
 
@@ -2002,11 +2005,21 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 0, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             reducebuf = self._k_reduce_buf('Z[i1 * sZ0 + i2 * sZ1]',
-                    node, nodename, sub={})
+                                           node, nodename, sub={})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i1 * sA1 + i2 * sA2]"
             print >> sio, """
             %(decl)s
             {
@@ -2015,10 +2028,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.x; i1 < d1; i1 += gridDim.x)
                     {
-                        myresult = 0;
+                        myresult = %(reduce_init)s;
                         for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            %(reduce_fct)s
                         }
                         %(reducebuf)s
                     }
@@ -2060,11 +2073,21 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 0, 1):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]',
                     node, nodename, sub = {})
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + i1 * sA1]"
             print >> sio, """
             static __global__ void kernel_reduce_001_%(nodename)s(
                     const int d0,
@@ -2087,10 +2110,10 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
                     {
-                        float myresult = 0.0f;
+                        float myresult = %(reduce_init)s;
                         for (int i2 = threadIdx.x; i2 < d2; i2 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                            %(reduce_fct)s;
                         }
                         %(reducebuf)s
                     }
@@ -2098,13 +2121,23 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 0, 1, 1):
-            self._op_guard()
-            # this kernel uses one block for each row,
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
+             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i1 * sZ1]',
                     node, nodename, sub = {})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + i1 * sA1]"
             print >> sio, """
             %(decl)s
             {
@@ -2114,12 +2147,12 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i1 = blockIdx.y; i1 < d1; i1 += gridDim.y)
                     {
-                        float myresult = 0.0f;
+                        float myresult = %(reduce_init)s;
                     for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y)
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                            %(reduce_fct)s;
                         }
                     }
                         %(reducebuf)s
@@ -2128,13 +2161,23 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0, 1):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             # this kernel uses one block for each row,
             # threads per block for each element per row.
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2 * sZ1]',
-                    node, nodename, sub = {})
+                                           node, nodename, sub = {})
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + i2 * sA2]"
             print >> sio, """
             %(decl)s
             {
@@ -2144,12 +2187,12 @@ class GpuCAReduce(GpuOp):
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
                     {
-                        float myresult = 0.0f;
+                        float myresult = %(reduce_init)s;
                     for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3];
+                            %(reduce_fct)s;
                         }
                     }
                         %(reducebuf)s
@@ -2193,9 +2236,19 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 0, 1, 1):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]',
                     node, nodename, sub = {})
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + blockIdx.x * sA1 + i2 * sA2 + i3 * sA3]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[blockIdx.x * sA1]"
             print >> sio, """
             static __global__ void kernel_reduce_1011_%(nodename)s(
                     const unsigned int d0,
@@ -2209,7 +2262,7 @@ class GpuCAReduce(GpuOp):
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ float buf[];
-                float myresult = 0.0f;
+                float myresult = %(reduce_init)s;
 
                 if (warpSize != 32)
                 {
@@ -2222,8 +2275,7 @@ class GpuCAReduce(GpuOp):
                     {
                         for (int i3 = threadIdx.x; i3 < d3; i3 += blockDim.x)
                         {
-                            float Ai = A[i0 * sA0 + blockIdx.x * sA1 + i2 * sA2 + i3 * sA3];
-                            myresult += Ai;
+                            %(reduce_fct)s;
                         }
                     }
                 }
