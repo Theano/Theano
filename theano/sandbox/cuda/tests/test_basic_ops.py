@@ -127,7 +127,9 @@ def test_careduce():
             #GpuCAReduce{maximum/minimum} support only those patterns
             if scalar_op in [theano.scalar.maximum,
                              theano.scalar.minimum] and pat not in [
-                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
+                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0),
+                                 (1, 0, 0, 0), (0, 1, 0, 0),
+                                 (0, 0, 1, 0), (0, 0, 0, 1)]:
                 continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()

@@ -1885,7 +1885,10 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (0, 1, 0):
-            self._op_guard()
+            if not isinstance(self.scalar_op, (scal.Add,
+                                               scal.Maximum,
+                                               scal.Minimum)):
+                raise NotImplementedError()
             #
             # This kernel is optimized when the inner most dimensions
             # have the smallest stride.
@@ -1900,9 +1903,15 @@ class GpuCAReduce(GpuOp):
             init = self._k_init(node, nodename)
             decl = self._k_decl(node, nodename, pattern="010_inner")
             reducebuf = self._k_reduce_buf_multiple('Z[i0 * sZ0 + i2*sZ1]',
+                                                    node, nodename,
                                                     'blockDim.x')
-            reducebuf = self._k_reduce_buf_multiple('Z[i0 * sZ0 + i2*sZ1]',
-                                                    'blockDim.x')
+            reduce_fct = self._assign_reduce(node, nodename, "myresult",
+                                             "A[i0 * sA0 + i1 * sA1 + i2 * sA2]",
+                                             {})
+            if isinstance(self.scalar_op, scal.Add):
+                reduce_init = "0.f;"
+            else:
+                reduce_init = "A[i0 * sA0 + 0 * sA1 + i2 * sA2];"
             print >> sio, """
             %(decl)s
             {
@@ -1917,9 +1926,10 @@ class GpuCAReduce(GpuOp):
               {
                 for (int i2 = blockIdx.y*blockDim.x+threadIdx.x; i2 < d2; i2 += gridDim.y*blockDim.x)
                  {
+                  myresult = %(reduce_init)s;
                   for (int i1 = threadIdx.y; i1 < d1; i1 += blockDim.y)
                   {
-                      myresult += A[i0 * sA0 + i1 * sA1 + i2 * sA2];
+                      %(reduce_fct)s;
                   }
                   %(reducebuf)s
                  }
