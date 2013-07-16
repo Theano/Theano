@@ -6,23 +6,24 @@ DRAFT Release Notes
 
 git log -p rel-0.6rc3... |grep Merge|grep '#' |cut -f 8 -d ' ' | replace "#" "* https://github.com/Theano/Theano/pull/"
 
-Done up to PR 1437.
+Done up to PR 1456
 
 Theano Development version
 ==========================
 
 Highlights:
- * Python 3.3 compatibility with buildbot
- * Full advanced indexing support
+ * Python 3.3 compatibility with buildbot.
+ * Full advanced indexing support.
  * Better Windows 64 bits support.
- * New profiler
+ * New profiler.
+ * Better error message that help debugging.
 
 Installation:
  * Canopy support (direct link to MKL):
    * On Linux and Mac OSX (Frédéric B., Robert Kern)
    * On Windows (Edward Shi, Frédéric B.)
 
- * Mac Anaconda instruction (Frederic B.)
+ * Anaconda instruction (Pascal L., Frederic B.)
  * Doc Ubuntu 13.04 (Frederic B.)
 
 Commiters for this rc3 only:
@@ -36,6 +37,7 @@ Bug fix:
  * Fix ConstructSparseFromList.infer_shape, (Pascal L., reported by Rami Al-Rfou')
  * (introduced in the development version after 0.6rc3 release) (Frederic B.)
    Reduction that upcast the input on no axis (ex: call theano.sum() on a scalar when the original dtype isn't float64 or [u]int64). It produce bad results as we don't upcast the inputs in the code, we just copy it.
+ * Fix some case of theano.clone() with we git it replacement of x that is a function of x. (Razvan P., reported by Akio Takano)
 
 New Features:
  * Python 3.3 compatible (abalkin, Gabe Schwartz, Frederic B.)
@@ -84,10 +86,15 @@ New Features:
  * Add gpu max for pattern (0, 1) and added all gpu max pattern for gpu min. (Frederic B.)
  * Add GpuEye (Frederic B.)
  * Make GpuCrossentropySoftmaxArgmax1HotWithBias and GpuCrossentropySoftmax1HotWithBiasDx work for bigger inputs (Frederic B., reported by Ryan Price)
+ * Finish and move out of sandbox theano.sparse.basic.true_dot (Nicolas Bouchard, Frederic B.)
+   And document all sparse dot variant.
 
 
 Interface Deprecation (a warning is printed):
  * The mode ProfileMode is now deprecated, use the Theano flag profile=True to remplace it.
+ * New theano.sparse_grad() interface to get the sparse grad of a_tensor[an_int_vector]. (Frederic B.)
+   This can speed up the sparse computation when a small fraction of a_tensor is taken.
+   Deprecate the old interface for this. (Frederic B.)
 
 Interface Change:
  * Add -m32 or -m64 in the module cache key and add the python bitwidth in the compiledir path. (Pascal L.)
@@ -125,6 +132,7 @@ Crash fixes:
  * Crash fix in Scan following interface change in 0.6rc2 (Razvan P.)
  * Crash fix on Scan (Razvan P.)
  * Fix crash in Scan gradient related to compute_test_value (Frederic B., reported by Bitton Tenessi)
+ * Fix a scan optimization warning/error depending of Theano flags (Frederic B.)
  * Fixed crash for unimplemented elemwise gradient (Olivier D., reported by Michael McNeil Forbes)
  * Fix crash in the elemwise python code for some big shape with power of 2. (Sina Honari, Pascal L.)
  * Fix compile and import errors on Windows (bbudescu)
@@ -149,9 +157,10 @@ Others:
  * Typo/pep8 (Olivier D., Frederic B.)
  * Update doc (Ben McCann)
  * Doc compatibility guide (abalkin)
+ * Doc the MPI and load op (Frederic B.)
  * Add manual instruction for OpenBLAS on Ubuntu by (Jianri Li )
  * Doc fixes (Yaroslav Halchenko)
- * Better error message (Ian Goodfellow)
+ * Better/more error message (Frederic B., Pascal L., Ian Goodfellow)
  * More doc (Frederic B.)
  * Fix Error reporting with GpuConv (Frederic B., reported by Heng Luo and Nicolas Pinto)
  * Update BLAS compilation doc on windows to use OpenBLAS (Olivier D.)
@@ -164,8 +173,7 @@ Others:
  * Added BLAS benchmark result (Frederic B., Ben McCann)
  * Fix code comment (Hannes Schulz)
  * More stable tests (Frederic B.)
- * Add utt.asset_allclose(a, b) to have better error messge. (Frederic B.)
- * Better error message (Pascal L., Frederic B.)
+ * Add utt.asset_allclose(a, b) to have better error message. (Frederic B.)
  * Better error message with compute_test_value (Frederic, reported by John Salvatier)
  * Stochastic order behavior fix (Frederic B.)
  * Simpler initial graph for subtensor infer shape (Olivier D.)
@@ -184,22 +192,6 @@ Todo for the final release:
 
 
 
-
-* https://github.com/Theano/Theano/pull/1450
- * More stable test (Frederic B.)
-* https://github.com/Theano/Theano/pull/1441
- * On error during execution of an Theano function, now always print the apply node, its inputs shape, strides and types. If Theano flags exception_verbosity=high, also print debugprint(op, stop_on_name=True, print_type=True)
-
-
-
-* https://github.com/Theano/Theano/pull/1238
-Refers to the bug reported by Akio Takano on the mailing list. The problem refers to the case when one tries to replace x with a function of x, f(x).
-
-The fix implies first replacing x with some tmp_x and then tmp_x with f(x).
-
-Reported by: Akio Takano, done by Razvan
-* https://github.com/Theano/Theano/pull/1236
-Install script with anaconda 1.3.1 (Pascal L.)
 
 
 
