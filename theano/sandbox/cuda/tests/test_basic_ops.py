@@ -150,9 +150,10 @@ def test_careduce():
             f2 = theano.function([a], b, mode=mode_without_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
                                        for x in f.maker.fgraph.toposort()], (
-                                           scalar_op, pat)
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()]
+                                    for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             f_caused_value_error = False
             try:
                 f_out = f(val)
@@ -190,6 +191,7 @@ def test_careduce():
                 theano.tensor.basic.float32_rtol = 2e-5
                 assert _allclose(f_out, f2_out), ('shape', shape,
                                                     'pattern', pattern,
+                                                    scalar_op,
                                                     sum([shape[i] for i in pattern]),
                                                     f2(val), f(val), val)
             finally:
@@ -223,11 +225,14 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()]
+                                       for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()]
+                                    for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert _allclose(f2(val), f(val)), ('shape', shape,
                                                 'pattern', pattern,
+                                                scalar_op,
                                                 sum([shape[i] for i in pattern]))
 
             #test with broadcast
@@ -269,9 +274,11 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_without_gpu)
             f2 = theano.function([a2], b2, mode=mode_with_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f2.maker.fgraph.toposort()]
+                                       for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f.maker.fgraph.toposort()]
+                                    for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert _allclose(f2(val2), f(val)), ('shape', shape,
                                                  'pattern', pattern,
                                                  sum([shape[i] for i in pattern]))
