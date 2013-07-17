@@ -65,9 +65,16 @@ def test_careduce():
     TODO: test with broadcast
     """
     for scalar_op, careduce_op in [
+            (theano.scalar.mul, tensor.elemwise.CAReduceDtype),
             (theano.scalar.add, tensor.elemwise.CAReduceDtype),
             (theano.scalar.maximum, tensor.CAReduce),
-            (theano.scalar.minimum, tensor.CAReduce)]:
+            (theano.scalar.minimum, tensor.CAReduce)
+            #The following 2 cases could work if the scalar_op.c_code work with float* dtype.
+            #Currently we have this error:
+            #error: invalid operands of types 'npy_float32' and 'npy_float32' to binary 'operator&'
+            #(theano.scalar.and_, tensor.elemwise.CAReduce),
+            #(theano.scalar.or_, tensor.elemwise.CAReduce),
+    ]:
         for shape, pattern in [((1,1),(1,)),
                                ((1,0),(1,)),
                                ((0,1),(1,)),
@@ -145,6 +152,11 @@ def test_careduce():
             except ValueError, e:
                 exc = e
                 f_caused_value_error = True
+            except NotImplementedError:
+                if (numpy.prod(shape) == 0 and
+                    getattr(scalar_op, 'identity', None) != 0):
+                    continue
+                raise
 
             f2_caused_value_error = False
             try:
