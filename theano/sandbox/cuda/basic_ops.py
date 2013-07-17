@@ -567,7 +567,6 @@ class GpuCAReduce(GpuOp):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        self._op_guard()
         # reduce_max is declared but does nothing but
         # raise NotImplementedError.
         # We can't call it here anyway because it hasn't
@@ -1584,11 +1583,6 @@ class GpuCAReduce(GpuOp):
             return tuple(version)
         else:
             return ()
-
-    def _op_guard(self):
-        """ Raises NotImplementedError if op is not Add """
-        if not isinstance(self.scalar_op, theano.scalar.basic.Add):
-            raise NotImplementedError()
 
     def c_support_code_apply(self, node, nodename):
         sio = StringIO()
