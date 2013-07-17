@@ -760,6 +760,12 @@ class test_canonize(unittest.TestCase):
 
 
 class TestCanonizeConstants(unittest.TestCase):
+    def setUp(self):
+        self.tmp = theano.config.assume_constants_shape_ok
+        theano.config.assume_constants_shape_ok = False
+
+    def tearDown(self):
+        theano.config.assume_constants_shape_ok = self.tmp
 
     def test_1(self):
         ones = tensor.ones((3,), dtype='float64')
