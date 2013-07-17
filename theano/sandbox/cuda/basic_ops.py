@@ -1766,23 +1766,12 @@ class GpuCAReduce(GpuOp):
                                       for i in xrange(nd_in)])
             decl = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
-            # TODO: ideally this would all be some clean function of scalar_op,
-            # but since sum is a special case where it's OK to reduce with an
-            # extra 0, I would need to change the behavior of the sum reduction
-            # code to do that. I don't want to benchmark and test changes to the
-            # sum code so I will leave that for later.
-            # max/min reduction is also a special case that is simple to implement.
-            # this is the special case where reduction is idempotent so it doesn't
-            # matter if we reduce with the first element multiple times.
-            if True:
-                # special cased max/min code (special case because visits first
-                # member of each row twice)
-                reduce_init = self._assign_init("A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0]" % locals())
-                reduce_fct = self._assign_reduce(
-                    node, nodename, "myresult",
-                    "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
-                    {})
-                print >> sio, """
+            reduce_init = self._assign_init("A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0]" % locals())
+            reduce_fct = self._assign_reduce(
+                node, nodename, "myresult",
+                "A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0]",
+                {})
+            print >> sio, """
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
@@ -1798,17 +1787,6 @@ class GpuCAReduce(GpuOp):
                     }
                 }
                 """ % locals()
-            else:
-                # TODO: implement general case and get rid of the two special
-                # cases above
-                # it should initialize myresult to element 0,
-                # and the for loop should begin traversing from element 1
-                # raise an error if asked to reduce an empty dimension
-                # (maybe special-case sum to return 0 instead of returning an
-                # error)
-                # in both cases, benchmark the general case against the existing
-                # code to make sure it does not cause a slowdown
-                raise NotImplementedError()
         if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0):
             # this kernel uses one block for each column,
             # threads per block for each element per column.
