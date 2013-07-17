@@ -1195,10 +1195,6 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
-        if not isinstance(self.scalar_op, (scal.Add,
-                                           scal.Maximum,
-                                           scal.Minimum)):
-            raise NotImplementedError()
         print >> sio, """
         {
             int verbose = 0;
