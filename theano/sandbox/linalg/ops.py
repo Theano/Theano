@@ -47,6 +47,9 @@ class Hint(Op):
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
 
+    def infer_shape(self, node, shapes):
+        return shapes
+
     def perform(self, node, inputs, outstor):
         outstor[0][0] = inputs[0]
 
