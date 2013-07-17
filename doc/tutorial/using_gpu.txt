@@ -320,9 +320,9 @@ To change the value of a ``shared`` variable, e.g. to provide new data to proces
 use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
 see :ref:`aliasing`.
 
--------------------------------------------
 
-**Exercise**
+Exercise
+========
 
 Consider again the logistic regression:
 
@@ -551,15 +551,14 @@ you feel competent enough, you may try yourself on the corresponding exercises.
   assert numpy.allclose(dest, a*b)
   print dest
 
--------------------------------------------
 
-**Exercise**
+Exercise
+========
 
 Run the preceding example.
 
 Modify and execute to work for a matrix of shape (20, 10).
 
--------------------------------------------
 
 
 .. _pyCUDA_theano:
@@ -615,9 +614,9 @@ Use this code to test it:
 >>> assert numpy.allclose(f(xv), xv*2)
 >>> print numpy.asarray(f(xv))
 
--------------------------------------------
 
-**Exercise**
+Exercise
+========
 
 
 Run the preceding example.
