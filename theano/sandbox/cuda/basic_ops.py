@@ -5,7 +5,7 @@ import sys
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
