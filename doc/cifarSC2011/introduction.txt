@@ -13,7 +13,7 @@ Background Questionaire
 
  * What did you do with it?
 
-* Who has used Python? numpy? scipy? matplotlib?
+* Who has used Python? NumPy? SciPy? matplotlib?
 
 * Who has used iPython?
 
@@ -116,18 +116,18 @@ Python in one slide
     print Bar(99).hello()     # Creating an instance of Bar
     # -> 99
 
-Numpy in one slide
+NumPy in one slide
 ------------------
 
 * Python floats are full-fledged objects on the heap
 
  * Not suitable for high-performance computing!
 
-* Numpy provides a N-dimensional numeric array in Python
+* NumPy provides a N-dimensional numeric array in Python
 
  * Perfect for high-performance computing.
 
-* Numpy provides
+* NumPy provides
 
  * elementwise computations
 
@@ -135,7 +135,7 @@ Numpy in one slide
 
  * pseudorandom numbers from many distributions
 
-* Scipy provides lots more, including
+* SciPy provides lots more, including
 
  * more linear algebra
 
@@ -148,29 +148,29 @@ Numpy in one slide
 .. code-block:: python
 
     ##############################
-    # Properties of Numpy arrays
+    # Properties of NumPy arrays
     # that you really need to know
     ##############################
 
     import numpy as np          # import can rename
-    a = np.random.rand(3,4,5)   # random generators
+    a = np.random.rand(3, 4, 5) # random generators
     a32 = a.astype('float32')   # arrays are strongly typed
 
     a.ndim                      # int: 3
-    a.shape                     # tuple: (3,4,5)
+    a.shape                     # tuple: (3, 4, 5)
     a.size                      # int: 60
     a.dtype                     # np.dtype object: 'float64'
     a32.dtype                   # np.dtype object: 'float32'
 
 Arrays can be combined with numeric operators, standard mathematical
-functions. Numpy has great `documentation <http://docs.scipy.org/doc/numpy/reference/>`_.
+functions. NumPy has great `documentation <http://docs.scipy.org/doc/numpy/reference/>`_.
 
-Training an MNIST-ready classification neural network in pure numpy might look like this:
+Training an MNIST-ready classification neural network in pure NumPy might look like this:
 
 .. code-block:: python
 
     #########################
-    # Numpy for Training a
+    # NumPy for Training a
     # Neural Network on MNIST
     #########################
 
@@ -215,9 +215,9 @@ What's missing?
 
 * Non-lazy evaluation (required by Python) hurts performance
 
-* Numpy is bound to the CPU
+* NumPy is bound to the CPU
 
-* Numpy lacks symbolic or automatic differentiation
+* NumPy lacks symbolic or automatic differentiation
 
 Now let's have a look at the same algorithm in Theano, which runs 15 times faster if
 you have GPU (I'm skipping some dtype-details which we'll come back to).
@@ -286,7 +286,7 @@ Theano in one slide
 * Expression substitution optimizations automatically draw
   on many backend technologies for best performance.
 
- * FFTW, MKL, ATLAS, Scipy, Cython, CUDA
+ * FFTW, MKL, ATLAS, SciPy, Cython, CUDA
 
  * Slower fallbacks always available
 
