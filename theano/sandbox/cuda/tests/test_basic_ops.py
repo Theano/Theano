@@ -65,9 +65,16 @@ def test_careduce():
     TODO: test with broadcast
     """
     for scalar_op, careduce_op in [
+            (theano.scalar.mul, tensor.elemwise.CAReduceDtype),
             (theano.scalar.add, tensor.elemwise.CAReduceDtype),
             (theano.scalar.maximum, tensor.CAReduce),
-            (theano.scalar.minimum, tensor.CAReduce)]:
+            (theano.scalar.minimum, tensor.CAReduce)
+            #The following 2 cases could work if the scalar_op.c_code work with float* dtype.
+            #Currently we have this error:
+            #error: invalid operands of types 'npy_float32' and 'npy_float32' to binary 'operator&'
+            #(theano.scalar.and_, tensor.elemwise.CAReduce),
+            #(theano.scalar.or_, tensor.elemwise.CAReduce),
+    ]:
         for shape, pattern in [((1,1),(1,)),
                                ((1,0),(1,)),
                                ((0,1),(1,)),
@@ -124,11 +131,6 @@ def test_careduce():
 
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum/minimum} support only those patterns
-            if scalar_op in [theano.scalar.maximum,
-                             theano.scalar.minimum] and pat not in [
-                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
-                continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
             b = op(a)
@@ -139,15 +141,22 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()]
+                                       for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()]
+                                    for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             f_caused_value_error = False
             try:
                 f_out = f(val)
             except ValueError, e:
                 exc = e
                 f_caused_value_error = True
+            except NotImplementedError:
+                if (numpy.prod(shape) == 0 and
+                    getattr(scalar_op, 'identity', None) != 0):
+                    continue
+                raise
 
             f2_caused_value_error = False
             try:
@@ -179,6 +188,7 @@ def test_careduce():
                 theano.tensor.basic.float32_rtol = 2e-5
                 assert _allclose(f_out, f2_out), ('shape', shape,
                                                     'pattern', pattern,
+                                                    scalar_op,
                                                     sum([shape[i] for i in pattern]),
                                                     f2(val), f(val), val)
             finally:
@@ -193,11 +203,6 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum/minimum} support only those patterns
-            if scalar_op in [theano.scalar.maximum,
-                             theano.scalar.minimum] and pat not in [
-                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
-                continue
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
             dim_pattern = range(len(shape))
@@ -212,11 +217,14 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()]
+                                       for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()]
+                                    for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert _allclose(f2(val), f(val)), ('shape', shape,
                                                 'pattern', pattern,
+                                                scalar_op,
                                                 sum([shape[i] for i in pattern]))
 
             #test with broadcast
@@ -227,11 +235,6 @@ def test_careduce():
                                ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
-            #GpuCAReduce{maximum/minimum} support only those patterns
-            if scalar_op in [theano.scalar.maximum,
-                             theano.scalar.minimum] and pat not in [
-                                 (0, 1), (0, 1, 1), (0, 1, 1), (1, 0)]:
-                continue
 
             shape = numpy.asarray(shape) * 2
             a = tensor.TensorType('float32', (False,) * len(shape))()
@@ -258,9 +261,11 @@ def test_careduce():
             f = theano.function([a], b, mode=mode_without_gpu)
             f2 = theano.function([a2], b2, mode=mode_with_gpu)
             assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f2.maker.fgraph.toposort()]
+                                       for x in f2.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert op.__class__ in [x.op.__class__
-                                    for x in f.maker.fgraph.toposort()]
+                                    for x in f.maker.fgraph.toposort()], (
+                                           scalar_op, shape, pattern)
             assert _allclose(f2(val2), f(val)), ('shape', shape,
                                                  'pattern', pattern,
                                                  sum([shape[i] for i in pattern]))

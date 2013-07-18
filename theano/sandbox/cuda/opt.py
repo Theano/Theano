@@ -602,7 +602,7 @@ def local_gpu_careduce(node):
         scalar_op = node.op.scalar_op
         # currently, only these two ops are supported at all,
         # and max does not support all combinations of axes
-        if node.op.scalar_op in [scal.add, scal.maximum, scal.minimum]:
+        if node.op.scalar_op in [scal.add, scal.mul, scal.maximum, scal.minimum]:
             x, = node.inputs
             if x.owner and x.owner.op == host_from_gpu:
                 if node.op.axis is None:

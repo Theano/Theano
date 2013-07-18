@@ -2721,7 +2721,7 @@ class TrueDotTester(utt.InferShapeTester):
                 assert tested.format == format
                 assert tested.dtype == expected.dtype
                 tested = tested.toarray()
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(tested, expected)
 
     def test_op_sd(self):
         for format in sparse.sparse_formats:
@@ -2743,7 +2743,7 @@ class TrueDotTester(utt.InferShapeTester):
                 assert tested.format == format
                 assert tested.dtype == expected.dtype
                 tested = tested.toarray()
-                assert numpy.allclose(tested, expected)
+                utt.assert_allclose(tested, expected)
 
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
