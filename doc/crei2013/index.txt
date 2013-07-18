@@ -1,11 +1,11 @@
 
-.. _index:
+.. _crei2013_index:
 
-=========================================
-TheanoLab @ NCAP CIFAR Summer School 2011
-=========================================
+===========================
+Theano Tutorial @ CREI 2013
+===========================
 
-Aug 2-6, 2011, Toronto, Canada.
+July 19, 2013, Sherbrook, Québec, Canada.
 
 
 Theano is python software for evaluating complicated array expressions.
@@ -14,16 +14,16 @@ What does it do?
 
  * aggressive expression optimizations,
 
- * automatic GPU use, and
+ * automatic GPU use,
 
- * symbolic differentiation.
+ * symbolic differentiation and R op.
 
 It complements the Python numeric/scientific software stack (e.g. NumPy, SciPy,
 scikits, matplotlib, PIL.)
 
 Design and feature set has been driven by machine learning research
 at the University of
-Montreal (groups of Yoshua Bengio, Pascal Vincent, Douglas Eck).
+Montreal (groups of Yoshua Bengio, Pascal Vincent, Aaron Courville and Roland Memisevic)
 The result is a very good library for doing research in deep
 learning and neural network training, and a flexible framework for
 many other models and algorithms in machine learning more generally.
@@ -46,9 +46,12 @@ It has proven to be useful for implementing:
 
  - online and batch learning and optimization
 
-As people's needs change this list will grow, but Theano is built around vector,
-matrix, and tensor expressions; there is little reason to use it for
-calculations on other data structures.
+ - Even SVM!
+
+As people's needs change this list will grow, but Theano is built
+around vector, matrix, and tensor expressions; there is little reason
+to use it for calculations on other data structures except. There is
+also some sparse matrix support.
 
 
 Contents
@@ -61,11 +64,8 @@ from gurus on hand if you get stuck.
 
 .. toctree::
 
-    boot_camp_overview
     introduction
     theano
     advanced_theano
-    /tutorial/extending_theano
-    pyCUDA
     gpundarray
-
+    /tutorial/extending_theano

@@ -36,9 +36,9 @@ variables, type this from the command-line:
 
 For more detail, see :ref:`Configuration <libdoc_config>` in the library.
 
--------------------------------------------
 
-**Exercise**
+Exercise
+========
 
 
 Consider the logistic regression:

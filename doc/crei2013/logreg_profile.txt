@@ -1,0 +1,121 @@
+Function profiling
+==================
+  Message: train
+  Time in 10000 calls to Function.__call__: 7.171231e+00s
+  Time in Function.fn.__call__: 6.686692e+00s (93.243%)
+  Time in thunks: 6.511275e+00s (90.797%)
+  Total compile time: 6.550491e-01s
+    Theano Optimizer time: 5.976810e-01s
+       Theano validate time: 1.260662e-02s
+    Theano Linker time (includes C, CUDA code generation/compiling): 2.649593e-02s
+
+Class
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+  87.0%    87.0%       5.665s       2.83e-04s     C     20000        2   <class 'theano.tensor.blas_c.CGemv'>
+  11.5%    98.4%       0.746s       7.46e-06s     C     100000       10   <class 'theano.tensor.elemwise.Elemwise'>
+   0.7%    99.1%       0.045s       2.27e-06s     C     20000        2   <class 'theano.tensor.basic.Alloc'>
+   0.5%    99.6%       0.030s       1.01e-06s     C     30000        3   <class 'theano.tensor.elemwise.DimShuffle'>
+   0.2%    99.8%       0.013s       1.34e-06s     C     10000        1   <class 'theano.tensor.elemwise.Sum'>
+   0.2%   100.0%       0.012s       6.00e-07s     C     20000        2   <class 'theano.tensor.opt.Shape_i'>
+   ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
+
+Ops
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+  87.0%    87.0%       5.665s       2.83e-04s     C     20000        2   CGemv{inplace}
+   6.9%    93.9%       0.452s       4.52e-05s     C     10000        1   Elemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(
+   1.8%    95.7%       0.116s       1.16e-05s     C     10000        1   Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i
+   1.7%    97.4%       0.109s       1.09e-05s     C     10000        1   Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 
+   0.7%    98.1%       0.045s       2.27e-06s     C     20000        2   Alloc
+   0.3%    98.4%       0.020s       1.02e-06s     C     20000        2   InplaceDimShuffle{x}
+   0.2%    98.6%       0.015s       1.50e-06s     C     10000        1   Elemwise{sub,no_inplace}
+   0.2%    98.8%       0.014s       1.42e-06s     C     10000        1   Elemwise{gt,no_inplace}
+   0.2%    99.1%       0.013s       1.34e-06s     C     10000        1   Sum
+   0.2%    99.3%       0.013s       1.29e-06s     C     10000        1   Elemwise{neg,no_inplace}
+   0.2%    99.4%       0.012s       6.00e-07s     C     20000        2   Shape_i{0}
+   0.2%    99.6%       0.010s       9.84e-07s     C     10000        1   InplaceDimShuffle{1,0}
+   0.1%    99.7%       0.010s       9.58e-07s     C     10000        1   Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)]
+   0.1%    99.8%       0.007s       6.95e-07s     C     10000        1   Elemwise{Cast{float64}}
+   0.1%    99.9%       0.005s       5.46e-07s     C     10000        1   Elemwise{inv,no_inplace}
+   0.1%   100.0%       0.005s       4.88e-07s     C     10000        1   Elemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)]
+   ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
+
+Apply
+------
+<% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
+  51.0%    51.0%       3.319s       3.32e-04s   10000     7 CGemv{inplace}(Alloc.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
+  36.0%    87.0%       2.345s       2.35e-04s   10000    18 CGemv{inplace}(w, TensorConstant{-0.1}, x.T, Elemwise{Composite{[Composite{[Compo
+   6.9%    93.9%       0.452s       4.52e-05s   10000    13 Elemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_
+   1.8%    95.7%       0.116s       1.16e-05s   10000    16 Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, n
+   1.7%    97.4%       0.109s       1.09e-05s   10000    14 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwis
+   0.5%    97.9%       0.031s       3.13e-06s   10000    12 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
+   0.2%    98.1%       0.015s       1.50e-06s   10000     4 Elemwise{sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
+   0.2%    98.3%       0.014s       1.42e-06s   10000    15 Elemwise{gt,no_inplace}(Elemwise{ScalarSigmoid{output_types_preference=transfer_t
+   0.2%    98.5%       0.014s       1.40e-06s   10000     5 Alloc(TensorConstant{0.0}, Shape_i{0}.0)
+   0.2%    98.7%       0.013s       1.34e-06s   10000    17 Sum(Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i
+   0.2%    98.9%       0.013s       1.33e-06s   10000     0 InplaceDimShuffle{x}(b)
+   0.2%    99.1%       0.013s       1.29e-06s   10000    11 Elemwise{neg,no_inplace}(Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0)
+   0.2%    99.3%       0.010s       9.84e-07s   10000     2 InplaceDimShuffle{1,0}(x)
+   0.1%    99.4%       0.010s       9.58e-07s   10000     9 Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)](CGemv{inplace}.0, InplaceDimShuff
+   0.1%    99.6%       0.007s       7.11e-07s   10000     6 InplaceDimShuffle{x}(Shape_i{0}.0)
+   0.1%    99.7%       0.007s       6.95e-07s   10000     8 Elemwise{Cast{float64}}(InplaceDimShuffle{x}.0)
+   0.1%    99.8%       0.006s       6.18e-07s   10000     1 Shape_i{0}(x)
+   0.1%    99.8%       0.006s       5.82e-07s   10000     3 Shape_i{0}(y)
+   0.1%    99.9%       0.005s       5.46e-07s   10000    10 Elemwise{inv,no_inplace}(Elemwise{Cast{float64}}.0)
+   0.1%   100.0%       0.005s       4.88e-07s   10000    19 Elemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)](b, TensorConstant{0.1}, Sum.0
+   ... (remaining 0 Apply instances account for 0.00%(0.00s) of the runtime)
+
+Function profiling
+==================
+  Message: predict
+  Time in 1 calls to Function.__call__: 4.870892e-04s
+  Time in Function.fn.__call__: 4.608631e-04s (94.616%)
+  Time in thunks: 4.491806e-04s (92.217%)
+  Total compile time: 7.993293e-02s
+    Theano Optimizer time: 7.383800e-02s
+       Theano validate time: 2.010584e-03s
+    Theano Linker time (includes C, CUDA code generation/compiling): 4.319906e-03s
+
+Class
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+  94.2%    94.2%       0.000s       4.23e-04s     C        1        1   <class 'theano.tensor.blas_c.CGemv'>
+   4.0%    98.2%       0.000s       1.81e-05s     C        1        1   <class 'theano.tensor.elemwise.Elemwise'>
+   0.7%    98.9%       0.000s       3.10e-06s     C        1        1   <class 'theano.tensor.basic.Alloc'>
+   0.6%    99.5%       0.000s       2.86e-06s     C        1        1   <class 'theano.tensor.elemwise.DimShuffle'>
+   0.5%   100.0%       0.000s       2.15e-06s     C        1        1   <class 'theano.tensor.opt.Shape_i'>
+   ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
+
+Ops
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+  94.2%    94.2%       0.000s       4.23e-04s     C        1        1   CGemv{inplace}
+   4.0%    98.2%       0.000s       1.81e-05s     C        1        1   Elemwise{Composite{[Composite{[Composite{[Composite{[GT(scalar_sigmoid
+   0.7%    98.9%       0.000s       3.10e-06s     C        1        1   Alloc
+   0.6%    99.5%       0.000s       2.86e-06s     C        1        1   InplaceDimShuffle{x}
+   0.5%   100.0%       0.000s       2.15e-06s     C        1        1   Shape_i{0}
+   ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
+
+Apply
+------
+<% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
+  94.2%    94.2%       0.000s       4.23e-04s      1     3 CGemv{inplace}(Alloc.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
+   4.0%    98.2%       0.000s       1.81e-05s      1     4 Elemwise{Composite{[Composite{[Composite{[Composite{[GT(scalar_sigmoid(i0), i1)]}
+   0.7%    98.9%       0.000s       3.10e-06s      1     2 Alloc(TensorConstant{0.0}, Shape_i{0}.0)
+   0.6%    99.5%       0.000s       2.86e-06s      1     0 InplaceDimShuffle{x}(b)
+   0.5%   100.0%       0.000s       2.15e-06s      1     1 Shape_i{0}(x)
+   ... (remaining 0 Apply instances account for 0.00%(0.00s) of the runtime)
+
+Function profiling
+==================
+  Message: Sum of all printed profiles at exit
+  Time in 10001 calls to Function.__call__: 7.171718e+00s
+  Time in Function.fn.__call__: 6.687153e+00s (93.243%)
+  Time in thunks: 6.511724e+00s (90.797%)
+  Total compile time: 7.349820e-01s
+    Theano Optimizer time: 6.715190e-01s
+       Theano validate time: 1.461720e-02s
+    Theano Linker time (includes C, CUDA code generation/compiling): 3.081584e-02s
+
+  [...]
