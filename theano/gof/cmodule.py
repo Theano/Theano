@@ -1684,6 +1684,7 @@ class GCC_compiler(object):
                 cxxflags.extend(['-framework', 'Python'])
             if 'Anaconda' in sys.version:
                 new_path = os.path.join(sys.prefix, "lib")
+                new_path = os.path.realpath(new_path)
                 v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
                 if v is not None:
                     # This will resolve symbolic links
