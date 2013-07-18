@@ -1,5 +1,5 @@
 
-.. _cifar2013_gpundarray:
+.. _crei2013_gpundarray:
 
 **********
 GpuNdArray

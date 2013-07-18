@@ -1,9 +1,41 @@
 
-.. _advanced_theano:
+.. _crei2013_advanced_theano:
 
 ***************
 Advanced Theano
 ***************
+
+
+Profiling
+---------
+
+- To replace the default mode with this mode, use the Theano flags ``profile=True``
+
+- To enable the memory profiling use the flags ``profile_memory=True``
+
+Theano output:
+
+.. literalinclude:: logreg_profile.txt
+
+Compilation pipeline
+--------------------
+
+.. image:: ../hpcs2011_tutorial/pics/pipeline.png
+   :width: 400 px
+
+
+Inplace optimization
+--------------------
+
+- 2 type of inplace operations:
+
+  - An op that return a view on its inputs (e.g. reshape, inplace transpose)
+  - An op that write the output on the inputs memory space
+
+- This allows some memory optimization
+- The Op must tell Theano if they work inplace
+- Inplace Op add constraints to the order of execution
+
 
 Conditions
 ----------
@@ -16,46 +48,14 @@ Conditions
 
 **IfElse Example: Comparison with Switch**
 
-.. code-block:: python
-
-  from theano import tensor as T
-  from theano.ifelse import ifelse
-  import theano, time, numpy
-
-  a,b = T.scalars('a','b')
-  x,y = T.matrices('x','y')
-  
-  z_switch = T.switch(T.lt(a,b), T.mean(x), T.mean(y))
-  z_lazy = ifelse(T.lt(a,b), T.mean(x), T.mean(y))
-
-  f_switch = theano.function([a,b,x,y], z_switch, 
-                      mode=theano.Mode(linker='vm'))
-  f_lazyifelse = theano.function([a,b,x,y], z_lazy,
-                      mode=theano.Mode(linker='vm'))
-
-  val1 = 0.
-  val2 = 1.
-  big_mat1 = numpy.ones((10000,1000))
-  big_mat2 = numpy.ones((10000,1000))
-
-  n_times = 10
-
-  tic = time.clock()
-  for i in xrange(n_times):
-      f_switch(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating both values %f sec'%(time.clock()-tic)
-
-  tic = time.clock()
-  for i in xrange(n_times):
-      f_lazyifelse(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating one value %f sec'%(time.clock()-tic)
+.. literalinclude:: ifelse_switch.py
 
 IfElse Op spend less time (about an half) than Switch since it computes only
 one variable instead of both.
 
 >>> python ifelse_switch.py
-time spent evaluating both values 0.6700 sec
-time spent evaluating one value 0.3500 sec
+time spent evaluating both values 0.230000 sec
+time spent evaluating one value 0.120000 sec
 
 Note that IfElse condition is a boolean while Switch condition is a tensor, so
 Switch is more general.
@@ -86,56 +86,12 @@ Loops
 
 **Scan Example: Computing pow(A,k)**
 
-.. code-block:: python
-
-  import theano
-  import theano.tensor as T
-
-  k = T.iscalar("k"); A = T.vector("A")
-
-  def inner_fct(prior_result, A): return prior_result * A
-  # Symbolic description of the result
-  result, updates = theano.scan(fn=inner_fct,
-                              outputs_info=T.ones_like(A),
-                              non_sequences=A, n_steps=k)
-
-  # Scan has provided us with A**1 through A**k.  Keep only the last
-  # value. Scan notices this and does not waste memory saving them.
-  final_result = result[-1]
-  
-  power = theano.function(inputs=[A,k], outputs=final_result,
-                        updates=updates)
-  
-  print power(range(10),2)
-  #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+.. literalinclude:: scan_pow.py
 
 
 **Scan Example: Calculating a Polynomial**
 
-.. code-block:: python
-
-  import theano
-  import theano.tensor as T
-
-  coefficients = theano.tensor.vector("coefficients")
-  x = T.scalar("x"); max_coefficients_supported = 10000
-
-  # Generate the components of the polynomial
-  full_range=theano.tensor.arange(max_coefficients_supported)
-  components, updates = theano.scan(fn=lambda coeff, power, free_var:
-                                     coeff * (free_var ** power),
-                                  outputs_info=None,
-                                  sequences=[coefficients, full_range],
-                                  non_sequences=x)
-  polynomial = components.sum()
-  calculate_polynomial = theano.function(inputs=[coefficients, x],
-                                       outputs=polynomial)
-
-  test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
-  print calculate_polynomial(test_coeff, 3)
-  # 19.0
-
-
+.. literalinclude:: scan_poly.py
 
 Exercise 4
 -----------
@@ -143,114 +99,6 @@ Exercise 4
 - Run both examples 
 - Modify and execute the polynomial example to have the reduction done by scan
 
-
-
-Compilation pipeline
---------------------
-
-.. image:: ../hpcs2011_tutorial/pics/pipeline.png
-   :width: 400 px
-
-Inplace optimization
---------------------
-
-- 2 type of inplace operations:
-
-  - An op that return a view on its inputs (e.g. reshape, inplace transpose)
-  - An op that write the output on the inputs memory space
-
-- This allows some memory optimization
-- The Op must tell Theano if they work inplace
-- Inplace Op add constraints to the order of execution
-
-
-Profiling
----------
-
-- To replace the default mode with this mode, use the Theano flags ``mode=ProfileMode``
-
-- To enable the memory profiling use the flags ``ProfileMode.profile_memory=True``
-
-Theano output:
-
-.. code-block:: python
-
-    """
-    Time since import 33.456s
-    Theano compile time: 1.023s (3.1% since import)
-      Optimization time: 0.789s
-      Linker time: 0.221s
-    Theano fct call 30.878s (92.3% since import)
-     Theano Op time 29.411s 87.9%(since import) 95.3%(of fct call)
-     Theano function overhead in ProfileMode 1.466s 4.4%(since import)
-                                                  4.7%(of fct call)
-    10001 Theano fct call, 0.003s per call
-    Rest of the time since import 1.555s 4.6%
-
-    Theano fct summary:
-    <% total fct time> <total time> <time per call> <nb call> <fct name>
-     100.0% 30.877s 3.09e-03s 10000 train
-      0.0% 0.000s 4.06e-04s 1 predict
-
-    Single Op-wise summary:
-    <% of local_time spent on this kind of Op> <cumulative %>
-        <self seconds> <cumulative seconds> <time per call> <nb_call>
-        <nb_op> <nb_apply> <Op name>
-       87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1  1 <Gemv>
-        9.7% s  97.0%  2.843s  28.515s  2.84e-04s   10001  1  2 <Dot>
-        2.4%   99.3%  0.691s  29.206s  7.68e-06s * 90001 10 10 <Elemwise>
-        0.4%   99.7%  0.127s  29.334s  1.27e-05s   10000  1  1 <Alloc>
-        0.2%   99.9%  0.053s  29.386s  1.75e-06s * 30001  2  4 <DimShuffle>
-        0.0%  100.0%  0.014s  29.400s  1.40e-06s * 10000  1  1 <Sum>
-        0.0%  100.0%  0.011s  29.411s  1.10e-06s * 10000  1  1 <Shape_i>
-    (*) Op is running a c implementation
-
-    Op-wise summary:
-    <% of local_time spent on this kind of Op> <cumulative %>
-        <self seconds> <cumulative seconds> <time per call>
-        <nb_call> <nb apply> <Op name>
-       87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1 Gemv{inplace}
-        9.7%   97.0%  2.843s  28.515s  2.84e-04s   10001  2 dot
-        1.3%   98.2%  0.378s  28.893s  3.78e-05s * 10000  1 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}
-        0.4%   98.7%  0.127s  29.021s  1.27e-05s   10000  1 Alloc
-        0.3%   99.0%  0.092s  29.112s  9.16e-06s * 10000  1 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)]
-        0.1%   99.3%  0.033s  29.265s  1.66e-06s * 20001  3 InplaceDimShuffle{x}
-       ... (remaining 11 Apply account for 0.7%(0.00s) of the runtime)
-    (*) Op is running a c implementation
-
-    Apply-wise summary:
-    <% of local_time spent at this position> <cumulative %%>
-        <apply time> <cumulative seconds> <time per call>
-        <nb_call> <Apply position> <Apply Op name>
-       87.3%   87.3%  25.672s  25.672s 2.57e-03s  10000  15 Gemv{inplace}(w, TensorConstant{-0.01}, InplaceDimShuffle{1,0}.0, Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)].0, TensorConstant{0.9998})
-        9.7%   97.0%  2.843s  28.515s 2.84e-04s  10000   1 dot(x, w)
-        1.3%   98.2%  0.378s  28.893s 3.78e-05s  10000   9 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}(y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-        0.4%   98.7%  0.127s  29.020s 1.27e-05s  10000  10 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
-        0.3%   99.0%  0.092s  29.112s 9.16e-06s  10000  13 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0,0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{neg,sub}}[(0,0)].0, Elemwise{sub,no_inplace}.0, InplaceDimShuffle{x}.0)
-        0.3%   99.3%  0.080s  29.192s 7.99e-06s  10000  11 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)](Elemwise{neg,no_inplace}.0)
-       ... (remaining 14 Apply instances account for
-           0.7%(0.00s) of the runtime)
-
-    Profile of Theano functions memory:
-    (This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)
-    Theano fct: train
-        Max without gc, inplace and view (KB) 2481
-        Max FAST_RUN_NO_GC (KB) 16
-        Max FAST_RUN (KB) 16
-        Memory saved by view (KB) 2450
-        Memory saved by inplace (KB) 15
-        Memory saved by GC (KB) 0
-        <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)>
-            <created/inplace/view> <Apply node>
-        <created/inplace/view> is taked from the op declaration, not ...
-             2508800B  [2508800] v InplaceDimShuffle{1,0}(x)
-                6272B  [6272] i Gemv{inplace}(w, ...)
-                3200B  [3200] c Elemwise{Composite{...}}(y, ...)
-
-    Here are tips to potentially make your code run faster (if you think of new ones, suggest them on the mailing list).
-    Test them first, as they are not guaranteed to always provide a speedup.
-      - Try the Theano flag floatX=float32
-    """
 
 Exercise 5
 -----------
@@ -363,6 +211,6 @@ Known limitations
 
 - Compilation time superlinear in the size of the graph.
 
-  - A few hundreds nodes is fine
+  - Hundreds of nodes is fine
   - Disabling a few optimizations can speed up compilation
   - Usually too many nodes indicates a problem with the graph
