@@ -318,6 +318,7 @@ def str_diagnostic(expected, value, rtol, atol):
 
 class WrongValue(Exception):
     def __init__(self, expected_val, val, rtol, atol):
+        Exception.__init__(self)  # to be compatible with python2.4
         self.val1 = expected_val
         self.val2 = val
         self.rtol = rtol
