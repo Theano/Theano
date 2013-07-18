@@ -330,9 +330,6 @@ Project status
 
 
 
-TODO: Do I keep the GPU section?
-
-
 
 Why scripting for GPUs?
 -----------------------
@@ -398,34 +395,3 @@ How Fast are GPUs?
  * Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
 
 * If you see speedup > 100x, the benchmark is probably not fair.
-
-
-Software for Directly Programming a GPU
----------------------------------------
-
-Theano is a meta-programmer, doesn't really count.
-
-* CUDA: C extension by NVIDIA 
-
- * Vendor-specific
-
- * Numeric libraries (BLAS, RNG, FFT) maturing.
-
-* OpenCL: multi-vendor version of CUDA
-
- * More general, standardized
-
- * Fewer libraries, less adoption.
-
-* PyCUDA: python bindings to CUDA driver interface
-
- * Python interface to CUDA
-
- * Memory management of GPU objects
-
- * Compilation of code for the low-level driver
-
- * Makes it easy to do GPU meta-programming from within Python
-
-* PyOpenCL: PyCUDA for PyOpenCL
-

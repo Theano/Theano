@@ -67,5 +67,5 @@ from gurus on hand if you get stuck.
     introduction
     theano
     advanced_theano
-    /tutorial/extending_theano
     gpundarray
+    /tutorial/extending_theano
