@@ -307,12 +307,10 @@ Differentiation details
 * We are working on the missing optimizations to be able to compute efficently the full Jacobian and Hessian and Jacobian x vector
 
 
-TODO: update the benchmark
+Old Benchmarks
+--------------
 
-Benchmarks
-----------
-
-Example:
+:ref:`Example: <cifar2011_benchmark>`
 
 * Multi-layer perceptron
 * Convolutional Neural Networks
@@ -323,24 +321,14 @@ Competitors: NumPy + SciPy, MATLAB, EBLearn, Torch5, numexpr
 * EBLearn, Torch5: specialized libraries written by practitioners specifically for these tasks
 * numexpr: similar to Theano, 'virtual machine' for elemwise expressions
 
-**Multi-Layer Perceptron**:
+New Benchmarks
+--------------
 
-60x784 matrix times 784x500 matrix, tanh, times 500x10 matrix, elemwise, then all in reverse for backpropagation
+`Example <http://arxiv.org/pdf/1211.5590v1.pdf>`_ (Page 7 and 9):
 
-.. image:: ../hpcs2011_tutorial/pics/mlp.png
+* Logistic regression, MLP with 1 and 3 layers
+* Recurrent neural networks
 
-**Convolutional Network**: 
+Competitors: Torch7, RNNLM
 
-256x256 images convolved with 6 7x7 filters,
-downsampled to 6x50x50, tanh, convolution with 16 6x7x7 filter, elementwise
-tanh, matrix multiply, softmax elementwise, then in reverse
-
-.. image:: ../hpcs2011_tutorial/pics/conv.png
-
-**Elemwise**
-
-* All on CPU
-* Solid blue: Theano
-* Dashed Red: numexpr (without MKL)
-
-.. image:: ../hpcs2011_tutorial/pics/multiple_graph.png
+* Torch7, RNNLM: specialized libraries written by practitioners specifically for these tasks
