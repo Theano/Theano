@@ -195,9 +195,10 @@ with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creatio
    program will use 32- or 64-bit integers (``i`` prefix vs. the ``l`` prefix)
    and floats (``f`` prefix vs. the ``d`` prefix).
 
--------------------------------------------
 
-**Exercise**
+
+Exercise
+========
 
 .. code-block:: python
 

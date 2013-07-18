@@ -1,11 +1,12 @@
 
-.. _cifar2013_gpundarray:
+.. _crei2013_gpundarray:
 
 **********
 GpuNdArray
 **********
 
 Why a common GPU ndarray?
+-------------------------
 
 - Currently there are at least 4 different GPU array data structures in use by Python packages
 
@@ -23,6 +24,7 @@ Why a common GPU ndarray?
 
 
 Design Goals
+------------
 
 - Make it VERY similar to ``numpy.ndarray``
 - Be compatible with both CUDA and OpenCL
@@ -31,10 +33,10 @@ Design Goals
   - We want people from C, C++, Ruby, R, ... all use the same base GPU N-dimensional array
 
 
-Final GpuNdArray Note
+Final Note
+----------
 
 - Under development
-- Will be the next GPU array container for Theano (this summer!)
+- Will be the next GPU array container for Theano (*this summer!*)
 - Probably also for PyCUDA, PyOpenCL
 - Mailing list: http://lists.tiker.net/listinfo/gpundarray
-

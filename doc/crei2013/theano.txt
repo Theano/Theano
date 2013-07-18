@@ -1,5 +1,5 @@
 
-.. _theano:
+.. _crei2013_theano:
 
 ******
 Theano
@@ -46,17 +46,15 @@ Description
 * Expressions mimic NumPy's syntax & semantics
 * Statically typed and purely functional
 * Some sparse operations (CPU only)
-* The project was started by James Bergstra and Olivier Breuleux
-* For the past 1-2 years, I have replaced Olivier as lead contributor
 
 Simple example
 --------------
 
 >>> import theano
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
->>> b = a + a**10                      # build symbolic expression
+>>> b = a + a ** 10                    # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
->>> print f([0,1,2])                   # prints `array([0,2,1026])`
+>>> print f([0, 1, 2])                 # prints `array([0, 2, 1026])`
 
 
 ======================================================  =====================================================
@@ -73,16 +71,16 @@ Exercise 1
 .. code-block:: python
 
   import theano
-  a = theano.tensor.vector() # declare variable
-  out = a + a**10               # build symbolic expression
+  a = theano.tensor.vector()      # declare variable
+  out = a + a ** 10               # build symbolic expression
   f = theano.function([a], out)   # compile function
-  print f([0,1,2])
-  # prints `array([0,2,1026])`
+  print f([0, 1, 2])
+  # prints `array([0, 2, 1026])`
   
   theano.printing.pydotprint_variables(b, outfile="f_unoptimized.png", var_with_name_simple=True)
   theano.printing.pydotprint(f, outfile="f_optimized.png", var_with_name_simple=True)
 
-Modify and execute the example to do this expression: a**2 + b**2 + 2*a*b
+Modify and execute the example to do this expression: ``a ** 2 + b ** 2 + 2 * a * b``
 
 Real example
 ------------
@@ -94,48 +92,7 @@ Real example
 * Speed optimizations
 * Stability optimizations
 
-.. code-block:: python
-
-  import numpy
-  import theano
-  import theano.tensor as T
-  rng = numpy.random
-  
-  N = 400
-  feats = 784
-  D = (rng.randn(N, feats), rng.randint(size=N,low=0, high=2))
-  training_steps = 10000
-  
-  # Declare Theano symbolic variables
-  x = T.matrix("x")
-  y = T.vector("y")
-  w = theano.shared(rng.randn(feats), name="w")
-  b = theano.shared(0., name="b")
-  print "Initial model:"
-  print w.get_value(), b.get_value()
-
-  # Construct Theano expression graph
-  p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))     # Probability that target = 1
-  prediction = p_1 > 0.5                    # The prediction thresholded
-  xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy loss function
-  cost = xent.mean() + 0.01*(w**2).sum()    # The cost to minimize
-  gw,gb = T.grad(cost, [w,b])
-
-  # Compile
-  train = theano.function(
-            inputs=[x,y],
-            outputs=[prediction, xent],
-            updates={w:w-0.1*gw, b:b-0.1*gb})
-  predict = theano.function(inputs=[x], outputs=prediction)
-
-  # Train
-  for i in range(training_steps):
-      pred, err = train(D[0], D[1])
-
-  print "Final model:"
-  print w.get_value(), b.get_value()
-  print "target values for D:", D[1]
-  print "prediction on D:", predict(D[0])
+.. literalinclude:: logreg.py
 
 
 **Optimizations:**
@@ -144,7 +101,7 @@ Where are those optimization applied?
 
 * ``log(1+exp(x))``
 
-* ``1 / (1 + T.exp(var))`` (sigmoid)
+* ``1 / (1 + tt.exp(var))`` (sigmoid)
 
 * ``log(1-sigmoid(var))`` (softplus, stabilisation)
 
@@ -155,19 +112,20 @@ Where are those optimization applied?
 
 .. code-block:: python
 
-  p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))
-  # 1 / (1 + T.exp(var)) -> sigmoid(var)
-  xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1)
+  p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))
+  # 1 / (1 + tt.exp(var)) -> sigmoid(var)
+  xent = -y * tt.log(p_1) - (1 - y) * tt.log(1 - p_1)
   # Log(1-sigmoid(var)) -> -sigmoid(var)
   prediction = p_1 > 0.5
-  cost = xent.mean() + 0.01*(w**2).sum()
-  gw,gb = T.grad(cost, [w,b])
+  cost = xent.mean() + 0.01 * (w ** 2).sum()
+  gw,gb = tt.grad(cost, [w, b])
 
   train = theano.function(
-            inputs=[x,y],
+            inputs=[x, y],
             outputs=[prediction, xent],
-            # w-0.1*gw: GEMV with the dot in the grad
-            updates={w:w-0.1*gw, b:b-0.1*gb})
+            # w - 0.1 * gw: GEMV with the dot in the grad
+            updates=[(w, w - 0.1 * gw),
+                     (b, b - 0.1 * gb)])
 
 
 Theano flags
@@ -187,7 +145,7 @@ Exercise 2
     
     import numpy
     import theano
-    import theano.tensor as T
+    import theano.tensor as tt
     rng = numpy.random
 
     N = 400
@@ -197,8 +155,8 @@ Exercise 2
     training_steps = 10000
 
     # Declare Theano symbolic variables
-    x = T.matrix("x")
-    y = T.vector("y")
+    x = tt.matrix("x")
+    y = tt.vector("y")
     w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
     b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
@@ -208,26 +166,26 @@ Exercise 2
 
 
     # Construct Theano expression graph
-    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
-    prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
-    xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
-    cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
-    gw,gb = T.grad(cost, [w,b])
+    p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))  # Probability of having a one
+    prediction = p_1 > 0.5  # The prediction that is done: 0 or 1
+    xent = -y * tt.log(p_1) - (1 - y) * tt.log(1 - p_1)  # Cross-entropy
+    cost = xent.mean() + 0.01 * (w**2).sum()  # The cost to optimize
+    gw,gb = tt.grad(cost, [w, b])
 
     # Compile expressions to functions
     train = theano.function(
-                inputs=[x,y],
+                inputs=[x, y],
                 outputs=[prediction, xent],
-                updates={w:w-0.01*gw, b:b-0.01*gb},
-                name = "train")
+                updates={w: w - 0.01 * gw, b: b - 0.01 * gb},
+                name="train")
     predict = theano.function(inputs=[x], outputs=prediction,
-                name = "predict")
+                              name="predict")
 
-    if any( [x.op.__class__.__name__=='Gemv' for x in
-    train.maker.fgraph.toposort()]):
+    if any([x.op.__class__.__name__=='Gemv' for x in
+            train.maker.fgraph.toposort()]):
         print 'Used the cpu'
-    elif any( [x.op.__class__.__name__=='GpuGemm' for x in
-    train.maker.fgraph.toposort()]):
+    elif any([x.op.__class__.__name__=='GpuGemm' for x in
+              train.maker.fgraph.toposort()]):
         print 'Used the gpu'
     else:
         print 'ERROR, not able to tell if theano used the cpu or the gpu'
@@ -265,7 +223,7 @@ GPU
 ---
 
 * Only 32 bit floats are supported (being worked on)
-* Only 1 GPU per process
+* Only 1 GPU per process. Wiki page on using multiple process for multiple GPU
 * Use the Theano flag ``device=gpu`` to tell to use the GPU device
   
  * Use ``device=gpu{0, 1, ...}`` to specify which GPU if you have more than one
@@ -277,9 +235,13 @@ GPU
  * Cast inputs before putting them into a shared variable
  * Cast "problem": int32 with float32 to float64
     
-  * A new casting mechanism is being developed
   * Insert manual cast in your code or use [u]int{8,16}
-  * Insert manual cast around the mean operator (which involves a division by the length, which is an int64!)
+  * The mean operator is worked on to make the output stay in float32.
+
+* Use the Theano flag ``force_device=True``, to exit if Theano isn't able to use a GPU.
+
+  * Theano 0.6rc4 will have the combination of ``force_device=True``
+    and ``device=cpu`` disable the GPU.
 
 
 
@@ -295,19 +257,19 @@ Symbolic variables
 
 * # Dimensions
     
- * T.scalar, T.vector, T.matrix, T.tensor3, T.tensor4
+ * tt.scalar, tt.vector, tt.matrix, tt.tensor3, tt.tensor4
 
 * Dtype
 
- * T.[fdczbwil]vector (float32, float64, complex64, complex128, int8, int16, int32, int64)
+ * tt.[fdczbwil]vector (float32, float64, complex64, complex128, int8, int16, int32, int64)
 
- * T.vector to floatX dtype
+ * tt.vector to floatX dtype
 
  * floatX: configurable dtype that can be float32 or float64.
 
 * Custom variable
 
- * All are shortcuts to: ``T.tensor(dtype, broadcastable=[False]*nd)``
+ * All are shortcuts to: ``tt.tensor(dtype, broadcastable=[False]*nd)``
 
  * Other dtype: uint[8,16,32,64], floatX
 
@@ -324,51 +286,49 @@ Details regarding symbolic broadcasting...
   
 * Broadcastability must be specified when creating the variable
 
-* The only shorcut with broadcastable dimensions are: **T.row** and **T.col**
+* The only shorcut with broadcastable dimensions are: **tt.row** and **tt.col**
 
-* For all others: ``T.tensor(dtype, broadcastable=([False or True])*nd)``
+* For all others: ``tt.tensor(dtype, broadcastable=([False or True])*nd)``
 
 
 Differentiation details
 -----------------------
 
->>> gw,gb = T.grad(cost, [w,b])
+>>> gw,gb = tt.grad(cost, [w,b])
 
-* T.grad works symbolically: takes and returns a Theano variable
+* tt.grad works symbolically: takes and returns a Theano variable
 
-* T.grad can be compared to a macro: it can be applied multiple times
+* tt.grad can be compared to a macro: it can be applied multiple times
 
-* T.grad takes scalar costs only
+* tt.grad takes scalar costs only
 
 * Simple recipe allows to compute efficiently vector x Jacobian and vector x Hessian
 
 * We are working on the missing optimizations to be able to compute efficently the full Jacobian and Hessian and Jacobian x vector
 
 
-.. _cifar2011_benchmark:
+Old Benchmarks
+--------------
 
-Benchmarks
-----------
+:ref:`Example: <cifar2011_benchmark>`
 
+* Multi-layer perceptron
+* Convolutional Neural Networks
+* Misc Elemwise operations
 
-**Multi-Layer Perceptron**:
+Competitors: NumPy + SciPy, MATLAB, EBLearn, Torch5, numexpr
 
-60x784 matrix times 784x500 matrix, tanh, times 500x10 matrix, elemwise, then all in reverse for backpropagation
+* EBLearn, Torch5: specialized libraries written by practitioners specifically for these tasks
+* numexpr: similar to Theano, 'virtual machine' for elemwise expressions
 
-.. image:: ../hpcs2011_tutorial/pics/mlp.png
+New Benchmarks
+--------------
 
-**Convolutional Network**: 
+`Example <http://arxiv.org/pdf/1211.5590v1.pdf>`_ (Page 7 and 9):
 
-256x256 images convolved with 6 7x7 filters,
-downsampled to 6x50x50, tanh, convolution with 16 6x7x7 filter, elementwise
-tanh, matrix multiply, softmax elementwise, then in reverse
+* Logistic regression, MLP with 1 and 3 layers
+* Recurrent neural networks
 
-.. image:: ../hpcs2011_tutorial/pics/conv.png
+Competitors: Torch7, RNNLM
 
-**Elemwise**
-
-* All on CPU
-* Solid blue: Theano
-* Dashed Red: numexpr (without MKL)
-
-.. image:: ../hpcs2011_tutorial/pics/multiple_graph.png
+* Torch7, RNNLM: specialized libraries written by practitioners specifically for these tasks

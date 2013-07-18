@@ -405,7 +405,7 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     """
         :param ten4:     a list of lists of images
                          ten4 is of shape (list 1 dim, list 2 dim,
-                                           row, col)
+                         row, col)
         :type ten4:      A 4d tensor-like.
         :param neib_shape: (r,c) where r is the height of the neighborhood
                         in rows and c is the width of the neighborhood
@@ -416,13 +416,21 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
                           columns. When None, this is the same as
                           neib_shape(patch are disjoint)
         :type neib_step: A 1d tensor-like of 2 values.
-        :param mode: Possible values:
-            'valid': Requires an input that is a multiple of the
-                pooling factor (in each direction)
-            'ignore_borders': Same as valid, but will ignore the borders
-                if the shape(s) of the input
-                is not a multiple of the pooling factor(s)
-            'wrap_centered' : ?? TODO comment
+        :param mode:
+            Possible values:
+
+            ``valid``
+               Requires an input that is a multiple of the
+               pooling factor (in each direction)
+
+            ``ignore_borders``
+               Same as valid, but will ignore the borders
+               if the shape(s) of the input
+               is not a multiple of the pooling factor(s)
+
+            ``wrap_centered``
+               ?? TODO comment
+
         :type mode: str
         :return:
             Reshapes the input as a 2D tensor where each row is an

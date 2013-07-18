@@ -1,5 +1,5 @@
 
-.. _cifarSS2011_Introduction:
+.. _crei2013_Introduction:
 
 
 ************
@@ -126,6 +126,7 @@ NumPy in one slide
 * NumPy provides a N-dimensional numeric array in Python
 
  * Perfect for high-performance computing.
+ * Slice are return view (no copy)
 
 * NumPy provides
 
@@ -162,6 +163,11 @@ NumPy in one slide
     a.dtype                     # np.dtype object: 'float64'
     a32.dtype                   # np.dtype object: 'float32'
 
+    assert a[1, 1, 1] != 10     # a[1, 1, 1] is a view
+    a[1, 1, 1] = 10             # So affectation to it change the
+    assert a[1, 1, 1] == 10     # original array
+
+
 Arrays can be combined with numeric operators, standard mathematical
 functions. NumPy has great `documentation <http://docs.scipy.org/doc/numpy/reference/>`_.
 
@@ -197,7 +203,7 @@ Training an MNIST-ready classification neural network in pure NumPy might look l
         outout = (np.tanh(outin) + 1) / 2.0
 
         g_outout = outout - y_i
-        err = 0.5 * np.sum(g_outout ** 2)
+        err = 0.5 * np.sum(g_outout) ** 2
 
         g_outin = g_outout * outout * (1.0 - outout)
 
@@ -292,15 +298,17 @@ Theano in one slide
 
  * Slower fallbacks always available
 
-* Automatic differentiation
+* Automatic differentiation and R op
+
+* Sparse matrices
 
 
 Project status
 --------------
 
-* Mature: theano has been developed and used since January 2008 (3.5 yrs old)
+* Mature: theano has been developed and used since January 2008 (5.5 yrs old)
 
-* Driven over 40 research papers in the last few years
+* Driven over 87 research papers
 
 * Good user documentation
 
@@ -310,19 +318,16 @@ Project status
 
 * Many contributors (some from outside our lab)
 
-* Used to teach IFT6266 for two years
+* Used to teach IFT6266 for many years
 
 * Used for research at Google and Yahoo.
 
-* Unofficial RPMs for Mandriva
-
 * Downloads (January 2011 -  June 8 2011):
 
- * Pypi 780
+ * Pypi (16 July 2013): 60k total, 159 last day, 823 last week 
 
- * MLOSS: 483
+ * Github (`bleeding edge` repository): unknown
 
- * Assembla (`bleeding edge` repository): unknown
 
 
 
@@ -390,34 +395,3 @@ How Fast are GPUs?
  * Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
 
 * If you see speedup > 100x, the benchmark is probably not fair.
-
-
-Software for Directly Programming a GPU
----------------------------------------
-
-Theano is a meta-programmer, doesn't really count.
-
-* CUDA: C extension by NVIDIA 
-
- * Vendor-specific
-
- * Numeric libraries (BLAS, RNG, FFT) maturing.
-
-* OpenCL: multi-vendor version of CUDA
-
- * More general, standardized
-
- * Fewer libraries, less adoption.
-
-* PyCUDA: python bindings to CUDA driver interface
-
- * Python interface to CUDA
-
- * Memory management of GPU objects
-
- * Compilation of code for the low-level driver
-
- * Makes it easy to do GPU meta-programming from within Python
-
-* PyOpenCL: PyCUDA for PyOpenCL
-

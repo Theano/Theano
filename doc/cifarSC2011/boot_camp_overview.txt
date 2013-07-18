@@ -15,7 +15,7 @@ Day 1
 
 * Show of hands - what is your background?
 
-* Python & Numpy in a nutshell
+* Python & NumPy in a nutshell
 
 * Theano basics
 

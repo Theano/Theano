@@ -84,10 +84,10 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # 19.0
 
 
--------------------------------------------
 
 
-**Exercise**
+Exercise
+========
 
 Run both examples.
 
