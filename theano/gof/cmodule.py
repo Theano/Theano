@@ -235,6 +235,7 @@ static struct PyModuleDef moduledef = {{
         self.functions.append(fn)
 
     def gen_header(self, filename):
+        # We need a finalized module to have self.code_hash
         assert self.finalized
         f = open(filename, 'w')
         for code in self.header_code:
