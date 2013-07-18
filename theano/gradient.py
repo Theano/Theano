@@ -1494,6 +1494,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 class GradientError(Exception):
     """This error is raised when a gradient is calculated, but incorrect."""
     def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
+        Exception.__init__(self)  # to be compatible with python2.4
         self.arg = arg
         self.err_pos = err_pos
         self.abs_err = abs_err
