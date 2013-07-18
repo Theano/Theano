@@ -1497,7 +1497,8 @@ class CLinker(link.Linker):
                             libs=libs,
                             preargs=preargs)[2]))
                     src_code = mod_exec.code()
-                    preargs.append(os.path.join(location, mod.code_hash+".so"))
+                    preargs.append(os.path.join(location, mod.code_hash + "." +
+                                   cmodule.get_lib_extension()))
                     c_compiler.compile_str(
                         module_name=mod_exec.code_hash,
                         src_code=src_code,
