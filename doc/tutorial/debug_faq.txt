@@ -288,12 +288,12 @@ can be achieved as follows:
 
 To help understand what is happening in your graph, you can
 disable the ``local_elemwise_fusion`` and all ``inplace``
-optimizations. The first is a speed optimization that merge elemwise
-operations together. This make it harder to know which particular
-elemwise cause the problem. The second optimization make some ops
-output overwrite its input. So, if an op create a bad output, you
-won't be able see the input that was overwriten in the ``post_fun``
-function. To disable those optimization (with a Theano version after
+optimizations. The first is a speed optimization that merges elemwise
+operations together. This makes it harder to know which particular
+elemwise causes the problem. The second optimization makes some ops'
+outputs overwrite their inputs. So, if an op creates a bad output, you
+will not be able to see the input that was overwriten in the ``post_func``
+function. To disable those optimizations (with a Theano version after
 0.6rc3), define the MonitorMode like this:
 
 .. code-block:: python
@@ -311,7 +311,7 @@ function. To disable those optimization (with a Theano version after
     mode with MonitorMode, as you need to define what you monitor.
 
 To be sure all inputs of the node are available during the call to
-``post_func``, you also must disable the garbage collector. Otherwise,
+``post_func``, you must also disable the garbage collector. Otherwise,
 the execution of the node can garbage collect its inputs that aren't
 needed anymore by the Theano function. This can be done with the Theano
 flag:

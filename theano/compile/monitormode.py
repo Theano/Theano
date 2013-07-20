@@ -37,14 +37,14 @@ class MonitorMode(Mode):
         :param optimizer: The optimizer to use. One may use for instance
             'fast_compile' to skip optimizations.
 
-        :param linker: DO NOT USE. This mode use its own linker.
+        :param linker: DO NOT USE. This mode uses its own linker.
             The parameter is needed to allow selecting optimizers to use.
         """
         self.pre_func = pre_func
         self.post_func = post_func
         wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
                                                 [self.eval])
-        if optimizer is 'default':
+        if optimizer == 'default':
             optimizer = theano.config.optimizer
         if (linker is not None and
             not isinstance(linker.mode, MonitorMode)):
