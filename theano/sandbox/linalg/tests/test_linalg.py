@@ -283,7 +283,7 @@ class test_diag(unittest.TestCase):
     test_diag test makes sure that linalg.diag instantiates
     the right op based on the dimension of the input.
     """
-    def __init__(self, name, mode=None, shared=tensor.shared,
+    def __init__(self, name, mode=None, shared=tensor._shared,
                  floatX=None, type=tensor.TensorType):
         self.mode = mode
         self.shared = shared
