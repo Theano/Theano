@@ -1,5 +1,4 @@
 import sys
-import traceback
 from copy import copy
 from itertools import izip
 
@@ -10,7 +9,7 @@ from theano import gof
 from theano.gof import Apply, Op
 from theano import scalar
 from theano.scalar import Scalar
-from theano.printing import min_informative_str, pprint
+from theano.printing import pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
 from theano.gradient import DisconnectedType
