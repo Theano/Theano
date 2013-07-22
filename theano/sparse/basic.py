@@ -2677,6 +2677,27 @@ class TrueDot(gof.op.Op):
         rval = x.dot(y)
         if not scipy.sparse.issparse(rval):
             rval = getattr(scipy.sparse, x.format + '_matrix')(rval)
+        #x.dot call tocsr() that will "upcast" to ['int8', 'uint8', 'short',
+        # 'ushort', 'intc', 'uintc', 'longlong', 'ulonglong', 'single',
+        # 'double', 'longdouble', 'csingle', 'cdouble', 'clongdouble']
+        # But ulonglong is uint64 on x86-64, but with a different typenum!
+        if rval.dtype.num != numpy.dtype(str(rval.dtype)).num:
+            assert str(rval.dtype) == node.outputs[0].dtype
+            # Create a view with the expected typenum.
+            format = node.outputs[0].type.format
+            data = rval.data.view(dtype=node.outputs[0].dtype)
+            indices = rval.indices
+            indptr = rval.indptr
+            shape = rval.shape
+            # No need to copy indices and indptr as in CSM.perform(),
+            # as there is only one user of them.
+            if format == 'csc':
+                rval = scipy.sparse.csc_matrix((data, indices, indptr),
+                                               shape, copy=False)
+            else:
+                assert format == 'csr'
+                rval = scipy.sparse.csr_matrix((data, indices, indptr),
+                                               shape, copy=False)
         out[0] = rval
 
     def grad(self, (x, y), (gz, )):

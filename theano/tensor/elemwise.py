@@ -1,5 +1,4 @@
 import sys
-import traceback
 from copy import copy
 from itertools import izip
 
@@ -10,7 +9,7 @@ from theano import gof
 from theano.gof import Apply, Op
 from theano import scalar
 from theano.scalar import Scalar
-from theano.printing import min_informative_str, pprint
+from theano.printing import pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
 from theano.gradient import DisconnectedType
@@ -741,7 +740,7 @@ class Elemwise(Op):
             scalar_ograds = map(as_scalar, ograds)
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
             for igrad in scalar_igrads:
-                assert igrad is not None
+                assert igrad is not None, self.scalar_op
 
         finally:
 
