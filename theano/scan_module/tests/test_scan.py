@@ -2750,9 +2750,9 @@ class T_Scan(unittest.TestCase):
             outputs_info=[numpy.asarray([0.0, 0.0], theano.config.floatX),
                           None])
         f = theano.function([inp], [i_t, i_tm1])
-        val = numpy.arange(10).reshape(5, 2)
+        val = numpy.arange(10).reshape(5, 2).astype(theano.config.floatX)
         ret = f(val)
-        utt.assert_allclose(ret[0], val+10)
+        utt.assert_allclose(ret[0], val + 10)
         utt.assert_allclose(ret[1], [[0.,  0.],
                                      [10., 11.],
                                      [12., 13.],
