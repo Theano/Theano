@@ -909,6 +909,8 @@ def _populate_grad_dict(var_to_app_to_idx,
                     orig_output, new_output_grad = packed
                     if not hasattr(orig_output, 'shape'):
                         continue
+                    if isinstance(new_output_grad.type, DisconnectedType):
+                        continue
                     for orig_output_v, new_output_grad_v in get_debug_values(
                             *packed):
                         o_shape = orig_output_v.shape
