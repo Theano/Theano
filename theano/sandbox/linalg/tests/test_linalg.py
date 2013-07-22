@@ -219,7 +219,7 @@ def test_rop_lop():
 
     raised = False
     try:
-        tmp = tensor.Rop(
+        tensor.Rop(
             theano.clone(y, replace={mx: break_op(mx)}),
             mx,
             mv)
