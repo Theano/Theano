@@ -7918,6 +7918,15 @@ class Dot(Op):
             xgrad = dot(gz, y.T)
             ygrad = dot(x.T, gz)
 
+        # If x or y contain broadcastable dimensions but only one of
+        # them know that a matching dimensions is broadcastable, the
+        # above code don't always return the right broadcast pattern.
+        # This cause problem down the road. See gh-1461.
+        if xgrad.broadcastable != x.broadcastable:
+            xgrad = patternbroadcast(xgrad, x.broadcastable)
+        if ygrad.broadcastable != y.broadcastable:
+            ygrad = patternbroadcast(ygrad, y.broadcastable)
+
         rval = xgrad, ygrad
 
         for elem in rval:

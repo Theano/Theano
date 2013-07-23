@@ -5007,6 +5007,12 @@ class t_dot(unittest.TestCase):
                         tval = val_for(t)
 
                         f(xval, yval, tval)  # debugmode checks result
+                        if (dtype0.startswith('float') and
+                            dtype1.startswith('float')):
+                            g = grad(z.sum(), x)
+                            assert g.broadcastable == x.broadcastable
+                            g = grad(z.sum(), y)
+                            assert g.broadcastable == y.broadcastable
 
 
 class T_tensorfromscalar(unittest.TestCase):
