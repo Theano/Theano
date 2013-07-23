@@ -4956,15 +4956,15 @@ class t_dot(unittest.TestCase):
     def test_broadcastable_patterns(self):
 
         #
-        # These examples should all work because we broadcastable or no, all dimensions of all
-        # results have size 1.
+        # These examples should all work because we broadcastable or
+        # no, all dimensions of all results have size 1.
         #
         def val_for(r):
             if r.dtype.startswith('complex'):
                 # We want to test complex at the same time, so we give a value
                 # To the imaginary component.
-                # This strange way of doing things is the only way that worked on
-                # numpy 1.4.1
+                # This strange way of doing things is the only way that worked
+                # on numpy 1.4.1
                 if r.ndim == 0:
                     return numpy.asarray(numpy.complex(1.1, 2.1),
                                          dtype=r.dtype)
@@ -4989,10 +4989,12 @@ class t_dot(unittest.TestCase):
 
         for dtype0 in ('float32', 'float64', 'complex64', 'complex128'):
             for dtype1 in ('float32', 'float64', 'complex64', 'complex128'):
-                for bc0 in ((True,), (False,), (True, True), (True, False), (False, True),
-                        (False, False)):
-                    for bc1 in ((True,), (False,), (True, True), (True, False), (False, True),
+                for bc0 in ((True,), (False,), (True, True),
+                            (True, False), (False, True),
                             (False, False)):
+                    for bc1 in ((True,), (False,), (True, True),
+                                (True, False), (False, True),
+                                (False, False)):
 
                         x = TensorType(dtype=dtype0, broadcastable=bc0)()
                         y = TensorType(dtype=dtype1, broadcastable=bc1)()
@@ -5007,6 +5009,12 @@ class t_dot(unittest.TestCase):
                         tval = val_for(t)
 
                         f(xval, yval, tval)  # debugmode checks result
+                        if (dtype0.startswith('float') and
+                            dtype1.startswith('float')):
+                            g = grad(z.sum(), x)
+                            assert g.broadcastable == x.broadcastable
+                            g = grad(z.sum(), y)
+                            assert g.broadcastable == y.broadcastable
 
 
 class T_tensorfromscalar(unittest.TestCase):
