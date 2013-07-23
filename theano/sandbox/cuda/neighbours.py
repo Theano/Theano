@@ -13,8 +13,9 @@ if cuda_available:
 
 class GpuImages2Neibs(Images2Neibs, GpuOp):
     def __init__(self, mode='valid'):
-        if mode not in ['valid', 'wrap_centered']:
-            raise NotImplementedError("Only the mode valid and wrap_centered"
+        if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
+            raise NotImplementedError("Only the mode valid, ignore_borders"
+                                      " and wrap_centered"
                                       " have been implemented for the op"
                                       " GpuImages2Neibs")
         self.mode = mode
@@ -277,6 +278,11 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
                 grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
                 grid_d = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d)/step_y);
+            }else if ( "%(mode)s" == "ignore_borders") {
+                //number of patch in height
+                grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x);
+                //number of patch in width
+                grid_d = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d)/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
                              "Images2Neibs: unknow mode '%(mode)s'");
@@ -403,7 +409,8 @@ def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
 def use_gpu_images2neibs(node):
     if (type(node.op) is Images2Neibs and
         node.inputs[0].dtype == 'float32' and
-        node.op.mode in ['valid', 'wrap_centered']):
+        node.op.mode in ['valid', 'ignore_borders',
+                         'wrap_centered']):
         return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),
                                                node.inputs[1], node.inputs[2],
                                                mode=node.op.mode))]

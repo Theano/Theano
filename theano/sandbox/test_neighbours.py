@@ -41,9 +41,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                     g = function([],
                                  neibs2images(neibs, neib_shape, images.shape),
                                  mode=self.mode)
-                    if border in ['valid']:
-                        assert any([isinstance(node.op, self.op)
-                                    for node in f.maker.fgraph.toposort()])
+                    assert any([isinstance(node.op, self.op)
+                                for node in f.maker.fgraph.toposort()])
 
                     #print g()
                     assert numpy.allclose(images.get_value(borrow=True), g())
@@ -59,6 +58,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             for border in ['valid', 'ignore_borders']:
                 f = function([], images2neibs(images, neib_shape, mode=border),
                              mode=self.mode)
+                assert any([isinstance(node.op, self.op)
+                            for node in f.maker.fgraph.toposort()])
 
                 #print images.get_value(borrow=True)
                 neibs = f()
@@ -107,9 +108,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                              mode=self.mode)
 
                 neibs = f()
-                if border in ['valid']:
-                    assert self.op in [type(node.op)
-                                       for node in f.maker.fgraph.toposort()]
+                assert self.op in [type(node.op)
+                                   for node in f.maker.fgraph.toposort()]
 
                 assert numpy.allclose(neibs,
               [[  0,   1,   2,   5,   6,   7,  10,  11,  12],
@@ -162,6 +162,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                              images2neibs(images, neib_shape,
                                           mode='ignore_borders'),
                              mode=self.mode)
+                assert self.op in [type(node.op)
+                                   for node in f.maker.fgraph.toposort()]
                 f()
 
     def test_neibs_wrap_centered_step_manual(self):

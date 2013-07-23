@@ -1,5 +1,13 @@
 #!/usr/bin/python
+"""WARNING: This code is not recommanded. It is not finished, it is
+slower then the version in sandbox/neighbours.py, and it do not work
+on the GPU.
 
+We only keep this version here as it is a little bit more generic, so
+it cover more cases. But thoses cases aren't needed frequently, so you
+probably don't want to use this version, go see neighbours.py!!!!!!!
+
+"""
 import theano
 from theano import gof, Op, tensor, Variable, Apply
 
@@ -150,6 +158,7 @@ class NeighbourhoodsFromImages(Op):
         return out_dims, num_strides
 
     def make_node(self, x):
+        x = theano.tensor.as_tensor_variable(x)
         if self.inverse:
             # +1 in the inverse case
             if x.type.ndim != (self.n_dims_before + \

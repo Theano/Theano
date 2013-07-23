@@ -1337,6 +1337,8 @@ def local_gpualloc(node):
                 for c, idx in node.outputs[0].clients]):
             # if the client is a subtensor with input on gpu or alloc
             replace = True
+        if replace and node.inputs[0].dtype != 'float32':
+            replace = False
     if replace:
         val = node.inputs[0]
         shp = node.inputs[1:]
