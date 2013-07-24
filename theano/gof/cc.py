@@ -13,7 +13,6 @@ import sys
 import logging
 
 import numpy
-
 import theano
 from theano import config
 from theano.compat import PY3
@@ -1513,6 +1512,23 @@ class CLinker(link.Linker):
                         code_filename='exec.cpp',
                         out_filename='exec')
                     mod_exec.gen_header(os.path.join(location, 'exec.h'))
+                    if sys.platform == "win32" and False:
+                        # I don't know why it work now, but this was needed in the past.
+                        # As this is complicated to find how to do it, I keep it here
+                        # just in case.
+                        mt = r"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\Bin\mt.exe"
+                        pp = [p for p in sys.path
+                              if os.path.exists(os.path.join(p, 'python27.dll'))]
+                        # Try the first path found. Currently there is 2 of
+                        # them that have the same file size.
+                        py_dll = os.path.join(pp[-1], "python27.dll")
+                        manifest = os.path.join(location, "py_dll.manifest")
+                        exec_f = os.path.join(location, "exec.exe")
+                        call_subprocess_Popen('"' + mt + '"' +
+                            " -inputresource:" + py_dll + ";#2 -out:" + manifest)
+                        call_subprocess_Popen('"' + mt + '"' +
+                            " -manifest " + manifest +
+                            " -outputresource:" + exec_f)
             except Exception, e:
                 e.args += (str(self.fgraph),)
                 raise
@@ -1668,39 +1684,65 @@ class CLinker(link.Linker):
             """ % locals()
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
-        for var in args:
-            out_print += """
-            PyObject_Print(struct_ptr->%(var)s, stdout, Py_PRINT_RAW);
-            """ % locals()
-            main = """
+        if sys.platform != "win32":
+            for var in args:
+                out_print += """
+                //PyList_GET_ITEM return a borrowed reference
+                PyObject *tmp_%(var)s=PyList_GET_ITEM(struct_ptr->%(var)s, 0);
+                PyObject_Print(tmp, stdout, Py_PRINT_RAW);
+                """ % locals()
+        else:
+            # On Windows, when the python is compiled with a different run time
+            # (Visual Studio version?), then the executable, the stdout and
+            # stderr shouldn't not be shared between the 2 run time, so we
+            # can't call PyObject_Print(). Otherwise, it segfault.
+            for out, var in zip(self.outputs, args):
+                out_print += """
+                //PyList_GET_ITEM return a borrowed reference
+                PyObject *tmp_%(var)s=PyList_GET_ITEM(struct_ptr->%(var)s, 0);
+                PyObject *str_%(var)s = PyObject_Str(tmp_%(var)s);
+                //PyString_AsString return a ptr to the internal representation.
+                printf("%%s\\n", PyString_AsString(str_%(var)s));
+                Py_CLEAR(str_%(var)s);
+                """ % locals()
+        main = """
         int main(int argc, char *argv[]) {
     Py_SetProgramName(argv[0]);  /* optional but recommended */
     Py_Initialize();
 
+// Those print are there to help debug import of python module
+printf("Before sys import\\n");
+PyObject * sys = PyImport_ImportModule("sys");
+printf("After import sys %%p\\n", sys);
+PyObject * numpy = PyImport_ImportModule("numpy");
+printf("After import numpy %%p\\n", numpy);
+PyErr_Print();
     //PyRun_SimpleString("import sys\\n"
     //    "print sys.path\\n");
 
     //import_array{,1,2} can be called many times without problems.
     import_array1(1);
-    printf("main start\\n");
+    printf("after import_array1()\\n");
 
     %(struct_name)s *struct_ptr = cinit();
     int run_ret = 0;
     if (struct_ptr){
         %(in_init)s
+        printf("\\n after cinit()\\n");
         run_ret = struct_ptr->run();
-        printf("\\nrun_ret=%%d\\n", run_ret);
+        printf("\\nrun() from the shared library returned=%%d\\n", run_ret);
 
         %(out_print)s
 
         if (run_ret != 0) {
-            PyObject * err = PyErr_Occurred(); //print <nil>
-            printf("\\nrun_ret=%%d, %%p\\n", run_ret, err);
-            //PyObject_Print(err, stdout, 0);//, Py_PRINT_RAW); print <nil>
-            PyObject_Print(struct_ptr->__ERROR, stdout, 0);
-            //PyErr_Print();
+            // See out_print to know why we can't call PyObject_Print on win32
+            PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
+            //PyString_AsString return a ptr to the internal representation.
+            printf("%%s\\n", PyString_AsString(str_%(var)s));
+            Py_CLEAR(str_err);
         }
     } else {
+      printf("cinit() failed!\\n");
       return 1;
     }
     //TODO, should struct_ptr.cleanup() cleanup the __ERROR structure?

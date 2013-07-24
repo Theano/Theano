@@ -13,7 +13,7 @@ for inps, out in [([a], theano.tensor.exp(a)),  # 1 input/1 outputs
               ]:
     f = theano.function(inps, out, theano.Mode(linker='c'),
                         on_unused_input='ignore')
-    theano.printing.debugprint(f)
+    theano.printing.debugprint(f, print_type=True)
     #filename = f.fn.thunks[0].filename  # with linker=vm
     filename = f.fn.filename  # with linker=c
     print filename
