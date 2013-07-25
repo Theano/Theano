@@ -2940,7 +2940,80 @@ class GpuJoin(tensor.Join, GpuOp):
             curpos += curlen
 
         out[0] = rval
+    
+    def c_code(self, node, name, inputs, out_, sub):
+        input_1 = inputs[1]
+        input_2 = inputs[2]
+        axis = inputs[0]
+        fail = sub['fail']
+        out = out_[0]
 
+        str = """
+
+        int nd = %(input_1)s->nd;
+        int dims[nd];
+        for(int i = 0; i<nd; i+=1){
+            dims[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
+        }
+
+        nd = %(input_2)s->nd;
+        int dims2[nd];
+        for(int i = 0; i<nd; i+=1){
+            dims2[i] = CudaNdarray_HOST_DIMS(%(input_2)s)[i];
+        }
+
+        int dims_out[%(input_1)s->nd];
+        dims_out[0] = dims[0]+ dims2[0];
+        dims_out[1] = dims[1];
+
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*)CudaNdarray_New();
+        if (!%(out)s)
+        {
+           // exception already set
+            %(fail)s;
+        }
+        if (CudaNdarray_alloc_contiguous(%(out)s, nd, dims_out))
+        {
+            // exception already set
+            Py_XDECREF(%(out)s);
+            %(out)s = NULL;
+            %(fail)s;
+        }
+
+        PyObject *input_obj, *output_obj, *row_input, *row_output;
+        PyObject *input_rowind_obj, *output_rowind_obj;
+
+        for(int i = 0; i<dims[0]; i+=1){
+            input_rowind_obj = PyInt_FromLong(i);
+            output_rowind_obj = PyInt_FromLong(i);
+            row_input = CudaNdarray_Subscript((PyObject*)%(input_1)s, input_rowind_obj);
+            row_output = CudaNdarray_Subscript((PyObject*)%(out)s, output_rowind_obj);
+            if(CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)row_output,(CudaNdarray*)row_input))
+            {
+                // exception already set
+                Py_XDECREF(%(out)s);
+                %(out)s = NULL;
+                %(fail)s;
+            }
+        }
+
+        for(int i = 0; i<dims[0]; i+=1){
+            input_rowind_obj = PyInt_FromLong(i);
+            output_rowind_obj = PyInt_FromLong(i+dims[0]);
+            row_input = CudaNdarray_Subscript((PyObject*)%(input_2)s, input_rowind_obj);
+            row_output = CudaNdarray_Subscript((PyObject*)%(out)s, output_rowind_obj);
+            if(CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)row_output,(CudaNdarray*)row_input))
+            {
+                // exception already set
+                Py_XDECREF(%(out)s);
+                %(out)s = NULL;
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        
+        return str
 gpu_join = GpuJoin()
 
 
