@@ -53,10 +53,6 @@ int_dtypes = map(str, scal.int_types)
 uint_dtypes = map(str, scal.uint_types)
 
 
-# Do a lazy import of the sparse module
-sparse_module_ref = None
-
-
 class ShapeError(Exception):
     """Raised when the shape cannot be computed."""
     pass
