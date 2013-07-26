@@ -1676,34 +1676,35 @@ class CLinker(link.Linker):
         out_print = ""
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.inputs)]
-        for var in args:
+        for var, name in zip(utils.uniq(self.inputs), args):
+            dtype = var.type.dtype_specs()[2]
             in_init += """
-            PyObject* %(var)s_value = PyArray_Arange(0., 10., 1., NPY_FLOAT64);
-            PyList_SetItem(struct_ptr->%(var)s, 0, %(var)s_value);
-            %(var)s_value = NULL;
+            PyObject* %(name)s_value = PyArray_Arange(0., 10., 1., %(dtype)s);
+            PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
+            %(name)s_value = NULL;
             """ % locals()
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
         if sys.platform != "win32":
-            for var in args:
+            for name in args:
                 out_print += """
                 //PyList_GET_ITEM return a borrowed reference
-                PyObject *tmp_%(var)s=PyList_GET_ITEM(struct_ptr->%(var)s, 0);
-                PyObject_Print(tmp, stdout, Py_PRINT_RAW);
+                PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
+                PyObject_Print(tmp_%(name)s, stdout, Py_PRINT_RAW);
                 """ % locals()
         else:
             # On Windows, when the python is compiled with a different run time
             # (Visual Studio version?), then the executable, the stdout and
             # stderr shouldn't not be shared between the 2 run time, so we
             # can't call PyObject_Print(). Otherwise, it segfault.
-            for out, var in zip(self.outputs, args):
+            for out, name in zip(self.outputs, args):
                 out_print += """
                 //PyList_GET_ITEM return a borrowed reference
-                PyObject *tmp_%(var)s=PyList_GET_ITEM(struct_ptr->%(var)s, 0);
-                PyObject *str_%(var)s = PyObject_Str(tmp_%(var)s);
+                PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
+                PyObject *str_%(name)s = PyObject_Str(tmp_%(name)s);
                 //PyString_AsString return a ptr to the internal representation.
-                printf("%%s\\n", PyString_AsString(str_%(var)s));
-                Py_CLEAR(str_%(var)s);
+                printf("%%s\\n", PyString_AsString(str_%(name)s));
+                Py_CLEAR(str_%(name)s);
                 """ % locals()
         main = """
         int main(int argc, char *argv[]) {
@@ -1738,7 +1739,7 @@ PyErr_Print();
             // See out_print to know why we can't call PyObject_Print on win32
             PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
             //PyString_AsString return a ptr to the internal representation.
-            printf("%%s\\n", PyString_AsString(str_%(var)s));
+            printf("%%s\\n", PyString_AsString(str_err));
             Py_CLEAR(str_err);
         }
     } else {
