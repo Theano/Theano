@@ -1531,28 +1531,6 @@ elemwise.TensorConstant = TensorConstant
 #########################
 
 
-def _redefine(real_symbol_value, module='tensor'):
-    """Replace the value associated with a function symbol.
-
-    This is useful to trick epydoc into doing what we want.  It's a hack.
-    """
-    real_symbol_value.__module__ = 'tensor.basic'
-
-    def decorator(f):
-        return real_symbol_value
-
-    return decorator
-
-
-def _redefine_asRoutine(real_symbol_value):
-    real_symbol_value.__epydoc_asRoutine = True
-
-    def decorator(f):
-        return real_symbol_value
-
-    return decorator
-
-
 def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     """
     Replace a symbol definition with an elementwise version of the
@@ -3287,7 +3265,6 @@ alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
 
-@_redefine(elemwise.Elemwise(scal.identity))
 def tensor_copy(a):
     """Create a duplicate of `a` (with duplicated storage)"""
 pprint.assign(tensor_copy, printing.IgnorePrinter())
@@ -5587,7 +5564,6 @@ class Join(Op):
         return [tuple(out_shapes)]
 
 
-@_redefine_asRoutine(Join())
 def join(axis, *tensors):
     """
     Convenience function to concatenate `TensorType`s along the given axis.
