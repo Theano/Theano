@@ -13,7 +13,9 @@ def test_basic():
                       ((a, b), [a, b]),  # 2 outputs, 2 deepcopy ops
                       ((a, b), [a + b, a - b]),
                   ]:
-        f = theano.function(inps, out, theano.Mode(linker='c'),
+        linker = theano.gof.CLinker(c_callable=True)
+        mode = theano.Mode(linker=linker)
+        f = theano.function(inps, out, mode=mode,
                             on_unused_input='ignore')
         theano.printing.debugprint(f, print_type=True)
         #filename = f.fn.thunks[0].filename  # with linker=vm
