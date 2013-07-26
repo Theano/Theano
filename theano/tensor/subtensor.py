@@ -16,7 +16,8 @@ from theano.gof import Apply, Constant, hashtype, Op, Type
 from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
-from theano.tensor.basic import clip, sum, exp, ARange, TensorType
+from theano.tensor.basic import (addbroadcast, clip, sum, exp,
+                                 ARange, TensorType)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType
 from theano import config
