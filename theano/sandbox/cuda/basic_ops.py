@@ -3461,5 +3461,3 @@ __global__ void kEye(float* a, int n, int m) {
     def c_code_cache_version(self):
         return (3,)
 gpu_eye = GpuEye(dtype='float32')
-
-
