@@ -18,12 +18,6 @@ from theano.gof import Apply, Constant, Op, Variable
 
 from theano.tensor import elemwise
 from theano.tensor.type import TensorType
-from theano.tensor.subtensor import (AdvancedIndexingError,
-                                     Subtensor, IncSubtensor,
-                                     inc_subtensor, set_subtensor,
-                                     AdvancedSubtensor1, AdvancedIncSubtensor1,
-                                     AdvancedSubtensor, AdvancedIncSubtensor,
-                                     advanced_subtensor1)
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all, maxsize
 from theano.gof.utils import hashtype, MethodNotDefined
@@ -573,7 +567,7 @@ def get_scalar_constant_value(v):
             ret = [[None]]
             v.owner.op.perform(v.owner, [const], ret)
             return ret[0][0]
-        if isinstance(v.owner.op, Subtensor) and v.ndim == 0:
+        if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
             # This condition depends on Subtensor always embedding constant
             # indices in the Op rather than making them inputs to the Apply
             # node.
@@ -1199,8 +1193,8 @@ class _tensor_py_operators:
         axis = None
         for i, arg in enumerate(args):
             try:
-                arg == numpy.newaxis or Subtensor.convert(arg)
-            except AdvancedIndexingError:
+                arg == numpy.newaxis or theano.tensor.subtensor.Subtensor.convert(arg)
+            except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:
                     axis = None
                     break
@@ -1220,7 +1214,7 @@ class _tensor_py_operators:
                         theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(arg, axis)
             else:
-                return AdvancedSubtensor()(self, *args)
+                return theano.tensor.subtensor.AdvancedSubtensor()(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
@@ -1244,11 +1238,12 @@ class _tensor_py_operators:
                 rval = view.__getitem__(tuple(new_args))
                 return rval
             else:
-                return Subtensor(args)(self, *Subtensor.collapse(args,
+                return theano.tensor.subtensor.Subtensor(args)(
+                    self, *theano.tensor.subtensor.Subtensor.collapse(args,
                     lambda entry: isinstance(entry, Variable)))
 
     def take(self, indices, axis=None, mode='raise'):
-        return take(self, indices, axis, mode)
+        return theano.tensor.subtensor.take(self, indices, axis, mode)
 
     # COPYING
     def copy(self):
@@ -3251,9 +3246,9 @@ class Alloc(gof.Op):
                 return False
             elif (not isinstance(client[0], basestring)
                     and isinstance(client[0].op, (
-                        IncSubtensor,
-                        AdvancedIncSubtensor1,
-                        AdvancedIncSubtensor,
+                        theano.tensor.subtensor.IncSubtensor,
+                        theano.tensor.subtensor.AdvancedIncSubtensor1,
+                        theano.tensor.subtensor.AdvancedIncSubtensor,
                         ))):
                 return False
         return True
@@ -3828,7 +3823,7 @@ class Split(Op):
         out_shapes = []
         for i in range(self.len_splits):
             temp = as_tensor_variable(shp_x)
-            temp = set_subtensor(temp[axis], splits[i])
+            temp = theano.tensor.subtensor.set_subtensor(temp[axis], splits[i])
             temp = [temp[i] for i in range(len(shp_x))]
             out_shapes.append(temp)
         return out_shapes
@@ -5083,38 +5078,6 @@ def inverse_permutation(perm):
             arange(perm.shape[-1], dtype=perm.dtype),
             perm,
             inverse=True)
-
-
-def take(a, indices, axis=None, mode='raise'):
-    a = as_tensor_variable(a)
-    indices = as_tensor_variable(indices)
-    # Reuse advanced_subtensor1 if indices is a vector
-    if indices.ndim == 1:
-        if mode == 'clip':
-            indices = clip(indices, 0, a.shape[axis] - 1)
-        elif mode == 'wrap':
-            indices = indices % a.shape[axis]
-        if axis is None:
-            return advanced_subtensor1(a.flatten(), indices)
-        elif axis == 0:
-            return advanced_subtensor1(a, indices)
-        else:
-            if axis < 0:
-                axis += a.ndim
-            assert axis >= 0
-            shuffle = range(a.ndim)
-            shuffle[0] = axis
-            shuffle[axis] = 0
-            return advanced_subtensor1(
-                a.dimshuffle(shuffle), indices).dimshuffle(shuffle)
-    if axis is None:
-        shape = indices.shape
-        ndim = indices.ndim
-    else:
-        shape = concatenate(
-                        [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
-        ndim = a.ndim + indices.ndim - 1
-    return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)
 
 
 #########################

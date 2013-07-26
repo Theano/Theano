@@ -24,7 +24,8 @@ from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
-from theano.tensor.subtensor import get_idx_list, get_canonical_form_slice
+from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
+                                     Subtensor, IncSubtensor, AdvancedIncSubtensor1)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -1218,13 +1219,13 @@ def local_track_shape_i(node):
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T.Subtensor])
+@gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
     # [a,b,c][0] -> a
     # [a,b,c][0:2] -> [a,b]
     # we can do this for constant indexes
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         # This optimization needs ShapeOpt and fgraph.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
@@ -1592,12 +1593,12 @@ def local_upcast_elemwise_constant_inputs(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([T.Subtensor])
+@gof.local_optimizer([Subtensor])
 def local_useless_subtensor(node):
     """
     Remove Subtensor if it takes the full input
     """
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         # This optimization needs ShapeOpt and fgraph.shape_feature
         if not hasattr(node.fgraph, 'shape_feature'):
             return
@@ -1678,7 +1679,7 @@ def local_subtensor_lift(node):
       when x,... are broadcasted scalar or not broadcasted at all
     rebroadcast(x)[idx] => rebroadcast(x[idx])
     """
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         u = node.inputs[0]
         if not u.owner or len(u.clients) > 1:
             return False
@@ -1737,7 +1738,7 @@ def local_subtensor_lift(node):
                 new_axis += [(j, u.broadcastable[i])]
                 j += 1
 
-            subt_x = T.Subtensor(node.op.idx_list)(u.owner.inputs[0])
+            subt_x = Subtensor(node.op.idx_list)(u.owner.inputs[0])
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
 
             return [rbcast_subt_x]
@@ -1886,9 +1887,9 @@ def local_subtensor_merge(node):
     expresses all slices in a canonical form, and then merges them together.
     """
 
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         u = node.inputs[0]
-        if u.owner and isinstance(u.owner.op, T.Subtensor):
+        if u.owner and isinstance(u.owner.op, Subtensor):
             # We can merge :)
             # x actual tensor on which we are picking slices
             x = u.owner.inputs[0]
@@ -1928,8 +1929,8 @@ def local_subtensor_merge(node):
             else:
                 merged_slices += slices1[pos_1:]
 
-            subtens = T.Subtensor(merged_slices)
-            sl_ins = T.Subtensor.collapse(
+            subtens = Subtensor(merged_slices)
+            sl_ins = Subtensor.collapse(
                 merged_slices,
                 lambda x: isinstance(x, T.Variable))
             out = subtens.make_node(x, *sl_ins).outputs[0]
@@ -1942,7 +1943,7 @@ def local_subtensor_merge(node):
 @gof.local_optimizer([])
 def local_subtensor_of_alloc(node):
     """alloc[x:y] -> alloc"""
-    if not isinstance(node.op, T.Subtensor):
+    if not isinstance(node.op, Subtensor):
         return False
     u = node.inputs[0]
     if u.owner is None:
@@ -2027,7 +2028,7 @@ def local_IncSubtensor_serialize(node):
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
         return i.owner \
-                and isinstance(i.owner.op, T.IncSubtensor) \
+                and isinstance(i.owner.op, IncSubtensor) \
                 and i.type == o_type \
                 and len(i.clients) == 1 \
                 and not i.owner.op.set_instead_of_inc
@@ -2061,7 +2062,7 @@ def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
     """
-    if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
+    if isinstance(node.op, IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(
        node.op.idx_list, inplace=True,
        set_instead_of_inc=node.op.set_instead_of_inc,
@@ -2078,7 +2079,7 @@ compile.optdb.register('inplace_setsubtensor',
 @gof.local_optimizer([None])
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
-    if isinstance(node.op, T.AdvancedIncSubtensor1) and not node.op.inplace:
+    if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
         new_op = node.op.__class__(
             inplace=True, set_instead_of_inc=node.op.set_instead_of_inc)
         new_node = new_op(*node.inputs)
@@ -2098,7 +2099,7 @@ def local_incsubtensor_of_allocs(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
-    if isinstance(node.op, T.IncSubtensor) and not node.op.set_instead_of_inc:
+    if isinstance(node.op, IncSubtensor) and not node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
@@ -2123,7 +2124,7 @@ def local_setsubtensor_of_allocs(node):
 
     when x is constant or alloc.
     """
-    if isinstance(node.op, T.IncSubtensor) and node.op.set_instead_of_inc:
+    if isinstance(node.op, IncSubtensor) and node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
         replace_x = None
