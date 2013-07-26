@@ -2942,7 +2942,7 @@ class GpuJoin(tensor.Join, GpuOp):
         out[0] = rval
 
     def c_code(self, node, name, inputs, out_, sub):
-        if node.inputs[0].data not in [0, 1]:
+        if theano.tensor.extract_constant(node.inputs[0]) not in [0, 1]:
             raise NotImplementedError()
             # only works for the first two axis
         if len(inputs) != 3:
