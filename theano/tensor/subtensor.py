@@ -12,7 +12,7 @@ import theano
 from theano.compat.six import StringIO
 from theano.gradient import DisconnectedType
 from theano import gof
-from theano.gof import Apply, Constant, hashtype, Op, Type
+from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
 from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
