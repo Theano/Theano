@@ -3265,8 +3265,8 @@ alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
 
-def tensor_copy(a):
-    """Create a duplicate of `a` (with duplicated storage)"""
+"""Create a duplicate of `a` (with duplicated storage)"""
+tensor_copy = elemwise.Elemwise(scal.identity)
 pprint.assign(tensor_copy, printing.IgnorePrinter())
 
 
@@ -5564,8 +5564,7 @@ class Join(Op):
         return [tuple(out_shapes)]
 
 
-def join(axis, *tensors):
-    """
+"""
     Convenience function to concatenate `TensorType`s along the given axis.
 
     :Parameters:
@@ -5588,6 +5587,7 @@ def join(axis, *tensors):
     be joined.
 
     """
+join = Join()
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
               printing.FunctionPrinter('join'))
