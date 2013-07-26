@@ -2,6 +2,7 @@ import numpy
 
 import theano
 from theano.gof import hashtype, Type, Variable
+from theano.gof.python25 import any
 from theano import scalar as scal
 
 
@@ -399,7 +400,7 @@ class TensorType(Type):
             if b in named_broadcastable:
                 bcast = named_broadcastable[b]
             else:
-                if python_any(b):
+                if any(b):
                     bcast = str(b)
                 else:
                     bcast = '%iD' % len(b)
