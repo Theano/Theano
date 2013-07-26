@@ -24,6 +24,7 @@ from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
+from theano.tensor.subtensor import get_idx_list, get_canonical_form_slice
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -1764,8 +1765,8 @@ def merge_two_slices(slice1, len1, slice2, len2):
     if type(slice1) is not slice:
         raise ValueError(('First provided slice should actually be of type'
                          'slice and not an index !'), slice1)
-    sl1, reverse1 = T.get_canonical_form_slice(slice1, len1)
-    sl2, reverse2 = T.get_canonical_form_slice(slice2, len2)
+    sl1, reverse1 = get_canonical_form_slice(slice1, len1)
+    sl2, reverse2 = get_canonical_form_slice(slice2, len2)
 
     if type(sl2) is not slice:
         if reverse1 is None:
@@ -1892,8 +1893,8 @@ def local_subtensor_merge(node):
             # x actual tensor on which we are picking slices
             x = u.owner.inputs[0]
             # slices of the first applied subtensor
-            slices1 = T.get_idx_list(u.owner.inputs, u.owner.op.idx_list)
-            slices2 = T.get_idx_list(node.inputs, node.op.idx_list)
+            slices1 = get_idx_list(u.owner.inputs, u.owner.op.idx_list)
+            slices2 = get_idx_list(node.inputs, node.op.idx_list)
             # Get the shapes of the vectors !
             try:
                 # try not to introduce new shape into the graph
@@ -1948,7 +1949,7 @@ def local_subtensor_of_alloc(node):
         return False
     if not isinstance(u.owner.op, T.Alloc):
         return False
-    slices = T.get_idx_list(node.inputs, node.op.idx_list)
+    slices = get_idx_list(node.inputs, node.op.idx_list)
     val = u.owner.inputs[0]
     dims = u.owner.inputs[1:]
     assert len(slices) <= len(dims)
@@ -1972,7 +1973,7 @@ def local_subtensor_of_alloc(node):
             else:
                 val_slices.append(sl)
 
-        csl, _ = T.get_canonical_form_slice(sl, dim)
+        csl, _ = get_canonical_form_slice(sl, dim)
         if type(csl) is not slice:
             # That dimension is removed.
             pass

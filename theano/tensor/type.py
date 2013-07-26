@@ -1,7 +1,8 @@
 import numpy
 
 import theano
-from theano.gof import hashtype, Type, Variable
+from theano import config
+from theano.gof import Constant, hashtype, Type, Variable
 from theano.gof.python25 import any
 from theano import scalar as scal
 
@@ -297,7 +298,7 @@ class TensorType(Type):
                     a = a.reshape(1)
                     b = b.reshape(1)
 
-                cmp = _allclose(a, b, rtol=rtol, atol=atol)
+                cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
                 if cmp:
                     # Numpy claims they are close, this is good enough for us.
                     return True
