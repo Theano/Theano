@@ -78,4 +78,4 @@ from theano.gof.type import \
     Type, Generic, generic
 
 from theano.gof.utils import \
-    object2, MethodNotDefined
+    hashtype, object2, MethodNotDefined

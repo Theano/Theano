@@ -22,6 +22,11 @@ def hashgen():
 hashgen.next = 0
 
 
+def hashtype(self):
+    t = type(self)
+    return hash(t.__name__) ^ hash(t.__module__)
+
+
 class MethodNotDefined(Exception):
     """
     To be raised by functions defined as part of an interface.
