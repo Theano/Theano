@@ -2034,7 +2034,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert numpy.all(val == data[3:6, 2:6, 1:7][1])
         assert len([n for n in fun.maker.fgraph.toposort()
-                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
+                    if isinstance(n.op, Subtensor)]) == nops
 
         # test 2)
         y = x[2, 3][1]
@@ -2042,7 +2042,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert numpy.all(val == data[2, 3][1])
         assert len([n for n in fun.maker.fgraph.toposort()
-                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
+                    if isinstance(n.op, Subtensor)]) == nops
 
         # test 3)
         y = x[3:6, 2, 1:7][1]
@@ -2050,7 +2050,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         val = fun(data)
         assert numpy.all(val == data[3:6, 2, 1:7][1])
         assert len([n for n in fun.maker.fgraph.toposort()
-                    if isinstance(n.op, tensor.basic.Subtensor)]) == nops
+                    if isinstance(n.op, Subtensor)]) == nops
 
     def test_scalar6(self):
         # General case with one slice and one index

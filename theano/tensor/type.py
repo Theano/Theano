@@ -1,3 +1,6 @@
+import logging
+_logger = logging.getLogger("theano.tensor.type")
+
 import numpy
 
 import theano
