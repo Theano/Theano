@@ -2667,35 +2667,35 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
              return;
         }      
 
-	void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
-	{
-     		const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
-     		const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
-     		const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
-     		const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
+    void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
+    {
+            const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
+            const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
+            const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
+            const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
 
-     		unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
-     		unsigned int numcolsX = shapeX[1];
-     		unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-     		unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
+            unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
+            unsigned int numcolsX = shapeX[1];
+            unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+            unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
 
-     		dim3 n_blocks(num_blocks);
-     		dim3 n_threads(num_threads_per_block);
-     		long *d_indices_arr = NULL;
+            dim3 n_blocks(num_blocks);
+            dim3 n_threads(num_threads_per_block);
+            long *d_indices_arr = NULL;
 
-     		PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
+            PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
 
-     		d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
-     		assert(d_indices_arr);
+            d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
+            assert(d_indices_arr);
 
-     		cudaError_t err = cudaMemcpy(d_indices_arr,
+            cudaError_t err = cudaMemcpy(d_indices_arr,
                                              PyArray_DATA(cpu_indices_arr),
                                              PyArray_NBYTES(cpu_indices_arr),
                                              cudaMemcpyHostToDevice);
 
-     		assert(err == cudaSuccess);
+            assert(err == cudaSuccess);
 
-     		k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
+            k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
                                                            shapeX[1],
                                                            strX[0],
                                                            strX[1],
@@ -2708,10 +2708,11 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                                                            d_indices_arr,
                                                            PyArray_SIZE(indices_arr)
                                                           );
-     		device_free(d_indices_arr);
-     		Py_XDECREF(cpu_indices_arr);
-     		return;
-	}
+            device_free(d_indices_arr);
+            Py_XDECREF(cpu_indices_arr);
+            return;
+    }
+
 
         """ %locals()
 
@@ -2940,8 +2941,19 @@ class GpuJoin(tensor.Join, GpuOp):
             curpos += curlen
 
         out[0] = rval
-    
+
     def c_code(self, node, name, inputs, out_, sub):
+        if len(inputs) != 3:
+            # only works for two arrays
+            raise NotImplementedError()
+        if any([i.ndim != 2 for i in node.inputs[1:]]):
+            # only works for type T.matrix
+            raise NotImplementedError()
+        if node.inputs[0].data !=0:
+            # only works for axis==0
+            print inputs[0]
+            raise NotImplementedError()            
+
         input_1 = inputs[1]
         input_2 = inputs[2]
         axis = inputs[0]
@@ -2949,71 +2961,73 @@ class GpuJoin(tensor.Join, GpuOp):
         out = out_[0]
 
         str = """
-
-        int nd = %(input_1)s->nd;
-        int dims[nd];
+        int nd = CudaNdarray_NDIM(%(input_1)s);
+        int dims_array1[nd];
+        int errorcode;
         for(int i = 0; i<nd; i+=1){
-            dims[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
+            dims_array1[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
         }
 
-        nd = %(input_2)s->nd;
-        int dims2[nd];
+        nd = CudaNdarray_NDIM(%(input_2)s);
+        int dims_array2[nd];
         for(int i = 0; i<nd; i+=1){
-            dims2[i] = CudaNdarray_HOST_DIMS(%(input_2)s)[i];
+            dims_array2[i] = CudaNdarray_HOST_DIMS(%(input_2)s)[i];
         }
 
-        int dims_out[%(input_1)s->nd];
-        dims_out[0] = dims[0]+ dims2[0];
-        dims_out[1] = dims[1];
+        int dims_out[nd];
+        dims_out[0] = dims_array1[0] + dims_array2[0];
+        dims_out[1] = dims_array1[1];
 
-        Py_XDECREF(%(out)s);
-        %(out)s = (CudaNdarray*)CudaNdarray_New();
-        if (!%(out)s)
+        if (CudaNdarray_prep_output(& %(out)s, 2, dims_out))
         {
-           // exception already set
             %(fail)s;
         }
-        if (CudaNdarray_alloc_contiguous(%(out)s, nd, dims_out))
-        {
-            // exception already set
+        PyObject *slice;
+        PyObject *out_sub;
+        PyObject *start, *end, *step;
+
+        start = PyInt_FromLong(0);
+        end = PyInt_FromLong(dims_array1[0]);
+        step = PyInt_FromLong(1);
+        slice = PySlice_New(start, end, step);
+        out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice);
+        errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(input_1)s);
+        if((slice == NULL) || (out_sub == NULL) || (errorcode != 0)){
+            Py_XDECREF(slice);
+            Py_XDECREF(out_sub);
+            Py_XDECREF(start);
+            Py_XDECREF(end);
+            Py_XDECREF(step);
             Py_XDECREF(%(out)s);
-            %(out)s = NULL;
             %(fail)s;
         }
 
-        PyObject *input_obj, *output_obj, *row_input, *row_output;
-        PyObject *input_rowind_obj, *output_rowind_obj;
-
-        for(int i = 0; i<dims[0]; i+=1){
-            input_rowind_obj = PyInt_FromLong(i);
-            output_rowind_obj = PyInt_FromLong(i);
-            row_input = CudaNdarray_Subscript((PyObject*)%(input_1)s, input_rowind_obj);
-            row_output = CudaNdarray_Subscript((PyObject*)%(out)s, output_rowind_obj);
-            if(CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)row_output,(CudaNdarray*)row_input))
-            {
-                // exception already set
-                Py_XDECREF(%(out)s);
-                %(out)s = NULL;
-                %(fail)s;
-            }
+        start = end;
+        end = PyInt_FromLong(PyInt_AsLong(start) + dims_array2[0]);
+        step = PyInt_FromLong(1);
+        slice = PySlice_New(start, end, step);
+        out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice);
+        errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(input_2)s);
+        if((slice == NULL) || (out_sub == NULL) || (errorcode != 0)){
+            Py_XDECREF(slice);
+            Py_XDECREF(out_sub);
+            Py_XDECREF(start);
+            Py_XDECREF(end);
+            Py_XDECREF(step);
+            Py_XDECREF(%(out)s);
+            %(fail)s;
         }
 
-        for(int i = 0; i<dims[0]; i+=1){
-            input_rowind_obj = PyInt_FromLong(i);
-            output_rowind_obj = PyInt_FromLong(i+dims[0]);
-            row_input = CudaNdarray_Subscript((PyObject*)%(input_2)s, input_rowind_obj);
-            row_output = CudaNdarray_Subscript((PyObject*)%(out)s, output_rowind_obj);
-            if(CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)row_output,(CudaNdarray*)row_input))
-            {
-                // exception already set
-                Py_XDECREF(%(out)s);
-                %(out)s = NULL;
-                %(fail)s;
-            }
-        }
-        """ % locals()
-        
+        Py_XDECREF(slice);
+        Py_XDECREF(out_sub);
+        Py_XDECREF(start);
+        Py_XDECREF(end);
+        Py_XDECREF(step);
+
+        """% locals()
+
         return str
+
 gpu_join = GpuJoin()
 
 
@@ -3448,3 +3462,5 @@ __global__ void kEye(float* a, int n, int m) {
     def c_code_cache_version(self):
         return (3,)
 gpu_eye = GpuEye(dtype='float32')
+
+
