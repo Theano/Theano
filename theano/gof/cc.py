@@ -1608,7 +1608,7 @@ class CLinker(link.Linker):
                 mod.add_init_code(init_code_block)
             self._mod = mod
         return self._mod
-
+s
     def cthunk_factory(self, error_storage, in_storage, out_storage,
                        storage_map=None, keep_lock=False):
         """WRITEME
