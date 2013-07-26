@@ -1678,8 +1678,24 @@ class CLinker(link.Linker):
                 in utils.uniq(self.inputs)]
         for var, name in zip(utils.uniq(self.inputs), args):
             dtype = var.type.dtype_specs()[2]
+            ndim = var.ndim
+            shp = range(3, 3+ndim)
+            for idx in range(var.ndim):
+                if var.type.broadcastable[idx]:
+                    shp[idx] = 1
+            tot = numpy.prod(shp)
+            shp_str = ",".join([str(s) for s in shp])
             in_init += """
-            PyObject* %(name)s_value = PyArray_Arange(0., 10., 1., %(dtype)s);
+            PyObject* %(name)s_data = PyArray_Arange(0., %(tot)s, 1.,
+                                                     %(dtype)s);
+            npy_intp %(name)s_dims[%(ndim)s] = {%(shp_str)s};
+            PyArray_Dims %(name)s_newshape;
+            %(name)s_newshape.ptr = %(name)s_dims;
+            %(name)s_newshape.len = %(ndim)s;
+            PyObject* %(name)s_value = PyArray_Newshape(
+                (PyArrayObject*) %(name)s_data,
+                &%(name)s_newshape,
+                PyArray_CORDER);
             PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
             %(name)s_value = NULL;
             """ % locals()
