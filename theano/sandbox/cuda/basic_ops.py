@@ -2163,7 +2163,7 @@ class GpuCAReduce(GpuOp):
                                              "A[i0 * sA0 + blockIdx.x * sA1 + i2 * sA2 + i3 * sA3]",
                                              {})
             reduce_init = self._assign_init("A[blockIdx.x * sA1]")
-            print >> sio, """
+            print >> sio, """join
             static __global__ void kernel_reduce_1011_%(nodename)s(
                     const unsigned int d0,
                     const unsigned int d1,
@@ -2975,7 +2975,7 @@ class GpuJoin(tensor.Join, GpuOp):
             shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
             if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
             {
-                //(fail)s; //deactivated, because this causes segfault
+                // compilation error when `fail`-string is added
             }
         }
             """ % locals()
