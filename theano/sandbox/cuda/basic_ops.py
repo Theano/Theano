@@ -2942,6 +2942,7 @@ class GpuJoin(tensor.Join, GpuOp):
         out[0] = rval
 
     def c_code(self, node, name, inputs, out_, sub):
+        if theano.tensor.extract_constant(node.inputs[0]) not in [0, 1]:
         axis = inputs[0]
         n_cndas = len(inputs[1:])
         input_1 = inputs[1]
