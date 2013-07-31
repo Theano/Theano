@@ -429,6 +429,9 @@ class CudaFromGpu(Op):
         }
         """ % {'inp': inputs[0], 'out': output[0], 'fail': sub['fail']}
 
+    def c_code_cache_version(self):
+        return (0,)
+
 
 cuda_from_gpu = CudaFromGpu()
 
