@@ -196,6 +196,8 @@ gpu_from_host = GpuFromHost()
 
 
 class GpuFromCuda(Op):
+    view_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -334,6 +336,8 @@ gpu_from_cuda = GpuFromCuda()
 
 
 class CudaFromGpu(Op):
+    view_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
