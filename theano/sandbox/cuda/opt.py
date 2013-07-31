@@ -127,13 +127,13 @@ class InputToGpuOptimizer(Optimizer):
     def apply(self, fgraph):
         for input in fgraph.inputs:
             if isinstance(input.type, CudaNdarrayType):
-                return
+                continue
 
             # This happen frequently as we do 2 pass of the gpu optimizations
             if (len(input.clients) == 1 and
                 (input.clients[0][0] == 'output' or
                  input.clients[0][0].op == gpu_from_host)):
-                return
+                continue
 
             try:
                 new_input = host_from_gpu(gpu_from_host(input))
