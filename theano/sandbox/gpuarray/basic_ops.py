@@ -341,7 +341,7 @@ class CudaFromGpu(Op):
         return hash(type(self))
 
     def __str__(self):
-        return 'GpuFromCuda'
+        return 'CudaFromGpu'
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdArrayType
