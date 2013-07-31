@@ -461,7 +461,7 @@ class GpuAlloc(Op):
                 raise TypeError('Shape arguments must be integers', s)
             try:
                 const_shp = tensor.get_constant_value(s)
-            except TypeError:
+            except tensor.NotConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = GpuArrayType(dtype=v.dtype, broadcastable=bcast)
