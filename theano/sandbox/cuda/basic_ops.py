@@ -2942,6 +2942,10 @@ class GpuJoin(tensor.Join, GpuOp):
         out[0] = rval
 
     def c_code(self, node, name, inputs, out_, sub):
+        nd = node.inputs[1].ndim
+        if not all(i.ndim == nd for i in node.inputs[2:]):
+            # all inputs ndarray need to have the same number of dimensions
+            raise NotImplementedError()
         axis = inputs[0]
         n_cndas = len(inputs[1:])
         input_1 = inputs[1]
@@ -2951,38 +2955,36 @@ class GpuJoin(tensor.Join, GpuOp):
 
         # getting the shapes of all the involved tensors (input[0]+out)
         str = """
-        int axis = PyInt_AsLong((PyObject*)%(axis)s);        
-        int nd = CudaNdarray_NDIM(%(input_1)s);
-        int shape_%(input_1)s[nd];
-        int shape_out[nd];
+        int axis = PyInt_AsLong((PyObject*)%(axis)s);
+        int nd = %(nd)s;
+        int shape_%(input_1)s[%(nd)s];
+        int shape_out[%(nd)s];
+        int width_sum = 0;
 
         for(int i = 0; i<nd; i+=1)
         {
             shape_%(input_1)s[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
             shape_out[i] = shape_%(input_1)s[i];
         }
-        """ % locals()        
+        """ % locals()
 
         # getting the shapes of all the involved tensors (input[1:])
-        # + check: all input tensors have same shape as final out 
+        # + check: all input tensors have same shape as final out
         # execept for "axis" dimension
         for i, cdna in enumerate(inputs[2:]):
             str += """
-        nd = CudaNdarray_NDIM(%(cdna)s);
-        int shape_%(cdna)s[nd];
-        for(int i = 0; i<nd; i+=1)
-        {
-            shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
-            if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
+            int shape_%(cdna)s[%(nd)s];
+            for(int i = 0; i<nd; i+=1)
             {
-                // compilation error when `fail`-string is added
+                shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
+                if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
+                {
+                    // compilation error when `fail`-string is added
+                }
             }
-        }
             """ % locals()
 
-        # computing the new shape for the out tensors             
-        str += """
-        int width_sum = 0;\n""" % locals()
+        # computing the new shape for the out tensors
 
 
         for i, cdna in enumerate(inputs[1:]):
@@ -3000,58 +3002,59 @@ class GpuJoin(tensor.Join, GpuOp):
         step = NULL;
         int errorcode;
         int sum;
-        sum =0;
+        sum = 0;
+        start = NULL;
 
         PyObject *slice_tuple;
-        PyObject *full_slice;
         PyObject *section_slice;
+        PyObject *full_slice;
+        full_slice = PySlice_New(NULL, NULL, NULL);
 
         """ % locals()
 
         # start copying the data into the new out tensors
         for i, cdna in enumerate(inputs[1:]):
             str += """
-        sum += shape_%(cdna)s[axis];
-        stop = PyInt_FromLong(sum);
-        slice_tuple = PyTuple_New(nd);
-        full_slice = PySlice_New(NULL, NULL, NULL);
-        section_slice = PySlice_New(start, stop, step);
-        for(int i=0; i<nd; i++)
-        {
-            if(i!=axis)
+            sum += shape_%(cdna)s[axis];
+            Py_XDECREF(stop);
+            stop = PyInt_FromLong(sum);
+            slice_tuple = PyTuple_New(nd);
+            section_slice = PySlice_New(start, stop, step);
+            for(int i=0; i<nd; i++)
             {
-                Py_INCREF(full_slice);
-                PyTuple_SetItem(slice_tuple, i, full_slice);
+                if(i!=axis)
+                {
+                    Py_INCREF(full_slice);
+                    PyTuple_SetItem(slice_tuple, i, full_slice);
+                }
+                else
+                {
+                    Py_INCREF(section_slice);
+                    PyTuple_SetItem(slice_tuple, i, section_slice);
+                }
             }
-            else if(i==axis)
+            out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice_tuple);
+            errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(cdna)s);
+            if((full_slice == NULL) || (section_slice == NULL) || (out_sub == NULL) || (errorcode != 0))
             {
-                Py_INCREF(section_slice);  
-                PyTuple_SetItem(slice_tuple, i, section_slice);
+                Py_XDECREF(start);
+                Py_XDECREF(stop);
+                Py_XDECREF(step);
+                Py_XDECREF(slice_tuple);
+                Py_XDECREF(out_sub);
+                Py_XDECREF(%(out)s);
+                %(fail)s;
             }
-        }
-
-        out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice_tuple);
-        errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(cdna)s);
-        if((full_slice == NULL) || (section_slice == NULL) || (out_sub == NULL) || (errorcode != 0))
-        {
-            Py_XDECREF(full_slice);
-            Py_XDECREF(section_slice);
-            Py_XDECREF(slice_tuple);
             Py_XDECREF(out_sub);
-            Py_XDECREF(%(out)s);
-            %(fail)s;
-        }
-        Py_XDECREF(full_slice);
-        Py_XDECREF(section_slice);
-        Py_XDECREF(out_sub);
-        Py_XDECREF(slice_tuple);
-        start = stop;
+            Py_XDECREF(slice_tuple);
+            Py_XDECREF(start);
+            start = stop;
             """ % locals()
 
             str+="""
-        Py_XDECREF(start);
-        Py_XDECREF(stop);
-        Py_XDECREF(step);"""
+            Py_XDECREF(start);
+            Py_XDECREF(stop);
+            Py_XDECREF(step);"""
         return str
 
 gpu_join = GpuJoin()
