@@ -250,11 +250,13 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     return GpuArraySharedVariable(type=type, value=deviceval, name=name,
                                   strict=strict)
 
+theano.compile.register_view_op_c_code(GpuArrayType, """
+    Py_XDECREF(%(oname)s);
+    %(oname)s = %(iname)s;
+    Py_XINCREF(%(oname)s);
+""", version=(0,))
 
-theano.compile.mode.register_OutputGuard_c_code(GpuArrayType)
-
-
-theano.compile.function_module.register_DeepCopyOp_c_code(GpuArrayType, """
+theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
     %(oname)s = new_GpuArray(GpuArrayType, GpuArray_default_context);
     if (!%(oname)s) { %(fail)s }
@@ -269,4 +271,4 @@ theano.compile.function_module.register_DeepCopyOp_c_code(GpuArrayType, """
         PyErr_SetString(PyExc_RuntimeError, "Error during copy");
         %(fail)s
     }
-    """)
+""", version=(0,))
