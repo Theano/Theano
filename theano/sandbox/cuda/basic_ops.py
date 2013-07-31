@@ -2974,8 +2974,8 @@ class GpuJoin(tensor.Join, GpuOp):
         # + check: all input tensors have same shape as final out
         # execept for "axis" dimension
         # shape_%(cdna)s[nd] is initialized before, to prevent following
-        # error: jump to label ‘__label_9’ crosses initialization of 
-        # ‘shape_%(cdna)s[nd]’
+        # error: jump to label __label_9 crosses initialization of 
+        # shape_%(cdna)s[nd]
         for i, cdna in enumerate(inputs[2:]):
             str += """
             int shape_%(cdna)s[nd];
