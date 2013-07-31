@@ -49,7 +49,7 @@ class HostFromGpu(Op):
     def c_code(self, node, name, inputs, outputs, sub):
         return """
         GpuArray %(name)s_ga_s;
-        GpuArray *%(name)s_ga;
+        GpuArray *%(name)s_ga = NULL;
         int %(name)serr;
         PyArray_Descr *%(name)s_dtype;
         if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
@@ -130,7 +130,7 @@ class GpuFromHost(Op):
 
     def grad(self, inputs, grads):
         gz, = grads
-        return [host_from_gpu(gz)]
+        return [host_from_gpu(as_gpuarray_variable(gz))]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
@@ -153,11 +153,14 @@ class GpuFromHost(Op):
         }
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL) {
+            // PyArray_GETCONTIGUOUS sets an error message if it fails
             %(fail)s
         }
         %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
+            // new_GpuArray calls __new__ which will set an error message
+            // if it returns NULL.
             %(fail)s
         }
         %(name)serr = GpuArray_empty(&%(out)s->ga,
