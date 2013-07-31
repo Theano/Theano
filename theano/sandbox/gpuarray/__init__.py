@@ -32,7 +32,6 @@ if pygpu:
         if (config.device.startswith('cuda') or
             config.device.startswith('opencl')):
             init_dev(config.device)
-            # TODO add optimization tags here (when we will have some)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'inplace')
