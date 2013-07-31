@@ -62,6 +62,7 @@ class HostFromGpu(Op):
             %(name)s_ga = &%(inp)s->ga;
         }
         %(name)s_dtype = typecode_to_dtype(%(inp)s->ga.typecode);
+        Py_XDECREF(%(out)s);
         // PyArray_Empty below steals a reference to the dtype we pass it
         // so we need an extra one to spare.
         Py_INCREF(%(name)s_dtype);
@@ -156,6 +157,7 @@ class GpuFromHost(Op):
             // PyArray_GETCONTIGUOUS sets an error message if it fails
             %(fail)s
         }
+        Py_XDECREF(%(out)s);
         %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
