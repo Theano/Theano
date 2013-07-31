@@ -437,9 +437,14 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(Op):
-
     def __str__(self):
         return 'GpuAlloc'
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __eq__(self, other):
+        return type(self) == type(other)
 
     def make_node(self, value, *shape):
         v = as_gpuarray_variable(value)
