@@ -26,10 +26,6 @@ optdb.register('gpuarray_opt', gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
                'gpuarray')
 
-optdb.register('gpuarray_after_fusion', ProxyDB(gpu_seqopt),
-               optdb.__position__.get('elemwise_fusion', 71) + 1,
-               'gpuarray')
-
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
