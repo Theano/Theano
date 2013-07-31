@@ -388,7 +388,7 @@ def register_mode(name, mode):
 def register_OutputGuard_c_code(type):
     """Deprecated function calling register_view_op_c_code"""
     warnings.warn("register_OutputGuard_c_code(type) is deprecated, "
-            "theano.compile.register_view_op_c_code(type, code) instead.",
+            "theano.compile.register_view_op_c_code(type, code, version=()) instead.",
             stacklevel=2)
     register_view_op_c_code(
             type,
