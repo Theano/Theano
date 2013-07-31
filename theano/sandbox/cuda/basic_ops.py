@@ -2957,9 +2957,11 @@ class GpuJoin(tensor.Join, GpuOp):
         str = """
         int axis = PyInt_AsLong((PyObject*)%(axis)s);
         int nd = %(nd)s;
-        int shape_%(input_1)s[%(nd)s];
-        int shape_out[%(nd)s];
+        int shape_%(input_1)s[nd];
+        int shape_out[nd];
         int width_sum = 0;
+        int errorcode;
+        int sum;
 
         for(int i = 0; i<nd; i+=1)
         {
@@ -2971,47 +2973,49 @@ class GpuJoin(tensor.Join, GpuOp):
         # getting the shapes of all the involved tensors (input[1:])
         # + check: all input tensors have same shape as final out
         # execept for "axis" dimension
+        # shape_%(cdna)s[nd] is initialized before, to prevent following
+        # error: jump to label ‘__label_9’ crosses initialization of 
+        # ‘shape_%(cdna)s[nd]’
         for i, cdna in enumerate(inputs[2:]):
             str += """
-            int shape_%(cdna)s[%(nd)s];
+            int shape_%(cdna)s[nd];
+            """ % locals()
+        for i, cdna in enumerate(inputs[2:]):
+            str += """
             for(int i = 0; i<nd; i+=1)
             {
                 shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
                 if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
                 {
                     // compilation error when `fail`-string is added
+                    %(fail)s;
                 }
             }
             """ % locals()
 
         # computing the new shape for the out tensors
-
-
         for i, cdna in enumerate(inputs[1:]):
             str += "\t\twidth_sum += CudaNdarray_HOST_DIMS(%(cdna)s)[axis];\n" % locals()
         str += "\t\tshape_out[axis] = width_sum;\n"
 
+        # preparing the output array + init of the necessary variables
+        # for the data transfer
         str += """
         if (CudaNdarray_prep_output(&%(out)s, nd, shape_out))
         {
             %(fail)s;
         }
 
-        PyObject *out_sub;
-        PyObject *start, *stop, *step;
-        step = NULL;
-        int errorcode;
-        int sum;
-        sum = 0;
-        start = NULL;
-
         PyObject *slice_tuple;
         PyObject *section_slice;
         PyObject *full_slice;
         full_slice = PySlice_New(NULL, NULL, NULL);
-
+        PyObject *out_sub;
+        PyObject *start, *stop, *step;
+        step = NULL;
+        sum = 0;
+        start = NULL;
         """ % locals()
-
         # start copying the data into the new out tensors
         for i, cdna in enumerate(inputs[1:]):
             str += """
