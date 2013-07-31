@@ -45,12 +45,12 @@ class InputToGpuOptimizer(Optimizer):
     def apply(self, fgraph):
         for input in fgraph.inputs:
             if isinstance(input.type, GpuArrayType):
-                return
-            
+                continue
+
             if (len(input.clients) == 1 and
                 (input.clients[0][0] == 'output' or
                  input.clients[0][0].op == gpu_from_host)):
-                return
+                continue
 
             try:
                 new_input = host_from_gpu(gpu_from_host(input))
