@@ -126,6 +126,15 @@ class GpuArrayType(Type):
     def __str__(self):
         return "GpuArray<%s>" % (self.dtype,)
 
+    def get_shape_info(self, obj):
+        return obj.shape
+
+    def get_size(self, shape_info):
+        if shape_info:
+            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+        else:
+            return numpy.dtype(self.dtype).itemsize
+
     def c_declare(self, name, sub):
         return "GpuArrayObject *%s;" % (name,)
 
