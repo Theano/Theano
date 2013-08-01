@@ -4307,7 +4307,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
         """
-        Test that the right broadcastable flags get set for a  join
+        Test that the right broadcastable flags get set for a join
         with many inputs and many input dimensions.
         """
         a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 0])()
