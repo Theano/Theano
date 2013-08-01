@@ -19,7 +19,7 @@ from theano import scalar as scal
 from theano.tensor.basic import (addbroadcast, clip, sum, exp,
                                  ARange, TensorType)
 from theano.tensor.elemwise import DimShuffle
-from theano.tensor.type_other import NoneConst, SliceType
+from theano.tensor.type_other import NoneConst, SliceType, make_slice
 from theano import config
 
 inplace_increment = None
@@ -1768,15 +1768,6 @@ def as_index_variable(idx):
     if idx.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
     return idx
-
-
-def as_int_none_variable(x):
-    if x is None:
-        return NoneConst
-    x = theano.tensor.as_tensor_variable(x, ndim=0)
-    if x.type.dtype[:3] not in ('int', 'uin'):
-        raise TypeError('index must be integers')
-    return x
 
 
 def adv_index_broadcastable_pattern(a, idx):

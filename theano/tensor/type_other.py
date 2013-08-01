@@ -5,6 +5,15 @@ from theano.gof import Apply, Constant, Op, Type
 from theano.gradient import DisconnectedType
 
 
+def as_int_none_variable(x):
+    if x is None:
+        return NoneConst
+    x = theano.tensor.as_tensor_variable(x, ndim=0)
+    if x.type.dtype[:3] not in ('int', 'uin'):
+        raise TypeError('index must be integers')
+    return x
+
+
 class MakeSlice(Op):
     def make_node(self, slc):
         return Apply(self,
