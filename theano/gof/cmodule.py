@@ -2071,6 +2071,30 @@ class GCC_compiler(Compiler):
 
         :return: a tuple(cpp_filename, out_filename, command line)
         """
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
+
+        include_dirs = std_include_dirs() + include_dirs
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
+
+        # sometimes, the linker cannot find -lpython so we need to tell it
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
+
         cpp_filename = os.path.join(location, code_filename)
         if shared:
             assert out_filename is None
@@ -2084,7 +2108,6 @@ class GCC_compiler(Compiler):
             if out_filename is None:
                 out_filename = os.path.join(location, module_name)
             else:
-                module_name = out_filename
                 out_filename = os.path.join(location, out_filename)
             _logger.debug('Generating exec %s', out_filename)
             cmd = ['g++', '-g']
@@ -2157,30 +2180,6 @@ class GCC_compiler(Compiler):
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
 
-        if include_dirs is None:
-            include_dirs = []
-        if lib_dirs is None:
-            lib_dirs = []
-        if libs is None:
-            libs = []
-        if preargs is None:
-            preargs = []
-        else:
-            preargs = list(preargs)
-
-        include_dirs = include_dirs + std_include_dirs()
-        libs = std_libs() + libs
-        lib_dirs = std_lib_dirs() + lib_dirs
-
-        # sometimes, the linker cannot find -lpython so we need to tell it
-        # explicitly where it is located
-        # this returns somepath/lib/python2.x
-        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
-                                                        standard_lib=1)
-        python_lib = os.path.dirname(python_lib)
-        if python_lib not in lib_dirs:
-            lib_dirs.append(python_lib)
-
         cpp_filename, out_filename, cmd = GCC_compiler.compile_command(
             module_name,
             location,
@@ -2190,7 +2189,6 @@ class GCC_compiler(Compiler):
             shared,
             code_filename,
             out_filename)
-
 
         cppfile = open(cpp_filename, 'w')
 
