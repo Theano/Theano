@@ -1503,9 +1503,11 @@ class CLinker(link.Linker):
                         mod_exec.add_include(header)
                     mod_exec.add_include(filename_h)
                     mod_exec.add_support_code(main)
-                    # create an executable.
+
+                    # Put the command line in the header code so that
+                    # other people know how to recompile the shared lib
                     mod_exec.add_header_code(
-                        "//command line used to compile: \n" +
+                        "//command line used to compile the shared lib: \n" +
                         "//" + ' '.join(
                         c_compiler.compile_command(
                             module_name=mod.code_hash,
@@ -1514,9 +1516,29 @@ class CLinker(link.Linker):
                             lib_dirs=self.lib_dirs(),
                             libs=libs,
                             preargs=preargs)[2]))
-                    src_code = mod_exec.code()
+
+                    # Make the executable link to the shared lib.
                     preargs.append(os.path.join(location, mod.code_hash + "." +
                                    cmodule.get_lib_extension()))
+
+                    # Put the command line in the header code so that
+                    # other people know how to recompile the executable
+                    mod_exec.add_header_code(
+                        "//command line used to compile the executable: \n" +
+                        "//" + ' '.join(
+                        c_compiler.compile_command(
+                            module_name=mod_exec.code_hash,
+                            location=location,
+                            include_dirs=self.header_dirs(),
+                            lib_dirs=self.lib_dirs(),
+                            libs=libs,
+                            preargs=preargs,
+                            shared=False, py_module=False,
+                            code_filename='exec.cpp',
+                            out_filename='exec')[2]))
+
+                    # compile the dynamic python module.
+                    src_code = mod_exec.code()
                     c_compiler.compile_str(
                         module_name=mod_exec.code_hash,
                         src_code=src_code,
