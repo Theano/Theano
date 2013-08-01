@@ -18,9 +18,11 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         EquilibriumOptimizer)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
+    device_properties, gpu_eye,
     gpu_from_host, host_from_gpu, HostFromGpu,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
-    GpuSubtensor, GpuAdvancedIncSubtensor1, GpuAdvancedSubtensor1,
+    GpuSubtensor, GpuAdvancedSubtensor1,
+    GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
