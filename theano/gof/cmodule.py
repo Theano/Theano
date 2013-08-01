@@ -238,6 +238,8 @@ static struct PyModuleDef moduledef = {{
         # We need a finalized module to have self.code_hash
         assert self.finalized
         f = open(filename, 'w')
+        print >>f, """#include <Python.h>
+        """
         for code in self.header_code:
             code = re.sub(self.hash_placeholder, self.code_hash, code)
             print >>f, code
