@@ -274,7 +274,8 @@ static struct PyModuleDef moduledef = {{
         self.print_init(sio)
 
         rval = sio.getvalue()
-        self.code_hash = hash_from_code(rval)
+        h = hash_from_code('\n'.join([rval] + self.header_code))
+        self.code_hash = h
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
         # Finalize the Module, so no support code or function
         # can be added
