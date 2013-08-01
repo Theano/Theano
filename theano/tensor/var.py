@@ -353,8 +353,8 @@ class _tensor_py_operators:
         axis = None
         for i, arg in enumerate(args):
             try:
-                arg == (numpy.newaxis or
-                        theano.tensor.subtensor.Subtensor.convert(arg))
+                if arg != numpy.newaxis:
+                    theano.tensor.subtensor.Subtensor.convert(arg)
             except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:
                     axis = None
