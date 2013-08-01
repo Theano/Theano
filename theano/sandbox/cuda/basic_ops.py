@@ -2662,10 +2662,10 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                       int x_row = d_indices_arr[i];
                       int y_row = i;
                       atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
-                  } 
+                  }
              }
              return;
-        }      
+        }
 
 	void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
 	{
@@ -2974,7 +2974,7 @@ class GpuJoin(tensor.Join, GpuOp):
         # + check: all input tensors have same shape as final out
         # execept for "axis" dimension
         # shape_%(cdna)s[nd] is initialized before, to prevent following
-        # error: jump to label __label_9 crosses initialization of 
+        # error: jump to label __label_9 crosses initialization of
         # shape_%(cdna)s[nd]
         for i, cdna in enumerate(inputs[2:]):
             str += """
@@ -2987,7 +2987,6 @@ class GpuJoin(tensor.Join, GpuOp):
                 shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
                 if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
                 {
-                    // compilation error when `fail`-string is added
                     %(fail)s;
                 }
             }
@@ -3012,9 +3011,11 @@ class GpuJoin(tensor.Join, GpuOp):
         full_slice = PySlice_New(NULL, NULL, NULL);
         PyObject *out_sub;
         PyObject *start, *stop, *step;
+        start = NULL;
+        stop = NULL;
         step = NULL;
         sum = 0;
-        start = NULL;
+
         """ % locals()
         # start copying the data into the new out tensors
         for i, cdna in enumerate(inputs[1:]):
