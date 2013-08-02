@@ -66,7 +66,7 @@ def remove_constants_and_unused_inputs_scan(node):
     # We only need to take care of sequences and other arguments
     st = op.n_seqs
     st += int(numpy.sum([len(x) for x in
-                     op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
+                         op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
     st += op.n_sit_sot
     st += op.n_shared_outs
     op_ins, op_outs = scan_utils.reconstruct_graph(op.inputs, op.outputs)
@@ -105,8 +105,8 @@ def remove_constants_and_unused_inputs_scan(node):
         elif op_ins[idx] in all_ins:
             # Check for identical other sequence
             identical_seqs = [x for x in nw_outer
-                                  if scan_utils.equal_computations(
-                                      [x], [node.inputs[idx + 1]])]
+                              if scan_utils.equal_computations(
+                                  [x], [node.inputs[idx + 1]])]
             if identical_seqs:
                 index = node.inputs.index(identical_seqs[0]) - 1
                 givens[op_ins[idx]] = op_ins[index]
@@ -162,7 +162,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 
     def apply(self, fgraph):
         nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
-                                                           scan_op.Scan)]
+                                                               scan_op.Scan)]
         for node in nodelist:
             self.process_node(fgraph, node)
 
@@ -170,7 +170,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         # this flag tells if there was any change during the last iterations
         changed = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
-                        node.op.inputs, node.op.outputs)
+            node.op.inputs, node.op.outputs)
 
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
         max_iterations = 2 * len(local_fgraph.toposort()) + 3
@@ -196,7 +196,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                 if (numpy.all([(x in inner_non_seqs) or
                                (x.owner in to_remove) or
                                isinstance(x, tensor.Constant)
-                                 for x in nd.inputs]) and
+                               for x in nd.inputs]) and
                         # we can do this because the assumption is that a
                         # viewOp or deepCopyOp will be just at the end of the
                         # function and not somewhere in the middle ..
@@ -250,7 +250,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
         existent_nodes = [nd for nd in local_fgraph.toposort()
-                            if nd not in to_remove]
+                          if nd not in to_remove]
         to_keep = []
         for nd in existent_nodes:
             to_keep += nd.inputs
@@ -270,8 +270,8 @@ class PushOutNonSeqScan(gof.Optimizer):
             nw_outer = []
             nw_inner = []
             for to_repl, repl_in, repl_out in zip(clean_to_replace,
-                                              clean_replace_with_in,
-                                              clean_replace_with_out):
+                                                  clean_replace_with_in,
+                                                  clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
                     repl_in = repl_out.clone()
                 else:
@@ -327,8 +327,8 @@ class PushOutSeqScan(gof.Optimizer):
         fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
-        nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
-                                                           scan_op.Scan)]
+        nodelist = [x for x in fgraph.toposort()
+                    if isinstance(x.op, scan_op.Scan)]
         for node in nodelist:
             self.process_node(fgraph, node)
 
@@ -336,7 +336,7 @@ class PushOutSeqScan(gof.Optimizer):
         # this flag tells if there was any change during the last iterations
         changed = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
-                        node.op.inputs, node.op.outputs)
+            node.op.inputs, node.op.outputs)
 
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
         max_iterations = 2 * len(local_fgraph.toposort()) + 3
@@ -361,12 +361,12 @@ class PushOutSeqScan(gof.Optimizer):
 
             for nd in local_fgraph.toposort():
                 if (isinstance(nd.op, theano.tensor.Elemwise) and
-                      numpy.all([(x in inner_non_seqs) or
-                                 (x.owner in to_remove) or
-                                 isinstance(x, tensor.Constant) or
-                                 (x in inner_seqs)
-                                 for x in nd.inputs]) and
-                      not nd in to_remove):
+                    numpy.all([(x in inner_non_seqs) or
+                               (x.owner in to_remove) or
+                               isinstance(x, tensor.Constant) or
+                               (x in inner_seqs)
+                               for x in nd.inputs]) and
+                    not nd in to_remove):
                     to_remove.append(nd)
                     outside_ins = []
                     for x in nd.inputs:
@@ -376,8 +376,8 @@ class PushOutSeqScan(gof.Optimizer):
                         elif x in inner_seqs:
                             outside_ins += [outer_seqs[inner_seqs.index(x)]]
                         elif x in to_replace:
-                            outside_ins += [replace_with_out[\
-                                                    to_replace.index(x)]]
+                            outside_ins += [replace_with_out[
+                                to_replace.index(x)]]
                         elif isinstance(x, theano.Constant):
                             outside_ins += [x.clone()]
                         else:
@@ -436,7 +436,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_out = []
 
         existent_nodes = [nd for nd in local_fgraph.toposort()
-                            if nd not in to_remove]
+                          if nd not in to_remove]
         to_keep = []
         for nd in existent_nodes:
             to_keep += nd.inputs
@@ -456,8 +456,8 @@ class PushOutSeqScan(gof.Optimizer):
             nw_outer = []
             nw_inner = []
             for to_repl, repl_in, repl_out in zip(clean_to_replace,
-                                              clean_replace_with_in,
-                                              clean_replace_with_out):
+                                                  clean_replace_with_in,
+                                                  clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
                     repl_in = repl_out.clone()
                 else:
@@ -532,7 +532,7 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = fgraph.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                         x.op.info['gpu'] == self.gpu_flag)]
+                          x.op.info['gpu'] == self.gpu_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
@@ -720,7 +720,7 @@ class ScanSaveMem(gof.Optimizer):
                         except KeyError:
                             length = out.shape[0]
                     cf_slice = tensor.get_canonical_form_slice(
-                                                    this_slice[0], length)
+                        this_slice[0], length)
                     slices[i] += [(cf_slice, this_slice)]
 
                     if (isinstance(this_slice[0], slice) and
@@ -847,9 +847,8 @@ class ScanSaveMem(gof.Optimizer):
             nw_inputs[0] = nw_steps
 
             # 3.2 check orphane outputs to see if we can eliminate any
-            required, not_required = \
-                    scan_utils.scan_can_remove_outs(node.op,
-                                                    orphane_outs)
+            required, not_required = scan_utils.scan_can_remove_outs(
+                node.op, orphane_outs)
             # 3.3. compose replace pairs for those nodes that need not
             # to store everything in memory ( or ar orphane and required
             # by the inner function .. )
@@ -978,7 +977,7 @@ class ScanSaveMem(gof.Optimizer):
                         sl_ins = tensor.Subtensor.collapse(
                             nw_slice,
                             lambda entry: isinstance(entry,
-                                                    tensor.Variable))
+                                                     tensor.Variable))
                         new_o = subtens.make_node(new_outs[nw_pos],
                                                   *sl_ins).outputs[0]
                         if new_o.ndim > 0:
@@ -1009,11 +1008,10 @@ class ScanSaveMem(gof.Optimizer):
 
                         else:
                             position = (cnf_slice[0] - nw_steps -
-                                         init_l[pos] + store_steps[pos])
+                                        init_l[pos] + store_steps[pos])
 
-                            nw_slice = (sanitize(position),) + \
-                                    tuple(old_slices[1:])
-
+                            nw_slice = (sanitize(position),) + tuple(
+                                old_slices[1:])
                         subtens = tensor.Subtensor(nw_slice)
                         sl_ins = tensor.Subtensor.collapse(
                             nw_slice,
@@ -1047,7 +1045,7 @@ class ScanSaveMem(gof.Optimizer):
     def apply(self, fgraph):
 
         nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
-                                                           scan_op.Scan)]
+                                                               scan_op.Scan)]
         for node in nodelist:
             if not hasattr(node.op, '_scan_savemem_visited'):
                 self.process_node(fgraph, node)
@@ -1389,13 +1387,13 @@ def scan_merge_inouts(node):
             # items scan is supposed to store for this nit_sot sequence
             shapes.append(x)
     tmp = [map_nitsot_out(i, o, sh, seen)
-                            for i, o, sh in zip(na.inner_out_nit_sot,
-                                            na.outer_out_nit_sot,
-                                            shapes)]
+           for i, o, sh in zip(na.inner_out_nit_sot,
+                               na.outer_out_nit_sot,
+                               shapes)]
     na.outer_out_nit_sot = [map_nitsot_out(i, o, sh, seen)
                             for i, o, sh in zip(na.inner_out_nit_sot,
-                                            na.outer_out_nit_sot,
-                                            shapes)]
+                                                na.outer_out_nit_sot,
+                                                shapes)]
 
     seen = []
     na.outer_out_sit_sot = [map_out(i, o, seen)
@@ -1592,10 +1590,8 @@ class PushOutDot1(gof.Optimizer):
                         old = node.outputs[pos].clients[0][0].outputs[0]
                         old_new.append((old, new_out))
                         old_new += zip(node.outputs[pos+1:], new_outs[pos:])
-                        fgraph.replace_all_validate_remove(old_new,
-                                                   remove = [node],
-                                                   reason='scan_pushout_dot1')
-
+                        fgraph.replace_all_validate_remove(
+                            old_new, remove=[node], reason='scan_pushout_dot1')
 
 
 # I've added an equilibrium because later scan optimization in the sequence
@@ -1612,7 +1608,7 @@ optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeConstructor=None,
-                                   gpu_flag=False),
+                                    gpu_flag=False),
                75,
                'fast_run',
                'inplace',
