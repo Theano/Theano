@@ -289,7 +289,7 @@ class PushOutNonSeqScan(gof.Optimizer):
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
                 remove=[node],
-                reason='scan_push_computation_out')
+                reason='scanOp_pushout_nonseqs_ops')
             return True
         elif to_keep == []:
             # Nothing in the inner graph should be kept
@@ -310,7 +310,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                 fgraph.replace_all_validate_remove(
                     replace_with.items(),
                     remove=[node],
-                    reason='scan_push_computation_out')
+                    reason='scanOp_pushout_nonseqs_ops')
 
         else:
             return False
@@ -478,7 +478,7 @@ class PushOutSeqScan(gof.Optimizer):
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
                 remove=[node],
-                reason='scan_push_computation_out')
+                reason='scanOp_pushout_seqs_ops')
             return True
         elif (to_keep == [] and
               not op.as_while and
@@ -510,7 +510,7 @@ class PushOutSeqScan(gof.Optimizer):
                 fgraph.replace_all_validate_remove(
                     replace_with.items(),
                     remove=[node],
-                    reason='scan_push_seq_computation_out')
+                    reason='scanOp_pushout_seqs_ops')
 
         else:
             return False
@@ -568,7 +568,7 @@ class ScanInplaceOptimizer(Optimizer):
                     fgraph.replace_all_validate_remove(
                         zip(node.outputs, new_outs),
                         remove=[node],
-                        reason=self.__class__.__name__)
+                        reason='scanOp_make_inplace')
                     op = new_op
                     node = new_outs[0].owner
                 except InconsistencyError, e:
@@ -1042,7 +1042,7 @@ class ScanSaveMem(gof.Optimizer):
                 remove.append(node)
                 fgraph.replace_all_validate_remove(old_new,
                                                    remove,
-                                                   reason='scan_save_mem')
+                                                   reason='scanOp_save_mem')
 
     def apply(self, fgraph):
 
@@ -1230,7 +1230,7 @@ class ScanMerge(gof.Optimizer):
                 proposal = self.merge(subset)
                 fgraph.replace_all_validate_remove(proposal,
                                                    remove=subset,
-                                                   reason='scan_merge')
+                                                   reason='scanOp_merge')
 
 
 def has_duplicates(l):
@@ -1594,7 +1594,7 @@ class PushOutDot1(gof.Optimizer):
                         old_new += zip(node.outputs[pos+1:], new_outs[pos:])
                         fgraph.replace_all_validate_remove(old_new,
                                                    remove = [node],
-                                                   reason='PushOutDot1')
+                                                   reason='scan_pushout_dot1')
 
 
 
