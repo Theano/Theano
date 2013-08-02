@@ -515,31 +515,33 @@ You can implement c_code for this op. You register it like this:
 
 .. code-block:: python
 
-   theano.compile.function_module.register_DeepCopyOp_c_code(YOUR_TYPE_CLASS, THE_C_CODE)
+   theano.compile.ops.register_deep_copy_op_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
 
 In your C code, you should use %(iname)s and %(oname)s to represent
 the C variable names of the DeepCopyOp input and output
-respectively. See an example for the type ``CudaNdarrayType`` (GPU array)
-in the file `theano/sandbox/cuda/type.py`.
+respectively. See an example for the type ``CudaNdarrayType`` (GPU
+array) in the file `theano/sandbox/cuda/type.py`. The version
+parameter is what is returned by DeepCopyOp.c_code_cache_version(). By
+default, it will recompile the c code for each process.
 
-Output Guard
-============
+ViewOp
+======
 
-We have an internal Op called OutputGuard. It is used for some
+We have an internal Op called ViewOp. It is used for some
 verification of inplace/view Ops. Its C implementation increments and
 decrements Python reference counts, and thus only works with Python
 objects. If your new type represents Python objects, you should tell
-OutputGuard to generate C code when working with this type, as
+ViewOp to generate C code when working with this type, as
 otherwise it will use Python code instead. This is achieved by
 calling:
 
 .. code-block:: python
 
-   theano.compile.mode.register_OutputGuard_c_code(YOUR_TYPE_CLASS)
+   theano.compile.ops.register_view_op_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
 
-Note that you should not call ``register_OutputGuard_c_code`` with your
-new type if this type is not associated to Python objects in the C code,
-as otherwise the reference count mechanism will crash. For instance,
-the ``Double`` type described here is associated to ``double`` objects
-in the C code, and consequently this type should not be registered in
-OutputGuard.
+In your C code, you should use %(iname)s and %(oname)s to represent
+the C variable names of the ViewOp input and output
+respectively. See an example for the type ``CudaNdarrayType`` (GPU
+array) in the file `theano/sandbox/cuda/type.py`. The version
+parameter is what is returned by ViewOp.c_code_cache_version(). By
+default, it will recompile the c code for each process.
