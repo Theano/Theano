@@ -49,14 +49,24 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 def out2in(*local_opts):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='out_to_in',
                              failure_callback=TopoOptimizer.warn_inplace)
 
 
 def in2out(*local_opts, **kwargs):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='in_to_out',
                              failure_callback=TopoOptimizer.warn_inplace,
                              **kwargs)
