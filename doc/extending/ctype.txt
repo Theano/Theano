@@ -539,19 +539,9 @@ calling:
 
    theano.compile.ops.register_view_op_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
 
-The version parameter is what is returned by
-DeepCopyOp.c_code_cache_version(). By default, it will recompile the c
-code for each process.
-
-.. note::
-
-   This is an old note. I'm note sure if it is still true or
-   not. register_OutputGuard_c_code have already been replaced with
-   register_view_op_c_code. We need to check what happen in that case.
-
-   Note that you should not call ``register_OutputGuard_c_code`` with
-   your new type if this type is not associated to Python objects in
-   the C code, as otherwise the reference count mechanism will
-   crash. For instance, the ``Double`` type described here is
-   associated to ``double`` objects in the C code, and consequently
-   this type should not be registered in OutputGuard.
+In your C code, you should use %(iname)s and %(oname)s to represent
+the C variable names of the ViewOp input and output
+respectively. See an example for the type ``CudaNdarrayType`` (GPU
+array) in the file `theano/sandbox/cuda/type.py`. The version
+parameter is what is returned by ViewOp.c_code_cache_version(). By
+default, it will recompile the c code for each process.
