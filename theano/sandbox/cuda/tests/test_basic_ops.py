@@ -1,5 +1,3 @@
-import copy
-import sys
 import time
 import unittest
 
@@ -9,7 +7,6 @@ from theano import tensor
 import numpy
 import theano
 import theano.tensor as T
-from numpy.testing.noseclasses import KnownFailureTest
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -1255,7 +1252,4 @@ def speed_adv_sub1():
 
 if __name__ == '__main__':
     test_many_arg_elemwise()
-    test_gpujoin_twomatrices_joincolumns()
     test_gpujoin_assert_cndas()
-    test_gpujoin_preserves_broadcasting()
-    test_gpujoin_twomatrices_badshapes()
