@@ -3,9 +3,7 @@ import time
 
 from theano.gof.python25 import partial
 from theano.gof.python25 import OrderedDict
-
 from theano.gof import graph
-
 
 
 class AlreadyThere(Exception):
