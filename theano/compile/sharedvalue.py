@@ -154,7 +154,7 @@ class SharedVariable(Variable):
                         " instead.")
 
     # We keep this just to raise an error
-    value = property(_value_get, _value_set),
+    value = property(_value_get, _value_set)
 
 
 def shared_constructor(ctor, remove=False):
