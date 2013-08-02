@@ -1628,6 +1628,7 @@ scan_seqopt1.register('scanOp_remove_constants_and_unused_inputs0',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       1,
+                      'remove_constants_and_unused_inputs_scan',
                       'fast_run',
                       'scan')
 
@@ -1662,10 +1663,11 @@ scan_seqopt2.register('constant_folding_for_scan2',
                       'scan')
 
 
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs0',
+scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs1',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       2,
+                      'remove_constants_and_unused_inputs_scan',
                       'fast_run',
                       'scan')
 
@@ -1684,12 +1686,14 @@ scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       5,
+                      'remove_constants_and_unused_inputs_scan',
                       'fast_run',
                       'scan')
 
 scan_seqopt2.register('scanOp_merge_inouts',
                       opt.in2out(scan_merge_inouts, ignore_newtrees=True),
                       6,
+                      'scan_merge_inouts',
                       'fast_run',
                       'scan')
 
@@ -1707,5 +1711,6 @@ scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       8,
+                      'remove_constants_and_unused_inputs_scan',
                       'fast_run',
                       'scan')
