@@ -28,7 +28,6 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 
 # We use these exceptions as well.
-from theano.scalar import ComplexError, IntegerDivisionError
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
 from theano.gradient import grad_not_implemented

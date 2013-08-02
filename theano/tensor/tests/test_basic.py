@@ -38,7 +38,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
         get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
         iscalars, arange, dscalars, fvector, imatrix, numeric_grad,
-        opt, ComplexError, lvector, lmatrix, true_div, max, min, Split, roll,
+        opt, lvector, lmatrix, true_div, max, min, Split, roll,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean,
@@ -5750,7 +5750,7 @@ class test_complex_mod(unittest.TestCase):
         try:
             x % 5
             assert False
-        except ComplexError:
+        except theano.scalar.ComplexError:
             pass
 
 
