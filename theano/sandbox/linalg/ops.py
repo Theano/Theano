@@ -831,6 +831,8 @@ det = Det()
 def trace(X):
     """
     Returns the sum of diagonal elements of matrix X.
+
+    :note: work on GPU since 0.6rc4.
     """
     return extract_diag(X).sum()
 

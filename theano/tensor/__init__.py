@@ -4,6 +4,8 @@ __docformat__ = "restructuredtext en"
 import warnings
 
 from theano.tensor.basic import *
+from theano.tensor.subtensor import *
+from theano.tensor.type_other import *
 
 from theano.tensor import opt
 from theano.tensor import opt_uncanonicalize

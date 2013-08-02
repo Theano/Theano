@@ -8,6 +8,7 @@ import numpy
 import theano
 from theano import gof
 from theano.tensor import basic as tensor
+from theano.tensor import subtensor
 from theano.tensor import elemwise, dmatrix, fmatrix, dvector, fvector
 from theano.tensor import opt
 from theano.compile import optdb
@@ -1004,7 +1005,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         # typically we should not need the gradient w.r.t. dy).
         y_idx_range = tensor.arange(y_idx.shape[0])
         g_dy = tensor.sum(
-                g_dx * tensor.AdvancedIncSubtensor()(
+                g_dx * subtensor.AdvancedIncSubtensor()(
                     sm, tensor.fill(dy, -1), y_idx_range, y_idx),
                 axis=1)
         g_sm = dy.dimshuffle(0, 'x') * g_dx
@@ -1396,7 +1397,7 @@ def _check_rows_is_arange_len_labels(rows, labels):
 
         # Not sure if that case happens any more after the introduction of
         # ShapeOptimizer, but we keep it if ShapeOptimizer is not present
-        if isinstance(stop.owner.op, tensor.Subtensor):
+        if isinstance(stop.owner.op, subtensor.Subtensor):
             shape_subtensor = stop.owner
             if list(shape_subtensor.op.idx_list) == [0]:
                 shape_var, = shape_subtensor.inputs
@@ -1424,7 +1425,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
     log = None
     sm = None
     # First case: log(softmax(x))[rows, labels]
-    if isinstance(node.op, tensor.AdvancedSubtensor):
+    if isinstance(node.op, subtensor.AdvancedSubtensor):
         try:
             log, rows, labels = node.inputs
         except Exception:
@@ -1435,7 +1436,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
     # Second case: log(softmax(x)[rows, labels])
     if node.op == tensor.log:
         pre_log = node.inputs[0].owner
-        if pre_log and isinstance(pre_log.op, tensor.AdvancedSubtensor):
+        if pre_log and isinstance(pre_log.op, subtensor.AdvancedSubtensor):
             try:
                 sm, rows, labels = pre_log.inputs
             except Exception:
@@ -1524,7 +1525,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     # After the check for AdvancedIncSubtensor, if anything does not fit with
     # the formula above, there's no way to fit it with the the second case,
     # so we return immediately.
-    if d_sm.owner and isinstance(d_sm.owner.op, tensor.AdvancedIncSubtensor):
+    if d_sm.owner and isinstance(d_sm.owner.op, subtensor.AdvancedIncSubtensor):
         try:
             z, incr, rows, labels = d_sm.owner.inputs
         except Exception:
@@ -1566,7 +1567,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if not denom.owner:
                 return
 
-            if isinstance(denom.owner.op, tensor.AdvancedSubtensor):
+            if isinstance(denom.owner.op, subtensor.AdvancedSubtensor):
                 # Base case
                 adv_subtensor = denom
                 #out_grad /= 1.
@@ -1575,7 +1576,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                 # and the output gradient
                 for i, input in enumerate(denom.owner.inputs):
                     if input.owner and isinstance(input.owner.op,
-                                                  tensor.AdvancedSubtensor):
+                                                  subtensor.AdvancedSubtensor):
                         other_inputs = [in_ for (j,
                              in_) in enumerate(denom.owner.inputs) if j != i]
                         if len(other_inputs) == 1:
@@ -1630,7 +1631,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             return
 
         # Check the numerator (AdvancedIncSubtensor)
-        if num.owner and isinstance(num.owner.op, tensor.AdvancedIncSubtensor):
+        if num.owner and isinstance(num.owner.op, subtensor.AdvancedIncSubtensor):
             try:
                 z, incr, rows, labels = num.owner.inputs
             except Exception:
