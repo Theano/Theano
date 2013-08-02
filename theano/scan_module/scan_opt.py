@@ -691,7 +691,7 @@ class ScanSaveMem(gof.Optimizer):
                     break
                 # 2.2 non-subtensor nodes
                 #=> output needs all its intermediate values
-                elif not isinstance(cl.op, tensor.basic.Subtensor):
+                elif not isinstance(cl.op, tensor.Subtensor):
                     global_nsteps = None
                     slices[i] = None
                     break
@@ -699,7 +699,7 @@ class ScanSaveMem(gof.Optimizer):
                 #=> output might need to store just a subset of its values
                 else:
                     # 2.3.1 extract idx list of subtensor
-                    this_slice = tensor.basic.get_idx_list(cl.inputs,
+                    this_slice = tensor.get_idx_list(cl.inputs,
                                                      cl.op.idx_list)
                     if this_slice is None:
                         # if unable to extract idx_list
@@ -719,7 +719,7 @@ class ScanSaveMem(gof.Optimizer):
                             length = shape_of[out][0]
                         except KeyError:
                             length = out.shape[0]
-                    cf_slice = tensor.basic.get_canonical_form_slice(
+                    cf_slice = tensor.get_canonical_form_slice(
                                                     this_slice[0], length)
                     slices[i] += [(cf_slice, this_slice)]
 
@@ -795,12 +795,12 @@ class ScanSaveMem(gof.Optimizer):
                 if type(cl) == str:
                     store_steps[i] = 0
                     break
-                elif not isinstance(cl.op, tensor.basic.Subtensor):
+                elif not isinstance(cl.op, tensor.Subtensor):
                     store_steps[i] = 0
                     break
                 else:
-                    this_slice = tensor.basic.get_idx_list(cl.inputs,
-                                                         cl.op.idx_list)
+                    this_slice = tensor.get_idx_list(cl.inputs,
+                                                     cl.op.idx_list)
                     if this_slice is None:
                         store_steps[i] = 0
                         break
@@ -817,8 +817,8 @@ class ScanSaveMem(gof.Optimizer):
                             length = shape_of[out][0]
                         except KeyError:
                             length = out.shape[0]
-                    cf_slice = tensor.basic.get_canonical_form_slice(
-                                                    this_slice[0], length)
+                    cf_slice = tensor.get_canonical_form_slice(
+                        this_slice[0], length)
 
                     if isinstance(cf_slice[0], slice):
                         start = tensor.basic.extract_constant(
@@ -973,9 +973,9 @@ class ScanSaveMem(gof.Optimizer):
                         nw_slice = (fslice,) + tuple(old_slices[1:])
                         nw_pos = inv_compress_map[idx]
 
-                        subtens = tensor.basic.Subtensor(nw_slice)
+                        subtens = tensor.Subtensor(nw_slice)
                         # slice inputs
-                        sl_ins = tensor.basic.Subtensor.collapse(
+                        sl_ins = tensor.Subtensor.collapse(
                             nw_slice,
                             lambda entry: isinstance(entry,
                                                     tensor.Variable))
@@ -1014,8 +1014,8 @@ class ScanSaveMem(gof.Optimizer):
                             nw_slice = (sanitize(position),) + \
                                     tuple(old_slices[1:])
 
-                        subtens = tensor.basic.Subtensor(nw_slice)
-                        sl_ins = tensor.basic.Subtensor.collapse(
+                        subtens = tensor.Subtensor(nw_slice)
+                        sl_ins = tensor.Subtensor.collapse(
                             nw_slice,
                             lambda entry: isinstance(entry,
                                                      tensor.Variable))

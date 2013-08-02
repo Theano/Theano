@@ -798,7 +798,7 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
 // This prevent us from setting it to 0 before each use
 static int* err_var = NULL;
 
-// We try to be similat to the PyArray_TakeFrom function
+// We try to be similar to the PyArray_TakeFrom function
 //http://docs.scipy.org/doc/numpy/reference/c-api.array.html
 //TODO: support other clip mode then raise(clip, wrap)
 //self is the input that we copy data from.

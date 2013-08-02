@@ -727,12 +727,19 @@ copy_reg.pickle(Function, _pickle_Function)
 ###
 
 class SanityCheckFunction(Function):
+    """Deprecated. It is not used and not tested anywhere in Theano!
+
+    Also, we should remove the check_equal and related function in
+    this file, and use Type.values_equals() instead.
+
+    """
 
     def __init__(self, others, check_equal, *args, **kwargs):
         super(SanityCheckFunction, self).__init__(*args, **kwargs)
         self.others = others
         self.check_equal = check_equal
         # DEPRECATED?  Is this just for DualLinker?
+        warnings.warn("SanityCheckFunction is deprecated")
 
     def __setitem__(self, item, value):
         super(SanityCheckFunction, self).__setitem__(item, value)
