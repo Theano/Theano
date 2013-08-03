@@ -980,9 +980,9 @@ class ShapeFeature(object):
         # shape var -> graph v
 
         for node in fgraph.toposort():
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, reason='on_attach')
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.shape_of:
             # this is a revert, not really an import
             for r in node.outputs + node.inputs:

@@ -107,7 +107,7 @@ class FunctionGraph(utils.object2):
             self.__setup_r__(input)
             self.variables.add(input)
 
-        self.__import_r__(outputs)
+        self.__import_r__(outputs, reason="init")
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
@@ -217,7 +217,7 @@ class FunctionGraph(utils.object2):
         return False
 
     ### import ###
-    def __import_r__(self, variables):
+    def __import_r__(self, variables, reason):
         global NullType
         if NullType is None:
             from null_type import NullType
@@ -226,7 +226,7 @@ class FunctionGraph(utils.object2):
         for apply_node in [r.owner for r in variables if r.owner is not None]:
             if apply_node not in r_owner_done:
                 r_owner_done.add(apply_node)
-                self.__import__(apply_node)
+                self.__import__(apply_node, reason=reason)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
                 if isinstance(r.type, NullType):
@@ -237,7 +237,7 @@ class FunctionGraph(utils.object2):
                 self.__setup_r__(r)
             self.variables.add(r)
 
-    def __import__(self, apply_node, check=True):
+    def __import__(self, apply_node, check=True, reason=None):
         node = apply_node
 
         # We import the nodes in topological order. We only are interested
@@ -335,7 +335,7 @@ class FunctionGraph(utils.object2):
                     self.variables.add(input)
                 self.__add_clients__(input, [(node, i)])
             assert node.fgraph is self
-            self.execute_callbacks('on_import', node)
+            self.execute_callbacks('on_import', node, reason)
 
     ### prune ###
     def __prune_r__(self, variables, reason=None):
@@ -400,7 +400,7 @@ class FunctionGraph(utils.object2):
         if r is new_r:
             return
 
-        self.__import_r__([new_r])
+        self.__import_r__([new_r], reason=reason)
         self.__add_clients__(new_r, [(node, i)])
         prune = self.__remove_clients__(r, [(node, i)], False)
         # Precondition: the substitution is semantically valid

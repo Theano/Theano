@@ -421,7 +421,7 @@ class MergeFeature(object):
         self.blacklist = []
 
         for node in fgraph.toposort():
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, "on_attach")
 
     def on_change_input(self, fgraph, node, i, r, new_r):
         # If inputs to node change, it is not guaranteed that it is distinct
@@ -433,7 +433,7 @@ class MergeFeature(object):
         if isinstance(new_r, graph.Constant):
             self.process_constant(fgraph, new_r)
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         for c in node.inputs:
             if isinstance(c, graph.Constant):
                 self.process_constant(fgraph, c)
@@ -1165,7 +1165,7 @@ class NavigatorOptimizer(Optimizer):
 
         class Updater:
             if importer is not None:
-                def on_import(self, fgraph, node):
+                def on_import(self, fgraph, node, reason):
                     importer(node)
             if pruner is not None:
                 def on_prune(self, fgraph, node, reason):
@@ -1357,7 +1357,7 @@ class ChangeTracker:
     def __init__(self):
         self.changed = False
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         self.changed = True
 
     def on_change_input(self, fgraph, node, i, r, new_r):

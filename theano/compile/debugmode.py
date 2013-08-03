@@ -1428,6 +1428,8 @@ class _VariableEquivalenceTracker(object):
         self.reasons = {}
         self.replaced_by = {}
         self.event_list = []
+        for node in fgraph.toposort():
+            self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
         assert fgraph is self.fgraph
@@ -1442,8 +1444,9 @@ class _VariableEquivalenceTracker(object):
         self.active_nodes.remove(node)
         self.inactive_nodes.add(node)
 
-    def on_import(self, fgraph, node):
-        self.event_list.append(_FunctionGraphEvent('import', node))
+    def on_import(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('import', node,
+                                                   reason=reason))
 
         #print 'NEW NODE', node, id(node)
         assert node not in self.active_nodes
