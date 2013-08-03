@@ -5,6 +5,7 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 import sys
+
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
@@ -193,7 +194,8 @@ class FunctionGraph(utils.object2):
         assert not set(r.clients).intersection(set(new_clients))
         r.clients += new_clients
 
-    def __remove_clients__(self, r, clients_to_remove, prune=True):
+    def __remove_clients__(self, r, clients_to_remove,
+                           prune=True, reason=None):
         """ WRITEME
         r -> variable
         clients_to_remove -> list of (op, i) pairs such that node.inputs[i] is not r anymore.
@@ -209,7 +211,7 @@ class FunctionGraph(utils.object2):
             assert entry not in r.clients  # an op,i pair should be unique
         if not r.clients:
             if prune:
-                self.__prune_r__([r])
+                self.__prune_r__([r], reason)
                 return False
             return True
         return False
@@ -336,15 +338,15 @@ class FunctionGraph(utils.object2):
             self.execute_callbacks('on_import', node)
 
     ### prune ###
-    def __prune_r__(self, variables):
+    def __prune_r__(self, variables, reason=None):
         # Prunes the owners of the variables.
         for node in set(r.owner for r in variables if r.owner is not None):
-            self.__prune__(node)
+            self.__prune__(node, reason)
         for r in variables:
             if not r.clients and r in self.variables:
                 self.variables.remove(r)
 
-    def __prune__(self, apply_node):
+    def __prune__(self, apply_node, reason=None):
         node = apply_node
         if node not in self.apply_nodes:
             raise Exception("%s does not belong to this FunctionGraph and cannot be pruned." % node)
@@ -359,10 +361,10 @@ class FunctionGraph(utils.object2):
                 return
         self.apply_nodes.remove(node)
         self.variables.difference_update(node.outputs)
-        self.execute_callbacks('on_prune', node)
+        self.execute_callbacks('on_prune', node, reason)
 
         for i, input in enumerate(node.inputs):
-            self.__remove_clients__(input, [(node, i)])
+            self.__remove_clients__(input, [(node, i)], reason=reason)
         #self.__prune_r__(node.inputs)
 
     ### change input ###
@@ -408,8 +410,7 @@ class FunctionGraph(utils.object2):
                                r, new_r, reason=reason)
 
         if prune:
-            self.__prune_r__([r])
-
+            self.__prune_r__([r], reason=reason)
 
     ### replace ###
 

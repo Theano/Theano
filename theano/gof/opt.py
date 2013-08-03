@@ -440,7 +440,7 @@ class MergeFeature(object):
 
         self.process_node(fgraph, node)
 
-    def on_prune(self, fgraph, node):
+    def on_prune(self, fgraph, node, reason):
         self.nodes_seen.discard(node)
         for c in node.inputs:
             if isinstance(c, graph.Constant) and (len(c.clients) <= 1):
@@ -1168,7 +1168,7 @@ class NavigatorOptimizer(Optimizer):
                 def on_import(self, fgraph, node):
                     importer(node)
             if pruner is not None:
-                def on_prune(self, fgraph, node):
+                def on_prune(self, fgraph, node, reason):
                     pruner(node)
             if chin is not None:
                 def on_change_input(self, fgraph, node, i, r, new_r):

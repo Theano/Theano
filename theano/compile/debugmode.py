@@ -1433,8 +1433,9 @@ class _VariableEquivalenceTracker(object):
         assert fgraph is self.fgraph
         self.fgraph = None
 
-    def on_prune(self, fgraph, node):
-        self.event_list.append(_FunctionGraphEvent('prune', node))
+    def on_prune(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('prune', node,
+                                                   reason=reason))
         #print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
         assert node not in self.inactive_nodes

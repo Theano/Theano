@@ -64,7 +64,7 @@ class Feature(object):
         you should do this by implementing on_attach.
         """
 
-    def on_prune(self, function_graph, node):
+    def on_prune(self, function_graph, node, reason):
         """
         Called whenever a node is pruned (removed) from the function_graph,
         after it is disconnected from the graph.
@@ -100,7 +100,7 @@ class Bookkeeper(Feature):
 
     def on_detach(self, fgraph):
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
-            self.on_prune(fgraph, node)
+            self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
 
 class History(Feature):
@@ -278,7 +278,7 @@ class NodeFinder(dict, Bookkeeper):
                 print >> sys.stderr, 'OFFENDING node not hashable'
             raise e
 
-    def on_prune(self, fgraph, node):
+    def on_prune(self, fgraph, node, reason):
         try:
             nodes = self[node.op]
         except TypeError:  # node.op is unhashable
@@ -314,7 +314,7 @@ class PrintListener(Feature):
         if self.active:
             print "-- importing: %s" % node
 
-    def on_prune(self, fgraph, node):
+    def on_prune(self, fgraph, node, reason):
         if self.active:
             print "-- pruning: %s" % node
 
