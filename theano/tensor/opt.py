@@ -447,8 +447,10 @@ def dimshuffle_as_view(node):
 
 #Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
-                       TopoOptimizer(dimshuffle_as_view,
-    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       TopoOptimizer(
+                           dimshuffle_as_view,
+                           failure_callback=TopoOptimizer.warn_inplace),
+                       60,
                        'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
@@ -4738,9 +4740,11 @@ if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fast_run', 'fusion', 'local_elemwise_fusion')
+                           'fast_run', 'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fusion', 'local_elemwise_fusion')
+                           'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')
