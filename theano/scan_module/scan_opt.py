@@ -382,7 +382,7 @@ class PushOutSeqScan(gof.Optimizer):
                             outside_ins += [x.clone()]
                         else:
                             raise Exception(
-                                ('Error in the `scan_pushout_non_seq_'
+                                ('Error in the `scan_pushout_seq_'
                                  'operations`. The optimization tries '
                                  'to move some computation fron scan '
                                  'which is not allowed to move. Report '
@@ -423,7 +423,7 @@ class PushOutSeqScan(gof.Optimizer):
 
                     changed = True
         if counts >= max_iterations:
-            raise Exception('Error in the `scan_pushout_non_seq_operations`.'
+            raise Exception('Error in the `scan_pushout_seq_operations`.'
                             ' The optimization exhausted the maximal number '
                             'of iterations allowed!')
         # We need to check all candidate replacements and choose those that
