@@ -295,7 +295,6 @@ them perfectly, but a dscalar otherwise.
     :rtype: :class:`TensorVariable` or :class:`TensorConstant`
 
 
-
 TensorType and TensorVariable
 =============================
 
@@ -598,6 +597,12 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :param b: theano scalar or value with which you want to fill the output
 
     Create a matrix by filling the shape of `a` with `b`
+
+.. function:: alloc(value, *shape)
+
+    :param value: a value with which to fill the output
+    :param shape: the dimensions of the returned array
+    :returns: an N-dimensional tensor initialized by `value` and having the specified shape.
 
 .. function:: eye(n, m=None, k=0, dtype=theano.config.floatX)
 
