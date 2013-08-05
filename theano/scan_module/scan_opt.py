@@ -227,7 +227,11 @@ class PushOutNonSeqScan(gof.Optimizer):
                                  'this on theano-users list'), x)
                     outside_ins = [x.type.filter_variable(y) for x, y in
                                    zip(nd.inputs, outside_ins)]
-                    nw_outer_node = nd.op.make_node(*outside_ins)
+
+                    # Do not call make_node for test_value
+                    nw_outer_node = nd.op(*outside_ins,
+                                          return_list=True)[0].owner
+
                     # Step 2. Create variables for replacements
                     for idx, y in enumerate(nd.outputs):
 
@@ -285,7 +289,10 @@ class PushOutNonSeqScan(gof.Optimizer):
             op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
             # Reconstruct node
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
-            nw_node = nwScan.make_node(* (node.inputs + nw_outer))
+
+            # Do not call make_node for test_value
+            nw_node = nwScan(*(node.inputs + nw_outer), return_list=True)[0].owner
+
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
                 remove=[node],
@@ -387,7 +394,9 @@ class PushOutSeqScan(gof.Optimizer):
                                  'to move some computation fron scan '
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
-                    nw_outer_node = nd.op.make_node(*outside_ins)
+                    # Do not call make_node for test_value
+                    nw_outer_node = nd.op(*outside_ins, return_list=True)[0].owner
+
                     # Step 2. Create variables for replacements
                     for idx, y in enumerate(nd.outputs):
 
@@ -473,8 +482,10 @@ class PushOutSeqScan(gof.Optimizer):
             nw_info = op.info.copy()
             nw_info['n_seqs'] += len(nw_inner)
             nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
-            nw_node = nwScan.make_node(* (node.inputs[:1] + nw_outer +
-                                          node.inputs[1:]))
+            # Do not call make_node for test_value
+            nw_node = nwScan(* (node.inputs[:1] + nw_outer +
+                                node.inputs[1:]), return_list=True)[0].owner
+
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
                 remove=[node],

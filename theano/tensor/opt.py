@@ -394,10 +394,12 @@ def local_dimshuffle_lift(node):
     input = node.inputs[0]
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
-        return inode.op.make_node(*[DimShuffle(input.type.broadcastable,
-                                               op.new_order,
-                                               op.inplace)(input) for input in
-                                    inode.inputs]).outputs
+        # Don't use make_node to have tag.test_value set.
+        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+                                    op.new_order,
+                                    op.inplace)(input) for input in
+                         inode.inputs], return_list=True)
+        return ret
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
                      op.new_order]
@@ -407,8 +409,9 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            return DimShuffle(iinput.type.broadcastable, new_order,
-                              inplace).make_node(iinput).outputs
+            ret = DimShuffle(iinput.type.broadcastable, new_order,
+                             inplace)(iinput, return_list=True)
+            return ret
 
 
 @register_canonicalize
@@ -783,7 +786,8 @@ class ShapeFeature(object):
         if hasattr(r.type, "broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
         else:
-            return Shape_i(i).make_node(r).outputs[0]
+            # Do not call make_node for test_value
+            return Shape_i(i)(r)
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
@@ -1945,7 +1949,8 @@ def local_subtensor_merge(node):
             sl_ins = Subtensor.collapse(
                 merged_slices,
                 lambda x: isinstance(x, T.Variable))
-            out = subtens.make_node(x, *sl_ins).outputs[0]
+            # Do not call make_node for test_value
+            out = subtens(x, *sl_ins)
 
             return [out]
 
@@ -4679,7 +4684,8 @@ your code will run correctly, but may be slower.""")
         C = scalar.Composite(s_inputs, [s_new_out])
 
         #create the new node.
-        n = OP(C).make_node(*inputs)
+        #Do not call make_node to have test_value
+        n = OP(C)(*inputs).owner
         assert len(n.outputs) == 1
         assert node.outputs[0].dtype == n.outputs[0].dtype
 
