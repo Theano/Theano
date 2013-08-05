@@ -580,6 +580,10 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     have shape (2, 60).
 
 
+Creating Tensor
+===============
+
+
 .. function:: zeros_like(x)
 
     :param x: tensor that has same shape as output
