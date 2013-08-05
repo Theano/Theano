@@ -2987,6 +2987,11 @@ class GpuJoin(tensor.Join, GpuOp):
                 shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
                 if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
                 {
+                    PyErr_Format(
+                        PyExc_ValueError,
+                        "GpuJoin: Wrong inputs for input %%d related"
+                        " to inputs 0.!",
+                        i);
                     %(fail)s;
                 }
             }
