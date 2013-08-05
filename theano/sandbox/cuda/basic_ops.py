@@ -767,6 +767,10 @@ class GpuCAReduce(GpuOp):
             pattern = ''.join(str(c) for c in self.reduce_mask)
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
+        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
+        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
+                                for i in range(node.inputs[0].ndim)])
+
         print >> sio, """
             if (verbose)
                 printf("running kernel_reduce_%(pattern)s_%(name)s\\n");
@@ -774,11 +778,11 @@ class GpuCAReduce(GpuOp):
             if (verbose>1)
                 printf("n_threads.x=%%d, n_threads.y=%%d, n_threads.z=%%d,"
                        " nb_threads=%%d, n_blocks.x=%%d, n_blocks.y=%%d,"
-                       " nb_block=%%d, n_shared=%%d\\n",
+                       " nb_block=%%d, n_shared=%%d, %(shapes_format)s\\n",
                                   n_threads.x,n_threads.y,n_threads.z,
                                   n_threads.x*n_threads.y*n_threads.z,
                                   n_blocks.x,n_blocks.y,
-                                  n_blocks.x*n_blocks.y, n_shared);
+                                  n_blocks.x*n_blocks.y, n_shared, %(shapes_data)s);
             kernel_reduce_%(pattern)s_%(name)s<<<n_blocks, n_threads, n_shared>>>(
             """ % locals()
         for i in xrange(ndim):
@@ -800,9 +804,6 @@ class GpuCAReduce(GpuOp):
                     ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
             """ % locals()
 
-        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
-                                for i in range(node.inputs[0].ndim)])
         print >> sio, """
                     );
             CNDA_THREAD_SYNC;
@@ -1571,6 +1572,9 @@ class GpuCAReduce(GpuOp):
             }
             n_threads.z -= 1;
 
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
+
             dim3 n_blocks(1,1,1);
             %(makecall)s
         }
@@ -1601,7 +1605,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [7]  # the version corresponding to the c code in this Op
+        version = [8]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
