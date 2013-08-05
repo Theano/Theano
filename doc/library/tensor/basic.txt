@@ -925,11 +925,11 @@ development version to have this feature now.
 
 
 Index-assignment is *not* supported.  If you want to do something like ``a[5]
-= b`` or ``a[5]+=b``, see :func:`set_subtensor` and :func:`inc_subtensor` below.
+= b`` or ``a[5]+=b``, see :func:`theano.tensor.set_subtensor` and :func:`theano.tensor.inc_subtensor` below.
 
-.. autofunction:: theano.tensor.basic.set_subtensor
+.. autofunction:: theano.tensor.set_subtensor
 
-.. autofunction:: theano.tensor.basic.inc_subtensor
+.. autofunction:: theano.tensor.inc_subtensor
 
 .. _tensor_operator_support:
 
