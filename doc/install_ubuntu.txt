@@ -161,14 +161,22 @@ Ubuntu 11.10/12.04 (probably work on 11.04 too):
 Then you need to fetch latest CUDA tool kit (download ubuntu 11.04 32/64bit package)
 from `here <http://developer.nvidia.com/cuda-downloads>`_.
 
-Then you install it like this:
+For the `run` installed (the only one available for CUDA 5.0 and older), you install it like this:
 
 .. code-block:: bash
 
     chmod a+x XXX.sh
     sudo ./XXX.sh
 
-You probably need to change the default version of gcc as 
+Since CUDA 5.5, Nvidia provide a DEB package. If you don't know how to
+intall it, just double click on it from the graphical interface. It
+should ask if you want to install it.
+
+You must reboot the computer after the driver installation. To test
+that it was loaded correctly after the reboot, run the command
+`nvidia-smi` from the command line.
+
+You probably need to change the default version of gcc as
 `explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_:
 
 
