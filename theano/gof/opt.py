@@ -548,7 +548,7 @@ class MergeOptimizer(Optimizer):
                 except InconsistencyError:
                     success = False
                     fgraph.merge_feature.blacklist.append(
-                            (pairs[0][0].owner, pairs[0][1].owner))
+                        (pairs[0][0].owner, pairs[0][1].owner))
                 if success:
                     break
 
@@ -1027,7 +1027,7 @@ class PatternSub(LocalOptimizer):
             else:
                 return pattern.clone()
         u = match(self.in_pattern, node.out, unify.Unification(), True,
-                self.pdb)
+                  self.pdb)
         if u:
             p = self.out_pattern
             new = build(p, u)

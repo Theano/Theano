@@ -638,8 +638,11 @@ def get_test_value(v):
     For a Shared variable, it is the internal value.
     For another Variable, it is the content of v.tag.test_value.
     """
-    v_tensor = theano.tensor.as_tensor_variable(v)
-    return PureOp._get_test_value(v_tensor)
+    if not isinstance(v, graph.Variable):
+        v_var = theano.tensor.as_tensor_variable(v)
+    else:
+        v_var = v
+    return PureOp._get_test_value(v_var)
 
 
 def missing_test_message(msg):
