@@ -1018,7 +1018,7 @@ class FunctionMaker(object):
         compute_test_value_orig = theano.config.compute_test_value
         add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
         try:
-            theano.config.compute_test_value = "off"
+            theano.config.compute_test_value = theano.config.compute_test_value_opt
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
             optimizer_profile = optimizer(fgraph)

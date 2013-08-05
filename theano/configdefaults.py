@@ -383,6 +383,13 @@ AddConfigVar('compute_test_value',
         in_c_key=False)
 
 
+AddConfigVar('compute_test_value_opt',
+             ("For debugging Theano optimization only."
+              " Same as compute_test_value, but is used"
+              " durint Theano optimizatoin"),
+             EnumStr('off', 'ignore', 'warn', 'raise'),
+             in_c_key=False)
+
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
     method when exception_verbosity == 'low'. When exception_verbosity

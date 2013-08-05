@@ -630,6 +630,12 @@ import theano and print the config variable, as in:
           this Op
         - ``'raise'`` will raise an Exception
     
+.. attribute:: config.compute_test_value_opt
+
+   As ``compute_test_value``, but it is the value used during Theano
+   optimization phase. Theano user's do not need to use this. This is
+   to help debug shape error in Theano optimization.
+
 .. attribute:: config.exception_verbosity
 
     String Value: ``'low'``, ``'high'``.
