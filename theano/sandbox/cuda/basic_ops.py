@@ -3067,6 +3067,9 @@ class GpuJoin(tensor.Join, GpuOp):
             Py_XDECREF(step);"""
         return str
 
+    def c_code_cache_version(self):
+        return (1,)
+
 gpu_join = GpuJoin()
 
 
