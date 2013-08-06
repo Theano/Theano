@@ -429,6 +429,11 @@ class PushOutSeqScan(gof.Optimizer):
                     to_replace += [y]
                     replace_with_in += [y_place_holder]
                     replace_with_out += [new_outer]
+                    if hasattr(new_outer.tag, "test_value"):
+                        new_sh = new_outer.tag.test_value.shape
+                        ref_sh = (outside_ins.tag.test_value.shape[0],)
+                        ref_sh += nd.outputs[0].tag.test_value.shape
+                        assert new_sh == ref_sh
 
                     changed = True
         if counts >= max_iterations:
@@ -522,7 +527,7 @@ class PushOutSeqScan(gof.Optimizer):
                     replace_with.items(),
                     remove=[node],
                     reason='scanOp_pushout_seqs_ops')
-
+                return True
         else:
             return False
 
