@@ -579,9 +579,10 @@ class FunctionGraph(utils.object2):
             if hasattr(feature, 'orderings'):
                 orderings = feature.orderings(self)
                 if not isinstance(orderings, OrderedDict):
-                    raise TypeError("Non-deterministic return value from " \
-                            +str(feature.orderings) \
-                            +". Nondeterministic object is "+str(orderings))
+                    raise TypeError("Non-deterministic return value from " +
+                                    str(feature.orderings) +
+                                    ". Nondeterministic object is " +
+                                    str(orderings))
                 for node, prereqs in orderings.items():
                     if not isinstance(prereqs, (list, OrderedSet)):
                         raise TypeError(
