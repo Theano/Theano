@@ -101,7 +101,7 @@ def scan(fn,
 
         The order of the sequences is the same as the one in the list
         `sequences` given to scan. The order of the outputs is the same
-        as the order of ``output_info``. For any sequence or output the
+        as the order of ``outputs_info``. For any sequence or output the
         order of the time slices is the same as the one in which they have
         been given as taps. For example if one writes the following :
 
@@ -262,7 +262,7 @@ def scan(fn,
         outputs will have *0 rows*. If the value is negative, ``scan``
         will run backwards in time. If the ``go_backwards`` flag is already
         set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n stpes is not provided, ``scan`` will figure
+        in time. If n_steps is not provided, ``scan`` will figure
         out the amount of steps it should run given its input sequences.
 
 
@@ -817,7 +817,7 @@ def scan(fn,
     if as_while:
         tmp_dummy_f_outs -= 1
     if not (tmp_dummy_f_outs == n_outs or outs_info == []):
-        raise ValueError('Please provide None as output_info for '
+        raise ValueError('Please provide None as outputs_info for '
                          'any output that does not feed back into '
                          'scan (i.e. it behaves like a map) ')
 
