@@ -144,7 +144,7 @@ def remove_constants_and_unused_inputs_scan(node):
         nw_info['n_seqs'] = nw_n_seqs
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
-        nw_outs = nwScan.make_node(*nw_outer).outputs
+        nw_outs = nwScan(*nw_outer, return_list=True)
         return nw_outs
     else:
         return False
@@ -574,7 +574,8 @@ class ScanInplaceOptimizer(Optimizer):
                                       info,
                                       typeConstructor=self.typeConstructor)
 
-                new_outs = new_op.make_node(*inputs).outputs
+                # Do not call make_node for test_value
+                new_outs = new_op(*inputs, return_list=True)
                 try:
                     fgraph.replace_all_validate_remove(
                         zip(node.outputs, new_outs),
@@ -957,9 +958,10 @@ class ScanSaveMem(gof.Optimizer):
             # I need to make sure I'm not reapplying the same optimization
             # twice since bad things usually happen if I do that
             info['_scan_savemem_visited'] = True
-            new_outs = scan_op.Scan(inps,
-                                    outs,
-                                    info).make_node(*node_ins).outputs
+
+            # Do not call make_node for test_value
+            new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
+                                                      return_list=True)
 
             old_new = []
             # 3.7 Get replace pairs for those outputs that do not change
@@ -989,8 +991,7 @@ class ScanSaveMem(gof.Optimizer):
                             nw_slice,
                             lambda entry: isinstance(entry,
                                                      tensor.Variable))
-                        new_o = subtens.make_node(new_outs[nw_pos],
-                                                  *sl_ins).outputs[0]
+                        new_o = subtens(new_outs[nw_pos], *sl_ins)
                         if new_o.ndim > 0:
                             new_o = new_o[::cnf_slice[1]]
                         replaced_outs.append(idx)
@@ -1028,8 +1029,7 @@ class ScanSaveMem(gof.Optimizer):
                             nw_slice,
                             lambda entry: isinstance(entry,
                                                      tensor.Variable))
-                        new_o = subtens.make_node(new_outs[nw_pos],
-                                                  *sl_ins).outputs[0]
+                        new_o = subtens(new_outs[nw_pos], *sl_ins)
                         if new_o.ndim > 0:
                             new_o = new_o[::cnf_slice[1]]
                         old_new += [(old, new_o)]
