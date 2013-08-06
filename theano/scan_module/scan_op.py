@@ -1582,7 +1582,7 @@ class Scan(PureOp):
                 outer_inp_seqs.append(x[::-1])
 
         outer_inp_seqs += [x[::-1] for x in self.outer_mitsot_outs(outs)]
-        outer_inp_seqs += [x[::-1] for x in self.outer_sitsot_outs(outs)]
+        outer_inp_seqs += [x[::-1][:-1] for x in self.outer_sitsot_outs(outs)]
         outer_inp_seqs += [x[::-1] for x in self.outer_nitsot_outs(outs)]
 
         inner_inp_seqs = self.inner_seqs(self_inputs)
