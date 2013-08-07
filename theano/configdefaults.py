@@ -379,7 +379,7 @@ AddConfigVar('compute_test_value',
          "Constants, SharedVariables and the tag 'test_value' as inputs "
          "to the function. This helps the user track down problems in the "
          "graph before it gets optimized."),
-        EnumStr('off', 'ignore', 'warn', 'raise'),
+        EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
         in_c_key=False)
 
 
@@ -387,7 +387,7 @@ AddConfigVar('compute_test_value_opt',
              ("For debugging Theano optimization only."
               " Same as compute_test_value, but is used"
               " durint Theano optimizatoin"),
-             EnumStr('off', 'ignore', 'warn', 'raise'),
+             EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
              in_c_key=False)
 
 """Note to developers:

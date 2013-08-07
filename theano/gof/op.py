@@ -13,6 +13,7 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import logging
+import sys
 import warnings
 
 import theano
@@ -408,6 +409,9 @@ class PureOp(object):
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
+                    elif config.compute_test_value == 'pdb':
+                        import pdb
+                        pdb.post_mortem(sys.exc_info()[2])
                     else:
                         raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
 
