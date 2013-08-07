@@ -4656,7 +4656,9 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                 else:
                     s = scalar.Scalar(i.dtype).make_variable()
                     try:
-                        s.tag.test_value = gof.op.get_test_value(i).flatten()[0]
+                        v = gof.op.get_test_value(i)
+                        if v.size > 0:
+                            s.tag.test_value = gof.op.get_test_value(i).flatten()[0]
                     except AttributeError:
                         pass
 
