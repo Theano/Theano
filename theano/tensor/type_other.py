@@ -1,6 +1,7 @@
 #
 # Slice type and Op. None Type and NoneConst.
 #
+import theano
 from theano.gof import Apply, Constant, Op, Type
 from theano.gradient import DisconnectedType
 
