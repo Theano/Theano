@@ -398,7 +398,7 @@ def local_dimshuffle_lift(node):
         ret = inode.op(*[DimShuffle(input.type.broadcastable,
                                     op.new_order,
                                     op.inplace)(input) for input in
-                         inode.inputs], return_list=True)
+                         inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
@@ -410,7 +410,7 @@ def local_dimshuffle_lift(node):
             return [iinput]
         else:
             ret = DimShuffle(iinput.type.broadcastable, new_order,
-                             inplace)(iinput, return_list=True)
+                             inplace)(iinput, **dict(return_list=True))
             return ret
 
 
