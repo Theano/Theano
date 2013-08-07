@@ -1141,7 +1141,7 @@ class T_Scan(unittest.TestCase):
             go_backwards=False)
         gX, gY = tensor.grad(values[1].sum(), [x, y])
         f = theano.function([c, x, y], [gX, gY],
-                           allow_input_downcast=True)
+                            allow_input_downcast=True)
         # Check for runtime errors
         f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
 
