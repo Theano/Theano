@@ -1,6 +1,7 @@
 import sys
 import time
 
+from theano import config
 from theano.gof.python25 import partial
 from theano.gof.python25 import OrderedDict
 from theano.gof import graph
@@ -197,11 +198,14 @@ class ReplaceValidate(History, Validator):
     def replace_validate(self, fgraph, r, new_r, reason=None):
         self.replace_all_validate(fgraph, [(r, new_r)], reason=reason)
 
-    def replace_all_validate(self, fgraph, replacements, reason=None):
+    def replace_all_validate(self, fgraph, replacements,
+                             reason=None, verbose=None):
         chk = fgraph.checkpoint()
+        if verbose is None:
+            verbose = config.optimizer_verbose
         for r, new_r in replacements:
             try:
-                fgraph.replace(r, new_r, reason=reason)
+                fgraph.replace(r, new_r, reason=reason, verbose=False)
             except Exception, e:
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this FunctionGraph' not in str(e)):
@@ -217,6 +221,8 @@ class ReplaceValidate(History, Validator):
         except Exception, e:
             fgraph.revert(chk)
             raise
+        if verbose:
+            print reason, r, new_r
         return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,

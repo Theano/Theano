@@ -482,6 +482,14 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+.. attribute:: optimizer_verbose
+
+    Bool value: either True or False
+
+    Default: False
+
+    When True, we print on the stdout the optimization applied.
+
 .. attribute:: nocleanup
 
     Bool value: either True or False

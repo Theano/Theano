@@ -157,6 +157,11 @@ AddConfigVar('optimizer',
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
         in_c_key=False)
 
+AddConfigVar('optimizer_verbose',
+             "If True, we print all optimization being applied",
+             BoolParam(False),
+             in_c_key=False)
+
 AddConfigVar('on_opt_error',
         ("What to do when an optimization crashes: warn and skip it, raise "
          "the exception, or fall into the pdb debugger."),

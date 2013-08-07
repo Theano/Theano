@@ -413,12 +413,15 @@ class FunctionGraph(utils.object2):
             self.__prune_r__([r], reason=reason)
 
     ### replace ###
-
-    def replace(self, r, new_r, reason=None):
+    def replace(self, r, new_r, reason=None, verbose=None):
         """ WRITEME
         This is the main interface to manipulate the subgraph in FunctionGraph.
         For every node that uses r as input, makes it use new_r instead.
         """
+        if verbose is None:
+            verbose = config.optimizer_verbose
+        if verbose:
+            print reason, r, new_r
         if r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong to this FunctionGraph" % r, str(reason))
         if not r.type == new_r.type:
