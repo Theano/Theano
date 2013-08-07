@@ -144,7 +144,7 @@ def remove_constants_and_unused_inputs_scan(node):
         nw_info['n_seqs'] = nw_n_seqs
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
-        nw_outs = nwScan(*nw_outer, return_list=True)
+        nw_outs = nwScan(*nw_outer, **dict(return_list=True))
         return nw_outs
     else:
         return False
@@ -230,7 +230,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 
                     # Do not call make_node for test_value
                     nw_outer_node = nd.op(*outside_ins,
-                                          return_list=True)[0].owner
+                                          **dict(return_list=True))[0].owner
 
                     # Step 2. Create variables for replacements
                     for idx, y in enumerate(nd.outputs):
@@ -291,7 +291,8 @@ class PushOutNonSeqScan(gof.Optimizer):
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
 
             # Do not call make_node for test_value
-            nw_node = nwScan(*(node.inputs + nw_outer), return_list=True)[0].owner
+            nw_node = nwScan(*(node.inputs + nw_outer),
+                             **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
@@ -395,7 +396,8 @@ class PushOutSeqScan(gof.Optimizer):
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
                     # Do not call make_node for test_value
-                    nw_outer_node = nd.op(*outside_ins, return_list=True)[0].owner
+                    nw_outer_node = nd.op(*outside_ins,
+                                          **dict(return_list=True))[0].owner
 
                     # Step 2. Create variables for replacements
                     for idx, y in enumerate(nd.outputs):
@@ -488,8 +490,8 @@ class PushOutSeqScan(gof.Optimizer):
             nw_info['n_seqs'] += len(nw_inner)
             nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
             # Do not call make_node for test_value
-            nw_node = nwScan(* (node.inputs[:1] + nw_outer +
-                                node.inputs[1:]), return_list=True)[0].owner
+            nw_node = nwScan(*(node.inputs[:1] + nw_outer + node.inputs[1:]),
+                             **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
                 zip(node.outputs, nw_node.outputs),
@@ -580,7 +582,7 @@ class ScanInplaceOptimizer(Optimizer):
                                       typeConstructor=self.typeConstructor)
 
                 # Do not call make_node for test_value
-                new_outs = new_op(*inputs, return_list=True)
+                new_outs = new_op(*inputs, **dict(return_list=True))
                 try:
                     fgraph.replace_all_validate_remove(
                         zip(node.outputs, new_outs),
@@ -966,7 +968,7 @@ class ScanSaveMem(gof.Optimizer):
 
             # Do not call make_node for test_value
             new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
-                                                      return_list=True)
+                                                      **dict(return_list=True))
 
             old_new = []
             # 3.7 Get replace pairs for those outputs that do not change
