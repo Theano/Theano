@@ -183,6 +183,41 @@ class Scalar(Type):
 
     def dtype_specs(self):
         try:
+            # To help debug dtype/typenum problem, here is the list of numpy typenum.
+            """
+            for dtype in ['int8','uint8','short','ushort','intc','uintc', 'longlong','ulonglong','single','double','longdouble', 'csingle','cdouble','clongdouble', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64', 'complex64', 'complex128', 'float', 'double', 'int', 'uint']:
+                print dtype, np.zeros(1, dtype=dtype).dtype.num
+int8 1
+uint8 2
+short 3
+ushort 4
+intc 5
+uintc 6
+longlong 9
+ulonglong 10
+single 11
+double 12
+longdouble 13
+csingle 14
+cdouble 15
+clongdouble 16
+float32 11
+float64 12
+int8 1
+int16 3
+int32 5
+int64 7
+uint8 2
+uint16 4
+uint32 6
+uint64 8
+complex64 14
+complex128 15
+float 12
+double 12
+int 7
+uint 8
+            """
             return {  # dtype: (py_type, c_type, cls_name)
                     'float32': (numpy.float32, 'npy_float32', 'Float32'),
                     'float64': (numpy.float64, 'npy_float64', 'Float64'),
