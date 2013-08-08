@@ -2953,7 +2953,6 @@ class GpuJoin(tensor.Join, GpuOp):
         axis = inputs[0]
         n_cndas = len(inputs[1:])
         input_1 = inputs[1]
-        axis = inputs[0]
         fail = sub['fail']
         out = out_[0]
 
