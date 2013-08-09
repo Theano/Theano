@@ -1072,9 +1072,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
                 a.broadcastable, self.ix2.broadcastable)
 
     def test_inc_adv_subtensor_w_matrix(self):
-        if inplace_increment is None:
-            raise inplace_increment_missing
-
         subt = self.v[self.ix2]
         a = inc_subtensor(subt, subt)
 
