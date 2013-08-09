@@ -7,12 +7,12 @@ try:
     xs = sympy.Symbol('x')
     ys = sympy.Symbol('y')
 except ImportError:
-    sympy = False
+    from nose.plugins.skip import SkipTest
+    raise skiptest('optional package sympy disabled')
 
 xt, yt = floats('xy')
 
 def test_SymPyCCode():
-    if not sympy:       return
     op = SymPyCCode([xs, ys], xs + ys)
     e = op(xt, yt)
     g = theano.gof.FunctionGraph([xt, yt], [e])
@@ -20,14 +20,12 @@ def test_SymPyCCode():
     assert fn(1.0, 2.0) == 3.0
 
 def test_grad():
-    if not sympy:       return
     op = SymPyCCode([xs], xs**2)
     zt = op(xt)
     ztprime = theano.grad(zt, xt)
     assert ztprime.owner.op.expr == 2*xs
 
 def test_multivar_grad():
-    if not sympy:       return
     op = SymPyCCode([xs, ys], xs**2 + ys**2)
     zt = op(xt, yt)
     dzdx, dzdy = theano.grad(zt, [xt, yt])
