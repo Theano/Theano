@@ -1,6 +1,7 @@
 import numpy as np
 
 from theano.scalar.basic import Apply, ScalarOp, as_scalar, float64, float32, int64
+from theano.gof.utils import remove
 
 imported_sympy = False
 try:
@@ -16,10 +17,6 @@ names = ("sympy_func_%d"%i for i in it.count(0))
 
 def include_line(line):
     return '#include' in line
-
-def remove(pred, seq):
-    """ Converse of filter """
-    return [item for item in seq if not pred(item)]
 
 def sympy_dtype(expr):
     return get_default_datatype(expr).cname
