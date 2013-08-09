@@ -1,15 +1,28 @@
 from theano.scalar.basic_sympy import SymPyCCode
 from theano.scalar.basic import floats
-from theano.gof import FunctionGraph
-from theano import gof
+import theano
 import sympy
 
+xs = sympy.Symbol('x')
+ys = sympy.Symbol('y')
+xt, yt = floats('xy')
+
 def test_SymPyCCode():
-    xs = sympy.Symbol('x')
-    ys = sympy.Symbol('y')
     op = SymPyCCode([xs, ys], xs + ys)
-    xt, yt = floats('xy')
     e = op(xt, yt)
-    g = FunctionGraph([xt, yt], [e])
-    fn = gof.CLinker().accept(g).make_function()
+    g = theano.gof.FunctionGraph([xt, yt], [e])
+    fn = theano.gof.CLinker().accept(g).make_function()
     assert fn(1.0, 2.0) == 3.0
+
+def test_grad():
+    op = SymPyCCode([xs], xs**2)
+    zt = op(xt)
+    ztprime = theano.grad(zt, xt)
+    assert ztprime.owner.op.expr == 2*xs
+
+def test_multivar_grad():
+    op = SymPyCCode([xs, ys], xs**2 + ys**2)
+    zt = op(xt, yt)
+    dzdx, dzdy = theano.grad(zt, [xt, yt])
+    assert dzdx.owner.op.expr == 2*xs
+    assert dzdy.owner.op.expr == 2*ys

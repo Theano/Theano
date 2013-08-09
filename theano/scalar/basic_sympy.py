@@ -86,6 +86,12 @@ class SymPyCCode(ScalarOp):
     def perform(self, node, inputs, output_storage):
         raise NotImplementedError()
 
+    def grad(self, inputs, output_grads):
+        return [SymPyCCode(self.inputs,
+                           self.expr.diff(inp),
+                           name=self.name+"_prime_%d"%i)(*inputs)
+                for i, inp in enumerate(self.inputs)]
+
     def _info(self):
         return type(self), self.name, tuple(self.inputs), self.expr
 
