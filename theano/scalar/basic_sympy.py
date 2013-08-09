@@ -12,7 +12,6 @@ except ImportError:
     pass
 
 import itertools as it
-
 names = ("sympy_func_%d"%i for i in it.count(0))
 
 def include_line(line):
