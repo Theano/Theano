@@ -48,11 +48,21 @@ class SymPyCCode(ScalarOp):
         self.inputs = inputs
         self.expr = expr
 
-    def c_support_code(self):
+    def _sympy_c_code(self):
         [(c_name, c_code), (h_name, c_header)] = codegen(
                 (self.name, self.expr), 'C', 'project_name',
                 header=False, argument_sequence=self.inputs)
+        return c_code
+
+    def c_support_code(self):
+        c_code = self._sympy_c_code()
         return '\n'.join(remove(include_line, c_code.split('\n')))
+
+    def c_headers(self):
+        c_code = self._sympy_c_code()
+        return [line.replace("#include", "").strip() for line in
+                c_code.split('\n') if include_line(line)
+                and not 'project_name' in line]
 
     def c_code(self, node, name, input_names, output_names, sub):
         y, = output_names
