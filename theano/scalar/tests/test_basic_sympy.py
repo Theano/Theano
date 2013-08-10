@@ -8,7 +8,7 @@ try:
     ys = sympy.Symbol('y')
 except ImportError:
     from nose.plugins.skip import SkipTest
-    raise skiptest('optional package sympy disabled')
+    raise SkipTest('optional package sympy disabled')
 
 xt, yt = floats('xy')
 
