@@ -391,7 +391,7 @@ AddConfigVar('compute_test_value',
 AddConfigVar('compute_test_value_opt',
              ("For debugging Theano optimization only."
               " Same as compute_test_value, but is used"
-              " durint Theano optimizatoin"),
+              " during Theano optimization"),
              EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
              in_c_key=False)
 
