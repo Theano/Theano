@@ -447,6 +447,89 @@ For more details see :ref:`random_value_in_tests`.
 
 :download:`Solution<extending_theano_solution_1.py>`
 
+Sparse
+======
+
+There is few differences if you want to make an op that use
+:ref:`sparse <tutsparse>` inputs or outputs. In particular, in the
+``make_node()`` function, you call
+``theano.sparse.as_sparse_variable(x)`` on sparse input variable
+instead of ``as_tensor_variable(x)``.
+
+Another difference is that you need to use SparseVariable and
+SparseType instead of TensorVariable and TensorType.
+
+Don't forget that we support only sparse matrix (so only 2 dimensions)
+and they don't support broadcast operation by default as scipy sparse
+matrix (but a few op do it when called manually). Also, we support 2
+formats for sparse type: ``csr`` and ``csr``. So in ``make_mode()``,
+you create outputs variables like this:
+
+.. code-block:: python
+
+    out_format = inputs[0].format  # or 'csr' or 'csc' if the output format is fixed
+    SparseType(dtype=inputs[0].dtype, format=out_format).make_variable()
+
+See the sparse :class:`theano.sparse.basic.Cast` op `code
+<https://github.com/Theano/Theano/blob/master/theano/sparse/basic.py#L753>`_
+for a good example for a sparse op with python code.
+
+.. note::
+
+   From the definition of CSR and CSC format, CSR column indices are
+   not necessarily sorted. Likewise for CSC row indices. Use
+   :class:`EnsureSortedIndices
+   <theano.sparse.basic.EnsureSortedIndices>` if your code don't
+   support it.
+
+   Also, there can be explicit zeros in your inputs. Use
+   :class:`Remove0 <theano.sparse.basic.Remove0>` or ``remove0`` to
+   make sure they aren't present in your input if you don't support
+   that.
+
+   To remove explicit zeros and make sure indices are sorted, use
+   :func:`clean <theano.sparse.basic.clean>`.
+
+Sparse Gradient
+---------------
+
+There is 2 types of :ref:`gradients <tutsparse_gradient>` : ``normal``
+gradient and ``structured`` gradient. Please document what your op
+implement in its docstring. It is important that the user know it and
+it is not always easy to infer from the code. Also make clear witch
+inputs/outputs are sparse and witch ones are dense.
+
+Sparse c code
+-------------
+
+Theano don't have a native c code interface for sparse matrix. The
+reason is simple, we use the scipy sparse matrix object and they don't
+have a c object. So we use a simple trick: a sparse matrix is made of
+4 fields that are vector: data, indices, indptr and shape. So to make
+an op with c code that have sparse variables as inputs, we make an op
+that take as input the needed fields of those sparse variables.
+
+You can extract the 4 fields with
+:func:`theano.sparse.basic.csm_properties`. You can use
+:func:`theano.sparse.basic.csm_data`,
+:func:`theano.sparse.basic.csm_indices`,
+:func:`theano.sparse.basic.csm_indptr` and
+:func:`theano.sparse.basic.csm_shape` to extract the individual
+fields.
+
+You can look at the `AddSD
+<https://github.com/Theano/Theano/blob/master/theano/sparse/basic.py#L1704>`_
+sparse op for an example with c code. It implement the addition of a
+sparse matrix with a dense matrix.
+
+Sparse Tests
+------------
+
+You can reuse the test system for tensor variable. To generate the
+needed sparse variable and data, you can use
+:func:`theano.sparse.tests.test_basic.sparse_random_inputs`. It take
+take many paramters including parameters for the format (csr or csc), the shape, the
+dtype, to have explicit 0 and to have unsorted indices.
 
 Final Note
 ==========
