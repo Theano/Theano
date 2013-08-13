@@ -1,5 +1,5 @@
 import theano
-from theano.gof.utils import give_variables_names, unique
+from theano.gof.utils import give_variables_names, unique, remove
 from theano.gof.python25 import all
 
 
@@ -34,3 +34,8 @@ def test_give_variables_names_small():
     give_variables_names(fgraph.variables)
     assert all(var.name for var in fgraph.variables)
     assert unique([var.name for var in fgraph.variables])
+
+def test_remove():
+    even = lambda x: x % 2 == 0
+    odd  = lambda x: x % 2 == 1
+    assert remove(even, range(5)) == filter(odd, range(5))
