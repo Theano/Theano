@@ -26,8 +26,8 @@ def test_grad():
     assert ztprime.owner.op.expr == 2*xs
 
 def test_multivar_grad():
-    op = SymPyCCode([xs, ys], xs**2 + ys**2)
+    op = SymPyCCode([xs, ys], xs**2 + ys**3)
     zt = op(xt, yt)
     dzdx, dzdy = theano.grad(zt, [xt, yt])
     assert dzdx.owner.op.expr == 2*xs
-    assert dzdy.owner.op.expr == 2*ys
+    assert dzdy.owner.op.expr == 3*ys**2

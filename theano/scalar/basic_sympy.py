@@ -88,7 +88,7 @@ class SymPyCCode(ScalarOp):
     def grad(self, inputs, output_grads):
         return [SymPyCCode(self.inputs,
                            self.expr.diff(inp),
-                           name=self.name+"_prime_%d"%i)(*inputs)
+                           name=self.name+"_grad_%d"%i)(*inputs)
                 for i, inp in enumerate(self.inputs)]
 
     def _info(self):
