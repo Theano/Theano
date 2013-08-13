@@ -401,7 +401,7 @@ efficiency over the basic solution that is asked here, the two operations would
 have to be jointly optimized explicitly in the code.)
 
 SciPy
------
+=====
 
 We can wrap SciPy functions in Theano. But SciPy is an optional dependency.
 Here is some code that allows the Op to be optional:
@@ -431,7 +431,7 @@ Here is some code that allows the Op to be optional:
             ...
 
 Random numbers in tests
------------------------
+=======================
 
 Making tests errors more reproducible is a good practice. To make your
 tests more reproducible, you need a way to get the same random
