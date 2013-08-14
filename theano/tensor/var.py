@@ -462,7 +462,8 @@ class _tensor_py_operators:
             raise NotImplementedError()
         # optimizations will/should catch cases like L=1, L=2
         return theano.tensor.basic.pow(
-            theano.tensor.basic.pow(abs_(self), L).sum(axis=axis), 1.0 / L)
+            theano.tensor.basic.pow(
+                theano.tensor.basic.abs_(self), L).sum(axis=axis), 1.0 / L)
 
     def mean(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.mean`"""
