@@ -6451,7 +6451,9 @@ class TestTensorInstanceMethods(unittest.TestCase):
 
 def test_norm():
     x = theano.tensor.vector('x')
-    x.norm(2)
+    n = x.norm(2)
+    f = theano.function([x], n)
+    assert numpy.allclose(f([1, 1]), numpy.sqrt(2))
 
 if __name__ == '__main__':
 
