@@ -2357,8 +2357,7 @@ def vstack(blocks, format=None, dtype=None):
 
 
 class Remove0(gof.Op):
-    """Remove explicit zeros from a sparse matrix, and
-    resort indices.
+    """Remove explicit zeros from a sparse matrix.
 
     :param x: Sparse matrix.
 

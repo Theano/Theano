@@ -1865,35 +1865,45 @@ class Remove0Tester(utt.InferShapeTester):
             ('csr', scipy.sparse.csr_matrix), ]
 
         for format, matrix_class in configs:
-            (x,), (mat,) = sparse_random_inputs(format, (3, 4),
-                                        out_dtype=config.floatX,
-                                        explicit_zero=True)
-            assert 0 in mat.data
+            for zero, unsor in [(True, True), (True, False),
+                              (False, True), (False, False)]:
+                (x,), (mat,) = sparse_random_inputs(format, (6, 8),
+                                            out_dtype=config.floatX,
+                                            explicit_zero=zero,
+                                            unsorted_indices=unsor)
+                assert 0 in mat.data or not zero
+                assert not mat.has_sorted_indices or not unsor
 
-            # the In thingy has to be there because theano has as rule not
-            # to optimize inputs
-            f = theano.function([theano.In(x, borrow=True, mutable=True)],
-                                Remove0()(x))
+                # the In thingy has to be there because theano has as rule not
+                # to optimize inputs
+                f = theano.function([theano.In(x, borrow=True, mutable=True)],
+                                    Remove0()(x))
 
-            # assert optimization local_inplace_remove0 is applied in
-            # modes with optimization
-            if theano.config.mode not in ['FAST_COMPILE']:
-                # list of apply nodes in the optimized graph.
-                nodes = f.maker.fgraph.toposort()
-                # Check there isn't any Remove0 instance not inplace.
-                assert not any([isinstance(node.op, Remove0) and
-                                not node.op.inplace for node in nodes]), (
-                       'Inplace optimization should have been applied')
-                # Check there is at least one Remove0 inplace.
-                assert any([isinstance(node.op, Remove0) and node.op.inplace
-                            for node in nodes])
-            # checking
-            # makes sense to change its name
-            target = mat
-            result = f(mat)
-            mat.eliminate_zeros()
-            msg = 'Matrices sizes differ. Have zeros been removed ?'
-            assert result.size == target.size, msg
+                # assert optimization local_inplace_remove0 is applied in
+                # modes with optimization
+                if theano.config.mode not in ['FAST_COMPILE']:
+                    # list of apply nodes in the optimized graph.
+                    nodes = f.maker.fgraph.toposort()
+                    # Check there isn't any Remove0 instance not inplace.
+                    assert not any([isinstance(node.op, Remove0) and
+                                    not node.op.inplace for node in nodes]), (
+                           'Inplace optimization should have been applied')
+                    # Check there is at least one Remove0 inplace.
+                    assert any([isinstance(node.op, Remove0) and node.op.inplace
+                                for node in nodes])
+                # checking
+                # makes sense to change its name
+                target = mat
+                result = f(mat)
+                mat.eliminate_zeros()
+                msg = 'Matrices sizes differ. Have zeros been removed ?'
+                assert result.size == target.size, msg
+                if unsor:
+                    assert not result.has_sorted_indices
+                    assert not target.has_sorted_indices
+                else:
+                    assert result.has_sorted_indices
+                    assert target.has_sorted_indices
 
     def test_infer_shape(self):
         mat = (numpy.arange(12) + 1).reshape((4, 3))
