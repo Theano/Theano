@@ -3030,7 +3030,6 @@ class GpuJoin(tensor.Join, GpuOp):
         for i, cdna in enumerate(inputs[1:]):
             str += """
             sum += shape_%(cdna)s[axis];
-            Py_XDECREF(stop);
             stop = PyInt_FromLong(sum);
             slice_tuple = PyTuple_New(nd);
             section_slice = PySlice_New(start, stop, step);
@@ -3063,16 +3062,17 @@ class GpuJoin(tensor.Join, GpuOp):
             Py_XDECREF(slice_tuple);
             Py_XDECREF(start);
             start = stop;
+            stop = NULL;
             """ % locals()
 
-            str+="""
+        str+="""
             Py_XDECREF(start);
             Py_XDECREF(stop);
             Py_XDECREF(step);"""
         return str
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_join = GpuJoin()
 
