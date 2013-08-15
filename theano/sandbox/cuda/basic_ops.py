@@ -2970,10 +2970,9 @@ class GpuJoin(tensor.Join, GpuOp):
         PyObject *section_slice = NULL;
         PyObject *full_slice = NULL;
         PyObject *out_sub = NULL;
-        PyObject *start, *stop, *step;
+        PyObject *start, *stop;
         start = NULL;
         stop = NULL;
-        step = NULL;
 
         for(int i = 0; i<nd; i+=1)
         {
@@ -3040,7 +3039,7 @@ class GpuJoin(tensor.Join, GpuOp):
             if(slice_tuple == NULL){
                 %(fail)s;
             }
-            section_slice = PySlice_New(start, stop, step);
+            section_slice = PySlice_New(start, stop, NULL);
             if(section_slice == NULL){
                 %(fail)s;
             }
@@ -3061,7 +3060,6 @@ class GpuJoin(tensor.Join, GpuOp):
             if(out_sub == NULL){
                 Py_XDECREF(start);
                 Py_XDECREF(stop);
-                Py_XDECREF(step);
                 Py_XDECREF(slice_tuple);
                 Py_XDECREF(out_sub);
                 Py_XDECREF(%(out)s);
@@ -3070,12 +3068,12 @@ class GpuJoin(tensor.Join, GpuOp):
             Py_CLEAR(slice_tuple);
             Py_CLEAR(section_slice);
 
-            errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(cdna)s);
+            errorcode = CudaNdarray_CopyFromCudaNdarray(
+                (CudaNdarray*)out_sub, %(cdna)s);
             if(errorcode != 0)
             {
                 Py_XDECREF(start);
                 Py_XDECREF(stop);
-                Py_XDECREF(step);
                 Py_XDECREF(out_sub);
                 Py_XDECREF(%(out)s);
                 %(fail)s;
@@ -3086,14 +3084,14 @@ class GpuJoin(tensor.Join, GpuOp):
             stop = NULL;
             """ % locals()
 
-        str+="""
+        str += """
             Py_XDECREF(start);
             Py_XDECREF(stop);
-            Py_XDECREF(step);"""
+        """
         return str
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpu_join = GpuJoin()
 
