@@ -6449,6 +6449,12 @@ class TestTensorInstanceMethods(unittest.TestCase):
         # Test equivalent advanced indexing
         assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
+def test_norm():
+    x = theano.tensor.vector('x')
+    n = x.norm(2)
+    f = theano.function([x], n)
+    assert numpy.allclose(f([1, 1]), numpy.sqrt(2))
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
