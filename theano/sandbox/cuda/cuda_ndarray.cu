@@ -3581,7 +3581,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
             && (1!=CudaNdarray_HOST_DIMS(other)[i] || !unbroadcast) )
         {
           PyErr_Format(PyExc_ValueError,
-                       "need same dimensions for dim %d,"
+                       "CudaNdarray_CopyFromCudaNdarray:"
+                       " need same dimensions for dim %d,"
                        " destination=%d, source=%d",
                        i, CudaNdarray_HOST_DIMS(self)[i],
                        CudaNdarray_HOST_DIMS(other)[i]);
