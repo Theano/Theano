@@ -326,7 +326,8 @@ class autocast_float_as(object):
         autocast_float.dtypes = self.old_dtypes
 
 
-def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
+def constant_or_value(x, rtype, name=None, ndim=None, dtype=None,
+                      broadcastable=None):
     """Return a symbolic `Constant` with value `x`
 
     :Exceptions:
@@ -374,7 +375,10 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
 
     assert type(x_) == numpy.ndarray
 
-    bcastable = [d == 1 for d in x_.shape]
+    if broadcastable is None:
+        bcastable = [d == 1 for d in x_.shape]
+    else:
+        bcastable = list(broadcastable)
     if ndim is not None:
         if len(bcastable) < ndim:
             bcastable = [True] * (ndim - len(bcastable)) + bcastable
@@ -400,9 +404,9 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 
-def constant(x, name=None, ndim=None, dtype=None):
+def constant(x, name=None, ndim=None, dtype=None, broadcastable=None):
     return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
-                             dtype=dtype)
+                             dtype=dtype, broadcastable=broadcastable)
 
 
 def _obj_is_wrappable_as_tensor(x):

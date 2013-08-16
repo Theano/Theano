@@ -1792,6 +1792,14 @@ Alloc13GradTester = makeBroadcastTester(
         )
 
 
+def test_constant():
+    n = numpy.zeros((1, 2))
+    v = theano.tensor.constant(n)
+    assert v.type.broadcastable == (True, False)
+    v = theano.tensor.constant(n, broadcastable=(False, False))
+    assert v.type.broadcastable == (False, False)
+
+
 class TestAlloc(unittest.TestCase):
     dtype = config.floatX
     mode = mode_opt
