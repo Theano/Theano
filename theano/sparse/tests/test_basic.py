@@ -1249,7 +1249,7 @@ class DotTests(utt.InferShapeTester):
 
         fI = I.flatten()
         data = tensor.ones_like(fI)
-        indptr = tensor.arange(data.shape[0] + 1)
+        indptr = tensor.arange(data.shape[0] + 1, dtype='int32')
 
         m1 = sparse.CSR(data, fI, indptr, (8, size))
         m2 = sparse.dot(m1, C)
