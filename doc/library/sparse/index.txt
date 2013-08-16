@@ -127,8 +127,10 @@ List of Implemented Operations
 - Construction of Sparses and their Properties
     - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix.
       The grad implemented is regular.
-    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` to get the properties of a sparse matrix.
+    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` and ``csm_properties(x)``
+      to get the properties of a sparse matrix.
       The grad implemented is regular.
+    - csm_indices(x), csm_indptr(x), csm_data(x) and csm_shape(x) or x.shape.
     - :func:`sp_ones_like <theano.sparse.basic.sp_ones_like>`.
       The grad implemented is regular.
     - :func:`sp_zeros_like <theano.sparse.basic.sp_zeros_like>`.
@@ -259,6 +261,9 @@ List of Implemented Operations
     - :class:`Remove0 <theano.sparse.basic.Remove0>` and ``remove0``
     - :func:`clean <theano.sparse.basic.clean>` to resort indices and remove zeros
 
+- To help testing
+    - :func:`theano.sparse.tests.test_basic.sparse_random_inputs`
+
 ===================================================================
 :mod:`sparse` --  Sparse Op
 ===================================================================
@@ -271,3 +276,4 @@ List of Implemented Operations
 .. automodule:: theano.sparse.basic
     :members:
 
+.. autofunction:: theano.sparse.tests.test_basic.sparse_random_inputs

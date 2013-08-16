@@ -511,23 +511,42 @@ class CSMProperties(gof.Op):
 
         data, indices, indptr, shape = csm_properties(csm)
         return [CSM(csm.format)(g[0], indices, indptr, shape)]
+
 # don't make this a function or it breaks some optimizations below
 csm_properties = CSMProperties()
+"""An CSMProperties object instance. It return the fields data,
+indices, indptr and shape of the sparse varible. Together they specify
+completly the the sparse variable when we know its format. Example::
+
+    the_data, the_indices, the_indptr, the_shape = csm_properties(a_sparse_var)
+"""
 
 
 def csm_data(csm):
+    """
+    return the data field of the sparse variable.
+    """
     return csm_properties(csm)[0]
 
 
 def csm_indices(csm):
+    """
+    return the indices field of the sparse variable.
+    """
     return csm_properties(csm)[1]
 
 
 def csm_indptr(csm):
+    """
+    return the indptr field of the sparse variable.
+    """
     return csm_properties(csm)[2]
 
 
 def csm_shape(csm):
+    """
+    return the shape field of the sparse variable.
+    """
     return csm_properties(csm)[3]
 
 
@@ -2338,8 +2357,7 @@ def vstack(blocks, format=None, dtype=None):
 
 
 class Remove0(gof.Op):
-    """Remove explicit zeros from a sparse matrix, and
-    resort indices.
+    """Remove explicit zeros from a sparse matrix.
 
     :param x: Sparse matrix.
 
