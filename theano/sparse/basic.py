@@ -251,7 +251,7 @@ def sp_zeros_like(x):
     # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(data=numpy.array([], dtype=x.type.dtype),
-                                indices=numpy.array([]),
+                                indices=numpy.array([], dtype='int32'),
                                 indptr=tensor.zeros_like(indptr),
                                 shape=shape)
 
@@ -602,12 +602,22 @@ class CSM(gof.Op):
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
 
-        if not isinstance(indices, tensor.TensorVariable):
-            indices = theano._asarray(indices, dtype='int32')
-        if not isinstance(indptr, tensor.TensorVariable):
-            indptr = theano._asarray(indptr, dtype='int32')
-        if not isinstance(shape, tensor.TensorVariable):
-            shape = theano._asarray(shape, dtype='int32')
+        if not isinstance(indices, gof.Variable):
+            indices_ = numpy.asarray(indices)
+            indices_32 = theano._asarray(indices, dtype='int32')
+            assert (indices_ == indices_32).all()
+            indices = indices_32
+        if not isinstance(indptr, gof.Variable):
+            indptr_ = numpy.asarray(indptr)
+            indptr_32 = theano._asarray(indptr, dtype='int32')
+            assert (indptr_ == indptr_32).all()
+            indptr = indptr_32
+        if not isinstance(shape, gof.Variable):
+            shape_ = numpy.asarray(shape)
+            shape_32 = theano._asarray(shape, dtype='int32')
+            assert (shape_ == shape_32).all()
+            shape = shape_32
+
         indices = tensor.as_tensor_variable(indices)
         indptr = tensor.as_tensor_variable(indptr)
         shape = tensor.as_tensor_variable(shape)
