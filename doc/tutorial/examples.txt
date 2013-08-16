@@ -304,6 +304,7 @@ Here's a brief example.  The setup code is:
 .. code-block:: python
 
     from theano.tensor.shared_randomstreams import RandomStreams
+    from theano import function
     srng = RandomStreams(seed=234)
     rv_u = srng.uniform((2,2))
     rv_n = srng.normal((2,2))
@@ -371,10 +372,11 @@ For example:
 >>> state_after_v0 = rv_u.rng.get_value().get_state()
 >>> nearly_zeros()       # this affects rv_u's generator
 >>> v1 = f()
->>> rng = rng.get_value(borrow=True)
+>>> rng = rv_u.rng.get_value(borrow=True)
 >>> rng.set_state(state_after_v0)
 >>> rv_u.rng.set_value(rng, borrow=True)
 >>> v2 = f()             # v2 != v1
+>>> v3 = f()             # v3 == v1
 
 Copying Random State Between Theano Graphs
 ------------------------------------------
