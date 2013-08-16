@@ -254,7 +254,7 @@ for the purpose of one particular function.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
->>> foo = T.lscalar()  # the type (lscalar) must match the shared variable we
+>>> foo = T.iscalar()  # the type (lscalar) must match the shared variable we
 >>>                    # are replacing with the ``givens`` list
 >>> skip_shared = function([inc, foo], fn_of_state,
         givens=[(state, foo)])
