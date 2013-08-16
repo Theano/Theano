@@ -2959,13 +2959,20 @@ class GpuJoin(tensor.Join, GpuOp):
 
         # getting the shapes of all the involved tensors (input[0]+out)
         str = """
-        int axis = PyInt_AsLong((PyObject*)%(axis)s);
-        int nd = %(nd)s;
+        const int axis = PyInt_AsLong((PyObject*)%(axis)s);
+        const int nd = %(nd)s;
         int shape_%(input_1)s[nd];
         int shape_out[nd];
         int width_sum = 0;
         int errorcode;
-        int sum;
+        int sum = 0;
+        PyObject *slice_tuple = NULL;
+        PyObject *section_slice = NULL;
+        PyObject *full_slice = NULL;
+        PyObject *out_sub = NULL;
+        PyObject *start, *stop;
+        start = NULL;
+        stop = NULL;
 
         for(int i = 0; i<nd; i+=1)
         {
@@ -2984,6 +2991,15 @@ class GpuJoin(tensor.Join, GpuOp):
             str += """
             int shape_%(cdna)s[nd];
             """ % locals()
+        str += """
+        if(-1 == axis && PyErr_Occurred()){
+            %(fail)s;
+        }
+        full_slice = PySlice_New(NULL, NULL, NULL);
+        if(full_slice == NULL){
+            %(fail)s;
+        }
+        """ % locals()
         for i, cdna in enumerate(inputs[2:]):
             str += """
             for(int i = 0; i<nd; i+=1)
@@ -3013,27 +3029,20 @@ class GpuJoin(tensor.Join, GpuOp):
         {
             %(fail)s;
         }
-
-        PyObject *slice_tuple;
-        PyObject *section_slice;
-        PyObject *full_slice;
-        full_slice = PySlice_New(NULL, NULL, NULL);
-        PyObject *out_sub;
-        PyObject *start, *stop, *step;
-        start = NULL;
-        stop = NULL;
-        step = NULL;
-        sum = 0;
-
         """ % locals()
         # start copying the data into the new out tensors
         for i, cdna in enumerate(inputs[1:]):
             str += """
             sum += shape_%(cdna)s[axis];
-            Py_XDECREF(stop);
             stop = PyInt_FromLong(sum);
             slice_tuple = PyTuple_New(nd);
-            section_slice = PySlice_New(start, stop, step);
+            if(slice_tuple == NULL){
+                %(fail)s;
+            }
+            section_slice = PySlice_New(start, stop, NULL);
+            if(section_slice == NULL){
+                %(fail)s;
+            }
             for(int i=0; i<nd; i++)
             {
                 if(i!=axis)
@@ -3048,31 +3057,41 @@ class GpuJoin(tensor.Join, GpuOp):
                 }
             }
             out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice_tuple);
-            errorcode = CudaNdarray_CopyFromCudaNdarray((CudaNdarray*)out_sub, %(cdna)s);
-            if((full_slice == NULL) || (section_slice == NULL) || (out_sub == NULL) || (errorcode != 0))
-            {
+            if(out_sub == NULL){
                 Py_XDECREF(start);
                 Py_XDECREF(stop);
-                Py_XDECREF(step);
                 Py_XDECREF(slice_tuple);
                 Py_XDECREF(out_sub);
                 Py_XDECREF(%(out)s);
                 %(fail)s;
             }
+            Py_CLEAR(slice_tuple);
+            Py_CLEAR(section_slice);
+
+            errorcode = CudaNdarray_CopyFromCudaNdarray(
+                (CudaNdarray*)out_sub, %(cdna)s);
+            if(errorcode != 0)
+            {
+                Py_XDECREF(start);
+                Py_XDECREF(stop);
+                Py_XDECREF(out_sub);
+                Py_XDECREF(%(out)s);
+                %(fail)s;
+            }
             Py_XDECREF(out_sub);
-            Py_XDECREF(slice_tuple);
             Py_XDECREF(start);
             start = stop;
+            stop = NULL;
             """ % locals()
 
-            str+="""
+        str += """
             Py_XDECREF(start);
             Py_XDECREF(stop);
-            Py_XDECREF(step);"""
+        """
         return str
 
     def c_code_cache_version(self):
-        return (1,)
+        return (4,)
 
 gpu_join = GpuJoin()
 
