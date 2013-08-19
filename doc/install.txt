@@ -1006,6 +1006,14 @@ Theano is to download and execute this `Windows installer
 for Theano on AnacondaCE for Windows
 <https://github.com/Theano/Theano-wininstaller/raw/master/bin/theano_installer_latest.msi>`__.
 
+
+.. note::
+
+    It is possible that you need to logout/login or restart the
+    computer after installing AnacondaCE and before running Theano
+    installer. Otherwise, sometimes the Theano installer while trying
+    to find pip.
+
 .. note::
 
     This installer was tested on Windows 7, 64-bit edition, and AnacondaCE

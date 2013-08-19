@@ -53,6 +53,22 @@ Ubuntu 11.04:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev``
  2) ``sudo pip install Theano``
 
+.. note::
+
+    If you have error that contain "gfortran" in it, like this one:
+
+        ImportError: ('/home/Nick/.theano/compiledir_Linux-2.6.35-31-generic-x86_64-with-Ubuntu-10.10-maverick--2.6.6/tmpIhWJaI/0c99c52c82f7ddc775109a06ca04b360.so: undefined symbol: _gfortran_st_write_done'
+
+    The problem is probably that NumPy is linked with a different blas
+    then then one currently available (probably ATLAS). There is 2
+    possible fixes:
+
+    1) Uninstall ATLAS and install OpenBLAS.
+    2) Use the Theano flag "blas.ldflags=-lblas -lgfortran"
+
+    1) is better as OpenBLAS is faster then ATLAS and NumPy is
+    probably already linked with it. So you won't need any other
+    change in Theano files or Theano configuration.
 
 
 Test the newly installed packages
