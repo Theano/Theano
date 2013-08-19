@@ -451,17 +451,17 @@ class GpuAlloc(Op):
     def make_node(self, value, *shape):
         v = as_gpuarray_variable(value)
         sh = [tensor.as_tensor_variable(s) for s in shape]
-        if v.ndim != len(shape):
-            raise TypeError(
-                'GpuAlloc requires value of same dimensions as shape',
-                value, len(shape))
         bcast = []
-        for s in sh:
+        if v.ndim > len(shape):
+            raise TypeError(
+                'GpuAlloc value has more dimensions than arguments',
+                value.ndim, len(shape))
+        for i, s in enumerate(sh):
             if s.type.dtype[:3] not in ('int', 'uint'):
                 raise TypeError('Shape arguments must be integers', s)
             try:
-                const_shp = tensor.get_constant_value(s)
-            except tensor.NotConstantError:
+                const_shp = tensor.get_scalar_constant_value(s)
+            except tensor.NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = GpuArrayType(dtype=v.dtype, broadcastable=bcast)
@@ -480,5 +480,13 @@ class GpuAlloc(Op):
 
     def grad(self, input, grads):
         return [None for i in inputs]
+
+    def do_constant_folding(self, node):
+        if not getattr(node.ouputs[0], 'clients', []):
+            return False
+        for client in node.outputs[0].clients:
+            if client[0] == 'output':
+                return False
+        return True
 
 gpu_alloc = GpuAlloc()
