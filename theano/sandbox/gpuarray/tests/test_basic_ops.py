@@ -203,11 +203,32 @@ def test_transfer_cpu_gpu():
     
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
-    assert GpuArrayType.values_eq_approx(fv, gv)
+    assert GpuArrayType.values_eq(fv, gv)
 
     f = theano.function([g], host_from_gpu(g))
     fv = f(gv)
-    assert numpy.allclose(fv, av)
+    assert numpy.all(fv == av)
+
+
+def test_transfer_strided():
+    # This is just to ensure that it works in theano
+    # compyte has a much more comprehensive suit of tests to ensure correctness
+    a = T.fmatrix('a')
+    g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
+
+    av = numpy.asarray(rng.rand(5, 8), dtype='float32')
+    gv = gpuarray.array(av)
+
+    av = av[:,::2]
+    gv = gv[:,::2]
+
+    f = theano.function([a], gpu_from_host(a))
+    fv = f(av)
+    assert GpuArrayType.values_eq(fv, gv)
+
+    f = theano.function([g], host_from_gpu(g))
+    fv = f(gv)
+    assert numpy.all(fv == av)
 
 
 def test_transfer_cuda_gpu():
