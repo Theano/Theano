@@ -267,17 +267,12 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
-    %(oname)s = new_GpuArray(GpuArrayType, GpuArray_default_context);
+    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
     if (!%(oname)s) { %(fail)s }
     int err;
-    err = GpuArray_empty(&%(oname)s.ga, %(oname)s->context->ops);
-    if (err != GA_NO_ERROR) {
-        PyErr_SetString(PyExc_MemoryError, "Could not allocate new array");
-        %(fail)s
-    }
-    err = GpuArray_copy(&%(oname)s.ga, &%(iname)s.ga, GA_ANY_ORDER);
+    err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
     if (err != GA_NO_ERROR) {
         PyErr_SetString(PyExc_RuntimeError, "Error during copy");
         %(fail)s
     }
-""", version=(0,))
+""", version=(1,))

@@ -6,6 +6,7 @@ from nose.plugins.skip import SkipTest
 import numpy
 import theano
 import theano.tensor as T
+from theano.compile import DeepCopyOp
 from theano.tensor.tests.test_basic import safe_make_node
 
 import theano.sandbox.gpuarray
@@ -19,6 +20,7 @@ from theano.sandbox.gpuarray.basic_ops import host_from_gpu, gpu_from_host, \
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
+rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
 from pygpu import gpuarray
 
@@ -51,9 +53,12 @@ def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
         except TypeError:
             continue
 
-def rand_gpuarray(*shape):
-    r = numpy.random.rand(*shape) * 2 - 1
-    return gpuarray.array(r, dtype=theano.config.floatX)
+def rand_gpuarray(*shape, **kwargs):
+    r = rng.rand(*shape) * 2 - 1
+    dtype = kwargs.pop('dtype', theano.config.floatX)
+    if len(kwargs) != 0:
+        raise TypeError('Unexpected argument %s', kwargs.keys()[0])
+    return gpuarray.array(r, dtype=dtype)
 
 
 def makeTester(name, op, expected, good=None, bad_build=None, checks=None,
@@ -193,7 +198,7 @@ def test_transfer_cpu_gpu():
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
     
-    av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
+    av = numpy.asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
     
     f = theano.function([a], gpu_from_host(a))
@@ -212,7 +217,7 @@ def test_transfer_cuda_gpu():
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
     c = cuda_ndarray.CudaNdarrayType((False, False))('c')
 
-    av = theano._asarray(numpy.random.rand(5, 4), dtype='float32')
+    av = theano._asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
     cv = cuda_ndarray.CudaNdarray(av)
 
@@ -248,3 +253,15 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand_gpuarray(7), numpy.int32(7), numpy.int32(5)),
         )
 )
+
+def test_deep_copy():
+    a = rand_gpuarray(20, dtype='float32')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
+
+    f = theano.function([g], g)
+
+    assert isinstance(f.maker.fgraph.toposort()[0].op, DeepCopyOp)
+
+    res = f(a)
+
+    assert GpuArrayType.values_eq(res, a)
