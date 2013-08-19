@@ -1952,7 +1952,9 @@ class AdvancedIncSubtensor(Op):
                         'Could not import inplace_increment, so some advanced '
                         'indexing features are disabled. They will be '
                         'available if you update NumPy to version 1.8 or '
-                        'later, or to the latest development version.')
+                        'later, or to the latest development version. '
+                        'You may need to clear the cache (theano-cache clear) '
+                        'afterwards.')
 
         return gof.Apply(op,
                         (x, y) + inputs,
@@ -1980,7 +1982,9 @@ class AdvancedIncSubtensor(Op):
                     'Could not import inplace_increment, so some advanced '
                     'indexing features are disabled. They will be '
                     'available if you update NumPy to version 1.8 or '
-                    'later, or to the latest development version.')
+                    'later, or to the latest development version. '
+                    'You may need to clear the cache (theano-cache clear) '
+                    'afterwards.')
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
