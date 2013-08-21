@@ -1217,8 +1217,13 @@ class ScanMerge(gof.Optimizer):
             belongs_to_set_idx = -1
             for pos, subset in enumerate(all_sets):
                 if self.belongs_to_set(nd, subset):
-                    assert belongs_to_set_idx == -1
                     belongs_to_set_idx = pos
+                    # It is possible that nd belongs to more than one subset.
+                    # For instance, if we have 3 Scan nodes X, Y and Z, if Z
+                    # depends on the output of X, then X and Z are incompatible
+                    # and would create different subsets, but Y could be
+                    # compatible with both X and Z. We choose the first one.
+                    break
 
             if belongs_to_set_idx == -1:
                 all_sets.append([nd])

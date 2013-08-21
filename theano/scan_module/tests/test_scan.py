@@ -2428,6 +2428,36 @@ class T_Scan(unittest.TestCase):
             n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
+    def test_merge_3scans(self):
+        # This test checks a case where we have 3 scans, two of them
+        # cannot be merged together, but the third one can be merged with
+        # either.
+        x = theano.tensor.vector()
+        y = theano.tensor.vector()
+
+        def sum(s):
+            return s + 1
+
+        sx, upx = theano.scan(sum, sequences=[x], n_steps=4, name='X')
+        # We need to use an expression of y rather than y so the toposort
+        # comes up with the 'Y' scan last.
+        sy, upy = theano.scan(sum, sequences=[2 * y + 2], n_steps=4, name='Y')
+        sz, upz = theano.scan(sum, sequences=[sx], n_steps=4, name='Z')
+
+        f = theano.function(
+            [x, y], [sy, sz],
+            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
+        topo = f.maker.fgraph.toposort()
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
+        self.assertTrue(len(scans) == 2)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
+        y_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
+        # Run it so DebugMode can detect optimization problems.
+        f(x_val, y_val)
+
     def test_hash(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()
