@@ -221,8 +221,8 @@ f(x)}{\partial x}`. The *L-operator* is also supported for generic tensors
 >>> x = T.dvector('x')
 >>> y = T.dot(x, W)
 >>> VJ = T.Lop(y, W, v)
->>> f = theano.function([W,v,x], JV)
->>> f([[1, 1], [1, 1]], [2, 2], [0, 1])
+>>> f = theano.function([v,x], VJ)
+>>> f([2, 2], [0, 1])
 array([[ 0.,  0.],
        [ 2.,  2.]])
 
