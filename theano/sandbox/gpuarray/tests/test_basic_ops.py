@@ -9,6 +9,7 @@ from theano.compile import DeepCopyOp
 from theano.tensor.tests.test_basic import safe_make_node
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
+from theano.tensor.tests.test_subtensor import T_subtensor
 
 import theano.sandbox.gpuarray
 
@@ -33,7 +34,8 @@ from theano.sandbox.gpuarray.type import (GpuArrayType,
                                           gpuarray_shared_constructor)
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
-                                               cuda_from_gpu)
+                                               cuda_from_gpu, HostFromGpu,
+                                               GpuFromHost, GpuSubtensor)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -328,3 +330,18 @@ def test_deep_copy():
     res = f(a)
 
     assert GpuArrayType.values_eq(res, a)
+
+class G_subtensor(T_subtensor):
+    def shortDescription(self):
+        return None
+
+    shared = staticmethod(gpuarray_shared_constructor)
+    sub = GpuSubtensor
+    mode = mode_with_gpu
+    dtype = 'float32' # avoid errors on gpus which do not support float64
+    ignore_topo = (HostFromGpu, GpuFromHost)
+    fast_compile = False
+    ops = (GpuSubtensor,)
+
+    def __init__(self, name):
+        T_subtensor.__init__(self, name)
