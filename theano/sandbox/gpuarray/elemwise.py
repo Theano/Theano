@@ -95,6 +95,19 @@ class GpuElemwise(Op):
                                       sub=dict(fail='return;'))
         res.tag.kcode = kcode
 
+# Translate types for scalar composite ops (except complex).
+        support_code = """
+#define npy_float64 ga_double
+#define npy_float32 ga_float
+#define npy_uint8 ga_ubyte
+#define npy_int8 ga_byte
+#define npy_uint16 ga_ushort
+#define npy_int16 ga_short
+#define npy_uint32 ga_uint
+#define npy_int32 ga_int
+#define npy_uint64 ga_ulong
+#define npy_int64 ga_long
+"""
         try:
             code = self.scalar_op.c_support_code_apply(fake_node, 'kcode')
             if code:

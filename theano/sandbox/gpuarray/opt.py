@@ -142,3 +142,27 @@ def local_gpu_elemwise(node):
             return [host_from_gpu(gpu_elemwise)]
     else:
         return False
+
+def max_inputs_to_GpuElemwise(node):
+    ptr_size = 8
+    int_size = 4
+
+    # we take the limit from CUDA for now
+    argument_limit = 232
+    ndim = node.inputs[0].type.ndim
+    # number of elements and shape
+    size_param_mandatory = (int_size * (ndim + 1)) + \
+        (ptr_size + int_size * ndim) * len(node.outputs)
+
+    nb_bytes_avail = argument_limit - size_param_mandatory
+    nb_bytes_per_input = ptr_size + ndim * int_size
+    max_nb_inputs = nb_bytes_avail // nb_bytes_per_input
+
+    return max_nb_inputs
+
+gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
+    GpuElemwise,
+    max_inputs_to_GpuElemwise)
+optdb.register('gpu_elemwise_fusion',
+               tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
+               71.00, 'fast_run', 'fusion', 'local_elemwise_fusion', 'gpu')
