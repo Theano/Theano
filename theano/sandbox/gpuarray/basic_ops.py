@@ -594,4 +594,4 @@ class GpuSubtensor(tensor.Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return () # for testing
+        return (0,)
