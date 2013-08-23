@@ -55,7 +55,7 @@ You can then place the checkout directory on your ``$PYTHONPATH`` or use
 ``python setup.py develop`` to install a ``.pth`` into your ``site-packages``
 directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
-installation and configuration, see installing Theano on :ref:`Linux <install_linux>`,
+installation and configuration, see :ref:`install` on :ref:`Linux <install_linux>`,
 :ref:`MacOs <install_mac>` or :ref:`Windows <install_windows>`.
 
 Status
@@ -99,7 +99,7 @@ Documentation
 
 Roughly in order of what you'll want to check out:
 
-* Installing Theano on :ref:`Linux <install_linux>`, :ref:`MacOs <install_mac>` or :ref:`Windows <install_windows>` -- How to install Theano.
+* :ref:`install` on :ref:`Linux <install_linux>`, :ref:`MacOs <install_mac>` or :ref:`Windows <install_windows>` -- How to install Theano.
 * :ref:`introduction` -- What is Theano?
 * :ref:`tutorial` -- Learn the basics.
 * :ref:`libdoc` -- Theano's functionality, module by module.
