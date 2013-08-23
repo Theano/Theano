@@ -913,10 +913,13 @@ MinGW, but this has not been tested yet.
   except the Objective C and Ada compilers which are not needed).
 
 - For 64 bit MinGW (**note that manual installation for 64 bit is experimental**):
-  download the latest version of MinGW-w64 from the project's
+  download MinGW-w64 from the project's
   `releases page <http://sourceforge.net/projects/mingw-w64/files/>`__, and extract
-  it for instance to ``C:\mingw64``. Also download MSYS from
-  `this page <http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/MSYS%20%2832-bit%29/>`__
+  it for instance to ``C:\mingw64``. We recommand using a version that comes
+  with lower version of gcc than 4.7. For example use 
+  `this <http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/sezero_4.5_20111101/mingw-w64-bin_x86_64-mingw_20111101_sezero.zip/download>`__.
+  Also download MSYS from
+  `this page <http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/MSYS%20%2832-bit%29/20111123.zip/download>`__
   (although it is a 32-bit version of MSYS, this does not matter since it is only
   a convenience tool). Extract MSYS into the same folder, so that for instance you
   end up with ``C:\mingw64\msys``. Run ``C:\mingw64\msys\msys.bat`` and in the MSYS
@@ -926,7 +929,7 @@ MinGW, but this has not been tested yet.
 
        sh /postinstall/pi.sh
 
-  and answer the few questions so that MSYS is properly linked to your MinGW install.
+  and answer the few questions so that MSYS is properly linked to your MinGW install. Do not worry about msys complaining about ``make`` missing.
 
 - It is recommended to set your MSYS home to be the same as your Windows home
   directory. This will avoid inconsistent behavior between running Theano
@@ -1170,9 +1173,15 @@ You will find a Visual Studio solution file (``Theano.sln``) in the root of
 the Theano repository. Note that this project file may not be kept up-to-date
 and is not officiallly supported by the core Theano developers: it is provided
 for convenience only.
+
 Also, be aware that it will not make Theano use Visual Studio to compile C
 files: it is only meant to provide an easy way to edit Theano code within
 the Visual Studio editor.
+
+One can also use `this project <http://pytools.codeplex.com/>`__ for
+converting Visual Studio into a Python IDE. It should allow running the code
+from within Visual Studio, but also debugging using Visual Studio
+interface.
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
