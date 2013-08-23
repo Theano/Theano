@@ -1,0 +1,361 @@
+
+.. _install_mac:
+
+Installing Theano on MacOs
+==========================
+
+Requirements
+------------
+
+In order to use Theano, the following libraries and software will need
+to be installed:
+
+    Python_ >= 2.4
+        The development package (``python-dev`` or ``python-devel``
+        on most Linux distributions) is recommended (see just below).
+
+    ``g++``, ``python-dev``
+        Not technically required but *highly* recommended, in order to compile
+        generated C code. Theano `can` fall back on a NumPy-based Python execution
+        model, but a C compiler allows for vastly faster execution.
+        g++ >= 4.2 (for openmp that is currently always used)
+        more recent version recommended!
+
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.5.0
+        Earlier versions could work, but we don't test it.
+
+    `SciPy <http://scipy.org>`_
+        Only currently required for sparse matrix and special functions
+        support, but *highly* recommended. We recommend SciPy
+        >=0.8 if you are using sparse matrices, because ``scipy.sparse``
+        is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
+        bug with singleton dimensions, there may be more bugs) and we do not
+        run tests with 0.7.
+
+    A `BLAS`_ installation (with Level 3 functionality)
+        Mac OS X comes with the `Accelerate
+        framework`_.
+
+.. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+.. _Accelerate framework: http://developer.apple.com/performance/accelerateframework.html
+.. _Python: http://www.python.org/
+
+The following libraries and software are optional:
+
+    `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
+        Recommended, to run Theano's test-suite.
+
+    `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
+        For building the documentation. LaTeX_ and dvipng_ are also necessary
+        for math to show up as images.
+
+    `Git <http://git-scm.com>`_
+        To download bleeding-edge versions of Theano.
+
+    `pydot <https://code.google.com/p/pydot/>`_
+        To be able to make picture of Theano computation graph.
+
+    `NVIDIA CUDA drivers and SDK`_
+        Required for GPU code generation/execution. Only NVIDIA GPUs using
+        32-bit floating point numbers are currently supported.
+
+.. _LaTeX: http://www.latex-project.org/
+.. _dvipng: http://savannah.nongnu.org/projects/dvipng/
+.. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
+
+
+Installing Dependencies
+-----------------------
+
+There are various ways to install Theano dependencies on a Mac.
+Here we describe the process in detail with EPD, Anaconda or with MacPorts, but if you did
+it differently and it worked, please let us know the details on the
+`theano-users`_ mailing-list, so that we can add alternate instructions
+here.
+
+
+In academia: Enthought Python Distribution (EPD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in academia, the easiest way to install most of the
+dependencies is to install
+`Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
+If you are affiliated with a university (as student or employee), you can
+download the installer for free.
+
+EPD installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+necessary for it to work) and the MKL implementation of blas. The Mac OS and
+Linux version do not include g++.
+
+pip is not included in EPD. After the installation of EPD,
+you can simply install it with::
+
+    .. code-block:: bash
+
+        $ sudo easy_install pip
+
+Then in a terminal execute this command to install the latest Theano release:
+
+    .. code-block:: bash
+
+        $ sudo pip install Theano
+
+If you want the bleeding edge version, `download
+and install git <http://git-scm.com/downloads>`_. Then in a
+terminal excute this command:
+
+.. code-block:: bash
+
+    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+See the section `install_bleeding_edge`_ for more
+information on the bleading edge version.
+
+Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+
+.. note::
+
+   If you use the trunk or version 0.6 or later of Theano, we try to
+   automaticaly link with the EPD blas version.  Due to Mac OS
+   peculiarities, we need a user intervention to do it.  We detect
+   if the user did the modification and if not, we tell him how to do
+   it.
+
+Anaconda 1.5
+~~~~~~~~~~~~
+
+An easy way to install most of the dependencies is to install
+`Anaconda <http://continuum.io/downloads.html>`_. There is a free
+version available to everybody. If you install their ``MKL
+Optimizations`` product (free for academic, ~30$ otherwise) Theano
+will also be optimized as we will reuse the faster BLAS version
+automatically.
+
+Anaconda installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, pip, and a acceptable BLAS version. The Mac OS and
+Linux version do not include g++.
+
+After installing Anaconda, in a terminal execute this command to
+install the latest Theano release:
+
+    .. code-block:: bash
+
+        $ pip install Theano
+
+To install the missing Theano optional dependency (pydot):
+
+    .. code-block:: bash
+
+        $ conda install pydot
+
+If you want the bleeding edge version, `download
+and install git <http://git-scm.com/downloads>`_. Then in a
+terminal excute this command:
+
+.. code-block:: bash
+
+    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+See the section `install_bleeding_edge`_ for more
+information on the bleading edge version.
+
+Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+
+.. note::
+
+   If you use the trunk or a version after 0.6rc3 of Theano, we try to
+   automaticaly link with the python library.  Due to Mac OS
+   peculiarities, we need a user intervention to do it.  We detect
+   if the user did the modification and if not, we tell him how to do
+   it.
+
+.. _macports:
+
+MacPorts
+~~~~~~~~
+
+Using `MacPorts <http://www.macports.org/>`__ to install all required
+Theano dependencies is easy, but be aware that it will take a long time
+(a few hours) to build and install everything.
+
+- MacPorts requires installing XCode first (which can be found in the
+  Mac App Store), if you do not have it already.
+  If you can't install it from the App Store, look in your MacOS X installation
+  DVD for an old version. Then update your Mac to update XCode.
+
+- Download and install `MacPorts <http://www.macports.org/>`__, then
+  ensure its package list is up-to-date with ``sudo port selfupdate``.
+
+- Then, in order to install one or more of the required libraries, use
+  ``port install``, e.g. as follows:
+
+    .. code-block:: bash
+
+        $ sudo port install py27-numpy +atlas py27-scipy +atlas py27-pip
+
+  This will install all the required Theano dependencies. gcc will
+  be automatically installed (since it is a SciPy dependency), but be
+  aware that it takes a long time to compile (hours)!
+  Having NumPy and SciPy linked with ATLAS (an optimized BLAS
+  implementation) is not mandatory, but recommended if you care about
+  performance.
+
+- You might have some different versions of gcc, SciPy, NumPy, Python installed
+  on your system, perhaps via Xcode. It is a good idea to use **either** the
+  MacPorts version of everything **or** some other set of compatible versions
+  (e.g. provided by Xcode or Fink). The advantages of MacPorts are the
+  transparency with which everything can be installed and the fact that
+  packages are updated quite frequently. The following steps describe how to
+  make sure you are using the MacPorts version of these packages.
+
+- In order to use the MacPorts version of Python, you will probably
+  need to explicitly select it with ``sudo port select python python27``. The
+  reason this is necessary is because you may have an Apple-provided Python
+  (via, for example, an Xcode installation). After performing this step, you
+  should check that the symbolic link provided by ``which python`` points to
+  the MacPorts python. For instance, on MacOS X Lion with MacPorts 2.0.3,
+  the output of ``which python`` is ``/opt/local/bin/python`` and this symbolic
+  link points to ``/opt/local/bin/python2.7``. When executing ``sudo
+  port select python python27-apple`` (which you should **not** do), the link
+  points to ``/usr/bin/python2.7``.
+
+- Similarly, make sure that you are using the MacPorts-provided gcc:
+  use ``sudo port select gcc`` to see which gcc installs you have on the
+  system. Then execute for instance ``sudo port select gcc mp-gcc44``
+  to create a symlink that points to the correct (MacPorts) gcc (version 4.4
+  in this case).
+
+- At this point, if you have not done so already, it may be a good idea to
+  close and restart your terminal, to make sure all configuration changes
+  are properly taken into account.
+
+- Afterwards, please check that the ``scipy`` module that is imported in
+  Python is the right one (and is a recent one). For instance, ``import
+  scipy`` followed by ``print scipy.__version__`` and ``print scipy.__path__``
+  should result in a version number of at least 0.7.0 and a path that starts
+  with ``/opt/local`` (the path where MacPorts installs its packages). If this
+  is not the case, then you might have some old installation of ``scipy`` in your
+  ``PYTHONPATH`` so you should edit ``PYTHONPATH`` accordingly.
+
+- Please follow the same procedure with ``numpy``.
+
+- This is covered in the MacPorts installation process, but make sure that
+  your ``PATH`` environment variable contains ``/opt/local/bin`` and
+  ``/opt/local/sbin`` before any other paths (to ensure that the Python and
+  gcc binaries that you installed with MacPorts are visible first).
+
+- MacPorts does not create automatically ``nosetests`` and ``pip`` symlinks
+  pointing to the MacPorts version, so you can add them yourself with
+
+    .. code-block:: bash
+
+        $ sudo ln -s /opt/local/bin/nosetests-2.7 /opt/local/bin/nosetests
+        $ sudo ln -s /opt/local/bin/pip-2.7 /opt/local/bin/pip
+
+- At this point you are ready to install Theano with
+
+    .. code-block:: bash
+
+        $ sudo pip install Theano
+
+  And if you are in no hurry, you can run its test-suite with
+
+    .. code-block:: bash
+
+        $ python -c "import theano; theano.test()"
+
+Homebrew
+~~~~~~~~
+
+There are some `instructions
+<https://github.com/samueljohn/homebrew-python>`__ by Samuel John on how to install
+Theano dependencies with Homebrew instead of MacPort.
+
+
+.. _gpu_macos:
+
+Using the GPU
+~~~~~~~~~~~~~
+
+You should be able to follow the :ref:`Linux <gpu_linux>` instructions to
+setup CUDA, but be aware of the following caveats:
+
+   * If you want to compile the CUDA SDK code, you may need to temporarily
+     revert back to Apple's gcc (``sudo port select gcc``) as their Makefiles
+     are not compatible with MacPort's gcc.
+
+   * If CUDA seems unable to find a CUDA-capable GPU, you may need to manually
+     toggle your GPU on, which can be done with
+     `gfxCardStatus <http://codykrieger.com/gfxCardStatus>`__.
+
+Once your setup is complete, head to :ref:`using_gpu` to find how to verify
+everything is working properly.
+
+
+Troubleshooting MacOS issues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Although the above steps should be enough, running Theano on a Mac may
+sometimes cause unexpected crashes, typically due to multiple versions of
+Python or other system libraries. If you encounter such problems, you may
+try the following.
+
+- You can ensure MacPorts shared libraries are given priority at run-time
+  with ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH``. In order
+  to do the same at compile time, you can add to your ``~/.theanorc``:
+
+    .. code-block:: cfg
+
+      [gcc]
+      cxxflags = -L/opt/local/lib
+
+- An obscure ``Bus error`` can sometimes be caused when linking
+  Theano-generated object files against the ``framework`` library in Leopard.
+  For this reason, we have disabled linking with ``-framework Python``, since on
+  most configurations this solves the ``Bus error`` problem. If this default
+  configuration causes problems with your Python/Theano installation and you think
+  that linking with ``-framework Python`` might help, then either set
+  the :envvar:`THEANO_FLAGS` environment variable with
+  ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
+  contain
+
+    .. code-block:: cfg
+
+      [cmodule]
+      mac_framework_link=True
+
+- More generally, to investigate libraries issues, you can use the ``otool -L``
+  command on ``.so`` files found under your ``~/.theano`` directory. This will
+  list shared libraries dependencies, and may help identify incompatibilities.
+
+Please infom us if you have trouble installing and running Theano on your Mac.
+We would be especially interested in dependencies that we missed listing,
+alternate installation steps, GPU instructions, as well as tests that fail on
+your platform (use the ``theano-users@googlegroups.com`` mailing list, but
+note that you must first register to it, by going to `theano-users`_).
+
+
+Generating the documentation
+----------------------------
+
+You can read the latest HTML documentation `here
+<http://deeplearning.net/software/theano>`__.
+You can download the latest PDF documentation `here
+<http://deeplearning.net/software/theano/theano.pdf>`__.
+
+We recommend you look at the documentation on the website, since it
+will be more current than the documentation included with the package.
+
+If you really wish to build the documentation yourself, you will need
+epydoc and sphinx, as described above. Issue the following command::
+
+    python ./doc/scripts/docgen.py
+
+Documentation is built into ``html/``.
+The PDF of the documentation is ``html/theano.pdf``.
+
+
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+
