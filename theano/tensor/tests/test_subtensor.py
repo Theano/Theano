@@ -1048,6 +1048,22 @@ inplace_increment_missing = SkipTest(
 class TestAdvancedSubtensor(unittest.TestCase):
     # test inc_subtensor
     # also tests set_subtensor
+    def __init__(self, name,
+                 shared=tensor._shared,
+                 sub=tensor.AdvancedSubtensor,
+                 inc_sub=tensor.AdvancedIncSubtensor,
+                 mode=None,
+                 dtype=theano.config.floatX,
+                 ignore_topo=DeepCopyOp):
+        self.shared = shared
+        self.sub = sub
+        self.inc_sub = inc_sub
+        if mode is None:
+            mode = theano.compile.mode.get_default_mode()
+        self.mode = mode
+        self.dtype = dtype
+        self.ignore_topo = ignore_topo
+        return super(TestAdvancedSubtensor, self).__init__(name)
 
     def setUp(self):
         self.s = iscalar()
@@ -1058,6 +1074,16 @@ class TestAdvancedSubtensor(unittest.TestCase):
         self.ix1 = lvector()  # advanced 1d query
         self.ix12 = lvector()
         self.ix2 = lmatrix()
+
+    def eval_output_and_check(self, t):
+        f = inplace_func([], t, mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        topo_ = [node for node in topo if not isinstance(node.op,
+             self.ignore_topo)]
+        assert len(topo_) == 1
+        assert isinstance(topo_[0].op, self.sub)
+        tval = f()
+        return tval
 
     def test_cant_adv_idx_into_scalar(self):
         self.assertRaises(TypeError, lambda: self.s[self.ix1])
@@ -1071,6 +1097,37 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert a.dtype == self.v.dtype, (a.dtype, self.v.dtype)
         assert a.broadcastable == self.ix2.broadcastable, (
                 a.broadcastable, self.ix2.broadcastable)
+
+    def test_index_w_int_and_vec(self):
+        # like test_ok_list, but with a single index on the first one
+        # data has to have at least 2 dimensions
+        for data, idx in [(rand(4, 5), [2, 3]),
+                          (rand(2, 4, 3), [0, 3]),
+                          (rand(2, 4, 3), [3, 3, 1, 1, 2, 2, 0, 0]),
+                          (rand(2, 4, 3), [3, 3, 1, 1, 2, 2, 0, 0,
+                                           -1, -2, -3, -4]),
+                          # Test 4 dims as gpu code use another algo
+                          # in that case This new algo is not as much
+                          # optimized for that case.
+                          (rand(4, 4, 2, 3), [3,
+                               3, 1, 1, 2, 2, 0, 0, -1, -2, -3, -4]),
+                          # Test with TensorConstant index.
+                          (rand(2, 4, 3),
+                           theano.tensor.constant([3, 3, 1, 1, 2, 2, 0, 0])),
+                          ]:
+            data = numpy.asarray(data, dtype=self.dtype)
+            n = self.shared(data)
+            t = n[0, idx]
+
+            self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor))
+
+            val = self.eval_output_and_check(t)
+            if isinstance(idx, list):
+                good = data[0, idx]
+            else:
+                good = data[0, idx.data]
+            self.assertTrue(val.ndim == data.ndim - 1)
+            self.assertTrue(numpy.allclose(val, good), (val, good))
 
     def test_inc_adv_subtensor_w_matrix(self):
         subt = self.v[self.ix2]
