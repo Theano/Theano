@@ -857,30 +857,17 @@ class test_csm(unittest.TestCase):
                 z = tensor.ivector()
                 s = tensor.ivector()
                 # Sparse advanced indexing produces unsorted sparse matrices
-                a = sp_types[format]([[1, 2, 1],
-                                      [1, 2, 1],
-                                      [1, 2, 1],
-                                      [1, 2, 1]],
-                                     dtype=dtype)[range(4)]
+                a = sparse_random_inputs(format, (4, 3), out_dtype=dtype,
+                                         unsorted_indices=True)[1][0]
                 # Make sure it's unsorted
                 assert not a.has_sorted_indices
-                a = as_sparse_variable(a)
-
-                f = theano.function([x, y, z, s], tensor.grad(tensor.sum(
-                    dense_from_sparse(a * CSM(format)(x, y, z, s))), x))
-
-                spmat = sp_types[format](random_lil((4, 3), dtype,
-                                                    12))[range(4)]
-                assert not spmat.has_sorted_indices
-
-                res = f(spmat.data, spmat.indices, spmat.indptr,
-                        numpy.asarray(spmat.shape, 'int32'))
-
-                col1 = sp_types[format]((res, spmat.indices, spmat.indptr),
-                                        shape=numpy.asarray(spmat.shape,
-                                                            'int32'))[:, 1].data
-
-                assert numpy.all(col1 == 2)
+                def my_op(x):
+                    y = tensor.constant(a.indices)
+                    z = tensor.constant(a.indptr)
+                    s = tensor.constant(a.shape)
+                    return tensor.sum(
+                        dense_from_sparse(CSM(format)(x, y, z, s) * a))
+                verify_grad_sparse(my_op, [a.data])
 
     def test_csm(self):
         sp_types = {'csc': sp.csc_matrix,
@@ -1252,7 +1239,7 @@ class DotTests(utt.InferShapeTester):
 
         fI = I.flatten()
         data = tensor.ones_like(fI)
-        indptr = tensor.arange(data.shape[0] + 1)
+        indptr = tensor.arange(data.shape[0] + 1, dtype='int32')
 
         m1 = sparse.CSR(data, fI, indptr, (8, size))
         m2 = sparse.dot(m1, C)

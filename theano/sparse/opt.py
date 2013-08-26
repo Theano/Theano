@@ -876,7 +876,8 @@ def local_csm_grad_c(node):
     if node.op == csm_grad(None):
         return [csm_grad_c(*node.inputs)]
     return False
-register_specialize(local_csm_grad_c, 'cxx_only')
+#DISABLED AS IT IS BROKEN FOR UNSORTED INDICES!
+#register_specialize(local_csm_grad_c, 'cxx_only')
 
 
 class MulSDCSC(gof.Op):

@@ -15,7 +15,7 @@ def _is_sparse(x):
     @return: True iff x is a L{scipy.sparse.spmatrix} (and not a
     L{numpy.ndarray})
     """
-    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray)):
+    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray, tuple, list)):
         raise NotImplementedError("this function should only be called on "
                                   "sparse.scipy.sparse.spmatrix or "
                                   "numpy.ndarray, not,", x)
