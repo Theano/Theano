@@ -1,7 +1,11 @@
 import numpy
 from theano import Op, Apply, scalar
-from pygpu.tools import ScalarArg, ArrayArg
-from pygpu.elemwise import ElemwiseKernel
+
+try:
+    from pygpu.tools import ScalarArg, ArrayArg
+    from pygpu.elemwise import ElemwiseKernel
+except ImportError:
+    pass
 
 from basic_ops import as_gpuarray_variable
 from type import GpuArrayType

@@ -7,8 +7,11 @@ from theano.scalar import Scalar
 
 from theano.gof.python25 import all, any
 
-import pygpu
-from pygpu import gpuarray, elemwise
+try:
+    import pygpu
+    from pygpu import gpuarray, elemwise
+except ImportError:
+    pass
 
 from type import GpuArrayType
 

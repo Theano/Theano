@@ -8,12 +8,10 @@ from theano.compile import SharedVariable
 # (it will not work though)
 try:
     import pygpu
-except ImportError:
-    pygpu = None
-
-if pygpu:
     from pygpu import gpuarray
     from pygpu.elemwise import compare, elemwise2
+except ImportError:
+    pass
 
 
 class GpuArrayType(Type):
