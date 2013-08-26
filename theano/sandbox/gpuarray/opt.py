@@ -70,12 +70,12 @@ def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
         return [node.inputs[0].owner.inputs[0]]
     return False
-gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
+gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_host_gpu,
                         'fast_run', 'inplace', 'gpuarray')
-gpu_cut_copies.register('cut_gpu_constant_transfers',
+gpu_cut_copies.register('cut_gpua_constant_transfers',
                         tensor.opt.constant_folding,
                         'fast_run', 'gpuarray')
-optdb['canonicalize'].register('local_cut_gpu_host_gpu',
+optdb['canonicalize'].register('local_cut_gpua_host_gpua',
                                local_cut_gpu_host_gpu, 'fast_run', 'gpuarray')
 
 @register_opt()
