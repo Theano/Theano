@@ -1940,14 +1940,15 @@ def local_dot22_to_dot22scalar(node):
             assert not a.type.ndim
             dot = _dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
 
-            # What about the other inputs to the original node that were
-            # neither part of the dot22 or this mul?
-            # I'm asserting there are no such inputs here:
+            # The other inputs to the original node that were
+            # neither part of the dot22 or this mul should be
+            # factors in the returned "mul" node.
             assert dot22_idx != mul_idx
-            assert all((i in (dot22_idx, mul_idx))
-                    for i in xrange(len(node.inputs)))
+            other_factors = [inpt
+                             for i, inpt in enumerate(node.inputs)
+                             if i not in (dot22_idx, mul_idx)]
 
-            return [T.mul(m.owner.inputs[1 - i], dot)]
+            return [T.mul(m.owner.inputs[1 - i], dot, *other_factors)]
         elif m.owner and m.owner.op == T.mul:
             _logger.info('Not optimizing dot22 with inputs %s %s %s %s. '
                     'we need to check in a recursive way in the mul if we can '
