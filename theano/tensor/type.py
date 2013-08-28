@@ -536,7 +536,7 @@ class TensorType(Type):
         """ % locals()
 
     def c_headers(self):
-        """Override `CLinkerOp.c_headers` """
+        """Override `CLinkerObject.c_headers` """
         return scal.Scalar(self.dtype).c_headers()
 
     def c_libraries(self):
@@ -549,10 +549,13 @@ class TensorType(Type):
         """Override `CLinkerOp.c_support_code` """
         return scal.Scalar(self.dtype).c_support_code()
 
+    def c_init_code(self):
+        return scal.Scalar(self.dtype).c_init_code()
+
     def c_code_cache_version(self):
         scalar_version = scal.Scalar(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (9,) + scalar_version
+            return (10,) + scalar_version
         else:
             return ()
 

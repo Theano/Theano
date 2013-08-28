@@ -158,6 +158,7 @@ class Scalar(Type):
 
     def c_headers(self):
         l = ['<math.h>']
+        l.append('<numpy/arrayobject.h>')
         l.append('<numpy/arrayscalars.h>')
         if config.lib.amdlibm:
             l += ['<amdlibm.h>']
@@ -413,23 +414,11 @@ class Scalar(Type):
         else:
             return ""
 
+    def c_init_code(self):
+        return ["import_array();"]
+
     def c_code_cache_version(self):
-        # Fix gh-1510, use half_nbits float instead of nbits
-        return (11, numpy.__version__)
-        # Use the correct type checking and conversion functions
-        return (10, numpy.__version__)
-        # Make operators work with 64 and 128 arguments at the same time
-        return (9, numpy.__version__)
-        # put const around operators and added unary '-' operator
-        return (8, numpy.__version__)
-        # no need to put lib.amdlibm here as c_compile_args() are put
-        # in the key.
-        return (7,)  # make complex c code optional
-        return (6,)  # added implemeentations of operators that work
-                     # with scalar arguments
-        return (5,)  # added constructors to theano_complex class
-        return (4,)  # explicit T given in specialization of operator=
-                     # lines.  This makes it compile with open64
+        return (12, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
