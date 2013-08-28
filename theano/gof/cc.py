@@ -774,6 +774,21 @@ class CLinker(link.Linker):
                 pass
         return utils.uniq(ret)
 
+    def init_code(self):
+        """
+        Return a list of code snippets that have to be inserted
+        in the module initialization code.
+        The return value will not contain duplicates.
+        """
+        ret = []
+        for x in [y.type for y in self.variables] + [
+            y.op for y in self.node_order]:
+            try:
+                ret += x.c_init_code()
+            except utils.MethodNotDefined:
+                pass
+        return utils.uniq(ret)
+
     def c_compiler(self):
         c_compiler = None
         for x in [y.type for y in self.variables] + [
@@ -1277,6 +1292,8 @@ class CLinker(link.Linker):
         mod.add_function(instantiate)
         for header in self.headers():
             mod.add_include(header)
+        for init_code_block in self.init_code():
+            mod.add_init_code(init_code_block)
 
         return mod
 

@@ -7,6 +7,7 @@ import theano
 from theano import config
 from theano.gof import Constant, hashtype, Type, Variable
 from theano.gof.python25 import any
+from theano.gof.utils import MethodNotDefined
 from theano import scalar as scal
 
 

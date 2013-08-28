@@ -174,6 +174,17 @@ class CLinkerObject(object):
         """
         raise utils.MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
 
+    def c_init_code(self):
+        """
+        Optional: return a list of code snippets to be inserted in module
+        initialization.
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_init_code", type(self),
+                                     self.__class__.__name__)
+
 
 class CLinkerOp(CLinkerObject):
     """
