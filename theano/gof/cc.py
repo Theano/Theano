@@ -742,7 +742,7 @@ class CLinker(link.Linker):
 
         c_compiler = self.c_compiler()
 
-        ret = list(set(ret))  # to remove duplicate
+        ret = utils.uniq(ret)  # to remove duplicate
         # The args set by the compiler include the user flags. We do not want
         # to reorder them
         ret += c_compiler.compile_args()
@@ -772,7 +772,7 @@ class CLinker(link.Linker):
                 ret += x.c_headers()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def c_compiler(self):
         c_compiler = None
@@ -809,7 +809,7 @@ class CLinker(link.Linker):
                 ret += x.c_header_dirs()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def libraries(self):
         """WRITEME
@@ -825,7 +825,7 @@ class CLinker(link.Linker):
                 ret += x.c_libraries()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def lib_dirs(self):
         """WRITEME
@@ -841,7 +841,7 @@ class CLinker(link.Linker):
                 ret += x.c_lib_dirs()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def __compile__(self, input_storage=None,
                     output_storage=None, keep_lock=False):
