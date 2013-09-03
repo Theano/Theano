@@ -2,6 +2,7 @@ import numpy
 
 import theano
 from theano.compat import PY3
+from theano.compat.python2x import all
 from theano.scalar import ComplexError, IntegerDivisionError
 from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
@@ -366,8 +367,8 @@ class _tensor_py_operators:
 
         if advanced:
             if (axis is not None
-                and numpy.all(a == slice(None) for a in args[:axis])
-                and numpy.all(a == slice(None) for a in args[axis + 1:])
+                and all(a == slice(None) for a in args[:axis])
+                and all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                         numpy.ndarray,
                         list,
