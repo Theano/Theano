@@ -158,6 +158,8 @@ class Scalar(Type):
 
     def c_headers(self):
         l = ['<math.h>']
+        # These includes are needed by Scalar and TensorType,
+        # we declare them here and they will be re-used by TensorType
         l.append('<numpy/arrayobject.h>')
         l.append('<numpy/arrayscalars.h>')
         if config.lib.amdlibm:
