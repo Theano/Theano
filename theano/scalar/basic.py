@@ -304,7 +304,7 @@ class Scalar(Type):
                 bool operator ==(const complex_type &y) const {
                     return (this->real == y.real) && (this->imag == y.imag);
                 }
-                bool operator ==(const npy_float%(nbits)s &y) const {
+                bool operator ==(const scalar_type &y) const {
                     return (this->real == y) && (this->imag == 0);
                 }
                 complex_type operator -(const complex_type &y) const {
@@ -414,6 +414,8 @@ class Scalar(Type):
             return ""
 
     def c_code_cache_version(self):
+        # Fix gh-1510, use half_nbits float instead of nbits
+        return (11, numpy.__version__)
         # Use the correct type checking and conversion functions
         return (10, numpy.__version__)
         # Make operators work with 64 and 128 arguments at the same time
