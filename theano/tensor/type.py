@@ -416,7 +416,7 @@ class TensorType(Type):
         #"TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub):
-        """Override `CLinkerOp.c_declare` """
+        """Override `CLinkerType.c_declare` """
         return """
         PyArrayObject* %(name)s;
         int type_num_%(name)s;
@@ -424,14 +424,14 @@ class TensorType(Type):
         """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
-        """Override `CLinkerOp.c_init` """
+        """Override `CLinkerType.c_init` """
         return """
         %(name)s = NULL;
         type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_extract(self, name, sub):
-        """Override `CLinkerOp.c_extract` """
+        """Override `CLinkerType.c_extract` """
         return """
         %(name)s = NULL;
         if (py_%(name)s == Py_None) {
@@ -485,7 +485,7 @@ class TensorType(Type):
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
-        """Override `CLinkerOp.c_cleanup` """
+        """Override `CLinkerType.c_cleanup` """
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
@@ -493,7 +493,7 @@ class TensorType(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
-        """Override `CLinkerOp.c_sync` """
+        """Override `CLinkerType.c_sync` """
         fail = sub['fail']
         type_num = self.dtype_specs()[2]
         return """
@@ -546,7 +546,7 @@ class TensorType(Type):
         return scal.Scalar(self.dtype).c_compile_args()
 
     def c_support_code(self):
-        """Override `CLinkerOp.c_support_code` """
+        """Override `CLinkerObject.c_support_code` """
         return scal.Scalar(self.dtype).c_support_code()
 
     def c_init_code(self):
