@@ -183,6 +183,24 @@ class Scalar(Type):
 
     def dtype_specs(self):
         try:
+            # To help debug dtype/typenum problem, here is code to get
+            # the list of numpy typenum.  This list change between 32
+            # and 64 bit platform and probably also also between
+            # Windows and Linux.
+            # NOTE: equivalent type on a platform can have different typenum.
+            #     This is the source of all dtype/typenum problem found up to
+            #     now, as Theano always expect the exact typenum that
+            #     correspond to our supported dtype.
+            """
+            for dtype in ['int8', 'uint8', 'short', 'ushort', 'intc', 'uintc',
+                          'longlong', 'ulonglong', 'single', 'double',
+                          'longdouble', 'csingle', 'cdouble', 'clongdouble',
+                          'float32', 'float64', 'int8', 'int16', 'int32',
+                          'int64', 'uint8', 'uint16', 'uint32', 'uint64',
+                          'complex64', 'complex128', 'float', 'double',
+                          'int', 'uint']:
+                print dtype, np.zeros(1, dtype=dtype).dtype.num
+            """
             return {  # dtype: (py_type, c_type, cls_name)
                     'float32': (numpy.float32, 'npy_float32', 'Float32'),
                     'float64': (numpy.float64, 'npy_float64', 'Float64'),

@@ -49,14 +49,24 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 def out2in(*local_opts):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='out_to_in',
                              failure_callback=TopoOptimizer.warn_inplace)
 
 
 def in2out(*local_opts, **kwargs):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='in_to_out',
                              failure_callback=TopoOptimizer.warn_inplace,
                              **kwargs)
@@ -384,10 +394,12 @@ def local_dimshuffle_lift(node):
     input = node.inputs[0]
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
-        return inode.op.make_node(*[DimShuffle(input.type.broadcastable,
-                                               op.new_order,
-                                               op.inplace)(input) for input in
-                                    inode.inputs]).outputs
+        # Don't use make_node to have tag.test_value set.
+        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+                                    op.new_order,
+                                    op.inplace)(input) for input in
+                         inode.inputs], **dict(return_list=True))
+        return ret
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
                      op.new_order]
@@ -397,8 +409,9 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            return DimShuffle(iinput.type.broadcastable, new_order,
-                              inplace).make_node(iinput).outputs
+            ret = DimShuffle(iinput.type.broadcastable, new_order,
+                             inplace)(iinput, **dict(return_list=True))
+            return ret
 
 
 @register_canonicalize
@@ -437,8 +450,10 @@ def dimshuffle_as_view(node):
 
 #Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
-                       TopoOptimizer(dimshuffle_as_view,
-    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       TopoOptimizer(
+                           dimshuffle_as_view,
+                           failure_callback=TopoOptimizer.warn_inplace),
+                       60,
                        'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
@@ -771,7 +786,8 @@ class ShapeFeature(object):
         if hasattr(r.type, "broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
         else:
-            return Shape_i(i).make_node(r).outputs[0]
+            # Do not call make_node for test_value
+            return Shape_i(i)(r)
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
@@ -970,9 +986,9 @@ class ShapeFeature(object):
         # shape var -> graph v
 
         for node in fgraph.toposort():
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, reason='on_attach')
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.shape_of:
             # this is a revert, not really an import
             for r in node.outputs + node.inputs:
@@ -1933,7 +1949,8 @@ def local_subtensor_merge(node):
             sl_ins = Subtensor.collapse(
                 merged_slices,
                 lambda x: isinstance(x, T.Variable))
-            out = subtens.make_node(x, *sl_ins).outputs[0]
+            # Do not call make_node for test_value
+            out = subtens(x, *sl_ins)
 
             return [out]
 
@@ -4583,8 +4600,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                         elif ii in tmp_input:
                             tmp_s_input.append(tmp_scalar[tmp_input.index(ii)])
                         else:
-                            tmp_s_input.append(scalar.Scalar(
-                                    ii.dtype).make_variable())
+                            tmp = scalar.Scalar(ii.dtype).make_variable()
+                            try:
+                                tmp.tag.test_value = gof.op.get_test_value(ii).flatten()[0]
+                            except AttributeError:
+                                pass
+                            tmp_s_input.append(tmp)
                             tmp_input.append(ii)
                             tmp_scalar.append(tmp_s_input[-1])
                     s_op = i.owner.op.scalar_op(*tmp_s_input)
@@ -4634,6 +4655,13 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                     s = s_inputs[inputs.index(i)]
                 else:
                     s = scalar.Scalar(i.dtype).make_variable()
+                    try:
+                        v = gof.op.get_test_value(i)
+                        if v.size > 0:
+                            s.tag.test_value = gof.op.get_test_value(i).flatten()[0]
+                    except AttributeError:
+                        pass
+
                     inputs.append(i)
                     s_inputs.append(s)
                 s_g.append(s)
@@ -4667,7 +4695,8 @@ your code will run correctly, but may be slower.""")
         C = scalar.Composite(s_inputs, [s_new_out])
 
         #create the new node.
-        n = OP(C).make_node(*inputs)
+        #Do not call make_node to have test_value
+        n = OP(C)(*inputs).owner
         assert len(n.outputs) == 1
         assert node.outputs[0].dtype == n.outputs[0].dtype
 
@@ -4728,9 +4757,11 @@ if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fast_run', 'fusion', 'local_elemwise_fusion')
+                           'fast_run', 'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fusion', 'local_elemwise_fusion')
+                           'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')

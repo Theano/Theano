@@ -1,11 +1,10 @@
 import sys
 import time
 
+from theano import config
 from theano.gof.python25 import partial
 from theano.gof.python25 import OrderedDict
-
 from theano.gof import graph
-
 
 
 class AlreadyThere(Exception):
@@ -57,7 +56,7 @@ class Feature(object):
         functionality that it installed into the function_graph.
         """
 
-    def on_import(self, function_graph, node):
+    def on_import(self, function_graph, node, reason):
         """
         Called whenever a node is imported into function_graph, which is
         just before the node is actually connected to the graph.
@@ -66,7 +65,7 @@ class Feature(object):
         you should do this by implementing on_attach.
         """
 
-    def on_prune(self, function_graph, node):
+    def on_prune(self, function_graph, node, reason):
         """
         Called whenever a node is pruned (removed) from the function_graph,
         after it is disconnected from the graph.
@@ -98,11 +97,11 @@ class Bookkeeper(Feature):
 
     def on_attach(self, fgraph):
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
-            self.on_prune(fgraph, node)
+            self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
 
 class History(Feature):
@@ -199,11 +198,14 @@ class ReplaceValidate(History, Validator):
     def replace_validate(self, fgraph, r, new_r, reason=None):
         self.replace_all_validate(fgraph, [(r, new_r)], reason=reason)
 
-    def replace_all_validate(self, fgraph, replacements, reason=None):
+    def replace_all_validate(self, fgraph, replacements,
+                             reason=None, verbose=None):
         chk = fgraph.checkpoint()
+        if verbose is None:
+            verbose = config.optimizer_verbose
         for r, new_r in replacements:
             try:
-                fgraph.replace(r, new_r, reason=reason)
+                fgraph.replace(r, new_r, reason=reason, verbose=False)
             except Exception, e:
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this FunctionGraph' not in str(e)):
@@ -219,6 +221,8 @@ class ReplaceValidate(History, Validator):
         except Exception, e:
             fgraph.revert(chk)
             raise
+        if verbose:
+            print reason, r, new_r
         return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,
@@ -267,7 +271,7 @@ class NodeFinder(dict, Bookkeeper):
         del fgraph.get_nodes
         Bookkeeper.on_detach(self, fgraph)
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         try:
             self.setdefault(node.op, []).append(node)
         except TypeError:  # node.op is unhashable
@@ -280,7 +284,7 @@ class NodeFinder(dict, Bookkeeper):
                 print >> sys.stderr, 'OFFENDING node not hashable'
             raise e
 
-    def on_prune(self, fgraph, node):
+    def on_prune(self, fgraph, node, reason):
         try:
             nodes = self[node.op]
         except TypeError:  # node.op is unhashable
@@ -312,13 +316,13 @@ class PrintListener(Feature):
         if self.active:
             print "-- detaching from: ", fgraph
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         if self.active:
-            print "-- importing: %s" % node
+            print "-- importing: %s, reason: %s" % (node, reason)
 
-    def on_prune(self, fgraph, node):
+    def on_prune(self, fgraph, node, reason):
         if self.active:
-            print "-- pruning: %s" % node
+            print "-- pruning: %s, reason: %s" % (node, reason)
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if self.active:

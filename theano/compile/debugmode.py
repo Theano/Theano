@@ -1428,21 +1428,25 @@ class _VariableEquivalenceTracker(object):
         self.reasons = {}
         self.replaced_by = {}
         self.event_list = []
+        for node in fgraph.toposort():
+            self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
         assert fgraph is self.fgraph
         self.fgraph = None
 
-    def on_prune(self, fgraph, node):
-        self.event_list.append(_FunctionGraphEvent('prune', node))
+    def on_prune(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('prune', node,
+                                                   reason=reason))
         #print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
         self.inactive_nodes.add(node)
 
-    def on_import(self, fgraph, node):
-        self.event_list.append(_FunctionGraphEvent('import', node))
+    def on_import(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('import', node,
+                                                   reason=reason))
 
         #print 'NEW NODE', node, id(node)
         assert node not in self.active_nodes
@@ -2114,7 +2118,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             # optimize the fgraph
             compute_test_value_orig = theano.config.compute_test_value
             try:
-                theano.config.compute_test_value = "off"
+                theano.config.compute_test_value = theano.config.compute_test_value_opt
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(fgraph, inputs,
