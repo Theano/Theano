@@ -2543,7 +2543,7 @@ class Alloc(gof.Op):
         #change.
         return [gx] + [DisconnectedType()() for i in inputs[1:]]
 
-    def __call__(self, val, *shapes):
+    def __call__(self, val, *shapes, **kwargs):
         """
         If the alloc would be useless, this function returns val.
 
@@ -2554,7 +2554,7 @@ class Alloc(gof.Op):
 
         If you always want an Alloc node, call make_node.
         """
-        ret = super(Alloc, self).__call__(val, *shapes)
+        ret = super(Alloc, self).__call__(val, *shapes, **kwargs)
         try:
             # It makes optimization difficult when useless allocs are thrown
             # into the graph at every stage of optimization.  This little logic

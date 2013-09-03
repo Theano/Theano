@@ -157,6 +157,11 @@ AddConfigVar('optimizer',
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
         in_c_key=False)
 
+AddConfigVar('optimizer_verbose',
+             "If True, we print all optimization being applied",
+             BoolParam(False),
+             in_c_key=False)
+
 AddConfigVar('on_opt_error',
         ("What to do when an optimization crashes: warn and skip it, raise "
          "the exception, or fall into the pdb debugger."),
@@ -379,9 +384,16 @@ AddConfigVar('compute_test_value',
          "Constants, SharedVariables and the tag 'test_value' as inputs "
          "to the function. This helps the user track down problems in the "
          "graph before it gets optimized."),
-        EnumStr('off', 'ignore', 'warn', 'raise'),
+        EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
         in_c_key=False)
 
+
+AddConfigVar('compute_test_value_opt',
+             ("For debugging Theano optimization only."
+              " Same as compute_test_value, but is used"
+              " during Theano optimization"),
+             EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
+             in_c_key=False)
 
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
