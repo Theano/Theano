@@ -18,7 +18,10 @@ def hash_from_ndarray(data):
 
     # python hash are not strong, so I always use md5 in order not to have a
     # too long hash, I call it again on the concatenation of all parts.
-    if not data.flags["C_CONTIGUOUS"] and not data.flags["F_CONTIGUOUS"]:
+    if not data.flags["C_CONTIGUOUS"]:
+        # Version 1.7.1 and previous of NumPy allowed calling
+        # hash_from_code on an F-contiguous array, but more recent
+        # versions need a C-contiguous one.
         data = numpy.ascontiguousarray(data)
     return hash_from_code(hash_from_code(data) +
                           hash_from_code(str(data.shape)) +
