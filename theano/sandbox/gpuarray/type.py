@@ -189,6 +189,9 @@ class GpuArrayType(Type):
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
 
+    def c_libraries(self):
+        return ['compyte']
+
     def c_code_cache_version(self):
         return (1,)
 
