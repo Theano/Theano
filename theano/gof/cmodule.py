@@ -144,12 +144,7 @@ class DynamicModule(object):
         self.support_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>"]
-
-        #TODO: this should come from TensorType
-        self.includes.append('<numpy/arrayobject.h>')
-
-        #TODO: from TensorType
-        self.init_blocks = ['import_array();']
+        self.init_blocks = []
 
     def print_methoddef(self, stream):
         print >> stream, "static PyMethodDef MyMethods[] = {"
