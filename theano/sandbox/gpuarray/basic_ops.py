@@ -257,10 +257,6 @@ class GpuFromCuda(Op):
     def c_libraries(self):
         return ['cudart', 'cublas', 'cuda']
 
-    def c_compiler(self):
-        from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
-        return NVCC_compiler
-
     def c_support_code(self):
         return """
         CUcontext (*cuda_get_ctx)(void *ctx);
@@ -404,10 +400,6 @@ class CudaFromGpu(Op):
 
     def c_libraries(self):
         return ['cudart', 'cublas', 'cuda']
-
-    def c_compiler(self):
-        from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
-        return NVCC_compiler
 
     def c_support_code(self):
         return """
