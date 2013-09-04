@@ -1,3 +1,5 @@
+import os
+
 import numpy
 
 import theano
@@ -166,7 +168,7 @@ class GpuFromHost(Op):
         %(name)serr = GpuArray_empty(&%(out)s->ga,
                                      GpuArray_default_context()->ops,
                                      GpuArray_default_context()->ctx,
-                                     get_typecode(PyArray_DESCR(%(name)s_tmp)),
+                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
                                      GA_C_ORDER);
@@ -207,11 +209,11 @@ class GpuFromCuda(Op):
         return 'GpuFromCuda'
 
     def make_node(self, x):
-        from theano.sandbox.cuda import CudaNdArrayType
-        if not isinstance(x.type, CudaNdArrayType):
+        from theano.sandbox.cuda import CudaNdarrayType
+        if not isinstance(x.type, CudaNdarrayType):
             raise TypeError(x)
         return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
-                                              dtype=x.dtype)]())
+                                              dtype=x.dtype)()])
 
     def perform(self, node, inp, out):
         x, = inp
@@ -233,7 +235,8 @@ class GpuFromCuda(Op):
         return xshp
 
     def c_headers(self):
-        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>', '<cuda.h>']
+        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>',
+                '<compyte/types.h>', '<cuda.h>']
 
     def c_header_dirs(self):
         import cuda_ndarray
@@ -260,21 +263,25 @@ class GpuFromCuda(Op):
 
     def c_support_code(self):
         return """
-        CUcontext (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
-        gpudata *(*cuda_make_buf)(void *c, CUdeviceptr p, size_t sz) = compyte_get_extension('cuda_make_buf');
+        CUcontext (*cuda_get_ctx)(void *ctx);
+        gpudata *(*cuda_make_buf)(void *c, CUdeviceptr p, size_t sz);
         """
 
-    def c_code(self, node, name, input, output, sub):
+    def c_init_code(self):
+        return ['cuda_get_ctx = (CUcontext (*)(void *))compyte_get_extension("cuda_get_ctx");',
+                'cuda_make_buf = (gpudata *(*)(void *, CUdeviceptr, size_t))compyte_get_extension("cuda_make_buf");']
+
+    def c_code(self, node, name, inputs, outputs, sub):
         return """
         int %(name)serr;
         gpudata *%(name)sdata;
-        CUcontext *%(name)scur;
+        CUcontext %(name)scur;
         size_t *%(name)sdims;
         ssize_t *%(name)sstr;
 
         cuCtxGetCurrent(&%(name)scur);
         if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
-            PyErr_SetString(PyErr_ValueError, "Ambient cuda context is not the same as output context.");
+            PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
         %(name)sdims = (size_t *)calloc(%(in)s->nd, sizeof(size_t));
@@ -290,12 +297,12 @@ class GpuFromCuda(Op):
         }
 
         for (unsigned int i = 0; i < %(in)s->nd; i++) {
-            %(name)sdims[i] = (size_t)CudaNdArray_HOST_DIMS(%(in)s)[i];
-            %(name)sstr[i] = (ssize_t)CudaNdArray_HOST_STRIDES(%(in)s)[i];
+            %(name)sdims[i] = (size_t)CudaNdarray_HOST_DIMS(%(in)s)[i];
+            %(name)sstr[i] = (ssize_t)CudaNdarray_HOST_STRIDES(%(in)s)[i];
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
         if (%(out)s == NULL) {
             free(%(name)sdims);
             free(%(name)sstr);
@@ -324,7 +331,7 @@ class GpuFromCuda(Op):
             %(fail)s
         }
         Py_INCREF(%(in)s);
-        %(out)s->base = %(in)s;
+        %(out)s->base = (PyObject *)%(in)s;
         """ % {'name':name, 'in': inputs[0], 'out': outputs[0],
                'fail': sub['fail']}
 
@@ -347,11 +354,12 @@ class CudaFromGpu(Op):
         return 'CudaFromGpu'
 
     def make_node(self, x):
-        from theano.sandbox.cuda import CudaNdArrayType
+        from theano.sandbox.cuda import CudaNdarrayType
         if not isinstance(x.type, GpuArrayType):
             raise TypeError(x)
-        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable,
-                                                 dtype=x.dtype)()])
+        if x.type.dtype != 'float32':
+            raise TypeError(x)
+        return Apply(self, [x], [CudaNdarrayType(broadcastable=x.broadcastable)()])
 
     def perform(self, node, inp, out):
         from theano.sandbox.cuda import filter as cuda_filter
