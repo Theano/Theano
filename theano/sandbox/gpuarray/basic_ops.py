@@ -151,17 +151,13 @@ class GpuFromHost(Op):
         return """
         PyArrayObject *%(name)s_tmp;
         int %(name)serr;
-        if ((PyObject *)GpuArray_default_context == Py_None) {
-            PyErr_SetString(PyExc_ValueError, "No default context, gpuarray not initialized?");
-            %(fail)s
-        }
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL) {
             // PyArray_GETCONTIGUOUS sets an error message if it fails
             %(fail)s
         }
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
             // new_GpuArray calls __new__ which will set an error message
@@ -169,8 +165,8 @@ class GpuFromHost(Op):
             %(fail)s
         }
         %(name)serr = GpuArray_empty(&%(out)s->ga,
-                                     GpuArray_default_context->ops,
-                                     GpuArray_default_context->ctx,
+                                     GpuArray_default_context()->ops,
+                                     GpuArray_default_context()->ctx,
                                      %(typecode)s,
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
@@ -279,7 +275,7 @@ class GpuFromCuda(Op):
         ssize_t *%(name)sstr;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx(GpuArray_default_context->ctx)) {
+        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
             PyErr_SetString(PyErr_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
@@ -308,7 +304,7 @@ class GpuFromCuda(Op):
             %(fail)s
         }
 
-        %(name)sdata = cuda_make_buf(GpuArray_default_context->ctx,
+        %(name)sdata = cuda_make_buf(GpuArray_default_context()->ctx,
                                      (CUdeviceptr)%(in)s->devdata,
                                      (size_t)%(in)s->data_allocated);
         if (%(name)sdata == NULL) {
@@ -319,7 +315,7 @@ class GpuFromCuda(Op):
             %(fail)s
         }
         %(name)serr = GpuArray_fromdata(&%(out)s->ga,
-                                        GpuArray_default_context->ops,
+                                        GpuArray_default_context()->ops,
                                         %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
                                         %(name)sdims, %(name)sstr, 1);
         free(%(name)sdims);

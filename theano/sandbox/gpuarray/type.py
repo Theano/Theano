@@ -174,15 +174,23 @@ class GpuArrayType(Type):
         }
         """ % {'name': name}
 
+    def c_init_code(self):
+        # We don't actually need the numpy API except in
+        # HostFromGpu and GpuFromHost and those case will be covered
+        # by the TensorType parameter
+        return ['import_pygpu__gpuarray();']
+
     def c_headers(self):
-        return ['pygpu/gpuarray.h', 'compyte/array.h', 'compyte/kernel.h',
-                'compyte/error.h']
+        # We need arrayobject for the PyArrayDescr struct def
+        # (even if we just use a pointer to it in a function def)
+        return ['<compyte/array.h>', '<compyte/kernel.h>', '<compyte/error.h>',
+                '<numpy/arrayobject.h>', '<gpuarray_api.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include()]
+        return [pygpu.get_include(), numpy.get_include()]
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 class _operators(tensor.basic._tensor_py_operators):
@@ -265,7 +273,7 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
-    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
+    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
     if (!%(oname)s) { %(fail)s }
     int err;
     err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
