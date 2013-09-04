@@ -260,14 +260,22 @@ def test_transfer_cuda_gpu():
     av = theano._asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
     cv = cuda_ndarray.CudaNdarray(av)
+    gvs = gv[:,::-2]
+    cvs = cv[:,::-2]
 
     f = theano.function([c], gpu_from_cuda(c))
     fv = f(cv)
     assert GpuArrayType.values_eq_approx(fv, gv)
 
+    fvs = f(cvs)
+    assert GpuArrayType.values_eq_approx(fvs, gvs)
+
     f = theano.function([g], cuda_from_gpu(g))
     fv = f(gv)
     assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fv, cv)
+
+    fvs = f(gvs)
+    assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fvs, cvs)
 
 
 def gpu_alloc_expected(x, *shp):
