@@ -14,10 +14,11 @@ import theano.sandbox.gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu disabled")
 
-from theano.sandbox.gpuarray.type import GpuArrayType, \
-    gpuarray_shared_constructor
-from theano.sandbox.gpuarray.basic_ops import host_from_gpu, gpu_from_host, \
-    gpu_alloc, gpu_from_cuda, cuda_from_gpu
+from theano.sandbox.gpuarray.type import (GpuArrayType,
+                                          gpuarray_shared_constructor)
+from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
+                                               gpu_alloc, gpu_from_cuda,
+                                               cuda_from_gpu)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
