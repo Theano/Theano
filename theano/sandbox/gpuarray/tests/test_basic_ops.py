@@ -1,13 +1,14 @@
 import unittest
 from itertools import izip
 from copy import copy, deepcopy
-from nose.plugins.skip import SkipTest
 
 import numpy
 import theano
 import theano.tensor as T
 from theano.compile import DeepCopyOp
 from theano.tensor.tests.test_basic import safe_make_node
+from theano.tests.unittest_tools import SkipTest
+from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
@@ -32,6 +33,21 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
+
+def may_fail(msg, EClass):
+    """Mark a test that requires very specific conditions to work to
+       mask a specific exception class."""
+    def test_decorator(f):
+        def wrapper():
+            try:
+                f()
+            except Exception, e:
+                if isinstance(e, EClass):
+                    raise KnownFailureTest(msg, e)
+                raise
+        wrapper.__name__ = f.__name__
+        return wrapper
+    return test_decorator
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                  on_unused_input='raise', name=None):
@@ -231,6 +247,8 @@ def test_transfer_strided():
     assert numpy.all(fv == av)
 
 
+@may_fail("Op fails if both contexts are not the same and it's rare "
+          "that the tests will be run this way", ValueError)
 def test_transfer_cuda_gpu():
     import theano.sandbox.cuda as cuda_ndarray
     if cuda_ndarray.cuda_available == False:

@@ -298,7 +298,7 @@ class GpuFromCuda(Op):
 
         for (unsigned int i = 0; i < %(in)s->nd; i++) {
             %(name)sdims[i] = (size_t)CudaNdarray_HOST_DIMS(%(in)s)[i];
-            %(name)sstr[i] = (ssize_t)CudaNdarray_HOST_STRIDES(%(in)s)[i];
+            %(name)sstr[i] = (ssize_t)CudaNdarray_HOST_STRIDES(%(in)s)[i]*4;
         }
 
         Py_XDECREF(%(out)s);
@@ -311,7 +311,7 @@ class GpuFromCuda(Op):
 
         %(name)sdata = cuda_make_buf(GpuArray_default_context()->ctx,
                                      (CUdeviceptr)%(in)s->devdata,
-                                     (size_t)%(in)s->data_allocated);
+                                     ((size_t)%(in)s->data_allocated)*4);
         if (%(name)sdata == NULL) {
             Py_DECREF(%(out)s);
             free(%(name)sdims);
@@ -336,7 +336,7 @@ class GpuFromCuda(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 gpu_from_cuda = GpuFromCuda()
 
@@ -411,33 +411,45 @@ class CudaFromGpu(Op):
 
     def c_support_code(self):
         return """
-        CUcontext (*cuda_get_ctx)(void *ctx) = compyte_get_extension('cuda_get_ctx');
-        CUdeviceptr (*cuda_get_ptr)(gpudata *g) = compyte_get_extension('cuda_get_ptr');
-        size_t (*cuda_get_sz)(gpudata *g) = compyte_get_extension('cuda_get_sz');
+        CUcontext (*cuda_get_ctx)(void *ctx);
+        CUdeviceptr (*cuda_get_ptr)(gpudata *g);
         """
 
-    def c_code(self, node, name, input, output, sub):
+    def c_init_code(self):
+        return ['cuda_get_ctx = (CUcontext (*)(void *ctx))compyte_get_extension("cuda_get_ctx");',
+                'cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+
+    def c_code(self, node, name, inputs, outputs, sub):
         return """
-        int err = 0, i;
+        int %(name)serr = 0, %(name)si;
+        CUcontext %(name)scur;
+
+        cuCtxGetCurrent(&%(name)scur);
+        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
+            PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
+            %(fail)s
+        }
+
         Py_XDECREF(%(out)s);
-        %(out)s = (CudaNdarray *)CudaNdarray_new_nd(%(inp)s->nd);
+        %(out)s = (CudaNdarray *)CudaNdarray_new_nd(%(inp)s->ga.nd);
         if (!%(out)s) {
             %(fail)s
         }
-        for (i = 0; i < %(inp)s->nd; i++) {
-            CudaNdarray_set_dim(%(out)s, i, %(inp)s->dimensions[i]);
-            CudaNdarray_set_stride(%(out)s, i, %(inp)s->strides[i]);
+        for (%(name)si = 0; %(name)si < %(inp)s->ga.nd; %(name)si++) {
+            CudaNdarray_set_dim(%(out)s, %(name)si, %(inp)s->ga.dimensions[%(name)si]);
+            CudaNdarray_set_stride(%(out)s, %(name)si, %(inp)s->ga.strides[%(name)si]/4);
         }
-        err = CudaNdarray_set_device_data(%(out),
-          (float *)(((char *)cuda_get_ptr(%(inp)s.ga->data))+%(inp).ga.offset),
+        %(name)serr = CudaNdarray_set_device_data(%(out)s,
+          (float *)(((char *)cuda_get_ptr(%(inp)s->ga.data))+%(inp)s->ga.offset),
                                           (PyObject *)%(inp)s);
-        if (err) {
+        if (%(name)serr) {
            %(fail)s
         }
-        """ % {'inp': inputs[0], 'out': output[0], 'fail': sub['fail']}
+        """ % {'name': name, 'inp': inputs[0], 'out': outputs[0],
+               'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 cuda_from_gpu = CudaFromGpu()
