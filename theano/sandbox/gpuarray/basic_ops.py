@@ -147,7 +147,6 @@ class GpuFromHost(Op):
         return xshp
 
     def c_code(self, node, name, inputs, outputs, sub):
-        type = node.outputs[0].type
         return """
         PyArrayObject *%(name)s_tmp;
         int %(name)serr;
@@ -167,7 +166,7 @@ class GpuFromHost(Op):
         %(name)serr = GpuArray_empty(&%(out)s->ga,
                                      GpuArray_default_context()->ops,
                                      GpuArray_default_context()->ctx,
-                                     %(typecode)s,
+                                     get_typecode(PyArray_DESCR(%(name)s_tmp)),
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
                                      GA_C_ORDER);
@@ -187,11 +186,10 @@ class GpuFromHost(Op):
             %(fail)s
         }
         """ % {'name': name, 'inp': inputs[0],
-               'out': outputs[0], 'fail': sub['fail'],
-               'typecode': type.typecode}
+               'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 gpu_from_host = GpuFromHost()
 
@@ -235,7 +233,7 @@ class GpuFromCuda(Op):
         return xshp
 
     def c_headers(self):
-        return ['cuda_ndarray.cuh', 'compyte/extension.h', 'cuda.h']
+        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>', '<cuda.h>']
 
     def c_header_dirs(self):
         import cuda_ndarray
@@ -256,7 +254,7 @@ class GpuFromCuda(Op):
     def c_libraries(self):
         return ['cudart', 'cublas', 'cuda']
 
-    def c_conpiler(self):
+    def c_compiler(self):
         from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
         return NVCC_compiler
 
@@ -378,7 +376,7 @@ class CudaFromGpu(Op):
         return shp
 
     def c_headers(self):
-        return ['cuda_ndarray.cuh', 'compyte/extension.h', 'cuda.h']
+        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>', '<cuda.h>']
 
     def c_header_dirs(self):
         import cuda_ndarray
@@ -399,7 +397,7 @@ class CudaFromGpu(Op):
     def c_libraries(self):
         return ['cudart', 'cublas', 'cuda']
 
-    def c_conpiler(self):
+    def c_compiler(self):
         from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
         return NVCC_compiler
 
