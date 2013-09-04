@@ -742,7 +742,7 @@ class CLinker(link.Linker):
 
         c_compiler = self.c_compiler()
 
-        ret = list(set(ret))  # to remove duplicate
+        ret = utils.uniq(ret)  # to remove duplicate
         # The args set by the compiler include the user flags. We do not want
         # to reorder them
         ret += c_compiler.compile_args()
@@ -772,7 +772,22 @@ class CLinker(link.Linker):
                 ret += x.c_headers()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
+
+    def init_code(self):
+        """
+        Return a list of code snippets that have to be inserted
+        in the module initialization code.
+        The return value will not contain duplicates.
+        """
+        ret = []
+        for x in [y.type for y in self.variables] + [
+            y.op for y in self.node_order]:
+            try:
+                ret += x.c_init_code()
+            except utils.MethodNotDefined:
+                pass
+        return utils.uniq(ret)
 
     def c_compiler(self):
         c_compiler = None
@@ -809,7 +824,7 @@ class CLinker(link.Linker):
                 ret += x.c_header_dirs()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def libraries(self):
         """WRITEME
@@ -825,7 +840,7 @@ class CLinker(link.Linker):
                 ret += x.c_libraries()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def lib_dirs(self):
         """WRITEME
@@ -841,7 +856,7 @@ class CLinker(link.Linker):
                 ret += x.c_lib_dirs()
             except utils.MethodNotDefined:
                 pass
-        return list(set(ret))
+        return utils.uniq(ret)
 
     def __compile__(self, input_storage=None,
                     output_storage=None, keep_lock=False):
@@ -1277,6 +1292,8 @@ class CLinker(link.Linker):
         mod.add_function(instantiate)
         for header in self.headers():
             mod.add_include(header)
+        for init_code_block in self.init_code():
+            mod.add_init_code(init_code_block)
 
         return mod
 

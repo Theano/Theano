@@ -57,6 +57,11 @@ There are less methods to define for an Op than for a Type:
 
       Allows you to specify special g++ arguments to add/exclude
 
+    .. method:: c_init_code()
+
+      Allows you to specify code that will be executed once when the
+      module is initialized, before anything else is executed.
+
     .. method:: c_support_code()
 
       Allows you to specify helper functions/structs that the

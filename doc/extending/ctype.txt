@@ -90,6 +90,14 @@ the most important ones:
 
         Allows to specify special compiler arguments to add/exclude.
 
+    .. method:: c_init_code()
+
+        Allows you to specify code that will be executed once when the
+        module is initialized, before anything else is executed.
+        For instance, if a type depends on NumPy's C API, then
+        ``'import_array();'`` has to be among the snippets returned
+        by ``c_init_code()``.
+
     .. method:: c_support_code()
 
         Allows to add helper functions/structs that the :ref:`type` needs.
