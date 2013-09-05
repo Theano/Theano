@@ -95,15 +95,22 @@ class GpuElemwise(Op):
                                       sub=dict(fail='return;'))
         res.tag.kcode = kcode
 
-        support_code = ""
         try:
-            support_code += self.scalar_op.c_support_code_apply(fake_node, 'kcode')
+            code = self.scalar_op.c_support_code_apply(fake_node, 'kcode')
+            if code:
+                raise SupportCodeError()
         except MethodNotDefined:
             pass
+
+        support_code = ""
         try:
             support_code += self.scalar_op.c_support_code()
         except MethodNotDefined:
             pass
+
+        if support_code != "#define THEANO_MACRO_MOD(x,y) (x % y)":
+            # Avoid the C++ complex struct
+            raise SupportCodeError()
 
         k = ElemwiseKernel(None, inps+outs, kcode, preamble=support_code)
         res.tag.kernel = k
@@ -113,8 +120,14 @@ class GpuElemwise(Op):
     def perform(self, node, inps, out):
         k = node.tag.kernel
         outs = [ensure_out(o[0], inps[0]) for o in out]
-        
-        k.call_dimspec(*(inps+outs), broadcast=True)
+
+        # the dict call is there to avoid syntax error in python <= 2.5
+        k(*(inps+outs), **dict(broadcast=True))
 
         for o, og in zip(out, outs):
             o[0] = og
+
+class SupportCodeError(Exception):
+    """
+    We do not support certain things (such as the C++ complex struct)
+    """
