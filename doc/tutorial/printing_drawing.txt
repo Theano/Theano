@@ -19,9 +19,13 @@ The following output depicts the pre- and post- compilation graphs.
 
 .. code-block:: python
     
-    import numpy
     import theano
     import theano.tensor as T
+
+    import numpy
+
+    import os
+
     rng = numpy.random
 
     N = 400
@@ -82,6 +86,8 @@ The following output depicts the pre- and post- compilation graphs.
 
     # Print the picture graphs
     # after compilation
+    if not os.path.exists('pics'):
+        os.mkdir('pics')
     theano.printing.pydotprint(predict,
                                outfile="pics/logreg_pydotprint_predic.png",
                                var_with_name_simple=True)
