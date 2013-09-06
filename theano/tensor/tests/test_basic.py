@@ -3294,10 +3294,28 @@ class T_Join_and_Split(unittest.TestCase):
         """
         Regression test for a crash that used to happen when rebroadcasting.
         """
-        x = tensor.TensorType(floatX, [False, False, True])()
-        u = tensor.TensorType(floatX, [False, False, True])()
+        x = tensor.TensorType(self.floatX, [False, False, True])()
+        u = tensor.TensorType(self.floatX, [False, False, True])()
         # This line used to crash.
         z = tensor.concatenate([x, -u], axis=2)
+
+    def test_concatenate_same(self):
+        """
+        Test that we can concatenate the same tensor multiple time.
+
+        In the past it was broken on the GPU.
+        """
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        T_shared = self.shared(rng.rand(3, 4).astype(self.floatX))
+        Tout = tensor.concatenate([T_shared, T_shared])
+        f = function([], Tout, mode=self.mode)
+        out = f()
+        if theano.config.mode != 'FAST_COMPILE':
+            assert [True for node in f.maker.fgraph.toposort() if isinstance(
+                node.op, self.join_op)]
+        assert numpy.allclose(out,
+                              numpy.concatenate([T_shared.get_value(),
+                                                 T_shared.get_value()]))
 
 
 class test_comparison(unittest.TestCase):

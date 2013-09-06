@@ -5,7 +5,7 @@ import sys
 import numpy
 
 import theano
-from theano import Type, Apply
+from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
@@ -2960,7 +2960,6 @@ class GpuJoin(tensor.Join, GpuOp):
         str = """
         const int axis = PyInt_AsLong((PyObject*)%(axis)s);
         const int nd = %(nd)s;
-        int shape_%(input_1)s[nd];
         int shape_out[nd];
         int width_sum = 0;
         int errorcode;
@@ -2973,11 +2972,6 @@ class GpuJoin(tensor.Join, GpuOp):
         start = NULL;
         stop = NULL;
 
-        for(int i = 0; i<nd; i+=1)
-        {
-            shape_%(input_1)s[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
-            shape_out[i] = shape_%(input_1)s[i];
-        }
         """ % locals()
 
         # getting the shapes of all the involved tensors (input[1:])
@@ -2986,7 +2980,7 @@ class GpuJoin(tensor.Join, GpuOp):
         # shape_%(cdna)s[nd] is initialized before, to prevent following
         # error: jump to label __label_9 crosses initialization of
         # shape_%(cdna)s[nd]
-        for i, cdna in enumerate(inputs[2:]):
+        for i, cdna in enumerate(gof.utils.uniq(inputs[1:])):
             str += """
             int shape_%(cdna)s[nd];
             """ % locals()
@@ -2998,8 +2992,14 @@ class GpuJoin(tensor.Join, GpuOp):
         if(full_slice == NULL){
             %(fail)s;
         }
+
+        for(int i = 0; i<nd; i+=1)
+        {
+            shape_%(input_1)s[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
+            shape_out[i] = shape_%(input_1)s[i];
+        }
         """ % locals()
-        for i, cdna in enumerate(inputs[2:]):
+        for i, cdna in enumerate(gof.utils.uniq(inputs[2:])):
             str += """
             for(int i = 0; i<nd; i+=1)
             {
@@ -3090,7 +3090,7 @@ class GpuJoin(tensor.Join, GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 gpu_join = GpuJoin()
 
