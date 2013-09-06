@@ -19,9 +19,13 @@ The following output depicts the pre- and post- compilation graphs.
 
 .. code-block:: python
     
-    import numpy
     import theano
     import theano.tensor as T
+
+    import numpy
+
+    import os
+
     rng = numpy.random
 
     N = 400
@@ -52,16 +56,16 @@ The following output depicts the pre- and post- compilation graphs.
     train = theano.function(
                 inputs=[x, y],
                 outputs=[prediction, xent],
-                updates={w: w - 0.01 * gw, b: b - 0.01 * gb},
+                updates=[(w, w - 0.01 * gw), (b, b - 0.01 * gb)],
                 name="train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name="predict")
 
-    if any( [x.op.__class__.__name__=='Gemv' for x in
-    train.maker.fgraph.toposort()]):
+    if any([x.op.__class__.__name__ in ['Gemv', 'CGemv'] for x in
+            train.maker.fgraph.toposort()]):
         print 'Used the cpu'
-    elif any( [x.op.__class__.__name__=='GpuGemm' for x in
-    train.maker.fgraph.toposort()]):
+    elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
+             train.maker.fgraph.toposort()]):
         print 'Used the gpu'
     else:
         print 'ERROR, not able to tell if theano used the cpu or the gpu'
@@ -82,6 +86,8 @@ The following output depicts the pre- and post- compilation graphs.
 
     # Print the picture graphs
     # after compilation
+    if not os.path.exists('pics'):
+        os.mkdir('pics')
     theano.printing.pydotprint(predict,
                                outfile="pics/logreg_pydotprint_predic.png",
                                var_with_name_simple=True)

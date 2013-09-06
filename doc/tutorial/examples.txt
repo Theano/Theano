@@ -254,10 +254,11 @@ for the purpose of one particular function.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
->>> foo = T.iscalar()  # the type (lscalar) must match the shared variable we
->>>                    # are replacing with the ``givens`` list
+>>> # The type of foo must match the shared variable we are replacing
+>>> # with the ``givens``
+>>> foo = T.scalar(dtype=state.dtype)
 >>> skip_shared = function([inc, foo], fn_of_state,
-        givens=[(state, foo)])
+                           givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
