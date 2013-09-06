@@ -1024,6 +1024,60 @@ def test_dot22scalar_cast():
             assert _dot22scalar in [x.op for x in f.maker.fgraph.toposort()]
 
 
+def test_local_dot22_to_dot22scalar():
+    """
+    This test that the bug in gh-1507 is really fixed
+    """
+    A = T.dmatrix()
+    mode = theano.compile.mode.get_default_mode()
+    opt = theano.tensor.opt.in2out(
+        theano.tensor.blas.local_dot22_to_dot22scalar)
+    mode = mode.__class__(optimizer=opt)
+
+    x = T.dscalar()
+    y = T.dscalar()
+    z = T.dscalar()
+    # make sure to don't have dimshuffle as we don't opt those cases
+    m = T.dmatrix()
+    r = T.drow()
+    for idx, node in enumerate([
+        #Old working cases
+        T.mul(_dot22(A, A), x),
+        T.mul(_dot22(A, A), x, y),
+        T.mul(_dot22(A, A), x, r),
+        T.mul(_dot22(A, A), m, x),
+        T.mul(_dot22(A, A), x, m),
+        T.mul(_dot22(A, A), x, (m * y)),
+        T.mul(_dot22(A, A), (m * y), x),
+        T.mul(_dot22(A, A), x, (r * y)),
+        T.mul(_dot22(A, A), (r * y), x),
+        T.mul(_dot22(A, A), (x * y), (m * x)),
+        T.mul(_dot22(A, A), (r * y), (y * x)),
+
+        # Case that was raising an assert that is fixed in gh-1507
+        T.mul(_dot22(A, A), (m * y), m),
+        T.mul(_dot22(A, A), m, (m * y)),
+        T.mul(_dot22(A, A), (r * y), (m * x)),
+
+        # assert fixed in gh-1507 and opt case added in gh-1515
+        T.mul(_dot22(A, A), (m * y * z), m),
+        T.mul(_dot22(A, A), m, (m * y * z)),
+
+        # Opt case added in gh-1515
+        T.mul(_dot22(A, A), T.mul(m, y, z), m),
+        T.mul(_dot22(A, A), m, T.mul(m, y, z)),
+
+        #Case that isn't opt for now.
+        #T.mul(_dot22(A, A), (r * m), (m * x)),
+    ]):
+        node2 = theano.tensor.blas.local_dot22_to_dot22scalar.transform(
+            node.owner)
+        assert node2
+        f = theano.function([x, y, z, m, r, A], node,
+                            mode=mode, on_unused_input='ignore')
+        f(.1, .2, .3, [[1, 2], [3, 4]], [[5, 6]], [[7, 8], [9, 10]])
+
+
 def test_dot_w_self():
     # This can trigger problems in the optimization because what would
     # normally be a gemm must not be because the output is aliased to
