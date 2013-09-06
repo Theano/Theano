@@ -1906,55 +1906,53 @@ def local_dot22_to_dot22scalar(node):
     d = node.inputs[dot22_idx]
     i_scalar = [_as_scalar(x, dtype=d.dtype) for x in node.inputs]
     if not any(i_scalar):
-        i_mul = [x.owner and x.owner.op == T.mul for x in node.inputs]
+        # Check if we can reorder the graph as this mul have a mul in inputs.
+        # We support only 1 additional level of mul.
+        # The canonizer should have merged those mul together.
+        i_mul = [x.owner and x.owner.op == T.mul and
+                 any([_as_scalar(x_i, dtype=d.dtype)
+                   for x_i in x.owner.inputs])
+                 for x in node.inputs]
         if not any(i_mul):
             #no scalar in input and no multiplication
             #if their was a multiplication we couls reorder the graph
             #by the associativity of the graph.
             return False
 
-        #maybe we can reorder the graph as this mul have a mul in input.
-        #The canonizer should have merged those mul together.
-        #We support only 1 additional level of mul.
-        mul_idx = i_mul.index(True)  # we take the first mul!
+        mul_idx = i_mul.index(True)  # The first one should always work
         m = node.inputs[mul_idx]
 
-        if len(m.owner.inputs) == 2 and any([_as_scalar(x, dtype=d.dtype)
-                                             for x in m.owner.inputs]):
-            scalar_idx = -1
-            for i, x in enumerate(m.owner.inputs):
-                if _as_scalar(x, dtype=d.dtype) and (theano.scalar.upcast(
-                        x.type.dtype, d.type.dtype)
-                                      == d.type.dtype):
-                    scalar_idx = i
-                    break
+        scalar_idx = -1
+        for i, x in enumerate(m.owner.inputs):
+            if _as_scalar(x, dtype=d.dtype) and (theano.scalar.upcast(
+                x.type.dtype, d.type.dtype)
+                                                 == d.type.dtype):
+                scalar_idx = i
+                break
 
-            if scalar_idx < 0:
-                _logger.info('Not optimizing dot22 with inputs %s %s, as the'
-                             ' type of the scalar cannot be upcasted to the'
-                             ' matrix type',
-                             node.inputs, [x.type for x in node.inputs])
-                return False
-            a = T.cast(_as_scalar(m.owner.inputs[scalar_idx],
-                                  dtype=d.dtype), d.type.dtype)
-            assert not a.type.ndim
-            dot = _dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
-
-            # What about the other inputs to the original node that were
-            # neither part of the dot22 or this mul?
-            # I'm asserting there are no such inputs here:
-            assert dot22_idx != mul_idx
-            assert all((i in (dot22_idx, mul_idx))
-                    for i in xrange(len(node.inputs)))
-
-            return [T.mul(m.owner.inputs[1 - i], dot)]
-        elif m.owner and m.owner.op == T.mul:
-            _logger.info('Not optimizing dot22 with inputs %s %s %s %s. '
-                    'we need to check in a recursive way in the mul if we can '
-                    'reorder the graph. The canonizer should have done this.',
-                    d, m, d.type, m.type)
-        else:
+        if scalar_idx < 0:
+            _logger.info('Not optimizing dot22 with inputs %s %s, as the'
+                         ' type of the scalar cannot be upcasted to the'
+                         ' matrix type',
+                         node.inputs, [x.type for x in node.inputs])
             return False
+        a = T.cast(_as_scalar(m.owner.inputs[scalar_idx],
+                              dtype=d.dtype), d.type.dtype)
+        assert not a.type.ndim
+        dot = _dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
+
+        # The other inputs to the original node that were
+        # neither part of the dot22 or this mul should be
+        # factors in the returned "mul" node.
+        assert dot22_idx != mul_idx
+        other_factors = [inpt
+                         for i, inpt in enumerate(node.inputs)
+                         if i not in (dot22_idx, mul_idx)]
+        other_m_inputs = [inpt
+                          for i, inpt in enumerate(m.owner.inputs)
+                          if i != scalar_idx]
+
+        return [T.mul(dot, *(other_factors + other_m_inputs))]
 
     scalar_idx = -1
     for i, x in enumerate(node.inputs):
