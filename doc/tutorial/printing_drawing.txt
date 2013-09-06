@@ -52,7 +52,7 @@ The following output depicts the pre- and post- compilation graphs.
     train = theano.function(
                 inputs=[x, y],
                 outputs=[prediction, xent],
-                updates={w: w - 0.01 * gw, b: b - 0.01 * gb},
+                updates=[(w, w - 0.01 * gw), (b, b - 0.01 * gb)],
                 name="train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name="predict")
