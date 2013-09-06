@@ -1067,8 +1067,8 @@ def test_local_dot22_to_dot22scalar():
         T.mul(_dot22(A, A), T.mul(m, y, z), m),
         T.mul(_dot22(A, A), m, T.mul(m, y, z)),
 
-        #Case that isn't opt for now.
-        #T.mul(_dot22(A, A), (r * m), (m * x)),
+        #Case that opt later in gh-1515
+        T.mul(_dot22(A, A), (r * m), (m * x)),
     ]):
         node2 = theano.tensor.blas.local_dot22_to_dot22scalar.transform(
             node.owner)
