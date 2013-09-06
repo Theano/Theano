@@ -585,7 +585,7 @@ class T_examples(unittest.TestCase):
         from theano import shared
         # Force the dtype to int64 to work correctly on 32 bit computer.
         # Otherwise, it create by default a int32 on 32 bit computer.
-        state = shared(numpy.int64(0))
+        state = shared(0)
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
 
@@ -604,10 +604,11 @@ class T_examples(unittest.TestCase):
         assert state.get_value()       == array(0)
 
         fn_of_state = state * 2 + inc
-        foo = T.lscalar()    # the type (lscalar) must match the shared variable we
-                            # are replacing with the ``givens`` list
+        # The type of foo must match the shared variable we are replacing
+        # with the ``givens``
+        foo = T.scalar(dtype=state.dtype)
         skip_shared = function([inc, foo], fn_of_state,
-                                                givens=[(state, foo)])
+                               givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
         assert state.get_value()       == array(0)
 
