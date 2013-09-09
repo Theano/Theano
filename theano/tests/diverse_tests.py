@@ -1,10 +1,9 @@
-from nose.plugins.skip import SkipTest
-
 import unittest
-import theano
+
 import numpy
-import random
 import numpy.random
+
+import theano
 from theano.tests import unittest_tools as utt
 
 '''
