@@ -11,6 +11,7 @@ _logger.setLevel(logging.WARNING)
 error = _logger.error
 info = _logger.info
 
+pygpu_activated = False
 try:
     import pygpu
     import pygpu.gpuarray
@@ -24,8 +25,10 @@ import opt
 
 
 def init_dev(dev):
+    global pygpu_activated
     context = pygpu.init(dev)
     pygpu.set_default_context(context)
+    pygpu_activated = True
 
 if pygpu:
     try:
@@ -37,12 +40,8 @@ if pygpu:
             optdb.add_tags('gpuarray_opt', 'fast_run', 'inplace')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
-        else:
-            info("pygpu support not configured, disabling")
-            pygpu = None
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
-        pygpu = None
 else:
     if (config.gpuarray.init_device != '' or
         config.device.startswith('opencl') or
