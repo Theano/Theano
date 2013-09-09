@@ -11,7 +11,14 @@ from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
-if theano.sandbox.gpuarray.pygpu is None:
+
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
+    if not cuda_ndarray.use.device_number:
+        cuda_ndarray.use('gpu')
+    theano.sandbox.gpuarray.init_dev('cuda')
+
+if not theano.sandbox.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
 
 from theano.sandbox.gpuarray.type import (GpuArrayType,
