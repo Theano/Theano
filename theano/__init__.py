@@ -91,6 +91,10 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
 
         theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
+if config.device.startswith('cuda') or config.device.startswith('opencl') or \
+        config.gpuarray.init_device != '':
+    import theano.sandbox.gpuarray
+
 # Use config.numpy to call numpy.seterr
 import numpy
 
