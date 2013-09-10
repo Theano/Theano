@@ -45,7 +45,8 @@ class MultinomialFromUniform(Op):
             odtype = pvals.dtype
         else:
             odtype = self.odtype
-        return Apply(self, [pvals, unis], [T.matrix(dtype=odtype)])
+        out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
+        return Apply(self, [pvals, unis], [out])
 
     def grad(self, ins, outgrads):
         pvals, unis = ins
@@ -180,7 +181,9 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
             raise NotImplementedError(
                 'GpuMultinomialFromUniform works only if '
                 'self.odtype == pvals.dtype', odtype, pvals.dtype)
-        return Apply(self, [pvals, unis], [pvals.type()])
+        br = (pvals.broadcastable[1], pvals.broadcastable[0])
+        out = CudaNdarrayType(broadcastable=br)()
+        return Apply(self, [pvals, unis], [out])
 
     def perform(self, node, ins, outs):
         #The perform from parent don't work with CudaNdarray.  We

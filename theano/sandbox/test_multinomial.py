@@ -138,3 +138,17 @@ def test_gpu_opt():
     pval = pval / pval.sum(axis=1)[:, None]
     uval = numpy.ones_like(pval[:, 0]) * 0.5
     mval = f(pval, uval)
+
+    # Test with a row, it was failing in the past.
+    r = tensor.frow()
+    m = multinomial.MultinomialFromUniform('auto')(r, u)
+    assert m.dtype == 'float32', m.dtype
+    m_gpu = cuda.gpu_from_host(m)
+
+    f = function([r, u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
+    assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
+                for node in f.maker.fgraph.toposort()])
+    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4))+0.1
+    pval = pval / pval.sum(axis=1)[:, None]
+    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    mval2 = f(pval, uval)
