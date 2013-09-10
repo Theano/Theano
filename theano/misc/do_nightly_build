@@ -54,9 +54,10 @@ if [ "$RELEASE" ]; then
     echo
 fi
 
-echo "Executing tests with mode=FAST_COMPILE with --batch=1000"
-echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}"
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} --batch=1000 ${ARGS}
+# with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
+echo "Executing tests with mode=FAST_COMPILE"
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}"
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
