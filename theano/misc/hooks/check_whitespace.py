@@ -12,7 +12,7 @@ import tokenize
 
 import argparse
 import reindent
-from theano.compat.six.StringIO import StringIO
+from theano.compat.six import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 
