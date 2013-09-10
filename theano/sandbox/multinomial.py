@@ -12,22 +12,28 @@ if cuda_available:
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
 
+
 class MultinomialFromUniform(Op):
     '''Converts samples from a uniform into sample from a multinomial.'''
     def __init__(self, odtype):
-        self.odtype=odtype
+        self.odtype = odtype
+
     def __eq__(self, other):
-        return type(self) == type(other) and self.odtype==other.odtype
+        return type(self) == type(other) and self.odtype == other.odtype
+
     def __hash__(self):
         return hash((type(self), self.odtype))
+
     def __str__(self):
-        return '%s{%s}'%(self.__class__.__name__, self.odtype)
+        return '%s{%s}' % (self.__class__.__name__, self.odtype)
+
     def __setstate__(self, dct):
         self.__dict__.update(dct)
         try:
             self.odtype
         except AttributeError:
-            self.odtype='auto'
+            self.odtype = 'auto'
+
     def make_node(self, pvals, unis):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
@@ -35,11 +41,12 @@ class MultinomialFromUniform(Op):
             raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
         if unis.ndim != 1:
             raise NotImplementedError('unis ndim should be 1', unis.ndim)
-        if self.odtype=='auto':
+        if self.odtype == 'auto':
             odtype = pvals.dtype
         else:
             odtype = self.odtype
-        return Apply(self, [pvals, unis], [T.matrix(dtype=odtype)])
+        out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
+        return Apply(self, [pvals, unis], [out])
 
     def grad(self, ins, outgrads):
         pvals, unis = ins
@@ -121,6 +128,7 @@ class MultinomialFromUniform(Op):
         }
         } // END NESTED SCOPE
         """ % locals()
+
     def perform(self, node, ins, outs):
         (pvals, unis) = ins
         (z,) = outs
@@ -165,15 +173,17 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
             raise TypeError('pvals must be cudandarray', pvals)
         if not isinstance(unis.type, CudaNdarrayType):
             raise TypeError('unis must be cudandarray', unis)
-        if self.odtype=='auto':
+        if self.odtype == 'auto':
             odtype = pvals.dtype
         else:
             odtype = self.odtype
         if odtype != pvals.dtype:
             raise NotImplementedError(
-                    'GpuMultinomialFromUniform works only if '
-                    'self.odtype == pvals.dtype', odtype, pvals.dtype)
-        return Apply(self, [pvals, unis], [pvals.type()])
+                'GpuMultinomialFromUniform works only if '
+                'self.odtype == pvals.dtype', odtype, pvals.dtype)
+        br = (pvals.broadcastable[1], pvals.broadcastable[0])
+        out = CudaNdarrayType(broadcastable=br)()
+        return Apply(self, [pvals, unis], [out])
 
     def perform(self, node, ins, outs):
         #The perform from parent don't work with CudaNdarray.  We
@@ -225,7 +235,6 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         }
 
         """ % locals()
-
 
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
@@ -327,25 +336,30 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         } // END NESTED SCOPE
         """ % locals()
 
+
 @local_optimizer()
 def local_gpu_multinomial(node):
     if type(node.op) is MultinomialFromUniform:
         p, u = node.inputs
         m, = node.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32' and
-            any([i.owner and isinstance(i.owner.op, theano.sandbox.cuda.HostFromGpu)
+            any([i.owner and isinstance(i.owner.op,
+                                        theano.sandbox.cuda.HostFromGpu)
                  for i in node.inputs])):
             gpu_op = GpuMultinomialFromUniform(node.op.odtype)
-            return [host_from_gpu(gpu_op(*[gpu_from_host(i) for i in node.inputs])).T]
+            return [host_from_gpu(gpu_op(*[gpu_from_host(i)
+                                           for i in node.inputs])).T]
     if (isinstance(node.op, theano.sandbox.cuda.GpuFromHost) and
-        node.inputs[0].owner and type(node.inputs[0].owner.op) is MultinomialFromUniform):
+        node.inputs[0].owner and type(node.inputs[0].owner.op)
+        is MultinomialFromUniform):
         multi = node.inputs[0].owner
         p, u = multi.inputs
         m, = multi.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32'):
             gpu_op = GpuMultinomialFromUniform(multi.op.odtype)
             ret = gpu_op(*[gpu_from_host(i) for i in multi.inputs]).T
-            # The dimshuffle is on the cpu, but will be moved to the gpu by an opt.
+            # The dimshuffle is on the cpu, but will be moved to the
+            # gpu by an opt.
             return [gpu_from_host(ret)]
 
 if cuda_available:

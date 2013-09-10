@@ -1146,7 +1146,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
 
-        typ = TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
+        typ = tensor.TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
         assert a.type == typ, (a.type, typ)
         f = theano.function([self.m, self.ix1, self.ix12], a,
                             allow_input_downcast=True)
