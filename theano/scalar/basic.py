@@ -1983,7 +1983,7 @@ class RoundHalfToEven(UnaryScalarOp):
 
     def c_code___(self, node, name, (x, ), (z, ), sub):
         typ = node.outputs[0].type.dtype
-        if not node.outputs[0].type.dtype in ['float32', 'float64']:
+        if not typ in ['float32', 'float64']:
             Exception("The output should be float32 or float64")
 
         return dedent("""
@@ -2030,7 +2030,7 @@ class RoundHalfToEven(UnaryScalarOp):
 
             #undef ROUNDING_EPSILON
 
-            """)
+            """ % locals())
 round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 
