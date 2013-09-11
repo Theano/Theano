@@ -5,7 +5,6 @@ from copy import copy, deepcopy
 import numpy
 import theano
 import theano.tensor as T
-from theano.compile import DeepCopyOp
 from theano.tensor.tests.test_basic import safe_make_node
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
@@ -312,15 +311,3 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand_gpuarray(7), numpy.int32(7), numpy.int32(5)),
         )
 )
-
-def test_deep_copy():
-    a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
-
-    f = theano.function([g], g)
-
-    assert isinstance(f.maker.fgraph.toposort()[0].op, DeepCopyOp)
-
-    res = f(a)
-
-    assert GpuArrayType.values_eq(res, a)
