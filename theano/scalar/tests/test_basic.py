@@ -15,7 +15,11 @@ import theano
 from theano.gof import FunctionGraph
 from theano import gof
 
-from theano.scalar.basic import *
+from theano.scalar.basic import (floats, float32, float64,
+                                 ints, int8, int32, complex64,
+                                 ComplexError, IntDiv, TrueDiv,
+                                 Composite, add, div_proxy,
+                                 and_, eq, neq, invert, mul)
 
 
 def inputs():
