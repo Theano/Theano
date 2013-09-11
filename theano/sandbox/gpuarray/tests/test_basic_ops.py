@@ -15,7 +15,12 @@ import theano.sandbox.gpuarray
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
     if not cuda_ndarray.use.device_number:
-        cuda_ndarray.use('gpu')
+        #We should not enable all the use like the flag device=gpu,
+        #as many tests don't work in that setup.
+        cuda_ndarray.use('gpu',
+                         default_to_move_computation_to_gpu=False,
+                         move_shared_float32_to_gpu=False,
+                         enable_cuda=False)
     theano.sandbox.gpuarray.init_dev('cuda')
 
 if not theano.sandbox.gpuarray.pygpu_activated:
