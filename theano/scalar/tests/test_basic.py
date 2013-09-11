@@ -12,7 +12,7 @@ If you do want to rewrite these tests, bear in mind:
 import unittest
 
 import theano
-from theano.gof import Variable, Op, FunctionGraph
+from theano.gof import FunctionGraph
 from theano import gof
 
 from theano.scalar.basic import *
