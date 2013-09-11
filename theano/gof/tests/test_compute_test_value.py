@@ -14,6 +14,30 @@ from theano.scan_module import scan
 from theano.tensor.basic import _allclose
 
 
+# Used in TestComputeTestValue.test_no_perform
+class IncOneC(Op):
+    """An Op with only a C (c_code) implementation"""
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, input):
+        input = scalar.as_scalar(input)
+        output = input.type()
+        return Apply(self, [input], [output])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, = inputs
+        z, = outputs
+        return "%(z)s = %(x)s + 1;" % locals()
+
+
 class TestComputeTestValue(unittest.TestCase):
 
     def test_variable_only(self):
@@ -338,28 +362,6 @@ class TestComputeTestValue(unittest.TestCase):
     def test_no_perform(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        class IncOneC(Op):
-            """An Op with only a C (c_code) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
-
-            def make_node(self, input):
-                input = scalar.as_scalar(input)
-                output = input.type()
-                return Apply(self, [input], [output])
-
-            def c_code_cache_version(self):
-                return (1,)
-
-            def c_code(self, node, name, inputs, outputs, sub):
-                x, = inputs
-                z, = outputs
-                return "%(z)s = %(x)s + 1;" % locals()
-
 
         orig_compute_test_value = theano.config.compute_test_value
         try:
@@ -368,6 +370,8 @@ class TestComputeTestValue(unittest.TestCase):
             i = scalar.int32('i')
             i.tag.test_value = 3
 
+            # Class IncOneC is defined outside of the TestComputeTestValue
+            # so it can be pickled and unpickled
             o = IncOneC()(i)
 
             # Check that the perform function is not implemented
