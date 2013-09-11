@@ -2743,11 +2743,10 @@ class Composite(ScalarOp):
                             " be Constant instances.")
 
         _c_code = "{\n"
-        i = 0
-        j = 0
         self.nodenames = ["%(nodename)s_" + ('subnode%i' % j)
                 for j, n in enumerate(self.fgraph.toposort())]
 
+        i = 0
         for j, node in enumerate(self.fgraph.toposort()):
             for output in node.outputs:
                 if output not in subd:
