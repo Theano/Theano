@@ -2824,6 +2824,10 @@ class Composite(ScalarOp):
         self.fgraph = fgraph
 
     def __init__(self, inputs, outputs):
+        # We need to clone the graph as sometimes its nodes already
+        # contain a reference to an fgraph. As we want the Composite
+        # to be pickable, we can't have reference to fgraph.
+        inputs, outputs = gof.graph.clone(inputs, outputs)
         self.inputs = copy(inputs)
         self.outputs = copy(outputs)
         self.inputs_type = tuple([input.type for input in inputs])
