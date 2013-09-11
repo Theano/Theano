@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 from type import GpuArrayType
-from basic_ops import as_gpuarray_variable, zeros_like
+from basic_ops import as_gpuarray_variable
 
 class GpuSubtensor(Subtensor):
     def make_node(self, x, *inputs):
@@ -102,7 +102,7 @@ class GpuSubtensor(Subtensor):
         rest = inputs[1:]
         output = self(*inputs)
         if output.dtype.find('int') != -1:
-            first = zeros_like(x, theano.config.floatX)
+            first = x.zeros_like(theano.config.floatX)
         else:
-            first = GpuIncSubtensor(self.idx_list)(zeros_like(x), gz, *rest)
+            first = GpuIncSubtensor(self.idx_list)(x.zeros_like(), gz, *rest)
         return ([first] + [DisconnectedType()()] * len(rest))
