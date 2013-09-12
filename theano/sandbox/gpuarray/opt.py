@@ -1,3 +1,4 @@
+import copy
 import theano, numpy
 from theano import tensor
 from theano.compile import optdb
@@ -134,7 +135,10 @@ def local_gpu_elemwise(node):
             do_replace = False
 
     if do_replace:
-        new_op = GpuElemwise(node.op.scalar_op)
+        op = node.op
+        new_op = GpuElemwise(op.scalar_op, name=op.name,
+                             inplace_pattern=copy.copy(op.inplace_pattern),
+                             nfunc_spec=op.nfunc_spec)
         gpu_elemwise = new_op(*(gpu_from_host(i) for i in node.inputs))
         if gpu_out:
             return [gpu_elemwise]
@@ -166,3 +170,8 @@ gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
 optdb.register('gpu_elemwise_fusion',
                tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
                71.00, 'fast_run', 'fusion', 'local_elemwise_fusion', 'gpu')
+
+inplace_gpu_elemwise_opt = tensor.opt.inplace_elemwise_optimizer_op(
+    GpuElemwise)
+optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
+               'inplace_elemwise_optimizer', 'fast_run', 'inplace')
