@@ -83,9 +83,10 @@ def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 def rand_gpuarray(*shape, **kwargs):
     r = rng.rand(*shape) * 2 - 1
     dtype = kwargs.pop('dtype', theano.config.floatX)
+    cls = kwargs.pop('cls', None)
     if len(kwargs) != 0:
         raise TypeError('Unexpected argument %s', kwargs.keys()[0])
-    return gpuarray.array(r, dtype=dtype)
+    return gpuarray.array(r, dtype=dtype, cls=cls)
 
 
 def makeTester(name, op, expected, good=None, bad_build=None, checks=None,
