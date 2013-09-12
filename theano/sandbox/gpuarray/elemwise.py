@@ -1,3 +1,4 @@
+import copy
 from itertools import izip
 
 import numpy
@@ -45,16 +46,11 @@ class GpuElemwise(Elemwise):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op, name=None, nfunc_spec=None):
-        # We do not support inplace since it is a lie anyway
-        # (the scalar_op code will never modify anything inplace)
-        Elemwise.__init__(self, scalar_op, inplace_pattern=None, name=name,
-                          nfunc_spec=nfunc_spec)
-
     def __str__(self):
         if self.name is not None:
             return self.name
-        return "GpuElemwise{%s}<gpuarray>" % (self.scalar_op,)
+        items = str(sorted(self.inplace_pattern.items()))
+        return "GpuElemwise{%s}%s<gpuarray>" % (self.scalar_op, items)
 
     def make_node(self, *inputs):
         res = Elemwise.make_node(self, *inputs)
@@ -72,7 +68,7 @@ class GpuElemwise(Elemwise):
         scal_ins = [scalar.Scalar(i.dtype) for i in node.inputs]
 
         outs = [make_argument(o, 'o%d' % (n,)) for n, o in
-                enumerate(node.outputs)]
+                enumerate(node.outputs) if not n in self.inplace_pattern]
         scal_out = [scalar.Scalar(o.dtype) for o in node.outputs]
 
         fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
@@ -96,9 +92,18 @@ class GpuElemwise(Elemwise):
             # The macro is fine, the C++ struct is not.
             raise SupportCodeError(support_code)
 
+        scal_out = []
+        oi = 0
+        for n in range(len(fake_node.outputs)):
+            if n in self.inplace_pattern:
+                scal_out.append(inps[self.inplace_pattern[n]].name+'[i]')
+            else:
+                scal_out.append(outs[oi].name+'[i]')
+                oi += 1
+
         kop = self.scalar_op.c_code(fake_node, nodename+'_scalar',
                                     [i.name+'[i]' for i in inps],
-                                    [o.name+'[i]' for o in outs],
+                                    scal_out,
                                     dict(fail='return;'))
 
         # Translate types for scalar composite ops (except complex).
@@ -153,11 +158,15 @@ class GpuElemwise(Elemwise):
                 out_shape.append(max(values))
         out_shape = tuple(out_shape)
 
-        outs = [ensure_allocated(storage, out_shape, output.type.dtype)
-                for output, storage in izip(node.outputs, output_storage)]
+        args = copy.copy(inputs)
+        for n, (stor, out) in enumerate(izip(output_storage, node.outputs)):
+            if n in self.inplace_pattern:
+                stor[0] = inputs[self.inplace_pattern[n]]
+            else:
+                args.append(ensure_allocated(stor, out_shape, out.type.dtype))
 
         # the dict call is there to avoid a syntax error in python < 2.6
-        node._cache_elemwise_k(*(inputs+outs), **dict(broadcast=True))
+        node._cache_elemwise_k(*args, **dict(broadcast=True))
 
 
 class SupportCodeError(Exception):
