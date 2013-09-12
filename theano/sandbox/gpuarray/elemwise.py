@@ -1,14 +1,18 @@
+from itertools import izip
+
 import numpy
 from theano import Op, Apply, scalar
+from theano.tensor.elemwise import Elemwise
 
 try:
+    import pygpu
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
 except ImportError:
     pass
 
-from basic_ops import as_gpuarray_variable
-from type import GpuArrayType
+from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
+from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.gof.utils import MethodNotDefined
 
@@ -21,82 +25,84 @@ def make_argument(v, name):
     else:
         return ArrayArg(numpy.dtype(v.type.dtype), name)
 
-def ensure_out(o, ref):
-    if o is None:
-        return ref._empty_like_me()
-    else:
-        return o
+def ensure_allocated(storage, shape, dtype):
+    odat = storage[0]
+    if odat is not None:
+        if odat.shape != shape:
+            # It is unsafe to try to resize odat,
+            # we have to allocate output storage.
+            odat = None
+    if odat is None:
+        odat = pygpu.empty(shape, dtype=dtype)
+    storage[0] = odat
+    return odat
 
-class GpuElemwise(Op):
+def as_C_string_const(s):
+    return '\n'.join('"%s\\n"' % (l.replace('"', '\\"'))
+                     for l in s.split('\n'))
+
+class GpuElemwise(Elemwise):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
-    def __init__(self, scalar_op):
-        self.scalar_op = scalar_op
-        self.destroy_map = {}
-
-    def __getstate__(self):
-        d = copy.copy(self.__dict__)
-        d.pop('__epydoc_asRoutine', None)
-        d.pop('_hashval')
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        self._rehash()
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.scalar_op)
+    def __init__(self, scalar_op, name=None, nfunc_spec=None):
+        # We do not support inplace since it is a lie anyway
+        # (the scalar_op code will never modify anything inplace)
+        Elemwise.__init__(self, scalar_op, inplace_pattern=None, name=name,
+                          nfunc_spec=nfunc_spec)
 
     def __str__(self):
-        return "GpuElemwise{%s}(gpuarray)" % (self.scalar_op,)
+        if self.name is not None:
+            return self.name
+        return "GpuElemwise{%s}<gpuarray>" % (self.scalar_op,)
 
     def make_node(self, *inputs):
-        _inputs = [as_gpuarray_variable(i) for i in inputs]
-        if self.nin > 0 and len(_inputs) != self.nin:
-            raise TypeError("Wrong argument count", (self.nin, len(_inputs)))
-        for i in _inputs[1:]:
-            if i.type.ndim != inputs[0].type.ndim:
-                raise TypeError('mismatched rank amongst inputs')
+        res = Elemwise.make_node(self, *inputs)
+        outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
+                                dtype=o.type.dtype)() for o in res.outputs]
+        inputs = [as_gpuarray_variable(i) for i in inputs]
+        res = Apply(self, inputs, outputs)
+        # Try to generate the kernel to catch SupportCodeErrors
+        k = self.generate_kernel(res, 'test')
+        return res
 
-        broadcastable = []
-        for d in xrange(_inputs[0].type.ndim):
-            bcast_d = True
-            for i in _inputs:
-                if not i.type.broadcastable[d]:
-                    bcast_d = False
-                    break
-            broadcastable.append(bcast_d)
-        assert len(broadcastable) == _inputs[0].type.ndim
-
-        assert self.nout > 0
+    def generate_kernel(self, node, nodename):
         inps = [make_argument(i, 'i%d' % (n,)) for n, i in
-                enumerate(inputs)]
-        scal_ins = [scalar.Scalar(i.dtype) for i in inputs]
-                          
-        res = Apply(self, _inputs, 
-                    [GpuArrayType(o.dtype, broadcastable)()
-                     for o in self.scalar_op.output_types(scal_ins)])
+                enumerate(node.inputs)]
+        scal_ins = [scalar.Scalar(i.dtype) for i in node.inputs]
 
         outs = [make_argument(o, 'o%d' % (n,)) for n, o in
-                enumerate(res.outputs)]
-        scal_out = [scalar.Scalar(o.dtype) for o in res.outputs]
+                enumerate(node.outputs)]
+        scal_out = [scalar.Scalar(o.dtype) for o in node.outputs]
 
         fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
                           [o() for o in scal_out])
 
-        kcode = self.scalar_op.c_code(fake_node, 'kcode',
-                                      [i.expr() for i in inps],
-                                      [o.expr() for o in outs],
-                                      sub=dict(fail='return;'))
-        res.tag.kcode = kcode
+        try:
+            code = self.scalar_op.c_support_code_apply(fake_node, nodename)
+            if code:
+                raise SupportCodeError(code)
+        except MethodNotDefined:
+            pass
 
-# Translate types for scalar composite ops (except complex).
-        support_code = """
+        support_code = ""
+        try:
+            support_code = self.scalar_op.c_support_code()
+        except MethodNotDefined:
+            pass
+
+        if (support_code != "#define THEANO_MACRO_MOD(x,y) (x % y)" and
+            support_code != ""):
+            # The macro is fine, the C++ struct is not.
+            raise SupportCodeError(support_code)
+
+        kop = self.scalar_op.c_code(fake_node, nodename+'_scalar',
+                                    [i.name+'[i]' for i in inps],
+                                    [o.name+'[i]' for o in outs],
+                                    dict(fail='return;'))
+
+        # Translate types for scalar composite ops (except complex).
+        support_code += """
 #define npy_float64 ga_double
 #define npy_float32 ga_float
 #define npy_uint8 ga_ubyte
@@ -108,37 +114,51 @@ class GpuElemwise(Op):
 #define npy_uint64 ga_ulong
 #define npy_int64 ga_long
 """
-        try:
-            code = self.scalar_op.c_support_code_apply(fake_node, 'kcode')
-            if code:
-                raise SupportCodeError()
-        except MethodNotDefined:
-            pass
+        return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
-        support_code = ""
-        try:
-            support_code += self.scalar_op.c_support_code()
-        except MethodNotDefined:
-            pass
+    def c_support_code_apply(self, node, nodename):
+        # This is useless by itself, but will serve an eventual c_code
+        # implementation
+        k = self.generate_kernel(node, nodename)
 
-        if support_code != "#define THEANO_MACRO_MOD(x,y) (x % y)":
-            # Avoid the C++ complex struct
-            raise SupportCodeError()
+        nd = node.inputs[0].type.ndim
+        res = []
+        for i in range(1, nd):
+            var = "static const char %s_%s[] = " % (nodename, str(i))
+            res.append(var + as_C_string_const(k.render_basic(i)) + ';')
+            res.append("static const gpukernel *%s_%s_k = NULL;" % (nodename,
+                                                                    str(i)))
+        var = "static const char %s_c[] = " % (nodename,)
+        res.append(var + as_C_string_const(k.contig_src) + ';')
+        res.append("static const gpukernel *%s_c_k = NULL;" % (nodename,))
+        return '\n'.join(res)
 
-        k = ElemwiseKernel(None, inps+outs, kcode, preamble=support_code)
-        res.tag.kernel = k
+    def c_code(self, *args):
+        # do not pick up the Elemwise version
+        raise MethodNotDefined('c_code')
 
-        return res
+    def perform(self, node, inputs, output_storage):
+        # Try to reuse the kernel from a previous call to hopefully
+        # avoid recompiling
+        if not hasattr(node, '_cache_elemwise_k'):
+            node._cache_elemwise_k = self.generate_kernel(node, "kcode")
 
-    def perform(self, node, inps, out):
-        k = node.tag.kernel
-        outs = [ensure_out(o[0], inps[0]) for o in out]
+        out_shape = []
+        for values in izip(*[input.shape for input in inputs]):
+            if any(v == 0 for v in values):
+                # All non-broadcasted dimensions should be zero
+                assert max(values) <= 1
+                out_shape.append(0)
+            else:
+                out_shape.append(max(values))
+        out_shape = tuple(out_shape)
 
-        # the dict call is there to avoid syntax error in python <= 2.5
-        k(*(inps+outs), **dict(broadcast=True))
+        outs = [ensure_allocated(storage, out_shape, output.type.dtype)
+                for output, storage in izip(node.outputs, output_storage)]
 
-        for o, og in zip(out, outs):
-            o[0] = og
+        # the dict call is there to avoid a syntax error in python < 2.6
+        node._cache_elemwise_k(*(inputs+outs), **dict(broadcast=True))
+
 
 class SupportCodeError(Exception):
     """
