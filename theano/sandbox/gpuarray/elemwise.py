@@ -3,7 +3,7 @@ from itertools import izip
 
 import numpy
 from theano import Op, Apply, scalar
-from theano.tensor.elemwise import Elemwise
+from theano.tensor.elemwise import Elemwise, DimShuffle
 
 try:
     import pygpu
@@ -173,3 +173,115 @@ class SupportCodeError(Exception):
     """
     We do not support certain things (such as the C++ complex struct)
     """
+
+
+class GpuDimShuffle(DimShuffle):
+    def make_node(self, input):
+        res = DimShuffle.make_node(self, input)
+        otype = GpuArrayType(dtype=res.outputs[0].type.dtype,
+                             broadcastable=res.outputs[0].type.broadcastable)
+        input = as_gpuarray_variable(input)
+        return Apply(self, [input], [otype()])
+
+    def __str__(self):
+        if self.inplace:
+            s = "InplaceGpuDimShuffle{%s}"
+        else:
+            s = "GpuDimShuffle{%s}"
+        return s % (','.join(str(x) for x in self.new_order))
+
+    def perform(self, node, inp, out):
+        input, = inp
+        storage, = out
+
+        res = input
+
+        res = res.transpose(self.shuffle+self.drop)
+
+        shape = list(res.shape[:len(self.shuffle)])
+        for augm in self.augment:
+            shape.insert(augm, 1)
+        res = res.reshape(shape)
+
+        if not self.inplace:
+            res = res.copy()
+
+        storage[0] = res
+
+    def c_support_code_apply(self, node, name):
+        def copy_shape(nd_out):
+            stmts = []
+            e = 0
+            for d in range(nd_out):
+                if d in self.augment:
+                    stmts.append("sh[%s] = 1;" % (d,))
+                else:
+                    stmts.append("sh[%s] = tmp.dimensions[%s];" % (d, e))
+                    e += 1
+            return '\n            '.join(stmts)
+
+        return """
+        static const unsigned int %(name)s_ax[] = {%(shuffle)s};
+
+        static int %(name)s_f(GpuArrayObject *res, GpuArrayObject *a) {
+            GpuArray tmp;
+            size_t sh[%(nd_out)s];
+            unsigned int i;
+            int err;
+
+            err = GpuArray_transpose(&tmp, &a->ga, %(name)s_ax);
+            if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "error in _transpose call");
+                return -1;
+            }
+
+            %(copy_shape)s
+            err = GpuArray_reshape(&res->ga, &tmp, %(nd_out)s, sh,
+                                   GA_ANY_ORDER, 1);
+            if (err != GA_NO_ERROR) {
+               PyErr_SetString(PyExc_RuntimeError, "error in _reshape call");
+               return -1;
+            }
+            GpuArray_clear(&tmp);
+            return 0;
+        }
+        """ % dict(shuffle=', '.join(str(a) for a in (self.shuffle+self.drop)),
+                   name=name, nd_out=len(self.new_order),
+                   copy_shape=copy_shape(len(self.new_order)))
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        d = dict(name=name, fail=sub['fail'], inp=inputs[0], out=outputs[0],
+                 nd=len(self.input_broadcastable))
+        process = """
+        if (%(inp)s->ga.nd != %(nd)s) {
+            PyErr_SetString(PyExc_TypeError, "input nd");
+            %(fail)s
+        }
+
+        Py_XDECREF(%(out)s);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+        if (%(out)s == NULL) {%(fail)s}
+
+        if (%(name)s_f(%(out)s, %(inp)s)) {
+            %(fail)s
+        }
+        """ % d
+
+        if not self.inplace:
+            process += """
+            if (%(out)s->ga.data == %(inp)s->ga.data) {
+                PyObject *%(name)s_tmp;
+                %(name)s_tmp = PyObject_CallMethod((PyObject *)%(out)s, "copy", NULL);
+                if (%(name)s_tmp == NULL) { %(fail)s }
+                if (!PyObject_IsInstance(%(name)s_tmp, (PyObject *)&GpuArrayType)) {
+                    PyErr_SetString(PyExc_TypeError, "not a GpuArray out of the copy");
+                    %(fail)s
+                }
+                Py_DECREF(%(out)s);
+                %(out)s = (GpuArrayObject *)%(name)s_tmp;
+            }
+            """ % d
+        return process
+
+    def c_code_cache_version(self):
+        return (0,)

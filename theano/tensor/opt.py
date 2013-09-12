@@ -445,7 +445,7 @@ def dimshuffle_as_view(node):
     op = node.op
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
-    new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
+    new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
 #Step 60 is the inplace optimization stage.
