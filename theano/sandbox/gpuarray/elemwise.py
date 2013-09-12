@@ -138,9 +138,14 @@ class GpuElemwise(Elemwise):
         res.append("static const gpukernel *%s_c_k = NULL;" % (nodename,))
         return '\n'.join(res)
 
-    def c_code(self, *args):
-        # do not pick up the Elemwise version
-        raise MethodNotDefined('c_code')
+    def hide(self, *args):
+        raise MethodNotDefined()
+
+    c_headers = hide
+    c_support_code = hide
+    c_support_code_apply = hide
+    c_code_cache_version_apply = hide
+    c_code = hide
 
     def perform(self, node, inputs, output_storage):
         # Try to reuse the kernel from a previous call to hopefully

@@ -12,6 +12,7 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 
 from pygpu.array import gpuarray
 
+# This is acutally a test for GpuElemwise
 class test_gpu_Broadcast(test_Broadcast):
     op = GpuElemwise
     type = GpuArrayType
