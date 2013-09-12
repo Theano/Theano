@@ -57,22 +57,22 @@ AddConfigVar('profiling.min_memory_size',
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
-    printed = 0
+    to_sum = []
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
             ps.summary(file=_atexit_print_file,
                        n_ops_to_print=config.profiling.n_ops,
                        n_apply_to_print=config.profiling.n_apply)
-            printed += 1
+            if not isinstance(ps, ScanProfileStats):
+                to_sum.append(ps)
         else:
+            #TODO print the name if there is one!
             print 'Skipping empty Profile'
-    if printed > 1:
+    if len(to_sum) > 1:
     # Make a global profile
-        cum = copy.copy(_atexit_print_list[0])
-        cum.message = "Sum of all printed profiles at exit"
-        for ps in _atexit_print_list[1:]:
-#        for ps in [ps for ps in _atexit_print_list[1:]
-#                   if not isinstance(ps, ScanProfileStats)]:
+        cum = copy.copy(to_sum[0])
+        cum.message = "Sum of all printed profiles at exit excluding Scan op profile."
+        for ps in to_sum[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time",
                          "validate_time"]:
