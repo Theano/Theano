@@ -167,7 +167,7 @@ def max_inputs_to_GpuElemwise(node):
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
     max_inputs_to_GpuElemwise)
-optdb.register('gpu_elemwise_fusion',
+optdb.register('gpua_elemwise_fusion',
                tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
                71.00, 'fast_run', 'fusion', 'local_elemwise_fusion', 'gpu')
 
