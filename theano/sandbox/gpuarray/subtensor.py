@@ -77,7 +77,7 @@ class GpuSubtensor(Subtensor):
             // Try to reuse the python object.
             GpuArray_clear(&%(out)s->ga);
         } else {
-            %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context);
+            %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context, Py_None);
         }
         if (!%(out)s) { %(fail)s }
         int %(name)s_err;
@@ -94,15 +94,4 @@ class GpuSubtensor(Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (0,)
-
-    def grad(self, inputs, grads):
-        gz, = grads
-        x = inputs[0]
-        rest = inputs[1:]
-        output = self(*inputs)
-        if output.dtype.find('int') != -1:
-            first = x.zeros_like(theano.config.floatX)
-        else:
-            first = GpuIncSubtensor(self.idx_list)(x.zeros_like(), gz, *rest)
-        return ([first] + [DisconnectedType()()] * len(rest))
+        return (1,)

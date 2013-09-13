@@ -66,7 +66,7 @@ class HostFromGpu(Op):
         } else {
             %(name)s_ga = &%(inp)s->ga;
         }
-        %(name)s_dtype = typecode_to_dtype(%(inp)s->ga.typecode);
+        %(name)s_dtype = typecode_to_dtype(%(name)s_ga->typecode);
         Py_XDECREF(%(out)s);
         // PyArray_Empty below steals a reference to the dtype we pass it
         // so we need an extra one to spare.
@@ -158,7 +158,7 @@ class GpuFromHost(Op):
             %(fail)s
         }
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
             // new_GpuArray calls __new__ which will set an error message
@@ -191,7 +191,7 @@ class GpuFromHost(Op):
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_from_host = GpuFromHost()
 
@@ -298,7 +298,7 @@ class GpuFromCuda(Op):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
         if (%(out)s == NULL) {
             free(%(name)sdims);
             free(%(name)sstr);
@@ -332,7 +332,7 @@ class GpuFromCuda(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_from_cuda = GpuFromCuda()
 

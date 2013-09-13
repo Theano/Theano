@@ -264,7 +264,7 @@ class GpuDimShuffle(DimShuffle):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
         if (%(out)s == NULL) {%(fail)s}
 
         if (%(name)s_f(%(out)s, %(inp)s)) {
@@ -289,4 +289,4 @@ class GpuDimShuffle(DimShuffle):
         return process
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
