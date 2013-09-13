@@ -12,10 +12,10 @@ try:
 except ImportError:
     pass
 
-from type import GpuArrayType
-from basic_ops import as_gpuarray_variable
+from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
 
-class GpuSubtensor(Subtensor):
+class GpuSubtensor(HideC, Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
