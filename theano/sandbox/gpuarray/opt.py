@@ -9,8 +9,11 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
 from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
 
-from basic_ops import host_from_gpu, gpu_from_host, gpu_alloc
-from elemwise import GpuElemwise, _is_scalar
+from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
+                                               gpu_alloc)
+from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
+                                              GpuDimShuffle)
+from theano.sandbox.gpuarray.subtensor import GpuSubtensor
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -35,6 +38,24 @@ def register_opt(*tags, **kwargs):
     return f
 
 register_opt()(theano.tensor.opt.local_track_shape_i)
+
+def op_lifter(OP):
+    def f(maker):
+        def local_opt(node):
+            if isinstance(node.op, OP):
+                input, = node.inputs
+                if input.owner and input.owner.op == host_from_gpu:
+                    new_op = maker(node)
+                    return [host_from_gpu(new_op(input))]
+            if node.op == gpu_from_host:
+                host_input = node.inputs[0]
+                if host_input.owner and isinstance(host_input.owner.op, OP):
+                    new_op = maker(host_input.owner)
+                    return [new_op(gpu_from_host(host_input.owner.inputs[0]))]
+            return False
+        local_opt.__name__ = maker.__name__
+        return local_opt
+    return f
 
 class InputToGpuOptimizer(Optimizer):
     "Transfer the input to the gpu to start the rolling wave."
@@ -175,3 +196,40 @@ inplace_gpu_elemwise_opt = tensor.opt.inplace_elemwise_optimizer_op(
     GpuElemwise)
 optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
                'inplace_elemwise_optimizer', 'fast_run', 'inplace')
+
+
+@register_opt()
+@local_optimizer([])
+@op_lifter(tensor.DimShuffle)
+def local_gpua_dimshuffle(node):
+    return GpuDimShuffle(node.op.input_broadcastable,
+                         node.op.new_order)
+
+
+@register_opt()
+@local_optimizer([])
+@op_lifter(tensor.SpecifyShape)
+def local_gpua_specifyShape(node):
+    return tensor.specify_shape(gpu_from_host(node.inputs[0]),
+                                *node.inputs[1:])
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpua_subtensor(node):
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and \
+                isinstance(host_input.owner.op, tensor.Subtensor):
+            subt = host_input.owner.op
+            x = host_input.owner.inputs[0]
+            coords = host_input.owner.inputs[1:]
+            return [GpuSubtensor(subt.idx_list)(gpu_from_host(x), *coords)]
+    if isinstance(node.op, tensor.Subtensor):
+        x = node.inputs[0]
+        coords = node.inputs[1:]
+        if x.owner and x.owner.op == host_from_gpu:
+            gpu_x, = x.owner.inputs
+            return [host_from_gpu(GpuSubtensor(
+                        node.op.idx_list)(gpu_x, *coords))]
+    return False
