@@ -12,7 +12,7 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
+from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.gof.utils import MethodNotDefined
@@ -42,7 +42,7 @@ def as_C_string_const(s):
     return '\n'.join('"%s\\n"' % (l.replace('"', '\\"'))
                      for l in s.split('\n'))
 
-class GpuElemwise(Elemwise):
+class GpuElemwise(HideC, Elemwise):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -138,15 +138,6 @@ class GpuElemwise(Elemwise):
         res.append("static const gpukernel *%s_c_k = NULL;" % (nodename,))
         return '\n'.join(res)
 
-    def hide(self, *args):
-        raise MethodNotDefined()
-
-    c_headers = hide
-    c_support_code = hide
-    c_support_code_apply = hide
-    c_code_cache_version_apply = hide
-    c_code = hide
-
     def perform(self, node, inputs, output_storage):
         # Try to reuse the kernel from a previous call to hopefully
         # avoid recompiling
@@ -180,7 +171,7 @@ class SupportCodeError(Exception):
     """
 
 
-class GpuDimShuffle(DimShuffle):
+class GpuDimShuffle(HideC, DimShuffle):
     def make_node(self, input):
         res = DimShuffle.make_node(self, input)
         otype = GpuArrayType(dtype=res.outputs[0].type.dtype,
