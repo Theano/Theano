@@ -395,9 +395,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(input.type.broadcastable,
-                                    op.new_order,
-                                    op.inplace)(input) for input in
+        ret = inode.op(*[op.__class__(input.type.broadcastable,
+                                      op.new_order,
+                                      op.inplace)(input) for input in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -409,8 +409,8 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            ret = DimShuffle(iinput.type.broadcastable, new_order,
-                             inplace)(iinput, **dict(return_list=True))
+            ret = op.__class__(iinput.type.broadcastable, new_order,
+                               inplace)(iinput, **dict(return_list=True))
             return ret
 
 
