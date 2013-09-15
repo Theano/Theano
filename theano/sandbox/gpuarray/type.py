@@ -280,7 +280,7 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
-    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
     if (!%(oname)s) { %(fail)s }
     int %(iname)s_err;
     %(iname)s_err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
@@ -288,4 +288,4 @@ theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
         PyErr_SetString(PyExc_RuntimeError, "Error during copy");
         %(fail)s
     }
-""", version=(2,))
+""", version=(3,))
