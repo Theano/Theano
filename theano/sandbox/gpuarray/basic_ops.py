@@ -6,6 +6,7 @@ import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
+from theano.tensor.basic import Alloc
 
 from theano.gof.python25 import all, any
 from theano.gof.utils import MethodNotDefined
@@ -473,55 +474,30 @@ class CudaFromGpu(Op):
 cuda_from_gpu = CudaFromGpu()
 
 
-class GpuAlloc(Op):
+class GpuAlloc(HideC, Alloc):
     def __str__(self):
         return 'GpuAlloc'
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
     def make_node(self, value, *shape):
-        v = as_gpuarray_variable(value)
-        sh = [tensor.as_tensor_variable(s) for s in shape]
-        bcast = []
-        if v.ndim > len(shape):
-            raise TypeError(
-                'GpuAlloc value has more dimensions than arguments',
-                value.ndim, len(shape))
-        for i, s in enumerate(sh):
-            if s.type.dtype[:3] not in ('int', 'uint'):
-                raise TypeError('Shape arguments must be integers', s)
-            try:
-                const_shp = tensor.get_scalar_constant_value(s)
-            except tensor.NotScalarConstantError:
-                const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
-        otype = GpuArrayType(dtype=v.dtype, broadcastable=bcast)
-        return Apply(self, [v] + sh, [otype()])
+        res = Alloc.make_node(self, value, *shape)
+        value = as_gpuarray_variable(value)
+        otype = GpuArrayType(dtype=res.outputs[0].dtype,
+                             broadcastable=res.outputs[0].broadcastable)
+        return Apply(self, [value] + res.inputs[1:], [otype()])
 
     def perform(self, node, inputs, outs):
         out, = outs
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
-            out[0] = gpuarray.empty(sh, dtype=v.dtype)
-        out[0][...] = v
-
-    def infer_shape(self, node, input_shapes):
-        return [node.inputs[1:]]
-
-    def grad(self, input, grads):
-        return [None for i in inputs]
-
-    def do_constant_folding(self, node):
-        if not getattr(node.ouputs[0], 'clients', []):
-            return False
-        for client in node.outputs[0].clients:
-            if client[0] == 'output':
-                return False
-        return True
+            if v.size == 1 and numpy.asarray(v)[0].item() == 0:
+                out[0] = gpuarray.zeros(sh, dtype=v.dtype)
+            else:
+                out[0] = gpuarray.empty(sh, dtype=v.dtype)
+                out[0][...] = v
+        else:
+            out[0][...] = v
+        if config.gpuarray.sync:
+            out[0].sync()
 
 gpu_alloc = GpuAlloc()
