@@ -2,7 +2,7 @@ import copy
 from itertools import izip
 
 import numpy
-from theano import Op, Apply, scalar
+from theano import Op, Apply, scalar, config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 
 try:
@@ -163,6 +163,8 @@ class GpuElemwise(HideC, Elemwise):
 
         # the dict call is there to avoid a syntax error in python < 2.6
         node._cache_elemwise_k(*args, **dict(broadcast=True))
+        if config.gpuarray.sync:
+            output_storage[0][0].sync()
 
 
 class SupportCodeError(Exception):
