@@ -185,7 +185,7 @@ class GpuFromHost(Op):
             %(fail)s
         }
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
         if (%(out)s == NULL) {
             Py_DECREF(%(name)s_tmp);
             // new_GpuArray calls __new__ which will set an error message
@@ -193,8 +193,8 @@ class GpuFromHost(Op):
             %(fail)s
         }
         %(name)serr = GpuArray_empty(&%(out)s->ga,
-                                     GpuArray_default_context()->ops,
-                                     GpuArray_default_context()->ctx,
+                                     pygpu_default_context()->ops,
+                                     pygpu_default_context()->ctx,
                                      get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
@@ -218,7 +218,7 @@ class GpuFromHost(Op):
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 gpu_from_host = GpuFromHost()
 
@@ -303,7 +303,7 @@ class GpuFromCuda(Op):
         ssize_t *%(name)sstr;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
+        if (%(name)scur != cuda_get_ctx(pygpu_default_context()->ctx)) {
             PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
@@ -325,14 +325,14 @@ class GpuFromCuda(Op):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context(), Py_None);
+        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
         if (%(out)s == NULL) {
             free(%(name)sdims);
             free(%(name)sstr);
             %(fail)s
         }
 
-        %(name)sdata = cuda_make_buf(GpuArray_default_context()->ctx,
+        %(name)sdata = cuda_make_buf(pygpu_default_context()->ctx,
                                      (CUdeviceptr)%(in)s->devdata,
                                      ((size_t)%(in)s->data_allocated)*4);
         if (%(name)sdata == NULL) {
@@ -343,7 +343,7 @@ class GpuFromCuda(Op):
             %(fail)s
         }
         %(name)serr = GpuArray_fromdata(&%(out)s->ga,
-                                        GpuArray_default_context()->ops,
+                                        pygpu_default_context()->ops,
                                         %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
                                         %(name)sdims, %(name)sstr, 1);
         free(%(name)sdims);
@@ -359,7 +359,7 @@ class GpuFromCuda(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 gpu_from_cuda = GpuFromCuda()
 
@@ -444,7 +444,7 @@ class CudaFromGpu(Op):
         CUcontext %(name)scur;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
+        if (%(name)scur != cuda_get_ctx(pygpu_default_context()->ctx)) {
             PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
@@ -472,7 +472,7 @@ class CudaFromGpu(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 cuda_from_gpu = CudaFromGpu()
