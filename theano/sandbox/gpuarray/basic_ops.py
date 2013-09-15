@@ -8,6 +8,7 @@ from theano import tensor, scalar, config
 from theano.scalar import Scalar
 
 from theano.gof.python25 import all, any
+from theano.gof.utils import MethodNotDefined
 
 try:
     import pygpu
