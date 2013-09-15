@@ -40,21 +40,27 @@ def register_opt(*tags, **kwargs):
 register_opt()(theano.tensor.opt.local_track_shape_i)
 
 def op_lifter(OP):
+    """
+    OP(..., host_from_gpu(), ...) -> host_from_gpu(GpuOP(...))
+    gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
+    """
     def f(maker):
         def local_opt(node):
             if isinstance(node.op, OP):
-                input, = node.inputs
-                if input.owner and input.owner.op == host_from_gpu:
+                # This does not support nodes that have more than one output.
+                assert len(node.outputs) == 1
+                # either one of our inputs is on the gpu or
+                # all of our client are on the gpu
+                if (any([i.owner and i.owner.op == host_from_gpu
+                         for i in node.inputs]) or
+                    all([c != 'output' and c.op == gpu_from_host
+                         for c, idx in node.outputs[0].clients])):
                     new_op = maker(node)
-                    return [host_from_gpu(new_op(input))]
-            if node.op == gpu_from_host:
-                host_input = node.inputs[0]
-                if host_input.owner and isinstance(host_input.owner.op, OP):
-                    new_op = maker(host_input.owner)
-                    return [new_op(gpu_from_host(host_input.owner.inputs[0]))]
+                    if new_op:
+                        return [host_from_gpu(new_op(*node.inputs))]
             return False
         local_opt.__name__ = maker.__name__
-        return local_opt
+        return local_optimizer([OP])(local_opt)
     return f
 
 class InputToGpuOptimizer(Optimizer):
@@ -101,72 +107,21 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
                                local_cut_gpu_host_gpu, 'fast_run', 'gpuarray')
 
 @register_opt()
-@local_optimizer([tensor.Alloc])
+@op_lifter(tensor.Alloc)
 def local_gpualloc(node):
-    replace = False
-    if node.op == tensor.alloc:
-        if node.inputs[0].owner and node.inputs[0].owner.op == host_from_gpu:
-            replace = True
-        elif all([c != 'output' and c.op == gpu_from_host
-                  for c, idx in node.outputs[0].clients]):
-            replace = True
-        elif all([c != 'output' and c.op == tensor.join and
-                  all([i.owner and i.owner.op in [host_from_gpu, tensor.alloc]
-                       for i in c.inputs[1:]])
-                  for c, idx in node.outputs[0].clients]):
-            replace = True
-    if replace:
-        val = node.inputs[0]
-        shp = node.inputs[1:]
-        old_out = node.outputs[0]
-        val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
-        new_out = host_from_gpu(gpu_alloc(val, *shp))
-        if new_out.type != old_out.type:
-            assert new_out.type.ndim == old_out.type.ndim
-            assert new_out.type.dtype == old_out.type.dtype
-            for b_old, b_new in zip(old_out.type.broadcastable,
-                                    new_out.type.broadcastable):
-                assert b_new or (not b_old)
-            new_out = tensor.patternbroadcast(new_out. old_out.broadcastable)
-
-        return [new_out]
+    return gpu_alloc
 
 @register_opt()
-@local_optimizer([])
+@op_lifter(tensor.Elemwise)
 def local_gpu_elemwise(node):
-    do_replace = False
-    gpu_out = False
-    # check for gpu_from_host(Elemwise)) and extract the Elemwise node
-    if node.op == gpu_from_host:
-        host_i, = node.inputs
-        if (host_i.owner and
-            isinstance(host_i.owner.op, tensor.Elemwise) and
-            len(host_i.clients) == 1):
-            node = host_i.owner
-            do_replace = True
-            gpu_out = True
-    # check for elemwise(..., host_from_gpu, ...)
-    if isinstance(node.op, tensor.Elemwise):
-        if numpy.any([i.owner and
-                      i.owner.op == host_from_gpu
-                      for i in node.inputs]):
-                do_replace = True
-    if numpy.all([_is_scalar(i)
-                  for i in node.inputs]):
-            do_replace = False
-
-    if do_replace:
-        op = node.op
-        new_op = GpuElemwise(op.scalar_op, name=op.name,
-                             inplace_pattern=copy.copy(op.inplace_pattern),
-                             nfunc_spec=op.nfunc_spec)
-        gpu_elemwise = new_op(*(gpu_from_host(i) for i in node.inputs))
-        if gpu_out:
-            return [gpu_elemwise]
-        else:
-            return [host_from_gpu(gpu_elemwise)]
-    else:
-        return False
+    op = node.op
+    name = op.name
+    if name:
+        name = 'Gpu'+name
+    res = GpuElemwise(op.scalar_op, name=name,
+                      inplace_pattern=copy.copy(op.inplace_pattern),
+                      nfunc_spec=op.nfunc_spec)
+    return res
 
 def max_inputs_to_GpuElemwise(node):
     ptr_size = 8
@@ -199,7 +154,6 @@ optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
 
 
 @register_opt()
-@local_optimizer([])
 @op_lifter(tensor.DimShuffle)
 def local_gpua_dimshuffle(node):
     return GpuDimShuffle(node.op.input_broadcastable,
@@ -207,29 +161,12 @@ def local_gpua_dimshuffle(node):
 
 
 @register_opt()
-@local_optimizer([])
 @op_lifter(tensor.SpecifyShape)
 def local_gpua_specifyShape(node):
-    return tensor.specify_shape(gpu_from_host(node.inputs[0]),
-                                *node.inputs[1:])
+    return tensor.specify_shape
 
 
 @register_opt()
-@local_optimizer([])
+@op_lifter(tensor.Subtensor)
 def local_gpua_subtensor(node):
-    if node.op == gpu_from_host:
-        host_input = node.inputs[0]
-        if host_input.owner and \
-                isinstance(host_input.owner.op, tensor.Subtensor):
-            subt = host_input.owner.op
-            x = host_input.owner.inputs[0]
-            coords = host_input.owner.inputs[1:]
-            return [GpuSubtensor(subt.idx_list)(gpu_from_host(x), *coords)]
-    if isinstance(node.op, tensor.Subtensor):
-        x = node.inputs[0]
-        coords = node.inputs[1:]
-        if x.owner and x.owner.op == host_from_gpu:
-            gpu_x, = x.owner.inputs
-            return [host_from_gpu(GpuSubtensor(
-                        node.op.idx_list)(gpu_x, *coords))]
-    return False
+    return GpuSubtensor(node.op.idx_list)
