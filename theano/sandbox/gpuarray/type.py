@@ -27,7 +27,10 @@ class GpuArrayType(Type):
         except gpuarray.GpuArrayException:
             raise TypeError("Unsupported dtype for %s: %s" %
                             (self.__class__.__name__, self.dtype))
-    
+
+    def __str__(self):
+        return "GpuArrayType(%s, %s)" % (self.dtype, self.broadcastable)
+
     def filter(self, data, strict=False, allow_downcast=None):
         if strict:
             if not isinstance(data, gpuarray.GpuArray):
