@@ -395,9 +395,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+        ret = inode.op(*[DimShuffle(inp.type.broadcastable,
                                     op.new_order,
-                                    op.inplace)(input) for input in
+                                    op.inplace)(inp) for inp in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
