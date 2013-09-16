@@ -1242,6 +1242,9 @@ def local_track_shape_i(node):
     except AttributeError:
         return
     if node in shape_feature.scheduled:
+        # Don't unschedule node as it could be reinserted in the
+        # fgraph as we don't change it in the shapefeature internal
+        # structure.
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
