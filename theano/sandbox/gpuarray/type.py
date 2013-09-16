@@ -1,7 +1,7 @@
 import numpy
 
 import theano
-from theano.tensor.basic import _tensor_py_operators
+from theano.tensor.var import _tensor_py_operators
 from theano import Type, Variable, Constant, tensor, config, scalar
 from theano.compile import SharedVariable
 
@@ -201,10 +201,6 @@ class GpuArrayType(Type):
 
 
 class _operators(_tensor_py_operators):
-    def _wrap(self, val):
-        from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
-        return as_gpuarray_variable(val)
-
     def _as_TensorVariable(self):
         from basic_ops import host_from_gpu
         return host_from_gpu(self)
