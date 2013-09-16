@@ -1090,6 +1090,21 @@ class ShapeFeature(object):
         # At that point, node is no longer a client of r, but of new_r
         for (shpnode, idx) in (r.clients + [(node, i)]):
             if isinstance(getattr(shpnode, 'op', None), Shape_i):
+                idx = shpnode.op.i
+                repl = self.shape_of[new_r][idx]
+                if repl.owner is shpnode:
+                    # This mean the replacement shape object is
+                    # exactly the same as the current shape object. So
+                    # no need for replacement. This happen for example
+                    # with the InputToGpuOptimizer optimizer.
+                    continue
+                if repl.owner and repl.owner.inputs[0] is shpnode.inputs[0]:
+                    # The replacement is a shape_i of the same
+                    # input. So no need to do this equivalent
+                    # replacement.
+                    assert repl.owner.op.i == shpnode.op.i
+                    continue
+
                 self.scheduled[shpnode] = new_r
         # In case 2, if r is a variable that we've scheduled for shape update,
         # then we should cancel it.
