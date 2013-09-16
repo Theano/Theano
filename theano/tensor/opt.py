@@ -2288,7 +2288,6 @@ def local_join_1(node):
     """
     if not isinstance(node.op, T.Join):
         return
-    axis = node.inputs[0]
     tensors = node.inputs[1:]
     if len(tensors) == 1:
         return [tensors[0]]
