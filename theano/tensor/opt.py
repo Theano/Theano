@@ -1041,13 +1041,13 @@ class ShapeFeature(object):
 
         # Ensure shapes are in 'int64'. This is to make sure the assert
         # found in the `local_useless_subtensor` optimization does not fail.
-        new_shape = []
         for sh_idx, sh in enumerate(o_shapes):
             if sh is None:
                 continue
             if not isinstance(sh, (list, tuple)):
                 raise ValueError("infer_shape of %s didn't return a list of"
                                  " list. It returned '%s'" % (str(node), str(o_shapes)))
+            new_shape = []
             for i, d in enumerate(sh):
                 # Note: we ignore any shape element that is not typed (i.e.,
                 # does not have a 'dtype' attribute). This means there may
@@ -1064,7 +1064,6 @@ class ShapeFeature(object):
                 # 'int64'.
                 new_shape += sh[len(new_shape):]
                 o_shapes[sh_idx] = tuple(new_shape)
-                new_shape = []
 
         for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
