@@ -943,12 +943,12 @@ class ShapeFeature(object):
             else:
                 new_shape.append(s_j)
         assert all([not hasattr(r.type, "broadcastable") or
-                    not r.type.broadcastable[i] or
+                    not r.type.broadcastable[idx] or
                     # The two following comparison are a speed optimization
                     # But we never timed this speed optimization!
-                    self.lscalar_one.equals(new_shape[i]) or
-                    self.lscalar_one.equals(T.extract_constant(new_shape[i]))
-                    for i in range(r.ndim)])
+                    self.lscalar_one.equals(new_shape[idx]) or
+                    self.lscalar_one.equals(T.extract_constant(new_shape[idx]))
+                    for idx in range(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
