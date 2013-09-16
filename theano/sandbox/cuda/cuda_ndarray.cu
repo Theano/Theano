@@ -75,10 +75,26 @@ void * device_malloc(size_t size, int verbose)
         cudaGetLastError();
         if (verbose)
         {
+            size_t free = 0, total = 0;
+            cudaError_t err2 = cudaMemGetInfo(&free, &total);
+            if (err2 != cudaSuccess){
+                cudaGetLastError();
+                fprintf(stderr,
+                        "Error when tring to find the memory information"
+                        " on the GPU\n");
+            }
             #if COMPUTE_GPU_MEM_USED
-                fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+                fprintf(stderr,
+                        "Error allocating %li bytes of device memory (%s)."
+                        " new total bytes allocated: %d."
+                        " Driver report %d bytes free and %d bytes total \n",
+                        (long)size, cudaGetErrorString(err), _allocated_size,
+                        free, total);
             #else
-                fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+                fprintf(stderr,
+                        "Error allocating %li bytes of device memory (%s)."
+                        " Driver report %d bytes free and %d bytes total \n",
+                        (long)size, cudaGetErrorString(err), free, total);
             #endif
         }
         PyErr_Format(PyExc_MemoryError,
