@@ -177,48 +177,22 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        PyArrayObject *%(name)s_tmp;
-        int %(name)serr;
-        %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
-        if (%(name)s_tmp == NULL) {
-            // PyArray_GETCONTIGUOUS sets an error message if it fails
-            %(fail)s
-        }
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
-        if (%(out)s == NULL) {
-            Py_DECREF(%(name)s_tmp);
-            // new_GpuArray calls __new__ which will set an error message
-            // if it returns NULL.
-            %(fail)s
-        }
-        %(name)serr = GpuArray_empty(&%(out)s->ga,
-                                     pygpu_default_context()->ops,
-                                     pygpu_default_context()->ctx,
-                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
+        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(inp)s),
+                                     get_typecode((PyObject *)PyArray_DESCR(%(inp)s)),
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
-                                     GA_C_ORDER);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(name)s_tmp);
-            Py_DECREF(%(out)s);
-            %(out)s = NULL;
-            PyErr_SetString(PyExc_MemoryError, "Can't allocate device memory for result.");
-            %(fail)s
-        }
-        %(name)serr = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
-                                     PyArray_NBYTES(%(name)s_tmp));
-        Py_DECREF(%(name)s_tmp);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(out)s);
-            PyErr_SetString(PyExc_RuntimeError, "Could not copy array data to device");
+                                     (ssize_t *)PyArray_STRIDES(%(inp)s),
+                                     pygpu_default_context(),
+                                     Py_None);
+        if (%(out)s == NULL) {
             %(fail)s
         }
         """ % {'name': name, 'inp': inputs[0],
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpu_from_host = GpuFromHost()
 
