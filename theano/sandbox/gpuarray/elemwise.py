@@ -3,12 +3,13 @@ from itertools import izip
 
 import numpy
 from theano import Op, Apply, scalar, config
-from theano.tensor.elemwise import Elemwise, DimShuffle
+from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduceDtype
 
 try:
     import pygpu
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
+    from pygpu.reduction import ReductionKernel
 except ImportError:
     pass
 
@@ -283,3 +284,65 @@ class GpuDimShuffle(HideC, DimShuffle):
 
     def c_code_cache_version(self):
         return (2,)
+
+
+class GpuCAReduce(HideC, CAReduceDtype):
+    def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
+        if not hasattr(scalar_op, 'identity'):
+            raise ValueError("No identity on scalar op")
+        CAReduceDtype.__init__(self, scalar_op, axis=axis, dtype=dtype,
+                               acc_dtype=acc_dtype)
+
+    def __str__(self):
+        ax = ''
+        if self.axis is not None:
+            ax = '{%s}' % (', '.join(str(x) for x in self.axis),)
+        return "GpuReduce{%s}%s" % (self.scalar_op, ax)
+
+    def make_node(self, input):
+        res = CAReduceDtype.make_node(self, input)
+        input = as_gpuarray_variable(input)
+        otype = GpuArrayType(dtype=res.outputs[0].dtype,
+                             broadcastable=res.outputs[0].broadcastable)
+
+        if res.op.axis is not None:
+            redux = []
+            for i in range(len(input.type.broadcastable)):
+                redux.append(i in res.op.axis)
+                # since redux is just another way to describe what is in axis
+                # it doesn't need to be compared in __eq__ or __hash__
+            res.op.redux = redux
+
+        return Apply(res.op, [input], [otype()])
+
+    def generate_kernel(self, node, odtype, redux):
+        if isinstance(self.scalar_op, scalar.basic.Add):
+            reduce_expr = "a + b"
+        elif isinstance(self.scalar_op, scalar.basic.Mul):
+            reduce_expr = "a * b"
+        else:
+            raise NotImplementedError()
+        return ReductionKernel(pygpu.get_default_context(), odtype,
+                               self.scalar_op.identity, reduce_expr, redux)
+
+    def perform(self, node, inp, out):
+        input, = inp
+        output, = out
+
+        if self.axis is None:
+            redux = [True] * input.ndim
+        else:
+            redux = self.redux
+
+        acc_dtype = getattr(self, 'acc_dtype', None)
+        if acc_dtype is None:
+            acc_dtype = node.output[0].type.dtype
+
+        if any(redux):
+            if not hasattr(node, '_cache_reduction_k'):
+                node._cache_reduction_k = self.generate_kernel(node, acc_dtype,
+                                                               redux)
+            output[0] = node._cache_reduction_k(input)
+        else:
+            output[0] = pygpu.array(input, copy=True,
+                                    dtype=node.outputs[0].type.dtype)
