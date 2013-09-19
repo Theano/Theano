@@ -473,7 +473,7 @@ DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
  */
 DllExport PyObject *
-CudaNdarray_CreateArrayObj(CudaNdarray * self);
+CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args = NULL);
 
 DllExport PyObject *
 CudaNdarray_ZEROS(int n, int * dims);
