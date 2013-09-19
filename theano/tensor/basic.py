@@ -3410,6 +3410,10 @@ class Join(Op):
                 bcastable = [False] * len(
                     as_tensor_variable_args[0].type.broadcastable)
 
+        if not python_all([x.ndim == len(bcastable)
+                           for x in as_tensor_variable_args[1:]]):
+            raise TypeError("Join() can only join tensor with the same number of dimensions.")
+
         inputs = [as_tensor_variable(axis)] + list(as_tensor_variable_args)
         if inputs[0].type not in int_types:
             raise TypeError('Axis could not be cast to an integer type',

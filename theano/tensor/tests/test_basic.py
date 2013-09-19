@@ -3317,6 +3317,12 @@ class T_Join_and_Split(unittest.TestCase):
                               numpy.concatenate([T_shared.get_value(),
                                                  T_shared.get_value()]))
 
+    def test_mixed_ndim_error(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        v = self.shared(rng.rand(4).astype(self.floatX))
+        m = self.shared(rng.rand(4, 4).astype(self.floatX))
+        self.assertRaises(TypeError, self.join_op(), 0, v, m)
+
 
 class test_comparison(unittest.TestCase):
     """Test <, >, <=, >=, == and !=
