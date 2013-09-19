@@ -1,4 +1,3 @@
-from copy import copy
 import unittest
 
 import numpy
