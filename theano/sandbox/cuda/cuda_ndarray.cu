@@ -351,7 +351,7 @@ static PyMemberDef CudaNdarray_members[] =
 PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 {
     PyObject * dtype = NULL;
-    if (! PyArg_ParseTuple(args, "|O", &dtype))
+    if (args && !PyArg_ParseTuple(args, "|O", &dtype))
         return NULL;
     if (dtype) {
         PyArray_Descr* dtype2;
