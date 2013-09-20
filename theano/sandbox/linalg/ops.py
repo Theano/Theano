@@ -137,9 +137,9 @@ class HintsFeature(object):
         # Variable -> tuple(scalars) or None  (All tensor vars map to tuple)
         self.hints = {}
         for node in fgraph.toposort():
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, "on_attach")
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.hints:
             # this is a revert, not really an import
             for r in node.outputs + node.inputs:
@@ -831,6 +831,8 @@ det = Det()
 def trace(X):
     """
     Returns the sum of diagonal elements of matrix X.
+
+    :note: work on GPU since 0.6rc4.
     """
     return extract_diag(X).sum()
 

@@ -254,10 +254,11 @@ for the purpose of one particular function.
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> fn_of_state = state * 2 + inc
->>> foo = T.lscalar()  # the type (lscalar) must match the shared variable we
->>>                    # are replacing with the ``givens`` list
+>>> # The type of foo must match the shared variable we are replacing
+>>> # with the ``givens``
+>>> foo = T.scalar(dtype=state.dtype)
 >>> skip_shared = function([inc, foo], fn_of_state,
-        givens=[(state, foo)])
+                           givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
@@ -304,6 +305,7 @@ Here's a brief example.  The setup code is:
 .. code-block:: python
 
     from theano.tensor.shared_randomstreams import RandomStreams
+    from theano import function
     srng = RandomStreams(seed=234)
     rv_u = srng.uniform((2,2))
     rv_n = srng.normal((2,2))
@@ -371,10 +373,11 @@ For example:
 >>> state_after_v0 = rv_u.rng.get_value().get_state()
 >>> nearly_zeros()       # this affects rv_u's generator
 >>> v1 = f()
->>> rng = rng.get_value(borrow=True)
+>>> rng = rv_u.rng.get_value(borrow=True)
 >>> rng.set_state(state_after_v0)
 >>> rv_u.rng.set_value(rng, borrow=True)
 >>> v2 = f()             # v2 != v1
+>>> v3 = f()             # v3 == v1
 
 Copying Random State Between Theano Graphs
 ------------------------------------------

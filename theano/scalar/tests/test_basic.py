@@ -12,10 +12,14 @@ If you do want to rewrite these tests, bear in mind:
 import unittest
 
 import theano
-from theano.gof import Variable, Op, FunctionGraph
+from theano.gof import FunctionGraph
 from theano import gof
 
-from theano.scalar.basic import *
+from theano.scalar.basic import (floats, float32, float64,
+                                 ints, int8, int32, complex64,
+                                 ComplexError, IntDiv, TrueDiv,
+                                 Composite, add, div_proxy,
+                                 and_, eq, neq, invert, mul)
 
 
 def inputs():
@@ -216,7 +220,7 @@ class test_div(unittest.TestCase):
         d = float64()
         f = float32()
 
-        print (a//b).owner.op
+        #print (a//b).owner.op
         assert isinstance((a//b).owner.op, IntDiv)
         assert isinstance((b//a).owner.op, IntDiv)
         assert isinstance((b/d).owner.op, TrueDiv)

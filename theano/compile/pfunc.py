@@ -442,7 +442,8 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if len(updates) > 0 and any(isinstance(v, Variable)
                                 for v in iter_over_pairs(updates)):
         raise ValueError(
-            "The updates parameter must an OrderedDict/dict or a list of list/tuple with 2 elements")
+            "The updates parameter must be an OrderedDict/dict or a list of "
+            "lists/tuples with 2 elements")
 
     # transform params into theano.compile.In objects.
     inputs = [_pfunc_param_to_in(p, allow_downcast=allow_input_downcast)

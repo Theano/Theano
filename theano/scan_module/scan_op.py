@@ -1581,8 +1581,30 @@ class Scan(PureOp):
             if not isinstance(x.type, DisconnectedType):
                 outer_inp_seqs.append(x[::-1])
 
-        outer_inp_seqs += [x[::-1] for x in self.outer_mitsot_outs(outs)]
-        outer_inp_seqs += [x[::-1] for x in self.outer_sitsot_outs(outs)]
+        if hasattr(inputs[0].tag, 'test_value'):
+            # Here we tests that the new scan input sequence all have
+            # the same shape[0]. This is a properties that the scan()
+            # fct add and we want to keep it for all Scan op.  This is
+            # used in T_Scan.test_grad_multiple_outs_taps to test
+            # that.
+            for taps, x in zip(self.mitsot_taps(),
+                               self.outer_mitsot_outs(outs)):
+                mintap = numpy.min(taps)
+                if hasattr(x[::-1][:mintap], 'test_value'):
+                    assert (x[::-1][:mintap].tag.test_value.shape[0] ==
+                            inputs[0].tag.test_value)
+            for x in self.outer_sitsot_outs(outs):
+                if hasattr(x[::-1][:-1].tag, 'test_value'):
+                    assert (x[::-1][:-1].tag.test_value.shape[0] ==
+                            inputs[0].tag.test_value)
+            for x in self.outer_nitsot_outs(outs):
+                if hasattr(x[::-1].tag, 'test_value'):
+                    assert (x[::-1].tag.test_value.shape[0] ==
+                            inputs[0].tag.test_value)
+        outer_inp_seqs += [x[::-1][:numpy.min(taps)]
+                           for taps, x in zip(self.mitsot_taps(),
+                                              self.outer_mitsot_outs(outs))]
+        outer_inp_seqs += [x[::-1][:-1] for x in self.outer_sitsot_outs(outs)]
         outer_inp_seqs += [x[::-1] for x in self.outer_nitsot_outs(outs)]
 
         inner_inp_seqs = self.inner_seqs(self_inputs)

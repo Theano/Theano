@@ -251,7 +251,7 @@ def sp_zeros_like(x):
     # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
     return CSM(format=x.format)(data=numpy.array([], dtype=x.type.dtype),
-                                indices=numpy.array([]),
+                                indices=numpy.array([], dtype='int32'),
                                 indptr=tensor.zeros_like(indptr),
                                 shape=shape)
 
@@ -511,23 +511,42 @@ class CSMProperties(gof.Op):
 
         data, indices, indptr, shape = csm_properties(csm)
         return [CSM(csm.format)(g[0], indices, indptr, shape)]
+
 # don't make this a function or it breaks some optimizations below
 csm_properties = CSMProperties()
+"""An CSMProperties object instance. It return the fields data,
+indices, indptr and shape of the sparse varible. Together they specify
+completly the the sparse variable when we know its format. Example::
+
+    the_data, the_indices, the_indptr, the_shape = csm_properties(a_sparse_var)
+"""
 
 
 def csm_data(csm):
+    """
+    return the data field of the sparse variable.
+    """
     return csm_properties(csm)[0]
 
 
 def csm_indices(csm):
+    """
+    return the indices field of the sparse variable.
+    """
     return csm_properties(csm)[1]
 
 
 def csm_indptr(csm):
+    """
+    return the indptr field of the sparse variable.
+    """
     return csm_properties(csm)[2]
 
 
 def csm_shape(csm):
+    """
+    return the shape field of the sparse variable.
+    """
     return csm_properties(csm)[3]
 
 
@@ -602,12 +621,22 @@ class CSM(gof.Op):
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
 
-        if not isinstance(indices, tensor.TensorVariable):
-            indices = theano._asarray(indices, dtype='int32')
-        if not isinstance(indptr, tensor.TensorVariable):
-            indptr = theano._asarray(indptr, dtype='int32')
-        if not isinstance(shape, tensor.TensorVariable):
-            shape = theano._asarray(shape, dtype='int32')
+        if not isinstance(indices, gof.Variable):
+            indices_ = numpy.asarray(indices)
+            indices_32 = theano._asarray(indices, dtype='int32')
+            assert (indices_ == indices_32).all()
+            indices = indices_32
+        if not isinstance(indptr, gof.Variable):
+            indptr_ = numpy.asarray(indptr)
+            indptr_32 = theano._asarray(indptr, dtype='int32')
+            assert (indptr_ == indptr_32).all()
+            indptr = indptr_32
+        if not isinstance(shape, gof.Variable):
+            shape_ = numpy.asarray(shape)
+            shape_32 = theano._asarray(shape, dtype='int32')
+            assert (shape_ == shape_32).all()
+            shape = shape_32
+
         indices = tensor.as_tensor_variable(indices)
         indptr = tensor.as_tensor_variable(indptr)
         shape = tensor.as_tensor_variable(shape)
@@ -2338,8 +2367,7 @@ def vstack(blocks, format=None, dtype=None):
 
 
 class Remove0(gof.Op):
-    """Remove explicit zeros from a sparse matrix, and
-    resort indices.
+    """Remove explicit zeros from a sparse matrix.
 
     :param x: Sparse matrix.
 
@@ -2677,6 +2705,27 @@ class TrueDot(gof.op.Op):
         rval = x.dot(y)
         if not scipy.sparse.issparse(rval):
             rval = getattr(scipy.sparse, x.format + '_matrix')(rval)
+        #x.dot call tocsr() that will "upcast" to ['int8', 'uint8', 'short',
+        # 'ushort', 'intc', 'uintc', 'longlong', 'ulonglong', 'single',
+        # 'double', 'longdouble', 'csingle', 'cdouble', 'clongdouble']
+        # But ulonglong is uint64 on x86-64, but with a different typenum!
+        if rval.dtype.num != numpy.dtype(str(rval.dtype)).num:
+            assert str(rval.dtype) == node.outputs[0].dtype
+            # Create a view with the expected typenum.
+            format = node.outputs[0].type.format
+            data = rval.data.view(dtype=node.outputs[0].dtype)
+            indices = rval.indices
+            indptr = rval.indptr
+            shape = rval.shape
+            # No need to copy indices and indptr as in CSM.perform(),
+            # as there is only one user of them.
+            if format == 'csc':
+                rval = scipy.sparse.csc_matrix((data, indices, indptr),
+                                               shape, copy=False)
+            else:
+                assert format == 'csr'
+                rval = scipy.sparse.csr_matrix((data, indices, indptr),
+                                               shape, copy=False)
         out[0] = rval
 
     def grad(self, (x, y), (gz, )):

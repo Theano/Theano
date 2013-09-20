@@ -585,7 +585,7 @@ class T_examples(unittest.TestCase):
         from theano import shared
         # Force the dtype to int64 to work correctly on 32 bit computer.
         # Otherwise, it create by default a int32 on 32 bit computer.
-        state = shared(numpy.int64(0))
+        state = shared(0)
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
 
@@ -604,10 +604,11 @@ class T_examples(unittest.TestCase):
         assert state.get_value()       == array(0)
 
         fn_of_state = state * 2 + inc
-        foo = T.lscalar()    # the type (lscalar) must match the shared variable we
-                            # are replacing with the ``givens`` list
+        # The type of foo must match the shared variable we are replacing
+        # with the ``givens``
+        foo = T.scalar(dtype=state.dtype)
         skip_shared = function([inc, foo], fn_of_state,
-                                                givens=[(state, foo)])
+                               givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
         assert state.get_value()       == array(0)
 
@@ -879,6 +880,56 @@ class T_using_gpu(unittest.TestCase):
                                   for x in f.maker.fgraph.toposort()])
 
 
+# Used in T_fibby
+class Fibby(theano.Op):
+
+    """
+    An arbitrarily generalized Fibbonacci sequence
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        x_ = theano.tensor.as_tensor_variable(x)
+        assert x_.ndim == 1
+        return theano.Apply(self,
+            inputs=[x_],
+            outputs=[x_.type()])
+        # using x_.type() is dangerous, it copies x's broadcasting
+        # behaviour
+
+    def perform(self, node, inputs, output_storage):
+        x, = inputs
+        y = output_storage[0][0] = x.copy()
+        for i in range(2, len(x)):
+            y[i] = y[i - 1] * y[i - 2] + x[i]
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        y, = onames
+        fail = sub['fail']
+        return """
+            Py_XDECREF(%(y)s);
+            %(y)s = (PyArrayObject*)PyArray_FromArray(
+                    %(x)s, 0, NPY_ARRAY_ENSURECOPY);
+            if (!%(y)s)
+                %(fail)s;
+            {//New scope needed to make compilation work
+                dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
+                dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
+                for (int i = 2; i < %(x)s->dimensions[0]; ++i)
+                    y[i] = y[i-1]*y[i-2] + x[i];
+            }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
+
 class T_fibby(unittest.TestCase):
     ## All tests here belong to
     ## http://deeplearning.net/software/theano/extending/fibby.html
@@ -887,54 +938,8 @@ class T_fibby(unittest.TestCase):
 
     def test_fibby_1(self):
 
-        class Fibby(theano.Op):
-
-            """
-            An arbitrarily generalized Fibbonacci sequence
-            """
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
-
-            def make_node(self, x):
-                x_ = theano.tensor.as_tensor_variable(x)
-                assert x_.ndim == 1
-                return theano.Apply(self,
-                    inputs=[x_],
-                    outputs=[x_.type()])
-                # using x_.type() is dangerous, it copies x's broadcasting
-                # behaviour
-
-            def perform(self, node, inputs, output_storage):
-                x, = inputs
-                y = output_storage[0][0] = x.copy()
-                for i in range(2, len(x)):
-                    y[i] = y[i - 1] * y[i - 2] + x[i]
-
-            def c_code(self, node, name, inames, onames, sub):
-                x, = inames
-                y, = onames
-                fail = sub['fail']
-                return """
-                    Py_XDECREF(%(y)s);
-                    %(y)s = (PyArrayObject*)PyArray_FromArray(
-                            %(x)s, 0, NPY_ARRAY_ENSURECOPY);
-                    if (!%(y)s)
-                        %(fail)s;
-                    {//New scope needed to make compilation work
-                        dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
-                        dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
-                        for (int i = 2; i < %(x)s->dimensions[0]; ++i)
-                            y[i] = y[i-1]*y[i-2] + x[i];
-                    }
-                """ % locals()
-
-            def c_code_cache_version(self):
-                return (1,)
-
+        # The definition of class Fibby is done outside of the test,
+        # so the object can be pickled.
         fibby = Fibby()
 
         from theano.tensor.opt import (get_scalar_constant_value,

@@ -22,6 +22,11 @@ def hashgen():
 hashgen.next = 0
 
 
+def hashtype(self):
+    t = type(self)
+    return hash(t.__name__) ^ hash(t.__module__)
+
+
 class MethodNotDefined(Exception):
     """
     To be raised by functions defined as part of an interface.
@@ -405,3 +410,15 @@ def give_variables_names(variables):
                 "Maybe you've named some of the variables identically")
 
     return variables
+
+
+def remove(predicate, coll):
+    """ Return those items of collection for which predicate(item) is true.
+
+    >>> from itertoolz import remove
+    >>> def even(x):
+    ...     return x % 2 == 0
+    >>> remove(even, [1, 2, 3, 4])
+    [1, 3]
+    """
+    return filter(lambda x: not predicate(x), coll)

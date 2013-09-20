@@ -957,8 +957,21 @@ def pydotprint_variables(vars,
     for nd in vars:
         if nd.owner:
             plot_apply(nd.owner, depth)
-
-    g.write_png(outfile, prog='dot')
+    try:
+        g.write_png(outfile, prog='dot')
+    except pd.InvocationException, e:
+        # Some version of pydot are bugged/don't work correctly with
+        # empty label. Provide a better user error message.
+        if pd.__version__ == "1.0.28" and "label=]" in e.message:
+            raise Exception("pydot 1.0.28 is know to be bugged. Use another "
+                            "working version of pydot")
+        elif "label=]" in e.message:
+            raise Exception("Your version of pydot " + pd.__version__ +
+                            " returned an error. Version 1.0.28 is known"
+                            " to be bugged and 1.0.25 to be working with"
+                            " Theano. Using another version of pydot could"
+                            " fix this problem. The pydot error is: " +
+                            e.message)
 
     print 'The output file is available at', outfile
 

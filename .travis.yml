@@ -8,8 +8,8 @@ python:
 #  - "3.2"
 # command to install dependencies
 before_install:
-  - sudo apt-get install -qq libatlas3gf-base libatlas-dev liblapack-dev gfortran
-#  - sudo apt-get install -qq libopenblas-dev
+  - sudo apt-get install -q libatlas3gf-base libatlas-dev liblapack-dev gfortran
+#  - sudo apt-get install -q libopenblas-dev
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install -q numpy==1.5 --use-mirrors"

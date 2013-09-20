@@ -32,7 +32,10 @@ class OrderedUpdates(OrderedDict):
             # Warn when using as input a non-ordered dictionary.
             warnings.warn('Initializing an `OrderedUpdates` from a '
                           'non-ordered dictionary with 2+ elements could '
-                          'make your code non-deterministic')
+                          'make your code non-deterministic. You can use '
+                          'an OrderedDict that is implemented at '
+                          'theano.compat.python2x.OrderedDict '
+                          'for python 2.4+.')
         super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):

@@ -75,10 +75,26 @@ void * device_malloc(size_t size, int verbose)
         cudaGetLastError();
         if (verbose)
         {
+            size_t free = 0, total = 0;
+            cudaError_t err2 = cudaMemGetInfo(&free, &total);
+            if (err2 != cudaSuccess){
+                cudaGetLastError();
+                fprintf(stderr,
+                        "Error when tring to find the memory information"
+                        " on the GPU\n");
+            }
             #if COMPUTE_GPU_MEM_USED
-                fprintf(stderr, "Error allocating %li bytes of device memory (%s). new total bytes allocated: %d\n", (long)size, cudaGetErrorString(err),_allocated_size);
+                fprintf(stderr,
+                        "Error allocating %li bytes of device memory (%s)."
+                        " new total bytes allocated: %d."
+                        " Driver report %d bytes free and %d bytes total \n",
+                        (long)size, cudaGetErrorString(err), _allocated_size,
+                        free, total);
             #else
-                fprintf(stderr, "Error allocating %li bytes of device memory (%s).\n", (long)size, cudaGetErrorString(err));
+                fprintf(stderr,
+                        "Error allocating %li bytes of device memory (%s)."
+                        " Driver report %d bytes free and %d bytes total \n",
+                        (long)size, cudaGetErrorString(err), free, total);
             #endif
         }
         PyErr_Format(PyExc_MemoryError,
@@ -798,7 +814,7 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
 // This prevent us from setting it to 0 before each use
 static int* err_var = NULL;
 
-// We try to be similat to the PyArray_TakeFrom function
+// We try to be similar to the PyArray_TakeFrom function
 //http://docs.scipy.org/doc/numpy/reference/c-api.array.html
 //TODO: support other clip mode then raise(clip, wrap)
 //self is the input that we copy data from.
@@ -3581,7 +3597,8 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
             && (1!=CudaNdarray_HOST_DIMS(other)[i] || !unbroadcast) )
         {
           PyErr_Format(PyExc_ValueError,
-                       "need same dimensions for dim %d,"
+                       "CudaNdarray_CopyFromCudaNdarray:"
+                       " need same dimensions for dim %d,"
                        " destination=%d, source=%d",
                        i, CudaNdarray_HOST_DIMS(self)[i],
                        CudaNdarray_HOST_DIMS(other)[i]);

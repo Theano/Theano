@@ -171,7 +171,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             " got " + str(type(updates)) + ". Using "
             "a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"
-            " if you are using Python 2.7, or use a list of (shared, update)"
+            " if you are using Python 2.7 (theano.compat.python2x.OrderedDict"
+            " for older python), or use a list of (shared, update)"
             " pairs. Do not just convert your dictionary to this type before"
             " the call as the conversion will still be non-deterministic.",
             stacklevel=2)

@@ -24,6 +24,8 @@ from theano.gof.python25 import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
+from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
+                                     Subtensor, IncSubtensor, AdvancedIncSubtensor1)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -47,14 +49,24 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 def out2in(*local_opts):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='out_to_in',
                              failure_callback=TopoOptimizer.warn_inplace)
 
 
 def in2out(*local_opts, **kwargs):
     """WRITEME """
-    return opt.TopoOptimizer(opt.LocalOptGroup(*local_opts),
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = opt.LocalOptGroup(*local_opts),
+    else:
+        local_opts, = local_opts
+    return opt.TopoOptimizer(local_opts,
                              order='in_to_out',
                              failure_callback=TopoOptimizer.warn_inplace,
                              **kwargs)
@@ -382,10 +394,12 @@ def local_dimshuffle_lift(node):
     input = node.inputs[0]
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
-        return inode.op.make_node(*[DimShuffle(input.type.broadcastable,
-                                               op.new_order,
-                                               op.inplace)(input) for input in
-                                    inode.inputs]).outputs
+        # Don't use make_node to have tag.test_value set.
+        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+                                    op.new_order,
+                                    op.inplace)(input) for input in
+                         inode.inputs], **dict(return_list=True))
+        return ret
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
                      op.new_order]
@@ -395,8 +409,9 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            return DimShuffle(iinput.type.broadcastable, new_order,
-                              inplace).make_node(iinput).outputs
+            ret = DimShuffle(iinput.type.broadcastable, new_order,
+                             inplace)(iinput, **dict(return_list=True))
+            return ret
 
 
 @register_canonicalize
@@ -435,8 +450,10 @@ def dimshuffle_as_view(node):
 
 #Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
-                       TopoOptimizer(dimshuffle_as_view,
-    failure_callback=TopoOptimizer.warn_inplace), 60,
+                       TopoOptimizer(
+                           dimshuffle_as_view,
+                           failure_callback=TopoOptimizer.warn_inplace),
+                       60,
                        'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
@@ -769,7 +786,8 @@ class ShapeFeature(object):
         if hasattr(r.type, "broadcastable") and r.type.broadcastable[i]:
             return self.lscalar_one
         else:
-            return Shape_i(i).make_node(r).outputs[0]
+            # Do not call make_node for test_value
+            return Shape_i(i)(r)
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
@@ -968,9 +986,9 @@ class ShapeFeature(object):
         # shape var -> graph v
 
         for node in fgraph.toposort():
-            self.on_import(fgraph, node)
+            self.on_import(fgraph, node, reason='on_attach')
 
-    def on_import(self, fgraph, node):
+    def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.shape_of:
             # this is a revert, not really an import
             for r in node.outputs + node.inputs:
@@ -1217,13 +1235,13 @@ def local_track_shape_i(node):
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T.Subtensor])
+@gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
     # [a,b,c][0] -> a
     # [a,b,c][0:2] -> [a,b]
     # we can do this for constant indexes
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         # This optimization needs ShapeOpt and fgraph.shape_feature
         x = node.inputs[0]
         if x.owner and x.owner.op == make_vector:
@@ -1591,12 +1609,12 @@ def local_upcast_elemwise_constant_inputs(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([T.Subtensor])
+@gof.local_optimizer([Subtensor])
 def local_useless_subtensor(node):
     """
     Remove Subtensor if it takes the full input
     """
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         # This optimization needs ShapeOpt and fgraph.shape_feature
         if not hasattr(node.fgraph, 'shape_feature'):
             return
@@ -1677,7 +1695,7 @@ def local_subtensor_lift(node):
       when x,... are broadcasted scalar or not broadcasted at all
     rebroadcast(x)[idx] => rebroadcast(x[idx])
     """
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         u = node.inputs[0]
         if not u.owner or len(u.clients) > 1:
             return False
@@ -1736,7 +1754,7 @@ def local_subtensor_lift(node):
                 new_axis += [(j, u.broadcastable[i])]
                 j += 1
 
-            subt_x = T.Subtensor(node.op.idx_list)(u.owner.inputs[0])
+            subt_x = Subtensor(node.op.idx_list)(u.owner.inputs[0])
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
 
             return [rbcast_subt_x]
@@ -1764,8 +1782,8 @@ def merge_two_slices(slice1, len1, slice2, len2):
     if type(slice1) is not slice:
         raise ValueError(('First provided slice should actually be of type'
                          'slice and not an index !'), slice1)
-    sl1, reverse1 = T.get_canonical_form_slice(slice1, len1)
-    sl2, reverse2 = T.get_canonical_form_slice(slice2, len2)
+    sl1, reverse1 = get_canonical_form_slice(slice1, len1)
+    sl2, reverse2 = get_canonical_form_slice(slice2, len2)
 
     if type(sl2) is not slice:
         if reverse1 is None:
@@ -1885,15 +1903,15 @@ def local_subtensor_merge(node):
     expresses all slices in a canonical form, and then merges them together.
     """
 
-    if isinstance(node.op, T.Subtensor):
+    if isinstance(node.op, Subtensor):
         u = node.inputs[0]
-        if u.owner and isinstance(u.owner.op, T.Subtensor):
+        if u.owner and isinstance(u.owner.op, Subtensor):
             # We can merge :)
             # x actual tensor on which we are picking slices
             x = u.owner.inputs[0]
             # slices of the first applied subtensor
-            slices1 = T.get_idx_list(u.owner.inputs, u.owner.op.idx_list)
-            slices2 = T.get_idx_list(node.inputs, node.op.idx_list)
+            slices1 = get_idx_list(u.owner.inputs, u.owner.op.idx_list)
+            slices2 = get_idx_list(node.inputs, node.op.idx_list)
             # Get the shapes of the vectors !
             try:
                 # try not to introduce new shape into the graph
@@ -1927,11 +1945,12 @@ def local_subtensor_merge(node):
             else:
                 merged_slices += slices1[pos_1:]
 
-            subtens = T.Subtensor(merged_slices)
-            sl_ins = T.Subtensor.collapse(
+            subtens = Subtensor(merged_slices)
+            sl_ins = Subtensor.collapse(
                 merged_slices,
                 lambda x: isinstance(x, T.Variable))
-            out = subtens.make_node(x, *sl_ins).outputs[0]
+            # Do not call make_node for test_value
+            out = subtens(x, *sl_ins)
 
             return [out]
 
@@ -1941,14 +1960,14 @@ def local_subtensor_merge(node):
 @gof.local_optimizer([])
 def local_subtensor_of_alloc(node):
     """alloc[x:y] -> alloc"""
-    if not isinstance(node.op, T.Subtensor):
+    if not isinstance(node.op, Subtensor):
         return False
     u = node.inputs[0]
     if u.owner is None:
         return False
     if not isinstance(u.owner.op, T.Alloc):
         return False
-    slices = T.get_idx_list(node.inputs, node.op.idx_list)
+    slices = get_idx_list(node.inputs, node.op.idx_list)
     val = u.owner.inputs[0]
     dims = u.owner.inputs[1:]
     assert len(slices) <= len(dims)
@@ -1972,7 +1991,7 @@ def local_subtensor_of_alloc(node):
             else:
                 val_slices.append(sl)
 
-        csl, _ = T.get_canonical_form_slice(sl, dim)
+        csl, _ = get_canonical_form_slice(sl, dim)
         if type(csl) is not slice:
             # That dimension is removed.
             pass
@@ -2026,7 +2045,7 @@ def local_IncSubtensor_serialize(node):
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
         return i.owner \
-                and isinstance(i.owner.op, T.IncSubtensor) \
+                and isinstance(i.owner.op, IncSubtensor) \
                 and i.type == o_type \
                 and len(i.clients) == 1 \
                 and not i.owner.op.set_instead_of_inc
@@ -2060,7 +2079,7 @@ def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
     """
-    if isinstance(node.op, T.IncSubtensor) and not node.op.inplace:
+    if isinstance(node.op, IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(
        node.op.idx_list, inplace=True,
        set_instead_of_inc=node.op.set_instead_of_inc,
@@ -2077,7 +2096,7 @@ compile.optdb.register('inplace_setsubtensor',
 @gof.local_optimizer([None])
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
-    if isinstance(node.op, T.AdvancedIncSubtensor1) and not node.op.inplace:
+    if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
         new_op = node.op.__class__(
             inplace=True, set_instead_of_inc=node.op.set_instead_of_inc)
         new_node = new_op(*node.inputs)
@@ -2097,7 +2116,7 @@ def local_incsubtensor_of_allocs(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
-    if isinstance(node.op, T.IncSubtensor) and not node.op.set_instead_of_inc:
+    if isinstance(node.op, IncSubtensor) and not node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
@@ -2122,7 +2141,7 @@ def local_setsubtensor_of_allocs(node):
 
     when x is constant or alloc.
     """
-    if isinstance(node.op, T.IncSubtensor) and node.op.set_instead_of_inc:
+    if isinstance(node.op, IncSubtensor) and node.op.set_instead_of_inc:
         x = node.inputs[0]
         y = node.inputs[1]
         replace_x = None
@@ -4581,8 +4600,12 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                         elif ii in tmp_input:
                             tmp_s_input.append(tmp_scalar[tmp_input.index(ii)])
                         else:
-                            tmp_s_input.append(scalar.Scalar(
-                                    ii.dtype).make_variable())
+                            tmp = scalar.Scalar(ii.dtype).make_variable()
+                            try:
+                                tmp.tag.test_value = gof.op.get_test_value(ii).flatten()[0]
+                            except AttributeError:
+                                pass
+                            tmp_s_input.append(tmp)
                             tmp_input.append(ii)
                             tmp_scalar.append(tmp_s_input[-1])
                     s_op = i.owner.op.scalar_op(*tmp_s_input)
@@ -4632,6 +4655,14 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                     s = s_inputs[inputs.index(i)]
                 else:
                     s = scalar.Scalar(i.dtype).make_variable()
+                    try:
+                        if theano.config.compute_test_value != 'off':
+                            v = gof.op.get_test_value(i)
+                            if v.size > 0:
+                                s.tag.test_value = v.flatten()[0]
+                    except AttributeError:
+                        pass
+
                     inputs.append(i)
                     s_inputs.append(s)
                 s_g.append(s)
@@ -4665,7 +4696,8 @@ your code will run correctly, but may be slower.""")
         C = scalar.Composite(s_inputs, [s_new_out])
 
         #create the new node.
-        n = OP(C).make_node(*inputs)
+        #Do not call make_node to have test_value
+        n = OP(C)(*inputs).owner
         assert len(n.outputs) == 1
         assert node.outputs[0].dtype == n.outputs[0].dtype
 
@@ -4726,9 +4758,11 @@ if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fast_run', 'fusion', 'local_elemwise_fusion')
+                           'fast_run', 'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
                            FusionOptimizer(local_elemwise_fusion), 71.00,
-                           'fusion', 'local_elemwise_fusion')
+                           'fusion', 'local_elemwise_fusion',
+                           'FusionOptimizer')

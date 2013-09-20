@@ -909,15 +909,17 @@ def _populate_grad_dict(var_to_app_to_idx,
                     orig_output, new_output_grad = packed
                     if not hasattr(orig_output, 'shape'):
                         continue
+                    if isinstance(new_output_grad.type, DisconnectedType):
+                        continue
                     for orig_output_v, new_output_grad_v in get_debug_values(
-                            node.outputs, new_output_grads):
+                            *packed):
                         o_shape = orig_output_v.shape
                         g_shape = new_output_grad_v.shape
                         if o_shape != g_shape:
-                            raise ValueError("Got a gradient of shape " + \
-                                    str(o_shape) + " on an output of shape " + \
-                                    str(g_shape))
-
+                            raise ValueError(
+                                "Got a gradient of shape " +
+                                str(o_shape) + " on an output of shape " +
+                                str(g_shape))
 
                 input_grads = node.op.grad(inputs, new_output_grads)
 

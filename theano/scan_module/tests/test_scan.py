@@ -1141,7 +1141,7 @@ class T_Scan(unittest.TestCase):
             go_backwards=False)
         gX, gY = tensor.grad(values[1].sum(), [x, y])
         f = theano.function([c, x, y], [gX, gY],
-                           allow_input_downcast=True)
+                            allow_input_downcast=True)
         # Check for runtime errors
         f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
 
@@ -1545,6 +1545,12 @@ class T_Scan(unittest.TestCase):
         x0 = theano.tensor.vector('x0')
         y0 = theano.tensor.vector('y0')
 
+        W_in1.tag.test_value = vW_in1
+        u1.tag.test_value = v_u1
+        u2.tag.test_value = v_u2
+        x0.tag.test_value = v_x0
+        y0.tag.test_value = v_y0
+
         def f_rnn_cmpl(u1_t,
                        u2_tm1,
                        u2_t,
@@ -1553,33 +1559,46 @@ class T_Scan(unittest.TestCase):
                        y_tm1,
                        y_tm3,
                        W_in1):
-            return [theano.dot(u1_t, W_in1) + \
-                      (u2_t + u2_tm1 * u2_tp1) * W_in2 + \
-                      theano.dot(x_tm1, W),
+            return [theano.dot(u1_t, W_in1) +
+                    (u2_t + u2_tm1 * u2_tp1) * W_in2 +
+                    theano.dot(x_tm1, W),
                     (y_tm1 + y_tm3) * theano.dot(x_tm1, W_out),
                     theano.dot(u1_t, W_in1)]
-        cost, updates = scan_project_sum(
-            f_rnn_cmpl,
-            [u1, dict(input=u2, taps=[-1, 0, 1])],
-            [x0, dict(initial=y0, taps=[-1, -3]), None],
-            W_in1,
-            n_steps=None,
-            truncate_gradient=-1,
-            go_backwards=False)
-        vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
-        params = [u1, u2, x0, y0, W_in1]
-        gparams = theano.tensor.grad(cost, params)
-        grad_fn = theano.function([u1, u2, x0, y0, W_in1],
-                                  gparams,
-                                  updates=updates,
-                                  no_default_updates=True,
-                                  allow_input_downcast=True)
 
-        cost_fn = theano.function([u1, u2, x0, y0, W_in1],
-                                  cost,
-                                  updates=updates,
-                                  no_default_updates=True,
-                                  allow_input_downcast=True)
+        # We change the compute_test_value[_opt] flag to run the
+        # assert in Scan.grad() of the new scan input sequence related
+        # to outer_mitsot_outs, outer_sitsot_outs and
+        # outer_nitsot_outs. This allow to test an old Scan bug.
+        old1 = theano.config.compute_test_value
+        old2 = theano.config.compute_test_value_opt
+        theano.config.compute_test_value = 'raise'
+        theano.config.compute_test_value_opt = 'raise'
+        try:
+            cost, updates = scan_project_sum(
+                f_rnn_cmpl,
+                [u1, dict(input=u2, taps=[-1, 0, 1])],
+                [x0, dict(initial=y0, taps=[-1, -3]), None],
+                W_in1,
+                n_steps=None,
+                truncate_gradient=-1,
+                go_backwards=False)
+            vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
+            params = [u1, u2, x0, y0, W_in1]
+            gparams = theano.tensor.grad(cost, params)
+            grad_fn = theano.function([u1, u2, x0, y0, W_in1],
+                                      gparams,
+                                      updates=updates,
+                                      no_default_updates=True,
+                                      allow_input_downcast=True)
+
+            cost_fn = theano.function([u1, u2, x0, y0, W_in1],
+                                      cost,
+                                      updates=updates,
+                                      no_default_updates=True,
+                                      allow_input_downcast=True)
+        finally:
+            theano.config.compute_test_value = old1
+            theano.config.compute_test_value_opt = old2
 
         num_grad = multiple_outputs_numeric_grad(cost_fn,
                                                  [v_u1,
@@ -2428,6 +2447,36 @@ class T_Scan(unittest.TestCase):
             n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
+    def test_merge_3scans(self):
+        # This test checks a case where we have 3 scans, two of them
+        # cannot be merged together, but the third one can be merged with
+        # either.
+        x = theano.tensor.vector()
+        y = theano.tensor.vector()
+
+        def sum(s):
+            return s + 1
+
+        sx, upx = theano.scan(sum, sequences=[x], n_steps=4, name='X')
+        # We need to use an expression of y rather than y so the toposort
+        # comes up with the 'Y' scan last.
+        sy, upy = theano.scan(sum, sequences=[2 * y + 2], n_steps=4, name='Y')
+        sz, upz = theano.scan(sum, sequences=[sx], n_steps=4, name='Z')
+
+        f = theano.function(
+            [x, y], [sy, sz],
+            mode=mode_with_opt.excluding('scanOp_pushout_seqs_ops'))
+        topo = f.maker.fgraph.toposort()
+        scans = [n for n in topo if isinstance(
+            n.op, theano.scan_module.scan_op.Scan)]
+        self.assertTrue(len(scans) == 2)
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
+        y_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
+        # Run it so DebugMode can detect optimization problems.
+        f(x_val, y_val)
+
     def test_hash(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()
@@ -2750,9 +2799,9 @@ class T_Scan(unittest.TestCase):
             outputs_info=[numpy.asarray([0.0, 0.0], theano.config.floatX),
                           None])
         f = theano.function([inp], [i_t, i_tm1])
-        val = numpy.arange(10).reshape(5, 2)
+        val = numpy.arange(10).reshape(5, 2).astype(theano.config.floatX)
         ret = f(val)
-        utt.assert_allclose(ret[0], val+10)
+        utt.assert_allclose(ret[0], val + 10)
         utt.assert_allclose(ret[1], [[0.,  0.],
                                      [10., 11.],
                                      [12., 13.],

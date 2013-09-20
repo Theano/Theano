@@ -13,6 +13,7 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import logging
+import sys
 import warnings
 
 import theano
@@ -173,6 +174,17 @@ class CLinkerObject(object):
 
         """
         raise utils.MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
+
+    def c_init_code(self):
+        """
+        Optional: return a list of code snippets to be inserted in module
+        initialization.
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_init_code", type(self),
+                                     self.__class__.__name__)
 
 
 class CLinkerOp(CLinkerObject):
@@ -408,6 +420,9 @@ class PureOp(object):
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
+                    elif config.compute_test_value == 'pdb':
+                        import pdb
+                        pdb.post_mortem(sys.exc_info()[2])
                     else:
                         raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
 
@@ -638,8 +653,11 @@ def get_test_value(v):
     For a Shared variable, it is the internal value.
     For another Variable, it is the content of v.tag.test_value.
     """
-    v_tensor = theano.tensor.as_tensor_variable(v)
-    return PureOp._get_test_value(v_tensor)
+    if not isinstance(v, graph.Variable):
+        v_var = theano.tensor.as_tensor_variable(v)
+    else:
+        v_var = v
+    return PureOp._get_test_value(v_var)
 
 
 def missing_test_message(msg):

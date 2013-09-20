@@ -380,7 +380,7 @@ if 0:
             delattr(self.fgraph, 'destroy_handler')
             self.fgraph = None
 
-        def on_import(self, fgraph, app):
+        def on_import(self, fgraph, app, reason):
             """Add Apply instance to set which must be computed"""
 
             #if app in self.debug_all_apps: raise ProtocolError("double import")
@@ -410,7 +410,7 @@ if 0:
 
             self.stale_droot = True
 
-        def on_prune(self, fgraph, app):
+        def on_prune(self, fgraph, app, reason):
             """Remove Apply instance from set which must be computed"""
             #if app not in self.debug_all_apps: raise ProtocolError("prune without import")
             #self.debug_all_apps.remove(app)
@@ -765,7 +765,7 @@ class DestroyHandler(toolbox.Bookkeeper):
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
-    def on_import(self, fgraph, app):
+    def on_import(self, fgraph, app, reason):
         """Add Apply instance to set which must be computed"""
 
         if app in self.debug_all_apps: raise ProtocolError("double import")
@@ -795,7 +795,7 @@ class DestroyHandler(toolbox.Bookkeeper):
 
         self.stale_droot = True
 
-    def on_prune(self, fgraph, app):
+    def on_prune(self, fgraph, app, reason):
         """Remove Apply instance from set which must be computed"""
         if app not in self.debug_all_apps: raise ProtocolError("prune without import")
         self.debug_all_apps.remove(app)

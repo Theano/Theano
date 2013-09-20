@@ -80,7 +80,8 @@ def random_lil(shape, dtype, nnz):
     return rval
 
 
-def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
+def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
+                         explicit_zero=False, unsorted_indices=False):
     """Return a tuple containing everything needed to
     perform a test.
 
@@ -97,9 +98,15 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
                 max, when `gap` = (`a`, `b`) it provide a sample
                 from [a, b[. If `None` is used, it provide [0, 1]
                 for float dtypes and [0, 50[ for integer dtypes.
-
+    :param explicit_zero: When True, we add explicit zero in the
+                          returned sparse matrix
+    :param unsorted_indices: when True, we make sure there is
+                             unsorted indices in the returned
+                             sparse matrix.
     :return: (variable, data) where both `variable`
              and `data` are list.
+
+    :note: explicit_zero and unsorted_indices was added in Theano 0.6rc4
     """
 
     if out_dtype is None:
@@ -136,6 +143,19 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None):
                 for k in range(n)]
     data = [getattr(scipy.sparse, format + '_matrix')(_rand(), dtype=out_dtype)
             for k in range(n)]
+    if unsorted_indices:
+        for idx in range(n):
+            d = data[idx]
+            d = d[range(d.shape[0])]
+            assert not d.has_sorted_indices
+            data[idx] = d
+    if explicit_zero:
+        for idx in range(n):
+            assert data[idx].nnz > 1, (
+                "can't make a sparse matrix with explicit 0")
+            d_idx = numpy.random.randint(data[idx].nnz)
+            data[idx].data[d_idx] = 0
+
     #numpy 1.5.0 with scipy 0.9.0 have scipy.sparse.XXX_matrix return
     #typenum 10(ulonglong) instead of 8(uint64) event if they are the same!
     #Theano don't like ulonglong type_num
@@ -837,30 +857,17 @@ class test_csm(unittest.TestCase):
                 z = tensor.ivector()
                 s = tensor.ivector()
                 # Sparse advanced indexing produces unsorted sparse matrices
-                a = sp_types[format]([[1, 2, 1],
-                                      [1, 2, 1],
-                                      [1, 2, 1],
-                                      [1, 2, 1]],
-                                     dtype=dtype)[range(4)]
+                a = sparse_random_inputs(format, (4, 3), out_dtype=dtype,
+                                         unsorted_indices=True)[1][0]
                 # Make sure it's unsorted
                 assert not a.has_sorted_indices
-                a = as_sparse_variable(a)
-
-                f = theano.function([x, y, z, s], tensor.grad(tensor.sum(
-                    dense_from_sparse(a * CSM(format)(x, y, z, s))), x))
-
-                spmat = sp_types[format](random_lil((4, 3), dtype,
-                                                    12))[range(4)]
-                assert not spmat.has_sorted_indices
-
-                res = f(spmat.data, spmat.indices, spmat.indptr,
-                        numpy.asarray(spmat.shape, 'int32'))
-
-                col1 = sp_types[format]((res, spmat.indices, spmat.indptr),
-                                        shape=numpy.asarray(spmat.shape,
-                                                            'int32'))[:, 1].data
-
-                assert numpy.all(col1 == 2)
+                def my_op(x):
+                    y = tensor.constant(a.indices)
+                    z = tensor.constant(a.indptr)
+                    s = tensor.constant(a.shape)
+                    return tensor.sum(
+                        dense_from_sparse(CSM(format)(x, y, z, s) * a))
+                verify_grad_sparse(my_op, [a.data])
 
     def test_csm(self):
         sp_types = {'csc': sp.csc_matrix,
@@ -1232,7 +1239,7 @@ class DotTests(utt.InferShapeTester):
 
         fI = I.flatten()
         data = tensor.ones_like(fI)
-        indptr = tensor.arange(data.shape[0] + 1)
+        indptr = tensor.arange(data.shape[0] + 1, dtype='int32')
 
         m1 = sparse.CSR(data, fI, indptr, (8, size))
         m2 = sparse.dot(m1, C)
@@ -1845,41 +1852,45 @@ class Remove0Tester(utt.InferShapeTester):
             ('csr', scipy.sparse.csr_matrix), ]
 
         for format, matrix_class in configs:
-            # real
-            origin = (numpy.arange(9) + 1).reshape((3, 3))
-            origin.astype(config.floatX)
-            mat = matrix_class(origin).astype(theano.config.floatX)
+            for zero, unsor in [(True, True), (True, False),
+                              (False, True), (False, False)]:
+                (x,), (mat,) = sparse_random_inputs(format, (6, 8),
+                                            out_dtype=config.floatX,
+                                            explicit_zero=zero,
+                                            unsorted_indices=unsor)
+                assert 0 in mat.data or not zero
+                assert not mat.has_sorted_indices or not unsor
 
-            mat[0, 1] = mat[1, 0] = mat[2, 2] = 0
+                # the In thingy has to be there because theano has as rule not
+                # to optimize inputs
+                f = theano.function([theano.In(x, borrow=True, mutable=True)],
+                                    Remove0()(x))
 
-            assert mat.size == 9
-
-            # symbolic
-            x = theano.sparse.SparseType(format=format, dtype=config.floatX)()
-            # the In thingy has to be there because theano has as rule not
-            # to optimize inputs
-            f = theano.function([theano.In(x, borrow=True, mutable=True)],
-                                Remove0()(x))
-
-            # assert optimization local_inplace_remove0 is applied in
-            # modes with optimization
-            if theano.config.mode not in ['FAST_COMPILE']:
-                # list of apply nodes in the optimized graph.
-                nodes = f.maker.fgraph.toposort()
-                # Check there isn't any Remove0 instance not inplace.
-                assert not any([isinstance(node.op, Remove0) and
-                                not node.op.inplace for node in nodes]), (
-                       'Inplace optimization should have been applied')
-                # Check there is at least one Remove0 inplace.
-                assert any([isinstance(node.op, Remove0) and node.op.inplace
-                            for node in nodes])
-            # checking
-            # makes sense to change its name
-            target = mat
-            result = f(mat)
-            mat.eliminate_zeros()
-            msg = 'Matrices sizes differ. Have zeros been removed ?'
-            assert result.size == target.size, msg
+                # assert optimization local_inplace_remove0 is applied in
+                # modes with optimization
+                if theano.config.mode not in ['FAST_COMPILE']:
+                    # list of apply nodes in the optimized graph.
+                    nodes = f.maker.fgraph.toposort()
+                    # Check there isn't any Remove0 instance not inplace.
+                    assert not any([isinstance(node.op, Remove0) and
+                                    not node.op.inplace for node in nodes]), (
+                           'Inplace optimization should have been applied')
+                    # Check there is at least one Remove0 inplace.
+                    assert any([isinstance(node.op, Remove0) and node.op.inplace
+                                for node in nodes])
+                # checking
+                # makes sense to change its name
+                target = mat
+                result = f(mat)
+                mat.eliminate_zeros()
+                msg = 'Matrices sizes differ. Have zeros been removed ?'
+                assert result.size == target.size, msg
+                if unsor:
+                    assert not result.has_sorted_indices
+                    assert not target.has_sorted_indices
+                else:
+                    assert result.has_sorted_indices
+                    assert target.has_sorted_indices
 
     def test_infer_shape(self):
         mat = (numpy.arange(12) + 1).reshape((4, 3))

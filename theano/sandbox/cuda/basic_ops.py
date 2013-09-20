@@ -5,7 +5,7 @@ import sys
 import numpy
 
 import theano
-from theano import Type, Apply
+from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
@@ -767,6 +767,10 @@ class GpuCAReduce(GpuOp):
             pattern = ''.join(str(c) for c in self.reduce_mask)
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
+        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
+        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
+                                for i in range(node.inputs[0].ndim)])
+
         print >> sio, """
             if (verbose)
                 printf("running kernel_reduce_%(pattern)s_%(name)s\\n");
@@ -774,11 +778,11 @@ class GpuCAReduce(GpuOp):
             if (verbose>1)
                 printf("n_threads.x=%%d, n_threads.y=%%d, n_threads.z=%%d,"
                        " nb_threads=%%d, n_blocks.x=%%d, n_blocks.y=%%d,"
-                       " nb_block=%%d, n_shared=%%d\\n",
+                       " nb_block=%%d, n_shared=%%d, %(shapes_format)s\\n",
                                   n_threads.x,n_threads.y,n_threads.z,
                                   n_threads.x*n_threads.y*n_threads.z,
                                   n_blocks.x,n_blocks.y,
-                                  n_blocks.x*n_blocks.y, n_shared);
+                                  n_blocks.x*n_blocks.y, n_shared, %(shapes_data)s);
             kernel_reduce_%(pattern)s_%(name)s<<<n_blocks, n_threads, n_shared>>>(
             """ % locals()
         for i in xrange(ndim):
@@ -800,9 +804,6 @@ class GpuCAReduce(GpuOp):
                     ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
             """ % locals()
 
-        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
-                                for i in range(node.inputs[0].ndim)])
         print >> sio, """
                     );
             CNDA_THREAD_SYNC;
@@ -1571,6 +1572,9 @@ class GpuCAReduce(GpuOp):
             }
             n_threads.z -= 1;
 
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
+
             dim3 n_blocks(1,1,1);
             %(makecall)s
         }
@@ -1601,7 +1605,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [7]  # the version corresponding to the c code in this Op
+        version = [8]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -2662,10 +2666,10 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                       int x_row = d_indices_arr[i];
                       int y_row = i;
                       atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
-                  } 
+                  }
              }
              return;
-        }      
+        }
 
 	void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
 	{
@@ -2940,6 +2944,153 @@ class GpuJoin(tensor.Join, GpuOp):
             curpos += curlen
 
         out[0] = rval
+
+    def c_code(self, node, name, inputs, out_, sub):
+        nd = node.inputs[1].ndim
+        if not all(i.ndim == nd for i in node.inputs[2:]):
+            # all inputs ndarray need to have the same number of dimensions
+            raise NotImplementedError()
+        axis = inputs[0]
+        n_cndas = len(inputs[1:])
+        input_1 = inputs[1]
+        fail = sub['fail']
+        out = out_[0]
+
+        # getting the shapes of all the involved tensors (input[0]+out)
+        str = """
+        const int axis = PyInt_AsLong((PyObject*)%(axis)s);
+        const int nd = %(nd)s;
+        int shape_out[nd];
+        int width_sum = 0;
+        int errorcode;
+        int sum = 0;
+        PyObject *slice_tuple = NULL;
+        PyObject *section_slice = NULL;
+        PyObject *full_slice = NULL;
+        PyObject *out_sub = NULL;
+        PyObject *start, *stop;
+        start = NULL;
+        stop = NULL;
+
+        """ % locals()
+
+        # getting the shapes of all the involved tensors (input[1:])
+        # + check: all input tensors have same shape as final out
+        # execept for "axis" dimension
+        # shape_%(cdna)s[nd] is initialized before, to prevent following
+        # error: jump to label __label_9 crosses initialization of
+        # shape_%(cdna)s[nd]
+        for i, cdna in enumerate(gof.utils.uniq(inputs[1:])):
+            str += """
+            int shape_%(cdna)s[nd];
+            """ % locals()
+        str += """
+        if(-1 == axis && PyErr_Occurred()){
+            %(fail)s;
+        }
+        full_slice = PySlice_New(NULL, NULL, NULL);
+        if(full_slice == NULL){
+            %(fail)s;
+        }
+
+        for(int i = 0; i<nd; i+=1)
+        {
+            shape_%(input_1)s[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
+            shape_out[i] = shape_%(input_1)s[i];
+        }
+        """ % locals()
+        for i, cdna in enumerate(gof.utils.uniq(inputs[2:])):
+            str += """
+            for(int i = 0; i<nd; i+=1)
+            {
+                shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
+                if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
+                {
+                    PyErr_Format(
+                        PyExc_ValueError,
+                        "GpuJoin: Wrong inputs for input %%d related"
+                        " to inputs 0.!",
+                        i);
+                    %(fail)s;
+                }
+            }
+            """ % locals()
+
+        # computing the new shape for the out tensors
+        for i, cdna in enumerate(inputs[1:]):
+            str += "\t\twidth_sum += CudaNdarray_HOST_DIMS(%(cdna)s)[axis];\n" % locals()
+        str += "\t\tshape_out[axis] = width_sum;\n"
+
+        # preparing the output array + init of the necessary variables
+        # for the data transfer
+        str += """
+        if (CudaNdarray_prep_output(&%(out)s, nd, shape_out))
+        {
+            %(fail)s;
+        }
+        """ % locals()
+        # start copying the data into the new out tensors
+        for i, cdna in enumerate(inputs[1:]):
+            str += """
+            sum += shape_%(cdna)s[axis];
+            stop = PyInt_FromLong(sum);
+            slice_tuple = PyTuple_New(nd);
+            if(slice_tuple == NULL){
+                %(fail)s;
+            }
+            section_slice = PySlice_New(start, stop, NULL);
+            if(section_slice == NULL){
+                %(fail)s;
+            }
+            for(int i=0; i<nd; i++)
+            {
+                if(i!=axis)
+                {
+                    Py_INCREF(full_slice);
+                    PyTuple_SetItem(slice_tuple, i, full_slice);
+                }
+                else
+                {
+                    Py_INCREF(section_slice);
+                    PyTuple_SetItem(slice_tuple, i, section_slice);
+                }
+            }
+            out_sub = CudaNdarray_Subscript((PyObject*)%(out)s, slice_tuple);
+            if(out_sub == NULL){
+                Py_XDECREF(start);
+                Py_XDECREF(stop);
+                Py_XDECREF(slice_tuple);
+                Py_XDECREF(out_sub);
+                Py_XDECREF(%(out)s);
+                %(fail)s;
+            }
+            Py_CLEAR(slice_tuple);
+            Py_CLEAR(section_slice);
+
+            errorcode = CudaNdarray_CopyFromCudaNdarray(
+                (CudaNdarray*)out_sub, %(cdna)s);
+            if(errorcode != 0)
+            {
+                Py_XDECREF(start);
+                Py_XDECREF(stop);
+                Py_XDECREF(out_sub);
+                Py_XDECREF(%(out)s);
+                %(fail)s;
+            }
+            Py_XDECREF(out_sub);
+            Py_XDECREF(start);
+            start = stop;
+            stop = NULL;
+            """ % locals()
+
+        str += """
+            Py_XDECREF(start);
+            Py_XDECREF(stop);
+        """
+        return str
+
+    def c_code_cache_version(self):
+        return (5,)
 
 gpu_join = GpuJoin()
 

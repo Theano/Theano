@@ -9,7 +9,7 @@ import numpy
 
 import theano
 from theano import scalar as scal
-from theano import tensor, gof
+from theano import config, tensor, gof
 import theano.ifelse
 
 from theano.compile import optdb
@@ -17,7 +17,13 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
                         EquilibriumOptimizer)
 from theano.gof.python25 import all, any
-from theano.sandbox.cuda.basic_ops import *
+from theano.sandbox.cuda.basic_ops import (
+    device_properties, gpu_eye,
+    gpu_from_host, host_from_gpu, HostFromGpu,
+    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
+    GpuSubtensor, GpuAdvancedSubtensor1,
+    GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
@@ -102,7 +108,7 @@ class InputToGpuOptimizer(Optimizer):
                 if new_input.type == input.type:
                     fgraph.replace_validate(input, new_input,
                                          "InputToGpuOptimizer")
-            except TypeError, e:
+            except TypeError:
                 #as we currently only support float32, this can fail.
                 #Using try except make that we won't need
                 pass
@@ -662,9 +668,6 @@ def local_gpu_careduce(node):
                                 "WARNING: local_gpu_careduce got type wrong"
                             return None
 
-                        raise Exception(
-                            "GpuCAReduce does not yet implement this pattern:",
-                            pattern)
     return False
 
 
@@ -1217,7 +1220,8 @@ def get_device_type_sizes():
     int_size = 8
     try:
 
-        t = cuda_ndarray.cuda_ndarray.ptr_int_size()
+        cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
+        t = cuda_ndarray.ptr_int_size()
         gpu_ptr_size, cpu_ptr_size, int_size, gpu_int_size = t
         assert int_size == gpu_int_size
         del gpu_int_size
@@ -1337,6 +1341,8 @@ def local_gpualloc(node):
                 for c, idx in node.outputs[0].clients]):
             # if the client is a subtensor with input on gpu or alloc
             replace = True
+        if replace and node.inputs[0].dtype != 'float32':
+            replace = False
     if replace:
         val = node.inputs[0]
         shp = node.inputs[1:]

@@ -1,5 +1,3 @@
-import copy
-import sys
 import time
 import unittest
 
@@ -9,7 +7,6 @@ from theano import tensor
 import numpy
 import theano
 import theano.tensor as T
-from numpy.testing.noseclasses import KnownFailureTest
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -117,7 +114,7 @@ def test_careduce():
                                ((4100,4,3,2),[1,3]),((4,4100,3,2),[1,3]),((4,3,4100,2),[1,3]),((4,3,2,4100),[1,3]),#0101
                                ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
                                ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
-                               ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),#1111
+                               ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,3,3), [0,1,2,3]),#1111
 
 
                                #test pattern implemented by reshape
@@ -200,7 +197,9 @@ def test_careduce():
         for shape, pattern in [#((5,),[0]),
                                ((5,4),[0,1]),((5,4),[0]),
                                ((5,4,3),[0]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[0,1,2]),
-                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),
+                               ((128,1,3,3),[0,1,2,3]),
+        ]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
 
@@ -232,7 +231,9 @@ def test_careduce():
                                ((5,4),[0,1]),((5,4),[0]),
                                ((5,4,3),[0]),((5,4,3),[0,1]),
                                ((5,4,3),[2]),((5,4,3),[0,1,2]),
-                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3])]:
+                               ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),
+                               ((128,1,3,3),[0,1,2,3]),
+        ]:
             op = careduce_op(scalar_op, axis=pattern)
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
 
@@ -915,8 +916,9 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         self.shared = cuda.shared_constructor
 
 
+import theano.tensor.tests.test_subtensor
 # This is to don't duplicate test.
-class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
+class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
 
     # This prevents nose from printing method docstrings instead of method
     # names
@@ -936,7 +938,7 @@ class T_subtensor(theano.tensor.tests.test_basic.T_subtensor):
            cuda.GpuAdvancedSubtensor1, cuda.GpuAdvancedIncSubtensor1)
 
     def __init__(self, name):
-        return super(theano.tensor.tests.test_basic.T_subtensor,
+        return super(theano.tensor.tests.test_subtensor.T_subtensor,
                      self).__init__(name)
 
     def test_adv_sub1_fast(self):
@@ -1255,7 +1257,4 @@ def speed_adv_sub1():
 
 if __name__ == '__main__':
     test_many_arg_elemwise()
-    test_gpujoin_twomatrices_joincolumns()
     test_gpujoin_assert_cndas()
-    test_gpujoin_preserves_broadcasting()
-    test_gpujoin_twomatrices_badshapes()

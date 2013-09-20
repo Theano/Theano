@@ -37,6 +37,7 @@ def test_local_csm_properties_csm():
 
 
 def test_local_csm_grad_c():
+    raise SkipTest("Opt disabled as it don't support unsorted indices")
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
     data = tensor.vector()
