@@ -222,7 +222,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return """
         static const unsigned int %(name)s_ax[] = {%(shuffle)s};
 
-        static int %(name)s_f(GpuArrayObject *res, GpuArrayObject *a) {
+        static int %(name)s_f(PyGpuArrayObject *res, PyGpuArrayObject *a) {
             GpuArray tmp;
             size_t sh[%(nd_out)s];
             unsigned int i;
@@ -258,7 +258,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
+        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
         if (%(out)s == NULL) {%(fail)s}
 
         if (%(name)s_f(%(out)s, %(inp)s)) {
@@ -272,12 +272,12 @@ class GpuDimShuffle(HideC, DimShuffle):
                 PyObject *%(name)s_tmp;
                 %(name)s_tmp = PyObject_CallMethod((PyObject *)%(out)s, "copy", NULL);
                 if (%(name)s_tmp == NULL) { %(fail)s }
-                if (!PyObject_IsInstance(%(name)s_tmp, (PyObject *)&GpuArrayType)) {
+                if (!PyObject_IsInstance(%(name)s_tmp, (PyObject *)&PyGpuArrayType)) {
                     PyErr_SetString(PyExc_TypeError, "not a GpuArray out of the copy");
                     %(fail)s
                 }
                 Py_DECREF(%(out)s);
-                %(out)s = (GpuArrayObject *)%(name)s_tmp;
+                %(out)s = (PyGpuArrayObject *)%(name)s_tmp;
             }
             """ % d
         return process

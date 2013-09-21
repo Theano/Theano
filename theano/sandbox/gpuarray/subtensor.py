@@ -77,7 +77,7 @@ class GpuSubtensor(HideC, Subtensor):
             // Try to reuse the python object.
             GpuArray_clear(&%(out)s->ga);
         } else {
-            %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context, Py_None);
+            %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context, Py_None);
         }
         if (!%(out)s) { %(fail)s }
         int %(name)s_err;
