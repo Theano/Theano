@@ -138,7 +138,7 @@ class GpuArrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
     def c_declare(self, name, sub):
-        return "GpuArrayObject *%s;" % (name,)
+        return "PyGpuArrayObject *%s;" % (name,)
 
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)
@@ -153,12 +153,12 @@ class GpuArrayType(Type):
         }
         /* First check if we are the base type exactly (the most common case),
            then do the full subclass check if needed. */
-        if (py_%(name)s->ob_type != &GpuArrayType &&
-            !PyObject_TypeCheck(py_%(name)s, &GpuArrayType)) {
+        if (py_%(name)s->ob_type != &PyGpuArrayType &&
+            !PyObject_TypeCheck(py_%(name)s, &PyGpuArrayType)) {
             PyErr_SetString(PyExc_ValueError, "expected a GpuArray");
             %(fail)s
         }
-        %(name)s = (GpuArrayObject *)py_%(name)s;
+        %(name)s = (PyGpuArrayObject *)py_%(name)s;
         Py_INCREF(%(name)s);
         """ % {'name': name, 'fail': sub['fail']}
 
@@ -276,7 +276,7 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
-    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
+    %(oname)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
     if (!%(oname)s) { %(fail)s }
     int %(iname)s_err;
     %(iname)s_err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
