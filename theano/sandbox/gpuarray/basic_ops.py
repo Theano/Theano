@@ -423,7 +423,7 @@ class CudaFromGpu(Op):
             %(fail)s
         }
 
-        if (GpuArray_sync(%(inp)s->ga.nd) != GA_NO_ERROR) {
+        if (GpuArray_sync(&%(inp)s->ga) != GA_NO_ERROR) {
             PyErr_SetString(PyExc_RuntimeError, "Could not sync GpuArray");
             %(fail)s
         }
