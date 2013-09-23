@@ -56,7 +56,8 @@ def op_lifter(OP):
                     all([c != 'output' and c.op == gpu_from_host
                          for c, idx in node.outputs[0].clients])):
                     new_op = maker(node)
-                    if new_op:
+                    # This is needed as sometimes new_op inherit from OP.
+                    if new_op and new_op != node.op:
                         return [host_from_gpu(new_op(*node.inputs))]
             return False
         local_opt.__name__ = maker.__name__

@@ -299,7 +299,7 @@ class GpuFromCuda(Op):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
+        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
         if (%(out)s == NULL) {
             free(%(name)sdims);
             free(%(name)sstr);
@@ -423,7 +423,7 @@ class CudaFromGpu(Op):
             %(fail)s
         }
 
-        if (GpuArray_sync(%(inp)s->ga.nd) != GA_NO_ERROR) {
+        if (GpuArray_sync(&%(inp)s->ga) != GA_NO_ERROR) {
             PyErr_SetString(PyExc_RuntimeError, "Could not sync GpuArray");
             %(fail)s
         }
