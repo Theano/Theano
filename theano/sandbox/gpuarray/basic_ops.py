@@ -299,7 +299,7 @@ class GpuFromCuda(Op):
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, pygpu_default_context(), Py_None);
+        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
         if (%(out)s == NULL) {
             free(%(name)sdims);
             free(%(name)sstr);
