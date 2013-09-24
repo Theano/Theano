@@ -180,7 +180,7 @@ def local_gpua_careduce(node):
                        dtype=getattr(node.op, 'dtype', None),
                        acc_dtype=getattr(node.op, 'acc_dtype', None))
 
-@register_opt()
+#@register_opt()
 @op_lifter(tensor.blas.Gemv)
 def local_gpua_gemv(node):
     return GpuGemv(inplace=node.op.inplace)
