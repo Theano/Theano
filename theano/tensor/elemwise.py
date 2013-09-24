@@ -693,7 +693,7 @@ class Elemwise(Op):
 
         #sum out the broadcasted dimensions
         for i, ipt in enumerate(inputs):
-            if rval[i] is None:
+            if isinstance(rval[i].type, (NullType, DisconnectedType)):
                 continue
 
             # list of all the dimensions that are broadcastable for input[i] so
