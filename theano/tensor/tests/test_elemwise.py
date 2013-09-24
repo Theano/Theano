@@ -197,6 +197,14 @@ class test_Broadcast(unittest.TestCase):
         f(xv, yv)
         assert (xv == yv).all()
 
+    def test_fill_grad(self):
+        # Fix bug reported at
+        # https://groups.google.com/d/topic/theano-users/nQshB8gUA6k/discussion
+        x = TensorType(config.floatX, [0, 1, 0])('x')
+        y = TensorType(config.floatX, [0, 1, 0])('y')
+        e = tensor.second(x, y)
+        theano.grad(e.sum(), y)
+
     def test_weird_strides(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
