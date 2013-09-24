@@ -188,7 +188,8 @@ class GpuArrayType(Type):
         # We need arrayobject for the PyArrayDescr struct def
         # (even if we just use a pointer to it in a function def)
         return ['<compyte/array.h>', '<compyte/kernel.h>', '<compyte/error.h>',
-                '<numpy/arrayobject.h>', '<gpuarray_api.h>']
+                '<compyte/buffer_blas.h>', '<numpy/arrayobject.h>',
+                '<gpuarray_api.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
