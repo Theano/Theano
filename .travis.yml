@@ -35,7 +35,7 @@ script:
   - df -h
   - ulimit -a
   - echo $PART
-  - theano-nose $PART
+  - theano-nose -v $PART
 
 
 #after_script:

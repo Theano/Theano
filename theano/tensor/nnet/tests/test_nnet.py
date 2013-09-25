@@ -8,9 +8,8 @@ from theano import config
 from theano import tensor as T
 from theano import tensor
 from theano import gof
-from theano.gof.python25 import all
 from theano.tests import unittest_tools as utt
-from theano import printing, pprint
+from theano import printing
 from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_categorical_1hot,
                                 crossentropy_softmax_1hot,
@@ -1259,6 +1258,20 @@ class Test_softmax_opt:
     def test_basic(self):
         c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0, 'x')
+
+        # test that function contains softmax and no div.
+        f = theano.function([c], p_y, mode=self.mode)
+        f_ops = [n.op for n in f.maker.fgraph.toposort()]
+        #print '--- f ='
+        #printing.debugprint(f)
+        #print '==='
+        assert len(f_ops) == 1
+        assert softmax in f_ops
+        f(self.rng.rand(3, 4).astype(config.floatX))
+
+    def test_basic_keepdims(self):
+        c = T.matrix()
+        p_y = T.exp(c) / T.exp(c).sum(axis=1, keepdims=True)
 
         # test that function contains softmax and no div.
         f = theano.function([c], p_y, mode=self.mode)
