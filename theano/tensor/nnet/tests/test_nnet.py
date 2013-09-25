@@ -8,9 +8,8 @@ from theano import config
 from theano import tensor as T
 from theano import tensor
 from theano import gof
-from theano.gof.python25 import all
 from theano.tests import unittest_tools as utt
-from theano import printing, pprint
+from theano import printing
 from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_categorical_1hot,
                                 crossentropy_softmax_1hot,
