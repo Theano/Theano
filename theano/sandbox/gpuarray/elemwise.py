@@ -88,8 +88,8 @@ class GpuElemwise(HideC, Elemwise):
         except MethodNotDefined:
             pass
 
-        if (support_code != "#define THEANO_MACRO_MOD(x,y) (x % y)" and
-            support_code != ""):
+        if (support_code.strip() != "#define THEANO_MACRO_MOD(x,y) (x % y)" and
+            support_code.strip() != ""):
             # The macro is fine, the C++ struct is not.
             raise SupportCodeError(support_code)
 
