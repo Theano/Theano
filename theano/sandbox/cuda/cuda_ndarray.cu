@@ -64,6 +64,14 @@ void * device_malloc(size_t size)
 
 void * device_malloc(size_t size, int verbose)
 {
+    #if PRECHECK_ERROR
+        cudaThreadSynchronize();
+        cudaError_t prevError = cudaGetLastError();
+        if (cudaSuccess != prevError)
+        {
+            fprintf(stderr, "Error existed before calling device_malloc.\n");
+        }
+    #endif
     void * rval=NULL;
     cudaError_t err = cudaMalloc(&rval, size);
     if (cudaSuccess != err)
@@ -142,6 +150,14 @@ void * device_malloc(size_t size, int verbose)
 
 int device_free(void *ptr)
 {
+    #if PRECHECK_ERROR
+        cudaThreadSynchronize();
+        cudaError_t prevError = cudaGetLastError();
+        if (cudaSuccess != prevError)
+        {
+            fprintf(stderr, "Error existed before calling device_free.\n");
+        }
+    #endif
     #if PRINT_FREE_MALLOC
         size_t free = 0, total = 0;
         cudaError_t err2 = cudaMemGetInfo(&free, &total);
@@ -151,17 +167,23 @@ int device_free(void *ptr)
                     "Error when tring to find the memory information"
                     " on the GPU: %s\n", cudaGetErrorString(err2));
         }
-        fprintf(stderr, "device_free %p"
-                " Driver report %d bytes free and %d bytes total \n",
-                ptr, free, total);
-
-    #endif
-    #if PRECHECK_ERROR
-        cudaError_t prevError = cudaGetLastError();
-        if (cudaSuccess != prevError)
+        #if COMPUTE_GPU_MEM_USED
         {
-            fprintf(stderr, "Error existed before calling device_free.\n");
+            int i = 0;
+            for(;i<TABLE_SIZE;i++)
+                if(_alloc_size_table[i].ptr==ptr){
+                    break;
+                }
+            assert(i<TABLE_SIZE);
+            fprintf(stderr, "device_free %p of size %d."
+                    " Driver report %d bytes free and %d bytes total \n",
+                    ptr, _alloc_size_table[i].size, free, total);
         }
+        #else
+            fprintf(stderr, "device_free %p."
+                    " Driver report %d bytes free and %d bytes total \n",
+                    ptr, free, total);
+        #endif
     #endif
 
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
@@ -190,6 +212,7 @@ int device_free(void *ptr)
                     " on the GPU: %s\n", cudaGetErrorString(err2));
         }
         #if COMPUTE_GPU_MEM_USED
+        {
             int i = 0;
             for(;i<TABLE_SIZE;i++)
                 if(_alloc_size_table[i].ptr==ptr){
@@ -201,6 +224,7 @@ int device_free(void *ptr)
                     " Driver report %d bytes free and %d bytes total \n",
                     ptr, cudaGetErrorString(err),
                     _alloc_size_table[i].size, _allocated_size, free, total);
+        }
         #else
             fprintf(stderr,
                     "Error freeing device pointer %p (%s)."
