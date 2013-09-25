@@ -1270,6 +1270,20 @@ class Test_softmax_opt:
         assert softmax in f_ops
         f(self.rng.rand(3, 4).astype(config.floatX))
 
+    def test_basic_keepdims(self):
+        c = T.matrix()
+        p_y = T.exp(c) / T.exp(c).sum(axis=1, keepdims=True)
+
+        # test that function contains softmax and no div.
+        f = theano.function([c], p_y, mode=self.mode)
+        f_ops = [n.op for n in f.maker.fgraph.toposort()]
+        #print '--- f ='
+        #printing.debugprint(f)
+        #print '==='
+        assert len(f_ops) == 1
+        assert softmax in f_ops
+        f(self.rng.rand(3, 4).astype(config.floatX))
+
     def test_grad(self):
         c = T.matrix()
         p_y = T.exp(c) / T.exp(c).sum(axis=1).dimshuffle(0, 'x')
