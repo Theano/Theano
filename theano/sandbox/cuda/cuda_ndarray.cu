@@ -69,7 +69,10 @@ void * device_malloc(size_t size, int verbose)
         cudaError_t prevError = cudaGetLastError();
         if (cudaSuccess != prevError)
         {
-            fprintf(stderr, "Error existed before calling device_malloc.\n");
+            fprintf(stderr,
+                    "Error existed before calling device_malloc. %s\n",
+                    cudaGetErrorString(prevError)
+                    );
         }
     #endif
     void * rval=NULL;
@@ -155,7 +158,10 @@ int device_free(void *ptr)
         cudaError_t prevError = cudaGetLastError();
         if (cudaSuccess != prevError)
         {
-            fprintf(stderr, "Error existed before calling device_free.\n");
+            fprintf(stderr,
+                    "Error existed before calling device_malloc. %s\n",
+                    cudaGetErrorString(prevError)
+                    );
         }
     #endif
     #if PRINT_FREE_MALLOC
