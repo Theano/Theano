@@ -4553,7 +4553,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         # worthwhile if the summation axis doesn't line up with a
         # contiguous dimension)
 
-        if not isinstance(node.op, OP):
+        if type(node.op) is not OP:
             return False
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
