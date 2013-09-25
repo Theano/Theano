@@ -963,6 +963,7 @@ class Eigh(Eig):
     _numop = staticmethod(numpy.linalg.eigh)
 
     def __init__(self, UPLO='L'):
+        assert UPLO in ['L', 'U']
         self.UPLO = UPLO
 
     def __str__(self):
@@ -1031,6 +1032,7 @@ class EighGrad(Op):
 
     """
     def __init__(self, UPLO='L'):
+        assert UPLO in ['L', 'U']
         self.UPLO = UPLO
         if UPLO == 'L':
             self.tri0 = numpy.tril
