@@ -2912,7 +2912,7 @@ class Composite(ScalarOp):
         rval = []
         for subnode in self.fgraph.toposort():
             try:
-                rval.append(subnode.op.c_support_code())
+                rval.append(subnode.op.c_support_code().strip())
             except gof.utils.MethodNotDefined:
                 pass
         # remove duplicate code blocks
