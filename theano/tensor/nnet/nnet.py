@@ -360,11 +360,8 @@ class Softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, = input_storage
-        sm = numpy.zeros_like(x)
-        for i in xrange(sm.shape[0]):
-            row = x[i]
-            sm[i] = numpy.exp(row - numpy.max(row))
-            sm[i] /= numpy.sum(sm[i])
+        e_x = numpy.exp(x - x.max(axis=1)[:, None])
+        sm = e_x / e_x.sum(axis=1)[:, None]
         output_storage[0][0] = sm
 
     def grad(self, inp, grads):
