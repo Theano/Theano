@@ -239,6 +239,14 @@ int device_free(void *ptr)
                     ptr,
                     cudaGetErrorString(err), free, total);
         #endif
+        if (NULL == PyErr_Occurred()){
+            fprintf(stderr,
+                    "device_free: cudaFree() returned an error, but there is already an"
+                    " Python error set. This happen during the clean up when there is a"
+                    " first error and the CUDA driver is in a so bad state that it don't"
+                    " work anymore. We keep the previous error set to help debugging it.");
+            return -1;
+        }
         PyErr_Format(PyExc_MemoryError,
                 "error freeing device pointer %p (%s)",
                 ptr,
