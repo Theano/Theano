@@ -21,7 +21,8 @@
 //If true, we do error checking at the start of functions, to make sure there
 //is not a pre-existing error when the function is called.
 //You probably need to set the environment variable
-//CUDA_LAUNCH_BLOCKING=1
+//CUDA_LAUNCH_BLOCKING=1, and/or modify the CNDA_THREAD_SYNC
+//preprocessor macro in cuda_ndarray.cuh
 //if you want this to work.
 #define PRECHECK_ERROR 0
 
@@ -159,7 +160,7 @@ int device_free(void *ptr)
         if (cudaSuccess != prevError)
         {
             fprintf(stderr,
-                    "Error existed before calling device_malloc. %s\n",
+                    "Error existed before calling device_free. %s\n",
                     cudaGetErrorString(prevError)
                     );
         }
