@@ -522,6 +522,6 @@ class GpuAlloc(HideC, Alloc):
         return code
 
     def c_code_cache_version(self):
-        (0,)
+        return (0,)
 
 gpu_alloc = GpuAlloc()
