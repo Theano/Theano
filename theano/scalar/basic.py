@@ -1244,8 +1244,10 @@ class Maximum(BinaryScalarOp):
                 '((%(x)s)>=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
-        assert gz.type not in complex_types
-        # max is not defined for complex_types
+        if gz.type in complex_types:
+            # max is currently defined for complex_types,
+            # but the gradient for complex is not.
+            raise NotImplementedError()
 
         output = self(x, y)
 
@@ -1275,8 +1277,10 @@ class Minimum(BinaryScalarOp):
                 '((%(x)s)<=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
-        assert gz.type not in complex_types
-        # max is not defined for complex_types
+        if gz.type in complex_types:
+            # min is currently defined for complex_types,
+            # but the gradient for complex is not.
+            raise NotImplementedError()
 
         output = minimum(x, y)
         if output.type in discrete_types:
