@@ -3855,6 +3855,22 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         return -1;
     }
 
+#if PRECHECK_ERROR
+    cublasStatus prevErr = cublasGetError();
+    if (CUBLAS_STATUS_SUCCESS != prevErr)
+    {
+        //I don't know why, but I need to remove the cuda error too.
+        //Otherwise, the clean up before raising the Python error cause error too!
+        //So we don't see this python error.
+        fprintf(stderr,
+                "CudaNdarray_sgemm: Prev cublas error %s",
+                cublasGetErrorString(prevErr));
+        PyErr_Format(PyExc_RuntimeError,
+                     "CudaNdarray_sgemm: Prev cublas error %s",
+                     cublasGetErrorString(prevErr));
+        return -1;
+    }
+#endif
     // We must allow dimensions to be zeros.
     if ((CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(B)[0])
             || (CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(C)[0])
@@ -4012,8 +4028,14 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     if (CUBLAS_STATUS_SUCCESS != err)
     {
         PyErr_Format(PyExc_RuntimeError,
-                     "cublasSgemm failed (%i)",
-                     err);
+                     "cublasSgemm failed (%i) %s\n"
+                     " unit=%h N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%f, b=%f, c=%f"
+                     " sa_0=%d, sa_1=%d, sb_0=%d, sb_1=%d, sc_0=%d, sc_1=%d",
+                     err,  cublasGetErrorString(err),
+                     unit, N, CudaNdarray_HOST_DIMS(C)[0], CudaNdarray_HOST_DIMS(C)[1],
+                     CudaNdarray_HOST_DIMS(A)[0], CudaNdarray_HOST_DIMS(A)[1],
+                     alpha, beta, a, b, c, sa_0, sa_1, sb_0, sb_1, sc_0, sc_1);
+
         return -1;
     }
     return 0;

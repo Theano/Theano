@@ -530,6 +530,25 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims);
 
+DllExport const char* cublasGetErrorString(cublasStatus err){
+    if(CUBLAS_STATUS_SUCCESS == err)
+        return "success";
+    else if(CUBLAS_STATUS_NOT_INITIALIZED == err)
+        return "the library was not initialized";
+    else if(CUBLAS_STATUS_ALLOC_FAILED == err)
+        return "the resource allocation failed";
+    else if(CUBLAS_STATUS_INVALID_VALUE == err)
+        return "the parameters n<0 or incx,incy=0";
+    else if(CUBLAS_STATUS_MAPPING_ERROR == err)
+        return "an access to GPU memory space failed";
+    else if(CUBLAS_STATUS_EXECUTION_FAILED == err)
+        return "the function failed to launch on the GPU";
+    else if(CUBLAS_STATUS_INTERNAL_ERROR == err)
+        return "an internal operation failed";
+    else
+        return "unknow code";
+}
+
 #endif
 /*
   Local Variables:
