@@ -1250,8 +1250,10 @@ class CAReduce(Op):
         # See <http://projects.scipy.org/numpy/ticket/2235>.
         elif isinstance(axis, (int, numpy.integer)):
             self.axis = (axis,)
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            self.axis = (int(axis),)
         else:
-            self.axis = list(set(axis))
+            self.axis = list(set(int(a) for a in axis))
             self.axis.sort()
             self.axis = tuple(self.axis)
 
