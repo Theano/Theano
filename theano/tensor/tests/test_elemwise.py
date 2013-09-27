@@ -24,6 +24,7 @@ def FunctionGraph(i, o):
 
 
 class test_DimShuffle(unittest_tools.InferShapeTester):
+    op = DimShuffle
 
     def with_linker(self, linker):
         for xsh, shuffle, zsh in [((2, 3), (1, 'x', 0), (3, 1, 2)),
@@ -38,12 +39,12 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                                   ((1,), ('x', 'x'), (1, 1))]:
             ib = [(entry == 1) for entry in xsh]
             x = TensorType('float64', ib)('x')
-            e = DimShuffle(ib, shuffle)(x)
+            e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
             #test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
-            e = DimShuffle(ib, shuffle)(x)
+            e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x], [e.
                 shape])).make_function()
             assert all(f(numpy.ones(xsh))) == all(zsh)
@@ -51,12 +52,12 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         # Test when we drop a axis that is not broadcastable
         ib = [False, True, False]
         x = TensorType('float64', ib)('x')
-        self.assertRaises(ValueError, DimShuffle, ib, shuffle)
+        self.assertRaises(ValueError, self.op, ib, shuffle)
 
         # Test when we drop a axis that don't have shape 1
         ib = [True, True, False]
         x = TensorType('float64', ib)('x')
-        e = DimShuffle(ib, (1, 2))(x)
+        e = self.op(ib, (1, 2))(x)
         f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
         self.assertRaises(TypeError, f, numpy.ones((2, 1, 4)))
 
@@ -89,8 +90,8 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             adtens = TensorType('float64', ib)('x')
             adtens_val = numpy.ones(xsh)
             self._compile_and_check([adtens],
-                                    [DimShuffle(ib, shuffle)(adtens)],
-                                    [adtens_val], DimShuffle,
+                                    [self.op(ib, shuffle)(adtens)],
+                                    [adtens_val], self.op,
                                     warn=False)
 
     def test_too_big_rank(self):
@@ -137,10 +138,23 @@ class test_reduce_axes(unittest.TestCase):
             m = x.var(a)
 
 class test_Broadcast(unittest.TestCase):
+    # this is to allow other types to reuse this class to test their ops
+    type = TensorType
+    op = Elemwise
+
+    ctype = TensorType
+    cop = Elemwise
+
+    def rand_val(self, shp):
+        return numpy.asarray(numpy.random.rand(*shp))
+
+    def rand_cval(self, shp):
+        return numpy.asarray(numpy.random.rand(*shp))
+
     def setUp(self):
         unittest_tools.seed_rng()
 
-    def with_linker(self, linker):
+    def with_linker(self, linker, op, type, rand_val):
         for xsh, ysh in [((3, 5), (3, 5)),
                          ((3, 5), (1, 5)),
                          ((3, 5), (3, 1)),
@@ -150,12 +164,12 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-            y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-            e = Elemwise(scalar.add)(x, y)
+            x = type('float64', [(entry == 1) for entry in xsh])('x')
+            y = type('float64', [(entry == 1) for entry in ysh])('y')
+            e = op(scalar.add)(x, y)
             f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
-            xv = numpy.asarray(numpy.random.rand(*xsh))
-            yv = numpy.asarray(numpy.random.rand(*ysh))
+            xv = rand_val(xsh)
+            yv = rand_val(ysh)
             zv = xv + yv
 
             self.assertTrue((f(xv, yv) == zv).all())
@@ -163,14 +177,14 @@ class test_Broadcast(unittest.TestCase):
             #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
-                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-                y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-                e = Elemwise(scalar.add)(x, y)
+                x = type('float64', [(entry == 1) for entry in xsh])('x')
+                y = type('float64', [(entry == 1) for entry in ysh])('y')
+                e = op(scalar.add)(x, y)
                 f = copy(linker).accept(FunctionGraph([x,
                      y], [e.shape])).make_function()
                 assert tuple(f(xv, yv)) == tuple(zv.shape)
 
-    def with_linker_inplace(self, linker):
+    def with_linker_inplace(self, linker, op, type, rand_val):
         for xsh, ysh in [((5, 5), (5, 5)),
                          ((5, 5), (1, 5)),
                          ((5, 5), (5, 1)),
@@ -179,12 +193,12 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-            y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-            e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
+            x = type('float64', [(entry == 1) for entry in xsh])('x')
+            y = type('float64', [(entry == 1) for entry in ysh])('y')
+            e = op(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
             f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
-            xv = numpy.asarray(numpy.random.rand(*xsh))
-            yv = numpy.asarray(numpy.random.rand(*ysh))
+            xv = rand_val(xsh)
+            yv = rand_val(ysh)
             zv = xv + yv
 
             f(xv, yv)
@@ -193,13 +207,13 @@ class test_Broadcast(unittest.TestCase):
             #test Elemwise.infer_shape
             #the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
-                x = TensorType('float64', [(entry == 1) for entry in xsh])('x')
-                y = TensorType('float64', [(entry == 1) for entry in ysh])('y')
-                e = Elemwise(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
+                x = type('float64', [(entry == 1) for entry in xsh])('x')
+                y = type('float64', [(entry == 1) for entry in ysh])('y')
+                e = op(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
                 f = copy(linker).accept(FunctionGraph([x,
                      y], [e.shape])).make_function()
-                xv = numpy.asarray(numpy.random.rand(*xsh))
-                yv = numpy.asarray(numpy.random.rand(*ysh))
+                xv = rand_val(xsh)
+                yv = rand_val(ysh)
                 zv = xv + yv
 
                 f(xv, yv)
@@ -207,30 +221,33 @@ class test_Broadcast(unittest.TestCase):
                 assert xv.shape == zv.shape
 
     def test_perform(self):
-        self.with_linker(gof.PerformLinker())
+        self.with_linker(gof.PerformLinker(), self.op, self.type,
+                         self.rand_val)
 
     def test_c(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        self.with_linker(gof.CLinker())
+        self.with_linker(gof.CLinker(), self.cop, self.ctype, self.rand_cval)
 
     def test_perform_inplace(self):
-        self.with_linker_inplace(gof.PerformLinker())
+        self.with_linker_inplace(gof.PerformLinker(), self.op, self.type,
+                                 self.rand_val)
 
     def test_c_inplace(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        self.with_linker_inplace(gof.CLinker())
+        self.with_linker_inplace(gof.CLinker(), self.cop, self.ctype,
+                                 self.rand_cval)
 
     def test_fill(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = TensorType('float64', [0, 0])('x')
-        y = TensorType('float64', [1, 1])('y')
-        e = Elemwise(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
+        x = self.ctype('float64', [0, 0])('x')
+        y = self.ctype('float64', [1, 1])('y')
+        e = self.cop(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
         f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = numpy.ones((5, 5))
-        yv = numpy.random.rand(1, 1)
+        xv = self.rand_cval((5, 5))
+        yv = self.rand_cval((1, 1))
         f(xv, yv)
         assert (xv == yv).all()
 
@@ -245,27 +262,28 @@ class test_Broadcast(unittest.TestCase):
     def test_weird_strides(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = TensorType('float64', [0, 0, 0, 0, 0])('x')
-        y = TensorType('float64', [0, 0, 0, 0, 0])('y')
-        e = Elemwise(scalar.add)(x, y)
+        x = self.ctype('float64', [0, 0, 0, 0, 0])('x')
+        y = self.ctype('float64', [0, 0, 0, 0, 0])('y')
+        e = self.cop(scalar.add)(x, y)
         f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = numpy.random.rand(2, 2, 2, 2, 2)
-        yv = numpy.random.rand(2, 2, 2, 2, 2).transpose(4, 0, 3, 1, 2)
+        xv = self.rand_cval((2, 2, 2, 2, 2))
+        yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
         zv = xv + yv
         assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = TensorType('float64', [0, 0])('x')
-        e = Elemwise(scalar.add)(x, x)
+        x = self.ctype('float64', [0, 0])('x')
+        e = self.cop(scalar.add)(x, x)
         f = gof.CLinker().accept(FunctionGraph([x], [e])).make_function()
-        xv = numpy.random.rand(2, 2)
+        xv = self.rand_cval((2, 2))
         zv = xv + xv
         assert (f(xv) == zv).all()
 
 
 class test_CAReduce(unittest_tools.InferShapeTester):
+    op = CAReduce
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
@@ -288,7 +306,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
-                e = CAReduce(scalar_op, axis=tosum)(x)
+                e = self.op(scalar_op, axis=tosum)(x)
             else:
                 e = tensor_op(x, axis=tosum)
 

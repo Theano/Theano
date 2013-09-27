@@ -5,12 +5,14 @@ from copy import copy, deepcopy
 import numpy
 import theano
 import theano.tensor as T
-from theano.compile import DeepCopyOp
 from theano.tensor.tests.test_basic import safe_make_node
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
+
+if theano.sandbox.gpuarray.pygpu is None:
+    raise SkipTest("pygpu not installed")
 
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
@@ -30,7 +32,8 @@ from theano.sandbox.gpuarray.type import (GpuArrayType,
                                           gpuarray_shared_constructor)
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
-                                               cuda_from_gpu)
+                                               cuda_from_gpu, HostFromGpu,
+                                               GpuFromHost)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -85,9 +88,10 @@ def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 def rand_gpuarray(*shape, **kwargs):
     r = rng.rand(*shape) * 2 - 1
     dtype = kwargs.pop('dtype', theano.config.floatX)
+    cls = kwargs.pop('cls', None)
     if len(kwargs) != 0:
         raise TypeError('Unexpected argument %s', kwargs.keys()[0])
-    return gpuarray.array(r, dtype=dtype)
+    return gpuarray.array(r, dtype=dtype, cls=cls)
 
 
 def makeTester(name, op, expected, good=None, bad_build=None, checks=None,
@@ -313,15 +317,3 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand_gpuarray(7), numpy.int32(7), numpy.int32(5)),
         )
 )
-
-def test_deep_copy():
-    a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
-
-    f = theano.function([g], g)
-
-    assert isinstance(f.maker.fgraph.toposort()[0].op, DeepCopyOp)
-
-    res = f(a)
-
-    assert GpuArrayType.values_eq(res, a)

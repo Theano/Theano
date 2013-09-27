@@ -1,6 +1,7 @@
 import numpy
 
 import theano
+from theano.tensor.var import _tensor_py_operators
 from theano import Type, Variable, Constant, tensor, config, scalar
 from theano.compile import SharedVariable
 
@@ -26,7 +27,10 @@ class GpuArrayType(Type):
         except gpuarray.GpuArrayException:
             raise TypeError("Unsupported dtype for %s: %s" %
                             (self.__class__.__name__, self.dtype))
-    
+
+    def __str__(self):
+        return "GpuArrayType(%s, %s)" % (self.dtype, self.broadcastable)
+
     def filter(self, data, strict=False, allow_downcast=None):
         if strict:
             if not isinstance(data, gpuarray.GpuArray):
@@ -134,7 +138,7 @@ class GpuArrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
     def c_declare(self, name, sub):
-        return "GpuArrayObject *%s;" % (name,)
+        return "PyGpuArrayObject *%s;" % (name,)
 
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)
@@ -149,12 +153,12 @@ class GpuArrayType(Type):
         }
         /* First check if we are the base type exactly (the most common case),
            then do the full subclass check if needed. */
-        if (py_%(name)s->ob_type != &GpuArrayType &&
-            !PyObject_TypeCheck(py_%(name)s, &GpuArrayType)) {
+        if (py_%(name)s->ob_type != &PyGpuArrayType &&
+            !PyObject_TypeCheck(py_%(name)s, &PyGpuArrayType)) {
             PyErr_SetString(PyExc_ValueError, "expected a GpuArray");
             %(fail)s
         }
-        %(name)s = (GpuArrayObject *)py_%(name)s;
+        %(name)s = (PyGpuArrayObject *)py_%(name)s;
         Py_INCREF(%(name)s);
         """ % {'name': name, 'fail': sub['fail']}
 
@@ -184,7 +188,8 @@ class GpuArrayType(Type):
         # We need arrayobject for the PyArrayDescr struct def
         # (even if we just use a pointer to it in a function def)
         return ['<compyte/array.h>', '<compyte/kernel.h>', '<compyte/error.h>',
-                '<numpy/arrayobject.h>', '<gpuarray_api.h>']
+                '<compyte/buffer_blas.h>', '<numpy/arrayobject.h>',
+                '<gpuarray_api.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
@@ -196,17 +201,13 @@ class GpuArrayType(Type):
         return (1,)
 
 
-class _operators(tensor.basic._tensor_py_operators):
+class _operators(_tensor_py_operators):
     def _as_TensorVariable(self):
         from basic_ops import host_from_gpu
         return host_from_gpu(self)
 
     def _as_GpuArrayVariable(self):
         return self
-
-    dtype = property(lambda s: s.type.dtype)
-    broadcastable = property(lambda s: s.type.broadcastable)
-    ndim = property(lambda s: s.type.ndim)
 
 
 class GpuArrayVariable(_operators, Variable):
@@ -276,12 +277,12 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
-    %(oname)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
+    %(oname)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
     if (!%(oname)s) { %(fail)s }
-    int err;
-    err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
-    if (err != GA_NO_ERROR) {
+    int %(iname)s_err;
+    %(iname)s_err = GpuArray_copy(&%(oname)s->ga, &%(iname)s->ga, GA_ANY_ORDER);
+    if (%(iname)s_err != GA_NO_ERROR) {
         PyErr_SetString(PyExc_RuntimeError, "Error during copy");
         %(fail)s
     }
-""", version=(1,))
+""", version=(4,))
