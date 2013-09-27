@@ -1337,9 +1337,12 @@ class MaxAndArgmax(Op):
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
 
-        if isinstance(axis, int):
+        if isinstance(axis, (int, numpy.integer)):
             axis = [axis]
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            axis = [int(axis)]
         elif isinstance(axis, (tuple, list)):
+            axis = [int(a) for a in axis]
             if len(axis) != 1:
                 axis = list(axis)
                 for idx in range(len(axis)):
@@ -1497,8 +1500,12 @@ def makeKeepDims(x, y, axis):
 
     if axis is None:
         axis = range(x.type.ndim)
-    elif isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
     newaxis = []
     for a in axis:
         if not isinstance(a, int):
@@ -2761,8 +2768,12 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
     if axis is None:
         axis = range(input.ndim)
-    elif isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
 
     # This sequential division will possibly be optimized by Theano:
     for i in axis:
@@ -2793,8 +2804,12 @@ def var(input, axis=None, keepdims=False):
     input_ndim = input.type.ndim
     if axis is None:
         axis = range(input_ndim)
-    if isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
 
     # compute the axis-wise mean
     mean_input = mean(input, axis, keepdims=True)

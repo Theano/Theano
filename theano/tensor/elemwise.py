@@ -1253,7 +1253,7 @@ class CAReduce(Op):
         elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
             self.axis = (int(axis),)
         else:
-            self.axis = list(set(axis))
+            self.axis = list(set(int(a) for a in axis))
             self.axis.sort()
             self.axis = tuple(self.axis)
 
