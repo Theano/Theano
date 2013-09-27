@@ -283,6 +283,7 @@ class test_Broadcast(unittest.TestCase):
 
 
 class test_CAReduce(unittest_tools.InferShapeTester):
+    op = CAReduce
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
@@ -305,7 +306,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
-                e = CAReduce(scalar_op, axis=tosum)(x)
+                e = self.op(scalar_op, axis=tosum)(x)
             else:
                 e = tensor_op(x, axis=tosum)
 
