@@ -386,8 +386,6 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         CudaNdarray_set_nd(self, -1);
         self->data_allocated = 0;
         self->devdata = 0;
-        PyErr_SetString(PyExc_RuntimeError,
-                        "Could not allocate memory on device");
         return -1;
     }
     if (0)
