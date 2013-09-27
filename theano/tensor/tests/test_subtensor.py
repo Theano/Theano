@@ -122,10 +122,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             try:
                 self.eval_output_and_check(t)
-                assert 0
-            except Exception, e:
-                if 'out of bounds' not in exc_message(e):
-                    raise
+            except IndexError, e:
+                return
+            self.fail()
         finally:
             _logger.setLevel(oldlevel)
 
