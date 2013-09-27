@@ -323,7 +323,8 @@ class GpuCAReduce(HideC, CAReduceDtype):
         else:
             raise NotImplementedError()
         return ReductionKernel(pygpu.get_default_context(), odtype,
-                               self.scalar_op.identity, reduce_expr, redux)
+                               self.scalar_op.identity, reduce_expr, redux,
+                               arguments=[make_argument(node.inputs[0], 'a')])
 
     def perform(self, node, inp, out):
         input, = inp
@@ -344,5 +345,5 @@ class GpuCAReduce(HideC, CAReduceDtype):
                                                                redux)
             output[0] = node._cache_reduction_k(input)
         else:
-            output[0] = pygpu.array(input, copy=True,
-                                    dtype=node.outputs[0].type.dtype)
+            output[0] = pygpu.gpuarray.array(input, copy=True,
+                                             dtype=node.outputs[0].type.dtype)
