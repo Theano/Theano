@@ -303,13 +303,6 @@ class NVCC_compiler(object):
         if len(preargs2) > 0:
             cmd.extend(['-Xcompiler', ','.join(preargs2)])
 
-        if config.cuda.root and os.path.exists(os.path.join(config.cuda.root,
-                                                            'lib')):
-            rpaths.append(os.path.join(config.cuda.root, 'lib'))
-            if sys.platform != 'darwin':
-                # the 64bit CUDA libs are in the same files as are
-                # named by the function above
-                rpaths.append(os.path.join(config.cuda.root, 'lib64'))
         if sys.platform != 'win32':
             # the -rpath option is not understood by the Microsoft linker
             for rpath in rpaths:
