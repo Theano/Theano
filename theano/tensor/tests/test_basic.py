@@ -419,6 +419,54 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             finally:
                 config.warn.sum_div_dimshuffle_bug = backup
 
+        def test_grad_none(self):
+            # Check that None is never returned as input gradient
+            # when calling self.op.grad
+            # We use all values in self.good because this has to be true
+            # whether or not the values work for utt.verify_grad.
+            if skip:
+                raise SkipTest(skip)
+
+            if not hasattr(self.op, 'grad'):
+                # This is not actually an Op
+                return
+
+            for testname, inputs in self.good.items():
+                inputs = [copy(input) for input in inputs]
+                inputrs = [TensorType(
+                            dtype=input.dtype,
+                            broadcastable=[shape_elem == 1
+                                           for shape_elem in input.shape]
+                            )() for input in inputs]
+
+                if (isinstance(self.expected, dict)
+                        and testname in self.expected):
+                    expecteds = self.expected[testname]
+                    # with numpy version, when we print a number and read it
+                    # back, we don't get exactly the same result, so we accept
+                    # rounding error in that case.
+                else:
+                    expecteds = self.expected(*inputs)
+                if not isinstance(expecteds, (list, tuple)):
+                    expecteds = (expecteds, )
+
+                out_grad_vars = []
+                for out in expecteds:
+                    if str(out.dtype) in tensor.discrete_dtypes:
+                        dtype = floatX
+                    else:
+                        dtype = str(out.dtype)
+                    bcast = [shape_elem == 1 for shape_elem in out.shape]
+                    var = TensorType(dtype=dtype, broadcastable=bcast)()
+                    out_grad_vars.append(var)
+
+                try:
+                    in_grad_vars = self.op.grad(inputrs, out_grad_vars)
+                except (gof.utils.MethodNotDefined, NotImplementedError):
+                    pass
+                else:
+                    assert None not in in_grad_vars
+
     Checker.__name__ = name
     return Checker
 
