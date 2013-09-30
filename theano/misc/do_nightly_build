@@ -54,14 +54,6 @@ if [ "$RELEASE" ]; then
     echo
 fi
 
-# with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
-echo "Executing tests with mode=FAST_COMPILE"
-echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}"
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
-echo "Number of elements in the compiledir:"
-ls ${COMPILEDIR}|wc -l
-echo
-
 echo "Executing tests with mode=FAST_RUN"
 echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}"
 THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
@@ -88,6 +80,16 @@ seed=$RANDOM
 echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"
 echo "THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}"
 THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}
+
+#We put this at the end as it have a tendency to loop infinitly.
+#Until we fix the root of the problem we let the rest run, then we can kill this one in the morning.
+# with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
+echo "Executing tests with mode=FAST_COMPILE"
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}"
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
+echo "Number of elements in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+echo
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l

@@ -179,6 +179,7 @@ if compile_cuda_ndarray and cuda_available:
 del compile_cuda_ndarray
 
 if cuda_available:
+    global cuda_initialization_error_message
     # The module should be compiled.
     from cuda_ndarray.cuda_ndarray import *
 

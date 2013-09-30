@@ -123,10 +123,11 @@ The user ``lisa`` runs a cronjob on the computer ``ceylon``,  this
 happens nightly. (To have the crontab executed, the ``lisa`` user must
 be logged into ``ceylon``, Fred leaves a shell open for that.)
 
-The cronjob executes the scripts
-``~/nightly_build/do_nightly_build_{theano,pylearn,deeplearning}``.
-These scripts perform an update of theano (and pylearn, and
-DeepLearningTutorials too), and execute theano-nose (in various settings).
+The cronjob executes a script that download/update the repo of Theano,
+Pylearn, Pylearn2 and the Deep Learning Tutorial, then run their tests
+script under ``*/misc/do_nightly_build``. Those script tests the
+project under various condition. The cron job also run some tests in
+Python 2.4 and Python 3.3 for Theano.
 
 The output is emailed automatically to the `theano-buildbot`_ mailing list.
 
