@@ -1098,11 +1098,13 @@ class ShapeFeature(object):
                     # no need for replacement. This happen for example
                     # with the InputToGpuOptimizer optimizer.
                     continue
-                if repl.owner and repl.owner.inputs[0] is shpnode.inputs[0]:
+                if (repl.owner and
+                    repl.owner.inputs[0] is shpnode.inputs[0] and
+                    isinstance(repl.owner.op, Shape_i) and
+                    repl.owner.op.i == shpnode.op.i):
                     # The replacement is a shape_i of the same
                     # input. So no need to do this equivalent
                     # replacement.
-                    assert repl.owner.op.i == shpnode.op.i
                     continue
 
                 self.scheduled[shpnode] = new_r
