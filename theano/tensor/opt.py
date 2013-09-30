@@ -395,9 +395,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+        ret = inode.op(*[DimShuffle(inp.type.broadcastable,
                                     op.new_order,
-                                    op.inplace)(input) for input in
+                                    op.inplace)(inp) for inp in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -943,12 +943,12 @@ class ShapeFeature(object):
             else:
                 new_shape.append(s_j)
         assert all([not hasattr(r.type, "broadcastable") or
-                    not r.type.broadcastable[i] or
+                    not r.type.broadcastable[idx] or
                     # The two following comparison are a speed optimization
                     # But we never timed this speed optimization!
-                    self.lscalar_one.equals(new_shape[i]) or
-                    self.lscalar_one.equals(T.extract_constant(new_shape[i]))
-                    for i in range(r.ndim)])
+                    self.lscalar_one.equals(new_shape[idx]) or
+                    self.lscalar_one.equals(T.extract_constant(new_shape[idx]))
+                    for idx in range(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -1041,13 +1041,13 @@ class ShapeFeature(object):
 
         # Ensure shapes are in 'int64'. This is to make sure the assert
         # found in the `local_useless_subtensor` optimization does not fail.
-        new_shape = []
         for sh_idx, sh in enumerate(o_shapes):
             if sh is None:
                 continue
             if not isinstance(sh, (list, tuple)):
                 raise ValueError("infer_shape of %s didn't return a list of"
                                  " list. It returned '%s'" % (str(node), str(o_shapes)))
+            new_shape = []
             for i, d in enumerate(sh):
                 # Note: we ignore any shape element that is not typed (i.e.,
                 # does not have a 'dtype' attribute). This means there may
@@ -1064,7 +1064,6 @@ class ShapeFeature(object):
                 # 'int64'.
                 new_shape += sh[len(new_shape):]
                 o_shapes[sh_idx] = tuple(new_shape)
-                new_shape = []
 
         for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
@@ -1091,6 +1090,23 @@ class ShapeFeature(object):
         # At that point, node is no longer a client of r, but of new_r
         for (shpnode, idx) in (r.clients + [(node, i)]):
             if isinstance(getattr(shpnode, 'op', None), Shape_i):
+                idx = shpnode.op.i
+                repl = self.shape_of[new_r][idx]
+                if repl.owner is shpnode:
+                    # This mean the replacement shape object is
+                    # exactly the same as the current shape object. So
+                    # no need for replacement. This happen for example
+                    # with the InputToGpuOptimizer optimizer.
+                    continue
+                if (repl.owner and
+                    repl.owner.inputs[0] is shpnode.inputs[0] and
+                    isinstance(repl.owner.op, Shape_i) and
+                    repl.owner.op.i == shpnode.op.i):
+                    # The replacement is a shape_i of the same
+                    # input. So no need to do this equivalent
+                    # replacement.
+                    continue
+
                 self.scheduled[shpnode] = new_r
         # In case 2, if r is a variable that we've scheduled for shape update,
         # then we should cancel it.
@@ -1228,6 +1244,9 @@ def local_track_shape_i(node):
     except AttributeError:
         return
     if node in shape_feature.scheduled:
+        # Don't unschedule node as it could be reinserted in the
+        # fgraph as we don't change it in the shapefeature internal
+        # structure.
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
@@ -2271,7 +2290,6 @@ def local_join_1(node):
     """
     if not isinstance(node.op, T.Join):
         return
-    axis = node.inputs[0]
     tensors = node.inputs[1:]
     if len(tensors) == 1:
         return [tensors[0]]
