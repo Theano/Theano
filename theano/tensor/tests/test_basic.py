@@ -427,6 +427,10 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             if skip:
                 raise SkipTest(skip)
 
+            if not hasattr(self.op, 'grad'):
+                # This is not actually an Op
+                return
+
             for testname, inputs in self.good.items():
                 inputs = [copy(input) for input in inputs]
                 inputrs = [TensorType(
@@ -456,13 +460,12 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     var = TensorType(dtype=dtype, broadcastable=bcast)()
                     out_grad_vars.append(var)
 
-                if hasattr(self.op, 'grad'):
-                    try:
-                        in_grad_vars = self.op.grad(inputrs, out_grad_vars)
-                    except (gof.utils.MethodNotDefined, NotImplementedError):
-                        pass
-                    else:
-                        assert None not in in_grad_vars
+                try:
+                    in_grad_vars = self.op.grad(inputrs, out_grad_vars)
+                except (gof.utils.MethodNotDefined, NotImplementedError):
+                    pass
+                else:
+                    assert None not in in_grad_vars
 
     Checker.__name__ = name
     return Checker
