@@ -239,7 +239,7 @@ int device_free(void *ptr)
                     ptr,
                     cudaGetErrorString(err), free, total);
         #endif
-        if (NULL == PyErr_Occurred()){
+        if (NULL != PyErr_Occurred()){
             fprintf(stderr,
                     "device_free: cudaFree() returned an error, but there is already an"
                     " Python error set. This happen during the clean up when there is a"
