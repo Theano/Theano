@@ -422,8 +422,38 @@ static PyMemberDef CudaNdarray_members[] =
     {NULL}  /* Sentinel */
 };
 
-PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
+PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 {
+    PyObject * dtype = NULL;
+    if (args && !PyArg_ParseTuple(args, "|O", &dtype))
+        return NULL;
+    if (dtype) {
+        PyArray_Descr* dtype2;
+        // PyArray_DescrConverter try to convert anything to a PyArray_Descr.
+        if(!PyArray_DescrConverter(dtype, &dtype2))
+        {
+            PyObject * str = PyObject_Repr(dtype);
+            PyErr_Format(PyExc_TypeError,
+                         "CudaNdarray dtype parameter not understood: %s",
+                         PyString_AsString(str)
+                         );
+            Py_CLEAR(str);
+            return NULL;
+        }
+        int typeNum = dtype2->type_num;
+        Py_DECREF(dtype2);
+        if (typeNum != NPY_FLOAT32)
+        {
+            PyObject * str = PyObject_Repr(dtype);
+            PyErr_Format(PyExc_TypeError,
+                         "CudaNdarray support only support float32 dtype, provided: %d",
+                         typeNum
+                         );
+            Py_CLEAR(str);
+            return NULL;
+        }
+    }
+
     int verbose = 0;
     if(self->nd>=0 && CudaNdarray_SIZE(self)==0){
         npy_intp * npydims = (npy_intp*)malloc(self->nd * sizeof(npy_intp));
@@ -1291,7 +1321,7 @@ CudaNdarray_exp(CudaNdarray* self)
 static PyMethodDef CudaNdarray_methods[] =
 {
     {"__array__",
-        (PyCFunction)CudaNdarray_CreateArrayObj, METH_NOARGS,
+        (PyCFunction)CudaNdarray_CreateArrayObj, METH_VARARGS,
         "Copy from the device to a numpy ndarray"},
     {"__copy__",
         (PyCFunction)CudaNdarray_View, METH_NOARGS,

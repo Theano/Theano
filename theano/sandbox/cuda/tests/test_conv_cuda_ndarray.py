@@ -726,7 +726,7 @@ class TestConv2DGPU(unittest.TestCase):
             featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
                                featshp[3] * stride)
             kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
-            print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
+            #print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
             image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
                                                 border_mode='full',
                                                 image_shape=featshp,
@@ -735,7 +735,7 @@ class TestConv2DGPU(unittest.TestCase):
                                                 kshp_logical=kshp[2:])
 
             func = theano.function([a, A], image_estimate, mode=theano_mode)
-            theano.printing.debugprint(func,)
+            #theano.printing.debugprint(func,)
             assert any([isinstance(node.op, theano.sandbox.cuda.blas.GpuConv)
                         for node in func.maker.fgraph.toposort()])
 
