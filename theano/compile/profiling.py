@@ -808,7 +808,7 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print >> file, ("  No execution time accumulated "
                             "(hint: try config profiling.time_thunks=1)")
-        if config.profile_memory:
+        if self.variable_shape or self.variable_strides:
             self.summary_memory(file, n_apply_to_print)
         if self.optimizer_profile:
             print "Optimizer Profile"
