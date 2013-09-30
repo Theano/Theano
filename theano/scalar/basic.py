@@ -579,9 +579,11 @@ class _scalar_py_operators:
     def __rpow__(self, other):
         return pow(other, self)
 
-    def zeros_like(self):
+    def zeros_like(self, dtype=None):
         # The second is needed for Elemwise ops to work right
-        return second(self, ScalarConstant(Scalar(str(self.type.dtype)), 0))
+        if dtype is None:
+            dtype = str(self.type.dtype)
+        return second(self, ScalarConstant(Scalar(dtype), 0))
 
     def astype(self, dtype):
         return cast(self, dtype)
@@ -1244,8 +1246,10 @@ class Maximum(BinaryScalarOp):
                 '((%(x)s)>=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
-        assert gz.type not in complex_types
-        # max is not defined for complex_types
+        if gz.type in complex_types:
+            # max is currently defined for complex_types,
+            # but the gradient for complex is not.
+            raise NotImplementedError()
 
         output = self(x, y)
 
@@ -1275,8 +1279,10 @@ class Minimum(BinaryScalarOp):
                 '((%(x)s)<=(%(y)s)? (%(x)s): nan("")));' % locals())
 
     def grad(self, (x, y), (gz, )):
-        assert gz.type not in complex_types
-        # max is not defined for complex_types
+        if gz.type in complex_types:
+            # min is currently defined for complex_types,
+            # but the gradient for complex is not.
+            raise NotImplementedError()
 
         output = minimum(x, y)
         if output.type in discrete_types:
@@ -1562,7 +1568,8 @@ class IntDiv(BinaryScalarOp):
         return (2,)
 
     def grad(self, inputs, g_output):
-        return [None] * len(inputs)
+        return [inp.zeros_like(dtype=theano.config.floatX)
+                for inp in inputs]
 int_div = IntDiv(upcast_out, name='int_div')
 
 
@@ -1648,7 +1655,8 @@ class Mod(BinaryScalarOp):
             """) % locals()
 
     def grad(self, (x, y), (gz, )):
-        return None, None
+        return [x.zeros_like(dtype=theano.config.floatX),
+                y.zeros_like(dtype=theano.config.floatX)]
 mod = Mod(upcast_out, name='mod')
 
 
@@ -1886,10 +1894,13 @@ class Abs(UnaryScalarOp):
         return numpy.abs(x)
 
     def grad(self, (x, ), (gz, )):
-        if x.type in float_types + complex_types:
-            return gz * x / abs(x),  # formula works for complex and real
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * x / abs(x),  # formula works for complex and real
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         type = node.inputs[0].type
@@ -2090,10 +2101,13 @@ class Neg(UnaryScalarOp):
         return -x
 
     def grad(self, (x,), (gz,)):
-        if x.type in continuous_types:
-            return -gz,
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return -gz,
 
     def c_code(self, node, name, (x,), (z,), sub):
         return "%(z)s = -%(x)s;" % locals()
@@ -2108,10 +2122,13 @@ class Inv(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return -gz / (x * x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return -gz / (x * x),
 
     def c_code(self, node, name, (x,), (z,), sub):
         return "%(z)s = 1.0 / %(x)s;" % locals()
@@ -2129,10 +2146,13 @@ class Log(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / x,
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / x,
 
     def c_code(self, node, name, (x,), (z,), sub):
         #todo: the version using log2 seems to be very slightly faster
@@ -2155,10 +2175,13 @@ class Log2(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / (x * math.log(2.0)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / (x * math.log(2.0)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2178,10 +2201,13 @@ class Log10(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / (x * numpy.log(10.0)),
-        else:
-            return None
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / (x * numpy.log(10.0)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2198,9 +2224,13 @@ class Log1p(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if gz.type in float_types:
-            return [gz / (1 + x)]
-        return [None]
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return [gz / (1 + x)]
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2219,10 +2249,13 @@ class Exp(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        elif x.type in float_types:
-            return gz * exp(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * exp(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2238,10 +2271,13 @@ class Exp2(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        elif x.type in float_types:
-            return gz * exp2(x) * log(numpy.cast[x.type](2)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * exp2(x) * log(numpy.cast[x.type](2)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2257,10 +2293,13 @@ class Expm1(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        elif x.type in float_types:
-            return gz * exp(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * exp(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2276,10 +2315,13 @@ class Sqr(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * x * 2,
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * x * 2,
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         return "%(z)s = %(x)s * %(x)s;" % locals()
@@ -2293,10 +2335,13 @@ class Sqrt(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return (gz * 0.5) / sqrt(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return (gz * 0.5) / sqrt(x),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2312,10 +2357,13 @@ class Deg2Rad(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * numpy.asarray(numpy.pi / 180, gz.type),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * numpy.asarray(numpy.pi / 180, gz.type),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2331,10 +2379,13 @@ class Rad2Deg(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * numpy.asarray(180. / numpy.pi, gz.type),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * numpy.asarray(180. / numpy.pi, gz.type),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2353,10 +2404,13 @@ class Cos(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return -gz * sin(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return -gz * sin(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2372,10 +2426,13 @@ class ArcCos(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return - gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return - gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2394,10 +2451,13 @@ class Sin(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * cos(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * cos(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2413,10 +2473,13 @@ class ArcSin(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2432,10 +2495,13 @@ class Tan(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / sqr(cos(x)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / sqr(cos(x)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2451,10 +2517,13 @@ class ArcTan(UnaryScalarOp):
     def grad(self, (x,), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / (numpy.cast[x.type](1) + sqr(x)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / (numpy.cast[x.type](1) + sqr(x)),
 
     def c_code(self, node, name, (x,), (z,), sub):
         if node.inputs[0].type in complex_types:
@@ -2470,11 +2539,22 @@ class ArcTan2(BinaryScalarOp):
     def grad(self, (y, x), (gz,)):
         if gz.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types and y.type in float_types:
+        else:
+            if self(x, y).type in discrete_types:
+                if x.type in discrete_types:
+                    gx = x.zeros_like(dtype=theano.config.floatX)
+                else:
+                    gx = x.zeros_like()
+                if y.type in discrete_types:
+                    gy = y.zeros_like(dtype=theano.config.floatX)
+                else:
+                    gy = y.zeros_like()
+                return [gx, gy]
+
+            # If the output is float, the gradient should flow,
+            # even if the inputs are ints
             return [gz * x / (sqr(x) + sqr(y)),
                     gz * neg(y) / (sqr(x) + sqr(y))]
-        else:
-            return None,
 
     def c_code(self, node, name, (y, x), (z,), sub):
         if (node.inputs[0].type in complex_types or
@@ -2494,10 +2574,13 @@ class Cosh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * sinh(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * sinh(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2513,10 +2596,13 @@ class ArcCosh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2535,10 +2621,13 @@ class Sinh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * cosh(x),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * cosh(x),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2554,10 +2643,13 @@ class ArcSinh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2577,10 +2669,13 @@ class Tanh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz * (1 - sqr(tanh(x))),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * (1 - sqr(tanh(x))),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
@@ -2596,10 +2691,13 @@ class ArcTanh(UnaryScalarOp):
     def grad(self, (x, ), (gz, )):
         if x.type in complex_types:
             raise NotImplementedError()
-        if x.type in float_types:
-            return gz / (numpy.cast[x.type](1) - sqr(x)),
-        else:
-            return None,
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz / (numpy.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
