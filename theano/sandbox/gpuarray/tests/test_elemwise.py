@@ -36,6 +36,7 @@ class test_GpuDimShuffle(test_DimShuffle):
 
 class test_GpuCAReduce(test_CAReduce):
     dtypes = ["float32"]
+    bin_dtypes = ["uint8", "int8"]
     op = GpuCAReduce
     reds = [scalar.add, scalar.mul]
 

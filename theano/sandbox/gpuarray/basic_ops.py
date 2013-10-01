@@ -298,14 +298,6 @@ class GpuFromCuda(Op):
             %(name)sstr[i] = (ssize_t)CudaNdarray_HOST_STRIDES(%(in)s)[i]*4;
         }
 
-        Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
-        if (%(out)s == NULL) {
-            free(%(name)sdims);
-            free(%(name)sstr);
-            %(fail)s
-        }
-
         %(name)sdata = cuda_make_buf(pygpu_default_context()->ctx,
                                      (CUdeviceptr)%(in)s->devdata,
                                      ((size_t)%(in)s->data_allocated)*4);
@@ -316,24 +308,23 @@ class GpuFromCuda(Op):
             PyErr_SetString(PyExc_MemoryError, "Could not allocate gpudata structure.");
             %(fail)s
         }
-        %(name)serr = GpuArray_fromdata(&%(out)s->ga,
-                                        pygpu_default_context()->ops,
-                                        %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
-                                        %(name)sdims, %(name)sstr, 1);
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_fromgpudata(%(name)sdata, 0, GA_FLOAT, %(in)s->nd,
+                                    %(name)sdims, %(name)sstr,
+                                    pygpu_default_context(), 1,
+                                    (PyObject *)%(in)s,
+                                    (PyObject *)&GpuArrayType);
+        pygpu_default_context()->ops->buffer_release(%(name)sdata);
         free(%(name)sdims);
         free(%(name)sstr);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(out)s);
-            PyErr_SetString(PyExc_MemoryError, "Could not allocate GpuArray structure.");
+        if (%(out)s == NULL) {
             %(fail)s
         }
-        Py_INCREF(%(in)s);
-        %(out)s->base = (PyObject *)%(in)s;
         """ % {'name':name, 'in': inputs[0], 'out': outputs[0],
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpu_from_cuda = GpuFromCuda()
 
