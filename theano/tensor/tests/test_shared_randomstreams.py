@@ -333,6 +333,36 @@ class T_SharedRandomStreams(unittest.TestCase):
         self.assertRaises(ValueError, f, [4])
         self.assertRaises(ValueError, f, [4,3,4,5])
 
+    def test_mixed_shape(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        random = RandomStreams(utt.fetch_seed())
+        shape0 = tensor.lscalar()
+        shape = (shape0, 3)
+        f = function([shape0], random.uniform(size=shape, ndim=2))
+        assert f(2).shape == (2, 3)
+        assert f(8).shape == (8, 3)
+
+        g = function([shape0], random.uniform(size=shape))
+        assert g(2).shape == (2, 3)
+        assert g(8).shape == (8, 3)
+
+    def test_mixed_shape_bcastable(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        random = RandomStreams(utt.fetch_seed())
+        shape0 = tensor.lscalar()
+        shape = (shape0, 1)
+        u = random.uniform(size=shape, ndim=2)
+        assert u.broadcastable == (False, True)
+        f = function([shape0], u)
+        assert f(2).shape == (2, 1)
+        assert f(8).shape == (8, 1)
+
+        v = random.uniform(size=shape)
+        assert v.broadcastable == (False, True)
+        g = function([shape0], v)
+        assert g(2).shape == (2, 1)
+        assert g(8).shape == (8, 1)
+
     def test_default_shape(self):
         random = RandomStreams(utt.fetch_seed())
         f = function([], random.uniform())
