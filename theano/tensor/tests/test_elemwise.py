@@ -11,7 +11,7 @@ from theano.gof.python25 import all, any
 from theano import gof, scalar, config
 
 from theano import tensor
-from theano.tensor import TensorType
+from theano.tensor import TensorType, as_tensor_variable
 from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
@@ -261,9 +261,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
-                e = self.op(scalar_op, axis=tosum)(x)
+                e = as_tensor_variable(self.op(scalar_op, axis=tosum)(x))
             else:
-                e = tensor_op(x, axis=tosum)
+                e = as_tensor_variable(tensor_op(x, axis=tosum))
 
             if tosum is None:
                 tosum = range(len(xsh))
@@ -368,7 +368,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             if isinstance(linker, gof.PerformLinker):
                 x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
                 if tensor_op is None:
-                    e = CAReduce(scalar_op, axis=tosum)(x)
+                    e = self.op(scalar_op, axis=tosum)(x)
                 else:
                     e = tensor_op(x, axis=tosum)
                 if tosum is None:
@@ -464,8 +464,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 tosum = range(len(xsh))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [CAReduce(scalar.add, axis=tosum)(x)],
-                            [xv], CAReduce, ["local_cut_useless_reduce"])
+                            [self.op(scalar.add, axis=tosum)(x)],
+                            [xv], self.op, ["local_cut_useless_reduce"])
 
 
 class test_Prod(unittest.TestCase):

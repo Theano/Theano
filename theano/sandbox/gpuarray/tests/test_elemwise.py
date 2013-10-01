@@ -46,7 +46,6 @@ class test_GpuCAReduce(test_CAReduce):
                 self.with_linker(gof.PerformLinker(), op, dtype=dtype)
 
     def test_perform_nan(self):
-        raise SkipTest("for now")
         for dtype in self.dtypes:
             for op in self.reds:
                 self.with_linker(gof.PerformLinker(), op, dtype=dtype,
