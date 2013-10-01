@@ -215,34 +215,23 @@ class GpuDimShuffle(HideC, DimShuffle):
                 if d in self.augment:
                     stmts.append("sh[%s] = 1;" % (d,))
                 else:
-                    stmts.append("sh[%s] = tmp.dimensions[%s];" % (d, e))
+                    stmts.append("sh[%s] = tmp->ga.dimensions[%s];" % (d, e))
                     e += 1
             return '\n            '.join(stmts)
 
         return """
         static const unsigned int %(name)s_ax[] = {%(shuffle)s};
 
-        static int %(name)s_f(PyGpuArrayObject *res, PyGpuArrayObject *a) {
-            GpuArray tmp;
+        static PyGpuArrayObject *%(name)s_f(PyGpuArrayObject *a) {
+            PyGpuArrayObject *res, *tmp;
             size_t sh[%(nd_out)s];
-            unsigned int i;
-            int err;
 
-            err = GpuArray_transpose(&tmp, &a->ga, %(name)s_ax);
-            if (err != GA_NO_ERROR) {
-                PyErr_SetString(PyExc_RuntimeError, "error in _transpose call");
-                return -1;
-            }
-
+            tmp = pygpu_transpose(a, %(name)s_ax);
+            if (!tmp) return NULL;
             %(copy_shape)s
-            err = GpuArray_reshape(&res->ga, &tmp, %(nd_out)s, sh,
-                                   GA_ANY_ORDER, 1);
-            if (err != GA_NO_ERROR) {
-               PyErr_SetString(PyExc_RuntimeError, "error in _reshape call");
-               return -1;
-            }
-            GpuArray_clear(&tmp);
-            return 0;
+            res = pygpu_reshape(tmp, %(nd_out)s, sh, GA_ANY_ORDER, 1);
+            Py_DECREF(tmp);
+            return res;
         }
         """ % dict(shuffle=', '.join(str(a) for a in (self.shuffle+self.drop)),
                    name=name, nd_out=len(self.new_order),
@@ -252,38 +241,31 @@ class GpuDimShuffle(HideC, DimShuffle):
         d = dict(name=name, fail=sub['fail'], inp=inputs[0], out=outputs[0],
                  nd=len(self.input_broadcastable))
         process = """
+        PyGpuArrayObject *tmp = NULL;
         if (%(inp)s->ga.nd != %(nd)s) {
             PyErr_SetString(PyExc_TypeError, "input nd");
             %(fail)s
         }
 
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
+        %(out)s = %(name)s_f(%(inp)s);
         if (%(out)s == NULL) {%(fail)s}
-
-        if (%(name)s_f(%(out)s, %(inp)s)) {
-            %(fail)s
-        }
         """ % d
 
         if not self.inplace:
             process += """
-            if (%(out)s->ga.data == %(inp)s->ga.data) {
-                PyObject *%(name)s_tmp;
-                %(name)s_tmp = PyObject_CallMethod((PyObject *)%(out)s, "copy", NULL);
-                if (%(name)s_tmp == NULL) { %(fail)s }
-                if (!PyObject_IsInstance(%(name)s_tmp, (PyObject *)&PyGpuArrayType)) {
-                    PyErr_SetString(PyExc_TypeError, "not a GpuArray out of the copy");
-                    %(fail)s
-                }
-                Py_DECREF(%(out)s);
-                %(out)s = (PyGpuArrayObject *)%(name)s_tmp;
+            tmp = pygpu_copy(%(out)s, GA_ANY_ORDER);
+            Py_DECREF(%(out)s);
+            if (!tmp) {
+                %(out)s = NULL;
+                %(fail)s
             }
+            %(out)s = tmp;
             """ % d
         return process
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 class GpuCAReduce(HideC, CAReduceDtype):

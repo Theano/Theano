@@ -78,6 +78,15 @@ class GpuSubtensor(HideC, Subtensor):
         idx_list = self.idx_list + \
             ((slice(None),) * (inp_ndim - len(self.idx_list)))
 
+        # This case fails when we use pygpu_index(), so here is some
+        # special code
+        if len(idx_list) == 0:
+            return """
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_copy(%(inp)s, GA_ANY_ORDER);
+        if (!%(out)s) { %(fail)s }
+""" % dict(out=outputs[0], inp=inp, fail=sub['fail'])
+
         sio = StringIO.StringIO()
         print >> sio, """
         ssize_t starts[%(sz)s];
@@ -136,19 +145,11 @@ class GpuSubtensor(HideC, Subtensor):
 
         print >>sio, """
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&PyGpuArrayType, pygpu_default_context(), Py_None);
+        %(out)s = pygpu_index(%(inp)s, starts, stops, steps);
         if (!%(out)s) { %(fail)s }
-        if ((err = GpuArray_index(&%(out)s->ga, &%(inp)s->ga, starts, stops, steps))) {
-            Py_DECREF(%(out)s); %(out)s = NULL;
-            if (err == GA_VALUE_ERROR)
-                PyErr_SetString(PyExc_IndexError, "index out of bounds");
-            else
-                PyErr_SetString(PyExc_RuntimeError, "index failed");
-            %(fail)s
-        }
 """ % dict(name=name, fail=sub['fail'], inp=inp, out=outputs[0])
 
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
