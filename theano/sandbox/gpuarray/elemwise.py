@@ -319,13 +319,14 @@ class GpuCAReduce(HideC, CAReduceDtype):
 
         acc_dtype = getattr(self, 'acc_dtype', None)
         if acc_dtype is None:
-            acc_dtype = node.output[0].type.dtype
+            acc_dtype = node.outputs[0].type.dtype
 
         if any(redux):
             if not hasattr(node, '_cache_reduction_k'):
                 node._cache_reduction_k = self.generate_kernel(node, acc_dtype,
                                                                redux)
-            output[0] = node._cache_reduction_k(input)
+            output[0] = node._cache_reduction_k(input).astype(copy=False,
+                                             dtype=node.outputs[0].type.dtype)
         else:
             output[0] = pygpu.gpuarray.array(input, copy=True,
                                              dtype=node.outputs[0].type.dtype)
