@@ -749,8 +749,10 @@ class MRG_RandomStreams(object):
                     size)
 
         else:
-            msg = "size must be a tuple of int or a Theano variable"
-            assert isinstance(size, Variable) and size.ndim == 1, msg
+            if not (isinstance(size, Variable) and size.ndim == 1):
+                raise TypeError("size must be a tuple of int or a Theano "
+                        "Variable with 1 dimension, got " + str(size) +
+                        " of type " + str(type(size)))
 
         if nstreams is None:
             nstreams = self.n_streams(size)
