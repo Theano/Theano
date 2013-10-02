@@ -1105,6 +1105,12 @@ class ShapeFeature(object):
                     # replacement.
                     continue
 
+                if shpnode.outputs[0] in theano.gof.graph.ancestors([repl]):
+                    raise AssertionError(
+                        "This substitution would insert a cycle in the graph:"
+                        "node: %s, i: %i, r: %s, new_r: %s"
+                        % (node, i, r, new_r))
+
                 self.scheduled[shpnode] = new_r
         # In case 2, if r is a variable that we've scheduled for shape update,
         # then we should cancel it.
