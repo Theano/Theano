@@ -898,9 +898,7 @@ class ShapeFeature(object):
             r_shape = self.shape_of[r]
         else:
             # If no info is known on r's shape, use other_shape
-            self.shape_of[r] = other_shape
-            for sv in other_shape:
-                self.shape_of_reverse_index.setdefault(sv, set()).add(r)
+            self.set_shape(r, other_shape)
             return
 
         # Merge other_shape with r_shape, giving the priority to other_shape
