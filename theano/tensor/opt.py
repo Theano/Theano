@@ -908,10 +908,19 @@ class ShapeFeature(object):
             # For now, we consider 2 cases of uninformative other_shape[i]:
             #  - Shape_i(i)(other_r);
             #  - Shape_i(i)(r).
+            # Another case where we want to use r_shape[i] is when
+            # other_shape[i] actually depends on r_shape[i]. In that case,
+            # we do not want to substitute an expression with another that
+            # is strictly more complex. Such a substitution could also lead
+            # to cycles: if (in the future) r_shape[i] gets replaced by an
+            # expression of other_shape[i], other_shape[i] may end up
+            # depending on itself.
             if (ps.owner
                     and isinstance(getattr(ps.owner, 'op', None), Shape_i)
                     and ps.owner.op.i == i
                     and ps.owner.inputs[0] in (r, other_r)):
+                merged_shape.append(r_shape[i])
+            elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
