@@ -157,6 +157,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     no_display = (verbosity == 0)
 
     # Acquire lock.
+    nb_error = 0
     while True:
         try:
             last_owner = 'no_owner'
@@ -221,7 +222,11 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
             except OSError:
                 # Error while creating the directory: someone else must have tried
                 # at the exact same time.
-                continue
+                nb_error += 1
+                if nb_error < 10:
+                    continue
+                else:
+                    raise
             # Safety check: the directory should be here.
             assert os.path.isdir(tmp_dir)
 
@@ -241,6 +246,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
         except Exception, e:
             # If something wrong happened, we try again.
             _logger.warning("Something wrong happened: %s %s", type(e), e)
+            nb_error += 1
+            if nb_error > 10:
+                raise
             time.sleep(random.uniform(min_wait, max_wait))
             continue
 
