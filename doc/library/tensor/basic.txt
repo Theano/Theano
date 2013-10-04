@@ -1067,6 +1067,18 @@ The six usual equality and inequality operators share the same interface.
 
     Returns a variable representing the result of logical inequality (a!=b).
 
+.. function:: isnan(a)
+
+    Returns a variable representing the comparison of ``a`` elements with nan.
+
+    This is equivalent to ``numpy.isnan``.
+
+.. function:: isinf(a)
+
+    Returns a variable representing the comparison of ``a`` elements
+    with inf or -inf.
+
+    This is equivalent to ``numpy.isinf``.
 
 Condition
 ---------
