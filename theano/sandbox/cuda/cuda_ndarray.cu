@@ -92,7 +92,7 @@ void * device_malloc(size_t size, int verbose)
             if (err2 != cudaSuccess){
                 cudaGetLastError();
                 fprintf(stderr,
-                        "Error when tring to find the memory information"
+                        "Error when trying to find the memory information"
                         " on the GPU: %s\n", cudaGetErrorString(err2));
             }
             #if COMPUTE_GPU_MEM_USED
