@@ -1570,7 +1570,7 @@ class GCC_compiler(object):
                 if p.returncode != 0:
                     return None
 
-                lines = StringIO.StringIO(stdout + stderr).readlines()
+                lines = StringIO(stdout + stderr).readlines()
                 lines = decode_iter(lines)
                 if parse:
                     selected_lines = []
