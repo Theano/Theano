@@ -1560,26 +1560,33 @@ class GCC_compiler(object):
                 p = call_subprocess_Popen(cmd,
                                           stdout=subprocess.PIPE,
                                           stderr=subprocess.PIPE,
+                                          stdin=subprocess.PIPE,
                                           shell=True)
-                p.wait()
+                # For mingw64 with GCC >= 4.7, passing os.devnull
+                # as stdin (which is the default) results in the process
+                # waiting forever without returning. For that reason,
+                # we use a pipe, and use the empty string as input.
+                (stdout, stderr) = p.communicate(input='')
                 if p.returncode != 0:
                     return None
 
-                stdout = decode_iter(p.stdout.readlines())
-                stderr = decode_iter(p.stderr.readlines())
-                lines = []
+                lines = StringIO(stdout + stderr).readlines()
+                lines = decode_iter(lines)
                 if parse:
-                    for line in itertools.chain(stdout, stderr):
-                        if "COLLECT_GCC_OPTIONS=" in line:
+                    selected_lines = []
+                    for line in lines:
+                        if ("COLLECT_GCC_OPTIONS=" in line or
+                            "CFLAGS=" in line or
+                            "CXXFLAGS=" in line or
+                            "-march=native" in line):
                             continue
-                        elif "-march=" in line and "-march=native" not in line:
-                            lines.append(line.strip())
-                        elif "-mtune=" in line and "-march=native" not in line:
-                            lines.append(line.strip())
-                    lines = list(set(lines))  # to remove duplicate
-                else:
-                    lines = itertools.chain(stdout, stderr)
-                    return list(lines)
+                        elif "-march=" in line:
+                            selected_lines.append(line.strip())
+                        elif "-mtune=" in line:
+                            selected_lines.append(line.strip())
+                    lines = list(set(selected_lines))  # to remove duplicate
+
+                return lines
 
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
@@ -1626,8 +1633,8 @@ class GCC_compiler(object):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-        #Add the detected -march=native equivalent flags
-        cxxflags.extend(GCC_compiler.march_flags)
+            #Add the detected -march=native equivalent flags
+            cxxflags.extend(GCC_compiler.march_flags)
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
