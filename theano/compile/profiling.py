@@ -566,13 +566,13 @@ class ProfileStats(object):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print "    input %d: dtype=%s, shape=%s, strides=%s " % (
+                print >> file, "    input %d: dtype=%s, shape=%s, strides=%s " % (
                     idx, dtype, sh, st)
             for idx, var in enumerate(a.outputs):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print "    output %d: dtype=%s, shape=%s, strides=%s " % (
+                print >> file, "    output %d: dtype=%s, shape=%s, strides=%s " % (
                     idx, dtype, sh, st)
             # Same as before, this I've sacrificied some information making
             # the output more readable
