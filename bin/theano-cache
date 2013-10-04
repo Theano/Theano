@@ -60,6 +60,8 @@ elif len(sys.argv) == 2:
         theano.gof.compiledir.print_compiledir_content()
     elif sys.argv[1] == 'cleanup':
         theano.gof.compiledir.cleanup()
+        cache = get_module_cache(init_args=dict(do_refresh=False))
+        cache.clear_old()
     elif sys.argv[1] == 'unlock':
         theano.gof.compilelock.force_unlock()
         print 'Lock successfully removed!'
