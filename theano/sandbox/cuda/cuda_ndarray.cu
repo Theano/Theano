@@ -47,13 +47,13 @@ static PyObject *CudaNdarray_get_shape(CudaNdarray *self, void *closure);
 int _outstanding_mallocs[] = {0,0};
 
 #if COMPUTE_GPU_MEM_USED
-int _allocated_size = 0;
-int _max_allocated_size = 0;
+size_t _allocated_size = 0;
+size_t _max_allocated_size = 0;
 
 const int TABLE_SIZE = 10000;
 struct table_struct{
     void* ptr;
-    int size;
+    size_t size;
 };
 table_struct _alloc_size_table[TABLE_SIZE];
 #endif
@@ -97,21 +97,21 @@ void * device_malloc(size_t size, int verbose)
             }
             #if COMPUTE_GPU_MEM_USED
                 fprintf(stderr,
-                        "Error allocating %li bytes of device memory (%s)."
+                        "Error allocating %zd bytes of device memory (%s)."
                         " new total bytes allocated: %d."
-                        " Driver report %d bytes free and %d bytes total \n",
-                        (long)size, cudaGetErrorString(err), _allocated_size,
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        size, cudaGetErrorString(err), _allocated_size,
                         free, total);
             #else
                 fprintf(stderr,
-                        "Error allocating %li bytes of device memory (%s)."
-                        " Driver report %d bytes free and %d bytes total \n",
-                        (long)size, cudaGetErrorString(err), free, total);
+                        "Error allocating %zd bytes of device memory (%s)."
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        size, cudaGetErrorString(err), free, total);
             #endif
         }
         PyErr_Format(PyExc_MemoryError,
-                     "Error allocating %li bytes of device memory (%s).",
-                     (long)size, cudaGetErrorString(err));
+                     "Error allocating %zd bytes of device memory (%s).",
+                     size, cudaGetErrorString(err));
         return NULL;
     }
     if (rval != NULL){
@@ -227,15 +227,15 @@ int device_free(void *ptr)
                 }
             assert(i<TABLE_SIZE);
             fprintf(stderr,
-                    "Error freeing device pointer %p (%s) of size %d. %d byte already allocated."
-                    " Driver report %d bytes free and %d bytes total \n",
+                    "Error freeing device pointer %p (%s) of size %d. %zd byte already allocated."
+                    " Driver report %zd bytes free and %zd bytes total \n",
                     ptr, cudaGetErrorString(err),
                     _alloc_size_table[i].size, _allocated_size, free, total);
         }
         #else
             fprintf(stderr,
                     "Error freeing device pointer %p (%s)."
-                    " Driver report %d bytes free and %d bytes total \n",
+                    " Driver report %zd bytes free and %zd bytes total \n",
                     ptr,
                     cudaGetErrorString(err), free, total);
         #endif
