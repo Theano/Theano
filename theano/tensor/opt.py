@@ -904,23 +904,23 @@ class ShapeFeature(object):
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
         for i, ps in enumerate(other_shape):
-            # If other_shape[i] is uninformative, use r_shape[i].
-            # For now, we consider 2 cases of uninformative other_shape[i]:
-            #  - Shape_i(i)(other_r);
-            #  - Shape_i(i)(r).
-            # Another case where we want to use r_shape[i] is when
-            # other_shape[i] actually depends on r_shape[i]. In that case,
-            # we do not want to substitute an expression with another that
-            # is strictly more complex. Such a substitution could also lead
-            # to cycles: if (in the future) r_shape[i] gets replaced by an
-            # expression of other_shape[i], other_shape[i] may end up
-            # depending on itself.
             if (ps.owner
                     and isinstance(getattr(ps.owner, 'op', None), Shape_i)
                     and ps.owner.op.i == i
                     and ps.owner.inputs[0] in (r, other_r)):
+                # If other_shape[i] is uninformative, use r_shape[i].
+                # For now, we consider 2 cases of uninformative other_shape[i]:
+                #  - Shape_i(i)(other_r);
+                #  - Shape_i(i)(r).
                 merged_shape.append(r_shape[i])
             elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
+                # Another case where we want to use r_shape[i] is when
+                # other_shape[i] actually depends on r_shape[i]. In that case,
+                # we do not want to substitute an expression with another that
+                # is strictly more complex. Such a substitution could also lead
+                # to cycles: if (in the future) r_shape[i] gets replaced by an
+                # expression of other_shape[i], other_shape[i] may end up
+                # depending on itself.
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
