@@ -1,0 +1,537 @@
+
+.. _install_linux:
+
+
+Installing Theano on Linux
+==========================
+
+Requirements
+------------
+
+In order to use Theano, the following libraries and software will need
+to be installed:
+
+    Python_ >= 2.4
+        The development package (``python-dev`` or ``python-devel``
+        on most Linux distributions) is recommended (see just below).
+
+    ``g++``, ``python-dev``
+        Not technically required but *highly* recommended, in order to compile
+        generated C code. Theano `can` fall back on a NumPy-based Python execution
+        model, but a C compiler allows for vastly faster execution.
+        g++ >= 4.2 (for openmp that is currently always used)
+        more recent version recommended!
+
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.5.0
+        Earlier versions could work, but we don't test it.
+
+    `SciPy <http://scipy.org>`_
+        Only currently required for sparse matrix and special functions
+        support, but *highly* recommended. We recommend SciPy
+        >=0.8 if you are using sparse matrices, because ``scipy.sparse``
+        is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
+        bug with singleton dimensions, there may be more bugs) and we do not
+        run tests with 0.7.
+
+    A `BLAS`_ installation (with Level 3 functionality)
+        Including the development headers (``-dev``, ``-devel``, depending on
+        your Linux distribution). Mac OS X comes with the `Accelerate
+        framework`_ built in, and various options exist for Windows (see
+        below).
+
+.. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+.. _Accelerate framework: http://developer.apple.com/performance/accelerateframework.html
+.. _Python: http://www.python.org/
+
+The following libraries and software are optional:
+
+    `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
+        Recommended, to run Theano's test-suite.
+
+    `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
+        For building the documentation. LaTeX_ and dvipng_ are also necessary
+        for math to show up as images.
+
+    `Git <http://git-scm.com>`_
+        To download bleeding-edge versions of Theano.
+
+    `pydot <https://code.google.com/p/pydot/>`_
+        To be able to make picture of Theano computation graph.
+
+    `NVIDIA CUDA drivers and SDK`_
+        Required for GPU code generation/execution. Only NVIDIA GPUs using
+        32-bit floating point numbers are currently supported.
+
+.. _LaTeX: http://www.latex-project.org/
+.. _dvipng: http://savannah.nongnu.org/projects/dvipng/
+.. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
+
+
+
+CentOS 6
+--------
+
+:ref:`install_centos6` provides instructions on how to install Theano on CentOS
+6, written by the Theano developers. It covers how to install Theano (for
+CPU-based computation only) with the distribution-packaged ATLAS, a free fast
+implementation of BLAS.
+
+.. Cent OS 6
+
+Ubuntu
+------
+
+:ref:`install_ubuntu` provides instructions on how to install Theano
+on Ubuntu. It covers how to install Theano with the
+distribution-packaged OpenBlas or ATLAS. Both are free fast
+implementation of BLAS.
+
+
+Alternative installation on Gentoo
+----------------------------------
+
+Brian Vandenberg emailed `installation instructions on Gentoo
+<http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
+focusing on how to install the appropriate dependencies.
+
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+
+Alternative installation on Mandriva 2010.2
+-------------------------------------------
+
+A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
+
+.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
+
+
+.. _linux_basic:
+
+Basic user install instructions
+-------------------------------
+
+The easiest way to obtain the released version of Theano is from PyPI using
+pip_ (a replacement for easy_install_ provided by setuptools_/distribute_)
+by typing
+
+.. code-block:: bash
+
+    pip install Theano
+
+You may need to add ``sudo``  before this command to install into your
+system's ``site-packages`` directory. If you do not have administrator access
+to your machine, you can install to an alternate prefix using
+
+.. code-block:: bash
+
+    pip install Theano --install-option='--prefix=~/.local'
+
+e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
+install Theano into ``.local/lib/python2.4/site-packages`` inside your home
+directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
+listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
+``~/.local`` is
+automatically searched and does *not* need to be explicitly included in
+``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
+You can change ``~/.local``, but you need to change your ``PYTHONPATH`` as said above.
+
+Alternatively you can use virtualenv_ to create an isolated ``site-packages``
+directory; see the `virtualenv documentation`_ for details.
+
+.. note::
+
+    Theano *can* be installed with easy_install_, however we recommend pip_.
+    ``pip`` offers many benefits over
+    ``easy_install`` such as more intelligent dependency management, better
+    error messages and a ``pip uninstall`` command for easily removing
+    packages.
+
+    If you do not have ``pip`` installed but do have ``easy_install``, you can
+    get ``pip`` by simply typing ``easy_install pip``.
+
+.. _distribute: http://packages.python.org/distribute/
+.. _setuptools: http://pypi.python.org/pypi/setuptools
+.. _easy_install: http://packages.python.org/distribute/easy_install.html
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv
+.. _virtualenv documentation: http://virtualenv.openplans.org/
+.. _pip: http://pypi.python.org/pypi/pip
+
+.. _updating:
+
+Updating Theano
+---------------
+
+The following command will update only Theano:
+
+.. code-block:: bash
+
+    sudo pip install --upgrade --no-deps theano
+
+The following command will update Theano and Numpy/Scipy (warning bellow):
+
+.. code-block:: bash
+
+    sudo pip install --upgrade theano
+
+
+If you installed NumPy/SciPy with yum/apt-get, updating NumPy/SciPy
+with pip/easy_install is not always a good idea. This can make Theano
+crash due to problems with BLAS (but see below). The versions of
+NumPy/SciPy in the distribution are sometimes linked against faster
+versions of BLAS. Installing NumPy/SciPy with
+yum/apt-get/pip/easy_install won't install the development package
+needed to recompile it with the fast version. This mean that if you
+don't install the development packages manually, when you recompile
+the updated NumPy/SciPy, it will compile with the slower version. This
+results in a slower Theano as well. To fix the crash, you can clear
+the Theano cache like this:
+
+.. code-block:: bash
+
+    theano-cache clear
+
+.. _install_bleeding_edge:
+
+Bleeding-edge install instructions
+----------------------------------
+
+Master Tests Status:
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
+    :target: http://travis-ci.org/Theano/Theano/builds
+
+If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
+
+If you want the bleeding-edge without developing the code you can use pip for
+this with the command line below. Note that it will also try to install Theano's dependencies 
+(like numpy and scipy), but not upgrade them. If you wish to upgrade them,
+remove the ``--no-deps`` switch to it, but go see a previous warning before doing this.
+
+.. code-block:: bash
+
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+or (if you want to install it for the current user only):
+
+.. code-block:: bash
+
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --install-option='--prefix=~/.local'
+
+The following are general instructions that will set you up with the
+bleeding-edge version of Theano and allow you to hack it. First,
+get the code using `Git <http://git-scm.com>`__:
+
+.. code-block:: bash
+
+    git clone git://github.com/Theano/Theano.git
+
+From here, the easiest way to get started is (this requires setuptools_ or distribute_ to be installed):
+
+.. code-block:: bash
+
+    cd Theano
+    python setup.py develop
+
+This will install a ``.pth`` file in your ``site-packages`` directory that
+tells Python where to look for your Theano installation (i.e. in the
+directory your just checked out of Github). Using ``develop`` mode is
+preferable to ``install`` as any modifications you make in the checkout
+directory (or changes you pull with Git) will be automatically reflected
+in the "installed" version without re-running ``python setup.py install``.
+
+If you do not have permission to modify your ``site-packages`` directory you
+can specify an alternative installation prefix using
+
+.. code-block:: bash
+
+    python setup.py develop --prefix=~/.local
+
+A common choice is ``~/.local`` which is automatically searched for Python >=
+2.6; for earlier Python versions and other installation prefixes, the prefix
+specified must contain ``lib/pythonA.B/site-packages``, where ``A.B`` is e.g.
+2.5, and this ``site-packages`` directory must be listed in ``PYTHONPATH``.
+
+An alternative, perhaps simpler way of creating and using an isolated
+``site-packages`` is to use virtualenv_; see the `virtualenv documentation`_
+for details. If you find yourself using virtualenv frequently you may find the
+virtualenvwrapper_ package useful for switching between them.
+
+.. _virtualenv: http://pypi.python.org/pypi/virtualenv
+.. _virtualenv documentation: http://virtualenv.openplans.org/
+.. _virtualenvwrapper: http://www.doughellmann.com/projects/virtualenvwrapper/
+
+.. _config_pythonpath:
+
+Configuring ``PYTHONPATH``
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If ``import theano`` does not work in Python, you may need modify the
+environment variable ``PYTHONPATH`` accordingly.
+In bash, you may do this:
+
+.. code-block:: bash
+
+    export PYTHONPATH=<new location to add>:$PYTHONPATH
+
+In csh:
+
+.. code-block:: csh
+
+    setenv PYTHONPATH <new location to add>:$PYTHONPATH
+
+To make this change stick you will usually need to add the above command to
+your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
+Consult your shell's documentation for details.
+
+Updating
+~~~~~~~~
+
+To update your library to the latest revision, change directory (``cd``)
+to your ``Theano`` folder and execute the following command:
+
+.. code-block:: bash
+
+    git pull
+
+You should update frequently, bugs are fixed on a very regular basis.
+
+
+.. _testing_installation:
+
+Testing your installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once you have installed Theano, you should run the test suite. At
+a Python (or IPython) interpreter,
+
+.. code-block:: python
+
+    >>> import theano
+    >>> theano.test()
+
+You can also run them in-place from the Git checkout directory by typing
+
+.. code-block:: bash
+
+    theano-nose
+
+You should be able to execute it if you followed the instructions above.
+If ``theano-nose`` is not found by your shell, you will need to add
+``Theano/bin`` to your ``PATH`` environment variable.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose``. In that case, some tests will fail by raising
+    the KnownFailureTest Exception, and will be considered as errors,
+    but they are nothing to worry about.
+
+.. note::
+
+    The tests should be run with the configuration option :attr:`~config.device`
+    set to ``cpu`` (default). If you need to change this value,
+    you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
+    by prefixing the ``theano-nose`` command with ``THEANO_FLAGS=device=cpu``.
+    If you have a GPU, it will automatically be used to run GPU-related tests.
+
+    If you want GPU-related tests to run on a specific GPU device, and not
+    the default one, you should use :attr:`~config.init_gpu_device`.
+    For instance: ``THEANO_FLAGS=device=cpu,init_gpu_device=gpu1``.
+
+    See :ref:`libdoc_config` for more information on how to change these
+    configuration options.
+
+All tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.
+
+
+Troubleshooting: Make sure you have a BLAS library
+--------------------------------------------------
+
+There are many ways to configure BLAS for Theano. This is done with the Theano
+flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
+installation information in NumPy, accessible via
+``numpy.distutils.__config__.show()``.  You can tell theano to use a different
+version of BLAS, in case you did not compile numpy with a fast BLAS or if numpy
+was compiled with a static library of BLAS (the latter is not supported in
+Theano).
+
+The short way to configure the Theano flags ``blas.ldflags`` is by setting the
+environment variable :envvar:`THEANO_FLAGS` to ``blas.ldflags=XXX`` (in bash
+``export THEANO_FLAGS=blas.ldflags=XXX``)
+
+The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
+permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
+entry like this:
+
+.. code-block:: cfg
+
+    # other stuff can go here
+    [blas]
+    ldflags = -lf77blas -latlas -lgfortran #put your flags here
+
+    # other stuff can go here
+
+For more information on the formatting of ``~/.theanorc`` and the
+configuration options that you can put there, see :ref:`libdoc_config`.
+
+Here are some different way to configure BLAS:
+
+0) Do nothing and use the default config, which is to link against the same
+BLAS against which NumPy was built. This does not work in the case NumPy was
+compiled with a static library (e.g. ATLAS is compiled by default only as a
+static library).
+
+1) Disable the usage of BLAS and fall back on NumPy for dot products. To do
+this, set the value of ``blas.ldflags`` as the empty string (ex: ``export
+THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your
+Theano code performs, this might slow some things down (vs. linking with BLAS
+directly).
+
+2) You can install the default (reference) version of BLAS if the NumPy version
+(against which Theano links) does not work. If you have root or sudo access in
+fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian
+``sudo apt-get install libblas-dev``. Then use the Theano flags
+``blas.ldflags=-lblas``. Note that the default version of blas is not optimized.
+Using an optimized version can give up to 10x speedups in the BLAS functions
+that we use.
+
+3) Install the ATLAS library. ATLAS is an open source optimized version of
+BLAS. You can install a precompiled version on most OSes, but if you're willing
+to invest the time, you can compile it to have a faster version (we have seen
+speed-ups of up to 3x, especialy on more recent computers, against the
+precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
+``sudo apt-get install libatlas-base-dev libatlas-base`` or
+``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
+Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that
+these flags are sometimes OS-dependent.
+
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it.
+See the doc of that software and set the Theano flags ``blas.ldflags``
+correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
+``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc
+-lpthread``).
+
+.. note::
+
+    Make sure your BLAS
+    libraries are available as dynamically-loadable libraries.
+    ATLAS is often installed only as a static library.  Theano is not able to
+    use this static library. Your ATLAS installation might need to be modified
+    to provide dynamically loadable libraries.  (On Linux this
+    typically means a library whose name ends with .so. On Windows this will be
+    a .dll, and on OS-X it might be either a .dylib or a .so.)
+
+    This might be just a problem with the way Theano passes compilation
+    arguments to g++, but the problem is not fixed yet.
+
+.. note::
+
+    If you have problems linking with MKL, `Intel Line Advisor
+    <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
+    and the `MKL User Guide
+    <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
+    can help you find the correct flags to use.
+
+.. _gpu_linux:
+
+Using the GPU
+-------------
+
+The first thing you'll need for Theano to use your GPU is Nvidia's
+GPU-programming toolchain. You should install at least the CUDA driver and the CUDA Toolkit, as
+`described here <http://www.nvidia.com/object/cuda_get.html>`_.  The CUDA
+Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
+*include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
+program which is the compiler for GPU code.)  This folder is called the *cuda
+root* directory.
+You must also add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a 64-bit Linux
+computer) to your ``$LD_LIBRARY_PATH`` environment variable.
+
+You must then tell Theano where the CUDA root folder is, and there are three ways
+to do it.
+Any one of them is enough.
+
+* Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
+* add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
+* add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
+
+.. note::
+
+    On Debian, you can ask the software package manager to install it
+    for you. We have a user report that this works for Debian Wheezy
+    (7.0). When you install it this way, you won't always have the
+    latest version, but we were told that it gets updated
+    regularly. One big advantage is that it will be updated
+    automatically. You can try the ``sudo apt-get install
+    nvidia-cuda-toolkit`` command to install it.
+
+    :ref:`Ubuntu instructions <install_ubuntu_gpu>`.
+
+
+
+Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
+computer, and set the default floating point computations to float32.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu,floatX=float32'``.
+You can also set these options in the .theanorc file's ``[global]`` section:
+
+     .. code-block:: cfg
+
+        [global]
+        device = gpu
+        floatX = float32
+
+Note that:
+
+    * If your computer has multiple GPUs and you use 'device=gpu', the driver
+      selects the one to use (usually gpu0).
+    * You can use the program nvida-smi to change this policy.
+    * You can choose one specific GPU by specifying 'device=gpuX', with X the
+      the corresponding GPU index (0, 1, 2, ...)
+    * By default, when ``device`` indicates preference for GPU computations,
+      Theano will fall back to the CPU if there is a problem with the GPU.
+      You can use the flag 'force_device=True' to instead raise an error when
+      Theano cannot use the GPU.
+
+Once your setup is complete, head to :ref:`using_gpu` to find how to verify
+everything is working properly.
+
+.. note::
+    There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
+    CUDA 2.3 with gcc-4.4.  Symptom: errors about "__sync_fetch_and_add" being undefined.
+    **Solution 1:** make gcc-4.3 the default gcc
+    (http://pascalg.wordpress.com/2010/01/14/cuda-on-ubuntu-9-10linux-mint-helena/)
+    **Solution 2:** make another gcc (e.g. gcc-4.3) the default just for nvcc.
+    Do this by making a directory (e.g. ``$HOME/.theano/nvcc-bindir``) and
+    installing two symlinks in it: one called gcc pointing to gcc-4.3 (or lower) and one called
+    g++ pointing to g++-4.3 (or lower).  Then add
+    ``compiler_bindir = /path/to/nvcc-bindir`` to the ``[nvcc]`` section of your ``.theanorc``
+    (`libdoc_config`).
+
+
+.. _Graphviz: http://www.graphviz.org/Download_windows.php
+
+
+Generating the documentation
+----------------------------
+
+You can read the latest HTML documentation `here
+<http://deeplearning.net/software/theano>`__.
+You can download the latest PDF documentation `here
+<http://deeplearning.net/software/theano/theano.pdf>`__.
+
+We recommend you look at the documentation on the website, since it
+will be more current than the documentation included with the package.
+
+If you really wish to build the documentation yourself, you will need
+epydoc and sphinx, as described above. Issue the following command::
+
+    python ./doc/scripts/docgen.py
+
+Documentation is built into ``html/``.
+The PDF of the documentation is ``html/theano.pdf``.
+
+
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
