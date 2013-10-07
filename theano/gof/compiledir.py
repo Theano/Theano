@@ -1,5 +1,6 @@
 import cPickle
 import errno
+import logging
 import os
 import platform
 import re
@@ -16,6 +17,9 @@ import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import call_subprocess_Popen
+
+
+_logger = logging.getLogger("theano.gof.compiledir")
 
 # Using the dummy file descriptors below is a workaround for a crash
 # experienced in an unusual Python 2.4.4 Windows environment with the default
@@ -225,18 +229,25 @@ def cleanup():
                                     keydata.key_pkl = filename
                                 keydata.remove_key(key)
                             except IOError, e:
-                                print ("ERROR while removing a key entry"
-                                       " from file. '%s'."
-                                       " Delete its directory" % filename)
+                                _logger.error(
+                                    "Could not remove file '%s'. To complete "
+                                    "the clean-up, please remove manually "
+                                    "the directory containing it.",
+                                    filename)
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))
 
                 except EOFError:
-                    print ("ERROR while reading this key file '%s'."
-                           " Delete its directory" % filename)
+                    _logger.error(
+                        "Could not read key file '%s'. To complete "
+                        "the clean-up, please remove manually "
+                        "the directory containing it.",
+                        filename)
             except IOError:
-                print ("ERROR while cleaning up this directory '%s'."
-                       " Delete it." % directory)
+                _logger.error(
+                    "Could not clean up this directory: '%s'. To complete "
+                    "the clean-up, please remove it manually.",
+                    directory)
         finally:
             if file is not None:
                 file.close()
