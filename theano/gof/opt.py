@@ -1229,7 +1229,7 @@ class NavigatorOptimizer(Optimizer):
         # If an output would be replaced by itself, no need to perform
         # the replacement
         repl_pairs = [(r, rnew) for r, rnew in zip(node.outputs, replacements)
-                if rnew is not r]
+                      if rnew is not r]
         if len(repl_pairs) == 0:
             return False
         try:
@@ -1415,6 +1415,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def apply(self, fgraph, start_from=None):
         if start_from is None:
             start_from = fgraph.outputs
+        else:
+            for node in start_from:
+                assert node in fgraph.outputs
+
         changed = True
         max_use_abort = False
         opt_name = None
@@ -1452,9 +1456,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             global_opt_timing.append(float(time.time() - t0))
 
             #apply local optimizer
-            for node in start_from:
-                assert node in fgraph.outputs
-
             topo_t0 = time.time()
             q = deque(graph.io_toposort(fgraph.inputs, start_from))
             io_toposort_timing.append(time.time() - topo_t0)
