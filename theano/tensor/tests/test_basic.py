@@ -1896,6 +1896,40 @@ class TestAlloc(unittest.TestCase):
                               for node in topo]) == 1
             assert not isinstance(topo[0].op, DeepCopyOp)
 
+    def test_ones(self):
+        for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
+            ones = theano.function([], [tensor.ones(shp)])
+            assert numpy.allclose(ones(), numpy.ones(shp))
+
+        # scalar doesn't have to be provided as input
+        x = scalar()
+        shp = []
+        ones_scalar = theano.function([], [tensor.ones(x.shape)])
+        assert numpy.allclose(ones_scalar(), numpy.ones(shp))
+
+        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+            x = typ()
+            ones_tensor = theano.function([x], [tensor.ones(x.shape)])
+            assert numpy.allclose(ones_tensor(numpy.zeros(shp)),
+                                  numpy.ones(shp))
+
+    def test_zeros(self):
+        for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
+            zeros = theano.function([], [tensor.zeros(shp)])
+            assert numpy.allclose(zeros(), numpy.zeros(shp))
+
+        # scalar doesn't have to be provided as input
+        x = scalar()
+        shp = []
+        zeros_scalar = theano.function([], [tensor.zeros(x.shape)])
+        assert numpy.allclose(zeros_scalar(), numpy.zeros(shp))
+
+        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+            x = typ()
+            zeros_tensor = theano.function([x], [tensor.zeros(x.shape)])
+            assert numpy.allclose(zeros_tensor(numpy.zeros(shp)),
+                                  numpy.zeros(shp))
+
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):

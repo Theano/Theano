@@ -2064,6 +2064,8 @@ def zeros(shape, dtype=None):
     """
     Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
     """
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(0, dtype=dtype), *shape)
@@ -2073,6 +2075,8 @@ def ones(shape, dtype=None):
     """
     Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
     """
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
