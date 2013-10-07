@@ -1896,6 +1896,18 @@ class TestAlloc(unittest.TestCase):
                               for node in topo]) == 1
             assert not isinstance(topo[0].op, DeepCopyOp)
 
+    def test_ones(self):
+        shapes = [[], 1, [1], [1, 2], [1, 2, 3]]
+        for shp in shapes:
+            ones = theano.function([], [tensor.ones(shp)])
+            assert numpy.allclose(ones(), numpy.ones(shp))
+
+    def test_zeros(self):
+        shapes = [[], 1, [1], [1, 2], [1, 2, 3]]
+        for shp in shapes:
+            zeros = theano.function([], [tensor.zeros(shp)])
+            assert numpy.allclose(zeros(), numpy.zeros(shp))
+
 
 def test_eye():
     def check(dtype, N, M_=None, k=0):
