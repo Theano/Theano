@@ -1424,15 +1424,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         loop_timing = []
         global_opt_timing = []
-        time_lopts = {}
+        time_opts = {}
         io_toposort_timing = []
         nb_nodes = []
-        for gopt in self.global_optimizers:
-            process_count.setdefault(gopt, 0)
-
-        for lopt in self.local_optimizers:
-            process_count.setdefault(lopt, 0)
-            time_lopts.setdefault(lopt, 0)
+        for opt in self.global_optimizers + self.local_optimizers:
+            process_count.setdefault(opt, 0)
+            time_opts.setdefault(opt, 0)
 
         while changed and not max_use_abort:
             t0 = time.time()
@@ -1441,7 +1438,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             #apply global optimizers
             for gopt in self.global_optimizers:
                 fgraph.change_tracker.reset()
+                t_opt = time.time()
                 gopt.apply(fgraph)
+                time_opts[gopt] += time.time() - t_opt
                 if fgraph.change_tracker.changed:
                     process_count[gopt] += 1
                     changed = True
@@ -1482,9 +1481,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     current_node = node
 
                     for lopt in self.local_optimizers:
-                        t_lopt = time.time()
+                        t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
-                        time_lopts[lopt] += time.time() - t_lopt
+                        time_opts[lopt] += time.time() - t_opt
                         if lopt_change:
                             process_count[lopt] += 1
                             changed = True
@@ -1507,7 +1506,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           config.optdb.max_use_ratio)
 
         return (self, loop_timing, process_count, max_nb_nodes,
-                global_opt_timing, nb_nodes, time_lopts, io_toposort_timing)
+                global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -1521,7 +1520,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         (opt, loop_timing, process_count, max_nb_nodes,
-         global_opt_timing, nb_nodes, time_lopts, io_toposort_timing) = prof
+         global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof
         blanc = ('    ' * level)
         print >> stream, blanc, "EquilibriumOptimizer",
         print >> stream, blanc, getattr(opt, "name",
@@ -1540,7 +1539,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         count_opt = []
         for opt, count in process_count.iteritems():
             if count > 0:
-                count_opt.append((time_lopts[opt], count, opt))
+                count_opt.append((time_opts[opt], count, opt))
 
         if count_opt:
             print >> stream, blanc, \
@@ -1554,7 +1553,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     @staticmethod
     def merge_profile(prof1, prof2):
         #(opt, loop_timing, process_count, max_nb_nodes,
-        # global_opt_timing, nb_nodes, time_lopts, io_toposort_timing) = prof1
+        # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
 
         local_optimizers = set(prof1[0].local_optimizers).union(
             prof2[0].local_optimizers)
@@ -1588,12 +1587,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         nb_nodes = merge_list(prof1[5], prof2[5])
 
-        time_lopts = prof1[6].copy()
+        time_opts = prof1[6].copy()
         for opt, t in prof2[6].iteritems():
-            if opt in time_lopts:
-                time_lopts[opt] += t
+            if opt in time_opts:
+                time_opts[opt] += t
             else:
-                time_lopts[opt] = t
+                time_opts[opt] = t
 
         io_toposort_timing = merge_list(prof1[7], prof2[7])
 
@@ -1606,7 +1605,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 max_nb_nodes,
                 global_opt_timing,
                 nb_nodes,
-                time_lopts,
+                time_opts,
                 io_toposort_timing)
 
 #################
