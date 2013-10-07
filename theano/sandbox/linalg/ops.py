@@ -159,7 +159,7 @@ class HintsFeature(object):
             if k not in new_hints:
                 new_hints[k] = v
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         # TODO:
         # This tells us that r and new_r must have the same shape
         # if we didn't know that the shapes are related, now we do.

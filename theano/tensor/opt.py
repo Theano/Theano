@@ -1075,7 +1075,7 @@ class ShapeFeature(object):
         for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         if new_r not in self.shape_of:
             # It happen that the fgraph didn't called on_import for some
             # new_r.  This happen when new_r don't have an

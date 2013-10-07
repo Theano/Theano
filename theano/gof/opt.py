@@ -423,7 +423,7 @@ class MergeFeature(object):
         for node in fgraph.toposort():
             self.on_import(fgraph, node, "on_attach")
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         # If inputs to node change, it is not guaranteed that it is distinct
         # from the other nodes in nodes_seen
         if node in self.nodes_seen:
@@ -1171,7 +1171,7 @@ class NavigatorOptimizer(Optimizer):
                 def on_prune(self, fgraph, node, reason):
                     pruner(node)
             if chin is not None:
-                def on_change_input(self, fgraph, node, i, r, new_r):
+                def on_change_input(self, fgraph, node, i, r, new_r, reason):
                     chin(node, i, r, new_r)
 
         u = Updater()
@@ -1360,7 +1360,7 @@ class ChangeTracker:
     def on_import(self, fgraph, node, reason):
         self.changed = True
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         self.changed = True
 
     def reset(self):
