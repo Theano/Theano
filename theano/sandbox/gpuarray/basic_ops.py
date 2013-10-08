@@ -313,7 +313,7 @@ class GpuFromCuda(Op):
                                     %(name)sdims, %(name)sstr,
                                     pygpu_default_context(), 1,
                                     (PyObject *)%(in)s,
-                                    (PyObject *)&GpuArrayType);
+                                    (PyObject *)&PyGpuArrayType);
         pygpu_default_context()->ops->buffer_release(%(name)sdata);
         free(%(name)sdims);
         free(%(name)sstr);
@@ -324,7 +324,7 @@ class GpuFromCuda(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 gpu_from_cuda = GpuFromCuda()
 
