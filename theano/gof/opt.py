@@ -1551,9 +1551,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print >> stream, blanc, "  time in global optimizers %.3fs" % s
         for i in range(len(loop_timing)):
             lopt = ""
-            if len(loop_process_count[i]) < 5:
+            if loop_process_count[i]:
+                d = list(reversed(sorted(loop_process_count[i].iteritems(),
+                                         key=lambda a: a[1])))
                 lopt = " ".join([str((str(k), v)) for k, v
-                                 in loop_process_count[i].iteritems()])
+                                 in d[:5]])
+                if len(d) > 5:
+                    lopt += " ..."
             print >> stream, blanc, ('  %2d - %.3fs %d (%.3fs in global opts, '
                                      '%.3fs io_toposort) - %d nodes - %s' % (
                                          i, loop_timing[i],
