@@ -1,6 +1,6 @@
 import copy
 import theano, numpy
-from theano import tensor
+from theano import tensor, scalar
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
@@ -176,9 +176,11 @@ def local_gpua_subtensor(node):
 @register_opt()
 @op_lifter(tensor.CAReduce)
 def local_gpua_careduce(node):
-    return GpuCAReduce(node.op.scalar_op, axis=node.op.axis,
-                       dtype=getattr(node.op, 'dtype', None),
-                       acc_dtype=getattr(node.op, 'acc_dtype', None))
+    if (isinstance(node.op.scalar_op, scalar.basic.Add) or
+        isinstance(node.op.scalar_op, scalar.basic.Mul)):
+        return GpuCAReduce(node.op.scalar_op, axis=node.op.axis,
+                           dtype=getattr(node.op, 'dtype', None),
+                           acc_dtype=getattr(node.op, 'acc_dtype', None))
 
 @register_opt()
 @op_lifter(tensor.blas.Gemv)
