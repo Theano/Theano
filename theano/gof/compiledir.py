@@ -1,5 +1,6 @@
 import cPickle
 import errno
+import logging
 import os
 import platform
 import re
@@ -16,6 +17,9 @@ import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import call_subprocess_Popen
+
+
+_logger = logging.getLogger("theano.gof.compiledir")
 
 # Using the dummy file descriptors below is a workaround for a crash
 # experienced in an unusual Python 2.4.4 Windows environment with the default
@@ -181,7 +185,7 @@ def cleanup():
     """
     Delete keys in old format from the compiledir.
 
-    Old clean up include key in old format:
+    Old clean up include key in old format or with old version of the c_code:
     1) keys that have an ndarray in them.
        Now we use a hash in the keys of the constant data.
     2) key that don't have the numpy ABI version in them
@@ -204,24 +208,46 @@ def cleanup():
                         have_c_compiler = False
                         for obj in flatten(key):
                             if isinstance(obj, numpy.ndarray):
-                                keydata.remove_key(key)
+                                have_npy_abi_version = False
                                 break
                             elif isinstance(obj, basestring):
                                 if obj.startswith('NPY_ABI_VERSION=0x'):
                                     have_npy_abi_version = True
                                 elif obj.startswith('c_compiler_str='):
                                     have_c_compiler = True
+                            elif (isinstance(obj, (theano.gof.Op, theano.gof.Type)) and
+                                  hasattr(obj, 'c_code_cache_version')):
+                                v = obj.c_code_cache_version()
+                                if v not in [(), None] and v not in key[0]:
+                                    have_npy_abi_version = False
+                                    break
 
                         if not have_npy_abi_version or not have_c_compiler:
-                            keydata.remove_key(key)
+                            try:
+                                #This can happen when we move the compiledir.
+                                if keydata.key_pkl != filename:
+                                    keydata.key_pkl = filename
+                                keydata.remove_key(key)
+                            except IOError, e:
+                                _logger.error(
+                                    "Could not remove file '%s'. To complete "
+                                    "the clean-up, please remove manually "
+                                    "the directory containing it.",
+                                    filename)
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))
 
                 except EOFError:
-                    print ("ERROR while reading this key file '%s'."
-                           " Delete its directory" % filename)
+                    _logger.error(
+                        "Could not read key file '%s'. To complete "
+                        "the clean-up, please remove manually "
+                        "the directory containing it.",
+                        filename)
             except IOError:
-                pass
+                _logger.error(
+                    "Could not clean up this directory: '%s'. To complete "
+                    "the clean-up, please remove it manually.",
+                    directory)
         finally:
             if file is not None:
                 file.close()
