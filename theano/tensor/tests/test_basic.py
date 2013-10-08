@@ -1910,7 +1910,8 @@ class TestAlloc(unittest.TestCase):
         for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
             x = typ()
             ones_tensor = theano.function([x], [tensor.ones(x.shape)])
-            assert numpy.allclose(ones_tensor(numpy.zeros(shp)),
+            inp = numpy.zeros(shp, dtype=config.floatX)
+            assert numpy.allclose(ones_tensor(inp),
                                   numpy.ones(shp))
 
     def test_zeros(self):
@@ -1927,7 +1928,8 @@ class TestAlloc(unittest.TestCase):
         for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
             x = typ()
             zeros_tensor = theano.function([x], [tensor.zeros(x.shape)])
-            assert numpy.allclose(zeros_tensor(numpy.zeros(shp)),
+            inp = numpy.zeros(shp, dtype=config.floatX)
+            assert numpy.allclose(zeros_tensor(inp),
                                   numpy.zeros(shp))
 
 
