@@ -12,6 +12,9 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
 
+if theano.sandbox.gpuarray.pygpu is None:
+    raise SkipTest("pygpu not installed")
+
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
     if not cuda_ndarray.use.device_number:
