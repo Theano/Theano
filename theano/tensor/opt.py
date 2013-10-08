@@ -2116,6 +2116,14 @@ def local_IncSubtensor_serialize(node):
 
         #print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
 
+# We register it in a TopoOptimizer inside the canonizer EQ optimizer.
+# Otherwise in some cases it was making the EQ optimizer use 45. In
+# the TopoOptimizer, the EQ only use 6 passes.
+compile.optdb.register('pre_local_IncSubtensor_serialize',
+                       in2out(local_IncSubtensor_serialize),
+                       #Just before canonizer
+                       0.99, 'fast_run')
+
 
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
