@@ -555,6 +555,9 @@ class MergeOptimizer(Optimizer):
         # clear blacklist
         fgraph.merge_feature.blacklist = []
 
+    def __str__(self):
+        return self.__class__.__name__
+
 merge_optimizer = MergeOptimizer()
 
 
@@ -1301,6 +1304,10 @@ class TopoOptimizer(NavigatorOptimizer):
             self.detach_updater(fgraph, u)
             raise
         self.detach_updater(fgraph, u)
+
+    def __str__(self):
+        return getattr(self, '__name__',
+                       '<TopoOptimizer instance>')
 
 
 class OpKeyOptimizer(NavigatorOptimizer):
