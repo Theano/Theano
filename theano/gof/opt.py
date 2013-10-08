@@ -1422,20 +1422,20 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         changed = True
         max_use_abort = False
         opt_name = None
-        process_count = {}
         max_nb_nodes = len(fgraph.apply_nodes)
         max_use = max_nb_nodes * self.max_use_ratio
 
         loop_timing = []
+        loop_process_count = []
         global_opt_timing = []
         time_opts = {}
         io_toposort_timing = []
         nb_nodes = []
         for opt in self.global_optimizers + self.local_optimizers:
-            process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
 
         while changed and not max_use_abort:
+            process_count = {}
             t0 = time.time()
             changed = False
 
@@ -1446,6 +1446,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
                 if fgraph.change_tracker.changed:
+                    process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
                     changed = True
                     if process_count[gopt] > max_use:
@@ -1486,6 +1487,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
                         if lopt_change:
+                            process_count.setdefault(lopt, 0)
                             process_count[lopt] += 1
                             changed = True
                             if process_count[lopt] > max_use:
@@ -1498,6 +1500,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             finally:
                 self.detach_updater(fgraph, u)
 
+            loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
 
         if max_use_abort:
@@ -1506,7 +1509,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
 
-        return (self, loop_timing, process_count, max_nb_nodes,
+        return (self, loop_timing, loop_process_count, max_nb_nodes,
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
@@ -1520,40 +1523,64 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opt, loop_timing, process_count, max_nb_nodes,
+        (opt, loop_timing, loop_process_count, max_nb_nodes,
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof
+
         blanc = ('    ' * level)
         print >> stream, blanc, "EquilibriumOptimizer",
         print >> stream, blanc, getattr(opt, "name",
                                         getattr(opt, "__name__", ""))
-        print >> stream, blanc, " time %.3fs for %d passes, %d nodes max" % (
+        print >> stream, blanc, "  time %.3fs for %d passes, %d nodes max" % (
                 sum(loop_timing), len(loop_timing), max_nb_nodes)
-        print >> stream, blanc, " time io_toposort %.3fs" % sum(
+        print >> stream, blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing)
+        s = sum([time_opts[o] for o in opt.local_optimizers])
+        print >> stream, blanc, "  time in local optimizers %.3fs" % s
+        s = sum([time_opts[o] for o in opt.global_optimizers])
+        print >> stream, blanc, "  time in global optimizers %.3fs" % s
         for i in range(len(loop_timing)):
-            print >> stream, blanc, ('%d - %.3fs (%.3fs in global opts, '
-                                     '%.3fs io_toposort) - %d nodes' % (
+            lopt = ""
+            if len(loop_process_count[i]) < 5:
+                lopt = " ".join([str((str(k), v)) for k, v
+                                 in loop_process_count[i].iteritems()])
+            print >> stream, blanc, ('  %2d - %.3fs %d (%.3fs in global opts, '
+                                     '%.3fs io_toposort) - %d nodes - %s' % (
                                          i, loop_timing[i],
+                                         sum(loop_process_count[i].values()),
                                          global_opt_timing[i],
-                                         io_toposort_timing[i], nb_nodes[i]))
+                                         io_toposort_timing[i], nb_nodes[i],
+                                         lopt))
 
         count_opt = []
+        not_used = 0
+        not_used_time = 0
+        process_count = {}
+        for o in opt.global_optimizers + opt.local_optimizers:
+            process_count.setdefault(o, 0)
+        for count in loop_process_count:
+            for o, v in count.iteritems():
+                process_count[o] += v
         for opt, count in process_count.iteritems():
             if count > 0:
                 count_opt.append((time_opts[opt], count, opt))
+            else:
+                not_used += 1
+                not_used_time += time_opts[opt]
 
         if count_opt:
             print >> stream, blanc, \
-                    'times applied - optimizer (only those applied):'
+                    '  times - times applied - name:'
             count_opt.sort()
             for (t, count, opt) in count_opt[::-1]:
                 print >> stream, blanc, '  %.3fs - %d - %s' % (
                     t, count, opt)
+            print >> stream, blanc, '  %.3fs - in %d optimization that where not used' % (
+                not_used_time, not_used)
             print >> stream
 
     @staticmethod
     def merge_profile(prof1, prof2):
-        #(opt, loop_timing, process_count, max_nb_nodes,
+        #(opt, loop_timing, loop_process_count, max_nb_nodes,
         # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
 
         local_optimizers = set(prof1[0].local_optimizers).union(
@@ -1575,12 +1602,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
-        process_count = prof1[2].copy()
-        for process, count in prof2[2].iteritems():
-            if process in process_count:
-                process_count[process] += count
-            else:
-                process_count[process] = count
+        loop_process_count = prof1[2].copy()
+        for i in range(len(loop_process_count)):
+            process_count = loop_process_count[i]
+            for process, count in prof2[2][i].iteritems():
+                if process in process_count:
+                    process_count[process] += count
+                else:
+                    process_count[process] = count
+        for i in range(len(loop_process_count), len(prof2[2])):
+            loop_process_count.append(prof2[2].copy())
 
         max_nb_nodes = max(prof1[3], prof2[3])
 
@@ -1602,7 +1633,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
         return (new_opt,
                 loop_timing,
-                process_count,
+                loop_process_count,
                 max_nb_nodes,
                 global_opt_timing,
                 nb_nodes,
