@@ -567,68 +567,58 @@ class T_AddMul(unittest.TestCase):
     def _testSD(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = numpy.array(array1)
-            aR = tensor.as_tensor_variable(a)
-            self.assertFalse(aR.data is a)  # constants are copied
-            self.assertTrue(_is_dense(a))
-            self.assertTrue(_is_dense_variable(aR))
+            for a in [numpy.array(array1), tensor.as_tensor_variable(array1)]:
+                b = mtype(array2)
+                bR = as_sparse_variable(b)
+                self.assertFalse(bR.data is b)  # constants are copied
+                self.assertTrue(_is_sparse(b))
+                self.assertTrue(_is_sparse_variable(bR))
 
-            b = mtype(array2)
-            bR = as_sparse_variable(b)
-            self.assertFalse(bR.data is b)  # constants are copied
-            self.assertTrue(_is_sparse(b))
-            self.assertTrue(_is_sparse_variable(bR))
+                apb = op(a, bR)
 
-            apb = op(aR, bR)
+                self.assertTrue(apb.type.dtype == a.dtype, apb.type.dtype)
+                self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
 
-            self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
-
-            val = eval_outputs([apb])
-            self.assertTrue(val.shape == (3, 2))
-            if op is add:
-                self.assertTrue(_is_dense_variable(apb))
-                self.assertTrue(numpy.all(val == (a + b)))
-                ans = numpy.array([[1., 2], [3, 4], [5, 6]])
-                self.assertTrue(numpy.all(val == ans))
-            elif op is mul:
-                self.assertTrue(_is_sparse_variable(apb))
-                self.assertTrue(numpy.all(val.todense() == (b.multiply(a))))
-                self.assertTrue(numpy.all(val.todense() == numpy.array(
-                    [[1, 0], [9, 0], [0, 36]])))
+                val = eval_outputs([apb])
+                self.assertTrue(val.shape == (3, 2))
+                if op is add:
+                    self.assertTrue(_is_dense_variable(apb))
+                    self.assertTrue(numpy.all(val == (array1 + b)))
+                    ans = numpy.array([[1., 2], [3, 4], [5, 6]])
+                    self.assertTrue(numpy.all(val == ans))
+                elif op is mul:
+                    self.assertTrue(_is_sparse_variable(apb))
+                    self.assertTrue(numpy.all(val.todense() == (b.multiply(array1))))
+                    self.assertTrue(numpy.all(val.todense() == numpy.array(
+                        [[1, 0], [9, 0], [0, 36]])))
 
     def _testDS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(array1)
-            aR = as_sparse_variable(a)
-            self.assertFalse(aR.data is a)
-            self.assertTrue(_is_sparse(a))
-            self.assertTrue(_is_sparse_variable(aR))
+            for b in [numpy.asarray(array2), tensor.as_tensor_variable(array2)]:
+                a = mtype(array1)
+                aR = as_sparse_variable(a)
+                self.assertFalse(aR.data is a)
+                self.assertTrue(_is_sparse(a))
+                self.assertTrue(_is_sparse_variable(aR))
 
-            b = numpy.asarray(array2)
-            bR = tensor.as_tensor_variable(b)
-            self.assertFalse(bR.data is b)
-            self.assertTrue(_is_dense(b))
-            self.assertTrue(_is_dense_variable(bR))
+                apb = op(aR, b)
 
-            apb = op(aR, bR)
+                self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
+                self.assertTrue(apb.type.dtype == b.dtype, apb.type.dtype)
 
-            self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
-
-            val = eval_outputs([apb])
-            self.assertTrue(val.shape == (3, 2))
-            if op is add:
-                self.assertTrue(_is_dense_variable(apb))
-                self.assertTrue(numpy.all(val == (a + b)))
-                ans = numpy.array([[1., 2], [3, 4], [5, 6]])
-                self.assertTrue(numpy.all(val == ans))
-            elif op is mul:
-                self.assertTrue(_is_sparse_variable(apb))
-                ans = numpy.array([[1, 0], [9, 0], [0, 36]])
-                self.assertTrue(numpy.all(val.todense() == (a.multiply(b))))
-                self.assertTrue(numpy.all(val.todense() == ans))
+                val = eval_outputs([apb])
+                self.assertTrue(val.shape == (3, 2))
+                if op is add:
+                    self.assertTrue(_is_dense_variable(apb))
+                    self.assertTrue(numpy.all(val == (a + array2)))
+                    ans = numpy.array([[1., 2], [3, 4], [5, 6]])
+                    self.assertTrue(numpy.all(val == ans))
+                elif op is mul:
+                    self.assertTrue(_is_sparse_variable(apb))
+                    ans = numpy.array([[1, 0], [9, 0], [0, 36]])
+                    self.assertTrue(numpy.all(val.todense() == (a.multiply(array2))))
+                    self.assertTrue(numpy.all(val.todense() == ans))
 
     def test_upcast(self):
         array1 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='float32')
