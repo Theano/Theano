@@ -26,7 +26,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, next, decode, decode_iter
-from theano.compat.six import StringIO
+from theano.compat.six import BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -1570,7 +1570,7 @@ class GCC_compiler(object):
                 if p.returncode != 0:
                     return None
 
-                lines = StringIO(stdout + stderr).readlines()
+                lines = BytesIO(stdout + stderr).readlines()
                 lines = decode_iter(lines)
                 if parse:
                     selected_lines = []
