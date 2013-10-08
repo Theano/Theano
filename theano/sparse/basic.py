@@ -300,6 +300,8 @@ class _sparse_py_operators:
     # def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
 
+    def toarray(self):
+        return dense_from_sparse(self)
     shape = property(lambda self: tensor.shape(dense_from_sparse(self)))
     # don't worry!
     # the plan is that the ShapeFeature in tensor.opt will do shape propagation

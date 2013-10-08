@@ -708,18 +708,25 @@ class T_conversion(unittest.TestCase):
             self.assertTrue(str(val.dtype) == 'float64')
             self.assertTrue(val.format == 'csr')
 
-    if 1:
-        def test2(self):
-            #call dense_from_sparse
-            for t in _mtypes:
-                s = t(scipy.sparse.identity(5))
-                d = dense_from_sparse(s)
-                # s should be copied into the graph as a constant
-                s[0, 0] = 3.0  # changes s, but not the copy
-                val = eval_outputs([d])
-                return
-                self.assertTrue(str(val.dtype) == s.dtype)
-                self.assertTrue(numpy.all(val[0] == [1, 0, 0, 0, 0]))
+    def test_dense_from_sparse(self):
+        #call dense_from_sparse
+        for t in _mtypes:
+            s = t(scipy.sparse.identity(5))
+            s = as_sparse_variable(s)
+            d = dense_from_sparse(s)
+            val = eval_outputs([d])
+            self.assertTrue(str(val.dtype) == s.dtype)
+            self.assertTrue(numpy.all(val[0] == [1, 0, 0, 0, 0]))
+
+    def test_todense(self):
+        #call sparse_var.todense()
+        for t in _mtypes:
+            s = t(scipy.sparse.identity(5))
+            s = as_sparse_variable(s)
+            d = s.toarray()
+            val = eval_outputs([d])
+            self.assertTrue(str(val.dtype) == s.dtype)
+            self.assertTrue(numpy.all(val[0] == [1, 0, 0, 0, 0]))
 
     @staticmethod
     def check_format_ndim(format, ndim):
