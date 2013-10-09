@@ -16,9 +16,9 @@ _logger = logging.getLogger("theano.compile.pfunc")
 
 
 def rebuild_collect_shared(outputs,
-                           inputs=None,
-                           replace=None,
-                           updates=None,
+                           inputs=[],
+                           replace=[],
+                           updates=[],
                            rebuild_strict=True,
                            copy_inputs_over=True,
                            no_default_updates=False,
@@ -138,8 +138,6 @@ def rebuild_collect_shared(outputs,
         return clone_d[a]
 
     # intialize the clone_d mapping with the replace dictionary
-    if replace is None:
-        replace = []
     try:
         replace_pairs = replace.items()
     except Exception:
@@ -163,9 +161,6 @@ def rebuild_collect_shared(outputs,
         clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
                                                      copy_inputs_over)
 
-    if inputs is None:
-        inputs = []
-
     def clone_inputs(i):
         if not copy_inputs_over:
             return clone_d.setdefault(i, i.clone())
@@ -186,8 +181,6 @@ def rebuild_collect_shared(outputs,
                              ' variable via the `givens` parameter') % v)
 
     # Fill update_d and update_expr with provided updates
-    if updates is None:
-        updates = []
     for (store_into, update_val) in iter_over_pairs(updates):
         if not isinstance(store_into, SharedVariable):
             raise TypeError('update target must be a SharedVariable',
@@ -333,7 +326,7 @@ class Param(object):
         self.implicit = implicit
 
 
-def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
+def pfunc(params, outputs=None, mode=None, updates=[], givens=[],
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
         profile=None, on_unused_input=None):
@@ -416,10 +409,6 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     # Then it clones the outputs and the update expressions.  This rebuilds a computation graph
     # from the inputs and the givens.
     #
-    if updates is None:
-        updates = []
-    if givens is None:
-        givens = []
     if profile is None:
         profile = config.profile
         # profile -> True or False

@@ -492,9 +492,9 @@ def char_from_number(number):
     return rval
 
 
-def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
+def debugprint(r, prefix='', depth=-1, done={}, print_type=False,
                file=sys.stdout, print_destroy_map=False,
-               print_view_map=False, order=None, ids='CHAR',
+               print_view_map=False, order=[], ids='CHAR',
                stop_on_name=False, prefix_child=None):
     """Print the graph leading to `r` to given depth.
 
@@ -519,12 +519,6 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     """
     if depth == 0:
         return
-
-    if order is None:
-        order = []
-
-    if done is None:
-        done = dict()
 
     if print_type:
         type_str = ' <%s>' % r.type
@@ -1537,9 +1531,7 @@ class _Linker(gof.link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
-        if no_recycling is None:
-            no_recycling = []
+    def accept(self, fgraph, no_recycling=[]):
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
             return type(self)(maker=self.maker).accept(fgraph, no_recycling)
