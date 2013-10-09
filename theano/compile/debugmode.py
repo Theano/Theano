@@ -2102,17 +2102,14 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-#TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z)
-                                                for x, y, z in indices], [])
-
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
 
         # make the fgraph
         for i in xrange(mode.stability_patience):
             fgraph, additional_outputs, equivalence_tracker = _optcheck_fgraph(
-                expanded_inputs, outputs, accept_inplace)
+                inputs, outputs, accept_inplace)
             fgraph.equivalence_tracker = equivalence_tracker
 
             # optimize the fgraph
@@ -2190,7 +2187,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none

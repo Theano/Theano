@@ -1005,7 +1005,7 @@ class FunctionMaker(object):
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
-        fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
+        fgraph, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
         fgraph.profile = profile
 
         self.fgraph = fgraph
@@ -1053,11 +1053,11 @@ class FunctionMaker(object):
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
-                    fgraph_updated_vars(fgraph, expanded_inputs))
+                    fgraph_updated_vars(fgraph, inputs))
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
