@@ -12,7 +12,7 @@ from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
 
-def function(inputs, outputs=None, mode=None, updates=None, givens=None,
+def function(inputs, outputs=None, mode=None, updates=[], givens=[],
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
              on_unused_input=None):
@@ -159,9 +159,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-    if updates is None:
-        updates = []
-
     if (isinstance(updates, dict) and
             not isinstance(updates, gof.python25.OrderedDict) and
             len(updates) > 1):
@@ -177,8 +174,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             " the call as the conversion will still be non-deterministic.",
             stacklevel=2)
 
-    if givens is None:
-        givens = []
     if not isinstance(inputs, (list, tuple)):
         raise Exception("Input variables of a Theano function should be"
                         " contained in a list, even when there is a single input.")
