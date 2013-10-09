@@ -1000,10 +1000,9 @@ class FunctionMaker(object):
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-        assert expanded_inputs == inputs  # JB - I added this to make sure we could delete above
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
         fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
