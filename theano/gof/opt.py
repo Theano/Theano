@@ -1422,6 +1422,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         changed = True
         max_use_abort = False
         opt_name = None
+        global_process_count = {}
         max_nb_nodes = len(fgraph.apply_nodes)
         max_use = max_nb_nodes * self.max_use_ratio
 
@@ -1432,6 +1433,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         io_toposort_timing = []
         nb_nodes = []
         for opt in self.global_optimizers + self.local_optimizers:
+            global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
 
         while changed and not max_use_abort:
@@ -1448,8 +1450,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 if fgraph.change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
+                    global_process_count[gopt] += 1
                     changed = True
-                    if process_count[gopt] > max_use:
+                    if global_process_count[gopt] > max_use:
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
@@ -1489,8 +1492,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         if lopt_change:
                             process_count.setdefault(lopt, 0)
                             process_count[lopt] += 1
+                            global_process_count[lopt] += 1
                             changed = True
-                            if process_count[lopt] > max_use:
+                            if global_process_count[lopt] > max_use:
                                 max_use_abort = True
                                 opt_name = (getattr(lopt, "name", None)
                                             or getattr(lopt, "__name__", ""))
