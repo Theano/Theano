@@ -5,6 +5,7 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 import sys
+import time
 
 import theano
 from theano.gof import graph
@@ -77,6 +78,8 @@ class FunctionGraph(utils.object2):
         is added via the constructor.  How constructed is the FunctionGraph?
 
         """
+
+        self.execute_callbacks_time = 0
 
         if features is None:
             features = []
@@ -521,6 +524,7 @@ class FunctionGraph(utils.object2):
           getattr(feature, name)(*args)
         for each feature which has a method called after name.
         """
+        t0 = time.time()
         for feature in self._features:
             try:
                 fn = getattr(feature, name)
@@ -531,6 +535,7 @@ class FunctionGraph(utils.object2):
                 continue
 
             fn(self, *args, **kwargs)
+        self.execute_callbacks_time += time.time() - t0
 
     def collect_callbacks(self, name, *args):
         """WRITEME
