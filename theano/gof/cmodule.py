@@ -1583,6 +1583,8 @@ class GCC_compiler(object):
                             selected_lines.append(line.strip())
                         elif "-mtune=" in line:
                             selected_lines.append(line.strip())
+                        elif "-target-cpu" in line:
+                            selected_lines.append(line.strip())
                     lines = list(set(selected_lines))  # to remove duplicate
 
                 return lines
@@ -1629,12 +1631,48 @@ class GCC_compiler(object):
                         " problem:\n %s",
                         get_lines("g++ -E -v -", parse=False))
                 else:
-                    part = native_lines[0].split()
+                    # Some options are actually given as "-option value",
+                    # we want to treat them as only one token.
+                    # Heuristic: tokens not starting with a dash should be
+                    # joined with the previous one.
+                    def join_options(init_part):
+                        new_part = []
+                        for i, p in enumerate(init_part):
+                            if p.startswith('-'):
+                                if ((i + 1 < len(init_part)) and
+                                        not init_part[i + 1].startswith('-')):
+                                    # add "-option value" as one arg
+                                    pp1 = init_part[i + 1]
+                                    new_part.append(' '.join((p, pp1)))
+                                else:
+                                    # add "-option" as one arg
+                                    new_part.append(p)
+                            elif i == 0:
+                                # The first argument does not usually start
+                                # with "-", still add it
+                                new_part.append(p)
+                            # Else, skip it, as it was already included
+                            # with the previous part.
+                        return new_part
+
+                    part = join_options(native_lines[0].split())
+
                     for line in default_lines:
                         if line.startswith(part[0]):
-                            part2 = [p for p in line.split()
-                                     if not 'march' in p and not 'mtune' in p]
+                            part2 = [p for p in join_options(line.split())
+                                     if (not 'march' in p and
+                                         not 'mtune' in p and
+                                         not 'target-cpu' in p)]
                             new_flags = [p for p in part if p not in part2]
+                            # Replace '-target-cpu value', which is an option
+                            # of clang, with '-march=value', for g++
+                            for i, p in enumerate(new_flags):
+                                if 'target-cpu' in p:
+                                    opt = p.split()
+                                    if len(opt) == 2:
+                                        opt_name, opt_val = opt
+                                        new_flags[i] = '-march=%s' % opt_val
+
                             GCC_compiler.march_flags = new_flags
                             break
                     _logger.info("g++ -march=native equivalent flags: %s",
