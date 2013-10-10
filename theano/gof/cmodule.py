@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import itertools
 
 import distutils.sysconfig
 
@@ -1601,13 +1600,21 @@ class GCC_compiler(object):
 
         if detect_march:
             if len(native_lines) != 1:
+                if len(native_lines) == 0:
+                    # That means we did not select the right lines, so
+                    # we have to report all the lines instead
+                    reported_lines = get_lines("g++ -march=native -E -v -",
+                                               parse=False)
+                else:
+                    reported_lines = native_lines
                 _logger.warn(
                     "OPTIMIZATION WARNING: Theano was not able to find the"
                     " g++ parameters that tune the compilation to your "
                     " specific CPU. This can slow down the execution of Theano"
                     " functions. Please submit the following lines to"
                     " Theano's mailing list so that we can fix this"
-                    " problem:\n %s", native_lines)
+                    " problem:\n %s",
+                    reported_lines)
             else:
                 default_lines = get_lines("g++ -E -v -")
                 _logger.info("g++ default lines: %s", default_lines)
