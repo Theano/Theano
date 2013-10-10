@@ -2119,7 +2119,7 @@ def local_IncSubtensor_serialize(node):
 
 # We register it in a TopoOptimizer inside the canonizer EQ optimizer.
 # Otherwise in some cases it was making the EQ optimizer use 45. In
-# the TopoOptimizer, the EQ only use 6 passes.
+# the TopoOptimizer, the EQ only use 5 passes.
 compile.optdb.register('pre_local_IncSubtensor_serialize',
                        in2out(local_IncSubtensor_serialize),
                        #Just before canonizer
