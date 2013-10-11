@@ -600,8 +600,8 @@ def use_c_gemv(node):
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
-    if node.op == gemv_no_inplace:
-        return [gemv_inplace(*node.inputs)]
+    if node.op == cgemv_no_inplace:
+        return [cgemv_inplace(*node.inputs)]
 
 
 ####### ####### #######
