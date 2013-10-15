@@ -605,6 +605,25 @@ class ConvOp(OpenMPOp):
                     self.kshp[0] * self.kshp[1] * \
                         self.imshp[1] * self.imshp[2] * 2
 
+    def flops(self, inputs, outputs):
+        """ Useful with the hack in profilemode to print the MFlops"""
+        images, kerns = inputs
+        out, = outputs
+        assert images[1] == kerns[1]
+        flops = 0
+        if self.out_mode == "valid":
+            # nb mul and add by output pixed
+            flops = kerns[2] * kerns[3] * 2
+            #nb flops by output image
+            flops *= out[2] * out[3]
+            # for all outputs images#n_stack==self.imshp[0]
+            flops *= images[1] * kerns[0] * images[0]
+        else:  # full mode not implemented
+            flops = (images[0] * kerns[0] * images[1] *
+                     kerns[2] * kerns[3] *
+                     images[2] * images[3] * 2)
+        return flops
+
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
         """
