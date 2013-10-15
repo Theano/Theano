@@ -3887,8 +3887,7 @@ class Reshape(Op):
                 PyArray_CORDER);
             if (!%(z)s)
             {
-                PyErr_Format(PyExc_ValueError,
-                             "Could not reshape array.");
+                //The error message should have been set by PyArray_Newshape
                 %(fail)s;
             }
             if (!PyArray_ISALIGNED(%(z)s)) {
