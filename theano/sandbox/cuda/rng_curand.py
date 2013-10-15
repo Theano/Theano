@@ -49,6 +49,7 @@ class CURAND_Base(GpuOp):
         if self.destructive:
             self.destroy_map = {0: [0]}
         self.output_type = output_type
+        assert output_type.dtype == "float32"
 
     def as_destructive(self):
         """Return an destructive version of self"""
