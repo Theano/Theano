@@ -376,7 +376,7 @@ class FunctionGraph(utils.object2):
         current value of node.inputs[i] which we want to replace.
 
         For each feature that has a 'on_change_input' method, calls:
-          feature.on_change_input(function_graph, node, i, old_r, new_r, [reason])
+          feature.on_change_input(function_graph, node, i, old_r, new_r, reason)
         """
         # TODO: ERROR HANDLING FOR LISTENERS (should it complete the change or revert it?)
         if node == 'output':
@@ -512,14 +512,7 @@ class FunctionGraph(utils.object2):
                 # not existing
                 continue
 
-            #####HORRIBLE OPTIONAL ARGUMENT HACK
-            try:
-                fn(self, *args, **kwargs)
-            except TypeError, e:
-                if str(e) == "on_change_input() got an unexpected keyword argument 'reason'" and len(kwargs) == 1:
-                    fn(self, *args)
-                else:
-                    raise
+            fn(self, *args, **kwargs)
 
     def collect_callbacks(self, name, *args):
         """WRITEME

@@ -47,29 +47,43 @@ theano.configparser.AddConfigVar('on_shape_error',
 # Utilities
 
 
-def out2in(*local_opts):
+def out2in(*local_opts, **kwargs):
     """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
         local_opts = opt.LocalOptGroup(*local_opts),
     else:
         local_opts, = local_opts
-    return opt.TopoOptimizer(local_opts,
-                             order='out_to_in',
-                             failure_callback=TopoOptimizer.warn_inplace)
+        if not name:
+            name = local_opts.__name__
+    ret = opt.TopoOptimizer(local_opts,
+                            order='out_to_in',
+                            failure_callback=TopoOptimizer.warn_inplace,
+                            **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
 
 
 def in2out(*local_opts, **kwargs):
     """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
         local_opts = opt.LocalOptGroup(*local_opts),
     else:
         local_opts, = local_opts
-    return opt.TopoOptimizer(local_opts,
-                             order='in_to_out',
-                             failure_callback=TopoOptimizer.warn_inplace,
-                             **kwargs)
+        if not name:
+            #import pdb;pdb.set_trace()
+            name = local_opts.__name__
+    ret = opt.TopoOptimizer(local_opts,
+                            order='in_to_out',
+                            failure_callback=TopoOptimizer.warn_inplace,
+                            **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
 
 
 def _fill_chain(new_out, orig_inputs):
@@ -1075,7 +1089,7 @@ class ShapeFeature(object):
         for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         if new_r not in self.shape_of:
             # It happen that the fgraph didn't called on_import for some
             # new_r.  This happen when new_r don't have an
@@ -2101,6 +2115,14 @@ def local_IncSubtensor_serialize(node):
             return [tip]
 
         #print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
+
+# We register it in a TopoOptimizer inside the canonizer EQ optimizer.
+# Otherwise in some cases it was making the EQ optimizer use 45. In
+# the TopoOptimizer, the EQ only use 6 passes.
+compile.optdb.register('pre_local_IncSubtensor_serialize',
+                       in2out(local_IncSubtensor_serialize),
+                       #Just before canonizer
+                       0.99, 'fast_run')
 
 
 #after priority 50 Destructive inplace operations
@@ -3717,7 +3739,8 @@ register_specialize(local_add_specialize)
 # mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
-                                         local_fill_sink))
+                                         local_fill_sink),
+                       name='mul_canonizer_groups')
 
 
 def check_for_x_over_absX(numerators, denominators):
@@ -3859,7 +3882,8 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
-                                         local_fill_sink))
+                                         local_fill_sink),
+                       name='add_canonizer_group')
 
 
 register_canonicalize(local_add_canonizer, name='local_add_canonizer')

@@ -442,7 +442,7 @@ if 0:
 
             self.stale_droot = True
 
-        def on_change_input(self, fgraph, app, i, old_r, new_r):
+        def on_change_input(self, fgraph, app, i, old_r, new_r, reason):
             """app.inputs[i] changed from old_r to new_r """
             if app == 'output':
                 # app == 'output' is special key that means FunctionGraph is redefining which nodes are being
@@ -827,7 +827,7 @@ class DestroyHandler(toolbox.Bookkeeper):
 
         self.stale_droot = True
 
-    def on_change_input(self, fgraph, app, i, old_r, new_r):
+    def on_change_input(self, fgraph, app, i, old_r, new_r, reason):
         """app.inputs[i] changed from old_r to new_r """
         if app == 'output':
             # app == 'output' is special key that means FunctionGraph is redefining which nodes are being
