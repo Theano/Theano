@@ -123,6 +123,7 @@ List of Implemented Operations
       Both grad are implemented. Structured by default.
     - :class:`SparseFromDense <theano.sparse.basic.SparseFromDense>` and ``csr_from_dense``, ``csc_from_dense``.
       The grad implemented is structured.
+    - Theano SparseVariable object have a method ``toarray()`` that is the same as ``dense_from_sparse``.
 
 - Construction of Sparses and their Properties
     - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix.

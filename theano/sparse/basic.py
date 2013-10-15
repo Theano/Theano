@@ -300,6 +300,8 @@ class _sparse_py_operators:
     # def _as_TensorVariable(self):
     #    return dense_from_sparse(self)
 
+    def toarray(self):
+        return dense_from_sparse(self)
     shape = property(lambda self: tensor.shape(dense_from_sparse(self)))
     # don't worry!
     # the plan is that the ShapeFeature in tensor.opt will do shape propagation
@@ -1843,6 +1845,8 @@ class AddSD(gof.op.Op):
     def infer_shape(self, node, shapes):
         return [shapes[3]]
 
+    def c_code_cache_version(self):
+        return (1,)
 add_s_d = AddSD()
 
 
@@ -1918,6 +1922,10 @@ def add(x, y):
         x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'):
         y = as_sparse_variable(y)
+    if not isinstance(x, theano.Variable):
+        x = theano.tensor.as_tensor_variable(x)
+    if not isinstance(y, theano.Variable):
+        y = theano.tensor.as_tensor_variable(y)
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)

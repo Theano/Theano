@@ -252,6 +252,8 @@ class CGer(BaseBLAS, Ger):
 
     def c_code_cache_version(self):
         return (8, blas_header_version())
+cger_inplace = CGer(True)
+cger_no_inplace = CGer(False)
 
 
 @local_optimizer([ger, ger_destructive])
@@ -269,8 +271,8 @@ def use_c_ger(node):
 
 @local_optimizer([CGer(False)])
 def make_c_ger_destructive(node):
-    if node.op == CGer(False):
-        return [CGer(True)(*node.inputs)]
+    if node.op == cger_no_inplace:
+        return [cger_inplace(*node.inputs)]
 
 
 ####### ####### #######
@@ -579,6 +581,8 @@ class CGemv(BaseBLAS, Gemv):
 
     def c_code_cache_version(self):
         return (10, blas_header_version())
+cgemv_inplace = CGemv(inplace=True)
+cgemv_no_inplace = CGemv(inplace=False)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
@@ -596,8 +600,8 @@ def use_c_gemv(node):
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
-    if node.op == CGemv(inplace=False):
-        return [CGemv(inplace=True)(*node.inputs)]
+    if node.op == cgemv_no_inplace:
+        return [cgemv_inplace(*node.inputs)]
 
 
 ####### ####### #######

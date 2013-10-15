@@ -546,7 +546,7 @@ class Elemwise(Op):
                 args.append(DimShuffle(
                     input.type.broadcastable,
                     ['x'] * difference + range(length),
-                    inplace=True)(input))
+                    inplace=False)(input))
         inputs = args
 
         #HERE: all the broadcast dims have the same length now
