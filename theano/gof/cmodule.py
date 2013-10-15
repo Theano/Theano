@@ -1632,7 +1632,8 @@ class GCC_compiler(object):
                         get_lines("g++ -E -v -", parse=False))
                 else:
                     # Some options are actually given as "-option value",
-                    # we want to treat them as only one token.
+                    # we want to treat them as only one token when comparing
+                    # different command lines.
                     # Heuristic: tokens not starting with a dash should be
                     # joined with the previous one.
                     def join_options(init_part):
@@ -1673,7 +1674,14 @@ class GCC_compiler(object):
                                         opt_name, opt_val = opt
                                         new_flags[i] = '-march=%s' % opt_val
 
-                            GCC_compiler.march_flags = new_flags
+                            # Go back to split arguments, like
+                            # ["-option", "value"],
+                            # as this is the way g++ expects them split.
+                            split_flags = []
+                            for p in new_flags:
+                                split_flags.extend(p.split())
+
+                            GCC_compiler.march_flags = split_flags
                             break
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
