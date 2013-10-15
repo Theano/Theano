@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import itertools
 
 import distutils.sysconfig
 
@@ -1584,6 +1583,8 @@ class GCC_compiler(object):
                             selected_lines.append(line.strip())
                         elif "-mtune=" in line:
                             selected_lines.append(line.strip())
+                        elif "-target-cpu" in line:
+                            selected_lines.append(line.strip())
                     lines = list(set(selected_lines))  # to remove duplicate
 
                 return lines
@@ -1601,13 +1602,21 @@ class GCC_compiler(object):
 
         if detect_march:
             if len(native_lines) != 1:
+                if len(native_lines) == 0:
+                    # That means we did not select the right lines, so
+                    # we have to report all the lines instead
+                    reported_lines = get_lines("g++ -march=native -E -v -",
+                                               parse=False)
+                else:
+                    reported_lines = native_lines
                 _logger.warn(
                     "OPTIMIZATION WARNING: Theano was not able to find the"
                     " g++ parameters that tune the compilation to your "
                     " specific CPU. This can slow down the execution of Theano"
                     " functions. Please submit the following lines to"
                     " Theano's mailing list so that we can fix this"
-                    " problem:\n %s", native_lines)
+                    " problem:\n %s",
+                    reported_lines)
             else:
                 default_lines = get_lines("g++ -E -v -")
                 _logger.info("g++ default lines: %s", default_lines)
@@ -1622,13 +1631,57 @@ class GCC_compiler(object):
                         " problem:\n %s",
                         get_lines("g++ -E -v -", parse=False))
                 else:
-                    part = native_lines[0].split()
+                    # Some options are actually given as "-option value",
+                    # we want to treat them as only one token when comparing
+                    # different command lines.
+                    # Heuristic: tokens not starting with a dash should be
+                    # joined with the previous one.
+                    def join_options(init_part):
+                        new_part = []
+                        for i in range(len(init_part)):
+                            p = init_part[i]
+                            if p.startswith('-'):
+                                p_list = [p]
+                                while ((i + 1 < len(init_part)) and
+                                       not init_part[i + 1].startswith('-')):
+                                    # append that next part to p_list
+                                    p_list.append(init_part[i + 1])
+                                    i += 1
+                                new_part.append(' '.join(p_list))
+                            elif i == 0:
+                                # The first argument does not usually start
+                                # with "-", still add it
+                                new_part.append(p)
+                            # Else, skip it, as it was already included
+                            # with the previous part.
+                        return new_part
+
+                    part = join_options(native_lines[0].split())
+
                     for line in default_lines:
                         if line.startswith(part[0]):
-                            part2 = [p for p in line.split()
-                                     if not 'march' in p and not 'mtune' in p]
+                            part2 = [p for p in join_options(line.split())
+                                     if (not 'march' in p and
+                                         not 'mtune' in p and
+                                         not 'target-cpu' in p)]
                             new_flags = [p for p in part if p not in part2]
-                            GCC_compiler.march_flags = new_flags
+                            # Replace '-target-cpu value', which is an option
+                            # of clang, with '-march=value', for g++
+                            for i, p in enumerate(new_flags):
+                                if 'target-cpu' in p:
+                                    opt = p.split()
+                                    if len(opt) == 2:
+                                        opt_name, opt_val = opt
+                                        new_flags[i] = '-march=%s' % opt_val
+
+                            # Go back to split arguments, like
+                            # ["-option", "value"],
+                            # as this is the way g++ expects them split.
+                            split_flags = []
+                            for p in new_flags:
+                                split_flags.extend(p.split())
+
+                            GCC_compiler.march_flags = split_flags
                             break
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
