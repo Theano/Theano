@@ -1638,16 +1638,16 @@ class GCC_compiler(object):
                     # joined with the previous one.
                     def join_options(init_part):
                         new_part = []
-                        for i, p in enumerate(init_part):
+                        for i in range(len(init_part)):
+                            p = init_part[i]
                             if p.startswith('-'):
-                                if ((i + 1 < len(init_part)) and
-                                        not init_part[i + 1].startswith('-')):
-                                    # add "-option value" as one arg
-                                    pp1 = init_part[i + 1]
-                                    new_part.append(' '.join((p, pp1)))
-                                else:
-                                    # add "-option" as one arg
-                                    new_part.append(p)
+                                p_list = [p]
+                                while ((i + 1 < len(init_part)) and
+                                       not init_part[i + 1].startswith('-')):
+                                    # append that next part to p_list
+                                    p_list.append(init_part[i + 1])
+                                    i += 1
+                                new_part.append(' '.join(p_list))
                             elif i == 0:
                                 # The first argument does not usually start
                                 # with "-", still add it
