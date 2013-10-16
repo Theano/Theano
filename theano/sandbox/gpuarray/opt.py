@@ -186,3 +186,8 @@ def local_gpua_careduce(node):
 @op_lifter(tensor.blas.Gemv)
 def local_gpua_gemv(node):
     return GpuGemv(inplace=node.op.inplace)
+
+@register_opt()
+@op_listfer(tensor.blas.Gemm)
+def local_gpua_gemm(node):
+    return GpuGemm(inplace=node.op.inplace)
