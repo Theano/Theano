@@ -347,3 +347,13 @@ class test_RopLop(RopLop_checker):
             all_outs.extend(o)
         f = theano.function([m, v, m_, v_], all_outs)
         f(mval, vval, m_val, v_val)
+
+    def test_Rop_dot_bug_18Oct2013_Jeremiah(self):
+        # This test refers to a bug reported by Jeremiah Lowin on 18th Oct
+        # 2013. The bug consists when through a dot operation there is only
+        # one differentiable path (i.e. there is no gradient wrt to one of
+        # the inputs).
+        x = tensor.arange(20.0).reshape([1, 20])
+        v = theano.shared(numpy.ones([20]))
+        d = tensor.dot(x, v).sum()
+        tensor.Rop(tensor.grad(d, v), v, v)

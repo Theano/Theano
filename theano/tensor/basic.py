@@ -4556,11 +4556,12 @@ class Dot(Op):
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is
         # simply c \dot b + a \dot d
-        if None in eval_points:
-            return [None]
+
 
         assert len(inputs) == 2
         assert len(eval_points) == 2
+        if eval_points[0] is None and eval_points[1] is None:
+            return [None]
 
         debugger_available = config.compute_test_value != 'off'
 
@@ -4579,25 +4580,28 @@ class Dot(Op):
                     'second input passed to Dot.R_op has no test value')
                 debugger_available = False
 
-            try:
-                ev0 = gof.op.get_test_value(eval_points[0])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'first eval point passed to Dot.R_op has no test value')
-                debugger_available = False
-            try:
-                ev1 = gof.op.get_test_value(eval_points[1])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'second eval point passed to Dot.R_op has no test value')
-                debugger_available = False
+            if eval_points[0]:
+                try:
+                    ev0 = gof.op.get_test_value(eval_points[0])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'first eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+            if eval_points[1]:
+                try:
+                    ev1 = gof.op.get_test_value(eval_points[1])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'second eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
 
         if debugger_available:
             input_values = [iv0, iv1]
             eval_point_values = [ev0, ev1]
 
             for i in xrange(2):
-                if input_values[i].shape != eval_point_values[i].shape:
+                if eval_point_values[i] and \
+                   input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError('input ' + str(i) + ' and eval_point ' +
                                      str(i) + ' to Dot.R_op '
                                      'should have the '
@@ -4605,11 +4609,17 @@ class Dot(Op):
                                      ' %s and %s, respectively' % (
                             str(input_values[i].shape),
                             str(eval_point_values[i].shape)))
+        if eval_points[0]:
+            t1 = self(eval_points[0], inputs[1])
+        if eval_points[1]:
+            t2 = self(inputs[0], eval_points[1])
 
-        t1 = self(eval_points[0], inputs[1])
-        t2 = self(inputs[0], eval_points[1])
-
-        return [t1 + t2]
+        if eval_points[0] and eval_points[1]:
+            return [t1 + t2]
+        elif eval_points[0]:
+            return [t1]
+        else:
+            return [t2]
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
