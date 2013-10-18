@@ -35,6 +35,16 @@ probably do something similar on older computer.
    this is not completely safe. ``easy_install`` with NumPy 1.5.1 does not
    raise this error.
 
+.. note::
+
+   This page describe how to install Theano for python 2. If you have
+   installed python3 on your system, maybe you need to change the
+   command pip to ``pip-2.7`` to specify to install it for python2, as
+   sometimes the pip command refer to the python 3 version.
+
+   The development version of Theano support python 3.3 and we
+   probably support python 3.2, but don't test on it.
+
 
 Installation steps
 ~~~~~~~~~~~~~~~~~~
