@@ -490,11 +490,9 @@ class ProfileStats(object):
         hs += ['<id>']
         es += ['%3d']
 
+        es += ['%s', '%s']
         if self.variable_shape:
-            hs += ['<Mflops>']
-            es += ['%.1f']
-        else:
-            es += ['%s']
+            hs += ['<Mflops>', '<Gflops/s>']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
         maxlen = self.line_width - upto_length
@@ -523,17 +521,20 @@ class ProfileStats(object):
                 continue
             if not self.variable_shape:
                 flops = ""
+                flops_s = ""
             elif hasattr(a.op, 'flops'):
-                flops = a.op.flops([self.variable_shape[var]
+                fl = a.op.flops([self.variable_shape[var]
                                     for var in a.inputs],
                                    [self.variable_shape[var]
                                     for var in a.outputs])
-                flops = flops/1024./1024
+                flops = '%8.1f' % (fl/1024./1024)
+                flops_s = '%10.1f' % (fl/1024./1024/1024/t)
             else:
-                flops = -1
+                flops = "        "
+                flops_s = "          "
             print >> file, format_str %(f, ftot, t, t / nb_call, nb_call,
                                         nd_id,
-                                        flops,
+                                        flops, flops_s,
                                         str(a)[:maxlen])
             if not config.profile_memory:
                 continue
