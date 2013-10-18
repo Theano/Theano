@@ -124,7 +124,8 @@ gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
 
 from theano.compile import optdb
-from theano.gof import local_optimizer, EquilibriumOptimizer
+from theano.gof import local_optimizer, LocalOptGroup
+from theano.tensor.opt import in2out
 
 @local_optimizer([gpugemv_no_inplace])
 def local_inplace_gpuagemv(node):
@@ -136,10 +137,8 @@ def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
         return [gpugemm_inplace(*node.inputs)]
 
-gpuablas_opt_inplace = EquilibriumOptimzer(
-    [local_inplace_gpuagemv, local_inplace_gpuagemm],
-    failure_callback=EquilibriumOptimizer.warn_inplace,
-    max_use_ratio=5)
+gpuablas_opt_inplace = in2out(LocalOptGroup(
+        local_inplace_gpuagemv, local_inplace_gpuagemm))
 optdb.register('InplaceGpuaBlasOpt',
                gpuablas_opt_inplace,
                70.0, 'fast_run', 'inplace', 'gpuarray')
