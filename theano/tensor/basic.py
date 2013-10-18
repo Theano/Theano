@@ -4580,25 +4580,28 @@ class Dot(Op):
                     'second input passed to Dot.R_op has no test value')
                 debugger_available = False
 
-            try:
-                ev0 = gof.op.get_test_value(eval_points[0])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'first eval point passed to Dot.R_op has no test value')
-                debugger_available = False
-            try:
-                ev1 = gof.op.get_test_value(eval_points[1])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'second eval point passed to Dot.R_op has no test value')
-                debugger_available = False
+            if eval_points[0]:
+                try:
+                    ev0 = gof.op.get_test_value(eval_points[0])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'first eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+            if eval_points[1]:
+                try:
+                    ev1 = gof.op.get_test_value(eval_points[1])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'second eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
 
         if debugger_available:
             input_values = [iv0, iv1]
             eval_point_values = [ev0, ev1]
 
             for i in xrange(2):
-                if input_values[i].shape != eval_point_values[i].shape:
+                if eval_pooint_values[i] and \
+                   input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError('input ' + str(i) + ' and eval_point ' +
                                      str(i) + ' to Dot.R_op '
                                      'should have the '
