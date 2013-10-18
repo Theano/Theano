@@ -838,11 +838,17 @@ class VM_Linker(link.LocalLinker):
         for k in storage_map:
             compute_map[k] = [k.owner is None]
 
-        thunks = [node.op.make_thunk(node,
-                    storage_map,
-                    compute_map,
-                    no_recycling)
-                        for node in order]
+        thunks = []
+        for node in order:
+            try:
+                thunks.append(node.op.make_thunk(node,
+                                                 storage_map,
+                                                 compute_map,
+                                                 no_recycling))
+            except Exception, e:
+                e.args = ("The following error happened while"
+                          " compiling the node", node, "\n") + e.args
+                raise
         for node, thunk in zip(order, thunks):
             thunk.inputs = [storage_map[v] for v in node.inputs]
             thunk.outputs = [storage_map[v] for v in node.outputs]
