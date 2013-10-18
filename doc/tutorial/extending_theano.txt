@@ -86,7 +86,10 @@ Op Contract
         def R_op(self, inputs, eval_points):
             pass
 
-        def infer_shape(node, (i0_shapes, ...))
+        def infer_shape(node, (i0_shapes, ...)):
+            pass
+
+        def flops(self, inputs, outputs):
             pass
 
 .. ../extending/op.txt
@@ -115,6 +118,11 @@ do implement them. Those methods are :func:`__eq__` and
 The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
 middle of the computational graph without actually computing the outputs (when possible).
 This could be helpful if one only needs the shape of the output instead of the actual outputs.
+
+The :func:`flops` method allows to have the number of mega flops and
+giga flops per second printed by the memory profiler. It take as
+inputs two list: one for the inputs and one for the outputs. They
+contain one tuple with the shape of the corresponding inputs/outputs.
 
 The :func:`grad` method is required if you want to differentiate some cost whose expression
 includes your op.
