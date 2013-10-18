@@ -4600,7 +4600,7 @@ class Dot(Op):
             eval_point_values = [ev0, ev1]
 
             for i in xrange(2):
-                if eval_pooint_values[i] and \
+                if eval_point_values[i] and \
                    input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError('input ' + str(i) + ' and eval_point ' +
                                      str(i) + ' to Dot.R_op '
