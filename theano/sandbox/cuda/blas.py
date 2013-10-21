@@ -628,11 +628,11 @@ class GpuConv(GpuOp):
         assert images[1] == kerns[1]
         flops = 0
         if self.out_mode == "valid":
-            # nb mul and add by output pixed
+            # nb mul and add by output pixel
             flops = kerns[2] * kerns[3] * 2
-            #nb flops by output image
+            # nb flops by output image
             flops *= out[2] * out[3]
-            # for all outputs images#n_stack==self.imshp[0]
+            # nb patch multiplied
             flops *= images[1] * kerns[0] * images[0]
         else:
             flops = (images[0] * kerns[0] * images[1] *

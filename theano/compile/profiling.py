@@ -524,9 +524,9 @@ class ProfileStats(object):
                 flops_s = ""
             elif hasattr(a.op, 'flops'):
                 fl = a.op.flops([self.variable_shape[var]
-                                    for var in a.inputs],
-                                   [self.variable_shape[var]
-                                    for var in a.outputs])
+                                 for var in a.inputs],
+                                [self.variable_shape[var]
+                                 for var in a.outputs])
                 flops = '%8.1f' % (fl/1024./1024)
                 flops_s = '%10.1f' % (fl/1024./1024/1024/t)
             else:
