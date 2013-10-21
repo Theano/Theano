@@ -3711,17 +3711,16 @@ def local_add_specialize(node):
                 continue
             new_inputs.append(input)
 
+
         if len(new_inputs) < len(node.inputs):
             dtype = node.outputs[0].type.dtype
             if len(new_inputs) == 0:
                 #we got rid of the entire expression!
                 ndim = node.outputs[0].type.ndim
-                return fill_chain(
-                        T.TensorConstant(
-                            T.TensorType(
-                                dtype=dtype,
-                                broadcastable=[True] * ndim),
-                            numpy.zeros((1,) * ndim, dtype=dtype)))
+                #Reuse call to constant for cache()
+                cst = T.constant(numpy.zeros((1,) * ndim, dtype=dtype))
+                assert cst.type.broadcastable == [True] * ndim
+                return fill_chain(cst)
 
             if len(new_inputs) == 1:
                 ret = fill_chain(new_inputs[0])

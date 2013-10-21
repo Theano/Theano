@@ -749,10 +749,8 @@ class Elemwise(Op):
                 # the gradient contains a constant, translate it as
                 # an equivalent TensorType of size 1 and proper number of
                 # dimensions
-                res = TensorConstant(TensorType(dtype=r.type.dtype,
-                                            broadcastable=()),
-                                     numpy.asarray(r.data))  # .reshape(b)
-                return DimShuffle((), ['x'] * nd, inplace=True)(res)
+                res = theano.tensor.constant(numpy.asarray(r.data), dtype=r.type.dtype)
+                return DimShuffle((), ['x'] * nd, inplace=False)(res)
             new_r = Elemwise(node.op, {})(
                     *[transform(ipt) for ipt in node.inputs])
             return new_r

@@ -400,9 +400,25 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 
+constant_cache = {}
 def constant(x, name=None, ndim=None, dtype=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
+    ret = constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
+
+    #We create a small cache of frequently used constant.
+    #This speed up the Merge optimization for big graph.
+    #We want to cache all scalar to don't merge as frequently constants.
+    #But we don't want to cache too much stuff
+    #So we cache integer with dtype [u]int and float where the value is between -10 and 10
+    #We want to cache all broadcast pattern for scalar.
+    sig = ret.signature()
+    if (sig not in constant_cache and ret.data.size == 1 and
+        ret.data <= 10 and ret.data >= -10 and
+        (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
+         (ret.dtype in float_dtypes and int(ret.data) == ret.data))):
+        constant_cache[sig] = ret
+
+    return constant_cache.get(sig, ret)
 
 
 def _obj_is_wrappable_as_tensor(x):
