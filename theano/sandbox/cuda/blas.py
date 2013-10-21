@@ -621,6 +621,25 @@ class GpuConv(GpuOp):
                          False, False]
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
+    def flops(self, inputs, outputs):
+        """ Useful with the hack in profilemode to print the MFlops"""
+        images, kerns = inputs
+        out, = outputs
+        assert images[1] == kerns[1]
+        flops = 0
+        if self.out_mode == "valid":
+            # nb mul and add by output pixel
+            flops = kerns[2] * kerns[3] * 2
+            # nb flops by output image
+            flops *= out[2] * out[3]
+            # nb patch multiplied
+            flops *= images[1] * kerns[0] * images[0]
+        else:
+            flops = (images[0] * kerns[0] * images[1] *
+                     kerns[2] * kerns[3] *
+                     images[2] * images[3] * 2)
+        return flops
+
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
         assert node.op is node_.op

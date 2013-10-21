@@ -330,6 +330,16 @@ following methods:
    shape without computing the output itself, potentially sparing you
    a costly recomputation.
 
+.. function:: flops(inputs, outputs)
+
+   Optional.
+
+   It is only used to have more information printed by the memory
+   profiler.  It make it print the mega flops and giga flops per
+   second for each apply node. It take as inputs two list: one for the
+   inputs and one for the outputs. They contain one tuple with the
+   shape of the corresponding inputs/outputs.
+
 .. function:: make_thunk(node, storage_map, compute_map, no_recycling)
 
    TODO

@@ -14,8 +14,7 @@ import theano.ifelse
 
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
-                        Optimizer, toolbox, DestroyHandler,
-                        EquilibriumOptimizer)
+                        Optimizer, toolbox, DestroyHandler)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
     device_properties, gpu_eye,
@@ -1199,12 +1198,10 @@ def local_inplace_ger(node):
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
 # elemwise(step 71)
 optdb.register('InplaceGpuBlasOpt',
-        EquilibriumOptimizer([local_inplace_gemm,
-                              local_inplace_gemv,
-                              local_inplace_ger,
-                              ],
-                            failure_callback=EquilibriumOptimizer.warn_inplace,
-            max_use_ratio=5),
+               tensor.opt.in2out(local_inplace_gemm,
+                                 local_inplace_gemv,
+                                 local_inplace_ger,
+                                 name="InplaceGpuBlasOpt"),
                70.0, 'fast_run', 'inplace', 'gpu')
 
 

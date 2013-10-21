@@ -292,32 +292,6 @@ class ProfileStats(object):
                 rval[node.op] = 'Py'
         return rval
 
-    def op_flops(self):
-        """dict op -> total number of flops"""
-        # timing is stored by node, we compute timing by Op on demand
-        rval = {}
-        return rval  # TODO: continue here
-        for node, count in self.apply_callcount.items():
-            rval.setdefault(node.op, 0)
-            rval[node.op] += 1
-        return rval
-        for a, t in self.op_time.items():
-            if hasattr(a, 'flops'):
-                op_flops[a] = a.flops * op_call[a] / t / 1e6
-
-        flops_msg = ''
-        if op_flops:
-            flops_msg = ' <MFlops/s>'
-            print ('\nHACK WARNING: we print the flops for some OP, but the'
-                   ' logic does not always work. You need to know the internal'
-                   ' of Theano to make it work correctly.'
-                   ' Otherwise don\'t use!')
-        print ('\nOp-wise summary:'
-               ' <%% of local_time spent on this kind of Op>'
-               ' <cumulative %%> <self seconds> <cumulative seconds>'
-               ' <time per call> %s <nb_call> <nb apply> <Op name>' % (
-                flops_msg))
-
     def summary_class(self, file=sys.stderr, N=None):
         if self.apply_time:
             local_time = sum(self.apply_time.values())
@@ -330,7 +304,6 @@ class ProfileStats(object):
         class_time = self.class_time()
         class_call = self.class_callcount()
         class_apply = self.class_nodes()
-#        class_flops = self.class_flops()
         class_impl = self.class_impl()
         if N is None:
             N = len(self.class_time)
@@ -395,12 +368,6 @@ class ProfileStats(object):
             # While this carries over less information, it is arranged such
             # that it way more readeable that the previous output of the
             # profiler
-            #if op_flops:
-            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (
-            #            f, ftot, t, tot, t/nb_call, impl, op_flops.get(a,-1), nb_call, nb_apply, a)
-            #else:
-            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
-            #            f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
         print >>file, '   ... (remaining %i Classes account for %6.2f%%(%.2fs) of the runtime)'\
                 % (max(0, len(otimes) - N),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[N:]),
@@ -419,10 +386,7 @@ class ProfileStats(object):
         op_time = self.op_time()
         op_call = self.op_callcount()
         op_apply = self.op_nodes()
-        op_flops = self.op_flops()
         op_impl = self.op_impl()
-        if N is None:
-            N = len(self.op_flops)
         otimes = [(t * 100 / local_time,
                     t,
                     op,
@@ -484,12 +448,6 @@ class ProfileStats(object):
             # While this carries over less information, it is arranged such
             # that it way more readeable that the previous output of the
             # profiler
-            #if op_flops:
-            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (
-            #            f, ftot, t, tot, t/nb_call, impl, op_flops.get(a,-1), nb_call, nb_apply, a)
-            #else:
-            #    print >>file, '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (
-            #            f, ftot, t, tot, t/nb_call, impl, nb_call, nb_apply, a)
         print >>file, '   ... (remaining %i Ops account for %6.2f%%(%.2fs) of the runtime)'\
                 % (max(0, len(otimes) - N),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[N:]),
@@ -532,6 +490,10 @@ class ProfileStats(object):
         hs += ['<id>']
         es += ['%3d']
 
+        es += ['%s', '%s']
+        if self.variable_shape:
+            hs += ['<Mflops>', '<Gflops/s>']
+
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
         maxlen = self.line_width - upto_length
         hs += ['<Apply name>']
@@ -557,8 +519,22 @@ class ProfileStats(object):
             ftot = tot * 100 / local_time
             if nb_call == 0:
                 continue
+            if not self.variable_shape:
+                flops = ""
+                flops_s = ""
+            elif hasattr(a.op, 'flops'):
+                fl = a.op.flops([self.variable_shape[var]
+                                 for var in a.inputs],
+                                [self.variable_shape[var]
+                                 for var in a.outputs])
+                flops = '%8.1f' % (fl/1024./1024)
+                flops_s = '%10.1f' % (fl/1024./1024/1024/t)
+            else:
+                flops = "        "
+                flops_s = "          "
             print >> file, format_str %(f, ftot, t, t / nb_call, nb_call,
                                         nd_id,
+                                        flops, flops_s,
                                         str(a)[:maxlen])
             if not config.profile_memory:
                 continue
