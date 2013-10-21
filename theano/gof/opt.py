@@ -1148,7 +1148,7 @@ class NavigatorOptimizer(Optimizer):
         pass
 
     def __init__(self, local_opt, ignore_newtrees='auto',
-            failure_callback=None):
+                 failure_callback=None):
         """
         :param local_opt:  a LocalOptimizer to apply over a FunctionGraph
             (or None is Ok too).
@@ -1312,7 +1312,12 @@ class TopoOptimizer(NavigatorOptimizer):
     def apply(self, fgraph, start_from=None):
         if start_from is None:
             start_from = fgraph.outputs
+        callback_before = fgraph.execute_callbacks_time
+        validate_before = fgraph.profile.validate_time
+        nb_nodes_start = len(fgraph.apply_nodes)
+        t0 = time.time()
         q = deque(graph.io_toposort(fgraph.inputs, start_from))
+        io_t = time.time() - t0
 
         def importer(node):
             if node is not current_node:
@@ -1326,18 +1331,41 @@ class TopoOptimizer(NavigatorOptimizer):
                     pass
 
         u = self.attach_updater(fgraph, importer, pruner)
+        nb = 0
         try:
+            t0 = time.time()
             while q:
                 if self.order == 'out_to_in':
                     node = q.pop()
                 else:
                     node = q.popleft()
                 current_node = node
-                self.process_node(fgraph, node)
+                nb += self.process_node(fgraph, node)
+            loop_t = time.time() - t0
         except Exception:
             self.detach_updater(fgraph, u)
             raise
         self.detach_updater(fgraph, u)
+
+        callback_time = fgraph.execute_callbacks_time - callback_before
+        validate_time = fgraph.profile.validate_time - validate_before
+        nb_nodes_end = len(fgraph.apply_nodes)
+        return (nb, nb_nodes_start, nb_nodes_end,
+                io_t, loop_t, callback_time, validate_time)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (nb, io_t, nb_nodes_start, nb_nodes_end,
+         loop_t, callback_time, validate_time) = prof
+
+        blanc = ('    ' * level)
+        print >> stream, blanc, "TopoOptimizer"
+        print >> stream, blanc, "  nb_node (start, end, changed)", (
+            nb_nodes_start, nb_nodes_end, nb)
+        print >> stream, blanc, "  init io_toposort", io_t
+        print >> stream, blanc, "  loop time", loop_t
+        print >> stream, blanc, "  callback_time", callback_time
+        print >> stream, blanc, "  validate_time", validate_time
 
     def __str__(self):
         return getattr(self, '__name__',
