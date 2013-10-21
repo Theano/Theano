@@ -578,7 +578,7 @@ class ConvOp(OpenMPOp):
             flops *= out[2] * out[3]
             # for all outputs images#n_stack==self.imshp[0]
             flops *= images[1] * kerns[0] * images[0]
-        else:  # full mode not implemented
+        else:
             flops = (images[0] * kerns[0] * images[1] *
                      kerns[2] * kerns[3] *
                      images[2] * images[3] * 2)
