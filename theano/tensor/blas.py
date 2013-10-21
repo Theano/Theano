@@ -135,7 +135,7 @@ import numpy.distutils.__config__
 
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, DestroyHandler,
-                        local_optimizer, Optimizer, LocalOptGroup,
+                        local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,
                         EquilibriumOptimizer, Apply,
                         ReplacementDidntRemovedError)
@@ -1777,9 +1777,10 @@ blas_optdb.register('local_gemm_to_gemv',
 # Try to make gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the
 # fusion of elemwise(step 71)
-blas_opt_inplace = in2out(LocalOptGroup(local_inplace_gemm,
-                                        local_inplace_gemv,
-                                        local_inplace_ger))
+blas_opt_inplace = in2out(local_inplace_gemm,
+                          local_inplace_gemv,
+                          local_inplace_ger,
+                          name="blas_opt_inplace")
 optdb.register('InplaceBlasOpt',
         blas_opt_inplace,
         70.0, 'fast_run', 'inplace')
