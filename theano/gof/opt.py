@@ -165,6 +165,10 @@ class SeqOptimizer(Optimizer, list):
         l = []
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
+            sub_validate_time = [validate_before]
+        else:
+            sub_validate_time = []
+        callback_before = fgraph.execute_callbacks_time
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         for optimizer in self:
@@ -173,6 +177,8 @@ class SeqOptimizer(Optimizer, list):
                 sub_prof = optimizer.optimize(fgraph)
                 l.append(float(time.time() - t0))
                 sub_profs.append(sub_prof)
+                if fgraph.profile:
+                    sub_validate_time.append(fgraph.profile.validate_time)
             except AssertionError:
                 # do not catch Assertion failures
                 raise
@@ -187,8 +193,9 @@ class SeqOptimizer(Optimizer, list):
             validate_time = fgraph.profile.validate_time - validate_before
         else:
             validate_time = None
-        return (self, l, validate_time, nb_node_before,
-                len(fgraph.apply_nodes), sub_profs)
+        callback_time = fgraph.execute_callbacks_time - callback_before
+        return (self, l, validate_time, callback_time, nb_node_before,
+                len(fgraph.apply_nodes), sub_profs, sub_validate_time)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -208,8 +215,8 @@ class SeqOptimizer(Optimizer, list):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opts, prof, validate_time, nb_node_before,
-         nb_node_after, sub_profs) = prof
+        (opts, prof, validate_time, callback_time, nb_node_before,
+         nb_node_after, sub_profs, sub_validate_time) = prof
         blanc = ('    ' * level)
 
         print >> stream, blanc, "SeqOptimizer",
@@ -222,8 +229,10 @@ class SeqOptimizer(Optimizer, list):
                               sum(prof), nb_node_before, nb_node_after))
         print >> stream, \
                 blanc, "  %.3fs for fgraph.validate()" % (validate_time)
+        print >> stream, \
+                blanc, "  %.3fs for callback" % (callback_time)
         if level == 0:
-            print >> stream, blanc, "  time      - (name, class, index)"
+            print >> stream, blanc, "  time      - (name, class, index) - validate time"
         ll = []
         for opt in opts:
             if hasattr(opt, "__name__"):
@@ -245,7 +254,14 @@ class SeqOptimizer(Optimizer, list):
         for (t, opt) in lll[::-1]:
             #if t < 1:
             #    continue
-            print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+            if sub_validate_time:
+                i = opt[-1]
+                val_time = sub_validate_time[i + 1] - sub_validate_time[i]
+                print >> stream, blanc, '  %.6fs - %s - %.3fs' % (
+                    t, opt, val_time)
+            else:
+                print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+
             if sub_profs[opt[-1]]:
                 opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
                                             level=level + 1)
@@ -1313,7 +1329,6 @@ class TopoOptimizer(NavigatorOptimizer):
         if start_from is None:
             start_from = fgraph.outputs
         callback_before = fgraph.execute_callbacks_time
-        validate_before = fgraph.profile.validate_time
         nb_nodes_start = len(fgraph.apply_nodes)
         t0 = time.time()
         q = deque(graph.io_toposort(fgraph.inputs, start_from))
@@ -1348,15 +1363,14 @@ class TopoOptimizer(NavigatorOptimizer):
         self.detach_updater(fgraph, u)
 
         callback_time = fgraph.execute_callbacks_time - callback_before
-        validate_time = fgraph.profile.validate_time - validate_before
         nb_nodes_end = len(fgraph.apply_nodes)
         return (nb, nb_nodes_start, nb_nodes_end,
-                io_t, loop_t, callback_time, validate_time)
+                io_t, loop_t, callback_time)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (nb, io_t, nb_nodes_start, nb_nodes_end,
-         loop_t, callback_time, validate_time) = prof
+        (nb, nb_nodes_start, nb_nodes_end,
+         io_t, loop_t, callback_time) = prof
 
         blanc = ('    ' * level)
         print >> stream, blanc, "TopoOptimizer"
@@ -1365,7 +1379,6 @@ class TopoOptimizer(NavigatorOptimizer):
         print >> stream, blanc, "  init io_toposort", io_t
         print >> stream, blanc, "  loop time", loop_t
         print >> stream, blanc, "  callback_time", callback_time
-        print >> stream, blanc, "  validate_time", validate_time
 
     def __str__(self):
         return getattr(self, '__name__',
