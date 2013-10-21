@@ -869,5 +869,5 @@ def test_stack_rows_segfault_070312():
     out = theano.shared(numpy.random.rand(1, 2, 2, 3).astype('float32'))
     op = theano.tensor.nnet.conv.ConvOp(imshp=(80, 96, 96), kshp=(9, 9),
             nkern=1, bsize=1)
-    f = theano.function([], [], updates=[(out, op(img, kern))])
+    f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()
