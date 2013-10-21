@@ -226,10 +226,8 @@ class FunctionGraph(utils.object2):
         if NullType is None:
             from null_type import NullType
         # Imports the owners of the variables
-        r_owner_done = set(self.apply_nodes)
         for apply_node in [r.owner for r in variables if r.owner is not None]:
-            if apply_node not in r_owner_done:
-                r_owner_done.add(apply_node)
+            if apply_node not in self.apply_nodes:
                 self.__import__(apply_node, reason=reason)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
