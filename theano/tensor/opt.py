@@ -52,7 +52,7 @@ def out2in(*local_opts, **kwargs):
     name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
-        local_opts = opt.LocalOptGroup(*local_opts),
+        local_opts = opt.LocalOptGroup(*local_opts)
     else:
         local_opts, = local_opts
         if not name:
@@ -71,7 +71,7 @@ def in2out(*local_opts, **kwargs):
     name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
-        local_opts = opt.LocalOptGroup(*local_opts),
+        local_opts = opt.LocalOptGroup(*local_opts)
     else:
         local_opts, = local_opts
         if not name:

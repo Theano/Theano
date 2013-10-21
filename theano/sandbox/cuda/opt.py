@@ -1198,9 +1198,10 @@ def local_inplace_ger(node):
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
 # elemwise(step 71)
 optdb.register('InplaceGpuBlasOpt',
-               tensor.opt.in2out(gof.LocalOptGroup(local_inplace_gemm,
-                                                   local_inplace_gemv,
-                                                   local_inplace_ger)),
+               tensor.opt.in2out(local_inplace_gemm,
+                                 local_inplace_gemv,
+                                 local_inplace_ger,
+                                 name="InplaceGpuBlasOpt"),
                70.0, 'fast_run', 'inplace', 'gpu')
 
 
