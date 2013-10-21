@@ -1,6 +1,6 @@
 from theano import config
 
-
+from theano.tensor.opt import in2out
 from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
 from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
 from theano.tensor.blas import Ger, ger, ger_destructive
@@ -609,21 +609,14 @@ def make_c_gemv_destructive(node):
 ####### ####### #######
 
 blas_optdb.register('use_c_blas',
-    EquilibriumOptimizer([
-        use_c_ger,
-        use_c_gemv,
-        ],
-        max_use_ratio=5),
-    20, 'fast_run', 'c_blas')
+                    in2out(use_c_ger, use_c_gemv),
+                    20, 'fast_run', 'c_blas')
 #print 'BLAS_OPTDB'
 #print blas_optdb
 
 # this matches the InplaceBlasOpt defined in blas.py
 optdb.register('c_blas_destructive',
-        EquilibriumOptimizer([
-                make_c_ger_destructive,
-                make_c_gemv_destructive,
-            ],
-            failure_callback=EquilibriumOptimizer.warn_inplace,
-            max_use_ratio=5),
-        70.0, 'fast_run', 'inplace', 'c_blas')
+               in2out(make_c_ger_destructive,
+                      make_c_gemv_destructive,
+                      name="c_blas_destructive"),
+               70.0, 'fast_run', 'inplace', 'c_blas')

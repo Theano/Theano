@@ -147,7 +147,7 @@ import theano.scalar
 from theano.tensor import basic as T
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas_headers import blas_header_version
-from theano.tensor.opt import local_dimshuffle_lift, in2out
+from theano.tensor.opt import in2out, local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
 
@@ -1758,8 +1758,8 @@ optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run')
 # free-for-all that makes the graph crazy.
 
 blas_optdb.register('local_dot_to_dot22',
-        EquilibriumOptimizer([local_dot_to_dot22], max_use_ratio=5),
-        0, 'fast_run')
+                    in2out(local_dot_to_dot22),
+                    0, 'fast_run')
 blas_optdb.register('gemm_optimizer',
         GemmOptimizer(),
         10, 'fast_run')
@@ -1983,8 +1983,8 @@ def local_dot22_to_dot22scalar(node):
 #must happen after gemm as the gemm optimizer don't understant
 #dot22scalar and gemm give more speed up then dot22scalar
 blas_optdb.register('local_dot22_to_dot22scalar',
-        EquilibriumOptimizer([local_dot22_to_dot22scalar], max_use_ratio=5),
-        11, 'fast_run')
+                    in2out(local_dot22_to_dot22scalar),
+                    11, 'fast_run')
 
 
 #from opt import register_specialize, register_canonicalize
