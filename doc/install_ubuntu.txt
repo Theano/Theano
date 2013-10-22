@@ -37,13 +37,13 @@ probably do something similar on older computer.
 
 .. note::
 
-   This page describe how to install Theano for python 2. If you have
-   installed python3 on your system, maybe you need to change the
-   command pip to ``pip-2.7`` to specify to install it for python2, as
-   sometimes the pip command refer to the python 3 version.
+   This page describes how to install Theano for Python 2. If you have
+   installed Python 3 on your system, maybe you need to change the
+   command pip to ``pip-2.7`` to specify to install it for Python 2, as
+   sometimes the pip command refers to the Python 3 version.
 
-   The development version of Theano support python 3.3 and we
-   probably support python 3.2, but don't test on it.
+   The development version of Theano supports Python 3.3 and
+   probably supports Python 3.2, but we do not test on it.
 
 
 Installation steps
