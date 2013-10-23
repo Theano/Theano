@@ -504,7 +504,7 @@ class GpuAlloc(HideC, Alloc):
         }
 
         if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) != GA_NO_ERROR) {
-            PyErr_SetString(PyExc_RuntimeError, "setarray failed");
+            PyErr_SetString(PyExc_ValueError, "setarray failed");
             %(fail)s
         }
         """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, fail=sub['fail'])
@@ -515,6 +515,6 @@ class GpuAlloc(HideC, Alloc):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 gpu_alloc = GpuAlloc()

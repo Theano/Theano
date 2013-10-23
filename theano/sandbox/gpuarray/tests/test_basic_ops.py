@@ -5,7 +5,9 @@ from copy import copy, deepcopy
 import numpy
 import theano
 import theano.tensor as T
-from theano.tensor.tests.test_basic import safe_make_node
+from theano.tensor import TensorType
+from theano.tensor.basic import alloc
+from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -94,134 +96,102 @@ def rand_gpuarray(*shape, **kwargs):
     return gpuarray.array(r, dtype=dtype, cls=cls)
 
 
-def makeTester(name, op, expected, good=None, bad_build=None, checks=None,
-               bad_runtime=None, mode=None, skip=False, eps=1e-10):
-    if good is None:
-        good = {}
-    if bad_build is None:
-        bad_build = {}
-    if bad_runtime is None:
-        bad_runtime = {}
+def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
+               mode_nogpu=mode_without_gpu, skip=False, eps=1e-10):
     if checks is None:
         checks = {}
 
     _op = op
-    _expected = expected
-    _good = good
-    _bad_build = bad_build
-    _bad_runtime = bad_runtime
+    _gpu_op = gpu_op
+    _cases = cases
     _skip = skip
     _checks = checks
 
     class Checker(unittest.TestCase):
         op = staticmethod(_op)
-        expected = staticmethod(_expected)
-        good = _good
-        bad_build = _bad_build
-        bad_runtime = _bad_runtime
+        gpu_op = staticmethod(_gpu_op)
+        cases = _cases
         skip = _skip
         checks = _checks
 
         def setUp(self):
             eval(self.__class__.__module__ + '.' + self.__class__.__name__)
 
-        def test_good(self):
+        def test_all(self):
             if skip:
                 raise SkipTest(skip)
 
-            for testname, inputs in good.items():
-                inputs = [copy(input) for input in inputs]
-                inputrs = [fake_shared(input) for input in inputs]
+            for testname, inputs in cases.items():
+                self.run_case(testname,
+                              [theano.shared(input) for input in inputs])
 
-                try:
-                    node = safe_make_node(self.op, *inputrs)
-                except Exception, exc:
-                    err_msg = ("Test %s::%s: Error occured while making "
-                               "a node with inputs %s") % (self.op, testname,
-                                                           inputs)
+        def run_case(self, testname, inputs):
+            try:
+                node = safe_make_node(self.op, *inputs)
+            except Exception, exc:
+                err_msg = ("Test %s::%s: Error occured while making "
+                           "a node with inputs %s") % (self.gpu_op, testname,
+                                                       inputs)
+                exc.args += (err_msg,)
+                raise
+
+            try:
+                f_ref = inplace_func([], node.outputs, mode=mode_nogpu)
+                f_tst = inplace_func([], node.outputs, mode=mode_gpu)
+            except Exception, exc:
+                err_msg = ("Test %s::%s: Error occured while trying to "
+                           "make a Function") % (self.gpu_op, testname)
+                exc.args += (err_msg,)
+                raise
+
+            assert any(node.op is self.gpu_op
+                       for node in f_tst.maker.fgraph.toposort()), testname
+
+            ref_e = None
+            try:
+                expecteds = f_ref()
+            except Exception, exc:
+                ref_e = exc
+
+            try:
+                variables = f_tst()
+            except Exception, exc:
+                if ref_e is None:
+                    err_msg = ("Test %s::%s: exception when calling the "
+                               "Function") % (self.gpu_op, testname)
                     exc.args += (err_msg,)
                     raise
-
-                try:
-                    f = inplace_func([], node.outputs, mode=mode,
-                                     name='test_good')
-                except Exception, exc:
-                    err_msg = ("Test %s::%s: Error occured while trying to "
-                               "make a Function") % (self.op, testname)
-                    exc.args += (err_msg,)
-                    raise
-
-                if isinstance(self.expected, dict) and \
-                        testname in self.expected:
-                    expecteds = self.expected[testname]
                 else:
-                    expecteds = self.expected(*inputs)
+                    # if we raised an exception of the same type we're good.
+                    if isinstance(exc, type(ref_e)):
+                        return
+                    else:
+                        err_msg = ("Test %s::%s: exception raised during test "
+                                   "call was not the same as the reference "
+                                   "call (got: %s, expected %s)") % \
+                                   (self.gpu_op, testname, type(exc),
+                                    type(ref_e))
+                        exc.args += (err_msg,)
+                        raise
 
-                if not isinstance(expecteds, (list, tuple)):
-                    expecteds = (expecteds,)
+            for i, (variable, expected) in \
+                    enumerate(izip(variables, expecteds)):
+                if variable.dtype != expected.dtype or \
+                        variable.shape != expected.shape or \
+                        not TensorType.values_eq_approx(variable,
+                                                        expected):
+                    self.fail(("Test %s::%s: Output %s gave the wrong "
+                               "value. With inputs %s, expected %s "
+                               "(dtype %s), got %s (dtype %s).") % (
+                            self.op, testname, i, inputs, expected,
+                            expected.dtype, variable, variable.dtype))
 
-                try:
-                    variables = f()
-                except Exception, exc:
-                    err_msg = ("Test %s::%s: Error occured while calling "
-                               "the Function on the inputs %s") % (self.op,
-                                                                   testname,
-                                                                   inputs)
-                    exc.args += (err_msg,)
-                    raise
-
-                for i, (variable, expected) in \
-                        enumerate(izip(variables, expecteds)):
-                    if variable.dtype != expected.dtype or \
-                            variable.shape != expected.shape or \
-                            not GpuArrayType.values_eq_approx(variable,
-                                                             expected):
-                        self.fail(("Test %s::%s: Output %s gave the wrong "
-                                   "value. With inputs %s, expected %s "
-                                   "(dtype %s), got %s (dtype %s).") % (
-                                self.op, testname, i, inputs, expected,
-                                expected.dtype, variable, variable.dtype))
-
-                for description, check in self.checks.items():
-                    if not check(inputs, variables):
-                        self.fail(("Test %s::%s: Failed check: %s "
-                                   "(inputs were %s, ouputs were %s)") %
-                                  (self.op, testname, description,
-                                   inputs, variables))
-
-        def test_bad_build(self):
-            if skip:
-                raise SkipTest(skip)
-            for testname, inputs in self.bad_build.items():
-                inputs = [copy(input) for input in inputs]
-                inputrs = [fake_shared(input) for input in inputs]
-                self.assertRaises(Exception, safe_make_node, self.op, *inputrs)
-
-        def test_bad_runtime(self):
-            if skip:
-                raise SkipTest(skip)
-            for testname, inputs in self.bad_runtime.items():
-                inputrs = [fake_shared(input) for input in inputs]
-                try:
-                    node = safe_make_node(self.op, *inputrs)
-                except Exception, exc:
-                    err_msg = ("Test %s::%s: Error occured while trying to "
-                               "make a node with inputs %s") % (self.op,
-                                                                testname,
-                                                                inputs)
-                    exc.args += (err_msg,)
-                    raise
-
-                try:
-                    f = inplace_func([], node.outputs, mode=mode,
-                                     name="test_bad_runtime")
-                except Exception, exc:
-                    err_msg = ("Test %s::%s: Error occured while trying to "
-                               "make a Function") % (self.op, testname)
-                    exc.args += (err_msg,)
-                    raise
-
-                self.assertRaises(Exception, f, [])
+            for description, check in self.checks.items():
+                if not check(inputs, variables):
+                    self.fail(("Test %s::%s: Failed check: %s "
+                               "(inputs were %s, ouputs were %s)") %
+                              (self.op, testname, description,
+                               inputs, variables))
 
     Checker.__name__ = name
     return Checker
@@ -301,19 +271,18 @@ def gpu_alloc_expected(x, *shp):
 
 GpuAllocTester = makeTester(
     name="GpuAllocTester",
-    op=gpu_alloc,
-    expected=gpu_alloc_expected,
-    good=dict(
-        correct01=(rand_gpuarray(), numpy.int32(7)),
-        correct01_bcast=(rand_gpuarray(1), numpy.int32(7)),
-        correct02=(rand_gpuarray(), numpy.int32(4), numpy.int32(7)),
-        correct12=(rand_gpuarray(7), numpy.int32(4), numpy.int32(7)),
-        correct13=(rand_gpuarray(7), numpy.int32(2), numpy.int32(4),
+    op=alloc,
+    gpu_op=gpu_alloc,
+    cases=dict(
+        correct01=(rand(), numpy.int32(7)),
+# just gives a DeepCopyOp with possibly wrong results on the CPU
+#        correct01_bcast=(rand(1), numpy.int32(7)),
+        correct02=(rand(), numpy.int32(4), numpy.int32(7)),
+        correct12=(rand(7), numpy.int32(4), numpy.int32(7)),
+        correct13=(rand(7), numpy.int32(2), numpy.int32(4),
                    numpy.int32(7)),
-        correct23=(rand_gpuarray(4, 7), numpy.int32(2), numpy.int32(4),
-                   numpy.int32(7))
-        ),
-    bad_runtime=dict(
-        bad_shape12=(rand_gpuarray(7), numpy.int32(7), numpy.int32(5)),
+        correct23=(rand(4, 7), numpy.int32(2), numpy.int32(4),
+                   numpy.int32(7)),
+        bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
         )
 )
