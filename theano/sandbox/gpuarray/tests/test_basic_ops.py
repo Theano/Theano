@@ -117,12 +117,15 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 raise SkipTest(skip)
 
             for testname, inputs in cases.items():
-                self.run_case(testname,
-                              [theano.shared(input) for input in inputs])
+                self.run_case(testname, inputs)
 
         def run_case(self, testname, inputs):
+            inputs_ref = [theano.shared(inp) for inp in inputs]
+            inputs_tst = [theano.shared(inp) for inp in inputs]
+
             try:
-                node = safe_make_node(self.op, *inputs)
+                node_ref = safe_make_node(self.op, *inputs_ref)
+                node_tst = safe_make_node(self.op, *inputs_tst)
             except Exception, exc:
                 err_msg = ("Test %s::%s: Error occured while making "
                            "a node with inputs %s") % (self.gpu_op, testname,
@@ -131,8 +134,8 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 raise
 
             try:
-                f_ref = inplace_func([], node.outputs, mode=mode_nogpu)
-                f_tst = inplace_func([], node.outputs, mode=mode_gpu)
+                f_ref = inplace_func([], node_ref.outputs, mode=mode_nogpu)
+                f_tst = inplace_func([], node_tst.outputs, mode=mode_gpu)
             except Exception, exc:
                 err_msg = ("Test %s::%s: Error occured while trying to "
                            "make a Function") % (self.gpu_op, testname)
