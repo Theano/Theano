@@ -1029,9 +1029,6 @@ def local_gpu_conv(node):
                     verbose=op.verbose,
                     imshp=op.imshp,
                     )
-        #HACK to print the number of MFlops in the profiler output.
-        if hasattr(op, 'flops'):
-            ret.flops = op.flops
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
