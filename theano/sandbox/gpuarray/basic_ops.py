@@ -19,6 +19,7 @@ except ImportError:
 
 from type import GpuArrayType
 
+
 def as_gpuarray_variable(x):
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable()
@@ -29,6 +30,7 @@ def as_gpuarray_variable(x):
 
 def as_gpuarray(x):
     return gpuarray.array(x, copy=False)
+
 
 class HideC(object):
     def __hide(*args):
@@ -116,7 +118,7 @@ class HostFromGpu(Op):
             %(fail)s
         }
         """ % {'name': name, 'fail': sub['fail'], 'inp': inputs[0],
-                'out': outputs[0]}
+               'out': outputs[0]}
 
     def c_code_cache_version(self):
         return (1,)
@@ -124,7 +126,7 @@ class HostFromGpu(Op):
     def grad(self, inputs, grads):
         gz, = grads
         return [gpu_from_host(gz)]
-                                                   
+
     def R_op(self, inputs, eval_points):
         ev, = eval_points
         if isinstance(ev, tensor.TensorType):
@@ -320,7 +322,7 @@ class GpuFromCuda(Op):
         if (%(out)s == NULL) {
             %(fail)s
         }
-        """ % {'name':name, 'in': inputs[0], 'out': outputs[0],
+        """ % {'name': name, 'in': inputs[0], 'out': outputs[0],
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
@@ -508,7 +510,7 @@ class GpuAlloc(HideC, Alloc):
         """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, fail=sub['fail'])
 
         if config.gpuarray.sync:
-            code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz);
+            code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
 
         return code
 

@@ -1,5 +1,6 @@
 import copy
-import theano, numpy
+import theano
+import numpy
 from theano import tensor, scalar
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
@@ -31,6 +32,7 @@ optdb.register('gpuarray_opt', gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
                'gpuarray')
 
+
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
@@ -39,6 +41,7 @@ def register_opt(*tags, **kwargs):
     return f
 
 register_opt()(theano.tensor.opt.local_track_shape_i)
+
 
 def op_lifter(OP):
     """
@@ -64,6 +67,7 @@ def op_lifter(OP):
         local_opt.__name__ = maker.__name__
         return local_optimizer([OP])(local_opt)
     return f
+
 
 class InputToGpuOptimizer(Optimizer):
     "Transfer the input to the gpu to start the rolling wave."
@@ -93,6 +97,7 @@ class InputToGpuOptimizer(Optimizer):
 gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
+
 @local_optimizer([])
 def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
@@ -108,10 +113,12 @@ gpu_cut_copies.register('cut_gpua_constant_transfers',
 optdb['canonicalize'].register('local_cut_gpua_host_gpua',
                                local_cut_gpu_host_gpu, 'fast_run', 'gpuarray')
 
+
 @register_opt()
 @op_lifter(tensor.Alloc)
 def local_gpualloc(node):
     return gpu_alloc
+
 
 @register_opt()
 @op_lifter(tensor.Elemwise)
@@ -124,6 +131,7 @@ def local_gpu_elemwise(node):
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
     return res
+
 
 def max_inputs_to_GpuElemwise(node):
     ptr_size = 8
@@ -172,6 +180,7 @@ def local_gpua_specifyShape(node):
 @op_lifter(tensor.Subtensor)
 def local_gpua_subtensor(node):
     return GpuSubtensor(node.op.idx_list)
+
 
 @register_opt()
 @op_lifter(tensor.CAReduce)

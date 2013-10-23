@@ -10,6 +10,7 @@ except ImportError, e:
     # To make sure theano is importable
     pass
 
+
 class BlasOp(HideC):
     def c_headers(self):
         return ['<blas_api.h>']
@@ -19,6 +20,7 @@ class BlasOp(HideC):
 
     def c_init_code(self):
         return ['import_pygpu__blas();']
+
 
 class GpuGemv(BlasOp, Gemv):
     def make_node(self, y, alpha, A, x, beta):
@@ -70,6 +72,7 @@ class GpuGemv(BlasOp, Gemv):
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
+
 
 class GpuGemm(BlasOp, Gemm):
     def make_node(self, C, alpha, A, B, beta):
@@ -127,10 +130,12 @@ from theano.compile import optdb
 from theano.gof import local_optimizer, LocalOptGroup
 from theano.tensor.opt import in2out
 
+
 @local_optimizer([gpugemv_no_inplace])
 def local_inplace_gpuagemv(node):
     if node.op == gpugemv_no_inplace:
         return [gpugemv_inplace(*node.inputs)]
+
 
 @local_optimizer([gpugemm_no_inplace])
 def local_inplace_gpuagemm(node):

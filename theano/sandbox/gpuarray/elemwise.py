@@ -18,14 +18,17 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.gof.utils import MethodNotDefined
 
+
 def _is_scalar(v):
     False
+
 
 def make_argument(v, name):
     if _is_scalar(v):
         return ScalarArg(numpy.dtype(v.type.dtype), name)
     else:
         return ArrayArg(numpy.dtype(v.type.dtype), name)
+
 
 def ensure_allocated(storage, shape, dtype):
     odat = storage[0]
@@ -39,9 +42,11 @@ def ensure_allocated(storage, shape, dtype):
     storage[0] = odat
     return odat
 
+
 def as_C_string_const(s):
     return '\n'.join('"%s\\n"' % (l.replace('"', '\\"'))
                      for l in s.split('\n'))
+
 
 class GpuElemwise(HideC, Elemwise):
     nin = property(lambda self: self.scalar_op.nin)

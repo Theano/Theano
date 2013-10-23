@@ -30,6 +30,7 @@ from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
 import opt
 
+
 def init_dev(dev):
     global pygpu_activated
     context = pygpu.init(dev)
