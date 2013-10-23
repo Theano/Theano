@@ -120,9 +120,9 @@ middle of the computational graph without actually computing the outputs (when p
 This could be helpful if one only needs the shape of the output instead of the actual outputs.
 
 The :func:`flops` method allows to have the number of mega flops and
-giga flops per second printed by the memory profiler. It take as
-inputs two list: one for the inputs and one for the outputs. They
-contain one tuple with the shape of the corresponding inputs/outputs.
+giga flops per second printed by the memory profiler. It takes as
+inputs two lists: one for the inputs and one for the outputs. They
+contain tuples that are the shapes of the corresponding inputs/outputs.
 
 The :func:`grad` method is required if you want to differentiate some cost whose expression
 includes your op.
