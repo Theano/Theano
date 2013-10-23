@@ -15,7 +15,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
-from theano.sandbox.gpuarray.blas import GpuGemv
+from theano.sandbox.gpuarray.blas import GpuGemv, GpuGemm
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
