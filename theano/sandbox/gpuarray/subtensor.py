@@ -17,6 +17,7 @@ except ImportError:
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
 
+
 class GpuSubtensor(HideC, Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
@@ -31,13 +32,13 @@ class GpuSubtensor(HideC, Subtensor):
         if self.perform_cache_cdata is not None:
             out[0] = x.__getitem__(self.perform_cache_cdata)
             return
-        
+
         cdata = get_idx_list(inputs, self.idx_list)
         if len(cdata) == 1:
             cdata = cdata[0]
         if len(inputs) == 1:
             self.perform_cache_cdata = cdata
-        
+
         out[0] = x.__getitem__(cdata)
 
     def c_support_code(self):
