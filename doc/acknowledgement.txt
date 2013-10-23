@@ -23,4 +23,4 @@ Acknowledgements
 
     P. L'Ecuyer and R. Touzin, `Fast Combined Multiple Recursive Generators with Multipliers of the form a = +/- 2^d +/- 2^e <http://www.informs-sim.org/wsc00papers/090.PDF>`_, Proceedings of the 2000 Winter Simulation Conference, Dec. 2000, 683--689.
 
-  We were autorized by Pierre L'Ecuyer to copy/modify his Java implementation in the `SSJ <http://www.iro.umontreal.ca/~simardr/ssj/>`_ software and to relicense it under BSD 3-Clauses in Theano.
+  We were authorized by Pierre L'Ecuyer to copy/modify his Java implementation in the `SSJ <http://www.iro.umontreal.ca/~simardr/ssj/>`_ software and to relicense it under BSD 3-Clauses in Theano.
