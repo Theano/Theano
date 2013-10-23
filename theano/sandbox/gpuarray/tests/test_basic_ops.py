@@ -107,7 +107,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
     _skip = skip
     _checks = checks
 
-    class Checker(unittest.TestCase):
+    class Checker(unittest.TestCase, utt.TestOptimizationMixin):
         op = staticmethod(_op)
         gpu_op = staticmethod(_gpu_op)
         cases = _cases
@@ -144,8 +144,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 exc.args += (err_msg,)
                 raise
 
-            assert any(node.op is self.gpu_op
-                       for node in f_tst.maker.fgraph.toposort()), testname
+            self.assertFunctionContains1(f_tst, self.gpu_op)
 
             ref_e = None
             try:
