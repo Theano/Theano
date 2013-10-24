@@ -7,7 +7,6 @@ types that it can raise
 import sys
 
 import theano
-from theano import gof
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
@@ -435,8 +434,8 @@ class FunctionGraph(utils.object2):
 
         if theano.config.compute_test_value != 'off':
             try:
-                tval = gof.op.get_test_value(r)
-                new_tval = gof.op.get_test_value(new_r)
+                tval = theano.gof.op.get_test_value(r)
+                new_tval = theano.gof.op.get_test_value(new_r)
             except AttributeError:
                 pass
             else:
