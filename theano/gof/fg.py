@@ -6,6 +6,8 @@ types that it can raise
 """
 import sys
 
+import theano
+from theano import gof
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
@@ -430,6 +432,21 @@ class FunctionGraph(utils.object2):
             # this variable isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops
             return
+
+        if theano.config.compute_test_value != 'off':
+            try:
+                tval = gof.op.get_test_value(r)
+                new_tval = gof.op.get_test_value(new_r)
+            except AttributeError:
+                pass
+            else:
+                if tval.shape != new_tval.shape:
+                    raise AssertionError(
+                        "The replacement variable has a test value with "
+                        "a shape different from the original variable's "
+                        "test value. Original: %s, new: %s"
+                        % (tval.shape, new_tval.shape),
+                        r, new_r, str(reason))
 
         for node, i in list(r.clients):  # copy the client list for iteration
             assert (node == 'output' and self.outputs[i] is r) or (node.inputs[i] is r)
