@@ -2136,13 +2136,13 @@ def local_inplace_setsubtensor(node):
     """
     if isinstance(node.op, IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(
-       node.op.idx_list, inplace=True,
-       set_instead_of_inc=node.op.set_instead_of_inc,
-       destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
+            node.op.idx_list, inplace=True,
+            set_instead_of_inc=node.op.set_instead_of_inc,
+            destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('inplace_setsubtensor',
+compile.optdb.register('local_inplace_setsubtensor',
                        TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60,
                        'fast_run', 'inplace')  # DEBUG
