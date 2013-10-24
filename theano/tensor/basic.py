@@ -2579,7 +2579,7 @@ class Alloc(gof.Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self(eval_points[0], *inputs[1:], **dict(return_list=True))
 
     def do_constant_folding(self, node):
         if not getattr(node.outputs[0], 'clients', []):
@@ -3275,7 +3275,7 @@ class Rebroadcast(Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
 
 def addbroadcast(x, *axes):
@@ -3805,7 +3805,7 @@ class Reshape(Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self(eval_points[0], *inputs[1:], **dict(return_list=True))
 
     def infer_shape(self, node, ishapes):
         # inputs[1] can contain at most one value of '-1', meaning the actual
@@ -4600,7 +4600,7 @@ class Dot(Op):
             eval_point_values = [ev0, ev1]
 
             for i in xrange(2):
-                if eval_point_values[i] and \
+                if eval_point_values[i] is not None and \
                    input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError('input ' + str(i) + ' and eval_point ' +
                                      str(i) + ' to Dot.R_op '
