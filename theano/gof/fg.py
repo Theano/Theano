@@ -439,12 +439,14 @@ class FunctionGraph(utils.object2):
             except AttributeError:
                 pass
             else:
-                if tval.shape != new_tval.shape:
+                tval_shape = getattr(tval, 'shape', None)
+                new_tval_shape = getattr(new_tval, 'shape', None)
+                if tval_shape != new_tval_shape:
                     raise AssertionError(
                         "The replacement variable has a test value with "
                         "a shape different from the original variable's "
                         "test value. Original: %s, new: %s"
-                        % (tval.shape, new_tval.shape),
+                        % (tval_shape, new_tval_shape),
                         r, new_r, str(reason))
 
         for node, i in list(r.clients):  # copy the client list for iteration
