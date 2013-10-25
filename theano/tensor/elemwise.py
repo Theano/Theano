@@ -273,7 +273,7 @@ class DimShuffle(Op):
     def R_op(self, inputs, eval_points):
         if None in eval_points:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
@@ -616,7 +616,7 @@ class Elemwise(Op):
             return self.name
 
     def R_op(self, inputs, eval_points):
-        outs = self.make_node(*inputs).outputs
+        outs = self(*inputs, **dict(return_list=True))
         rval = [None for x in outs]
         # For each output
         for idx, out in enumerate(outs):
@@ -1882,7 +1882,7 @@ class Sum(CAReduceDtype):
         # part of self
         if None in eval_points:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
     def __str__(self):
         if self.axis is None:

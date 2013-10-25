@@ -263,10 +263,11 @@ def inplace_elemwise_optimizer_op(OP):
                                 scalar.transfer_type(
                                     *[inplace_pattern.get(i, None) \
                                           for i in xrange(len(node.outputs))]))
-                        new = OP(new_scal, inplace_pattern).make_node(
-                            *node.inputs)
+                        new_outputs = OP(new_scal, inplace_pattern)(
+                                *node.inputs, **dict(return_list=True))
+                        new_node = new_outputs[0].owner
 
-                        for r, new_r in zip(node.outputs, new.outputs):
+                        for r, new_r in zip(node.outputs, new_outputs):
                             fgraph.replace(r, new_r,
                                         reason="inplace_elemwise_optimizer")
                         nb_change_no_validate += 1
@@ -284,7 +285,7 @@ def inplace_elemwise_optimizer_op(OP):
                         fgraph.revert(chk)
                         continue
                     candidate_inputs.remove(candidate_input)
-                    node = new
+                    node = new_node
                     baseline = inplace_pattern
                     break
 
