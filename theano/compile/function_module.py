@@ -1306,12 +1306,12 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs,
-                outputs,
-                mode,
-                accept_inplace=accept_inplace,
-                profile=profile,
-                on_unused_input=on_unused_input).create(
-                        defaults)
+                   outputs,
+                   mode,
+                   accept_inplace=accept_inplace,
+                   profile=profile,
+                   on_unused_input=on_unused_input).create(
+                       defaults)
 
     t2 = time.time()
     if profile:

@@ -76,7 +76,13 @@ class Optimizer(object):
           opt.apply(fgraph)
         """
         self.add_requirements(fgraph)
-        return self.apply(fgraph, *args, **kwargs)
+        try:
+            orig = theano.tensor.basic.constant.enable
+            theano.tensor.basic.constant.enable = False
+            ret = self.apply(fgraph, *args, **kwargs)
+        finally:
+            theano.tensor.basic.constant.enable = orig
+        return ret
 
     def __call__(self, fgraph):
         """WRITEME

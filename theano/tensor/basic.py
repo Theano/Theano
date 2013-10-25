@@ -411,6 +411,8 @@ def constant(x, name=None, ndim=None, dtype=None):
     #But we don't want to cache too much stuff
     #So we cache integer with dtype [u]int and float where the value is between -10 and 10
     #We want to cache all broadcast pattern for scalar.
+    if not constant.enable:
+        return ret
     sig = ret.signature()
     if (sig not in constant_cache and ret.data.size == 1 and
         ret.data <= 10 and ret.data >= -10 and
@@ -419,6 +421,7 @@ def constant(x, name=None, ndim=None, dtype=None):
         constant_cache[sig] = ret
 
     return constant_cache.get(sig, ret)
+constant.enable = True
 
 
 def _obj_is_wrappable_as_tensor(x):
