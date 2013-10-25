@@ -2,6 +2,8 @@
 
 import copy
 import logging
+import pickle
+import os
 import time
 import unittest
 
@@ -2644,6 +2646,18 @@ class test_shapeoptimizer(unittest.TestCase):
         mode = theano.compile.get_default_mode().excluding('ShapeOpt')
         f = theano.function([X], expr, mode=mode)
         print f([[1, 2], [2, 3]])
+
+    def test_no_cycle(self):
+        # Optimizing this graph resulted in a cycle, see gh-1549
+        # This test depends on cuda
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
+        pkl_filename = os.path.join(os.path.dirname(theano.__file__),
+                                    'tensor', 'tests', 'shape_opt_cycle.pkl')
+        fn_args = pickle.load(open(pkl_filename, "rb"))
+        theano.function(**fn_args)
 
 
 class test_assert(utt.InferShapeTester):
