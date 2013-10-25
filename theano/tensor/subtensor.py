@@ -849,7 +849,7 @@ class Subtensor(Op):
                 PyArray_DIMS(%(x)s),
                 PyArray_STRIDES(%(x)s),
                 PyArray_DATA(%(x)s),
-                %(x)s->flags,
+                PyArray_FLAGS(%(x)s),
                 NULL);
         if (!xview)
         {
@@ -862,7 +862,11 @@ class Subtensor(Op):
         finish_view = """
         if (%(z)s) Py_DECREF(%(z)s);
         Py_INCREF(py_%(x)s);
+#if NPY_VERSION < 0x01000009
         PyArray_BASE(xview) = py_%(x)s;
+#else
+        PyArray_SetBaseObject(xview, py_%(x)s);
+#endif
         assert(py_%(x)s == (PyObject*)%(x)s);
         %(z)s = xview;
         """ % locals()

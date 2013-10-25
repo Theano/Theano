@@ -446,8 +446,8 @@ class TensorType(Type):
             %(fail)s
         }
         // We expect %(type_num)s
-        type_num_%(name)s = ((PyArrayObject*)py_%(name)s)->descr->type_num;
-        if (!PyArray_ISALIGNED(py_%(name)s)) {
+        type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
+        if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
                          "expected an aligned array of type %%ld "
                          "(%(type_num)s), got non-aligned array of type %%ld"
@@ -456,19 +456,19 @@ class TensorType(Type):
                          " and 3 last strides %%ld %%ld, %%ld.",
                          (long int) %(type_num)s,
                          (long int) type_num_%(name)s,
-                         (long int) PyArray_NDIM(py_%(name)s),
-                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
+                         (long int) PyArray_NDIM(%(name)s),
+                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1
         );
             %(fail)s
         }
@@ -508,7 +508,7 @@ class TensorType(Type):
 
         {Py_XINCREF(py_%(name)s);}
 
-        if (!PyArray_ISALIGNED(py_%(name)s)) {
+        if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
                          "c_sync: expected an aligned array of type %%ld "
                          "(%(type_num)s), got non-aligned array of type %%ld"
@@ -517,19 +517,19 @@ class TensorType(Type):
                          " and 3 last strides %%ld %%ld, %%ld.",
                          (long int) %(type_num)s,
                          (long int) type_num_%(name)s,
-                         (long int) PyArray_NDIM(py_%(name)s),
-                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
-        PyArray_DIMS(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 3 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 2 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(py_%(name)s) >= 1 ?
-        PyArray_STRIDES(py_%(name)s)[PyArray_NDIM(py_%(name)s)-1] : -1
+                         (long int) PyArray_NDIM(%(name)s),
+                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
+                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1
         );
             %(fail)s
         }
