@@ -1795,9 +1795,9 @@ class AddSD(gof.op.Op):
                 }
 
                 npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
-                const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
-                const npy_int32 * __restrict__ indices = (npy_int32*)%(_indices)s->data;
-                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)%(_data)s->data;
+                const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
+                const npy_int32 * __restrict__ indices = (npy_int32*)PyArray_DATA(%(_indices)s);
+                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)PyArray_DATA(%(_data)s);
 
                 dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
                 dtype_%(z)s* zdata = (dtype_%(z)s*)PyArray_DATA(%(z)s);
@@ -2983,10 +2983,10 @@ class StructuredDotGradCSC(gof.Op):
         if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( PyArray_DESCR(%(_indices)s)->type_num != NPY_INT32) {
+        if( PyArray_TYPE(%(_indices)s) != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
+        if( PyArray_TYPE(%(_indptr)s) != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
@@ -2996,29 +2996,29 @@ class StructuredDotGradCSC(gof.Op):
             || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_g)s)->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_TYPE(%(_g)s));
         }
 
         {   //makes it compile even though labels jump over variable definitions.
             npy_intp nnz = PyArray_DIMS(%(_indices)s)[0];
             npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
-            npy_intp Sindices = %(_indices)s->strides[0]/PyArray_DESCR(%(_indices)s)->elsize;
-            npy_intp Sindptr = %(_indptr)s->strides[0]/PyArray_DESCR(%(_indptr)s)->elsize;
+            npy_intp Sindices = PyArray_STRIDES(%(_indices)s)[0]/PyArray_DESCR(%(_indices)s)->elsize;
+            npy_intp Sindptr = PyArray_STRIDES(%(_indptr)s)[0]/PyArray_DESCR(%(_indptr)s)->elsize;
 
-            const npy_intp Sd1 = %(_d)s->strides[1]/PyArray_DESCR(%(_d)s)->elsize;
-            const npy_intp Sg1 = %(_g)s->strides[1]/PyArray_DESCR(%(_g)s)->elsize;
+            const npy_intp Sd1 = PyArray_STRIDES(%(_d)s)[1]/PyArray_DESCR(%(_d)s)->elsize;
+            const npy_intp Sg1 = PyArray_STRIDES(%(_g)s)[1]/PyArray_DESCR(%(_g)s)->elsize;
 
             const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 
-            const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
-            const npy_int32 * __restrict__ indices = (npy_int32 *)%(_indices)s->data;
+            const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
+            const npy_int32 * __restrict__ indices = (npy_int32 *)PyArray_DATA(%(_indices)s);
 
             // loop over columns
             for (npy_int32 j = 0; j < N; ++j)
             {
                 // extract j-th row of dense matrix
-                const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
+                const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(PyArray_BYTES(%(_d)s) + PyArray_STRIDES(%(_d)s)[0] * j);
                 if(j >= PyArray_DIMS(%(_d)s)[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                 // for each non-null value in the sparse column
@@ -3028,7 +3028,7 @@ class StructuredDotGradCSC(gof.Op):
                     npy_int32 i = indices[i_idx * Sindices];
 
                     // extract corresponding row in gradient
-                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
+                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(PyArray_BYTES(%(_g)s) + PyArray_STRIDES(%(_g)s)[0] * i);
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
@@ -3044,7 +3044,7 @@ class StructuredDotGradCSC(gof.Op):
                     }
 
                     // write resulting gradient to sparse output
-                    ((dtype_%(_zout)s* __restrict__)(%(_zout)s->data + i_idx * %(_zout)s->strides[0]))[0] = ip;
+                    ((dtype_%(_zout)s* __restrict__)(PyArray_BYTES(%(_zout)s) + i_idx * PyArray_STRIDES(%(_zout)s)[0]))[0] = ip;
                 }
             }
         }
@@ -3119,10 +3119,10 @@ class StructuredDotGradCSR(gof.Op):
         if (PyArray_NDIM(%(_indices)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indices) != 1"); %(fail)s;}
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
-        if( PyArray_DESCR(%(_indices)s)->type_num != NPY_INT32) {
+        if( PyArray_TYPE(%(_indices)s) != NPY_INT32) {
         PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
 
-        if( PyArray_DESCR(%(_indptr)s)->type_num != NPY_INT32)
+        if( PyArray_TYPE(%(_indptr)s) != NPY_INT32)
         {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
@@ -3132,7 +3132,7 @@ class StructuredDotGradCSR(gof.Op):
             || (PyArray_DIMS(%(_zout)s)[0] != PyArray_DIMS(%(_indices)s)[0]))
         {
             Py_XDECREF(%(_zout)s);
-            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_DESCR(%(_g)s)->type_num);
+            %(_zout)s = (PyArrayObject*) PyArray_SimpleNew(1, PyArray_DIMS(%(_indices)s), PyArray_TYPE(%(_g)s));
         }
 
         {   //makes it compile even though labels jump over variable definitions.
@@ -3140,16 +3140,16 @@ class StructuredDotGradCSR(gof.Op):
             // extract number of rows
             npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1; //TODO: error checking with this
 
-            npy_intp Sindices = %(_indices)s->strides[0]/PyArray_DESCR(%(_indices)s)->elsize;
-            npy_intp Sindptr = %(_indptr)s->strides[0]/PyArray_DESCR(%(_indptr)s)->elsize;
+            npy_intp Sindices = PyArray_STRIDES(%(_indices)s)[0]/PyArray_DESCR(%(_indices)s)->elsize;
+            npy_intp Sindptr = PyArray_STRIDES(%(_indptr)s)[0]/PyArray_DESCR(%(_indptr)s)->elsize;
 
-            const npy_intp Sd1 = %(_d)s->strides[1]/PyArray_DESCR(%(_d)s)->elsize;
-            const npy_intp Sg1 = %(_g)s->strides[1]/PyArray_DESCR(%(_g)s)->elsize;
+            const npy_intp Sd1 = PyArray_STRIDES(%(_d)s)[1]/PyArray_DESCR(%(_d)s)->elsize;
+            const npy_intp Sg1 = PyArray_STRIDES(%(_g)s)[1]/PyArray_DESCR(%(_g)s)->elsize;
 
             const npy_intp K = PyArray_DIMS(%(_d)s)[1];
 
-            const npy_int32 * __restrict__ indptr = (npy_int32 *)%(_indptr)s->data;
-            const npy_int32 * __restrict__ indices = (npy_int32 *)%(_indices)s->data;
+            const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
+            const npy_int32 * __restrict__ indices = (npy_int32 *)PyArray_DATA(%(_indices)s);
 
             // loop over columns of sparse matrix
             for (npy_int32 i = 0; i < N; ++i)
@@ -3161,11 +3161,11 @@ class StructuredDotGradCSR(gof.Op):
                     npy_int32 j = indices[j_idx * Sindices];
 
                     // extract j-th row of dense matrix
-                    const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(%(_d)s->data + %(_d)s->strides[0] * j);
+                    const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(PyArray_BYTES(%(_d)s) + PyArray_STRIDES(%(_d)s)[0] * j);
                     if(j >= PyArray_DIMS(%(_d)s)[0]) {PyErr_SetString(PyExc_NotImplementedError, "G"); %(fail)s;}
 
                     // extract corresponding row in gradient
-                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(%(_g)s->data + %(_g)s->strides[0] * i);
+                    const dtype_%(_g)s* __restrict__ g_row = (dtype_%(_g)s*)(PyArray_BYTES(%(_g)s) + PyArray_STRIDES(%(_g)s)[0] * i);
                     double ip = 0.0;
 
                     // make sure that row index is not bigger than actual number of rows
@@ -3181,7 +3181,7 @@ class StructuredDotGradCSR(gof.Op):
                     }
 
                     // write resulting gradient to sparse output
-                    ((dtype_%(_zout)s* __restrict__)(%(_zout)s->data + j_idx * %(_zout)s->strides[0]))[0] = ip;
+                    ((dtype_%(_zout)s* __restrict__)(PyArray_BYTES(%(_zout)s) + j_idx * PyArray_STRIDES(%(_zout)s)[0]))[0] = ip;
                 }
             }
         }
