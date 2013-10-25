@@ -108,7 +108,7 @@ class GpuSubtensor(HideC, Subtensor):
             elif isinstance(idx, (numpy.integer, int)):
                 return str(idx), 0
             elif isinstance(idx, gof.Type):
-                return indices.pop(), 0
+                return indices.pop(0), 0
             else:
                 assert 0, idx
 
@@ -131,7 +131,7 @@ class GpuSubtensor(HideC, Subtensor):
                            fail=sub['fail'], inp=inp)
             else:
                 if isinstance(idx, gof.Type):
-                    start = indices.pop()
+                    start = indices.pop(0)
                 elif isinstance(idx, (numpy.integer, int)):
                     start = idx
                 else:
@@ -153,4 +153,4 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
