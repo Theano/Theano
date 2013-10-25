@@ -155,11 +155,11 @@ class WeirdBrokenOp(gof.Op):
         prep_vars = """
             //the output array has size M x N
             npy_intp M = PyArray_DIMS(%(a)s)[0];
-            npy_intp Sa = %(a)s->strides[0] / PyArray_DESCR(%(a)s)->elsize;
-            npy_intp Sz = %(z)s->strides[0] / PyArray_DESCR(%(z)s)->elsize;
+            npy_intp Sa = PyArray_STRIDES(%(a)s)[0] / PyArray_DESCR(%(a)s)->elsize;
+            npy_intp Sz = PyArray_STRIDES(%(z)s)[0] / PyArray_DESCR(%(z)s)->elsize;
 
-            npy_double * Da = (npy_double*)%(a)s->data;
-            npy_double * Dz = (npy_double*)%(z)s->data;
+            npy_double * Da = (npy_double*)PyArray_BYTES(%(a)s);
+            npy_double * Dz = (npy_double*)PyArray_BYTES(%(z)s);
 
             //clear the output array
             for (npy_intp m = 0; m < M; ++m)
