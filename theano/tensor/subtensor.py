@@ -1571,7 +1571,7 @@ class AdvancedSubtensor1(Op):
         output_name = output_names[0]
         fail = sub['fail']
         return """
-            PyObject *indices;
+            PyArrayObject *indices;
             int i_type = PyArray_TYPE(%(i_name)s);
             if (i_type != NPY_INTP) {
                 // Cast %(i_name)s to NPY_INTP (expected by PyArray_TakeFrom),
@@ -1606,13 +1606,13 @@ class AdvancedSubtensor1(Op):
                         %(fail)s;
                     }
                 }
-                indices = PyArray_Cast(%(i_name)s, NPY_INTP);
+                indices = (PyArrayObject*) PyArray_Cast(%(i_name)s, NPY_INTP);
                 if (indices == NULL) {
                     %(fail)s;
                 }
             }
             else {
-                 indices = (PyObject *)%(i_name)s;
+                 indices = %(i_name)s;
                  Py_INCREF(indices);
             }
             if (%(output_name)s != NULL) {
@@ -1641,7 +1641,7 @@ class AdvancedSubtensor1(Op):
                 }
             }
             %(output_name)s = (PyArrayObject*)PyArray_TakeFrom(
-                        %(a_name)s, indices, 0, %(output_name)s, NPY_RAISE);
+                        %(a_name)s, (PyObject*)indices, 0, %(output_name)s, NPY_RAISE);
             Py_DECREF(indices);
             if (%(output_name)s == NULL) %(fail)s;
         """ % locals()
