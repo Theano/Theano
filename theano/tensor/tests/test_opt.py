@@ -2649,6 +2649,11 @@ class test_shapeoptimizer(unittest.TestCase):
 
     def test_no_cycle(self):
         # Optimizing this graph resulted in a cycle, see gh-1549
+        # This test depends on cuda
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
         pkl_filename = os.path.join(os.path.dirname(theano.__file__),
                                     'tensor', 'tests', 'shape_opt_cycle.pkl')
         fn_args = pickle.load(open(pkl_filename, "rb"))
