@@ -33,19 +33,18 @@ def test_can_make_function():
     assert theano.function([], [y])
 
 def test_mpi_roundtrip():
-#    p = subprocess.Popen(executable="mpiexec",
-#                         args = ("-np", "2",
-#                                 "python",
-#                                 "theano/tensor/tests/_test_mpi_roundtrip.py"),
-#                         stdout=subprocess.PIPE)
-#    assert p.stdout.read() == "True"
     if not mpi_enabled:
         return
     theano_root = theano.__file__.split('__init__')[0]
-    sin, sout, serr = os.popen3("mpiexec -np 2 python " + theano_root +
-                                "tensor/tests/_test_mpi_roundtrip.py")
-    result = sout.read()
-    assert "True" in result
+    p = subprocess.Popen("mpiexec -np 2 python " + theano_root +
+                         "tensor/tests/_test_mpi_roundtrip.py",
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True,
+                         close_fds=True)
+    result = theano.compat.decode(p.stdout.read())
+    assert "True" in result, theano.compat.decode(p.stderr.read())
 
 def test_mpi_send_wait_cmp():
     x = theano.tensor.matrix('x')

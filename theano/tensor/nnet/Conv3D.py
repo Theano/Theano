@@ -2,7 +2,7 @@ import theano
 from theano.tensor import basic as T
 import numpy as N
 #from util import strutil
-from theano.tensor.blas_headers import blas_header_text
+from theano.tensor.blas_headers import blas_header_text, blas_header_version
 from theano.tensor.blas import ldflags
 from theano.misc import strutil
 from theano.gradient import grad_undefined
@@ -51,8 +51,7 @@ class Conv3D(theano.Op):
         return "Conv3D"
 
     def c_code_cache_version(self):
-        return (3, blas_header_text.version)
-
+        return (3, blas_header_version())
 
     def make_node(self, V, W, b, d):
         """

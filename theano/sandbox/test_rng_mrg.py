@@ -370,7 +370,9 @@ def test_uniform():
     x = tensor.matrix()
     for size, var_input, input in [
             (sample_size, [], []),
-            (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
+            (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
+            ((x.shape[0], sample_size[1]), [x],
+             [numpy.zeros(sample_size, dtype=config.floatX)])
             ]:
 
         #### TEST CPU IMPLEMENTATION ####
@@ -456,7 +458,9 @@ def test_binomial():
     for mean in [0.1, 0.5]:
         for size, var_input, input in [
                 (sample_size, [], []),
-                (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)])
+                (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
+                ((x.shape[0], sample_size[1]), [x],
+                 [numpy.zeros(sample_size, dtype=config.floatX)])
                 ]:
 
             #print ''
@@ -524,6 +528,9 @@ def test_normal0():
     for size, const_size, var_input, input, avg, rtol in [
         (sample_size, sample_size, [], [], -5., default_rtol),
         (x.shape, sample_size, [x],
+         [numpy.zeros(sample_size, dtype=config.floatX)],
+         -5., default_rtol),
+        ((x.shape[0], sample_size[1]), sample_size, [x],
          [numpy.zeros(sample_size, dtype=config.floatX)],
          -5., default_rtol),
         #test odd value

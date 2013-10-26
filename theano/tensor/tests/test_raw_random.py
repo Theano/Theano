@@ -545,6 +545,42 @@ class T_random_function(utt.InferShapeTester):
         self.assertRaises(ValueError, f, rng_state0, [4])
         self.assertRaises(ValueError, f, rng_state0, [4, 3, 4, 5])
 
+    def test_mixed_shape(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        rng_R = random_state_type()
+        shape0 = tensor.lscalar()
+        shape = (shape0, 3)
+        post_r, u = uniform(rng_R, size=shape, ndim=2)
+        f = compile.function([rng_R, shape0], u)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+
+        assert f(rng_state0, 2).shape == (2, 3)
+        assert f(rng_state0, 8).shape == (8, 3)
+
+        post_r, v = uniform(rng_R, size=shape)
+        g = compile.function([rng_R, shape0], v)
+        assert g(rng_state0, 2).shape == (2, 3)
+        assert g(rng_state0, 8).shape == (8, 3)
+
+    def test_mixed_shape_bcastable(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        rng_R = random_state_type()
+        shape0 = tensor.lscalar()
+        shape = (shape0, 1)
+        post_r, u = uniform(rng_R, size=shape, ndim=2)
+        assert u.broadcastable == (False, True)
+        f = compile.function([rng_R, shape0], u)
+        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+
+        assert f(rng_state0, 2).shape == (2, 1)
+        assert f(rng_state0, 8).shape == (8, 1)
+
+        post_r, v = uniform(rng_R, size=shape)
+        assert v.broadcastable == (False, True)
+        g = compile.function([rng_R, shape0], v)
+        assert g(rng_state0, 2).shape == (2, 1)
+        assert g(rng_state0, 8).shape == (8, 1)
+
     def test_default_shape(self):
         rng_R = random_state_type()
         post_r, out = uniform(rng_R)

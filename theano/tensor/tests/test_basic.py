@@ -419,6 +419,54 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             finally:
                 config.warn.sum_div_dimshuffle_bug = backup
 
+        def test_grad_none(self):
+            # Check that None is never returned as input gradient
+            # when calling self.op.grad
+            # We use all values in self.good because this has to be true
+            # whether or not the values work for utt.verify_grad.
+            if skip:
+                raise SkipTest(skip)
+
+            if not hasattr(self.op, 'grad'):
+                # This is not actually an Op
+                return
+
+            for testname, inputs in self.good.items():
+                inputs = [copy(input) for input in inputs]
+                inputrs = [TensorType(
+                            dtype=input.dtype,
+                            broadcastable=[shape_elem == 1
+                                           for shape_elem in input.shape]
+                            )() for input in inputs]
+
+                if (isinstance(self.expected, dict)
+                        and testname in self.expected):
+                    expecteds = self.expected[testname]
+                    # with numpy version, when we print a number and read it
+                    # back, we don't get exactly the same result, so we accept
+                    # rounding error in that case.
+                else:
+                    expecteds = self.expected(*inputs)
+                if not isinstance(expecteds, (list, tuple)):
+                    expecteds = (expecteds, )
+
+                out_grad_vars = []
+                for out in expecteds:
+                    if str(out.dtype) in tensor.discrete_dtypes:
+                        dtype = floatX
+                    else:
+                        dtype = str(out.dtype)
+                    bcast = [shape_elem == 1 for shape_elem in out.shape]
+                    var = TensorType(dtype=dtype, broadcastable=bcast)()
+                    out_grad_vars.append(var)
+
+                try:
+                    in_grad_vars = self.op.grad(inputrs, out_grad_vars)
+                except (gof.utils.MethodNotDefined, NotImplementedError):
+                    pass
+                else:
+                    assert None not in in_grad_vars
+
     Checker.__name__ = name
     return Checker
 
@@ -1847,6 +1895,42 @@ class TestAlloc(unittest.TestCase):
             assert numpy.sum([isinstance(node.op, alloc)
                               for node in topo]) == 1
             assert not isinstance(topo[0].op, DeepCopyOp)
+
+    def test_ones(self):
+        for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
+            ones = theano.function([], [tensor.ones(shp)])
+            assert numpy.allclose(ones(), numpy.ones(shp))
+
+        # scalar doesn't have to be provided as input
+        x = scalar()
+        shp = []
+        ones_scalar = theano.function([], [tensor.ones(x.shape)])
+        assert numpy.allclose(ones_scalar(), numpy.ones(shp))
+
+        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+            x = typ()
+            ones_tensor = theano.function([x], [tensor.ones(x.shape)])
+            inp = numpy.zeros(shp, dtype=config.floatX)
+            assert numpy.allclose(ones_tensor(inp),
+                                  numpy.ones(shp))
+
+    def test_zeros(self):
+        for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
+            zeros = theano.function([], [tensor.zeros(shp)])
+            assert numpy.allclose(zeros(), numpy.zeros(shp))
+
+        # scalar doesn't have to be provided as input
+        x = scalar()
+        shp = []
+        zeros_scalar = theano.function([], [tensor.zeros(x.shape)])
+        assert numpy.allclose(zeros_scalar(), numpy.zeros(shp))
+
+        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+            x = typ()
+            zeros_tensor = theano.function([x], [tensor.zeros(x.shape)])
+            inp = numpy.zeros(shp, dtype=config.floatX)
+            assert numpy.allclose(zeros_tensor(inp),
+                                  numpy.zeros(shp))
 
 
 def test_eye():
@@ -3316,6 +3400,12 @@ class T_Join_and_Split(unittest.TestCase):
         assert numpy.allclose(out,
                               numpy.concatenate([T_shared.get_value(),
                                                  T_shared.get_value()]))
+
+    def test_mixed_ndim_error(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        v = self.shared(rng.rand(4).astype(self.floatX))
+        m = self.shared(rng.rand(4, 4).astype(self.floatX))
+        self.assertRaises(TypeError, self.join_op(), 0, v, m)
 
 
 class test_comparison(unittest.TestCase):
@@ -5694,7 +5784,7 @@ class T_get_scalar_constant_value(unittest.TestCase):
         # For now get_scalar_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
-        a = tensor.stack(v, 2, 3)
+        a = tensor.stack(v, [2], [3])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[0])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[1])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[2])

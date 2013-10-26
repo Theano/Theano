@@ -386,8 +386,6 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         CudaNdarray_set_nd(self, -1);
         self->data_allocated = 0;
         self->devdata = 0;
-        PyErr_SetString(PyExc_RuntimeError,
-                        "Could not allocate memory on device");
         return -1;
     }
     if (0)
@@ -473,7 +471,7 @@ DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
  */
 DllExport PyObject *
-CudaNdarray_CreateArrayObj(CudaNdarray * self);
+CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args = NULL);
 
 DllExport PyObject *
 CudaNdarray_ZEROS(int n, int * dims);
@@ -529,6 +527,25 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 // not change.
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims);
+
+DllExport const char* cublasGetErrorString(cublasStatus err){
+    if(CUBLAS_STATUS_SUCCESS == err)
+        return "success";
+    else if(CUBLAS_STATUS_NOT_INITIALIZED == err)
+        return "the library was not initialized";
+    else if(CUBLAS_STATUS_ALLOC_FAILED == err)
+        return "the resource allocation failed";
+    else if(CUBLAS_STATUS_INVALID_VALUE == err)
+        return "the parameters n<0 or incx,incy=0";
+    else if(CUBLAS_STATUS_MAPPING_ERROR == err)
+        return "an access to GPU memory space failed";
+    else if(CUBLAS_STATUS_EXECUTION_FAILED == err)
+        return "the function failed to launch on the GPU";
+    else if(CUBLAS_STATUS_INTERNAL_ERROR == err)
+        return "an internal operation failed";
+    else
+        return "unknow code";
+}
 
 #endif
 /*

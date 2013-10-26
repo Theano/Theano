@@ -273,7 +273,7 @@ class DimShuffle(Op):
     def R_op(self, inputs, eval_points):
         if None in eval_points:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
@@ -546,7 +546,7 @@ class Elemwise(Op):
                 args.append(DimShuffle(
                     input.type.broadcastable,
                     ['x'] * difference + range(length),
-                    inplace=True)(input))
+                    inplace=False)(input))
         inputs = args
 
         #HERE: all the broadcast dims have the same length now
@@ -616,7 +616,7 @@ class Elemwise(Op):
             return self.name
 
     def R_op(self, inputs, eval_points):
-        outs = self.make_node(*inputs).outputs
+        outs = self(*inputs, **dict(return_list=True))
         rval = [None for x in outs]
         # For each output
         for idx, out in enumerate(outs):
@@ -693,7 +693,7 @@ class Elemwise(Op):
 
         #sum out the broadcasted dimensions
         for i, ipt in enumerate(inputs):
-            if rval[i] is None:
+            if isinstance(rval[i].type, (NullType, DisconnectedType)):
                 continue
 
             # list of all the dimensions that are broadcastable for input[i] so
@@ -1250,8 +1250,10 @@ class CAReduce(Op):
         # See <http://projects.scipy.org/numpy/ticket/2235>.
         elif isinstance(axis, (int, numpy.integer)):
             self.axis = (axis,)
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            self.axis = (int(axis),)
         else:
-            self.axis = list(set(axis))
+            self.axis = list(set(int(a) for a in axis))
             self.axis.sort()
             self.axis = tuple(self.axis)
 
@@ -1880,7 +1882,7 @@ class Sum(CAReduceDtype):
         # part of self
         if None in eval_points:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
     def __str__(self):
         if self.axis is None:

@@ -1337,9 +1337,12 @@ class MaxAndArgmax(Op):
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
 
-        if isinstance(axis, int):
+        if isinstance(axis, (int, numpy.integer)):
             axis = [axis]
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            axis = [int(axis)]
         elif isinstance(axis, (tuple, list)):
+            axis = [int(a) for a in axis]
             if len(axis) != 1:
                 axis = list(axis)
                 for idx in range(len(axis)):
@@ -1497,8 +1500,12 @@ def makeKeepDims(x, y, axis):
 
     if axis is None:
         axis = range(x.type.ndim)
-    elif isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
     newaxis = []
     for a in axis:
         if not isinstance(a, int):
@@ -2057,6 +2064,8 @@ def zeros(shape, dtype=None):
     """
     Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
     """
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(0, dtype=dtype), *shape)
@@ -2066,6 +2075,8 @@ def ones(shape, dtype=None):
     """
     Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
     """
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
     return alloc(numpy.array(1, dtype=dtype), *shape)
@@ -2568,7 +2579,7 @@ class Alloc(gof.Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self(eval_points[0], *inputs[1:], **dict(return_list=True))
 
     def do_constant_folding(self, node):
         if not getattr(node.outputs[0], 'clients', []):
@@ -2761,8 +2772,12 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
     if axis is None:
         axis = range(input.ndim)
-    elif isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
 
     # This sequential division will possibly be optimized by Theano:
     for i in axis:
@@ -2793,8 +2808,12 @@ def var(input, axis=None, keepdims=False):
     input_ndim = input.type.ndim
     if axis is None:
         axis = range(input_ndim)
-    if isinstance(axis, int):
+    elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
+    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    else:
+        axis = [int(a) for a in axis]
 
     # compute the axis-wise mean
     mean_input = mean(input, axis, keepdims=True)
@@ -3256,7 +3275,7 @@ class Rebroadcast(Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(*eval_points).outputs
+        return self(*eval_points, **dict(return_list=True))
 
 
 def addbroadcast(x, *axes):
@@ -3409,6 +3428,10 @@ class Join(Op):
                 # broadcastable.
                 bcastable = [False] * len(
                     as_tensor_variable_args[0].type.broadcastable)
+
+        if not python_all([x.ndim == len(bcastable)
+                           for x in as_tensor_variable_args[1:]]):
+            raise TypeError("Join() can only join tensor with the same number of dimensions.")
 
         inputs = [as_tensor_variable(axis)] + list(as_tensor_variable_args)
         if inputs[0].type not in int_types:
@@ -3782,7 +3805,7 @@ class Reshape(Op):
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self(eval_points[0], *inputs[1:], **dict(return_list=True))
 
     def infer_shape(self, node, ishapes):
         # inputs[1] can contain at most one value of '-1', meaning the actual
@@ -3864,8 +3887,7 @@ class Reshape(Op):
                 PyArray_CORDER);
             if (!%(z)s)
             {
-                PyErr_Format(PyExc_ValueError,
-                             "Could not reshape array.");
+                //The error message should have been set by PyArray_Newshape
                 %(fail)s;
             }
             if (!PyArray_ISALIGNED(%(z)s)) {
@@ -4534,11 +4556,12 @@ class Dot(Op):
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is
         # simply c \dot b + a \dot d
-        if None in eval_points:
-            return [None]
+
 
         assert len(inputs) == 2
         assert len(eval_points) == 2
+        if eval_points[0] is None and eval_points[1] is None:
+            return [None]
 
         debugger_available = config.compute_test_value != 'off'
 
@@ -4557,25 +4580,28 @@ class Dot(Op):
                     'second input passed to Dot.R_op has no test value')
                 debugger_available = False
 
-            try:
-                ev0 = gof.op.get_test_value(eval_points[0])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'first eval point passed to Dot.R_op has no test value')
-                debugger_available = False
-            try:
-                ev1 = gof.op.get_test_value(eval_points[1])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'second eval point passed to Dot.R_op has no test value')
-                debugger_available = False
+            if eval_points[0]:
+                try:
+                    ev0 = gof.op.get_test_value(eval_points[0])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'first eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+            if eval_points[1]:
+                try:
+                    ev1 = gof.op.get_test_value(eval_points[1])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'second eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
 
         if debugger_available:
             input_values = [iv0, iv1]
             eval_point_values = [ev0, ev1]
 
             for i in xrange(2):
-                if input_values[i].shape != eval_point_values[i].shape:
+                if eval_point_values[i] is not None and \
+                   input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError('input ' + str(i) + ' and eval_point ' +
                                      str(i) + ' to Dot.R_op '
                                      'should have the '
@@ -4583,11 +4609,17 @@ class Dot(Op):
                                      ' %s and %s, respectively' % (
                             str(input_values[i].shape),
                             str(eval_point_values[i].shape)))
+        if eval_points[0]:
+            t1 = self(eval_points[0], inputs[1])
+        if eval_points[1]:
+            t2 = self(inputs[0], eval_points[1])
 
-        t1 = self(eval_points[0], inputs[1])
-        t2 = self(inputs[0], eval_points[1])
-
-        return [t1 + t2]
+        if eval_points[0] and eval_points[1]:
+            return [t1 + t2]
+        elif eval_points[0]:
+            return [t1]
+        else:
+            return [t2]
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes

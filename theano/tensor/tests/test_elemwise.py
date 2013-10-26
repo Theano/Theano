@@ -98,6 +98,43 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
         self.assertRaises(ValueError, y.eval, {x: 0})
 
+class test_reduce_axes(unittest.TestCase):
+
+    def test_sum_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.sum(a)
+
+    def test_mean_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.mean(a)
+
+    def test_max_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.max(a)
+
+    def test_min_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.min(a)
+
+    def test_argmax_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.argmax(a)
+
+    def test_var_axes(self):
+        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        for a in axes:
+            x = tensor.matrix()
+            m = x.var(a)
 
 class test_Broadcast(unittest.TestCase):
     def setUp(self):
@@ -196,6 +233,14 @@ class test_Broadcast(unittest.TestCase):
         yv = numpy.random.rand(1, 1)
         f(xv, yv)
         assert (xv == yv).all()
+
+    def test_fill_grad(self):
+        # Fix bug reported at
+        # https://groups.google.com/d/topic/theano-users/nQshB8gUA6k/discussion
+        x = TensorType(config.floatX, [0, 1, 0])('x')
+        y = TensorType(config.floatX, [0, 1, 0])('y')
+        e = tensor.second(x, y)
+        theano.grad(e.sum(), y)
 
     def test_weird_strides(self):
         if not theano.config.cxx:

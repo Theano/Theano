@@ -38,6 +38,17 @@ def test_host_to_device():
         c = numpy.asarray(b)
         assert numpy.all(a == c)
 
+        # test with float32 dtype
+        d = numpy.asarray(b, dtype='float32')
+        assert numpy.all(a == d)
+
+        # test with not float32 dtype
+        try:
+            numpy.asarray(b, dtype='int8')
+            assert False
+        except TypeError:
+            pass
+
 
 def test_add_iadd_idiv():
     for shapes in (

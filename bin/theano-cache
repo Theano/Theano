@@ -19,7 +19,7 @@ def print_help(exit_status):
     print 'Type "theano-cache clear" to erase the cache'
     print 'Type "theano-cache list" to print the cache content'
     print 'Type "theano-cache unlock" to unlock the cache directory'
-    print 'Type "theano-cache cleanup" to delete keys in the old format'
+    print 'Type "theano-cache cleanup" to delete keys in the old format/code version'
     print 'Type "theano-cache purge" to force deletion of the cache directory'
     print ('Type "theano-cache basecompiledir" '
             'to print the parent of the cache directory')
@@ -60,6 +60,8 @@ elif len(sys.argv) == 2:
         theano.gof.compiledir.print_compiledir_content()
     elif sys.argv[1] == 'cleanup':
         theano.gof.compiledir.cleanup()
+        cache = get_module_cache(init_args=dict(do_refresh=False))
+        cache.clear_old()
     elif sys.argv[1] == 'unlock':
         theano.gof.compilelock.force_unlock()
         print 'Lock successfully removed!'

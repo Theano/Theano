@@ -47,29 +47,43 @@ theano.configparser.AddConfigVar('on_shape_error',
 # Utilities
 
 
-def out2in(*local_opts):
+def out2in(*local_opts, **kwargs):
     """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
-        local_opts = opt.LocalOptGroup(*local_opts),
+        local_opts = opt.LocalOptGroup(*local_opts)
     else:
         local_opts, = local_opts
-    return opt.TopoOptimizer(local_opts,
-                             order='out_to_in',
-                             failure_callback=TopoOptimizer.warn_inplace)
+        if not name:
+            name = local_opts.__name__
+    ret = opt.TopoOptimizer(local_opts,
+                            order='out_to_in',
+                            failure_callback=TopoOptimizer.warn_inplace,
+                            **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
 
 
 def in2out(*local_opts, **kwargs):
     """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
-        local_opts = opt.LocalOptGroup(*local_opts),
+        local_opts = opt.LocalOptGroup(*local_opts)
     else:
         local_opts, = local_opts
-    return opt.TopoOptimizer(local_opts,
-                             order='in_to_out',
-                             failure_callback=TopoOptimizer.warn_inplace,
-                             **kwargs)
+        if not name:
+            #import pdb;pdb.set_trace()
+            name = local_opts.__name__
+    ret = opt.TopoOptimizer(local_opts,
+                            order='in_to_out',
+                            failure_callback=TopoOptimizer.warn_inplace,
+                            **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
 
 
 def _fill_chain(new_out, orig_inputs):
@@ -249,10 +263,11 @@ def inplace_elemwise_optimizer_op(OP):
                                 scalar.transfer_type(
                                     *[inplace_pattern.get(i, None) \
                                           for i in xrange(len(node.outputs))]))
-                        new = OP(new_scal, inplace_pattern).make_node(
-                            *node.inputs)
+                        new_outputs = OP(new_scal, inplace_pattern)(
+                                *node.inputs, **dict(return_list=True))
+                        new_node = new_outputs[0].owner
 
-                        for r, new_r in zip(node.outputs, new.outputs):
+                        for r, new_r in zip(node.outputs, new_outputs):
                             fgraph.replace(r, new_r,
                                         reason="inplace_elemwise_optimizer")
                         nb_change_no_validate += 1
@@ -270,7 +285,7 @@ def inplace_elemwise_optimizer_op(OP):
                         fgraph.revert(chk)
                         continue
                     candidate_inputs.remove(candidate_input)
-                    node = new
+                    node = new_node
                     baseline = inplace_pattern
                     break
 
@@ -395,9 +410,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(input.type.broadcastable,
+        ret = inode.op(*[DimShuffle(inp.type.broadcastable,
                                     op.new_order,
-                                    op.inplace)(input) for input in
+                                    op.inplace)(inp) for inp in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -898,22 +913,29 @@ class ShapeFeature(object):
             r_shape = self.shape_of[r]
         else:
             # If no info is known on r's shape, use other_shape
-            self.shape_of[r] = other_shape
-            for sv in other_shape:
-                self.shape_of_reverse_index.setdefault(sv, set()).add(r)
+            self.set_shape(r, other_shape)
             return
 
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
         for i, ps in enumerate(other_shape):
-            # If other_shape[i] is uninformative, use r_shape[i].
-            # For now, we consider 2 cases of uninformative other_shape[i]:
-            #  - Shape_i(i)(other_r);
-            #  - Shape_i(i)(r).
             if (ps.owner
                     and isinstance(getattr(ps.owner, 'op', None), Shape_i)
                     and ps.owner.op.i == i
                     and ps.owner.inputs[0] in (r, other_r)):
+                # If other_shape[i] is uninformative, use r_shape[i].
+                # For now, we consider 2 cases of uninformative other_shape[i]:
+                #  - Shape_i(i)(other_r);
+                #  - Shape_i(i)(r).
+                merged_shape.append(r_shape[i])
+            elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
+                # Another case where we want to use r_shape[i] is when
+                # other_shape[i] actually depends on r_shape[i]. In that case,
+                # we do not want to substitute an expression with another that
+                # is strictly more complex. Such a substitution could also lead
+                # to cycles: if (in the future) r_shape[i] gets replaced by an
+                # expression of other_shape[i], other_shape[i] may end up
+                # depending on itself.
                 merged_shape.append(r_shape[i])
             else:
                 merged_shape.append(other_shape[i])
@@ -943,12 +965,12 @@ class ShapeFeature(object):
             else:
                 new_shape.append(s_j)
         assert all([not hasattr(r.type, "broadcastable") or
-                    not r.type.broadcastable[i] or
+                    not r.type.broadcastable[idx] or
                     # The two following comparison are a speed optimization
                     # But we never timed this speed optimization!
-                    self.lscalar_one.equals(new_shape[i]) or
-                    self.lscalar_one.equals(T.extract_constant(new_shape[i]))
-                    for i in range(r.ndim)])
+                    self.lscalar_one.equals(new_shape[idx]) or
+                    self.lscalar_one.equals(T.extract_constant(new_shape[idx]))
+                    for idx in range(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -1041,13 +1063,13 @@ class ShapeFeature(object):
 
         # Ensure shapes are in 'int64'. This is to make sure the assert
         # found in the `local_useless_subtensor` optimization does not fail.
-        new_shape = []
         for sh_idx, sh in enumerate(o_shapes):
             if sh is None:
                 continue
             if not isinstance(sh, (list, tuple)):
                 raise ValueError("infer_shape of %s didn't return a list of"
                                  " list. It returned '%s'" % (str(node), str(o_shapes)))
+            new_shape = []
             for i, d in enumerate(sh):
                 # Note: we ignore any shape element that is not typed (i.e.,
                 # does not have a 'dtype' attribute). This means there may
@@ -1064,12 +1086,11 @@ class ShapeFeature(object):
                 # 'int64'.
                 new_shape += sh[len(new_shape):]
                 o_shapes[sh_idx] = tuple(new_shape)
-                new_shape = []
 
         for r, s in izip(node.outputs, o_shapes):
             self.set_shape(r, s)
 
-    def on_change_input(self, fgraph, node, i, r, new_r):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
         if new_r not in self.shape_of:
             # It happen that the fgraph didn't called on_import for some
             # new_r.  This happen when new_r don't have an
@@ -1091,6 +1112,29 @@ class ShapeFeature(object):
         # At that point, node is no longer a client of r, but of new_r
         for (shpnode, idx) in (r.clients + [(node, i)]):
             if isinstance(getattr(shpnode, 'op', None), Shape_i):
+                idx = shpnode.op.i
+                repl = self.shape_of[new_r][idx]
+                if repl.owner is shpnode:
+                    # This mean the replacement shape object is
+                    # exactly the same as the current shape object. So
+                    # no need for replacement. This happen for example
+                    # with the InputToGpuOptimizer optimizer.
+                    continue
+                if (repl.owner and
+                    repl.owner.inputs[0] is shpnode.inputs[0] and
+                    isinstance(repl.owner.op, Shape_i) and
+                    repl.owner.op.i == shpnode.op.i):
+                    # The replacement is a shape_i of the same
+                    # input. So no need to do this equivalent
+                    # replacement.
+                    continue
+
+                if shpnode.outputs[0] in theano.gof.graph.ancestors([repl]):
+                    raise AssertionError(
+                        "This substitution would insert a cycle in the graph:"
+                        "node: %s, i: %i, r: %s, new_r: %s"
+                        % (node, i, r, new_r))
+
                 self.scheduled[shpnode] = new_r
         # In case 2, if r is a variable that we've scheduled for shape update,
         # then we should cancel it.
@@ -1228,6 +1272,9 @@ def local_track_shape_i(node):
     except AttributeError:
         return
     if node in shape_feature.scheduled:
+        # Don't unschedule node as it could be reinserted in the
+        # fgraph as we don't change it in the shapefeature internal
+        # structure.
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
@@ -2070,6 +2117,14 @@ def local_IncSubtensor_serialize(node):
 
         #print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
 
+# We register it in a TopoOptimizer inside the canonizer EQ optimizer.
+# Otherwise in some cases it was making the EQ optimizer use 45. In
+# the TopoOptimizer, the EQ only use 6 passes.
+compile.optdb.register('pre_local_IncSubtensor_serialize',
+                       in2out(local_IncSubtensor_serialize),
+                       #Just before canonizer
+                       0.99, 'fast_run')
+
 
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
@@ -2271,7 +2326,6 @@ def local_join_1(node):
     """
     if not isinstance(node.op, T.Join):
         return
-    axis = node.inputs[0]
     tensors = node.inputs[1:]
     if len(tensors) == 1:
         return [tensors[0]]
@@ -3686,7 +3740,8 @@ register_specialize(local_add_specialize)
 # mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
-                                         local_fill_sink))
+                                         local_fill_sink),
+                       name='mul_canonizer_groups')
 
 
 def check_for_x_over_absX(numerators, denominators):
@@ -3828,7 +3883,8 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
-                                         local_fill_sink))
+                                         local_fill_sink),
+                       name='add_canonizer_group')
 
 
 register_canonicalize(local_add_canonizer, name='local_add_canonizer')

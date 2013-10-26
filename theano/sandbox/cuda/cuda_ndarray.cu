@@ -21,7 +21,8 @@
 //If true, we do error checking at the start of functions, to make sure there
 //is not a pre-existing error when the function is called.
 //You probably need to set the environment variable
-//CUDA_LAUNCH_BLOCKING=1
+//CUDA_LAUNCH_BLOCKING=1, and/or modify the CNDA_THREAD_SYNC
+//preprocessor macro in cuda_ndarray.cuh
 //if you want this to work.
 #define PRECHECK_ERROR 0
 
@@ -46,13 +47,13 @@ static PyObject *CudaNdarray_get_shape(CudaNdarray *self, void *closure);
 int _outstanding_mallocs[] = {0,0};
 
 #if COMPUTE_GPU_MEM_USED
-int _allocated_size = 0;
-int _max_allocated_size = 0;
+size_t _allocated_size = 0;
+size_t _max_allocated_size = 0;
 
 const int TABLE_SIZE = 10000;
 struct table_struct{
     void* ptr;
-    int size;
+    size_t size;
 };
 table_struct _alloc_size_table[TABLE_SIZE];
 #endif
@@ -64,6 +65,17 @@ void * device_malloc(size_t size)
 
 void * device_malloc(size_t size, int verbose)
 {
+    #if PRECHECK_ERROR
+        cudaThreadSynchronize();
+        cudaError_t prevError = cudaGetLastError();
+        if (cudaSuccess != prevError)
+        {
+            fprintf(stderr,
+                    "Error existed before calling device_malloc. %s\n",
+                    cudaGetErrorString(prevError)
+                    );
+        }
+    #endif
     void * rval=NULL;
     cudaError_t err = cudaMalloc(&rval, size);
     if (cudaSuccess != err)
@@ -80,25 +92,26 @@ void * device_malloc(size_t size, int verbose)
             if (err2 != cudaSuccess){
                 cudaGetLastError();
                 fprintf(stderr,
-                        "Error when tring to find the memory information"
-                        " on the GPU\n");
+                        "Error when trying to find the memory information"
+                        " on the GPU: %s\n", cudaGetErrorString(err2));
             }
             #if COMPUTE_GPU_MEM_USED
                 fprintf(stderr,
-                        "Error allocating %li bytes of device memory (%s)."
+                        "Error allocating %zd bytes of device memory (%s)."
                         " new total bytes allocated: %d."
-                        " Driver report %d bytes free and %d bytes total \n",
-                        (long)size, cudaGetErrorString(err), _allocated_size,
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        size, cudaGetErrorString(err), _allocated_size,
                         free, total);
             #else
                 fprintf(stderr,
-                        "Error allocating %li bytes of device memory (%s)."
-                        " Driver report %d bytes free and %d bytes total \n",
-                        (long)size, cudaGetErrorString(err), free, total);
+                        "Error allocating %zd bytes of device memory (%s)."
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        size, cudaGetErrorString(err), free, total);
             #endif
         }
         PyErr_Format(PyExc_MemoryError,
-                "Error allocating %li bytes of device memory (%s).", (long)size, cudaGetErrorString(err));
+                     "Error allocating %zd bytes of device memory (%s).",
+                     size, cudaGetErrorString(err));
         return NULL;
     }
     if (rval != NULL){
@@ -109,13 +122,18 @@ void * device_malloc(size_t size, int verbose)
 #if COMPUTE_GPU_MEM_USED
         _allocated_size += size;
         _max_allocated_size = std::max(_max_allocated_size, _allocated_size);
-
-        for(int i=0;i<TABLE_SIZE;i++){
+        int i = 0;
+        for(;i<TABLE_SIZE;i++){
             if(NULL==_alloc_size_table[i].ptr){
                 _alloc_size_table[i].ptr=rval;
                 _alloc_size_table[i].size=size;
                 break;
             }
+        }
+        if (i == TABLE_SIZE){
+            fprintf(stderr,
+                    "When tracking GPU malloc, our table size wasn't big enough."
+                    " So we loose some tracking. Raise the value of TABLE_SIZE in the file cuda_ndarra.cu");
         }
 #endif
     }
@@ -129,22 +147,50 @@ void * device_malloc(size_t size, int verbose)
         //printf("MEMSET\n");
     }
     #if PRINT_FREE_MALLOC
-        fprintf(stderr, "device malloc %p\n",rval);
+        fprintf(stderr, "device malloc %p of size %d\n", rval, size);
     #endif
     return rval;
 }
 
 int device_free(void *ptr)
 {
-    #if PRINT_FREE_MALLOC
-        fprintf(stderr, "device_free %p\n",ptr);
-    #endif
     #if PRECHECK_ERROR
+        cudaThreadSynchronize();
         cudaError_t prevError = cudaGetLastError();
         if (cudaSuccess != prevError)
         {
-            fprintf(stderr, "Error existed before calling device_free.\n");
+            fprintf(stderr,
+                    "Error existed before calling device_free. %s\n",
+                    cudaGetErrorString(prevError)
+                    );
         }
+    #endif
+    #if PRINT_FREE_MALLOC
+        size_t free = 0, total = 0;
+        cudaError_t err2 = cudaMemGetInfo(&free, &total);
+        if (err2 != cudaSuccess){
+            cudaGetLastError();
+            fprintf(stderr,
+                    "Error when tring to find the memory information"
+                    " on the GPU: %s\n", cudaGetErrorString(err2));
+        }
+        #if COMPUTE_GPU_MEM_USED
+        {
+            int i = 0;
+            for(;i<TABLE_SIZE;i++)
+                if(_alloc_size_table[i].ptr==ptr){
+                    break;
+                }
+            assert(i<TABLE_SIZE);
+            fprintf(stderr, "device_free %p of size %d."
+                    " Driver report %d bytes free and %d bytes total \n",
+                    ptr, _alloc_size_table[i].size, free, total);
+        }
+        #else
+            fprintf(stderr, "device_free %p."
+                    " Driver report %d bytes free and %d bytes total \n",
+                    ptr, free, total);
+        #endif
     #endif
 
     // if there is no gpu context, the call to cudaFree will fail; skip it entirely
@@ -164,16 +210,43 @@ int device_free(void *ptr)
         // it returns something else I still don't see why we should ignore
         // it.  All we want to do here is reset the flag.
         cudaGetLastError();
-        #if COMPUTE_GPU_MEM_USED
+        size_t free = 0, total = 0;
+        cudaError_t err2 = cudaMemGetInfo(&free, &total);
+        if (err2 != cudaSuccess){
+            cudaGetLastError();
             fprintf(stderr,
-                    "Error freeing device pointer %p (%s).%d byte already allocated\n",
-                    ptr, cudaGetErrorString(err), _allocated_size);
+                    "Error when tring to find the memory information"
+                    " on the GPU: %s\n", cudaGetErrorString(err2));
+        }
+        #if COMPUTE_GPU_MEM_USED
+        {
+            int i = 0;
+            for(;i<TABLE_SIZE;i++)
+                if(_alloc_size_table[i].ptr==ptr){
+                    break;
+                }
+            assert(i<TABLE_SIZE);
+            fprintf(stderr,
+                    "Error freeing device pointer %p (%s) of size %d. %zd byte already allocated."
+                    " Driver report %zd bytes free and %zd bytes total \n",
+                    ptr, cudaGetErrorString(err),
+                    _alloc_size_table[i].size, _allocated_size, free, total);
+        }
         #else
             fprintf(stderr,
-                    "Error freeing device pointer %p (%s).\n",
+                    "Error freeing device pointer %p (%s)."
+                    " Driver report %zd bytes free and %zd bytes total \n",
                     ptr,
-                    cudaGetErrorString(err));
+                    cudaGetErrorString(err), free, total);
         #endif
+        if (NULL != PyErr_Occurred()){
+            fprintf(stderr,
+                    "device_free: cudaFree() returned an error, but there is already an"
+                    " Python error set. This happen during the clean up when there is a"
+                    " first error and the CUDA driver is in a so bad state that it don't"
+                    " work anymore. We keep the previous error set to help debugging it.");
+            return -1;
+        }
         PyErr_Format(PyExc_MemoryError,
                 "error freeing device pointer %p (%s)",
                 ptr,
@@ -364,8 +437,38 @@ static PyMemberDef CudaNdarray_members[] =
     {NULL}  /* Sentinel */
 };
 
-PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self)
+PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 {
+    PyObject * dtype = NULL;
+    if (args && !PyArg_ParseTuple(args, "|O", &dtype))
+        return NULL;
+    if (dtype) {
+        PyArray_Descr* dtype2;
+        // PyArray_DescrConverter try to convert anything to a PyArray_Descr.
+        if(!PyArray_DescrConverter(dtype, &dtype2))
+        {
+            PyObject * str = PyObject_Repr(dtype);
+            PyErr_Format(PyExc_TypeError,
+                         "CudaNdarray dtype parameter not understood: %s",
+                         PyString_AsString(str)
+                         );
+            Py_CLEAR(str);
+            return NULL;
+        }
+        int typeNum = dtype2->type_num;
+        Py_DECREF(dtype2);
+        if (typeNum != NPY_FLOAT32)
+        {
+            PyObject * str = PyObject_Repr(dtype);
+            PyErr_Format(PyExc_TypeError,
+                         "CudaNdarray support only support float32 dtype, provided: %d",
+                         typeNum
+                         );
+            Py_CLEAR(str);
+            return NULL;
+        }
+    }
+
     int verbose = 0;
     if(self->nd>=0 && CudaNdarray_SIZE(self)==0){
         npy_intp * npydims = (npy_intp*)malloc(self->nd * sizeof(npy_intp));
@@ -1233,7 +1336,7 @@ CudaNdarray_exp(CudaNdarray* self)
 static PyMethodDef CudaNdarray_methods[] =
 {
     {"__array__",
-        (PyCFunction)CudaNdarray_CreateArrayObj, METH_NOARGS,
+        (PyCFunction)CudaNdarray_CreateArrayObj, METH_VARARGS,
         "Copy from the device to a numpy ndarray"},
     {"__copy__",
         (PyCFunction)CudaNdarray_View, METH_NOARGS,
@@ -3790,6 +3893,22 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
         return -1;
     }
 
+#if PRECHECK_ERROR
+    cublasStatus prevErr = cublasGetError();
+    if (CUBLAS_STATUS_SUCCESS != prevErr)
+    {
+        //I don't know why, but I need to remove the cuda error too.
+        //Otherwise, the clean up before raising the Python error cause error too!
+        //So we don't see this python error.
+        fprintf(stderr,
+                "CudaNdarray_sgemm: Prev cublas error %s",
+                cublasGetErrorString(prevErr));
+        PyErr_Format(PyExc_RuntimeError,
+                     "CudaNdarray_sgemm: Prev cublas error %s",
+                     cublasGetErrorString(prevErr));
+        return -1;
+    }
+#endif
     // We must allow dimensions to be zeros.
     if ((CudaNdarray_HOST_DIMS(A)[1] != CudaNdarray_HOST_DIMS(B)[0])
             || (CudaNdarray_HOST_DIMS(A)[0] != CudaNdarray_HOST_DIMS(C)[0])
@@ -3947,8 +4066,14 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     if (CUBLAS_STATUS_SUCCESS != err)
     {
         PyErr_Format(PyExc_RuntimeError,
-                     "cublasSgemm failed (%i)",
-                     err);
+                     "cublasSgemm failed (%i) %s\n"
+                     " unit=%h N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%f, b=%f, c=%f"
+                     " sa_0=%d, sa_1=%d, sb_0=%d, sb_1=%d, sc_0=%d, sc_1=%d",
+                     err,  cublasGetErrorString(err),
+                     unit, N, CudaNdarray_HOST_DIMS(C)[0], CudaNdarray_HOST_DIMS(C)[1],
+                     CudaNdarray_HOST_DIMS(A)[0], CudaNdarray_HOST_DIMS(A)[1],
+                     alpha, beta, a, b, c, sa_0, sa_1, sb_0, sb_1, sc_0, sc_1);
+
         return -1;
     }
     return 0;

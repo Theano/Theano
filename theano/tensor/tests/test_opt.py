@@ -2,6 +2,8 @@
 
 import copy
 import logging
+import pickle
+import os
 import time
 import unittest
 
@@ -124,13 +126,27 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, y, z = inputs([False] * 1, [False] * 2, [False] * 3)
         e = x + y + z
         g = FunctionGraph([x, y, z], [e])
-        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}("
-            "InplaceDimShuffle{x,0,1}(Elemwise{add,no_inplace}"
-            "(InplaceDimShuffle{x,0}(x), y)), z)]"), str(g))
+
+        # It does not really matter if the DimShuffles are inplace
+        # or not.
+        init_str_g_inplace = (
+            "[Elemwise{add,no_inplace}(InplaceDimShuffle{x,0,1}"
+            "(Elemwise{add,no_inplace}(InplaceDimShuffle{x,0}(x), y)), z)]")
+        init_str_g_noinplace = (
+            "[Elemwise{add,no_inplace}(DimShuffle{x,0,1}"
+            "(Elemwise{add,no_inplace}(DimShuffle{x,0}(x), y)), z)]")
+        self.assertTrue(str(g) in (init_str_g_inplace, init_str_g_noinplace),
+                        str(g))
+
+        opt_str_g_inplace = (
+            "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
+            "(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]")
+        opt_str_g_noinplace = (
+            "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
+            "(DimShuffle{x,x,0}(x), DimShuffle{x,0,1}(y)), z)]")
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == ("[Elemwise{add,no_inplace}(Elemwise"
-            "{add,no_inplace}(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle"
-            "{x,0,1}(y)), z)]"), str(g))
+        self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
+                        str(g))
 
 
 def test_add_canonizer_problem0():
@@ -2630,6 +2646,18 @@ class test_shapeoptimizer(unittest.TestCase):
         mode = theano.compile.get_default_mode().excluding('ShapeOpt')
         f = theano.function([X], expr, mode=mode)
         print f([[1, 2], [2, 3]])
+
+    def test_no_cycle(self):
+        # Optimizing this graph resulted in a cycle, see gh-1549
+        # This test depends on cuda
+        import theano.sandbox.cuda as cuda
+        if not cuda.cuda_available:
+            raise SkipTest("cuda not available")
+
+        pkl_filename = os.path.join(os.path.dirname(theano.__file__),
+                                    'tensor', 'tests', 'shape_opt_cycle.pkl')
+        fn_args = pickle.load(open(pkl_filename, "rb"))
+        theano.function(**fn_args)
 
 
 class test_assert(utt.InferShapeTester):

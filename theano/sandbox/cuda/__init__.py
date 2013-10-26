@@ -18,18 +18,6 @@ _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 _logger.setLevel(logging.WARNING)
 
-AddConfigVar('cuda.root',
-        """directory with bin/, lib/, include/ for cuda utilities.
-        This directory is included via -L and -rpath when linking
-        dynamically compiled modules.  If AUTO and nvcc is in the
-        path, it will use one of nvcc parent directory.  Otherwise
-        /usr/local/cuda will be used.  Leave empty to prevent extra
-        linker directives.  Default: environment variable "CUDA_ROOT"
-        or else "AUTO".
-        """,
-        StrParam(os.getenv('CUDA_ROOT', "AUTO")),
-        in_c_key=False)
-
 AddConfigVar('pycuda.init',
         """If True, always initialize PyCUDA when Theano want to
            initilize the GPU.  Currently, we must always initialize
@@ -41,9 +29,6 @@ AddConfigVar('pycuda.init',
         BoolParam(False),
         in_c_key=False)
 
-if config.cuda.root == "AUTO":
-    # set nvcc_path correctly and get the version
-    nvcc_compiler.set_cuda_root()
 
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module
@@ -179,6 +164,7 @@ if compile_cuda_ndarray and cuda_available:
 del compile_cuda_ndarray
 
 if cuda_available:
+    global cuda_initialization_error_message
     # The module should be compiled.
     from cuda_ndarray.cuda_ndarray import *
 

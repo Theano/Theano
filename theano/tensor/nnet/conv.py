@@ -537,8 +537,6 @@ class ConvOp(OpenMPOp):
                           time_unroll_batch_kern)
 
         self._rehash()
-        if config.op.set_flops:
-            self.set_flops()
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -567,43 +565,24 @@ class ConvOp(OpenMPOp):
         return "ConvOp{" + ",".join(str((a, getattr(self, a)))
                                     for a in self.__attrnames) + "}"
 
-    def set_flops(self):
+    def flops(self, inputs, outputs):
         """ Useful with the hack in profilemode to print the MFlops"""
+        images, kerns = inputs
+        out, = outputs
+        assert images[1] == kerns[1]
+        flops = 0
         if self.out_mode == "valid":
-            # nb mul and add by output pixed
-            self.flops = self.kshp[0] * self.kshp[1] * 2
+            # nb mul and add by output pixel
+            flops = kerns[2] * kerns[3] * 2
             #nb flops by output image
-            self.flops *= self.outshp[0] * self.outshp[1]
-            # for all outputs images#n_stack==self.imshp[0]
-            self.flops *= self.imshp[0] * self.nkern * self.bsize
-        else:  # full mode not implemented
-
-            self.flops = 0
-            for out_row in xrange(self.outshp[0]):  # loop over output row
-                for out_col in xrange(self.outshp[0]):  # loop over output col
-                    for row in xrange(self.kshp[0]):  # loop over kern row
-
-                        if (row + out_row - self.kshp[0] + 1 < 0 or
-                            row + out_row - self.kshp[0] + 1 >= self.imshp[1]):
-                            continue
-
-                        col = 0
-                        max_col = self.kshp[1]
-                        img_col = out_col - self.kshp[1] + 1
-                        max_col = min(max_col, self.imshp[2] - img_col)
-
-                        if img_col < 0:
-                            col = -img_col
-                            img_col += col
-                        while col < max_col:  # loop over kern col
-                            self.flops += 2
-                            col += 1
-            # for all outputs images#n_stack==self.imshp[0]
-            self.flops *= self.imshp[0] * self.nkern * self.bsize
-
-            assert self.flops == self.bsize * self.nkern * self.imshp[0] * \
-                    self.kshp[0] * self.kshp[1] * \
-                        self.imshp[1] * self.imshp[2] * 2
+            flops *= out[2] * out[3]
+            # nb patch multiplied
+            flops *= images[1] * kerns[0] * images[0]
+        else:
+            flops = (images[0] * kerns[0] * images[1] *
+                     kerns[2] * kerns[3] *
+                     images[2] * images[3] * 2)
+        return flops
 
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
@@ -917,9 +896,6 @@ class ConvOp(OpenMPOp):
                         version=self.version,
                         verbose=self.verbose)
 
-        if hasattr(self, 'flops'):
-            dw.set_flops()
-
         dw = dw(img, filters)
 
         if all_shape:
@@ -965,9 +941,6 @@ class ConvOp(OpenMPOp):
                          kshp_logical=None,
                          version=-1,  # we we change the mode, we don't forward the version.
                          verbose=self.verbose)
-
-        if hasattr(self, 'flops'):
-            din.set_flops()
 
         din = din(gz, filters)
 

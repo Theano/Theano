@@ -883,7 +883,7 @@ class Subtensor(Op):
         # (they should be defaulted to zeros_like by the global R_op)
         if eval_points[0] is None:
             return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
+        return self(eval_points[0], *inputs[1:], **dict(return_list=True))
 
 
 class SubtensorPrinter:
@@ -1414,8 +1414,8 @@ class IncSubtensor(Op):
             return [None]
         # Again we ignore eval points for indices because incsubtensor is
         # not differentiable wrt to those
-        return self.make_node(eval_points[0], eval_points[1],
-                            *inputs[2:]).outputs
+        return self(eval_points[0], eval_points[1], *inputs[2:],
+                    **dict(return_list=True))
 
     def connection_pattern(self, node):
 

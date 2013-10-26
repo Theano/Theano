@@ -252,12 +252,6 @@ AddConfigVar('lib.amdlibm',
         "Use amd's amdlibm numerical library",
         BoolParam(False))
 
-AddConfigVar('op.set_flops',
-        ("currently used only in ConvOp. The profile mode will print the "
-         "flops/s for the op."),
-        BoolParam(False),
-        in_c_key=False)
-
 AddConfigVar('gpuelemwise.sync',
         "when true, wait that the gpu fct finished and check it error code.",
         BoolParam(True),

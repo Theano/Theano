@@ -6,6 +6,7 @@ types that it can raise
 """
 import sys
 
+import theano
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
@@ -376,7 +377,7 @@ class FunctionGraph(utils.object2):
         current value of node.inputs[i] which we want to replace.
 
         For each feature that has a 'on_change_input' method, calls:
-          feature.on_change_input(function_graph, node, i, old_r, new_r, [reason])
+          feature.on_change_input(function_graph, node, i, old_r, new_r, reason)
         """
         # TODO: ERROR HANDLING FOR LISTENERS (should it complete the change or revert it?)
         if node == 'output':
@@ -430,6 +431,23 @@ class FunctionGraph(utils.object2):
             # this variable isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops
             return
+
+        if theano.config.compute_test_value != 'off':
+            try:
+                tval = theano.gof.op.get_test_value(r)
+                new_tval = theano.gof.op.get_test_value(new_r)
+            except AttributeError:
+                pass
+            else:
+                tval_shape = getattr(tval, 'shape', None)
+                new_tval_shape = getattr(new_tval, 'shape', None)
+                if tval_shape != new_tval_shape:
+                    raise AssertionError(
+                        "The replacement variable has a test value with "
+                        "a shape different from the original variable's "
+                        "test value. Original: %s, new: %s"
+                        % (tval_shape, new_tval_shape),
+                        r, new_r, str(reason))
 
         for node, i in list(r.clients):  # copy the client list for iteration
             assert (node == 'output' and self.outputs[i] is r) or (node.inputs[i] is r)
@@ -512,14 +530,7 @@ class FunctionGraph(utils.object2):
                 # not existing
                 continue
 
-            #####HORRIBLE OPTIONAL ARGUMENT HACK
-            try:
-                fn(self, *args, **kwargs)
-            except TypeError, e:
-                if str(e) == "on_change_input() got an unexpected keyword argument 'reason'" and len(kwargs) == 1:
-                    fn(self, *args)
-                else:
-                    raise
+            fn(self, *args, **kwargs)
 
     def collect_callbacks(self, name, *args):
         """WRITEME
