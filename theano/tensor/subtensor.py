@@ -862,7 +862,7 @@ class Subtensor(Op):
         finish_view = """
         if (%(z)s) Py_DECREF(%(z)s);
         Py_INCREF(py_%(x)s);
-#if NPY_VERSION < 0x01000009
+#if NPY_API_VERSION < 0x00000007
         PyArray_BASE(xview) = py_%(x)s;
 #else
         PyArray_SetBaseObject(xview, py_%(x)s);
