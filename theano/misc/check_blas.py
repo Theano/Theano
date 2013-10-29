@@ -220,6 +220,7 @@ if __name__ == "__main__":
         GTX 650 Ti               0.27s
         GTX 460                  0.37s                0.45s
         GTX 285           0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
+        750M                     0.49s
         GTX 550 Ti                                    0.57s
         GT 520                          2.68s                3.06s
         520M                     2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
