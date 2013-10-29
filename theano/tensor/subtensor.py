@@ -1098,6 +1098,9 @@ class IncSubtensor(Op):
                          (x, y) + inputs,
                          [x.type()])
 
+    def decl_view(self):
+        return "PyArrayObject * zview = NULL;"
+
     def perform(self, node, inputs, out_):
         out, = out_
         x, y = inputs[:2]
@@ -1171,7 +1174,6 @@ class IncSubtensor(Op):
                      numpy.sum([not isinstance(idx, slice)
                                 for idx in self.idx_list]))
 
-        decl = "PyArrayObject * zview = NULL;"
         copy_of_x = self.copy_of_x(x)
 
         copy_input_if_necessary = """
@@ -1186,14 +1188,10 @@ class IncSubtensor(Op):
         }
         else
         {
-            if (%(z)s) Py_DECREF(%(z)s);
+            Py_XDECREF(%(z)s);
             %(z)s = %(copy_of_x)s;
         }
         """ % locals()
-
-        alloc_zview = self.make_view_array(z, view_ndim)
-        # On GPU, it takes two steps to make a view
-        link_zview = self.link_view_array(z, fail)
 
         # get info needed to make zview: a view of %(z)s
         helper_args = self.get_helper_c_code_args()
@@ -1210,6 +1208,8 @@ class IncSubtensor(Op):
         )
 
         #Make a view on the output, as we will write into it.
+        alloc_zview = self.make_view_array(z, view_ndim)
+
         build_view = """
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
@@ -1218,7 +1218,6 @@ class IncSubtensor(Op):
         {
             %(fail)s;
         }
-        %(link_zview)s;
         """ % locals()
 
         copy_into = self.copy_into("zview", y)
@@ -1239,8 +1238,7 @@ class IncSubtensor(Op):
             %(add_to_zview)s
         }
         """ % locals()
-
-        return (decl +
+        return (self.decl_view() +
                 copy_input_if_necessary +
                 get_zview +
                 build_view +
@@ -1321,19 +1319,6 @@ class IncSubtensor(Op):
             return 0 on success
         """
         return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
-
-    def link_view_array(self, x, fail):
-        """ Returns code to complete making zview a view of x"""
-
-        # On CPU there is nothing to do, make_view_array already did this
-        return ""
-
-    def set_view_base(self, x, fail):
-        """ Returns code to make zview be a correct view of x,
-        after helper_c_code is done messing with x"""
-
-        # On CPU there is nothing to do
-        return ""
 
     def add_to_zview(self, x, fail):
         """ Return C code to add x to zview. Should DECREF zview if the
