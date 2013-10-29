@@ -9,14 +9,13 @@ _logger = logging.getLogger("theano.tensor.subtensor")
 import numpy
 
 import theano
-from theano.compat.six import StringIO
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
 from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
-from theano.tensor.basic import (addbroadcast, clip, sum, exp,
+from theano.tensor.basic import (addbroadcast, clip,
                                  ARange, TensorType)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, make_slice
