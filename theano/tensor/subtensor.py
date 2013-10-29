@@ -764,8 +764,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return ()
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, theano.tensor.TensorType):
