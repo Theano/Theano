@@ -198,7 +198,10 @@ class GpuArrayType(Type):
         return ['compyte']
 
     def c_code_cache_version(self):
-        return (1,)
+        ver = pygpu.gpuarray.api_version()
+        # we only use the major version since the minor revision are
+        # API-compatible.
+        return (1, ver[0])
 
 
 class _operators(_tensor_py_operators):
