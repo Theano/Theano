@@ -757,7 +757,6 @@ class Subtensor(Op):
             inner_ii += 1;
             outer_ii += 1;
         }
-        //(update_flags)s
         """ % locals()
         # print rval
         return rval
