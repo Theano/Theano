@@ -234,7 +234,7 @@ class GpuDimShuffle(HideC, DimShuffle):
             tmp = pygpu_transpose(a, %(name)s_ax);
             if (!tmp) return NULL;
             %(copy_shape)s
-            res = pygpu_reshape(tmp, %(nd_out)s, sh, GA_ANY_ORDER, 1);
+            res = pygpu_reshape(tmp, %(nd_out)s, sh, GA_ANY_ORDER, 1, -1);
             Py_DECREF(tmp);
             return res;
         }
