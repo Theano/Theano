@@ -11,7 +11,7 @@ from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
-                                               gpu_alloc)
+                                               gpu_alloc, GpuReshape)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
@@ -118,6 +118,20 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 @op_lifter(tensor.Alloc)
 def local_gpualloc(node):
     return gpu_alloc
+
+
+@register_opt()
+@op_lifter(tensor.Reshape)
+def local_gpureshape(node):
+    op = node.op
+    name = op.name
+    if type(node.op) is not tensor.Reshape:
+        return None
+    if name:
+        name = 'Gpu'+name
+    res = GpuReshape(op.ndim, op.name)
+    o = res(*node.inputs)
+    return res
 
 
 @register_opt()
