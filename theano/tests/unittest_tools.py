@@ -182,7 +182,10 @@ class InferShapeTester(unittest.TestCase):
     def setUp(self):
         seed_rng()
         # Take into account any mode that may be defined in a child class
-        mode = getattr(self, 'mode', theano.compile.get_default_mode())
+        # and it can be None
+        mode = getattr(self, 'mode', None)
+        if mode is None:
+            mode = theano.compile.get_default_mode()
         # This mode seems to be the minimal one including the shape_i
         # optimizations, if we don't want to enumerate them explicitly.
         self.mode = mode.including("canonicalize")

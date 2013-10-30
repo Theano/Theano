@@ -11,7 +11,7 @@ from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
-                                               gpu_alloc)
+                                               gpu_alloc, GpuReshape)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
@@ -62,7 +62,10 @@ def op_lifter(OP):
                     new_op = maker(node)
                     # This is needed as sometimes new_op inherit from OP.
                     if new_op and new_op != node.op:
-                        return [host_from_gpu(new_op(*node.inputs))]
+                        if isinstance(new_op, theano.Op):
+                            return [host_from_gpu(new_op(*node.inputs))]
+                        else:  # suppose it is a variable on the GPU
+                            return [host_from_gpu(new_op)]
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer([OP])(local_opt)
@@ -118,6 +121,32 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 @op_lifter(tensor.Alloc)
 def local_gpualloc(node):
     return gpu_alloc
+
+
+@register_opt()
+@op_lifter(tensor.Reshape)
+def local_gpureshape(node):
+    op = node.op
+    name = op.name
+    if type(node.op) is not tensor.Reshape:
+        return None
+    if name:
+        name = 'Gpu' + name
+    res = GpuReshape(op.ndim, op.name)
+    return res
+
+
+@register_opt()
+@op_lifter(tensor.Flatten)
+def local_gpuflatten(node):
+    op = node.op
+    if type(node.op) is not tensor.Flatten:
+        return None
+    if op.outdim != 1:
+        return None
+    res = GpuReshape(op.outdim, None)
+    o = res(node.inputs[0], theano.tensor.constant([-1]))
+    return o
 
 
 @register_opt()
