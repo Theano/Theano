@@ -518,3 +518,44 @@ class GpuAlloc(HideC, Alloc):
         return (1,)
 
 gpu_alloc = GpuAlloc()
+
+
+class GpuReshape(HideC, tensor.Reshape):
+    """
+    Implement Reshape on the gpu.
+    """
+    # __hash__, __eq__, __str__ come from tensor.Reshape
+    def make_node(self, x, shp):
+        x = as_gpuarray_variable(x)
+        res = host_from_gpu(x).reshape(shp, ndim=self.ndim)
+        otype = GpuArrayType(dtype=res.dtype,
+                             broadcastable=res.broadcastable)
+        return Apply(self, [x, shp], [otype()])
+
+    def perform(self, node, inp, out_):
+        x, shp = inp
+        out, = out_
+        if (len(shp) != self.ndim):
+            raise ValueError('shape argument to GpuReshape.perform'
+                             ' has incorrect length %i'
+                             ', should be %i' % (len(shp), self.ndim), shp)
+        s = shp.prod()
+
+        if shp.prod() != x.size:
+            # We need to do check here to raise the same error as NumPy.
+            # We should make pygpu do the same.
+            ss = 1
+            nb_m1 = 0
+            for i in shp:
+                if i == -1:
+                    nb_m1 += 1
+                else:
+                    ss *= i
+            if nb_m1 > 1:
+                raise ValueError("Only one -1 is accepted in the new shape")
+            elif nb_m1 == 1:
+                if (x.size % ss) != 0:
+                    raise ValueError("When using -1 in new shape, the computed new shape must be an multiple of the original shape.")
+            else:
+                raise ValueError("total size of new array must be unchanged")
+        out[0] = x.reshape(tuple(shp))

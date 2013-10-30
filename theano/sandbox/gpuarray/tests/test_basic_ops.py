@@ -7,7 +7,7 @@ import theano
 import theano.tensor as T
 from theano.tensor import TensorType
 from theano.tensor.basic import alloc
-from theano.tensor.tests.test_basic import rand, safe_make_node
+from theano.tensor.tests.test_basic import rand, safe_make_node, T_reshape
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -35,7 +35,7 @@ from theano.sandbox.gpuarray.type import (GpuArrayType,
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
                                                cuda_from_gpu, HostFromGpu,
-                                               GpuFromHost)
+                                               GpuFromHost, GpuReshape)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -44,11 +44,10 @@ rng = numpy.random.RandomState(seed=utt.fetch_seed())
 from pygpu import gpuarray
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray')
-    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray'\
-)
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray')
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
 
@@ -288,3 +287,22 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
         )
 )
+
+
+class G_reshape(T_reshape):
+    def shortDescription(self):
+        return None
+
+    def __init__(self, name):
+        T_reshape.__init__(self, name,
+                           shared=gpuarray_shared_constructor,
+                           op=GpuReshape,
+                           mode=mode_with_gpu,
+                           # avoid errors with limited devices
+#                             dtype='float32',
+                             ignore_topo=(HostFromGpu, GpuFromHost,
+                                          theano.compile.DeepCopyOp,
+                                          theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                                          theano.tensor.opt.Shape_i,
+                                          theano.tensor.opt.MakeVector))
+        assert self.op == GpuReshape
