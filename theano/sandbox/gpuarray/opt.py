@@ -50,7 +50,7 @@ def op_lifter(OP):
     """
     def f(maker):
         def local_opt(node):
-            if isinstance(node.op, OP):
+            if type(node.op) is OP:
                 # This does not support nodes that have more than one output.
                 assert len(node.outputs) == 1
                 # either one of our inputs is on the gpu or
@@ -128,8 +128,6 @@ def local_gpualloc(node):
 def local_gpureshape(node):
     op = node.op
     name = op.name
-    if type(node.op) is not tensor.Reshape:
-        return None
     if name:
         name = 'Gpu' + name
     res = GpuReshape(op.ndim, op.name)
@@ -140,8 +138,6 @@ def local_gpureshape(node):
 @op_lifter(tensor.Flatten)
 def local_gpuflatten(node):
     op = node.op
-    if type(node.op) is not tensor.Flatten:
-        return None
     if op.outdim != 1:
         return None
     res = GpuReshape(op.outdim, None)
