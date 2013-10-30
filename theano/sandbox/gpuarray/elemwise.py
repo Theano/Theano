@@ -302,6 +302,20 @@ class GpuCAReduce(HideC, CAReduceDtype):
 
         return Apply(res.op, [input], [otype()])
 
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        if self.axis is None:
+            redux = [True] * node.inputs[0].ndim
+        else:
+            redux = self.redux
+        acc_dtype = getattr(self, 'acc_dtype', None)
+        if acc_dtype is None:
+            acc_dtype = node.outputs[0].type.dtype
+        if any(redux):
+            node._cache_reduction_k = self.generate_kernel(node, acc_dtype,
+                                                           redux)
+        return super(GpuCAReduce, self).make_thunk(node, storage_map,
+                                                   compute_map, no_recycling)
+
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
             reduce_expr = "a + b"
@@ -311,7 +325,9 @@ class GpuCAReduce(HideC, CAReduceDtype):
             raise NotImplementedError()
         return ReductionKernel(pygpu.get_default_context(), odtype,
                                self.scalar_op.identity, reduce_expr, redux,
-                               arguments=[make_argument(node.inputs[0], 'a')])
+                               arguments=[make_argument(node.inputs[0], 'a')],
+                               init_nd=node.inputs[0].ndim
+        )
 
     def perform(self, node, inp, out):
         input, = inp
@@ -322,14 +338,7 @@ class GpuCAReduce(HideC, CAReduceDtype):
         else:
             redux = self.redux
 
-        acc_dtype = getattr(self, 'acc_dtype', None)
-        if acc_dtype is None:
-            acc_dtype = node.outputs[0].type.dtype
-
         if any(redux):
-            if not hasattr(node, '_cache_reduction_k'):
-                node._cache_reduction_k = self.generate_kernel(node, acc_dtype,
-                                                               redux)
             output[0] = node._cache_reduction_k(input).astype(copy=False,
                                              dtype=node.outputs[0].type.dtype)
         else:
