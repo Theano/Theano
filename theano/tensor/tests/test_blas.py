@@ -1,5 +1,6 @@
 #from nose.plugins.skip import SkipTest
 #import traceback
+from copy import copy
 import itertools
 import sys
 
@@ -24,7 +25,6 @@ from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 InconsistencyError, Ger, ger, ger_destructive)
 from unittest import TestCase
 from theano.tests import unittest_tools
-from copy import copy, deepcopy
 
 from theano import Param, shared, config
 from test_basic import (_approx_eq, as_tensor_variable, inplace_func,
@@ -361,11 +361,8 @@ class t_gemm(TestCase):
                     z = tz.get_value(borrow=True, return_internal_type=True)
                     z[:, :, i] = z_i
 
-                    self.assertTrue(
-                            _approx_eq(z_after[:, :, i],
-                                       tz.get_value(borrow=True)[:, :, i]),
-                            (z_orig[:, :, i], z_after[:, :, i],
-                                z[:, :, i], z_after[:, :, i] - z[:, :, i]))
+                    unittest_tools.assert_allclose(z_after[:, :, i],
+                                                   tz.get_value(borrow=True)[:, :, i])
 
                 tz_i = gemm_no_inplace(tz[:, :, i], ta, tx[
                     :, :, i], ty[:, :, i], tb)
@@ -374,11 +371,8 @@ class t_gemm(TestCase):
                         mode=compile.Mode(optimizer=None, linker=l))
                 for j in xrange(3):
                     g_i()
-                    self.assertTrue(
-                            _approx_eq(z_after[:, :, i],
-                                       tz.get_value(borrow=True)[:, :, i]),
-                            (z_orig[:, :, i], z_after[:, :, i],
-                                z[:, :, i], z_after[:, :, i] - z[:, :, i]))
+                    unittest_tools.assert_allclose(z_after[:, :, i],
+                                                   tz.get_value(borrow=True)[:, :, i])
 
         t(C, A, B)
         t(C.transpose((1, 0, 2)), A, B)
