@@ -6,6 +6,12 @@ import theano.sandbox.cuda as cuda
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
+    """Helper function for DiagonalSubtensor and
+    IncDiagonalSubtensor
+
+    :note: it return a partial view of x, not a partial copy.
+    """
+
     if x.shape[i0] < x.shape[i1]:
         raise NotImplementedError('is this allowed?')
     idx = [slice(None)] * x.ndim
@@ -18,8 +24,51 @@ def get_diagonal_subtensor_view(x, i0, i1):
 
 
 class DiagonalSubtensor(Op):
-    """
-    Work on the GPU.
+    """Return a form a nd diagonal subtensor.
+
+    :param x: n-d tensor
+    :param i0: axis index in x
+    :param i1: axis index in x
+    :note: Work on the GPU.
+
+    ``x`` is some n-dimensional tensor, but this Op only deals with a
+    matrix-shaped slice, using axes i0 and i1. Without loss of
+    generality, suppose that ``i0`` picks out our ``row`` dimension,
+    and i1 the ``column`` dimension.
+
+    So the relevant part of ``x`` is some matrix ``u``. Suppose it has 7 rows
+    and 4 columns::
+
+        [ 0 0 0 0 ]
+        [ 0 0 0 0 ]
+        [ 0 0 0 0 ]
+        [ 0 0 0 0 ]
+        [ 0 0 0 0 ]
+        [ 0 0 0 0 ]
+
+    The view returned by this function is also a matrix. It's a thick,
+    diagonal ``stripe`` across u that discards the lower left triangle
+    and the upper right triangle:
+
+        [ x 0 0 0 ]
+        [ x x 0 0 ]
+        [ x x x 0 ]
+        [ 0 x x x ]
+        [ 0 0 x x ]
+        [ 0 0 0 x ]
+
+    In this case the return value would be this view of shape 3x4. The
+    returned view has the same number of dimensions as the input
+    ``x``, and the only difference is that the shape along dimension
+    ``i0`` has been reduced by ``shape[i1] - 1`` because of the
+    triangles that got chopped out.
+
+    The NotImplementedError is meant to catch the case where shape[i0]
+    is too small for the stripe to reach across the matrix, in which
+    case it's not clear what this function should do. Maybe always
+    raise an error. I'd look back to the call site in the Conv3D to
+    see what's necessary at that point.
+
     """
     def __str__(self):
         if self.inplace:
@@ -62,6 +111,9 @@ diagonal_subtensor = DiagonalSubtensor(False)
 
 
 class IncDiagonalSubtensor(Op):
+    """
+    The gradient of DiagonalSubtensor
+    """
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -116,6 +168,7 @@ def conv3d(signals, filters,
     :param filters_shape: None or a tuple/list with the shape of filters
     :param border_mode: The only one tested is 'valid'.
 
+    :note: Work on the GPU.
     """
 
     if isinstance(border_mode, str):

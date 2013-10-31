@@ -29,9 +29,19 @@ TODO: Give examples for how to use these things! They are pretty complicated.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
-      Another conv3d implementation that use the conv2d with datareshaping.
+      Another conv3d implementation that use the conv2d with data reshaping.
       It is faster in some case then conv3d, specificaly on the GPU.
-      But it support all the gradient cases that conv2d don't implement.
+    - `Faster conv2d <http://deeplearning.net/software/pylearn2/library/alex.html>`_
+
+      This is in Pylearn2, not very documented and use a different
+      memory layout for the input.  It is important to have the input
+      in the native memory layout, and not use dimshuffle on the
+      inputs, otherwise you loose much of the speed up. So this is not
+      a drop in replacement of conv2d.
+
+      Normally those are called from the `linear transfrom
+      <http://deeplearning.net/software/pylearn2/library/linear.html>`_
+      implementation.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
