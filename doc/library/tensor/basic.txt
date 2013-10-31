@@ -420,7 +420,9 @@ TensorVariable
 
 .. class:: _tensor_py_operators(object)
 
-    This mix-in class adds convenient attributes, methods, and support for Python operators (see :ref:`tensor_operator_support`).
+    This mix-in class adds convenient attributes, methods, and support
+    to TensorVariable, TensorConstant and TensorSharedVariable for
+    Python operators (see :ref:`tensor_operator_support`).
 
     .. attribute:: type
 
@@ -472,6 +474,10 @@ TensorVariable
 
         See :func:`flatten`.
 
+    .. method:: ravel()
+
+        return self.flatten(). For NumPy compatibility.
+
     .. attribute:: T
 
         Transpose of this tensor.
@@ -485,8 +491,31 @@ TensorVariable
             same vector!  Use `reshape` or `dimshuffle` to turn your vector
             into a row or column matrix.
 
+    .. method:: {any,all}(axis=None, keepdims=False)
+    .. method:: {sum,prod,mean}(axis=None, dtype=None, keepdims=False, acc_dtype=None)
+    .. method:: {var,std,min,max,argmin,argmax}(axis=None, keepdims=False),
+    .. method:: diagonal(offset=0, axis1=0, axis2=1)
+    .. method:: astype(dtype)
+    .. method:: take(indices, axis=None, mode='raise')
+    .. method:: copy()
+    .. method:: norm(L, axis=None)
+    .. method:: nonzero(self, return_matrix=False)
+    .. method:: nonzero_values(self)
+    .. method:: sort(self, axis=-1, kind='quicksort', order=None)
+    .. method:: argsort(self, axis=-1, kind='quicksort', order=None)
+    .. method:: clip(self, a_min, a_max)
+    .. method:: conf()
+    .. method:: repeat(repeats, axis=None)
+    .. method:: round(mode="half_away_from_zero")
+    .. method:: trace()
+    .. method:: get_scalar_constant_value()
+    .. method:: zeros_like(model, dtype=None)
 
+       All the above methods are equivalent to NumPy for Theano on the current tensor.
 
+    .. method:: __{abs,neg,lt,le,gt,ge,invert,and,or,add,sub,mul,div,truediv,floordiv}__
+
+       Those elemwise operation are supported via Python syntax.
 
 Shaping and Shuffling
 =====================
