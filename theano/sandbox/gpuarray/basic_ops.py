@@ -6,8 +6,10 @@ import theano
 from theano import Op, Type, Apply, Variable, Constant
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
+from theano.tensor.basic import Alloc
 
 from theano.gof.python25 import all, any
+from theano.gof.utils import MethodNotDefined
 
 try:
     import pygpu
@@ -16,6 +18,7 @@ except ImportError:
     pass
 
 from type import GpuArrayType
+
 
 def as_gpuarray_variable(x):
     if hasattr(x, '_as_GpuArrayVariable'):
@@ -27,6 +30,32 @@ def as_gpuarray_variable(x):
 
 def as_gpuarray(x):
     return gpuarray.array(x, copy=False)
+
+
+class HideC(object):
+    def __hide(*args):
+        raise MethodNotDefined()
+
+    c_code = __hide
+    c_code_cleanup = __hide
+
+    c_headers = __hide
+    c_header_dirs = __hide
+    c_libraries = __hide
+    c_lib_dirs = __hide
+
+    c_support_code = __hide
+    c_support_code_apply = __hide
+
+    c_compile_args = __hide
+    c_no_compile_args = __hide
+    c_init_code = __hide
+
+    def c_code_cache_version(self):
+        return ()
+
+    def c_code_cache_version_apply(self, node):
+        return self.c_code_cache_version()
 
 
 class HostFromGpu(Op):
@@ -66,7 +95,7 @@ class HostFromGpu(Op):
         } else {
             %(name)s_ga = &%(inp)s->ga;
         }
-        %(name)s_dtype = typecode_to_dtype(%(inp)s->ga.typecode);
+        %(name)s_dtype = typecode_to_dtype(%(name)s_ga->typecode);
         Py_XDECREF(%(out)s);
         // PyArray_Empty below steals a reference to the dtype we pass it
         // so we need an extra one to spare.
@@ -89,7 +118,7 @@ class HostFromGpu(Op):
             %(fail)s
         }
         """ % {'name': name, 'fail': sub['fail'], 'inp': inputs[0],
-                'out': outputs[0]}
+               'out': outputs[0]}
 
     def c_code_cache_version(self):
         return (1,)
@@ -97,7 +126,7 @@ class HostFromGpu(Op):
     def grad(self, inputs, grads):
         gz, = grads
         return [gpu_from_host(gz)]
-                                                   
+
     def R_op(self, inputs, eval_points):
         ev, = eval_points
         if isinstance(ev, tensor.TensorType):
@@ -150,48 +179,22 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        PyArrayObject *%(name)s_tmp;
-        int %(name)serr;
-        %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
-        if (%(name)s_tmp == NULL) {
-            // PyArray_GETCONTIGUOUS sets an error message if it fails
-            %(fail)s
-        }
         Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
-        if (%(out)s == NULL) {
-            Py_DECREF(%(name)s_tmp);
-            // new_GpuArray calls __new__ which will set an error message
-            // if it returns NULL.
-            %(fail)s
-        }
-        %(name)serr = GpuArray_empty(&%(out)s->ga,
-                                     GpuArray_default_context()->ops,
-                                     GpuArray_default_context()->ctx,
-                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
+        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(inp)s),
+                                     get_typecode((PyObject *)PyArray_DESCR(%(inp)s)),
                                      PyArray_NDIM(%(inp)s),
                                      (size_t *)PyArray_DIMS(%(inp)s),
-                                     GA_C_ORDER);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(name)s_tmp);
-            Py_DECREF(%(out)s);
-            %(out)s = NULL;
-            PyErr_SetString(PyExc_MemoryError, "Can't allocate device memory for result.");
-            %(fail)s
-        }
-        %(name)serr = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
-                                     PyArray_NBYTES(%(name)s_tmp));
-        Py_DECREF(%(name)s_tmp);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(out)s);
-            PyErr_SetString(PyExc_RuntimeError, "Could not copy array data to device");
+                                     (ssize_t *)PyArray_STRIDES(%(inp)s),
+                                     pygpu_default_context(),
+                                     Py_None);
+        if (%(out)s == NULL) {
             %(fail)s
         }
         """ % {'name': name, 'inp': inputs[0],
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (4,)
 
 gpu_from_host = GpuFromHost()
 
@@ -276,7 +279,7 @@ class GpuFromCuda(Op):
         ssize_t *%(name)sstr;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
+        if (%(name)scur != cuda_get_ctx(pygpu_default_context()->ctx)) {
             PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
@@ -297,15 +300,7 @@ class GpuFromCuda(Op):
             %(name)sstr[i] = (ssize_t)CudaNdarray_HOST_STRIDES(%(in)s)[i]*4;
         }
 
-        Py_XDECREF(%(out)s);
-        %(out)s = new_GpuArray((PyObject *)&GpuArrayType, GpuArray_default_context());
-        if (%(out)s == NULL) {
-            free(%(name)sdims);
-            free(%(name)sstr);
-            %(fail)s
-        }
-
-        %(name)sdata = cuda_make_buf(GpuArray_default_context()->ctx,
+        %(name)sdata = cuda_make_buf(pygpu_default_context()->ctx,
                                      (CUdeviceptr)%(in)s->devdata,
                                      ((size_t)%(in)s->data_allocated)*4);
         if (%(name)sdata == NULL) {
@@ -315,24 +310,23 @@ class GpuFromCuda(Op):
             PyErr_SetString(PyExc_MemoryError, "Could not allocate gpudata structure.");
             %(fail)s
         }
-        %(name)serr = GpuArray_fromdata(&%(out)s->ga,
-                                        GpuArray_default_context()->ops,
-                                        %(name)sdata, 0, GA_FLOAT, %(in)s->nd,
-                                        %(name)sdims, %(name)sstr, 1);
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_fromgpudata(%(name)sdata, 0, GA_FLOAT, %(in)s->nd,
+                                    %(name)sdims, %(name)sstr,
+                                    pygpu_default_context(), 1,
+                                    (PyObject *)%(in)s,
+                                    (PyObject *)&PyGpuArrayType);
+        pygpu_default_context()->ops->buffer_release(%(name)sdata);
         free(%(name)sdims);
         free(%(name)sstr);
-        if (%(name)serr != GA_NO_ERROR) {
-            Py_DECREF(%(out)s);
-            PyErr_SetString(PyExc_MemoryError, "Could not allocate GpuArray structure.");
+        if (%(out)s == NULL) {
             %(fail)s
         }
-        Py_INCREF(%(in)s);
-        %(out)s->base = (PyObject *)%(in)s;
-        """ % {'name':name, 'in': inputs[0], 'out': outputs[0],
+        """ % {'name': name, 'in': inputs[0], 'out': outputs[0],
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (5,)
 
 gpu_from_cuda = GpuFromCuda()
 
@@ -417,11 +411,15 @@ class CudaFromGpu(Op):
         CUcontext %(name)scur;
 
         cuCtxGetCurrent(&%(name)scur);
-        if (%(name)scur != cuda_get_ctx(GpuArray_default_context()->ctx)) {
+        if (%(name)scur != cuda_get_ctx(pygpu_default_context()->ctx)) {
             PyErr_SetString(PyExc_ValueError, "Ambient cuda context is not the same as output context.");
             %(fail)s
         }
 
+        if (GpuArray_sync(&%(inp)s->ga) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "Could not sync GpuArray");
+            %(fail)s
+        }
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray *)CudaNdarray_new_nd(%(inp)s->ga.nd);
         if (!%(out)s) {
@@ -441,61 +439,123 @@ class CudaFromGpu(Op):
                'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
 
 cuda_from_gpu = CudaFromGpu()
 
 
-class GpuAlloc(Op):
+class GpuAlloc(HideC, Alloc):
     def __str__(self):
         return 'GpuAlloc'
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
     def make_node(self, value, *shape):
-        v = as_gpuarray_variable(value)
-        sh = [tensor.as_tensor_variable(s) for s in shape]
-        bcast = []
-        if v.ndim > len(shape):
-            raise TypeError(
-                'GpuAlloc value has more dimensions than arguments',
-                value.ndim, len(shape))
-        for i, s in enumerate(sh):
-            if s.type.dtype[:3] not in ('int', 'uint'):
-                raise TypeError('Shape arguments must be integers', s)
-            try:
-                const_shp = tensor.get_scalar_constant_value(s)
-            except tensor.NotScalarConstantError:
-                const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
-        otype = GpuArrayType(dtype=v.dtype, broadcastable=bcast)
-        return Apply(self, [v] + sh, [otype()])
+        res = Alloc.make_node(self, value, *shape)
+        value = as_gpuarray_variable(value)
+        otype = GpuArrayType(dtype=res.outputs[0].dtype,
+                             broadcastable=res.outputs[0].broadcastable)
+        return Apply(self, [value] + res.inputs[1:], [otype()])
 
     def perform(self, node, inputs, outs):
         out, = outs
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
-            out[0] = gpuarray.empty(sh, dtype=v.dtype)
-        out[0][...] = v
+            if v.size == 1 and numpy.asarray(v)[0].item() == 0:
+                out[0] = gpuarray.zeros(sh, dtype=v.dtype)
+            else:
+                out[0] = gpuarray.empty(sh, dtype=v.dtype)
+                out[0][...] = v
+        else:
+            out[0][...] = v
+        if config.gpuarray.sync:
+            out[0].sync()
 
-    def infer_shape(self, node, input_shapes):
-        return [node.inputs[1:]]
+    def c_code(self, node, name, inp, out, sub):
+        vv = inp[0]
+        ndim = len(inp[1:])
+        zz, = out
 
-    def grad(self, input, grads):
-        return [None for i in inputs]
+        code = """
+        int i;
+        size_t %(name)s_shape[%(ndim)s];
+        """ % dict(name=name, ndim=ndim)
 
-    def do_constant_folding(self, node):
-        if not getattr(node.ouputs[0], 'clients', []):
-            return False
-        for client in node.outputs[0].clients:
-            if client[0] == 'output':
-                return False
-        return True
+        for i, shp_i in enumerate(inp[1:]):
+            code += """
+        %(name)s_shape[%(i)s] = ((dtype_%(shp_i)s *)PyArray_DATA(%(shp_i)s))[0];
+        """ % dict(name=name, i=i, shp_i=shp_i)
+
+        code += """
+        int need_new_out = (NULL == %(zz)s || %(zz)s->ga.nd != %(ndim)s);
+
+        if (!need_new_out)
+            for (i = 0; i < %(ndim)s; i++)
+                need_new_out |= %(zz)s->ga.dimensions[i] != %(name)s_shape[i];
+
+        if (need_new_out) {
+            Py_XDECREF(%(zz)s);
+            %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
+                                 %(vv)s->ga.typecode, GA_C_ORDER,
+                                 pygpu_default_context(), Py_None);
+            if (!%(zz)s) {
+                %(fail)s
+            }
+        }
+
+        if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_ValueError, "setarray failed");
+            %(fail)s
+        }
+        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, fail=sub['fail'])
+
+        if config.gpuarray.sync:
+            code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
+
+        return code
+
+    def c_code_cache_version(self):
+        return (1,)
 
 gpu_alloc = GpuAlloc()
+
+
+class GpuReshape(HideC, tensor.Reshape):
+    """
+    Implement Reshape on the gpu.
+    """
+    # __hash__, __eq__, __str__ come from tensor.Reshape
+    def make_node(self, x, shp):
+        x = as_gpuarray_variable(x)
+        res = host_from_gpu(x).reshape(shp, ndim=self.ndim)
+        otype = GpuArrayType(dtype=res.dtype,
+                             broadcastable=res.broadcastable)
+        return Apply(self, [x, shp], [otype()])
+
+    def perform(self, node, inp, out_):
+        x, shp = inp
+        out, = out_
+        if (len(shp) != self.ndim):
+            raise ValueError('shape argument to GpuReshape.perform'
+                             ' has incorrect length %i'
+                             ', should be %i' % (len(shp), self.ndim), shp)
+        s = shp.prod()
+
+        if shp.prod() != x.size:
+            # We need to do check here to raise the same error as NumPy.
+            # We should make pygpu do the same.
+            ss = 1
+            nb_m1 = 0
+            for i in shp:
+                if i == -1:
+                    nb_m1 += 1
+                else:
+                    ss *= i
+            if nb_m1 > 1:
+                raise ValueError("Only one -1 is accepted in the new shape")
+            elif nb_m1 == 1:
+                if (x.size % ss) != 0:
+                    raise ValueError("When using -1 in new shape, the computed new shape must be an multiple of the original shape.")
+            else:
+                raise ValueError("total size of new array must be unchanged")
+        out[0] = x.reshape(tuple(shp))

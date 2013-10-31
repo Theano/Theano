@@ -543,8 +543,8 @@ class _tensor_py_operators:
     def get_scalar_constant_value(self):
         return theano.tensor.basic.get_scalar_constant_value(self)
 
-    def zeros_like(self, dtype=None):
-        return theano.tensor.basic.zeros_like(self, dtype=dtype)
+    def zeros_like(model, dtype=None):
+        return theano.tensor.basic.zeros_like(model, dtype=dtype)
 
 
 class TensorVariable(_tensor_py_operators, Variable):

@@ -410,9 +410,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(inp.type.broadcastable,
-                                    op.new_order,
-                                    op.inplace)(inp) for inp in
+        ret = inode.op(*[op.__class__(inp.type.broadcastable,
+                                      op.new_order,
+                                      op.inplace)(inp) for inp in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -424,8 +424,8 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            ret = DimShuffle(iinput.type.broadcastable, new_order,
-                             inplace)(iinput, **dict(return_list=True))
+            ret = op.__class__(iinput.type.broadcastable, new_order,
+                               inplace)(iinput, **dict(return_list=True))
             return ret
 
 
@@ -460,7 +460,7 @@ def dimshuffle_as_view(node):
     op = node.op
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
-    new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
+    new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
 #Step 60 is the inplace optimization stage.
@@ -4609,7 +4609,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         # worthwhile if the summation axis doesn't line up with a
         # contiguous dimension)
 
-        if not isinstance(node.op, OP):
+        if type(node.op) is not OP:
             return False
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
