@@ -4,6 +4,7 @@ import theano
 from theano.tests import unittest_tools as utt
 from theano.sandbox.gpuarray.basic_ops import GpuReshape
 import theano.sandbox.gpuarray
+from theano.tests.unittest_tools import SkipTest
 
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
