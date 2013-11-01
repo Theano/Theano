@@ -12,6 +12,7 @@ import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
+from theano.tensor.nnet.tests import test_conv3d2d
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
@@ -133,3 +134,12 @@ def test_deepcopy():
     out = f(a_v)
     assert out is not a_v
     assert numpy.allclose(numpy.asarray(a_v), numpy.asarray(out))
+
+
+def test_get_diagonal_subtensor_view():
+    test_conv3d2d.test_get_diagonal_subtensor_view(wrap=cuda.CudaNdarray)
+
+
+def test_conv3d():
+    test_conv3d2d.test_conv3d(mode=mode_with_gpu,
+                              shared=cuda.shared_constructor)
