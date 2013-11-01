@@ -286,5 +286,6 @@ def make_gpu_optimizer(op, to_gpu):
     local_to_gpu.__name__ = "local_to_gpu_" + op.__name__
     cuda.opt.register_opt()(local_to_gpu)
 
-make_gpu_optimizer(DiagonalSubtensor, [0])
-make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
+if cuda.cuda_available:
+    make_gpu_optimizer(DiagonalSubtensor, [0])
+    make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
