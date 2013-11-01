@@ -4,6 +4,7 @@ import theano
 from theano.tests import unittest_tools as utt
 from theano.sandbox.gpuarray.basic_ops import GpuReshape
 import theano.sandbox.gpuarray
+from theano.tests.unittest_tools import SkipTest
 
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
@@ -32,5 +33,28 @@ def test_flatten():
     res = f(val)
     utt.assert_allclose(res, val.flatten())
     assert res.shape == val.flatten().shape
+    assert GpuReshape in [type(node.op)
+                          for node in f.maker.fgraph.toposort()]
+    val = numpy.random.rand(10, 11).astype("float32")
+    res = f(val)
+    utt.assert_allclose(res, val.flatten())
+    assert res.shape == val.flatten().shape
+    assert GpuReshape in [type(node.op)
+                          for node in f.maker.fgraph.toposort()]
+
+    f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
+    val = numpy.random.rand(10, 11).astype("float32")
+    res = f(val)
+    utt.assert_allclose(res, val)
+    assert res.shape == val.shape
+    assert GpuReshape in [type(node.op)
+                          for node in f.maker.fgraph.toposort()]
+
+    m = theano.tensor.tensor3()
+    f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
+    val = numpy.random.rand(10, 11, 12).astype("float32")
+    res = f(val)
+    utt.assert_allclose(res, val.reshape(10, -1))
+    assert res.shape == val.reshape(10, -1).shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]

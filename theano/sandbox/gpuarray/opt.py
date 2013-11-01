@@ -138,10 +138,12 @@ def local_gpureshape(node):
 @op_lifter(tensor.Flatten)
 def local_gpuflatten(node):
     op = node.op
+    shp =[]
     if op.outdim != 1:
-        return None
+        shp = [node.inputs[0].shape[i] for i in range(op.outdim - 1)]
+    shp += [-1]
     res = GpuReshape(op.outdim, None)
-    o = res(node.inputs[0], theano.tensor.constant([-1]))
+    o = res(node.inputs[0], theano.tensor.as_tensor_variable(shp))
     return o
 
 
