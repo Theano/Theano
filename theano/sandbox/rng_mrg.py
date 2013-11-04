@@ -5,7 +5,6 @@ Generator code in SSJ package (L'Ecuyer & Simard)
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
-import sys
 import warnings
 
 import numpy
@@ -13,7 +12,7 @@ import numpy
 from theano import Op, Apply, shared, config, Variable
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
                            get_vector_length, cast, opt, scal)
-from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
+from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
 from theano.gof.python25 import all, any
