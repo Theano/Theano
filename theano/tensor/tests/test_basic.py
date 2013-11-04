@@ -1787,10 +1787,16 @@ AllocTester = makeBroadcastTester(
             correct01_bcast=(rand(1), numpy.int32(7)),
             correct02=(rand(), numpy.int32(4), numpy.int32(7)),
             correct12=(rand(7), numpy.int32(4), numpy.int32(7)),
-            correct13=(rand(7), numpy.int32(2), numpy.int32(
-                4), numpy.int32(7)),
-            correct23=(rand(4, 7), numpy.int32(2), numpy.
-                int32(4), numpy.int32(7)),
+            correct13=(rand(7), numpy.int32(2), numpy.int32(4),
+                       numpy.int32(7)),
+            correct23=(rand(4, 7), numpy.int32(2), numpy.int32(4),
+                       numpy.int32(7)),
+            correctb1=(rand(1, 7), numpy.int32(4), numpy.int32(7)),
+            correctb2=(rand(1, 7), numpy.int32(2),
+                       numpy.int32(4), numpy.int32(7)),
+            correctb3=(rand(7, 1), numpy.int32(7), numpy.int32(4)),
+            correctb4=(rand(7, 1), numpy.int32(2),
+                       numpy.int32(7), numpy.int32(4)),
             ),
         bad_runtime=dict(
                     bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
@@ -1838,6 +1844,54 @@ Alloc13GradTester = makeBroadcastTester(
             x3=(rand(s3),),
             ),
         )
+
+# unbroadcast a row to a matrix
+Allocb1GradTester = makeBroadcastTester(
+    name='Allocb1GradTester',
+    op=lambda x: alloc(x, s1, s2),
+    expected=(lambda x: numpy.zeros((s1, s2), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(1, s2),),
+        x2=(rand(1, s2),),
+        x3=(rand(1, s2),),
+    ),
+)
+
+# unbroadcast a row to a tensor3
+Allocb2GradTester = makeBroadcastTester(
+    name='Allocb2GradTester',
+    op=lambda x: alloc(x, s1, s2, s3),
+    expected=(lambda x: numpy.zeros((s1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(1, s3),),
+        x2=(rand(1, s3),),
+        x3=(rand(1, s3),),
+    ),
+)
+
+# unbroadcast a col to a matrix
+Allocb3GradTester = makeBroadcastTester(
+    name='Allocb3GradTester',
+    op=lambda x: alloc(x, s1, s2),
+    expected=(lambda x: numpy.zeros((s1, s2), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s1, 1),),
+        x2=(rand(s1, 1),),
+        x3=(rand(s1, 1),),
+    ),
+)
+
+# unbroadcast a col to a tensor3
+Allocb4GradTester = makeBroadcastTester(
+    name='Allocb4GradTester',
+    op=lambda x: alloc(x, s1, s2, s3),
+    expected=(lambda x: numpy.zeros((s1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s2, 1),),
+        x2=(rand(s2, 1),),
+        x3=(rand(s2, 1),),
+    ),
+)
 
 
 class TestAlloc(unittest.TestCase):

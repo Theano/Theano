@@ -2547,7 +2547,28 @@ class Alloc(gof.Op):
         x = inputs[0]
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
-        gx = gz.sum(axis=range(n_axes_to_sum))
+        #The number of dimensions added
+        axis = range(n_axes_to_sum)
+        #The broadcasted dimensions
+        axis_broadcasted = []
+        for i, (ib, gb) in enumerate(
+            zip(inputs[0].broadcastable,
+                #We need the dimensions corresponding to x
+                grads[0].broadcastable[-inputs[0].ndim:])):
+            if ib and not gb:
+                axis_broadcasted.append(i + n_axes_to_sum)
+        gx = gz.sum(axis=axis + axis_broadcasted)
+        if axis_broadcasted:
+            new_order = list(x.broadcastable)
+            idx = 0
+            for i in range(x.ndim):
+                if not new_order[i]:
+                    new_order[i] = idx
+                    idx += 1
+                else:
+                    new_order[i] = 'x'
+            gx = gx.dimshuffle(new_order)
+            #Dimshuffle to add back the broadcasted dims
         #The *elements* of the output are not connected to
         #the inputs that specify the shape. If you grow the
         #shape by epsilon, the existing elements do not
