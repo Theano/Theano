@@ -279,7 +279,7 @@ class mrg_uniform(mrg_uniform_base):
         }
         for (int i = 0; i < %(ndim)s; ++i)
         {
-            odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
+            odims[i] = ((npy_int32*)(PyArray_BYTES(%(size)s) + PyArray_STRIDES(%(size)s)[0] * i))[0];
             n_elements *= odims[i];
             must_alloc_sample = must_alloc_sample || (PyArray_DIMS(%(o_sample)s)[i] != odims[i]);
             //fprintf(stderr, "size %%i %%i\\n", i, (int)odims[i]);
@@ -313,8 +313,8 @@ class mrg_uniform(mrg_uniform_base):
         }
         n_streams = PyArray_DIMS(%(o_rstate)s)[0];
 
-        sample_data = (%(otype)s *) %(o_sample)s->data;
-        state_data = (npy_int32 *) %(o_rstate)s->data;
+        sample_data = (%(otype)s *) PyArray_DATA(%(o_sample)s);
+        state_data = (npy_int32 *) PyArray_DATA(%(o_rstate)s);
         for (int i = 0; i < n_elements; ++i)
         {
             npy_int32 * state_data_i = state_data + (i%%n_streams)*6;
@@ -521,7 +521,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         }
         for (int i = 0; i < %(ndim)s; ++i)
         {
-            odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
+            odims[i] = ((npy_int32*)(PyArray_DATA(%(size)s) + PyArray_STRIDES(%(size)s)[0] * i))[0];
             n_elements *= odims[i];
             must_alloc_sample = (must_alloc_sample
                     || CudaNdarray_HOST_DIMS(%(o_sample)s)[i] != odims[i]);
