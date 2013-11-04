@@ -6982,7 +6982,11 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  * 
  * cdef inline object get_array_base(ndarray arr):
  */
-  PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
+#if NPY_API_VERSION < 0x00000007
+PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
+#else
+PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
+#endif
 
   __Pyx_RefNannyFinishContext();
 }
