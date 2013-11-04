@@ -1492,7 +1492,7 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_1get_version(PyOb
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.279
+ *     return 0.280
  * 
  */
 
@@ -1508,12 +1508,12 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHO
   /* "theano/scan_module/scan_perform.pyx":65
  * 
  * def get_version():
- *     return 0.279             # <<<<<<<<<<<<<<
+ *     return 0.280             # <<<<<<<<<<<<<<
  * 
  * @cython.boundscheck(False)
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(0.279); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyFloat_FromDouble(0.280); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -5226,7 +5226,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  *                 copy_shape = 0
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)             # <<<<<<<<<<<<<<
- *                 and not PyArray_CHKFLAGS(self, NPY_C_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not C contiguous")
  */
   __pyx_t_1 = (((__pyx_v_flags & PyBUF_C_CONTIGUOUS) == PyBUF_C_CONTIGUOUS) != 0);
@@ -5235,11 +5235,11 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     /* "numpy.pxd":214
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_C_CONTIGUOUS)):             # <<<<<<<<<<<<<<
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):             # <<<<<<<<<<<<<<
  *                 raise ValueError(u"ndarray is not C contiguous")
  * 
  */
-    __pyx_t_2 = ((!(PyArray_CHKFLAGS(__pyx_v_self, NPY_C_CONTIGUOUS) != 0)) != 0);
+    __pyx_t_2 = ((!(PyArray_CHKFLAGS(__pyx_v_self, NPY_ARRAY_C_CONTIGUOUS) != 0)) != 0);
     __pyx_t_3 = __pyx_t_2;
   } else {
     __pyx_t_3 = __pyx_t_1;
@@ -5248,7 +5248,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
 
     /* "numpy.pxd":215
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_C_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not C contiguous")             # <<<<<<<<<<<<<<
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
@@ -5266,7 +5266,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  *                 raise ValueError(u"ndarray is not C contiguous")
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)             # <<<<<<<<<<<<<<
- *                 and not PyArray_CHKFLAGS(self, NPY_F_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not Fortran contiguous")
  */
   __pyx_t_3 = (((__pyx_v_flags & PyBUF_F_CONTIGUOUS) == PyBUF_F_CONTIGUOUS) != 0);
@@ -5275,11 +5275,11 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     /* "numpy.pxd":218
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_F_CONTIGUOUS)):             # <<<<<<<<<<<<<<
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):             # <<<<<<<<<<<<<<
  *                 raise ValueError(u"ndarray is not Fortran contiguous")
  * 
  */
-    __pyx_t_1 = ((!(PyArray_CHKFLAGS(__pyx_v_self, NPY_F_CONTIGUOUS) != 0)) != 0);
+    __pyx_t_1 = ((!(PyArray_CHKFLAGS(__pyx_v_self, NPY_ARRAY_F_CONTIGUOUS) != 0)) != 0);
     __pyx_t_2 = __pyx_t_1;
   } else {
     __pyx_t_2 = __pyx_t_3;
@@ -5288,7 +5288,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
 
     /* "numpy.pxd":219
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_F_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not Fortran contiguous")             # <<<<<<<<<<<<<<
  * 
  *             info.buf = PyArray_DATA(self)
@@ -5444,7 +5444,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  *             cdef list stack
  *             cdef int offset
  */
-  __pyx_t_4 = ((PyObject *)__pyx_v_self->descr);
+  __pyx_t_4 = ((PyObject *)PyArray_DESCR(__pyx_v_self));
   __Pyx_INCREF(__pyx_t_4);
   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_4);
   __pyx_t_4 = 0;
@@ -6973,7 +6973,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  *      arr.base = baseptr
  * 
  */
-  Py_XDECREF(__pyx_v_arr->base);
+  Py_XDECREF(PyArray_BASE(__pyx_v_arr));
 
   /* "numpy.pxd":973
  *          baseptr = <PyObject*>base
@@ -6982,7 +6982,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  * 
  * cdef inline object get_array_base(ndarray arr):
  */
-  __pyx_v_arr->base = __pyx_v_baseptr;
+  PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
 
   __Pyx_RefNannyFinishContext();
 }
@@ -7008,7 +7008,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  *         return None
  *     else:
  */
-  __pyx_t_1 = ((__pyx_v_arr->base == NULL) != 0);
+  __pyx_t_1 = ((PyArray_BASE(__pyx_v_arr) == NULL) != 0);
   if (__pyx_t_1) {
 
     /* "numpy.pxd":977
@@ -7032,8 +7032,8 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  *         return <object>arr.base             # <<<<<<<<<<<<<<
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_INCREF(((PyObject *)__pyx_v_arr->base));
-    __pyx_r = ((PyObject *)__pyx_v_arr->base);
+    __Pyx_INCREF(((PyObject *)PyArray_BASE(__pyx_v_arr)));
+    __pyx_r = ((PyObject *)PyArray_BASE(__pyx_v_arr));
     goto __pyx_L0;
   }
   __pyx_L3:;
@@ -7310,7 +7310,7 @@ static int __Pyx_InitCachedConstants(void) {
 
   /* "numpy.pxd":215
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_C_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not C contiguous")             # <<<<<<<<<<<<<<
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
@@ -7321,7 +7321,7 @@ static int __Pyx_InitCachedConstants(void) {
 
   /* "numpy.pxd":219
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
- *                 and not PyArray_CHKFLAGS(self, NPY_F_CONTIGUOUS)):
+ *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not Fortran contiguous")             # <<<<<<<<<<<<<<
  * 
  *             info.buf = PyArray_DATA(self)
@@ -7378,7 +7378,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.279
+ *     return 0.280
  * 
  */
   __pyx_k_codeobj_30 = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_31, __pyx_n_s__get_version, 64, __pyx_empty_bytes); if (unlikely(!__pyx_k_codeobj_30)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -7598,7 +7598,7 @@ PyMODINIT_FUNC PyInit_scan_perform(void)
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.279
+ *     return 0.280
  * 
  */
   __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_6theano_11scan_module_12scan_perform_1get_version, NULL, __pyx_n_s_32); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
