@@ -2653,6 +2653,8 @@ class test_shapeoptimizer(unittest.TestCase):
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
+        if sys.version_info[:2] < (2, 5):
+            raise SkipTest("Test skipped due to a too old python")
 
         pkl_filename = os.path.join(os.path.dirname(theano.__file__),
                                     'tensor', 'tests', 'shape_opt_cycle.pkl')
