@@ -5,7 +5,6 @@ __docformat__ = "restructuredtext en"
 import sys
 import warnings
 from itertools import izip
-from textwrap import dedent
 
 import numpy
 from copy import copy as python_copy
@@ -17,13 +16,12 @@ from theano.gof import Apply, Constant, Op, Variable
 
 from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
-                               TensorConstantSignature,
                                TensorConstant,
                                _tensor_py_operators)
 from theano.tensor.type import TensorType
 from theano import scalar as scal
-from theano.gof.python25 import partial, any, all, maxsize
-from theano.gof.utils import hashtype, MethodNotDefined
+from theano.gof.python25 import partial, any, all
+from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 

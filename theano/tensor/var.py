@@ -2,7 +2,6 @@ import numpy
 
 import theano
 from theano.compat import PY3
-from theano.compat.python2x import all
 from theano.scalar import ComplexError, IntegerDivisionError
 from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
