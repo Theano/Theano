@@ -36,3 +36,7 @@ Reference
 
     ***TODO***
 
+    .. note:: FunctionGraph(inputs, outputs) clone the inputs by
+        default. To don't have this behavior, add the parameter
+        clone=False. This is needed as we don't want cached constant
+        in fgraph.
