@@ -5,13 +5,14 @@ Generator code in SSJ package (L'Ecuyer & Simard)
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
-import sys, warnings
+import warnings
+
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
-        get_vector_length, cast, opt, scal)
-from theano.tensor import zeros_like, sqrt, log, sin, cos, join, prod
+                           get_vector_length, cast, opt, scal)
+from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
 from theano.gof.python25 import all, any
@@ -35,6 +36,7 @@ def matVecModM(A, s, m):
             else:
                 x[i] = r + m
     return x
+
 
 def multMatVect(v, A, m1, B, m2):
     #multiply the first half of v by A with a modulo of m1
@@ -63,24 +65,26 @@ A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]])
 A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]])
 
 A1p72 = numpy.asarray([[1516919229, 758510237, 499121365],
-       [1884998244, 1516919229, 335398200],
-       [601897748, 1884998244, 358115744]])
+                       [1884998244, 1516919229, 335398200],
+                       [601897748, 1884998244, 358115744]])
 A2p72 = numpy.asarray([[1228857673, 1496414766, 954677935],
-   [1133297478, 1407477216, 1496414766],
-   [2002613992, 1639496704, 1407477216]])
+                       [1133297478, 1407477216, 1496414766],
+                       [2002613992, 1639496704, 1407477216]])
 
 A1p134 = numpy.asarray(
-  [[1702500920, 1849582496, 1656874625],
-   [828554832, 1702500920, 1512419905],
-   [1143731069, 828554832, 102237247]])
+    [[1702500920, 1849582496, 1656874625],
+     [828554832, 1702500920, 1512419905],
+     [1143731069, 828554832, 102237247]])
 A2p134 = numpy.asarray(
-  [[796789021, 1464208080, 607337906],
-   [1241679051, 1431130166, 1464208080],
-   [1401213391, 1178684362, 1431130166]])
+    [[796789021, 1464208080, 607337906],
+     [1241679051, 1431130166, 1464208080],
+     [1401213391, 1178684362, 1431130166]])
 np_int32_vals = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
+
 
 def ff_2p134(rstate):
     return multMatVect(rstate, A1p134, M1, A2p134, M2)
+
 
 def ff_2p72(rstate):
     return multMatVect(rstate, A1p72, M1, A2p72, M2)
@@ -93,8 +97,8 @@ def mrg_next_value(rstate, new_rstate):
     #i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
     i0, i7, i9, i15, i16, i22, i24 = np_int32_vals
     #first component
-    y1 = (((x12 & MASK12) << i22) + (x12 >> i9)
-        + ((x13 & MASK13) << i7) + (x13 >> i24))
+    y1 = (((x12 & MASK12) << i22) + (x12 >> i9) +
+          ((x13 & MASK13) << i7) + (x13 >> i24))
 
     assert type(y1) == numpy.int32
     if (y1 < 0 or y1 >= M1):     #must also check overflow
@@ -135,6 +139,7 @@ def mrg_next_value(rstate, new_rstate):
     else:
         return (x11 - x21) * NORM
 
+
 class mrg_uniform_base(Op):
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
@@ -145,17 +150,19 @@ class mrg_uniform_base(Op):
         self.warned_numpy_version = False
 
     def __eq__(self, other):
-        return type(self) == type(other) \
-                and self.output_type == other.output_type \
-                and self.inplace == other.inplace
+        return (type(self) == type(other) and
+                self.output_type == other.output_type and
+                self.inplace == other.inplace)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.output_type) ^ hash(self.inplace)
+
     def __str__(self):
         if self.inplace:
             s = "inplace"
-        else: s = "no_inplace"
-        return self.__class__.__name__+"{%s,%s}"%(self.output_type,s)
+        else:
+            s = "no_inplace"
+        return self.__class__.__name__ + "{%s,%s}" % (self.output_type, s)
 
     def make_node(self, rstate, size):
         # error checking slightly redundant here, since
@@ -163,10 +170,10 @@ class mrg_uniform_base(Op):
         #
         # call through MRG_RandomStreams instead.
         return Apply(self,
-                [rstate, size],
-                [rstate.type(), self.output_type()])
+                     [rstate, size],
+                     [rstate.type(), self.output_type()])
 
-    def grad(self,inputs,ograd):
+    def grad(self, inputs, ograd):
         return [None for i in inputs]
 
     def R_op(self, inputs, eval_points):
@@ -187,34 +194,35 @@ class mrg_uniform(mrg_uniform_base):
     def perform(self, node, inp, out):
         rstate, size = inp
         o_rstate, o_sample = out
-        numpy_version=numpy.__version__.split('.')
-        if not self.warned_numpy_version and int(numpy_version[0])<=1 and int(numpy_version[1])<3:
+        numpy_version = numpy.__version__.split('.')
+        if not self.warned_numpy_version and int(numpy_version[0]) <= 1 and int(numpy_version[1]) <3 :
             print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
             self.warned_numpy_version = True
 
         n_elements = 1
 
-        rstate = numpy.asarray(rstate) # bring state from GPU if necessary
+        rstate = numpy.asarray(rstate)  # bring state from GPU if necessary
         if not self.inplace:
             rstate = rstate.copy()
 
         for s in size:
             n_elements *= s
 
-        n_streams,_ = rstate.shape
+        n_streams, _ = rstate.shape
 
         rval = numpy.zeros(n_elements, dtype=self.output_type.dtype)
 
         err_orig = numpy.seterr(over='ignore')
         try:
             for i in xrange(n_elements):
-                sample = mrg_next_value(rstate[i%n_streams], rstate[i%n_streams])
+                sample = mrg_next_value(rstate[i % n_streams],
+                                        rstate[i % n_streams])
                 rval[i] = sample
         finally:
             numpy.seterr(**err_orig)
 
-        o_rstate[0] = node.outputs[0].type.filter(rstate) # send to GPU if necessary
-        o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))# send to GPU if necessary
+        o_rstate[0] = node.outputs[0].type.filter(rstate)  # send to GPU if necessary
+        o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))  # send to GPU if necessary
 
     def c_code(self, node, name, inp, out, sub):
         rstate, size = inp
@@ -228,7 +236,7 @@ class mrg_uniform(mrg_uniform_base):
         fail = sub['fail']
         if self.output_type.dtype == 'float32':
             otype = 'float'
-            NORM = '4.6566126e-10f' #numpy.float32(1.0/(2**31+65))
+            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
             # numpy.float32(number * M1) < 1.0
         else:
@@ -279,7 +287,7 @@ class mrg_uniform(mrg_uniform_base):
         }
         for (int i = 0; i < %(ndim)s; ++i)
         {
-            odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
+            odims[i] = ((npy_int32*)(PyArray_BYTES(%(size)s) + PyArray_STRIDES(%(size)s)[0] * i))[0];
             n_elements *= odims[i];
             must_alloc_sample = must_alloc_sample || (PyArray_DIMS(%(o_sample)s)[i] != odims[i]);
             //fprintf(stderr, "size %%i %%i\\n", i, (int)odims[i]);
@@ -313,8 +321,8 @@ class mrg_uniform(mrg_uniform_base):
         }
         n_streams = PyArray_DIMS(%(o_rstate)s)[0];
 
-        sample_data = (%(otype)s *) %(o_sample)s->data;
-        state_data = (npy_int32 *) %(o_rstate)s->data;
+        sample_data = (%(otype)s *) PyArray_DATA(%(o_sample)s);
+        state_data = (npy_int32 *) PyArray_DATA(%(o_rstate)s);
         for (int i = 0; i < n_elements; ++i)
         {
             npy_int32 * state_data_i = state_data + (i%%n_streams)*6;
@@ -392,7 +400,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     def c_support_code_apply(self, node, nodename):
         if self.output_type.dtype == 'float32':
             otype = 'float'
-            NORM = '4.6566126e-10f' #numpy.float32(1.0/(2**31+65))
+            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
             # numpy.float32(number * M1) < 1.0
         else:
@@ -476,7 +484,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             }
         }
 
-        """ %locals()
+        """ % locals()
 
     def c_code(self, node, nodename, inp, out, sub):
         rstate, size = inp
@@ -491,7 +499,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         else:
             otype = 'double'
 
-        SYNC="CNDA_THREAD_SYNC";
+        SYNC = "CNDA_THREAD_SYNC"
         return """
         //////// <code generated by mrg_uniform>
 
@@ -521,7 +529,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         }
         for (int i = 0; i < %(ndim)s; ++i)
         {
-            odims[i] = ((npy_int32*)(%(size)s->data + %(size)s->strides[0] * i))[0];
+            odims[i] = ((npy_int32*)(PyArray_BYTES(%(size)s) + PyArray_STRIDES(%(size)s)[0] * i))[0];
             n_elements *= odims[i];
             must_alloc_sample = (must_alloc_sample
                     || CudaNdarray_HOST_DIMS(%(o_sample)s)[i] != odims[i]);
@@ -593,7 +601,8 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         }
 
         //////// </ code generated by mrg_uniform>
-        """ %locals()
+        """ % locals()
+
     def c_code_cache_version(self):
         return (7,)
 
@@ -662,7 +671,7 @@ class MRG_RandomStreams(object):
             elif seed >= M2:
                 raise ValueError('seed should be less than %i' % M2, seed)
             self.rstate = numpy.asarray([seed]*6, dtype='int32')
-        elif len(seed)==6:
+        elif len(seed) == 6:
             if seed[0] == 0 and seed[1] == 0 and seed[2] == 0:
                 raise ValueError('The first 3 values of seed should not be all 0', seed)
             if seed[3] == 0 and seed[4] == 0 and seed[5] == 0:
@@ -690,7 +699,7 @@ class MRG_RandomStreams(object):
         """
         assert n_streams < 2**72
         assert n_streams > 0
-        rval = numpy.zeros((n_streams,6), dtype='int32')
+        rval = numpy.zeros((n_streams, 6), dtype='int32')
         rval[0] = self.rstate
         for i in xrange(1, n_streams):
             rval[i] = ff_2p72(rval[i - 1])
@@ -751,8 +760,8 @@ class MRG_RandomStreams(object):
         else:
             if not (isinstance(size, Variable) and size.ndim == 1):
                 raise TypeError("size must be a tuple of int or a Theano "
-                        "Variable with 1 dimension, got " + str(size) +
-                        " of type " + str(type(size)))
+                                "Variable with 1 dimension, got " + str(size) +
+                                " of type " + str(type(size)))
 
         if nstreams is None:
             nstreams = self.n_streams(size)
@@ -776,20 +785,22 @@ class MRG_RandomStreams(object):
             # currently no Theano node that will do a frombuffer
             # reinterpretation.
             u = self.pretty_return(node_rstate,
-                    *GPU_mrg_uniform.new(node_rstate, ndim, dtype, size))
+                                   *GPU_mrg_uniform.new(node_rstate,
+                                                        ndim, dtype, size))
         else:
             node_rstate = shared(self.get_substream_rstates(nstreams))
             u = self.pretty_return(node_rstate,
-                    *mrg_uniform.new(node_rstate, ndim, dtype, size))
+                                   *mrg_uniform.new(node_rstate,
+                                                    ndim, dtype, size))
         r = u * (high - low) + low
 
         if u.type.broadcastable != r.type.broadcastable:
             raise NotImplementedError(
-                    'Increase the size to match the broadcasting pattern of '
-                    '`low` and `high` arguments')
+                'Increase the size to match the broadcasting pattern of '
+                '`low` and `high` arguments')
 
         assert r.dtype == dtype
-        return  r
+        return r
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  nstreams=None):
@@ -934,4 +945,6 @@ def mrg_random_make_inplace(node):
         new_op = op.__class__(op.output_type, inplace=True)
         return new_op.make_node(*node.inputs).outputs
     return False
-optdb.register('random_make_inplace_mrg', opt.in2out(mrg_random_make_inplace, ignore_newtrees=True), 99, 'fast_run', 'inplace')
+optdb.register('random_make_inplace_mrg',
+               opt.in2out(mrg_random_make_inplace, ignore_newtrees=True),
+               99, 'fast_run', 'inplace')

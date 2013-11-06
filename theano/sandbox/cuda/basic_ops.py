@@ -2223,12 +2223,6 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
 
-# C Code shared by GpuSubtensor and GpuIncSubtensor
-_define_set_data = """
-    #define CudaNdarray_set_device_data2(obj, ptr, base) \
-            CudaNdarray_set_device_data(obj, (float *)ptr, base)
-"""
-
 class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
     Implement subtensor on the gpu.
@@ -2276,16 +2270,27 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
         view_ndim = node.outputs[0].ndim
         fail = sub['fail']
 
+        decl = "CudaNdarray* xview = NULL;"
+
+        get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
+                                       self.idx_list,
+                                       view_ndim=view_ndim,
+                                       c_prefix='CudaNdarray',
+                                       strides_mul=4,
+                                       )
         build_view = """
         //TODO: give this Op a second output so that this view can be cached
         //TODO: alternatively, fix the memory leak on failure
-        CudaNdarray* xview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
+        xview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
         if (!xview)
         {
             %(fail)s;
         }
-        if (CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(%(x)s),
-                                       (PyObject*) NULL))
+
+        if (CudaNdarray_set_device_data(
+                xview,
+                CudaNdarray_DEV_DATA(%(x)s) + xview_offset/4,
+                (PyObject*) %(x)s))
         {
             PyErr_Format(PyExc_RuntimeError,
                          "GpuSubtensor is not able to set the"
@@ -2294,43 +2299,24 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
             %(fail)s;
         }
         cnda_mark_dev_structure_dirty(xview);
+        for(int idx=0;idx <%(view_ndim)s; idx++){
+        //For broadcasted dimensions, set the strides to 0
+        //We can't do that only for broadcasted dimensions as this can happen
+        //for dimensions of size 0. That are rebroadcated later.
+            if(xview_dims[idx]==1)
+                CudaNdarray_set_stride(xview, idx, 0);
+            else
+                CudaNdarray_set_stride(xview, idx, xview_strides[idx]);
+            CudaNdarray_set_dim(xview, idx, xview_dims[idx]);
+        }
         """ % locals()
 
-        get_xview = _define_set_data + \
-                    self.helper_c_code(node, name, inputs, outputs, sub,
-                                       self.idx_list,
-                                       c_prefix='CudaNdarray',
-                                       set_data='CudaNdarray_set_device_data2',
-                                       set_dim='CudaNdarray_set_dim',
-                                       set_stride='CudaNdarray_set_stride',
-                                       update_flags="", strides_mul=4)
-        finish_view = ""
-        #For broadcasted dimensions, set the strides to 0
-        #We can't do that only for broadcasted dimensions as this can happen for dimensions of size 0,
-        #That are rebroadcated later.
-        for idx in range(node.outputs[0].ndim):
-            finish_view += """
-            if(CudaNdarray_HOST_DIMS(xview)[%(idx)s]==1)
-            CudaNdarray_set_stride(xview, %(idx)s, 0);
-            """ % locals()
-
-        finish_view += """
-        //Set the base only now
-
-        if(CudaNdarray_set_device_data(xview, CudaNdarray_DEV_DATA(xview),
-                                    %(x)s)){
-            PyErr_Format(PyExc_RuntimeError,
-                         "GpuSubtensor is not able to set"
-                         " the base of the view array");
-            Py_XDECREF(xview);
-            %(fail)s;
-        }
-
+        finish_view = """
         Py_XDECREF(%(z)s);
         %(z)s = xview;
         """ % locals()
 
-        return build_view + "{" + get_xview + "}" + finish_view
+        return decl + get_xview + build_view + finish_view
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
@@ -2719,6 +2705,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
         """ %locals()
 
+
 class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     """
     Implement IncSubtensor on the gpu.
@@ -2756,6 +2743,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """
         return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
 
+    def decl_view(self):
+        return "CudaNdarray* zview = NULL;"
+
     def make_view_array(self, x, view_ndim):
         """
             :param x: a string identifying an array to be viewed
@@ -2765,17 +2755,32 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
         """
-        return """CudaNdarray* zview = (CudaNdarray*)
-                CudaNdarray_New(%(view_ndim)s)""" % locals()
+        ret = """zview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
+        if (CudaNdarray_set_device_data(
+                zview,
+                CudaNdarray_DEV_DATA(%(x)s) + xview_offset/4,
+                (PyObject*) %(x)s))
+        {
+            zview = NULL;
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set the"
+                         " devdata field of the view");
+        }else{
+            cnda_mark_dev_structure_dirty(zview);
+            for(int idx=0;idx <%(view_ndim)s; idx++){
+                if(xview_dims[idx]==1)
+                    CudaNdarray_set_stride(zview, idx, 0);
+                else
+                    CudaNdarray_set_stride(zview, idx, xview_strides[idx]);
+                CudaNdarray_set_dim(zview, idx, xview_dims[idx]);
+            }
+        }
+        """ % locals()
+        return ret
 
     def get_helper_c_code_args(self):
         """ Return a dictionary of arguments to use with helper_c_code"""
-        return { 'update_flags' : "",
-                'c_prefix' : 'CudaNdarray',
-                'set_data' :'CudaNdarray_set_device_data2',
-                'set_dim' : 'CudaNdarray_set_dim',
-                'set_stride' : 'CudaNdarray_set_stride',
-                'update_flags' : "",
+        return {'c_prefix': 'CudaNdarray',
                 'strides_mul': 4
                 }
 
@@ -2788,24 +2793,6 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             return 0 on success
         """
         return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
-
-    def define_set_data(self):
-        return _define_set_data
-
-    def link_view_array(self, x, fail):
-
-        return """
-        if (CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(%(x)s),
-                                       (PyObject*) NULL))
-        {
-            PyErr_Format(PyExc_RuntimeError,
-                         "GpuSubtensor is not able to set the"
-                         " devdata field of the view");
-            Py_XDECREF(zview);
-            %(fail)s;
-        }
-        cnda_mark_dev_structure_dirty(zview);
-        """ % locals()
 
     def set_view_base(self, x, fail):
         return """
@@ -2823,9 +2810,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def add_to_zview(self, x, fail):
 
         return """
-
-        PyObject * add_result =  CudaNdarray_inplace_add((PyObject *) zview,
-                                                         (PyObject *) py_%(x)s);
+        PyObject * add_result = CudaNdarray_inplace_add((PyObject *) zview,
+                                                        (PyObject *) py_%(x)s);
 
         if (! add_result )
         {
@@ -2839,7 +2825,6 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if parent_version:
             return parent_version + (0,)

@@ -336,7 +336,7 @@ class DimShuffle(Op):
                 'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
                 #we are making a view in both inplace and non-inplace cases
 """
-#if NPY_VERSION <= 0x01000009
+#if NPY_API_VERSION < 0x00000007
 PyArray_BASE(%(res)s) = (PyObject*)%(basename)s;
 #else
 PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);

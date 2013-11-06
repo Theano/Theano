@@ -11,7 +11,7 @@ _logger = logging.getLogger('theano.scan_module.scan_perform')
 _logger.setLevel(logging.WARN)
 
 
-version = 0.278  # must match constant returned in function get_version()
+version = 0.280  # must match constant returned in function get_version()
 
 need_reload = False
 
@@ -52,11 +52,8 @@ except ImportError:
 
             _logger.info("Compiling C code for scan")
             dirname = 'scan_perform'
-            # We use a .txt extensions as otherwise it don't get
-            # included when we create a package to send to pypi
-            # This happen even if we tell to include *.c files
             cfile = os.path.join(theano.__path__[0], 'scan_module',
-                                 'scan_perform.c.txt')
+                                 'scan_perform.c')
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):

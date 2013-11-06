@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.278
+    return 0.279
 
 @cython.boundscheck(False)
 def perform(

@@ -919,9 +919,9 @@ class Fibby(theano.Op):
             if (!%(y)s)
                 %(fail)s;
             {//New scope needed to make compilation work
-                dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
-                dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
-                for (int i = 2; i < %(x)s->dimensions[0]; ++i)
+                dtype_%(y)s * y = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+                dtype_%(x)s * x = (dtype_%(x)s*)PyArray_DATA(%(x)s);
+                for (int i = 2; i < PyArray_DIMS(%(x)s)[0]; ++i)
                     y[i] = y[i-1]*y[i-2] + x[i];
             }
         """ % locals()

@@ -1,4 +1,5 @@
 global-include *.txt
+global-include *.c
 global-include *.cu
 global-include *.cuh
 global-include *.sh

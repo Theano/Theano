@@ -3905,7 +3905,7 @@ class Reshape(Op):
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
-                PyArray_CORDER);
+                NPY_CORDER);
             if (!%(z)s)
             {
                 //The error message should have been set by PyArray_Newshape
