@@ -1667,9 +1667,9 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
                 for (npy_int32 n_idx = Dpp[m * Sdpp]; n_idx < Dpp[(m+1)*Sdpp]; ++n_idx) {
                     const npy_int32 n = Dpi[n_idx * Sdpi]; // row index of non-null value for column K
 
-                    const dtype_%(x)s* x_row = (dtype_%(x)s*)(PyArray_DATA(%(x)s) + PyArray_STRIDES(%(x)s)[0] * m);
+                    const dtype_%(x)s* x_row = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * m);
 
-                    const dtype_%(y)s* y_col = (dtype_%(y)s*)(PyArray_DATA(%(y)s) + PyArray_STRIDES(%(y)s)[0] * n);
+                    const dtype_%(y)s* y_col = (dtype_%(y)s*)(PyArray_BYTES(%(y)s) + PyArray_STRIDES(%(y)s)[0] * n);
 
                     Dzd[n_idx * Sdzd] = Dpd[n_idx * Sdpd] * %(cdot)s((int*)&K, (const %(conv_type)s*)x_row, (int*)&Sdx, (const %(conv_type)s*)y_col, (int*)&Sdy);
                 }
