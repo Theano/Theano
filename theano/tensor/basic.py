@@ -419,6 +419,8 @@ def constant(x, name=None, ndim=None, dtype=None):
         (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
          (ret.dtype in float_dtypes and int(ret.data) == ret.data))):
         constant_cache[sig] = ret
+        # This is needed to raise a good error to the user.
+        ret.cached = True
 
     return constant_cache.get(sig, ret)
 constant.enable = True
