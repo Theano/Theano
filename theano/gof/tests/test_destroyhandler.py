@@ -93,7 +93,7 @@ def inputs():
 
 
 def Env(inputs, outputs, validate=True):
-    e = FunctionGraph(inputs, outputs)
+    e = FunctionGraph(inputs, outputs, clone=False)
     e.attach_feature(destroyhandler.DestroyHandler())
     e.attach_feature(ReplaceValidate())
     if validate:

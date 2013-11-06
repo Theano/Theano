@@ -631,7 +631,9 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     givens = copied[2]
     # Create FunctionGraph.
     inputs = theano.gof.graph.inputs(vars)
-    fgraph = theano.gof.fg.FunctionGraph(inputs, vars)
+    # The clone isn't needed as we did a deepcopy and we cloning will
+    # break the mapping in givens.
+    fgraph = theano.gof.fg.FunctionGraph(inputs, vars, clone=False)
     # Perform Variable substitution.
     for to_replace, replace_by in givens.iteritems():
         fgraph.replace(to_replace, replace_by)

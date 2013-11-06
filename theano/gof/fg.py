@@ -74,7 +74,7 @@ class FunctionGraph(utils.object2):
 
     """
 
-    def __init__(self, inputs, outputs, features=None):
+    def __init__(self, inputs, outputs, features=None, clone=True):
         """
         Create an FunctionGraph which operates on the subgraph bound by the inputs and
         outputs sets.
@@ -85,7 +85,12 @@ class FunctionGraph(utils.object2):
         #TODO: document what variables are[not] set in the FunctionGraph when a feature
         is added via the constructor.  How constructed is the FunctionGraph?
 
+        :param clone: If true, we will clone the graph. This is
+        usefull to remove the constant cache problem.
+
         """
+        if clone:
+            inputs, outputs = graph.clone(inputs, outputs)
 
         self.execute_callbacks_time = 0
 
