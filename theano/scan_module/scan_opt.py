@@ -173,7 +173,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
             node.op.inputs, node.op.outputs)
 
-        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
+        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs, clone=False)
         max_iterations = 2 * len(local_fgraph.toposort()) + 3
         counts = 0
         to_remove = []
@@ -347,7 +347,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
             node.op.inputs, node.op.outputs)
 
-        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs)
+        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs, clone=False)
         max_iterations = 2 * len(local_fgraph.toposort()) + 3
         counts = 0
         to_remove = []

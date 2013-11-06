@@ -220,7 +220,7 @@ class GpuArrayVariable(_operators, Variable):
 GpuArrayType.Variable = GpuArrayVariable
 
 
-class GpuArraySignature(tensor.basic.TensorConstantSignature):
+class GpuArraySignature(tensor.TensorConstantSignature):
     pass  # might do something better if we can run the sum on the
           # GPU, but for now this will suffice.
 

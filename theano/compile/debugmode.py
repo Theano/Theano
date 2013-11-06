@@ -631,9 +631,8 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     updates = [spec.update for spec in input_specs if spec.update]
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
-    inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     equivalence_tracker = _VariableEquivalenceTracker()
-    fgraph = gof.fg.FunctionGraph(inputs, outputs,
+    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
             # DestroyHandler may not be needed yet, as there is usually no
             # inplace operation in the graph at this stage. DestroyHandler
             # will be installed by an optimization after canonicalization,
@@ -658,7 +657,7 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
                 break
 
     # We need to protect all immutable inputs from inplace operations.
-    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, inputs)
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, fgraph.inputs)
                           if not (spec.mutable or (hasattr(fgraph, 'destroyers')
                                                    and fgraph.destroyers(input)))))
 
@@ -1595,7 +1594,7 @@ class _Linker(gof.link.LocalLinker):
                 # directly from PureOp)
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
-                e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
+                e = FunctionGraph(node.inputs, node.outputs)
                 # The toposort isn't a stochastic order as it contain only one node.
                 e.toposort = lambda: list(e.apply_nodes)
                 #  Specifically... e.nodes is a set, but of only 1 element

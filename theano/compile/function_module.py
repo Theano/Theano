@@ -129,8 +129,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     updates = [spec.update for spec in input_specs if spec.update]
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
-    inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
-    fgraph = gof.fg.FunctionGraph(inputs, outputs)
+    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs)
 
     for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
@@ -143,7 +142,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     # We need to protect all immutable inputs from inplace operations.
     fgraph.attach_feature(
             Supervisor(input
-                for spec, input in zip(input_specs, inputs)
+                for spec, input in zip(input_specs, fgraph.inputs)
                 if not (spec.mutable or
                         (hasattr(fgraph, 'destroyers') and
                             fgraph.destroyers(input)))))
@@ -1306,12 +1305,12 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     else:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs,
-                outputs,
-                mode,
-                accept_inplace=accept_inplace,
-                profile=profile,
-                on_unused_input=on_unused_input).create(
-                        defaults)
+                   outputs,
+                   mode,
+                   accept_inplace=accept_inplace,
+                   profile=profile,
+                   on_unused_input=on_unused_input).create(
+                       defaults)
 
     t2 = time.time()
     if profile:

@@ -2928,7 +2928,10 @@ class Composite(ScalarOp):
         self.name = rval
 
     def init_fgraph(self):
-        fgraph = FunctionGraph(*gof.graph.clone(self.inputs, self.outputs))
+        #The clone done by FunctionGraph is needed as we don't want
+        #the fgraph to be set to the variable as we need to pickle
+        #them for the cache of c module to work.
+        fgraph = FunctionGraph(self.inputs, self.outputs)
         gof.MergeOptimizer().optimize(fgraph)
         for node in fgraph.apply_nodes:
             if not isinstance(node.op, ScalarOp):

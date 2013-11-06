@@ -593,7 +593,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         #logger.debug('Compiling node %i of graph' % node_idx)
         if self._op_use_c_code:
             try:
-                e = FunctionGraph(*graph.clone(node.inputs, node.outputs))
+                e = FunctionGraph(node.inputs, node.outputs)
 
                 e_no_recycling = [new_o
                         for (new_o, old_o) in zip(e.outputs, node.outputs)

@@ -147,7 +147,7 @@ import theano.scalar
 from theano.tensor import basic as T
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas_headers import blas_header_version
-from theano.tensor.opt import local_dimshuffle_lift, in2out
+from theano.tensor.opt import in2out, local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
 
@@ -896,9 +896,22 @@ class Gemm(GemmRelated):
                 "Wrong number of inputs for %s (expected 5, got %s)" %
                 (self, len(inputs)))
         z, a, x, y, b = inputs
+
+        # For the consistency check we don't want z to be a cached constant.
+        if getattr(z, 'cached', False):
+            z = copy.copy(z)
         zr, xr, yr = [set(view_roots(i)) for i in z, x, y]
 
-        # TODO: justify / delete
+        # We want the gemm to be inplace. When this op is inplace, it
+        # declare to be inplace only on z. So to make it safe, we
+        # raise an error if z can be a view on x or y.
+
+        # I don't know if Theano currently can support that case. As
+        # this case don't happen in our code, I won't spent time
+        # investigating this. So the assert is for safety.  I also
+        # think there is another mechanism that would prevent this,
+        # but I don't what to modify old code and have chance to break
+        # something.
         if zr.intersection(xr):
             raise InconsistencyError(Gemm.E_z_uniq, (z, x))
         if zr.intersection(yr):
@@ -1758,8 +1771,8 @@ optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run')
 # free-for-all that makes the graph crazy.
 
 blas_optdb.register('local_dot_to_dot22',
-        EquilibriumOptimizer([local_dot_to_dot22], max_use_ratio=5),
-        0, 'fast_run')
+                    in2out(local_dot_to_dot22),
+                    0, 'fast_run')
 blas_optdb.register('gemm_optimizer',
         GemmOptimizer(),
         10, 'fast_run')
@@ -1983,8 +1996,8 @@ def local_dot22_to_dot22scalar(node):
 #must happen after gemm as the gemm optimizer don't understant
 #dot22scalar and gemm give more speed up then dot22scalar
 blas_optdb.register('local_dot22_to_dot22scalar',
-        EquilibriumOptimizer([local_dot22_to_dot22scalar], max_use_ratio=5),
-        11, 'fast_run')
+                    in2out(local_dot22_to_dot22scalar),
+                    11, 'fast_run')
 
 
 #from opt import register_specialize, register_canonicalize

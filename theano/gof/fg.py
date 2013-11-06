@@ -5,6 +5,7 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 import sys
+import time
 
 import theano
 from theano.gof import graph
@@ -17,6 +18,14 @@ NullType = None
 
 from theano.gof.python25 import OrderedDict
 from theano.misc.ordered_set import OrderedSet
+
+
+class CachedConstantError(Exception):
+    """An exception thrown when we put in a FunctionGraph a Constant
+    that is cached.  This should not happen as the user can reuse this
+    cached constant in other FunctionGraph.
+    """
+    pass
 
 
 class InconsistencyError(Exception):
@@ -65,7 +74,7 @@ class FunctionGraph(utils.object2):
 
     """
 
-    def __init__(self, inputs, outputs, features=None):
+    def __init__(self, inputs, outputs, features=None, clone=True):
         """
         Create an FunctionGraph which operates on the subgraph bound by the inputs and
         outputs sets.
@@ -76,7 +85,14 @@ class FunctionGraph(utils.object2):
         #TODO: document what variables are[not] set in the FunctionGraph when a feature
         is added via the constructor.  How constructed is the FunctionGraph?
 
+        :param clone: If true, we will clone the graph. This is
+        usefull to remove the constant cache problem.
+
         """
+        if clone:
+            inputs, outputs = graph.clone(inputs, outputs)
+
+        self.execute_callbacks_time = 0
 
         if features is None:
             features = []
@@ -119,6 +135,11 @@ class FunctionGraph(utils.object2):
     ### Setup a Variable ###
     def __setup_r__(self, r):
         # sets up r so it belongs to this fgraph
+        if getattr(r, 'cached', False):
+            raise CachedConstantError(
+                "You manually constructed a FunctionGraph, but you passed it a"
+                " graph that have cached constant. This should happen."
+                " Clone the graph before building the FunctionGraph")
         if (hasattr(r, 'fgraph') and
             r.fgraph is not None and
             r.fgraph is not self):
@@ -223,10 +244,8 @@ class FunctionGraph(utils.object2):
         if NullType is None:
             from null_type import NullType
         # Imports the owners of the variables
-        r_owner_done = set(self.apply_nodes)
         for apply_node in [r.owner for r in variables if r.owner is not None]:
-            if apply_node not in r_owner_done:
-                r_owner_done.add(apply_node)
+            if apply_node not in self.apply_nodes:
                 self.__import__(apply_node, reason=reason)
         for r in variables:
             if r.owner is None and not isinstance(r, graph.Constant) and r not in self.inputs:
@@ -521,6 +540,7 @@ class FunctionGraph(utils.object2):
           getattr(feature, name)(*args)
         for each feature which has a method called after name.
         """
+        t0 = time.time()
         for feature in self._features:
             try:
                 fn = getattr(feature, name)
@@ -531,6 +551,7 @@ class FunctionGraph(utils.object2):
                 continue
 
             fn(self, *args, **kwargs)
+        self.execute_callbacks_time += time.time() - t0
 
     def collect_callbacks(self, name, *args):
         """WRITEME

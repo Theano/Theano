@@ -2119,7 +2119,7 @@ def local_IncSubtensor_serialize(node):
 
 # We register it in a TopoOptimizer inside the canonizer EQ optimizer.
 # Otherwise in some cases it was making the EQ optimizer use 45. In
-# the TopoOptimizer, the EQ only use 6 passes.
+# the TopoOptimizer, the EQ only use 5 passes.
 compile.optdb.register('pre_local_IncSubtensor_serialize',
                        in2out(local_IncSubtensor_serialize),
                        #Just before canonizer
@@ -2136,13 +2136,13 @@ def local_inplace_setsubtensor(node):
     """
     if isinstance(node.op, IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(
-       node.op.idx_list, inplace=True,
-       set_instead_of_inc=node.op.set_instead_of_inc,
-       destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
+            node.op.idx_list, inplace=True,
+            set_instead_of_inc=node.op.set_instead_of_inc,
+            destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('inplace_setsubtensor',
+compile.optdb.register('local_inplace_setsubtensor',
                        TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60,
                        'fast_run', 'inplace')  # DEBUG
@@ -3711,17 +3711,16 @@ def local_add_specialize(node):
                 continue
             new_inputs.append(input)
 
+
         if len(new_inputs) < len(node.inputs):
             dtype = node.outputs[0].type.dtype
             if len(new_inputs) == 0:
                 #we got rid of the entire expression!
                 ndim = node.outputs[0].type.ndim
-                return fill_chain(
-                        T.TensorConstant(
-                            T.TensorType(
-                                dtype=dtype,
-                                broadcastable=[True] * ndim),
-                            numpy.zeros((1,) * ndim, dtype=dtype)))
+                #Reuse call to constant for cache()
+                cst = T.constant(numpy.zeros((1,) * ndim, dtype=dtype))
+                assert cst.type.broadcastable == (True,) * ndim
+                return fill_chain(cst)
 
             if len(new_inputs) == 1:
                 ret = fill_chain(new_inputs[0])
