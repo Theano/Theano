@@ -3719,7 +3719,7 @@ def local_add_specialize(node):
                 ndim = node.outputs[0].type.ndim
                 #Reuse call to constant for cache()
                 cst = T.constant(numpy.zeros((1,) * ndim, dtype=dtype))
-                assert cst.type.broadcastable == [True] * ndim
+                assert cst.type.broadcastable == (True,) * ndim
                 return fill_chain(cst)
 
             if len(new_inputs) == 1:
