@@ -896,9 +896,22 @@ class Gemm(GemmRelated):
                 "Wrong number of inputs for %s (expected 5, got %s)" %
                 (self, len(inputs)))
         z, a, x, y, b = inputs
+
+        # For the consistency check we don't want z to be a cached constant.
+        if getattr(z, 'cached', False):
+            z = copy.copy(z)
         zr, xr, yr = [set(view_roots(i)) for i in z, x, y]
 
-        # TODO: justify / delete
+        # We want the gemm to be inplace. When this op is inplace, it
+        # declare to be inplace only on z. So to make it safe, we
+        # raise an error if z can be a view on x or y.
+
+        # I don't know if Theano currently can support that case. As
+        # this case don't happen in our code, I won't spent time
+        # investigating this. So the assert is for safety.  I also
+        # think there is another mechanism that would prevent this,
+        # but I don't what to modify old code and have chance to break
+        # something.
         if zr.intersection(xr):
             raise InconsistencyError(Gemm.E_z_uniq, (z, x))
         if zr.intersection(yr):
