@@ -681,6 +681,8 @@ class TensorConstant(_tensor_py_operators, Constant):
 
     def __deepcopy__(self, memo):
         # We need to do this to remove the cached attribute
-        return type(self)(copy.deepcopy(self.type), copy.deepcopy(self.data), copy.deepcopy(self.name))
+        return type(self)(copy.deepcopy(self.type, memo),
+                          copy.deepcopy(self.data, memo),
+                          copy.deepcopy(self.name, memo))
 
 TensorType.Constant = TensorConstant
