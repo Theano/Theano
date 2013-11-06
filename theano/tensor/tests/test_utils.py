@@ -1,3 +1,5 @@
+import unittest
+
 import numpy
 
 import theano
@@ -50,23 +52,30 @@ def test_hash_from_dict():
     assert hash_from_dict({0: (0,)}) == hash_from_dict({0: [0]})
 
 
-def test_shape_of_variables_simple():
-    x = theano.tensor.matrix('x')
-    y = x+x
-    fgraph = theano.FunctionGraph([x], [y])
-    assert shape_of_variables(fgraph, {x: (5, 5)}) == {x: (5, 5), y: (5, 5)}
+class Tshape_of_variables(unittest.TestCase):
+    def test_simple(self):
+        x = theano.tensor.matrix('x')
+        y = x+x
+        fgraph = theano.FunctionGraph([x], [y], clone=False)
+        shapes = shape_of_variables(fgraph, {x: (5, 5)})
+        assert shapes == {x: (5, 5), y: (5, 5)}
 
-    x = theano.tensor.matrix('x')
-    y = theano.tensor.dot(x, x.T)
-    fgraph = theano.FunctionGraph([x], [y])
-    shapes = shape_of_variables(fgraph, {x: (5, 1)})
-    assert shapes[x] == (5, 1)
-    assert shapes[y] == (5, 5)
+        x = theano.tensor.matrix('x')
+        y = theano.tensor.dot(x, x.T)
+        fgraph = theano.FunctionGraph([x], [y], clone=False)
+        shapes = shape_of_variables(fgraph, {x: (5, 1)})
+        assert shapes[x] == (5, 1)
+        assert shapes[y] == (5, 5)
 
+    def test_subtensor(self):
+        x = theano.tensor.matrix('x')
+        subx = x[1:]
+        fgraph = theano.FunctionGraph([x], [subx], clone=False)
+        shapes = shape_of_variables(fgraph, {x: (10, 10)})
+        assert shapes[subx] == (9, 10)
 
-def test_shape_of_variables_subtensor():
-    x = theano.tensor.matrix('x')
-    subx = x[1:]
-    fgraph = theano.FunctionGraph([x], [subx])
-    shapes = shape_of_variables(fgraph, {x: (10, 10)})
-    assert shapes[subx] == (9, 10)
+    def test_err(self):
+        x = theano.tensor.matrix('x')
+        subx = x[1:]
+        fgraph = theano.FunctionGraph([x], [subx])
+        self.assertRaises(ValueError, shape_of_variables, fgraph, {x: (10, 10)})
