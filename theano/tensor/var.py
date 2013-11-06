@@ -1,3 +1,5 @@
+import copy
+
 import numpy
 
 import theano
@@ -673,5 +675,12 @@ class TensorConstant(_tensor_py_operators, Constant):
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and
                 self.signature() == other.signature())
+    def __copy__(self):
+        # We need to do this to remove the cached attribute
+        return type(self)(self.type, self.data, self.name)
+
+    def __deepcopy__(self, memo):
+        # We need to do this to remove the cached attribute
+        return type(self)(copy.copy(self.type), copy.copy(self.data), copy.copy(self.name))
 
 TensorType.Constant = TensorConstant
