@@ -35,7 +35,8 @@ from theano.sandbox.gpuarray.type import (GpuArrayType,
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
                                                cuda_from_gpu, HostFromGpu,
-                                               GpuFromHost, GpuReshape)
+                                               GpuFromHost, GpuReshape,
+                                               GpuEye)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -322,15 +323,15 @@ def test_gpueye():
         k_symb = numpy.asarray(0)
         out = T.eye(N_symb, M_symb, k_symb, dtype=dtype)
         f = theano.function([N_symb, M_symb],
-                            B.as_cuda_ndarray_variable(out),
+                            out,
                             mode=mode_with_gpu)
         result = numpy.asarray(f(N, M))
         assert numpy.allclose(result, numpy.eye(N, M_, dtype=dtype))
         assert result.dtype == numpy.dtype(dtype)
-        assert any([isinstance(node.op, B.GpuEye)
+        assert any([isinstance(node.op, GpuEye)
                     for node in f.maker.fgraph.toposort()])
 
-    for dtype in ['float32']:
+    for dtype in ['float32', 'int32']:
         yield check, dtype, 3
         # M != N, k = 0
         yield check, dtype, 3, 5

@@ -11,6 +11,7 @@ from theano.tensor.basic import Alloc
 from theano.gof.python25 import all, any
 from theano.gof.utils import MethodNotDefined
 
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 try:
     import pygpu
     from pygpu import gpuarray, elemwise
@@ -561,11 +562,10 @@ class GpuReshape(HideC, tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
 
-class GpuEye(GpuOp):
+class GpuEye(Op):
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
-        assert dtype == 'float32'
         self.dtype = dtype
 
     def make_node(self, n, m, k):
@@ -575,10 +575,12 @@ class GpuEye(GpuOp):
         assert n.ndim == 0
         assert m.ndim == 0
         assert k.ndim == 0
+        otype = GpuArrayType(dtype=self.dtype,
+                             broadcastable=(False, False))
 
         # k != 0 isn't implemented on the GPU yet.
         assert tensor.get_scalar_constant_value(k) == 0
-        return Apply(self, [n, m], [matrix(dtype=self.dtype)])
+        return Apply(self, [n, m], [otype()])
 
     def infer_shape(self, node, in_shapes):
         out_shape = [node.inputs[0], node.inputs[1]]
@@ -593,55 +595,71 @@ class GpuEye(GpuOp):
     def __hash__(self):
         return hash(self.dtype) ^ hash(type(self))
 
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>']
+
     def c_support_code(self):
+        dtype = self.dtype
         return """
-//Only 1 block is used.
-__global__ void kEye(float* a, int n, int m) {
+CUdeviceptr (*cuda_get_ptr)(gpudata *g);
+
+//TODO OPT: Only 1 block is used.
+__global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
     int nb_elem = min(n, m);
     for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
         a[i*m + i] = 1;
     }
-}"""
+}""" % locals()
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, name, inp, out, sub):
+        #TODO assert that the back-end is cuda!
         n, m = inp
         z, = out
         fail = sub['fail']
+        dtype = self.dtype
+        typecode = numpy.dtype(self.dtype).num
+        sync = bool(config.gpuarray.sync)
         s = """
-        int dims[] = {0, 0};
+        npy_%(dtype)s* ptr;
+        size_t dims[] = {0, 0};
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
         dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
         int total_size = dims[0] * dims[1] * sizeof(float);
         cudaError_t sts;
-        void * orig_z = %(z)s;
-
-        if (CudaNdarray_prep_output(&%(z)s, 2, dims))
-        {
-            %(fail)s;
+        Py_XDECREF(%(z)s);
+        %(z)s = pygpu_empty(2, dims,
+                            %(typecode)d, GA_C_ORDER,
+                            pygpu_default_context(), Py_None);
+        if (!%(z)s) {
+            %(fail)s
         }
-
-        sts = cudaMemset(CudaNdarray_DEV_DATA(%(z)s), 0, total_size);
+        ptr = (npy_%(dtype)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                               %(z)s->ga.offset);
+        sts = cudaMemset(ptr, 0, total_size);
         if (cudaSuccess != sts)
         {
             PyErr_Format(PyExc_MemoryError,
                          "GpuEye: Error in memset %%d bytes of device memory.",
                          total_size);
-            if(orig_z == NULL)
-                Py_XDECREF(%(z)s);
             %(fail)s;
         }
 
-        kEye<<<1, 256>>>(CudaNdarray_DEV_DATA(%(z)s), dims[0], dims[1]);
-        CNDA_THREAD_SYNC;
+        kEye_%(dtype)s<<<1, 256>>>(ptr, dims[0], dims[1]);
+
+        if(%(sync)d)
+            GpuArray_sync(&%(z)s->ga);
 
         sts = cudaGetLastError();
         if (cudaSuccess != sts)
         {
-               PyErr_Format(PyExc_RuntimeError,
-                    "Cuda error: kEye: %%s. n=%%d, m=%%d.",
+            PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: kEye: %%s. n=%%ld, m=%%ld.",
                     cudaGetErrorString(sts),
-                    dims[0], dims[1]);
+                    (long int)dims[0], (long int)dims[1]);
             %(fail)s;
          }
         """ % locals()
@@ -649,5 +667,7 @@ __global__ void kEye(float* a, int n, int m) {
         return s
 
     def c_code_cache_version(self):
-        return (3,)
-gpu_eye = GpuEye(dtype='float32')
+        return (1,)
+
+    def c_compiler(self):
+        return NVCC_compiler
