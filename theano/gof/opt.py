@@ -1519,6 +1519,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         max_use_abort = False
         opt_name = None
         global_process_count = {}
+        start_nb_nodes = len(fgraph.apply_nodes)
         max_nb_nodes = len(fgraph.apply_nodes)
         max_use = max_nb_nodes * self.max_use_ratio
 
@@ -1603,13 +1604,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
 
+        end_nb_nodes = len(fgraph.apply_nodes)
+
         if max_use_abort:
             _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
 
-        return (self, loop_timing, loop_process_count, max_nb_nodes,
+        return (self, loop_timing, loop_process_count, (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
@@ -1623,15 +1626,17 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opt, loop_timing, loop_process_count, max_nb_nodes,
+        (opt, loop_timing, loop_process_count, (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof
 
         blanc = ('    ' * level)
         print >> stream, blanc, "EquilibriumOptimizer",
         print >> stream, blanc, getattr(opt, "name",
                                         getattr(opt, "__name__", ""))
-        print >> stream, blanc, "  time %.3fs for %d passes, %d nodes max" % (
-                sum(loop_timing), len(loop_timing), max_nb_nodes)
+        print >> stream, blanc, "  time %.3fs for %d passes" % (
+                sum(loop_timing), len(loop_timing))
+        print >> stream, blanc, "  nb nodes (start, end,  max) %d %d %d" % (
+                start_nb_nodes, end_nb_nodes, max_nb_nodes)
         print >> stream, blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing)
         s = sum([time_opts[o] for o in opt.local_optimizers])
