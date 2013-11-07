@@ -400,7 +400,7 @@ class CudaNdarrayType(Type):
     def c_libraries(self):
         # returning cublas because the cuda_ndarray.cuh header
         # includes calls to SetVector and cublasGetError
-        return ['cudart', 'cublas']
+        return ['cudart', 'cublas', 'cuda_ndarray']
 
     def c_support_code(cls):
         return ""
