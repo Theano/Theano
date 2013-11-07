@@ -566,6 +566,8 @@ class MergeOptimizer(Optimizer):
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
             callback_before = fgraph.execute_callbacks_time
+            callbacks_before = fgraph.execute_callbacks_times.copy()
+
         nb_merged = 0
         nb_constant = 0
         while sched:
@@ -589,20 +591,28 @@ class MergeOptimizer(Optimizer):
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
+            callbacks_time = {}
+            for k, v in fgraph.execute_callbacks_times.iteritems():
+                if k in callbacks_before:
+                    callbacks_time[k] = v - callbacks_before[k]
+                else:
+                    callbacks_time[k] = v
         else:
             validate_time = None
             callback_time = None
+            callbacks_time = {}
         # clear blacklist
         fgraph.merge_feature.blacklist = []
         return (nb_fail, time.time() - t0, validate_time,
-                callback_time, nb_merged, nb_constant)
+                callback_time, callbacks_time, nb_merged, nb_constant)
 
     def __str__(self):
         return self.__class__.__name__
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        nb_fail, replace_time, validate_time, callback_time, nb_merged, nb_constant = prof
+        (nb_fail, replace_time, validate_time,
+         callback_time, callbacks_time, nb_merged, nb_constant) = prof
 
         blanc = ('    ' * level)
         print >> stream, blanc, "MergeOptimizer"
@@ -610,6 +620,7 @@ class MergeOptimizer(Optimizer):
         print >> stream, blanc, "  replace_time", replace_time
         print >> stream, blanc, "  validate_time", validate_time
         print >> stream, blanc, "  callback_time", callback_time
+        print >> stream, blanc, "  callback_times", callbacks_time
         print >> stream, blanc, "  nb_merged", nb_merged
         print >> stream, blanc, "  nb_constant", nb_constant
 

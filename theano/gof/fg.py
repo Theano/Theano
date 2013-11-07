@@ -93,6 +93,7 @@ class FunctionGraph(utils.object2):
             inputs, outputs = graph.clone(inputs, outputs)
 
         self.execute_callbacks_time = 0
+        self.execute_callbacks_times = {}
 
         if features is None:
             features = []
@@ -507,7 +508,7 @@ class FunctionGraph(utils.object2):
                 attach(self)
             except toolbox.AlreadyThere:
                 return
-
+        self.execute_callbacks_times.setdefault(feature, 0)
         #it would be nice if we could require a specific class instead of
         #a "workalike" so we could do actual error checking
         #if not isinstance(feature, toolbox.Feature):
@@ -549,8 +550,9 @@ class FunctionGraph(utils.object2):
                 # try; the AttributeError reall must come from feature.${name}
                 # not existing
                 continue
-
+            tf0 = time.time()
             fn(self, *args, **kwargs)
+            self.execute_callbacks_times[feature] += time.time() - tf0
         self.execute_callbacks_time += time.time() - t0
 
     def collect_callbacks(self, name, *args):
