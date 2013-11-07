@@ -67,7 +67,7 @@ Next we initialize the output as a tensor with same shape and dtype as ``A``,
 filled with ones. We give ``A`` to scan as a non sequence parameter and
 specify the number of steps ``k`` to iterate over our lambda expression.
 
-Scan return a tuples, containing our result (``result``) and a
+Scan returns a tuple containing our result (``result``) and a
 dictionary of updates (empty in this case). Note that the result
 is not a matrix, but a 3D tensor containing the value of ``A**k`` for
 each step. We want the last value (after ``k`` steps) so we compile
