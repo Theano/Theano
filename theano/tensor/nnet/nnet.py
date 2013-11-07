@@ -353,7 +353,7 @@ class Softmax(gof.Op):
         x = tensor.as_tensor_variable(x)
         if x.type.ndim not in (1, 2) \
                 or x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be 1-d or 2-d tensor of floats')
+            raise ValueError('x must be 1-d or 2-d tensor of floats. Got ', x.type)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
         return Apply(self, [x], [x.type()])
