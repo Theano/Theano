@@ -1287,10 +1287,16 @@ class NavigatorOptimizer(Optimizer):
         if len(node.outputs) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements'
                     % lopt)
+        # None in the replacement mean that this variable isn't used
+        # and we want to remove it
+        for r, rnew in zip(node.outputs, replacements):
+            if rnew is None and len(r.clients) > 0:
+                raise ValueError("A local optimizer tried to remove a Variable that is used")
         # If an output would be replaced by itself, no need to perform
         # the replacement
         repl_pairs = [(r, rnew) for r, rnew in zip(node.outputs, replacements)
-                      if rnew is not r]
+                      if rnew is not r and rnew is not None]
+
         if len(repl_pairs) == 0:
             return False
         try:

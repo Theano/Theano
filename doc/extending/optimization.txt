@@ -283,7 +283,9 @@ The local version of the above code would be the following:
 The definition of transform is the inner loop of the global optimizer,
 where the node is given as argument. If no changes are to be made,
 ``False`` must be returned. Else, a list of what to replace the node's
-outputs with must be returned.
+outputs with must be returned. This list must have the same length as
+node.ouputs. If one of node.outputs don't have clients(it is not used
+in the graph), you can put None in the returned list to remove it.
 
 In order to apply the local optimizer we must use it in conjunction
 with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
