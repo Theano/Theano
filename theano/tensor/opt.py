@@ -928,6 +928,10 @@ class ShapeFeature(object):
                 #  - Shape_i(i)(other_r);
                 #  - Shape_i(i)(r).
                 merged_shape.append(r_shape[i])
+            elif isinstance(r_shape[i], Constant):
+                # We do this to call less often ancestors and make
+                # sure we have the simplest shape possible.
+                merged_shape.append(r_shape[i])
             elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
                 # Another case where we want to use r_shape[i] is when
                 # other_shape[i] actually depends on r_shape[i]. In that case,
