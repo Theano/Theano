@@ -48,7 +48,7 @@ class GpuArrayType(Type):
         else:
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
-                data = gpuarray.array(data, dtype=self.typecode, copy=False)
+                data = gpuarray.array(data, dtype=self.dtype, copy=False)
             else:
                 raise TypeError("%s cannot store a value of dtype %s "
                                 "without risking loss of precision." %
