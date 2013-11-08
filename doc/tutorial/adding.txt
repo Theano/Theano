@@ -99,6 +99,7 @@ The second step is to combine *x* and *y* into their sum *z*:
 *x* and *y*. You can use the :ref:`pp <libdoc_printing>`
 function to pretty-print out the computation associated to *z*.
 
+>>> from theano import pp
 >>> print pp(z)
 (x + y)
 
