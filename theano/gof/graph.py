@@ -549,9 +549,7 @@ def ancestors(variable_list, blockers=None):
     """
     def expand(r):
         if r.owner and (not blockers or r not in blockers):
-            l = list(r.owner.inputs)
-            l.reverse()
-            return l
+            return reversed(r.owner.inputs)
     dfs_variables = stack_search(deque(variable_list), expand, 'dfs')
     return dfs_variables
 
@@ -801,7 +799,7 @@ def io_toposort(inputs, outputs, orderings=None):
             if isinstance(obj, Variable):
                 if obj.owner:
                     rval = [obj.owner]
-            if isinstance(obj, Apply):
+            elif isinstance(obj, Apply):
                 rval = list(obj.inputs)
             rval.extend(orderings.get(obj, []))
         else:
