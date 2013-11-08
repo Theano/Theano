@@ -495,14 +495,14 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
     :param start: search from these nodes
     :type expand: callable
     :param expand:
-        when we get to a node, add expand(node) to the list of nodes to visit.  This function
-        should return a list, or None
+        when we get to a node, add expand(node) to the list of nodes to visit.
+        This function should return a list, or None
     :rtype: list of `Variable` or `Apply` instances (depends on `expend`)
     :return: the list of nodes in order of traversal.
 
     :note:
-        a node will appear at most once in the return value, even if it appears multiple times
-        in the start parameter.
+        a node will appear at most once in the return value, even if it
+        appears multiple times in the start parameter.
 
     :postcondition: every element of start is transferred to the returned list.
     :postcondition: start is empty.
