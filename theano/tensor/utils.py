@@ -89,8 +89,8 @@ def shape_of_variables(fgraph, input_shapes):
     if any([i not in fgraph.inputs for i in input_shapes.keys()]):
         raise ValueError(
             "input_shapes keys aren't in the fgraph.inputs. FunctionGraph()"
-            " interface changed. Now by default, it clone the graph it receive."
-            " To have the old behavior, give him this new parameter `clone=False`.")
+            " interface changed. Now by default, it clones the graph it receives."
+            " To have the old behavior, give it this new parameter `clone=False`.")
 
     numeric_input_dims  = [dim for inp in fgraph.inputs
                                for dim in input_shapes[inp]]
