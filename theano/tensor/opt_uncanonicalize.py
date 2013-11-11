@@ -26,11 +26,9 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
+from theano.compat.python2x import deque
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
-
-from theano.gof.opt import Optimizer
-from theano.gof import InconsistencyError, toolbox
 
 from theano.tensor.basic import (get_scalar_constant_value,
                                  NotScalarConstantError)
@@ -38,42 +36,23 @@ from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
 
 
-class MaxAndArgmaxOptimizer(Optimizer):
-    """Replace MaxAndArgmax by CAReduce when the argmax is not used
-
-       This is faster as MaxAndArgmax don't have c code and execute it
-       in two pass.
+@register_uncanonicalize
+@gof.local_optimizer([T._max_and_argmax])
+def local_max_and_argmax(node):
     """
+    If we don't use the argmax, change it to a max only.
+    """
+    if node.op == T._max_and_argmax:
+        if len(node.outputs[1].clients) == 0:
+            #MaxAndArgmax support variable axis,
+            #but CAReduce support only constant axis.
+            try:
+                axis = get_scalar_constant_value(node.inputs[1])
+            except NotScalarConstantError:
+                return False
 
-    def add_requirements(self, fgraph):
-        fgraph.attach_feature(toolbox.ReplaceValidate())
-
-    def apply(self, fgraph):
-        did_something = True
-        while did_something:
-            nodelist = fgraph.toposort()
-            did_something = False
-            for node in nodelist:
-                if node.op == T._max_and_argmax:
-                    if len(node.outputs[1].clients) == 0:
-                        try:
-                            axis = get_scalar_constant_value(node.inputs[1])
-                        except NotScalarConstantError:
-                            return False
-
-                        new = CAReduce(scal.maximum, axis)(node.inputs[0])
-                        try:
-                            fgraph.replace_all_validate(
-                                ((node.outputs[0], new),),
-                                reason=self.__class__.__name__)
-                            did_something = True
-                            break
-                        except InconsistencyError, e:
-                            pass
-
-register_uncanonicalize(MaxAndArgmaxOptimizer(),
-                        name='MaxAndArgmaxOptimizer')
-
+            new = CAReduce(scal.maximum, axis)(node.inputs[0])
+            return [new, None]
 
 @register_uncanonicalize
 @gof.local_optimizer([T._shape])

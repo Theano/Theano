@@ -3,7 +3,7 @@ import copy
 import numpy
 
 import theano
-from theano.compat import PY3
+from theano.compat import all, PY3
 from theano.scalar import ComplexError, IntegerDivisionError
 from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype

@@ -915,6 +915,13 @@ class ShapeFeature(object):
             # If no info is known on r's shape, use other_shape
             self.set_shape(r, other_shape)
             return
+        if (other_r.owner and r.owner and
+            other_r.owner.inputs == r.owner.inputs and
+            other_r.owner.op == r.owner.op):
+            # We are doing a merge. So the 2 shapes graph will be the
+            # same.  This is only a speed optimization to call
+            # ancestors() less frequently.
+            return
 
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
@@ -927,6 +934,18 @@ class ShapeFeature(object):
                 # For now, we consider 2 cases of uninformative other_shape[i]:
                 #  - Shape_i(i)(other_r);
                 #  - Shape_i(i)(r).
+                merged_shape.append(r_shape[i])
+            elif isinstance(r_shape[i], (Constant, int)):
+                # We do this to call less often ancestors and make
+                # sure we have the simplest shape possible.
+                merged_shape.append(r_shape[i])
+            elif isinstance(other_shape[i], (Constant, int)):
+                # We do this to call less often ancestors and make
+                # sure we have the simplest shape possible.
+                merged_shape.append(other_shape[i])
+            elif other_shape[i] == r_shape[i]:
+                # This mean the shape is equivalent
+                # We do not want to do the ancestor check in those cases
                 merged_shape.append(r_shape[i])
             elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
                 # Another case where we want to use r_shape[i] is when
