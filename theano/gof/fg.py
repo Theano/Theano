@@ -86,7 +86,7 @@ class FunctionGraph(utils.object2):
         is added via the constructor.  How constructed is the FunctionGraph?
 
         :param clone: If true, we will clone the graph. This is
-        usefull to remove the constant cache problem.
+        useful to remove the constant cache problem.
 
         """
         if clone:
@@ -138,8 +138,8 @@ class FunctionGraph(utils.object2):
         if getattr(r, 'cached', False):
             raise CachedConstantError(
                 "You manually constructed a FunctionGraph, but you passed it a"
-                " graph that have cached constant. This should happen."
-                " Clone the graph before building the FunctionGraph")
+                " graph that has a cached constant. This should not happen."
+                " Clone the graph before building the FunctionGraph.")
         if (hasattr(r, 'fgraph') and
             r.fgraph is not None and
             r.fgraph is not self):
