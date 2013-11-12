@@ -174,8 +174,15 @@ def conv3d(signals, filters,
     if isinstance(border_mode, str):
         border_mode = (border_mode, border_mode, border_mode)
 
-    _signals_shape_5d = signals.shape if signals_shape is None else signals_shape
-    _filters_shape_5d = filters.shape if filters_shape is None else filters_shape
+    if signals_shape is None:
+        _signals_shape_5d = signals.shape
+    else:
+        _signals_shape_5d = signals_shape
+
+    if filters_shape is None:
+        _filters_shape_5d = filters.shape
+    else:
+        _filters_shape_5d = filters_shape
 
     _signals_shape_4d = (
         _signals_shape_5d[0] * _signals_shape_5d[1],
