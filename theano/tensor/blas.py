@@ -131,7 +131,7 @@ import time
 
 import numpy
 import numpy.distutils
-import numpy.distutils.__config__
+import numpy.distutils.system_info
 
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, DestroyHandler,
@@ -157,7 +157,7 @@ _logger = logging.getLogger('theano.tensor.blas')
 def default_blas_ldflags():
     try:
         # If we are in a EPD installation, mkl is available
-        blas_info = numpy.distutils.__config__.blas_opt_info
+        blas_info = numpy.distutils.system_info.get_info("blas_opt")
         if "EPD" in sys.version:
             use_unix_epd = True
             if sys.platform == 'win32':
