@@ -196,6 +196,8 @@ def scan(fn,
     inner_slices = []  # Actual slices if scan is removed from the picture
     # go through sequences picking up time slices as needed
     for i, seq in enumerate(seqs):
+        if isinstance(seq, dict):
+            seq = seq['input']
         actual_slice = seq[0]
         _seq_val = tensor.as_tensor_variable(seq)
         _seq_val_slice = _seq_val[0]
