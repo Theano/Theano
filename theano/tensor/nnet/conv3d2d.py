@@ -1,4 +1,5 @@
 import theano
+from theano.compat import any
 from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply
 from theano import tensor
@@ -11,7 +12,10 @@ def get_diagonal_subtensor_view(x, i0, i1):
 
     :note: it return a partial view of x, not a partial copy.
     """
-
+    # We have to cast i0 and i0 to int because python 2.4 (and maybe later)
+    # do not support indexing with 0-dim, 'int*' ndarrays.
+    i0 = int(i0)
+    i1 = int(i1)
     if x.shape[i0] < x.shape[i1]:
         raise NotImplementedError('is this allowed?')
     idx = [slice(None)] * x.ndim
