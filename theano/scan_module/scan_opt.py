@@ -1451,51 +1451,15 @@ def scan_merge_inouts(node):
         seen.append((outer_i, inner_o, outer_o))
         return outer_o
 
-    def map_nitsot_out(outer_i, inner_o, outer_o, sh, seen):
-        # Like map_out, but also checks the needed shape.
-        for p, (s_outer_i, s_inner_o, s_outer_o, ssh) in enumerate(seen):
-            if (equal_computations([inner_o], [s_inner_o], left, right)
-                    and outer_i == s_outer_i):
-                if equal_computations([sh], [ssh]):
-                    return s_outer_o
-                try:
-                    vsh = int(opt.get_scalar_constant_value(sh))
-                    vssh = int(opt.get_scalar_constant_value(ssh))
-                except tensor.NotScalarConstantError:
-                    return outer_o
-                if vsh == vssh:
-                    return s_outer_o
-                elif vsh > vssh:
-                    seen[p] = (outer_i, inner_o, outer_o, sh)
-                    return outer_o
-                else:
-                    return s_outer_o[:vsh]
-        seen.append((outer_i, inner_o, outer_o, sh))
-        return outer_o
-
     seen = []
 
-    shapes = []
-    for x in na.outer_in_nit_sot:
-        if x.ndim > 0:
-            if hasattr(node.fgraph, 'shape_feature'):
-                shapes.append(
-                    node.fgraph.shape_feature.shape_of[x][0])
-            else:
-                shapes.append(x.shape[0])
-        else:
-            # If x is a scalar, then it means its value is the number of
-            # items scan is supposed to store for this nit_sot sequence
-            shapes.append(x)
     assert len(na.outer_in_nit_sot) == len(na.inner_out_nit_sot)
     assert len(na.inner_out_nit_sot) == len(na.outer_out_nit_sot)
-    assert len(na.outer_out_nit_sot) == len(shapes)
     na.outer_out_nit_sot = [
-        map_nitsot_out(outer_i, inner_o, outer_o, sh, seen)
-        for outer_i, inner_o, outer_o, sh in zip(na.outer_in_nit_sot,
-                                                 na.inner_out_nit_sot,
-                                                 na.outer_out_nit_sot,
-                                                 shapes)]
+        map_out(outer_i, inner_o, outer_o, seen)
+        for outer_i, inner_o, outer_o in zip(na.outer_in_nit_sot,
+                                             na.inner_out_nit_sot,
+                                             na.outer_out_nit_sot)]
 
     seen = []
     assert len(na.outer_in_sit_sot) == len(na.inner_out_sit_sot)
