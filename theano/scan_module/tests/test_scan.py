@@ -2477,6 +2477,18 @@ class T_Scan(unittest.TestCase):
         # Run it so DebugMode can detect optimization problems.
         f(x_val, y_val)
 
+    def test_sequence_dict(self):
+        # Test that we can specify sequences as a dictionary with
+        # only the 'input' key
+        def incr(s):
+            return s + 1
+
+        x = theano.tensor.vector()
+        sx, upx = theano.scan(
+            fn=incr,
+            sequences=[{'input': x}])
+        f = theano.function([x], sx)
+
     def test_hash(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()

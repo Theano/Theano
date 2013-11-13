@@ -384,7 +384,7 @@ def scan(fn,
             seqs[i] = OrderedDict([('input', seqs[i]), ('taps', [0])])
         elif seqs[i].get('taps', None):
             seqs[i]['taps'] = wrap_into_list(seqs[i]['taps'])
-        elif seqs[i].get('taps', True) is None:
+        elif seqs[i].get('taps', None) is None:
             # seqs dictionary does not have the ``taps`` key
             seqs[i]['taps'] = [0]
 
