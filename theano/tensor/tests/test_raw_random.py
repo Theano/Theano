@@ -474,6 +474,33 @@ class T_random_function(utt.InferShapeTester):
                     update=post_r2, mutable=True)],
                 [out2], accept_inplace=True)
         self.assertRaises(ValueError, f2)
+    
+    def test_choice(self):
+        """Test that raw_random.choice generates the same
+        results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
+        rng_R = random_state_type()
+        # Use non-default parameters, and larger dimensions because of
+        # the integer nature of the result
+        post_r, out = choice(rng_R, (11, 8), 10, 1, 0)
+
+        f = compile.function(
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
+                [out], accept_inplace=True)
+
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        val0 = f()
+        val1 = f()
+        numpy_val0 = numpy_rng.choice(10, (11, 8), True, None)
+        numpy_val1 = numpy_rng.choice(10, (11, 8), True, None)
+        print val0
+        print numpy_val0
+        print val1
+        print numpy_val1
+        self.assertTrue(numpy.allclose(val0, numpy_val0))
+        self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_permutation(self):
         """Test that raw_random.permutation generates the same
