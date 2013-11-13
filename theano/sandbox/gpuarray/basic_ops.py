@@ -596,7 +596,7 @@ class GpuEye(Op):
         return hash(self.dtype) ^ hash(type(self))
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
 
     def c_support_code(self):
         dtype = self.dtype
@@ -620,7 +620,7 @@ __global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
         z, = out
         fail = sub['fail']
         dtype = self.dtype
-        typecode = numpy.dtype(self.dtype).num
+        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
         sync = bool(config.gpuarray.sync)
         s = """
         npy_%(dtype)s* ptr;
@@ -630,9 +630,10 @@ __global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
         dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
         int total_size = dims[0] * dims[1] * sizeof(float);
         cudaError_t sts;
-        Py_XDECREF(%(z)s);
+        Py_CLEAR(%(z)s);
         %(z)s = pygpu_empty(2, dims,
-                            %(typecode)d, GA_C_ORDER,
+                            %(typecode)s,
+                            GA_C_ORDER,
                             pygpu_default_context(), Py_None);
         if (!%(z)s) {
             %(fail)s
