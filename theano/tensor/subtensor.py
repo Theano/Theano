@@ -627,9 +627,26 @@ class Subtensor(Op):
 
         x, = inputs[:1]
         z, = outputs
+        
+        if view_ndim:
+            rval = """        
+        // Argument of the view
+        ssize_t xview_dims[%(view_ndim)s];
+        ssize_t xview_strides[%(view_ndim)s];
+        
+        """% locals()
+        else:
+             rval = """        
+        // Argument of the view
+        ssize_t* xview_dims = NULL;
+        ssize_t* xview_strides = NULL;
+        
+        """
 
-        rval = """
-
+        rval += """
+        // One more argument of the view
+        ssize_t xview_offset = 0;
+        
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
 
@@ -640,11 +657,7 @@ class Subtensor(Op):
         int inner_ii = 0; // the current dimension of zview
         int outer_ii = 0; // current dimension of z
 
-        // Argument of the view
-        ssize_t xview_offset = 0;
-        ssize_t xview_dims[%(view_ndim)s];
-        ssize_t xview_strides[%(view_ndim)s];
-
+        
         for (; outer_ii < %(len_is_slice)s; ++outer_ii)
         {
             if (is_slice[outer_ii])
@@ -763,7 +776,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (6,)
+        return (7,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, theano.tensor.TensorType):
