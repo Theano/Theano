@@ -1655,8 +1655,8 @@ class Mod(BinaryScalarOp):
             """) % locals()
 
     def grad(self, (x, y), (gz, )):
-        return [x.zeros_like(dtype=theano.config.floatX),
-                y.zeros_like(dtype=theano.config.floatX)]
+        return [gz,
+                -(x//y) * gz ]
 mod = Mod(upcast_out, name='mod')
 
 
