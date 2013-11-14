@@ -44,7 +44,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists)
+        stacklists, DimShuffle)
 
 from theano.tests import unittest_tools as utt
 
@@ -1787,10 +1787,16 @@ AllocTester = makeBroadcastTester(
             correct01_bcast=(rand(1), numpy.int32(7)),
             correct02=(rand(), numpy.int32(4), numpy.int32(7)),
             correct12=(rand(7), numpy.int32(4), numpy.int32(7)),
-            correct13=(rand(7), numpy.int32(2), numpy.int32(
-                4), numpy.int32(7)),
-            correct23=(rand(4, 7), numpy.int32(2), numpy.
-                int32(4), numpy.int32(7)),
+            correct13=(rand(7), numpy.int32(2), numpy.int32(4),
+                       numpy.int32(7)),
+            correct23=(rand(4, 7), numpy.int32(2), numpy.int32(4),
+                       numpy.int32(7)),
+            correctb1=(rand(1, 7), numpy.int32(4), numpy.int32(7)),
+            correctb2=(rand(1, 7), numpy.int32(2),
+                       numpy.int32(4), numpy.int32(7)),
+            correctb3=(rand(7, 1), numpy.int32(7), numpy.int32(4)),
+            correctb4=(rand(7, 1), numpy.int32(2),
+                       numpy.int32(7), numpy.int32(4)),
             ),
         bad_runtime=dict(
                     bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
@@ -1838,6 +1844,54 @@ Alloc13GradTester = makeBroadcastTester(
             x3=(rand(s3),),
             ),
         )
+
+# unbroadcast a row to a matrix
+Allocb1GradTester = makeBroadcastTester(
+    name='Allocb1GradTester',
+    op=lambda x: alloc(x, s1, s2),
+    expected=(lambda x: numpy.zeros((s1, s2), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(1, s2),),
+        x2=(rand(1, s2),),
+        x3=(rand(1, s2),),
+    ),
+)
+
+# unbroadcast a row to a tensor3
+Allocb2GradTester = makeBroadcastTester(
+    name='Allocb2GradTester',
+    op=lambda x: alloc(x, s1, s2, s3),
+    expected=(lambda x: numpy.zeros((s1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(1, s3),),
+        x2=(rand(1, s3),),
+        x3=(rand(1, s3),),
+    ),
+)
+
+# unbroadcast a col to a matrix
+Allocb3GradTester = makeBroadcastTester(
+    name='Allocb3GradTester',
+    op=lambda x: alloc(x, s1, s2),
+    expected=(lambda x: numpy.zeros((s1, s2), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s1, 1),),
+        x2=(rand(s1, 1),),
+        x3=(rand(s1, 1),),
+    ),
+)
+
+# unbroadcast a col to a tensor3
+Allocb4GradTester = makeBroadcastTester(
+    name='Allocb4GradTester',
+    op=lambda x: alloc(x, s1, s2, s3),
+    expected=(lambda x: numpy.zeros((s1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s2, 1),),
+        x2=(rand(s2, 1),),
+        x3=(rand(s2, 1),),
+    ),
+)
 
 
 class TestAlloc(unittest.TestCase):
@@ -4204,9 +4258,30 @@ class T_op_cache(unittest.TestCase):
         self.assertTrue(numpy.all(fn_py(a) == fn_c_or_py(a)))
 
 
-class T_reshape(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
+class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
+    def __init__(self, name, shared=tensor._shared, op=Reshape, mode=None,
+                 ignore_topo=(DeepCopyOp, opt.MakeVector,
+                              opt.Shape_i, DimShuffle, theano.tensor.Elemwise)):
+        self.shared = shared
+        self.op = op
+        #The tag canonicalize is needed for the shape test in FAST_COMPILE
+        self.mode = mode
+        self.ignore_topo = ignore_topo
+        return super(T_reshape, self).__init__(name)
+
+    def function(self, inputs, outputs):
+        f = function(inputs, outputs, mode=self.mode)
+        if self.mode is not None or theano.config.mode != "FAST_COMPILE":
+            topo = f.maker.fgraph.toposort()
+            topo_ = [node for node in topo if not isinstance(node.op,
+                                                             self.ignore_topo)]
+            assert len(topo_) == 1, topo_
+        return f
+
+    def eval_output_and_check(self, t):
+        f = self.function([], t)
+        tval = f()
+        return tval
 
     def test_reshape(self):
         a = dvector()
@@ -4215,7 +4290,7 @@ class T_reshape(unittest.TestCase):
 
         #basic to 1 dim(without list)
         c = reshape(b, as_tensor_variable(6), ndim=1)
-        f = inplace_func([b], c)
+        f = self.function([b], c)
 
         b_val1 = numpy.asarray([[0, 1, 2], [3, 4, 5]])
         c_val1 = numpy.asarray([0, 1, 2, 3, 4, 5])
@@ -4231,7 +4306,7 @@ class T_reshape(unittest.TestCase):
 
         #basic to 1 dim(with list)
         c = reshape(b, (as_tensor_variable(6),), ndim=1)
-        f = inplace_func([b], c)
+        f = self.function([b], c)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([0, 1, 2, 3, 4, 5]))
         #print f.maker.fgraph.toposort()
@@ -4239,14 +4314,14 @@ class T_reshape(unittest.TestCase):
 
         #basic to shape object of same ndim
         c = reshape(b, d.shape)
-        f = inplace_func([b, d], c)
+        f = self.function([b, d], c)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]]),
                            [[0, 1], [2, 3], [4, 5]]) ==
                          numpy.asarray([[0, 1], [2, 3], [4, 5]]))
 
         #basic to 2 dims
         c = reshape(a, [2, 3])
-        f = inplace_func([a], c)
+        f = self.function([a], c)
         assert numpy.all(f(numpy.asarray([0, 1, 2, 3, 4, 5])) ==
                          numpy.asarray([[0, 1, 2], [3, 4, 5]]))
 
@@ -4255,7 +4330,7 @@ class T_reshape(unittest.TestCase):
         a_val_copy = numpy.asarray([0, 1, 2, 3, 4, 5])
         b_val = numpy.asarray([[0, 1, 2], [3, 4, 5]])
 
-        f_sub = inplace_func([a, b], c - b)
+        f_sub = self.function([a, b], c - b)
         assert numpy.all(f_sub(a_val, b_val) == 0.0)
         assert numpy.all(a_val == a_val_copy)
 
@@ -4264,35 +4339,33 @@ class T_reshape(unittest.TestCase):
         a_val_copy = theano._asarray([0, 1, 2, 3, 4, 5], dtype='float64')
         b_val = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float64')
 
-        f_sub = inplace_func([a, b], c - b)
+        f_sub = self.function([a, b], c - b)
         assert numpy.all(f_sub(a_val, b_val) == 0.0)
         assert numpy.all(a_val == a_val_copy)
 
         # verify gradient
         def just_vals(v):
             return Reshape(2)(v, theano._asarray([2, 3], dtype='int32'))
-        utt.verify_grad(just_vals, [a_val])
+        utt.verify_grad(just_vals, [a_val], mode=self.mode)
 
         #test infer_shape
-        f_sub = function([a, b], (c - b).shape)
-        if config.mode == "FAST_COMPILE":
-            assert len(f_sub.maker.fgraph.toposort()) == 3
-        else:
-            topo = f_sub.maker.fgraph.toposort()
-            assert len(topo) == 1
-            topo[0].op == theano.compile.function_module.deep_copy_op
-            #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5]]))==[2,3])#work in FAST_RUN, but fail on other!
-            #assert numpy.all(f_sub(a_val,numpy.asarray([[0,1],[2,3],[4,5],[6,7]]))==[2,3])#work in FAST_RUN, but fail on other!
+        self._compile_and_check([a], [c], (a_val,), self.op)
 
         # test broadcast flag for constant value of 1
         c = reshape(b, (b.shape[0], b.shape[1], 1))
-        f = inplace_func([b], c)
+        f = self.function([b], c)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
         assert (f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable ==
                 (False, False, True))
 
-        assert numpy.all(f_sub(a_val, b_val) == [2, 3])
+    def test_m1(self):
+        t = tensor3()
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        val = rng.uniform(size=(3, 4, 5)).astype(config.floatX)
+        for out in [t.reshape([-1]), t.reshape([-1, 5]),
+                    t.reshape([5, -1]), t.reshape([5, -1, 3])]:
+            self._compile_and_check([t], [out], [val], self.op)
 
     def test_reshape_long_in_shape(self):
         v = dvector('v')
@@ -4311,14 +4384,14 @@ class T_reshape(unittest.TestCase):
         r = a.reshape(shapes, ndim=1)
         z = zeros_like(r)
 
-        f = function([a, shapes], z.shape)
+        f = self.function([a, shapes], z.shape)
         self.assertRaises(ValueError, f, a_val, [13])
 
         #Test reshape to 2 dim
         r = a.reshape(shapes, ndim=2)
         z = zeros_like(r)
 
-        f = function([a, shapes], z.shape)
+        f = self.function([a, shapes], z.shape)
 
         self.assertRaises(ValueError, f, a_val, [-1, 5])
         self.assertRaises(ValueError, f, a_val, [7, -1])

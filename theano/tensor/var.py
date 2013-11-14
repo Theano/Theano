@@ -1,8 +1,9 @@
+import copy
+
 import numpy
 
 import theano
-from theano.compat import PY3
-from theano.compat.python2x import all
+from theano.compat import all, PY3
 from theano.scalar import ComplexError, IntegerDivisionError
 from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
@@ -543,8 +544,8 @@ class _tensor_py_operators:
     def get_scalar_constant_value(self):
         return theano.tensor.basic.get_scalar_constant_value(self)
 
-    def zeros_like(self, dtype=None):
-        return theano.tensor.basic.zeros_like(self, dtype=dtype)
+    def zeros_like(model, dtype=None):
+        return theano.tensor.basic.zeros_like(model, dtype=dtype)
 
 
 class TensorVariable(_tensor_py_operators, Variable):
@@ -674,5 +675,14 @@ class TensorConstant(_tensor_py_operators, Constant):
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and
                 self.signature() == other.signature())
+    def __copy__(self):
+        # We need to do this to remove the cached attribute
+        return type(self)(self.type, self.data, self.name)
+
+    def __deepcopy__(self, memo):
+        # We need to do this to remove the cached attribute
+        return type(self)(copy.deepcopy(self.type, memo),
+                          copy.deepcopy(self.data, memo),
+                          copy.deepcopy(self.name, memo))
 
 TensorType.Constant = TensorConstant

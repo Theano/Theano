@@ -1693,7 +1693,7 @@ class GCC_compiler(object):
         #to use the new API, but not everywhere. When finished, enable
         #the following macro to assert that we don't bring new code
         #that use the old API.
-        #cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
         # numpy 1.7 deprecated the following macro but the new one didn't

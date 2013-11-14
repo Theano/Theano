@@ -76,7 +76,13 @@ class Optimizer(object):
           opt.apply(fgraph)
         """
         self.add_requirements(fgraph)
-        return self.apply(fgraph, *args, **kwargs)
+        try:
+            orig = theano.tensor.basic.constant.enable
+            theano.tensor.basic.constant.enable = False
+            ret = self.apply(fgraph, *args, **kwargs)
+        finally:
+            theano.tensor.basic.constant.enable = orig
+        return ret
 
     def __call__(self, fgraph):
         """WRITEME
@@ -165,6 +171,10 @@ class SeqOptimizer(Optimizer, list):
         l = []
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
+            sub_validate_time = [validate_before]
+        else:
+            sub_validate_time = []
+        callback_before = fgraph.execute_callbacks_time
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         for optimizer in self:
@@ -173,6 +183,8 @@ class SeqOptimizer(Optimizer, list):
                 sub_prof = optimizer.optimize(fgraph)
                 l.append(float(time.time() - t0))
                 sub_profs.append(sub_prof)
+                if fgraph.profile:
+                    sub_validate_time.append(fgraph.profile.validate_time)
             except AssertionError:
                 # do not catch Assertion failures
                 raise
@@ -187,8 +199,9 @@ class SeqOptimizer(Optimizer, list):
             validate_time = fgraph.profile.validate_time - validate_before
         else:
             validate_time = None
-        return (self, l, validate_time, nb_node_before,
-                len(fgraph.apply_nodes), sub_profs)
+        callback_time = fgraph.execute_callbacks_time - callback_before
+        return (self, l, validate_time, callback_time, nb_node_before,
+                len(fgraph.apply_nodes), sub_profs, sub_validate_time)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -208,8 +221,8 @@ class SeqOptimizer(Optimizer, list):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opts, prof, validate_time, nb_node_before,
-         nb_node_after, sub_profs) = prof
+        (opts, prof, validate_time, callback_time, nb_node_before,
+         nb_node_after, sub_profs, sub_validate_time) = prof
         blanc = ('    ' * level)
 
         print >> stream, blanc, "SeqOptimizer",
@@ -222,8 +235,10 @@ class SeqOptimizer(Optimizer, list):
                               sum(prof), nb_node_before, nb_node_after))
         print >> stream, \
                 blanc, "  %.3fs for fgraph.validate()" % (validate_time)
+        print >> stream, \
+                blanc, "  %.3fs for callback" % (callback_time)
         if level == 0:
-            print >> stream, blanc, "  time      - (name, class, index)"
+            print >> stream, blanc, "  time      - (name, class, index) - validate time"
         ll = []
         for opt in opts:
             if hasattr(opt, "__name__"):
@@ -245,7 +260,14 @@ class SeqOptimizer(Optimizer, list):
         for (t, opt) in lll[::-1]:
             #if t < 1:
             #    continue
-            print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+            if sub_validate_time:
+                i = opt[-1]
+                val_time = sub_validate_time[i + 1] - sub_validate_time[i]
+                print >> stream, blanc, '  %.6fs - %s - %.3fs' % (
+                    t, opt, val_time)
+            else:
+                print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+
             if sub_profs[opt[-1]]:
                 opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
                                             level=level + 1)
@@ -492,7 +514,8 @@ class MergeFeature(object):
                 continue
 
             inputs_match = all(node_in is cand_in
-                    for node_in, cand_in in zip(node.inputs, candidate.inputs))
+                               for node_in, cand_in in zip(node.inputs,
+                                                           candidate.inputs))
             if inputs_match and node.op == candidate.op:
                 if (node, candidate) in self.blacklist:
                     # They were already tried, and there was an error
@@ -539,6 +562,15 @@ class MergeOptimizer(Optimizer):
         # Constant and non-constant are now applied in the same phase.
         # I am not sure why, but it seems to be faster this way.
         sched = fgraph.merge_feature.scheduled
+        nb_fail = 0
+        t0 = time.time()
+        if fgraph.profile:
+            validate_before = fgraph.profile.validate_time
+            callback_before = fgraph.execute_callbacks_time
+            callbacks_before = fgraph.execute_callbacks_times.copy()
+
+        nb_merged = 0
+        nb_constant = 0
         while sched:
             pairs_list = sched.pop()
             success = True
@@ -547,16 +579,52 @@ class MergeOptimizer(Optimizer):
                     fgraph.replace_all_validate(pairs, 'Merge')
                 except InconsistencyError:
                     success = False
+                    nb_fail += 1
                     fgraph.merge_feature.blacklist.append(
                         (pairs[0][0].owner, pairs[0][1].owner))
                 if success:
+                    nb_merged += len(pairs)
+                    if isinstance(pairs[0][0], graph.Constant):
+                        nb_constant += 1
+                        #print pairs, pairs[0][0].type
                     break
 
+        if fgraph.profile:
+            validate_time = fgraph.profile.validate_time - validate_before
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            callbacks_time = {}
+            for k, v in fgraph.execute_callbacks_times.iteritems():
+                if k in callbacks_before:
+                    callbacks_time[k] = v - callbacks_before[k]
+                else:
+                    callbacks_time[k] = v
+        else:
+            validate_time = None
+            callback_time = None
+            callbacks_time = {}
         # clear blacklist
         fgraph.merge_feature.blacklist = []
+        return (nb_fail, time.time() - t0, validate_time,
+                callback_time, callbacks_time, nb_merged, nb_constant)
 
     def __str__(self):
         return self.__class__.__name__
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (nb_fail, replace_time, validate_time,
+         callback_time, callbacks_time, nb_merged, nb_constant) = prof
+
+        blanc = ('    ' * level)
+        print >> stream, blanc, "MergeOptimizer"
+        print >> stream, blanc, "  nb_fail", nb_fail
+        print >> stream, blanc, "  replace_time", replace_time
+        print >> stream, blanc, "  validate_time", validate_time
+        print >> stream, blanc, "  callback_time", callback_time
+        print >> stream, blanc, "  callback_times", callbacks_time
+        print >> stream, blanc, "  nb_merged", nb_merged
+        print >> stream, blanc, "  nb_constant", nb_constant
+
 
 merge_optimizer = MergeOptimizer()
 
@@ -575,7 +643,9 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     givens = copied[2]
     # Create FunctionGraph.
     inputs = theano.gof.graph.inputs(vars)
-    fgraph = theano.gof.fg.FunctionGraph(inputs, vars)
+    # The clone isn't needed as we did a deepcopy and we cloning will
+    # break the mapping in givens.
+    fgraph = theano.gof.fg.FunctionGraph(inputs, vars, clone=False)
     # Perform Variable substitution.
     for to_replace, replace_by in givens.iteritems():
         fgraph.replace(to_replace, replace_by)
@@ -682,7 +752,7 @@ class LocalOptimizer(object):
         """
 
         raise utils.MethodNotDefined("transform",
-                type(self), self.__class__.__name__)
+                                     type(self), self.__class__.__name__)
 
     def add_requirements(self, fgraph):
         """
@@ -712,7 +782,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
 
     def __str__(self):
         return getattr(self, '__name__',
-                '<FromFunctionLocalOptimizer instance>')
+                       '<FromFunctionLocalOptimizer instance>')
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" % (
@@ -742,8 +812,8 @@ class LocalOptGroup(LocalOptimizer):
 
     def __str__(self):
         return getattr(self, '__name__',
-                ('<theano.gof.opt.LocalOptGroup instance>'
-                    + str([str(o) for o in self.opts])))
+                       ('<theano.gof.opt.LocalOptGroup instance>' +
+                        str([str(o) for o in self.opts])))
 
     def transform(self, node):
         for opt in self.opts:
@@ -899,7 +969,7 @@ class PatternSub(LocalOptimizer):
     """
 
     def __init__(self, in_pattern, out_pattern, allow_multiple_clients=False,
-            skip_identities_fn=None, name=None, pdb=False):
+                 skip_identities_fn=None, name=None, pdb=False):
         """
         Creates a PatternSub that replaces occurrences of
         in_pattern by occurrences of out_pattern.
@@ -920,10 +990,10 @@ class PatternSub(LocalOptimizer):
             self.op = self.in_pattern['pattern'][0]
         else:
             raise TypeError("The pattern to search for must start with "
-                    "a specific Op instance.")
-        self.__doc__ = (self.__class__.__doc__
-                + "\n\nThis instance does: "
-                + str(self) + "\n")
+                            "a specific Op instance.")
+        self.__doc__ = (self.__class__.__doc__ +
+                        "\n\nThis instance does: " +
+                        str(self) + "\n")
         self.allow_multiple_clients = allow_multiple_clients
         self.skip_identities_fn = skip_identities_fn
         if name:
@@ -966,7 +1036,7 @@ class PatternSub(LocalOptimizer):
                 #TODO: Not sure how to handle multiple_clients flag
                 ###print 'retrying match', pattern, expr_equiv
                 return match(pattern, expr_equiv, u,
-                        allow_multiple_clients=allow_multiple_clients)
+                             allow_multiple_clients=allow_multiple_clients)
 
             if isinstance(pattern, (list, tuple)):
                 if expr.owner is None:
@@ -986,8 +1056,8 @@ class PatternSub(LocalOptimizer):
                     real_pattern = pattern['pattern']
                 except KeyError:
                     raise KeyError(
-                            "Malformed pattern: %s (expected key 'pattern')"
-                            % pattern)
+                        "Malformed pattern: %s (expected key 'pattern')"
+                        % pattern)
                 constraint = pattern.get('constraint', lambda expr: True)
                 if constraint(expr):
                     return match(real_pattern, expr, u,
@@ -1114,7 +1184,7 @@ class NavigatorOptimizer(Optimizer):
         pass
 
     def __init__(self, local_opt, ignore_newtrees='auto',
-            failure_callback=None):
+                 failure_callback=None):
         """
         :param local_opt:  a LocalOptimizer to apply over a FunctionGraph
             (or None is Ok too).
@@ -1217,7 +1287,8 @@ class NavigatorOptimizer(Optimizer):
         except Exception, e:
             if self.failure_callback is not None:
                 self.failure_callback(e, self,
-                        [(x, None) for x in node.outputs], lopt)
+                                      [(x, None) for x in node.outputs],
+                                      lopt)
                 return False
             else:
                 raise
@@ -1225,14 +1296,20 @@ class NavigatorOptimizer(Optimizer):
             return False
         if not isinstance(replacements, (tuple, list)):
             raise TypeError('Optimizer %s gave wrong type of replacement. '
-                    'Expected list or tuple.' % lopt)
+                            'Expected list or tuple.' % lopt)
         if len(node.outputs) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements'
-                    % lopt)
+                             % lopt)
+        # None in the replacement mean that this variable isn't used
+        # and we want to remove it
+        for r, rnew in zip(node.outputs, replacements):
+            if rnew is None and len(r.clients) > 0:
+                raise ValueError("A local optimizer tried to remove a Variable that is used")
         # If an output would be replaced by itself, no need to perform
         # the replacement
         repl_pairs = [(r, rnew) for r, rnew in zip(node.outputs, replacements)
-                      if rnew is not r]
+                      if rnew is not r and rnew is not None]
+
         if len(repl_pairs) == 0:
             return False
         try:
@@ -1261,24 +1338,28 @@ class NavigatorOptimizer(Optimizer):
                 (' ' * level), self.__class__.__name__, id(self))
         if depth != 0:
             self.local_opt.print_summary(stream, level=(level + 2),
-                    depth=(depth - 1))
+                                         depth=(depth - 1))
 
 
 class TopoOptimizer(NavigatorOptimizer):
     """WRITEME"""
 
     def __init__(self, local_opt, order='in_to_out', ignore_newtrees=False,
-            failure_callback=None):
+                 failure_callback=None):
         if order not in ['out_to_in', 'in_to_out']:
             raise ValueError("order must be 'out_to_in' or 'in_to_out'")
         self.order = order
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees,
-                failure_callback)
+                                    failure_callback)
 
     def apply(self, fgraph, start_from=None):
         if start_from is None:
             start_from = fgraph.outputs
+        callback_before = fgraph.execute_callbacks_time
+        nb_nodes_start = len(fgraph.apply_nodes)
+        t0 = time.time()
         q = deque(graph.io_toposort(fgraph.inputs, start_from))
+        io_t = time.time() - t0
 
         def importer(node):
             if node is not current_node:
@@ -1292,18 +1373,39 @@ class TopoOptimizer(NavigatorOptimizer):
                     pass
 
         u = self.attach_updater(fgraph, importer, pruner)
+        nb = 0
         try:
+            t0 = time.time()
             while q:
                 if self.order == 'out_to_in':
                     node = q.pop()
                 else:
                     node = q.popleft()
                 current_node = node
-                self.process_node(fgraph, node)
+                nb += self.process_node(fgraph, node)
+            loop_t = time.time() - t0
         except Exception:
             self.detach_updater(fgraph, u)
             raise
         self.detach_updater(fgraph, u)
+
+        callback_time = fgraph.execute_callbacks_time - callback_before
+        nb_nodes_end = len(fgraph.apply_nodes)
+        return (nb, nb_nodes_start, nb_nodes_end,
+                io_t, loop_t, callback_time)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (nb, nb_nodes_start, nb_nodes_end,
+         io_t, loop_t, callback_time) = prof
+
+        blanc = ('    ' * level)
+        print >> stream, blanc, "TopoOptimizer"
+        print >> stream, blanc, "  nb_node (start, end, changed)", (
+            nb_nodes_start, nb_nodes_end, nb)
+        print >> stream, blanc, "  init io_toposort", io_t
+        print >> stream, blanc, "  loop time", loop_t
+        print >> stream, blanc, "  callback_time", callback_time
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1314,12 +1416,12 @@ class OpKeyOptimizer(NavigatorOptimizer):
     """WRITEME"""
 
     def __init__(self, local_opt, ignore_newtrees=False,
-            failure_callback=None):
+                 failure_callback=None):
         if not hasattr(local_opt, 'op_key'):
             raise TypeError("LocalOptimizer for OpKeyOptimizer must have "
-                    "an 'op_key' method.")
+                            "an 'op_key' method.")
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees,
-                failure_callback)
+                                    failure_callback)
 
     def apply(self, fgraph):
         op = self.local_opt.op_key()
@@ -1430,6 +1532,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         max_use_abort = False
         opt_name = None
         global_process_count = {}
+        start_nb_nodes = len(fgraph.apply_nodes)
         max_nb_nodes = len(fgraph.apply_nodes)
         max_use = max_nb_nodes * self.max_use_ratio
 
@@ -1514,13 +1617,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
 
+        end_nb_nodes = len(fgraph.apply_nodes)
+
         if max_use_abort:
             _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
 
-        return (self, loop_timing, loop_process_count, max_nb_nodes,
+        return (self, loop_timing, loop_process_count,
+                (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
@@ -1530,19 +1636,22 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         if depth != 0:
             for lopt in self.local_optimizers:
                 lopt.print_summary(stream, level=(level + 2),
-                        depth=(depth - 1))
+                                   depth=(depth - 1))
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opt, loop_timing, loop_process_count, max_nb_nodes,
+        (opt, loop_timing, loop_process_count,
+         (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof
 
         blanc = ('    ' * level)
         print >> stream, blanc, "EquilibriumOptimizer",
         print >> stream, blanc, getattr(opt, "name",
                                         getattr(opt, "__name__", ""))
-        print >> stream, blanc, "  time %.3fs for %d passes, %d nodes max" % (
-                sum(loop_timing), len(loop_timing), max_nb_nodes)
+        print >> stream, blanc, "  time %.3fs for %d passes" % (
+                sum(loop_timing), len(loop_timing))
+        print >> stream, blanc, "  nb nodes (start, end,  max) %d %d %d" % (
+                start_nb_nodes, end_nb_nodes, max_nb_nodes)
         print >> stream, blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing)
         s = sum([time_opts[o] for o in opt.local_optimizers])

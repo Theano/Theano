@@ -4,6 +4,7 @@ import copy
 import logging
 import pickle
 import os
+import sys
 import time
 import unittest
 
@@ -14,7 +15,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.scalar as scal
-from theano.compat.six import StringIO
+from theano.compat.six import PY3, StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
 from theano import config
@@ -2653,11 +2654,24 @@ class test_shapeoptimizer(unittest.TestCase):
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
+        if sys.version_info[:2] < (2, 5):
+            raise SkipTest("Test skipped due to a too old python")
 
         pkl_filename = os.path.join(os.path.dirname(theano.__file__),
                                     'tensor', 'tests', 'shape_opt_cycle.pkl')
-        fn_args = pickle.load(open(pkl_filename, "rb"))
-        theano.function(**fn_args)
+        # Due to incompatibilities between python 2 and 3 in the format
+        # of pickled numpy ndarray, we have to force an encoding
+        from theano.misc.pkl_utils import CompatUnpickler
+        pkl_file = open(pkl_filename, "rb")
+        try:
+            if PY3:
+                u = CompatUnpickler(pkl_file, encoding="latin1")
+            else:
+                u = CompatUnpickler(pkl_file)
+            fn_args = u.load()
+            theano.function(**fn_args)
+        finally:
+            pkl_file.close()
 
 
 class test_assert(utt.InferShapeTester):

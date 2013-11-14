@@ -410,9 +410,9 @@ def local_dimshuffle_lift(node):
     inode = input.owner
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
-        ret = inode.op(*[DimShuffle(inp.type.broadcastable,
-                                    op.new_order,
-                                    op.inplace)(inp) for inp in
+        ret = inode.op(*[op.__class__(inp.type.broadcastable,
+                                      op.new_order,
+                                      op.inplace)(inp) for inp in
                          inode.inputs], **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -424,8 +424,8 @@ def local_dimshuffle_lift(node):
                                                    iinput.type.ndim):
             return [iinput]
         else:
-            ret = DimShuffle(iinput.type.broadcastable, new_order,
-                             inplace)(iinput, **dict(return_list=True))
+            ret = op.__class__(iinput.type.broadcastable, new_order,
+                               inplace)(iinput, **dict(return_list=True))
             return ret
 
 
@@ -460,7 +460,7 @@ def dimshuffle_as_view(node):
     op = node.op
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
-    new_op = DimShuffle(op.input_broadcastable, op.new_order, inplace=True)
+    new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
 
 #Step 60 is the inplace optimization stage.
@@ -915,6 +915,13 @@ class ShapeFeature(object):
             # If no info is known on r's shape, use other_shape
             self.set_shape(r, other_shape)
             return
+        if (other_r.owner and r.owner and
+            other_r.owner.inputs == r.owner.inputs and
+            other_r.owner.op == r.owner.op):
+            # We are doing a merge. So the 2 shapes graph will be the
+            # same.  This is only a speed optimization to call
+            # ancestors() less frequently.
+            return
 
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
@@ -927,6 +934,18 @@ class ShapeFeature(object):
                 # For now, we consider 2 cases of uninformative other_shape[i]:
                 #  - Shape_i(i)(other_r);
                 #  - Shape_i(i)(r).
+                merged_shape.append(r_shape[i])
+            elif isinstance(r_shape[i], (Constant, int)):
+                # We do this to call less often ancestors and make
+                # sure we have the simplest shape possible.
+                merged_shape.append(r_shape[i])
+            elif isinstance(other_shape[i], (Constant, int)):
+                # We do this to call less often ancestors and make
+                # sure we have the simplest shape possible.
+                merged_shape.append(other_shape[i])
+            elif other_shape[i] == r_shape[i]:
+                # This mean the shape is equivalent
+                # We do not want to do the ancestor check in those cases
                 merged_shape.append(r_shape[i])
             elif r_shape[i] in theano.gof.graph.ancestors([other_shape[i]]):
                 # Another case where we want to use r_shape[i] is when
@@ -2119,7 +2138,7 @@ def local_IncSubtensor_serialize(node):
 
 # We register it in a TopoOptimizer inside the canonizer EQ optimizer.
 # Otherwise in some cases it was making the EQ optimizer use 45. In
-# the TopoOptimizer, the EQ only use 6 passes.
+# the TopoOptimizer, the EQ only use 5 passes.
 compile.optdb.register('pre_local_IncSubtensor_serialize',
                        in2out(local_IncSubtensor_serialize),
                        #Just before canonizer
@@ -2136,13 +2155,13 @@ def local_inplace_setsubtensor(node):
     """
     if isinstance(node.op, IncSubtensor) and not node.op.inplace:
         new_op = node.op.__class__(
-       node.op.idx_list, inplace=True,
-       set_instead_of_inc=node.op.set_instead_of_inc,
-       destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
+            node.op.idx_list, inplace=True,
+            set_instead_of_inc=node.op.set_instead_of_inc,
+            destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('inplace_setsubtensor',
+compile.optdb.register('local_inplace_setsubtensor',
                        TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60,
                        'fast_run', 'inplace')  # DEBUG
@@ -3711,17 +3730,16 @@ def local_add_specialize(node):
                 continue
             new_inputs.append(input)
 
+
         if len(new_inputs) < len(node.inputs):
             dtype = node.outputs[0].type.dtype
             if len(new_inputs) == 0:
                 #we got rid of the entire expression!
                 ndim = node.outputs[0].type.ndim
-                return fill_chain(
-                        T.TensorConstant(
-                            T.TensorType(
-                                dtype=dtype,
-                                broadcastable=[True] * ndim),
-                            numpy.zeros((1,) * ndim, dtype=dtype)))
+                #Reuse call to constant for cache()
+                cst = T.constant(numpy.zeros((1,) * ndim, dtype=dtype))
+                assert cst.type.broadcastable == (True,) * ndim
+                return fill_chain(cst)
 
             if len(new_inputs) == 1:
                 ret = fill_chain(new_inputs[0])
@@ -4609,7 +4627,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
         # worthwhile if the summation axis doesn't line up with a
         # contiguous dimension)
 
-        if not isinstance(node.op, OP):
+        if type(node.op) is not OP:
             return False
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.

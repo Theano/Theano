@@ -3,7 +3,7 @@ from theano.gof.graph import Variable, Apply
 from theano.gof.type import Type
 from theano.gof.op import Op
 
-from theano.gof.fg import FunctionGraph as Env, InconsistencyError
+from theano.gof.fg import FunctionGraph, InconsistencyError
 from theano.gof.toolbox import *
 
 
@@ -61,14 +61,13 @@ def inputs():
     return x, y, z
 
 
-
 class TestNodeFinder:
 
     def test_straightforward(self):
         x, y, z = inputs()
         e0 = dot(y, z)
         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), e0))
-        g = Env([x, y, z], [e])
+        g = FunctionGraph([x, y, z], [e], clone=False)
         g.attach_feature(NodeFinder())
 
         assert hasattr(g, 'get_nodes')

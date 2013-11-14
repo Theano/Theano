@@ -190,7 +190,7 @@ def do_setup():
           packages=find_packages(),
           install_requires=['numpy>=1.5.0', 'scipy>=0.7.2'],
           package_data={
-              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh',
+              '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    'ChangeLog'],
               'theano.misc': ['*.sh']
           },

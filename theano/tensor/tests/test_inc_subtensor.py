@@ -54,7 +54,7 @@ class Test_inc_subtensor(unittest.TestCase):
             else:
                 expected_result[:, :val_sl2_end] += val_inc
 
-            self.assertTrue(numpy.array_equal(result, expected_result))
+            utt.assert_allclose(result, expected_result)
 
     def test_wrong_dims(self):
         a = tt.matrix()
@@ -122,7 +122,7 @@ class Test_inc_subtensor(unittest.TestCase):
             else:
                 expected_result[:, sl3, :val_sl2_end] += val_inc
 
-            self.assertTrue(numpy.array_equal(result, expected_result))
+            utt.assert_allclose(result, expected_result)
 
     def test_grad_inc_set(self):
         def inc_slice(*s):

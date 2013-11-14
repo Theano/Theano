@@ -5,7 +5,6 @@ __docformat__ = "restructuredtext en"
 import sys
 import warnings
 from itertools import izip
-from textwrap import dedent
 
 import numpy
 from copy import copy as python_copy
@@ -17,13 +16,12 @@ from theano.gof import Apply, Constant, Op, Variable
 
 from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
-                               TensorConstantSignature,
                                TensorConstant,
                                _tensor_py_operators)
 from theano.tensor.type import TensorType
 from theano import scalar as scal
-from theano.gof.python25 import partial, any, all, maxsize
-from theano.gof.utils import hashtype, MethodNotDefined
+from theano.gof.python25 import partial, any, all
+from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 
@@ -400,9 +398,30 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 
+constant_cache = {}
 def constant(x, name=None, ndim=None, dtype=None):
-    return constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
+    ret = constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
                              dtype=dtype)
+
+    #We create a small cache of frequently used constant.
+    #This speed up the Merge optimization for big graph.
+    #We want to cache all scalar to don't merge as frequently constants.
+    #But we don't want to cache too much stuff
+    #So we cache integer with dtype [u]int and float where the value is between -10 and 10
+    #We want to cache all broadcast pattern for scalar.
+    if not constant.enable:
+        return ret
+    sig = ret.signature()
+    if (sig not in constant_cache and ret.data.size == 1 and
+        ret.data <= 10 and ret.data >= -10 and
+        (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
+         (ret.dtype in float_dtypes and int(ret.data) == ret.data))):
+        constant_cache[sig] = ret
+        # This is needed to raise a good error to the user.
+        ret.cached = True
+
+    return constant_cache.get(sig, ret)
+constant.enable = True
 
 
 def _obj_is_wrappable_as_tensor(x):
@@ -2547,7 +2566,28 @@ class Alloc(gof.Op):
         x = inputs[0]
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
-        gx = gz.sum(axis=range(n_axes_to_sum))
+        #The number of dimensions added
+        axis = range(n_axes_to_sum)
+        #The broadcasted dimensions
+        axis_broadcasted = []
+        for i, (ib, gb) in enumerate(
+            zip(inputs[0].broadcastable,
+                #We need the dimensions corresponding to x
+                grads[0].broadcastable[-inputs[0].ndim:])):
+            if ib and not gb:
+                axis_broadcasted.append(i + n_axes_to_sum)
+        gx = gz.sum(axis=axis + axis_broadcasted)
+        if axis_broadcasted:
+            new_order = list(x.broadcastable)
+            idx = 0
+            for i in range(x.ndim):
+                if not new_order[i]:
+                    new_order[i] = idx
+                    idx += 1
+                else:
+                    new_order[i] = 'x'
+            gx = gx.dimshuffle(new_order)
+            #Dimshuffle to add back the broadcasted dims
         #The *elements* of the output are not connected to
         #the inputs that specify the shape. If you grow the
         #shape by epsilon, the existing elements do not
@@ -3884,7 +3924,7 @@ class Reshape(Op):
             }
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
-                PyArray_CORDER);
+                NPY_CORDER);
             if (!%(z)s)
             {
                 //The error message should have been set by PyArray_Newshape

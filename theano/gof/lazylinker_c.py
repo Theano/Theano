@@ -76,10 +76,7 @@ except ImportError:
         except ImportError:
             _logger.info("Compiling new CVM")
             dirname = 'lazylinker_ext'
-            # We use a .txt extensions as otherwise it don't get
-            # included when we create a package to send to pypi
-            # This happen even if we tell to include *.c files
-            cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c.txt')
+            cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):

@@ -528,7 +528,7 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         const int * dims);
 
-DllExport const char* cublasGetErrorString(cublasStatus err){
+DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus err){
     if(CUBLAS_STATUS_SUCCESS == err)
         return "success";
     else if(CUBLAS_STATUS_NOT_INITIALIZED == err)

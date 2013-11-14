@@ -122,10 +122,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             try:
                 self.eval_output_and_check(t)
-                assert 0
-            except Exception, e:
-                if 'out of bounds' not in exc_message(e):
-                    raise
+            except IndexError, e:
+                return
+            self.fail()
         finally:
             _logger.setLevel(oldlevel)
 
@@ -161,7 +160,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test1_0_dims(self):
         n = self.shared(numpy.ones((), dtype=self.dtype))
-        t = theano.tensor.Subtensor([])(n)
+        t = self.sub([])(n)
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         mode = self.mode
         self.mode = mode.excluding("local_useless_subtensor")
@@ -188,7 +187,6 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval == 5.0)
 
     def test1_ok_range_infinite(self):
-        #Subtensor.debug = True
         n = self.shared(numpy.arange(3, dtype=self.dtype))
         t = n[1:]
         self.assertTrue(isinstance(t.owner.op, Subtensor))

@@ -125,7 +125,7 @@ as it will be useful later on.
 Mode
 ====
 
-Everytime :func:`theano.function <function.function>` is called,
+Every time :func:`theano.function <function.function>` is called,
 the symbolic relationships between the input and output Theano *variables*
 are optimized and compiled. The way this compilation occurs
 is controlled by the value of the ``mode`` parameter.
@@ -133,11 +133,11 @@ is controlled by the value of the ``mode`` parameter.
 Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
-- ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
+- ``'FAST_RUN'``: Apply all optimizations and use C implementations where possible.
 - ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'ProfileMode'``: Same optimization then FAST_RUN, put print some profiling information
+- ``'ProfileMode'``: Same optimization as FAST_RUN, but print some profiling information
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,
@@ -167,7 +167,7 @@ A mode is composed of 2 things: an optimizer and a linker. Some modes,
 like ``ProfileMode`` and ``DebugMode``, add logic around the optimizer and
 linker. ``ProfileMode`` and ``DebugMode`` use their own linker.
 
-You can select witch linker to use with the Theano flag :attr:`config.linker`.
+You can select which linker to use with the Theano flag :attr:`config.linker`.
 Here is a table to compare the different linkers.
 
 =============  =========  =================  =========  ===
