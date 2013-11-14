@@ -1,7 +1,5 @@
 __docformat__ = "restructuredtext en"
-import sys
-import unittest
-import numpy as N
+import numpy
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.raw_random import *
