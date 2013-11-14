@@ -478,6 +478,12 @@ class T_random_function(utt.InferShapeTester):
     def test_choice(self):
         """Test that raw_random.choice generates the same
         results as numpy."""
+        # numpy.random.choice is only available for numpy versions >= 1.7
+        major, minor, _ = numpy.version.short_version.split('.')
+        if (int(major), int(minor)) < (1, 7):
+            raise utt.SkipTest('choice requires at NumPy version >= 1.7 '
+                               '(%s)' % numpy.__version__)
+        
         # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
