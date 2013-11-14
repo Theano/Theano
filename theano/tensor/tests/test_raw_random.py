@@ -7,7 +7,6 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.raw_random import *
 from theano.tensor import (raw_random, ivector, dvector, iscalar, dcol,
                            dtensor3)
-from theano.tests import unittest_tools as utt
 from theano import tensor
 
 from theano import compile, config, gof
