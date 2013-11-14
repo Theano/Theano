@@ -303,7 +303,7 @@ def test_consistency_GPU_parallel():
 
 
 def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
-              target_avg=0.5, target_std=None, mean_rtol=0.01):
+              target_avg=0.5, target_std=None, mean_rtol=0.01, std_tol=0.01):
     if inputs is None:
         inputs = []
     dt = 0.0
@@ -334,20 +334,21 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     if hasattr(target_avg, 'shape'):  # looks if target_avg is an array
         diff = numpy.mean(abs(mean - target_avg))
         #print prefix, 'mean diff with mean', diff
-        assert diff < mean_rtol, 'bad mean? %f %f' % (mean, target_avg)
+        assert numpy.all(diff < mean_rtol * (1 + abs(target_avg))), (
+            'bad mean? %s %s' % (mean, target_avg))
     else:  # if target_avg is a scalar, then we can do the mean of
            # `mean` to get something more precise
         mean = numpy.mean(mean)
         #print prefix, 'mean', mean
-        assert abs(mean - target_avg) < mean_rtol, 'bad mean? %f %f' % (
-            numpy.mean(mean), target_avg)
+        assert abs(mean - target_avg) < mean_rtol * (1 + abs(target_avg)), (
+            'bad mean? %f %f' % (mean, target_avg))
 
     std = numpy.sqrt(avg_var)
     #print prefix, 'var', avg_var
     #print prefix, 'std', std
     if target_std is not None:
-        assert abs(std - target_std) < .01, 'bad std? %f %f' % (std,
-                                                                target_std)
+        assert abs(std - target_std) < std_tol * (1 + abs(target_std)), (
+                'bad std? %f %f' % (std, target_std))
     #print prefix, 'time', dt
     #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
@@ -544,30 +545,32 @@ def test_normal0():
         default_rtol = .01
     sample_size_odd = (sample_size[0], sample_size[1] - 1)
     x = tensor.matrix()
-    for size, const_size, var_input, input, avg, rtol in [
-        (sample_size, sample_size, [], [], -5., default_rtol),
+
+    for size, const_size, var_input, input, avg, rtol, std_tol in [
+        (sample_size, sample_size, [], [], -5., default_rtol, default_rtol),
         (x.shape, sample_size, [x],
          [numpy.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         ((x.shape[0], sample_size[1]), sample_size, [x],
          [numpy.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         #test odd value
-        (sample_size_odd, sample_size_odd, [], [], -5., default_rtol),
+        (sample_size_odd, sample_size_odd, [], [], -5.,
+         default_rtol, default_rtol),
         #test odd value
         (x.shape, sample_size_odd, [x],
          [numpy.zeros(sample_size_odd, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         (sample_size, sample_size, [], [],
          numpy.arange(numpy.prod(sample_size),
                       dtype='float32').reshape(sample_size),
-         10. * std / numpy.sqrt(steps)),
+         10. * std / numpy.sqrt(steps), default_rtol),
         # test empty size (scalar)
-        ((), (), [], [], -5., default_rtol),
+        ((), (), [], [], -5., default_rtol, 0.02),
         # test with few samples at the same time
-        ((1,), (1,), [], [], -5., default_rtol),
-        ((2,), (2,), [], [], -5., default_rtol),
-        ((3,), (3,), [], [], -5., default_rtol),
+        ((1,), (1,), [], [], -5., default_rtol, 0.02),
+        ((2,), (2,), [], [], -5., default_rtol, 0.02),
+        ((3,), (3,), [], [], -5., default_rtol, 0.02),
             ]:
         #print ''
         #print 'ON CPU:'
@@ -583,11 +586,12 @@ def test_normal0():
 
         # Increase the number of steps if size implies only a few samples
         if numpy.prod(const_size) < 10:
-            steps_ = steps * numpy.prod(sample_size, dtype=int) / 10
+            steps_ = steps * 50
         else:
             steps_ = steps
         basictest(f, steps_, const_size, target_avg=avg, target_std=std,
-                  prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+                  prefix='mrg ', allow_01=True, inputs=input,
+                  mean_rtol=rtol, std_tol=std_tol)
 
         sys.stdout.flush()
 
