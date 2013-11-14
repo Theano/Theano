@@ -351,7 +351,10 @@ def _infer_ndim_bcast(ndim, shape, *args):
                     ValueError('negative shape', s)
         # post-condition: shape may still contain both symbolic and
         # non-symbolic things
-        v_shape = tensor.stack(*pre_v_shape)
+        if len(pre_v_shape) == 0:
+            v_shape = tensor.constant([], dtype='int32')
+        else:
+            v_shape = tensor.stack(*pre_v_shape)
 
     elif shape is None:
         # The number of drawn samples will be determined automatically,

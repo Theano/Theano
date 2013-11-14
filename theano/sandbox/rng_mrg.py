@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
+from theano import tensor
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
                            get_vector_length, cast, opt, scal)
 from theano.tensor import sqrt, log, sin, cos, join, prod
@@ -890,7 +891,8 @@ class MRG_RandomStreams(object):
         constant = False
         if isinstance(size, tuple) and all([isinstance(i, (numpy.integer, int)) for i in size]):
             constant = True
-            n_samples = numpy.prod(size)
+            # Force dtype because it defaults to float when size is empty
+            n_samples = numpy.prod(size, dtype='int64')
 
             if n_samples % 2 == 1:
                 n_samples += 1
@@ -928,8 +930,10 @@ class MRG_RandomStreams(object):
         else:
             final_samples = normal_samples[:prod(size)]
 
-        if size:
-            final_samples = final_samples.reshape(size)
+        if not size:
+            # Force the dtype to be int64, otherwise reshape complains
+            size = tensor.constant(size, dtype='int64')
+        final_samples = final_samples.reshape(size)
 
         final_samples = avg + std * final_samples
 
