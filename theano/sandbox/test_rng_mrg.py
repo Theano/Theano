@@ -307,7 +307,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     if inputs is None:
         inputs = []
     dt = 0.0
-    avg_std = 0.0
+    avg_var = 0.0
 
     for i in xrange(steps):
         t0 = time.time()
@@ -317,16 +317,14 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
         ival = numpy.asarray(ival)
         if i == 0:
             mean = numpy.array(ival, copy=True)
-            #avg_std = numpy.std(ival)
-            avg_std = numpy.sqrt(numpy.mean((ival - target_avg) ** 2))
+            avg_var = numpy.mean((ival - target_avg) ** 2)
             min_ = ival.min()
             max_ = ival.max()
         else:
             alpha = 1.0 / (1 + i)
             mean = alpha * ival + (1 - alpha) * mean
-            #avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
-            avg_std = alpha * numpy.sqrt(numpy.mean((ival - target_avg) ** 2
-                                                )) + (1 - alpha) * avg_std
+            avg_var = (alpha * numpy.mean((ival - target_avg) ** 2)
+                       + (1 - alpha) * avg_var)
             min_ = min(min_, ival.min())
             max_ = max(max_, ival.max())
         if not allow_01:
@@ -343,10 +341,13 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
         #print prefix, 'mean', mean
         assert abs(mean - target_avg) < mean_rtol, 'bad mean? %f %f' % (
             numpy.mean(mean), target_avg)
-    #print prefix, 'std', avg_std
+
+    std = numpy.sqrt(avg_var)
+    #print prefix, 'var', avg_var
+    #print prefix, 'std', std
     if target_std is not None:
-        assert abs(avg_std - target_std) < .01, 'bad std? %f %f' % (avg_std,
-                                                                    target_std)
+        assert abs(std - target_std) < .01, 'bad std? %f %f' % (std,
+                                                                target_std)
     #print prefix, 'time', dt
     #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
