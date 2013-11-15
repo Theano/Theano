@@ -370,7 +370,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             # it will work if the long fits in int64 or uint64.
             x_ = numpy.asarray(x)
 
-    assert type(x_) == numpy.ndarray
+    assert isinstance(x_, numpy.ndarray)
 
     bcastable = [d == 1 for d in x_.shape]
     if ndim is not None:
