@@ -6,6 +6,8 @@ DRAFT Release Notes
 
 git log -p rel-0.6rc3... |grep Merge|grep '#' |cut -f 8 -d ' ' | replace "#" "* https://github.com/Theano/Theano/pull/"
 
+git shortlog -sn rel-0.6rc3..
+
 Done up to PR 1608
 * https://github.com/Theano/Theano/pull/1608
 
@@ -32,6 +34,41 @@ Highlights:
  * Bug fixes.
 
 Committers for this rc4 only:
+
+Frederic Bastien
+Pascal Lamblin
+Arnaud Bergeron
+abalkin
+Olivier Delalleau
+John Salvatier
+Razvan Pascanu
+Jeremiah Lowin
+Ludwig Schmidt-Hackenberg
+Vivek Kulkarni
+Matthew Rocklin
+Gabe Schwartz
+James Bergstra
+Bogdan Budescu
+Mehdi Mirza
+Nicolas Bouchard
+Ethan Buchman
+Guillaume Desjardins
+Ian Goodfellow
+Jason Yosinski
+Sina Honari
+Ben McCann
+David Warde-Farley
+Ilya Dyachenko
+Micky Latowicki
+Yaroslav Halchenko
+f0k
+Alexander Belopolsky
+Hannes Schulz
+Huy Nguyen
+Robert Kern
+Sebastian Berg
+Wei Li
+XterNalz
 
 Installation:
  * Canopy support (direct link to MKL):
