@@ -17,20 +17,21 @@ Theano Development version
 
 NEWS.txt:
 
- * Fix shape crash inserted by Scan optimization. The gradient of some recursive scan was making the PushOutSeqScan optimization insert crash during the execution of a Theano function. (Frédéric B., reported by Hugo Larochelle)
-
-
+We recommand everybody to update to this version.
 
 Highlights:
- * Python 3.3 compatibility with buildbot.
+ * Python 3.3 compatibility with buildbot test for it.
  * Full advanced indexing support.
  * Better Windows 64 bit support.
  * New profiler.
  * Better error messages that help debugging.
- * Better support of newer NumPy version(remove useless warning/crash) (Frederic B., Huy Nguyen)
- * Faster optimization/compilation for big graph (Frederic B.)
- * Move in Theano the Conv3d2d implementation (James Bergstra, Frederic B., Pascal L.)
- * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator (Matthew Rocklin)
+ * Better support of newer NumPy version (remove useless warning/crash).
+ * Faster optimization/compilation for big graph.
+ * Move in Theano the Conv3d2d implementation.
+ * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator.
+ * Bug fixes.
+
+Committers for this rc4 only:
 
 Installation:
  * Canopy support (direct link to MKL):
@@ -39,31 +40,30 @@ Installation:
 
  * Anaconda instructions (Pascal L., Frederic B.)
  * Doc Ubuntu 13.04 (Frederic B.)
-
-Committers for this rc3 only:
+ * Better support of newer NumPy version(remove useless warning/crash) (Frederic B., Huy Nguyen)
 
 Bug fixes:
- * Disable the optimization that introduce the CSMGradC op as it don't work correctly with unsorted indices. (Frederic B.)
- * Fix wrong result of GpuDownsampleFactorMaxGrad on Mac OSX. (Pascal L.)
- * Auto-Detect and work around a bug in BLAS on MacOS X (Pascal L.)
- * Work around bug in MacOS X. If 2 compiled modules had the same name, the OS or Python was not always the right one even when we used the right handle to it. (Pascal L.)
+ * Scan: if a scan node was cloned (by theano.clone) with different inputs, and if both the initial and the cloned nodes are used in the function being compiled, the value of the outputs of one would be replaced with the outputs of the other one. (Pascal L.)
+ * Sparse: Disable the optimization that introduce the CSMGradC op as it don't work correctly with unsorted indices. (Frederic B.)
+ * Mac: Fix wrong result of GpuDownsampleFactorMaxGrad on Mac OSX. (Pascal L.)
+ * Mac: Auto-Detect and work around a bug in BLAS on MacOS X (Pascal L.)
+ * Mac: Work around bug in MacOS X. If 2 compiled modules had the same name, the OS or Python was not always the right one even when we used the right handle to it. (Pascal L.)
    Use this hash in the Python module, and in %(nodename)s, so that different helper functions in the support code for different Ops will always have different names.
- * Fix infinite loop related to Scan on the GPU. (Pascal L.)
- * Fix infinite loop when the compiledir is full. (Frederic B.)
- * Fix a shape cycle crash in the optimizer (Pascal L., Frédéric B., reported by Cho KyungHyun)
- * Fix command not returning with recent mingw64 on Windows (Pascal L., reported by many people)
- * Fix ConstructSparseFromList.infer_shape (Pascal L., reported by Rami Al-Rfou')
+ * Sparse grad: Fix ConstructSparseFromList.infer_shape (Pascal L., reported by Rami Al-Rfou')
  * (introduced in the development version after 0.6rc3 release) (Frederic B.)
-   Reduction that upcasts the input on no axis (ex: call theano.sum() on a scalar when the original dtype isn't float64 or [u]int64). It produced bad results as we don't upcast the inputs in the code, we just copy them.
+   Reduction that upcasts the input on no axis (ex: call theano.sum() on a scalar when the original dtype isn't float64 or
+   [u]int64). It produced bad results as we did not upcasted the inputs in the code, we just copy them.
  * Fix some cases of theano.clone() when we get a replacement of x that is a function of x. (Razvan P., reported by Akio Takano)
  * Fix grad of Alloc when we unbroadcast the value value and it isn't a scalar. (Frederic B., reported Ian G.)
-   * I some cases (I think most cases), there was an exception raised in the theano.tensor.grad() method. But in theory, there could be bad shapes produced in the unbroadcasted dimensions.
+   * I some cases (I think most cases), there was an exception raised in the theano.tensor.grad() method.
+     But in theory, there could be bad shapes produced in the unbroadcasted dimensions.
 
 New Features:
- * ???Do I add it here??? First version of the new GPU back-end available (Arnaud Bergeron, Frederic B.)
+ * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator (Matthew Rocklin)
+ * Move in Theano the Conv3d2d implementation (James Bergstra, Frederic B., Pascal L.)
+ * First version of the new GPU back-end available (Arnaud Bergeron, Frederic B.)
    * Not all Ops have been converted to this new back-end.
      To use, use Theano flag device=cudaN or device=openclN, where N is a integer.
-
  * Python 3.3 compatible (abalkin, Gabe Schwartz, Frederic B., Pascal L.)
  * A new profiler (Frederic B.)
    The new profiler now can profile the memory with the Theano flag profile_memory=True.
@@ -168,7 +168,12 @@ Speed-ups:
  * A fix that removes a local_setsubtensor_of_allocs optimization warning and enables it in that case. (Frederic B., reported by John Salvatier)
  * Make inv_as_solve optimization work (Matthew Rocklin)
 
-Crash fixes:
+Crash/no return fixes:
+ * Fix shape crash inserted by Scan optimization. The gradient of some recursive scan was making the PushOutSeqScan optimization insert crash during the execution of a Theano function. (Frédéric B., reported by Hugo Larochelle)
+ * Fix command not returning with recent mingw64 on Windows (Pascal L., reported by many people)
+ * Fix infinite loop related to Scan on the GPU. (Pascal L.)
+ * Fix infinite loop when the compiledir is full. (Frederic B.)
+ * Fix a shape cycle crash in the optimizer (Pascal L., Frédéric B., reported by Cho KyungHyun)
  * Fix MRG normal now accept to generate scalar. (Pascal L.)
  * Fix some GPU compilation issue on Mac (John Yani, Frédéric B.)
  * Fix crash when building symbolic random variables with a mix of symbolic and numeric scalar in the "size" parameter. (Pascal L., Reported by Wu Zhen Zhou)
@@ -193,8 +198,8 @@ Crash fixes:
  * Fix crash in the elemwise python code for some big shape with power of 2. (Sina Honari, Pascal L.)
  * Fix compile and import errors on Windows including for the GPU. (Bogdan Budescu)
  * Fix GPU compilation on Windows (XterNalz)
- * Fix local_abs_merge optimization crash (Pascal L, reported by Jeremiah Lowin)
- * Fix import theano crash when g++ isn't there (OD)
+ * Fix local_abs_merge optimization crash (Pascal L., reported by Jeremiah Lowin)
+ * Fix import theano crash when g++ isn't there (Olivier D.)
  * Fix crash related to rebuild of Theano graph (Pascal L., reported by Divine Eguzouwa)
  * Fix crash during compilation (David Ward-Farley)
  * Crash fix in the grad of GPU op in corner case (Pascal L.)
@@ -208,28 +213,20 @@ Crash fixes:
  * Prevent shape optimizations from introducing cycles in the graph (Frederic Bastien, Pascal Lamblin, reported by Kyunghyun Cho)
 
 Others:
- * Fix bug in remove_constants_and_unused_inputs_scan. (useless warning and maybe slow down) (Pascal L.)
+ * Update/Fixes/Typo/pep8 documentation and/or tutorial (Olivier D., Frederic B., Yaroslav Halchenko, Micky Latowicki, Ben McCann, Jason Yosinski, reported by Arnaud Bergeron)
+ * Doc how to make a sparse Op. (Frederic B.)
+ * Doc compatibility guide (abalkin)
+ * Fix problem in remove_constants_and_unused_inputs_scan. (useless warning and maybe slow down) (Pascal L.)
  * Fix rop dot.(Razvan P., reported by Jeremiah Lowin)
  * Raise better error related to pydot bug. (Frederic B., reported by Jason Yosinski and Ludwig Schmidt-Hackenberg)
- * Doc how to make a sparse Op. (Frederic B.)
- * Doc/Tutorial fix/updates (Jason Yosinski)
  * Fix to Theano tutorial examples. (reported by Ilya Dyachenko)
- * Doc alloc() as a way to create tensor and fix typo.(Micky Latowicki)
  * Fix SharedVar.value property to make it raise an exceptin (Frederic B., reported by Drew Duncan)
  * Fix verification with compute_test_value in grad() (Frederic B.)
  * Theano flags are now evaluated lazily, only if requested (Frederic B.)
  * Fix test when g++ is not avail (Frederic B.)
- * Typo/pep8 (Olivier D., Frederic B.)
- * Update doc (Ben McCann)
- * Fix doc that point to deprecated or removed function (Frederic B., reported by @abergeron)
- * Doc compatibility guide (abalkin)
- * Doc the MPI and load Ops (Frederic B.)
  * Add manual instructions for OpenBLAS on Ubuntu by (Jianri Li )
- * Doc fixes (Yaroslav Halchenko)
  * Better/more error messages (Frederic B., Pascal L., Ian Goodfellow)
- * More doc (Frederic B.)
  * Fix Error reporting with GpuConv (Frederic B., reported by Heng Luo and Nicolas Pinto)
- * Update BLAS compilation doc on windows to use OpenBLAS (Olivier D.)
  * The infer_shape tester method now warns if the shapes values could hide errors. (Frederic B.)
  * Now travis-ci tests with scipy the parts that need it (Frederic B.)
  * Export some functions that work on CudaNdarray for windows (Frederic B.)
