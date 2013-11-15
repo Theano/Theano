@@ -8,6 +8,7 @@
 # # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
 # # gives no duplicates.
 
+Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
 Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
 Arnaud Bergeron <abergeron@gmail.com> <abergeron@gmail.com>
 <abergeron@gmail.com> <anakha@kami.(none)>

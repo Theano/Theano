@@ -59,9 +59,9 @@ Sina Honari
 Ben McCann
 David Warde-Farley
 Ilya Dyachenko
+Jan Schlüter
 Micky Latowicki
 Yaroslav Halchenko
-f0k
 Alexander Belopolsky
 Hannes Schulz
 Huy Nguyen
