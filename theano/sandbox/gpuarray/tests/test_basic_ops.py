@@ -306,3 +306,32 @@ class G_reshape(T_reshape):
                                           theano.tensor.opt.Shape_i,
                                           theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
+
+
+def test_gpueye():
+    def check(dtype, N, M_=None):
+        # Theano does not accept None as a tensor.
+        # So we must use a real value.
+        M = M_
+        # Currently DebugMode does not support None as inputs even if this is
+        # allowed.
+        if M is None:
+            M = N
+        N_symb = T.iscalar()
+        M_symb = T.iscalar()
+        k_symb = numpy.asarray(0)
+        out = T.eye(N_symb, M_symb, k_symb, dtype=dtype)
+        f = theano.function([N_symb, M_symb],
+                            B.as_cuda_ndarray_variable(out),
+                            mode=mode_with_gpu)
+        result = numpy.asarray(f(N, M))
+        assert numpy.allclose(result, numpy.eye(N, M_, dtype=dtype))
+        assert result.dtype == numpy.dtype(dtype)
+        assert any([isinstance(node.op, B.GpuEye)
+                    for node in f.maker.fgraph.toposort()])
+
+    for dtype in ['float32']:
+        yield check, dtype, 3
+        # M != N, k = 0
+        yield check, dtype, 3, 5
+        yield check, dtype, 5, 3
