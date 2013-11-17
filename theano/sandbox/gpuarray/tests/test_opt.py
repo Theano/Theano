@@ -29,7 +29,7 @@ else:
 def test_flatten():
     m = theano.tensor.fmatrix()
     f = theano.function([m], m.flatten(), mode=mode_with_gpu)
-    val = numpy.random.rand(10,11).astype("float32")
+    val = numpy.random.rand(10, 11).astype("float32")
     res = f(val)
     utt.assert_allclose(res, val.flatten())
     assert res.shape == val.flatten().shape
@@ -58,3 +58,15 @@ def test_flatten():
     assert res.shape == val.reshape(10, -1).shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
+
+
+def test_sum_prod():
+    for method in ['sum']:
+        m = theano.tensor.fmatrix()
+        f = theano.function([m], getattr(m, method)(), mode=mode_with_gpu)
+        val = numpy.random.rand(10, 11).astype("float32")
+        res = f(val)
+        utt.assert_allclose(res, val.sum())
+        assert res.shape == ()
+        assert GpuCAReduce in [type(node.op)
+                               for node in f.maker.fgraph.toposort()]

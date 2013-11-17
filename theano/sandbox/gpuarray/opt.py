@@ -3,7 +3,8 @@ import theano
 import numpy
 from theano import tensor, scalar
 from theano.compile import optdb
-from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
+from theano.gof import (local_optimizer, EquilibriumDB,
+                        SequenceDB, ProxyDB,
                         Optimizer, toolbox, DestroyHandler,
                         InconsistencyError, EquilibriumOptimizer)
 
@@ -52,7 +53,7 @@ def op_lifter(OP):
     """
     def f(maker):
         def local_opt(node):
-            if type(node.op) is OP:
+            if type(node.op) in OP:
                 # This does not support nodes that have more than one output.
                 assert len(node.outputs) == 1
                 # either one of our inputs is on the gpu or
@@ -120,13 +121,13 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 
 
 @register_opt()
-@op_lifter(tensor.Alloc)
+@op_lifter([tensor.Alloc])
 def local_gpualloc(node):
     return gpu_alloc
 
 
 @register_opt()
-@op_lifter(tensor.Reshape)
+@op_lifter([tensor.Reshape])
 def local_gpureshape(node):
     op = node.op
     name = op.name
@@ -137,7 +138,7 @@ def local_gpureshape(node):
 
 
 @register_opt()
-@op_lifter(tensor.Flatten)
+@op_lifter([tensor.Flatten])
 def local_gpuflatten(node):
     op = node.op
     shp =[]
@@ -150,7 +151,7 @@ def local_gpuflatten(node):
 
 
 @register_opt()
-@op_lifter(tensor.Elemwise)
+@op_lifter([tensor.Elemwise])
 def local_gpu_elemwise(node):
     op = node.op
     name = op.name
@@ -193,26 +194,26 @@ optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
 
 
 @register_opt()
-@op_lifter(tensor.DimShuffle)
+@op_lifter([tensor.DimShuffle])
 def local_gpua_dimshuffle(node):
     return GpuDimShuffle(node.op.input_broadcastable,
                          node.op.new_order)
 
 
 @register_opt()
-@op_lifter(tensor.SpecifyShape)
+@op_lifter([tensor.SpecifyShape])
 def local_gpua_specifyShape(node):
     return tensor.specify_shape
 
 
 @register_opt()
-@op_lifter(tensor.Subtensor)
+@op_lifter([tensor.Subtensor])
 def local_gpua_subtensor(node):
     return GpuSubtensor(node.op.idx_list)
 
 
 @register_opt()
-@op_lifter(tensor.CAReduce)
+@op_lifter([tensor.CAReduce, tensor.Sum])
 def local_gpua_careduce(node):
     if (isinstance(node.op.scalar_op, scalar.basic.Add) or
         isinstance(node.op.scalar_op, scalar.basic.Mul)):
@@ -220,23 +221,24 @@ def local_gpua_careduce(node):
                            dtype=getattr(node.op, 'dtype', None),
                            acc_dtype=getattr(node.op, 'acc_dtype', None))
 
+
 @register_opt()
-@op_lifter(tensor.blas.Gemv)
+@op_lifter([tensor.blas.Gemv])
 def local_gpua_gemv(node):
     return GpuGemv(inplace=node.op.inplace)
 
 @register_opt()
-@op_lifter(tensor.blas_c.CGemv)
+@op_lifter([tensor.blas_c.CGemv])
 def local_gpua_gemv2(node):
     return GpuGemv(inplace=node.op.inplace)
 
 @register_opt()
-@op_lifter(tensor.blas.Gemm)
+@op_lifter([tensor.blas.Gemm])
 def local_gpua_gemm(node):
     return GpuGemm(inplace=node.op.inplace)
 
 
 @register_opt()
-@op_lifter(tensor.basic.Eye)
+@op_lifter([tensor.basic.Eye])
 def local_gpua_eye(node):
     return GpuEye(dtype=node.op.dtype)
