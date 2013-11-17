@@ -11,6 +11,7 @@ from theano.tensor.basic import Alloc
 from theano.gof.python25 import all, any
 from theano.gof.utils import MethodNotDefined
 
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 try:
     import pygpu
     from pygpu import gpuarray, elemwise
@@ -559,3 +560,115 @@ class GpuReshape(HideC, tensor.Reshape):
             else:
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
+
+
+class GpuEye(Op):
+    def __init__(self, dtype=None):
+        if dtype is None:
+            dtype = config.floatX
+        self.dtype = dtype
+
+    def make_node(self, n, m, k):
+        n = tensor.as_tensor_variable(n)
+        m = tensor.as_tensor_variable(m)
+        k = tensor.as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
+        otype = GpuArrayType(dtype=self.dtype,
+                             broadcastable=(False, False))
+
+        # k != 0 isn't implemented on the GPU yet.
+        assert tensor.get_scalar_constant_value(k) == 0
+        return Apply(self, [n, m], [otype()])
+
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype) ^ hash(type(self))
+
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+
+    def c_support_code(self):
+        dtype = self.dtype
+        return """
+CUdeviceptr (*cuda_get_ptr)(gpudata *g);
+
+//TODO OPT: Only 1 block is used.
+__global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
+    int nb_elem = min(n, m);
+    for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
+        a[i*m + i] = 1;
+    }
+}""" % locals()
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+
+    def c_code(self, node, name, inp, out, sub):
+        #TODO assert that the back-end is cuda!
+        n, m = inp
+        z, = out
+        fail = sub['fail']
+        dtype = self.dtype
+        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        sync = bool(config.gpuarray.sync)
+        s = """
+        npy_%(dtype)s* ptr;
+        size_t dims[] = {0, 0};
+
+        dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
+        dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
+        int total_size = dims[0] * dims[1] * sizeof(float);
+        cudaError_t sts;
+        Py_CLEAR(%(z)s);
+        %(z)s = pygpu_empty(2, dims,
+                            %(typecode)s,
+                            GA_C_ORDER,
+                            pygpu_default_context(), Py_None);
+        if (!%(z)s) {
+            %(fail)s
+        }
+        ptr = (npy_%(dtype)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                               %(z)s->ga.offset);
+        sts = cudaMemset(ptr, 0, total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuEye: Error in memset %%d bytes of device memory.",
+                         total_size);
+            %(fail)s;
+        }
+
+        kEye_%(dtype)s<<<1, 256>>>(ptr, dims[0], dims[1]);
+
+        if(%(sync)d)
+            GpuArray_sync(&%(z)s->ga);
+
+        sts = cudaGetLastError();
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: kEye: %%s. n=%%ld, m=%%ld.",
+                    cudaGetErrorString(sts),
+                    (long int)dims[0], (long int)dims[1]);
+            %(fail)s;
+         }
+        """ % locals()
+
+        return s
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_compiler(self):
+        return NVCC_compiler

@@ -172,7 +172,7 @@ class test_Broadcast(unittest.TestCase):
             yv = rand_val(ysh)
             zv = xv + yv
 
-            self.assertTrue((f(xv, yv) == zv).all())
+            unittest_tools.assert_allclose(f(xv, yv), zv)
 
             #test Elemwise.infer_shape
             #the Shape op don't implement c_code!

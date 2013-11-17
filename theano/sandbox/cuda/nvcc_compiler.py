@@ -347,8 +347,6 @@ class NVCC_compiler(object):
         cmd.append(os.path.split(cppfilename)[-1])
         cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
-        if module_name != 'cuda_ndarray':
-            cmd.append("-lcuda_ndarray")
         if sys.platform == 'darwin':
             cmd.extend(darwin_python_lib.split())
 

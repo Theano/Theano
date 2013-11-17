@@ -10,8 +10,10 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
 from theano.gof.python25 import all, any
 from theano.sandbox.gpuarray.type import GpuArrayType
 
-from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
-                                               gpu_alloc, GpuReshape)
+from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
+                                               gpu_from_host,
+                                               gpu_alloc, GpuReshape,
+                                               GpuEye)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
@@ -232,3 +234,9 @@ def local_gpua_gemv2(node):
 @op_lifter(tensor.blas.Gemm)
 def local_gpua_gemm(node):
     return GpuGemm(inplace=node.op.inplace)
+
+
+@register_opt()
+@op_lifter(tensor.basic.Eye)
+def local_gpua_eye(node):
+    return GpuEye(dtype=node.op.dtype)
