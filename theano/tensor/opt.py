@@ -1075,10 +1075,12 @@ class ShapeFeature(object):
         # an element of o_shapes is either None or a tuple
         #   elements of the tuple can be either strings, or ints
         if len(o_shapes) != len(node.outputs):
-            raise Exception('len(o_shapes) = '
-                    + str(len(o_shapes))
-                    + ' != len(node.outputs) = '
-                    + str(len(node.outputs)))
+            raise Exception(
+                'The infer_shape method for the Op "%s" returned a list ' +
+                'with the wrong number of element: len(o_shapes) = %d ' +
+                ' != len(node.outputs) = %d' % (str(node.op),
+                                                len(o_shapes),
+                                                len(node.outputs)))
 
         # Ensure shapes are in 'int64'. This is to make sure the assert
         # found in the `local_useless_subtensor` optimization does not fail.

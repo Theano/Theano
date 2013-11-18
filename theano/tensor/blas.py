@@ -128,10 +128,15 @@ import logging
 import os
 import sys
 import time
+import warnings
 
 import numpy
 import numpy.distutils
 import numpy.distutils.system_info
+try:
+    import numpy.distutils.__config__
+except ImportError:
+    pass
 
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.gof import (utils, Op, view_roots, DestroyHandler,
@@ -156,8 +161,26 @@ _logger = logging.getLogger('theano.tensor.blas')
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
     try:
+        if hasattr(numpy.distutils, '__config__'):
+            #If the old private interface is available use it as it
+            #don't print information to the user.
+            blas_info = numpy.distutils.__config__.blas_opt_info
+        else:
+            #We need to catch warnings as in some cases NumPy print
+            #stuff that we don't want the user to see like this:
+            """
+SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_info.py:564: UserWarning: Specified path /home/vagrant/src/master-env/lib is invalid.
+  warnings.warn('Specified path %s is invalid.' % d)
+"""
+            #I'm not able to remove all printed stuff
+            with_context = warnings.catch_warnings(record=True)
+            with_context.__enter__()
+            try:
+                blas_info = numpy.distutils.system_info.get_info("blas_opt")
+            finally:
+                with_context.__exit__(None, None, None)
+
         # If we are in a EPD installation, mkl is available
-        blas_info = numpy.distutils.system_info.get_info("blas_opt")
         if "EPD" in sys.version:
             use_unix_epd = True
             if sys.platform == 'win32':
