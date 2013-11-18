@@ -48,6 +48,7 @@ Vivek Kulkarni
 Matthew Rocklin
 Gabe Schwartz
 James Bergstra
+Sigurd Spieckermann
 Bogdan Budescu
 Mehdi Mirza
 Nicolas Bouchard
@@ -67,6 +68,7 @@ Hannes Schulz
 Huy Nguyen
 Robert Kern
 Sebastian Berg
+Vincent Dumoulin
 Wei Li
 XterNalz
 
@@ -96,6 +98,8 @@ Bug fixes:
      But in theory, there could be bad shapes produced in the unbroadcasted dimensions.
 
 New Features:
+ * compilation work on ARM processor (Raspberry Pi, Vincent Dumoulin)
+ * Add numpy.random.choice wrapper to our random number generator (Sigurd Spieckermann)
  * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator (Matthew Rocklin)
  * Move in Theano the Conv3d2d implementation (James Bergstra, Frederic B., Pascal L.)
  * First version of the new GPU back-end available (Arnaud Bergeron, Frederic B.)
