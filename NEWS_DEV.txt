@@ -43,34 +43,38 @@ Olivier Delalleau
 John Salvatier
 Razvan Pascanu
 Jeremiah Lowin
-Ludwig Schmidt-Hackenberg
+Ludwig Schmidt-Hackenberg +
 Vivek Kulkarni
 Matthew Rocklin
 Gabe Schwartz
 James Bergstra
-Sigurd Spieckermann
-Bogdan Budescu
-Mehdi Mirza
+Sigurd Spieckermann +
+Bogdan Budescu +
+Mehdi Mirza +
 Nicolas Bouchard
-Ethan Buchman
+Ethan Buchman +
 Guillaume Desjardins
 Ian Goodfellow
 Jason Yosinski
-Sina Honari
-Ben McCann
+Sina Honari +
+Ben McCann +
 David Warde-Farley
-Ilya Dyachenko
-Jan Schlüter
-Micky Latowicki
-Yaroslav Halchenko
+Ilya Dyachenko +
+Jan Schlüter +
+Micky Latowicki +
+Yaroslav Halchenko +
 Alexander Belopolsky
-Hannes Schulz
-Huy Nguyen
-Robert Kern
-Sebastian Berg
-Vincent Dumoulin
-Wei Li
-XterNalz
+Hannes Schulz +
+Huy Nguyen +
+Robert Kern +
+Sebastian Berg +
+Vincent Dumoulin +
+Wei Li +
+XterNalz +
+
+
+A total of 36 people contributed to this release.
+People with a "+" by their names contributed a patch for the first time.
 
 Installation:
  * Canopy support (direct link to MKL):
@@ -255,7 +259,7 @@ Crash/no return fixes:
  * Prevent shape optimizations from introducing cycles in the graph (Frederic Bastien, Pascal Lamblin, reported by Kyunghyun Cho)
 
 Others:
- * Update/Fixes/Typo/pep8 documentation and/or tutorial (Olivier D., Frederic B., Yaroslav Halchenko, Micky Latowicki, Ben McCann, Jason Yosinski, reported by Arnaud Bergeron)
+ * Update/Fixes/Typo/pep8 documentation and/or tutorial (Olivier D., David W.-F., Frederic B., Yaroslav Halchenko, Micky Latowicki, Ben McCann, Jason Yosinski, reported by Arnaud Bergeron)
  * Doc how to make a sparse Op. (Frederic B.)
  * Doc compatibility guide (abalkin)
  * Fix problem in remove_constants_and_unused_inputs_scan. (useless warning and maybe slow down) (Pascal L.)
@@ -269,7 +273,6 @@ Others:
  * Add manual instructions for OpenBLAS on Ubuntu by (Jianri Li )
  * Better/more error messages (Frederic B., Pascal L., Ian Goodfellow)
  * Fix Error reporting with GpuConv (Frederic B., reported by Heng Luo and Nicolas Pinto)
- * The infer_shape tester method now warns if the shapes values could hide errors. (Frederic B.)
  * Now travis-ci tests with scipy the parts that need it (Frederic B.)
  * Export some functions that work on CudaNdarray for windows (Frederic B.)
  * If the user specifies a -arch=sm_* value in the Theano flags for the gpu, don't add one (Frederic B., Pascal L.)
