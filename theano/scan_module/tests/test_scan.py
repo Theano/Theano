@@ -3656,6 +3656,39 @@ class T_Scan(unittest.TestCase):
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
+    def test_hessian_bug_grad_grad_two_scans(self):
+        #Bug reported by Bitton Tenessi
+
+        W_flat = tensor.fvector(name='W')
+        W_flat.tag.test_value=numpy.ones((8,), dtype=numpy.float32)
+        W = W_flat.reshape((2,2,2))
+
+        def loss_outer(i_outer, sum_outer, W):
+
+            def loss_inner(i_inner, sum_inner, W):
+
+                return sum_inner + (W**2).sum().sum().sum()
+
+            result_inner, _ = theano.scan(fn=loss_inner,
+               outputs_info = tensor.as_tensor_variable(
+                   numpy.asarray(0, dtype=numpy.float32)),
+               sequences=tensor.arange(1, dtype='int32'),
+               non_sequences=[W],
+               )
+            return sum_outer + result_inner[-1]
+
+        result_outer, _ = theano.scan(fn=loss_outer,
+               outputs_info = tensor.as_tensor_variable(
+                   numpy.asarray(0, dtype=numpy.float32)),
+               sequences=tensor.arange(1, dtype='int32'),
+               non_sequences=[W],
+               )
+
+        cost = result_outer[-1]
+        H = theano.gradient.hessian(cost, W_flat)
+        f = theano.function([W_flat], H)
+        f(numpy.ones((8,), dtype='float32'))
+
 
 def test_speed():
     #
