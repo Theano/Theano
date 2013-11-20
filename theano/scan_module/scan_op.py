@@ -1561,19 +1561,16 @@ class Scan(PureOp):
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
             maxtap = numpy.max(self.tap_array[idx])
+            if idx < self.n_mit_mot:
+                outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
+            else:
+                outmaxtap = 0
             seq = outs[idx]
             for k in self.tap_array[idx]:
-                if maxtap < 0:
-                    dim_offset = abs(maxtap)
+                if outmaxtap -k != 0:
+                    nw_seq = seq[k - mintap: -(outmaxtap-k)][::-1]
                 else:
-                    dim_offset = 0
-                if maxtap == mintap and maxtap != 0:
-                    nw_seq = seq[:abs(maxtap)]
-                elif maxtap - k != 0:
-                    nw_seq = seq[dim_offset + k - mintap - 1:\
-                                 -(maxtap - k + 1)][::-1]
-                else:
-                    nw_seq = seq[dim_offset + k - mintap - 1: -1][::-1]
+                    nw_seq = seq[k - mintap:][::-1]
                 outer_inp_seqs.append(nw_seq)
         outer_inp_seqs += [
             x[:-1][::-1] for x in self.outer_sitsot_outs(outs)]
