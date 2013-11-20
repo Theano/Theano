@@ -3577,10 +3577,8 @@ class T_Scan(unittest.TestCase):
         assert not opt_obj.belongs_to_set(scan_node2, [scan_node1])
 
     def test_remove_constants_and_unused_inputs_scan_non_seqs(self):
-        """Test the opt remove_constants_and_unused_inputs_scan for
-        non sequences.
-
-        """
+        #Test the opt remove_constants_and_unused_inputs_scan for
+        #non sequences.
         W = theano.tensor.matrix(name='W')
         v = theano.tensor.ivector(name='v')
         y1, _ = theano.scan(lambda i, W: W[i], sequences=v,
@@ -3616,10 +3614,7 @@ class T_Scan(unittest.TestCase):
             assert (len(inp) == len(set(inp)))
 
     def test_remove_constants_and_unused_inputs_scan_seqs(self):
-        """
-        Test the opt remove_constants_and_unused_inputs_scan for sequences.
-
-        """
+        #Test the opt remove_constants_and_unused_inputs_scan for sequences.
         W = theano.tensor.matrix(name='W')
         v = theano.tensor.ivector(name='v')
         vv = theano.tensor.matrix(name='vv')
