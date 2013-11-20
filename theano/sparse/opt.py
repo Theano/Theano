@@ -1,7 +1,9 @@
 from itertools import izip
 
-import theano
 import numpy
+import scipy
+
+import theano
 from theano import gof, scalar, tensor
 from theano.tensor import blas
 from theano.sparse import (CSC, CSR, csm_properties,
