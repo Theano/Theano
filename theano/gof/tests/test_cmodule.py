@@ -44,7 +44,7 @@ def test_inter_process_cache():
     x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
     f(numpy.arange(60), numpy.arange(60))
-    if theano.config.mode == 'FAST_COMPILE':
+    if theano.config.mode == 'FAST_COMPILE' or theano.config.cxx == "":
         assert MyOp.nb_called == 0
     else:
         assert MyOp.nb_called == 1
@@ -53,7 +53,7 @@ def test_inter_process_cache():
     x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
     f(numpy.arange(60), numpy.arange(60))
-    if theano.config.mode == 'FAST_COMPILE':
+    if theano.config.mode == 'FAST_COMPILE' or theano.config.cxx == "":
         assert MyOp.nb_called == 0
     else:
         assert MyOp.nb_called == 1

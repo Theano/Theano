@@ -1,7 +1,12 @@
 import time
 
+from nose.plugins.skip import SkipTest
 import numpy
-from scipy import ndimage
+try:
+    from scipy import ndimage
+except ImportError:
+    ndimage = None
+
 import theano
 from theano.tensor.nnet.conv3d2d import *
 import theano.tests.unittest_tools as utt
@@ -67,6 +72,8 @@ def pyconv3d(signals, filters):
 
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
+    if ndimage is None:
+        raise SkipTest("conv3d2d tests need SciPy")
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 5 , 3, 5 , 5

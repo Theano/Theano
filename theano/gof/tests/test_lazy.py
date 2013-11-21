@@ -110,7 +110,10 @@ def test_ifelse():
     # We need lazy to end up being True for this test.
     if theano.config.vm.lazy in [True, None]:
         lazys = [True, None]
-    for cloop in [True, False]:
+    cloops = [True, False]
+    if theano.config.cxx == "":
+        cloops = [False]
+    for cloop in cloops:
         for lazy in lazys:
             linker = theano.gof.vm.VM_Linker(use_cloop=cloop, lazy=lazy)
             f = function([a, b, c], ifelse(a, notimpl(b), c),

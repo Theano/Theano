@@ -3140,6 +3140,8 @@ class T_local_erf(unittest.TestCase):
         self.mode = theano.compile.mode.get_default_mode().including(
                 'canonicalize', 'fast_run').excluding('gpu', 'fusion')
         self.mode._optimizer.position_cutoff = 1.50001
+        if theano.config.cxx == '' and not theano.scalar.basic_scipy.imported_scipy_special:
+            raise SkipTest("erf need a c++ compiler or scipy")
 
     def test_local_one_plus_erf(self):
         val = numpy.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
@@ -3237,6 +3239,8 @@ class T_local_erfc(unittest.TestCase):
                 'canonicalize').including('fast_run').excluding('gpu')
         self.mode = self.mode_fusion.excluding('fusion')
         self.mode._optimizer.position_cutoff = 1.50001
+        if theano.config.cxx == '' and not theano.scalar.basic_scipy.imported_scipy_special:
+            raise SkipTest("erfc need a c++ compiler or scipy")
 
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
