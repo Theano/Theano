@@ -348,7 +348,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     #print prefix, 'std', std
     if target_std is not None:
         assert abs(std - target_std) < std_tol * (1 + abs(target_std)), (
-                'bad std? %f %f' % (std, target_std))
+                'bad std? %f %f %f' % (std, target_std, std_tol))
     #print prefix, 'time', dt
     #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
@@ -615,7 +615,7 @@ def test_normal0():
             sys.stdout.flush()
             basictest(f, steps_, const_size, target_avg=avg, target_std=std,
                       prefix='gpu mrg ', allow_01=True, inputs=input,
-                      mean_rtol=rtol)
+                      mean_rtol=rtol, std_tol=std_tol)
             # Need to allow some rounding error as their is float
             # computation that are done on the gpu vs cpu
             assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
