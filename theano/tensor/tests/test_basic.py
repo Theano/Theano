@@ -5929,6 +5929,14 @@ class T_as_tensor_variable(unittest.TestCase):
         ten = as_tensor_variable(numpy.array([True, False, False, True, True]))
         assert ten.type.dtype == 'uint8'
 
+    def test_memmap(self):
+        inp = numpy.random.rand(4, 3)
+        f, fname = mkstemp()
+        new_inp = numpy.memmap(fname, dtype=inp.dtype,
+                               mode='w+', shape=inp.shape)
+        new_inp[...] = inp
+        x = as_tensor_variable(new_inp)
+
 
 class test_complex_mod(unittest.TestCase):
     """Make sure % fails on complex numbers."""
