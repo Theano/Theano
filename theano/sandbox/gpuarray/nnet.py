@@ -1,14 +1,14 @@
 from theano import Op, Apply
 from theano.compat.six import StringIO
 
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
 
 
-class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
+class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
     """
@@ -30,6 +30,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
         sm = x.type()
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
+
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
 
     def c_support_code(self):
         return """
@@ -213,10 +216,14 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
         #return ()
         return (4,)
 
+    def c_compiler(self):
+        return NVCC_compiler
+
+
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
-class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
+class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
     """
@@ -241,6 +248,12 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
     def c_code_cache_version(self):
         #return ()
         return (6,)
+
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
