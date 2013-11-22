@@ -102,6 +102,7 @@ Bug fixes:
      But in theory, there could be bad shapes produced in the unbroadcasted dimensions.
 
 New Features:
+ * Make tensor.{constant,as_tensor_variable} work with memmap. (Christian Hudon, Frédéric Bastien)
  * compilation work on ARM processor (Raspberry Pi, Vincent Dumoulin)
  * Add numpy.random.choice wrapper to our random number generator (Sigurd Spieckermann)
  * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator (Matthew Rocklin)
@@ -189,7 +190,6 @@ New Interface (reuses existing functionality):
  * Allow theano.tensor.ones(3) to support scalar and not just list of scalar as numpy.ones (Jeremiah Lowin)
  * Make the memory profiler print the FLOPS used for the ops that know how to compute it. (Frederic B.)
 
-New debug features:
 Speed-ups:
  * Optimizer speed up. (Frederic B.)
  * Fix warning on newer llvm version on Mac. (Pascal L., reported by Jeremiah Lowin and Chris Fonnesbeck)
@@ -214,6 +214,7 @@ Speed-ups:
  * Make inv_as_solve optimization work (Matthew Rocklin)
 
 Crash/no return fixes:
+ * Fix scan crash in the grad of grad of a scan with special structure (including scan in a scan) (Razvan P., Bitton Tenessi)
  * Fix various crashes when calling scan() with inputs specified in unusual ways. (Pascal L.)
  * Fix shape crash inserted by Scan optimization. The gradient of some recursive scan was making the PushOutSeqScan optimization insert crash during the execution of a Theano function. (Frédéric B., reported by Hugo Larochelle)
  * Fix command not returning with recent mingw64 on Windows (Pascal L., reported by many people)
