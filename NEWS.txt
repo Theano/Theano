@@ -4,13 +4,15 @@
 Release Notes
 =============
 
-Theano 0.6rc4 (November 25th, 2013)
+Theano 0.6rc5 (November 25th, 2013)
 ===================================
 
 We recommend that everybody update to this version.
 
 We plan to release 0.6 in one week if there is no problem introduced
 with this release candidate.
+
+Theano 0.6rc4 was skipped due to a problem with pypi
 
 Highlights:
  * Python 3.3 compatibility with buildbot test for it.
@@ -278,13 +280,14 @@ Others:
  * Add utt.asset_allclose(a, b) to have better error message. (Frederic B.)
  * Better error message with compute_test_value (Frederic, reported by John Salvatier)
  * Stochastic order behavior fix (Frederic B.)
+
  * Simpler initial graph for subtensor infer shape (Olivier D.)
    The optimization was doing the optimization, but this allows better reading of the graph before optimization.
  * Better detection of non-aligned ndarray (Frederic B.)
  * Update MRG multinomial gradient to the new interface (Mehdi Mirza)
  * Implement Image2Neibs.perform() to help debug (Frederic B.)
  * Remove some Theano flags from the compilation key (Frederic B.)
- * Make theano-nose work on executable *.py files. (Alistair Muldal)
+ * Make theano-nose work on executable '\*.py' files. (Alistair Muldal)
  * Make theano-nose work with older nose version (Frederic B.)
  * Add extra debug info in verify_grad() (Frederic B.)
 
