@@ -605,6 +605,10 @@ class TensorConstantSignature(tuple):
             return self._sum
         except AttributeError:
             self._sum = self.no_nan.sum()
+            # The following 2 lines are needede as in Python 3.3 with NumPy
+            # 1.7.1, numpy.ndarray and numpy.memmap aren't hashable.
+            if type(self._sum) is numpy.memmap:
+                self._sum = numpy.asarray(self._sum).sum()
             if self.has_nan and self.no_nan.mask.all():
                 # In this case the sum is not properly computed by numpy.
                 self._sum = 0
