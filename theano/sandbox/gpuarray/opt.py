@@ -18,7 +18,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
-from theano.sandbox.gpuarray.blas import GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -236,6 +236,12 @@ def local_gpua_gemv2(node):
 @op_lifter([tensor.blas.Gemm])
 def local_gpua_gemm(node):
     return GpuGemm(inplace=node.op.inplace)
+
+
+@register_opt()
+@op_lifter([tensor.blas.Dot22])
+def local_gpua_dot22(node):
+    return gpu_dot22
 
 
 @register_opt()

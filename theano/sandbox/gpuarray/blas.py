@@ -1,6 +1,6 @@
 from theano import Op, Apply, config
 
-from theano.tensor.blas import Gemv, Gemm
+from theano.tensor.blas import Dot22, Gemv, Gemm
 from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
 
 try:
@@ -128,11 +128,72 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
+        return
         return (0,)
 
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
+
+
+class GpuDot22(BlasOp, Dot22):
+    def make_node(self, x, y):
+        res = Dot22.make_node(self, x, y)
+        x = as_gpuarray_variable(x)
+        y = as_gpuarray_variable(y)
+        assert x.dtype == y.dtype
+        return Apply(self, [x, y], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        x, y = inputs
+
+        out = pygpu.empty((x.shape[0], y.shape[1]), dtype=x.dtype)
+        outputs[0][0] = blas.gemm(1., x, y, 0., out,
+                                  overwrite_c=True)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        dtype = node.inputs[0].dtype
+        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        vars = dict(A=inputs[0], B=inputs[1], dtype=dtype, out=outputs[0],
+                    typecode=typecode,
+                    fail=sub['fail'], name=name)
+        code = """
+        double one = 1.;
+        double zero = 0.;
+
+        size_t dims[] = {PyGpuArray_DIMS(%(A)s)[0], PyGpuArray_DIMS(%(B)s)[1]};
+
+        %(out)s = pygpu_empty(2, dims,
+                            %(typecode)s,
+                            GA_C_ORDER,
+                            pygpu_default_context(), Py_None);
+        if (!%(out)s) {
+            %(fail)s
+        }
+
+        if (pygpu_blas_rgemm(cb_no_trans, cb_no_trans,
+                             one,
+                             %(A)s, %(B)s,
+                             zero,
+                             %(out)s) == NULL) {
+            %(fail)s
+        }
+        """ % vars
+        if config.gpuarray.sync:
+            code += """
+            GpuArray_sync(&%(out)s->ga);
+            """ % vars
+        return code
+
+    def c_code_cache_version(self):
+        return
+        return (0,)
+
+    def c_headers(self):
+        ret = super(GpuDot22, self).c_headers()
+        return ret + ['<compyte/numpy_compat.h>']
+
+gpu_dot22 = GpuDot22()
 
 from theano.compile import optdb
 from theano.gof import local_optimizer, LocalOptGroup
