@@ -13,12 +13,15 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                gpu_from_host,
-                                               gpu_alloc, GpuReshape,
+                                               gpu_alloc,
+                                               GpuAlloc,
+                                               GpuReshape,
                                                GpuEye)
+from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
-from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.type import GpuArrayConstant
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -124,6 +127,18 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 @op_lifter([tensor.Alloc])
 def local_gpualloc(node):
     return gpu_alloc
+
+
+@register_opt()
+@local_optimizer([GpuAlloc])
+def local_gpualloc_memset_0(node):
+    if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
+        inp = node.inputs[0]
+        if (isinstance(inp, GpuArrayConstant) and
+            inp.data.size == 1 and
+            (numpy.asarray(inp.data) == 0).all()):
+            new_out = GpuAlloc(memset_0=True)(*node.inputs)
+            return [new_out]
 
 
 @register_opt()

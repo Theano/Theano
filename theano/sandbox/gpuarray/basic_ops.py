@@ -447,8 +447,26 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(HideC, Alloc):
+    def __init__(self, memset_0=False):
+        """memset_0 is only an optimized version. True, it mean the
+        value is always 0, so the c code call memset as it is faster.
+
+        """
+        self.memset_0 = memset_0
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.memset_0 == other.memset_0
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.memset_0)
+
     def __str__(self):
-        return 'GpuAlloc'
+        #Hide the memset parameter when not used to prevent confusion.
+        if self.memset_0:
+            s = "%s{memset_0=%s}" % (self.__class__.__name__, self.memset_0)
+        else:
+            s = self.__class__.__name__
+        return s
 
     def make_node(self, value, *shape):
         res = Alloc.make_node(self, value, *shape)
@@ -456,6 +474,9 @@ class GpuAlloc(HideC, Alloc):
         otype = GpuArrayType(dtype=res.outputs[0].dtype,
                              broadcastable=res.outputs[0].broadcastable)
         return Apply(self, [value] + res.inputs[1:], [otype()])
+
+    def c_headers(self):
+        return ['<compyte/numpy_compat.h>']
 
     def perform(self, node, inputs, outs):
         out, = outs
@@ -477,6 +498,7 @@ class GpuAlloc(HideC, Alloc):
         ndim = len(inp[1:])
         zz, = out
 
+        memset_0 = int(self.memset_0)
         code = """
         int i;
         size_t %(name)s_shape[%(ndim)s];
@@ -503,12 +525,24 @@ class GpuAlloc(HideC, Alloc):
                 %(fail)s
             }
         }
-
-        if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) != GA_NO_ERROR) {
+        if (%(memset_0)s && GpuArray_ISONESEGMENT(&%(zz)s->ga))
+        {
+            int err = GpuArray_memset(&%(zz)s->ga, 0);
+            if (err != GA_NO_ERROR)
+            {
+                PyErr_Format(PyExc_MemoryError,
+                             "GpuAlloc: Error memsetting %%d"
+                             " element of device memory to 0.",
+                             PyGpuArray_SIZE(%(zz)s));
+                %(fail)s;
+            }
+        }
+        else if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) != GA_NO_ERROR) {
             PyErr_SetString(PyExc_ValueError, "setarray failed");
             %(fail)s
         }
-        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, fail=sub['fail'])
+        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv,
+                   fail=sub['fail'], memset_0=memset_0)
 
         if config.gpuarray.sync:
             code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)

@@ -2,7 +2,8 @@ import numpy
 
 import theano
 from theano.tests import unittest_tools as utt
-from theano.sandbox.gpuarray.basic_ops import GpuReshape
+from theano.sandbox.gpuarray.basic_ops import GpuAlloc, GpuReshape, gpu_alloc
+from theano.sandbox.gpuarray.elemwise import GpuCAReduce
 import theano.sandbox.gpuarray
 from theano.tests.unittest_tools import SkipTest
 
@@ -70,3 +71,36 @@ def test_sum_prod():
         assert res.shape == ()
         assert GpuCAReduce in [type(node.op)
                                for node in f.maker.fgraph.toposort()]
+
+
+def test_local_gpualloc_memset_0():
+    i = theano.tensor.iscalar()
+    z = numpy.zeros((1,), dtype='float32')
+    o = numpy.ones((1,), dtype='float32')
+    ones = numpy.ones((2,), dtype='float32')
+
+    # Test with 0
+    a = gpu_alloc(z, i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuAlloc) and topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 0).all()
+
+    # Test with 1
+    a = gpu_alloc(o, i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuAlloc)
+    assert not topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 1).all()
+
+    # Test with 1, 1
+    a = gpu_alloc(ones, i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuAlloc)
+    assert not topo[0].op.memset_0
+    assert (numpy.asarray(f(2)) == 1).all()
