@@ -193,10 +193,10 @@ Here is the state of that vision as of October 1st, 2012 (after Theano release
 * The cvm linker allows lazy evaluation. It is the current default linker.
 
   * How to have `DebugMode` check it? Right now, DebugMode checks the computation non-lazily.
-  * The profiler used by cvm is less complete than `ProfileMode`.
 
 * SIMD parallelism on the CPU comes from the compiler.
-* Multi-core parallelism is only supported by Conv2d. If the external BLAS implementation supports it,
+* Multi-core parallelism is only supported by Conv2d(not by default).
+  If the external BLAS implementation supports it,
   there are also, gemm, gemv and ger that are parallelized.
 * No multi-node support.
 * Many, but not all NumPy functions/aliases are implemented.
