@@ -1,5 +1,6 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
@@ -85,6 +86,10 @@ class TestSignalConv2D(unittest.TestCase):
         signal.conv.conv2d can support inputs and filters of type
         matrix or tensor3.
         """
+        if (not theano.tensor.nnet.conv.imported_scipy_signal and
+            theano.config.cxx == ""):
+            raise SkipTest("conv2d tests need SciPy or a c++ compiler")
+
         self.validate((1, 4, 5), (2, 2, 3), verify_grad=True)
         self.validate((7, 5), (5, 2, 3), verify_grad=False)
         self.validate((3, 7, 5), (2, 3), verify_grad=False)

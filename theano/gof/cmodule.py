@@ -24,7 +24,7 @@ except ImportError:
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import PY3, next, decode, decode_iter
+from theano.compat import any, PY3, next, decode, decode_iter
 from theano.compat.six import BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
@@ -1711,10 +1711,13 @@ class GCC_compiler(object):
         # in the key of the compiled module, avoiding potential conflicts.
 
         # Figure out whether the current Python executable is 32
-        # or 64 bit and compile accordingly.
-        n_bits = local_bitwidth()
-        cxxflags.append('-m%d' % n_bits)
-        _logger.debug("Compiling for %s bit architecture", n_bits)
+        # or 64 bit and compile accordingly. This step is ignored for ARM
+        # architectures in order to make Theano compatible with the Raspberry
+        # Pi.
+        if any([not 'arm' in flag for flag in GCC_compiler.march_flags]):
+            n_bits = local_bitwidth()
+            cxxflags.append('-m%d' % n_bits)
+            _logger.debug("Compiling for %s bit architecture", n_bits)
 
         if sys.platform != 'win32':
             # Under Windows it looks like fPIC is useless. Compiler warning:

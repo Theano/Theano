@@ -303,11 +303,11 @@ def test_consistency_GPU_parallel():
 
 
 def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
-              target_avg=0.5, target_std=None, mean_rtol=0.01):
+              target_avg=0.5, target_std=None, mean_rtol=0.01, std_tol=0.01):
     if inputs is None:
         inputs = []
     dt = 0.0
-    avg_std = 0.0
+    avg_var = 0.0
 
     for i in xrange(steps):
         t0 = time.time()
@@ -317,16 +317,14 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
         ival = numpy.asarray(ival)
         if i == 0:
             mean = numpy.array(ival, copy=True)
-            #avg_std = numpy.std(ival)
-            avg_std = numpy.sqrt(numpy.mean((ival - target_avg) ** 2))
+            avg_var = numpy.mean((ival - target_avg) ** 2)
             min_ = ival.min()
             max_ = ival.max()
         else:
             alpha = 1.0 / (1 + i)
             mean = alpha * ival + (1 - alpha) * mean
-            #avg_std = alpha * numpy.std(ival) + (1-alpha)*avg_std
-            avg_std = alpha * numpy.sqrt(numpy.mean((ival - target_avg) ** 2
-                                                )) + (1 - alpha) * avg_std
+            avg_var = (alpha * numpy.mean((ival - target_avg) ** 2)
+                       + (1 - alpha) * avg_var)
             min_ = min(min_, ival.min())
             max_ = max(max_, ival.max())
         if not allow_01:
@@ -336,17 +334,21 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     if hasattr(target_avg, 'shape'):  # looks if target_avg is an array
         diff = numpy.mean(abs(mean - target_avg))
         #print prefix, 'mean diff with mean', diff
-        assert diff < mean_rtol, 'bad mean? %f %f' % (mean, target_avg)
+        assert numpy.all(diff < mean_rtol * (1 + abs(target_avg))), (
+            'bad mean? %s %s' % (mean, target_avg))
     else:  # if target_avg is a scalar, then we can do the mean of
            # `mean` to get something more precise
         mean = numpy.mean(mean)
         #print prefix, 'mean', mean
-        assert abs(mean - target_avg) < mean_rtol, 'bad mean? %f %f' % (
-            numpy.mean(mean), target_avg)
-    #print prefix, 'std', avg_std
+        assert abs(mean - target_avg) < mean_rtol * (1 + abs(target_avg)), (
+            'bad mean? %f %f' % (mean, target_avg))
+
+    std = numpy.sqrt(avg_var)
+    #print prefix, 'var', avg_var
+    #print prefix, 'std', std
     if target_std is not None:
-        assert abs(avg_std - target_std) < .01, 'bad std? %f %f' % (avg_std,
-                                                                    target_std)
+        assert abs(std - target_std) < std_tol * (1 + abs(target_std)), (
+                'bad std? %f %f %f' % (std, target_std, std_tol))
     #print prefix, 'time', dt
     #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
@@ -368,11 +370,14 @@ def test_uniform():
         steps = int(1e3)
 
     x = tensor.matrix()
-    for size, var_input, input in [
-            (sample_size, [], []),
-            (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
-            ((x.shape[0], sample_size[1]), [x],
-             [numpy.zeros(sample_size, dtype=config.floatX)])
+    for size, const_size, var_input, input in [
+            (sample_size, sample_size, [], []),
+            (x.shape, sample_size, [x],
+             [numpy.zeros(sample_size, dtype=config.floatX)]),
+            ((x.shape[0], sample_size[1]), sample_size, [x],
+             [numpy.zeros(sample_size, dtype=config.floatX)]),
+            # test empty size (scalar)
+            ((), (), [], []),
             ]:
 
         #### TEST CPU IMPLEMENTATION ####
@@ -396,7 +401,13 @@ def test_uniform():
         #print 'CPU: random?[:10], random?[-10:]'
         #print cpu_out[0, 0:10]
         #print cpu_out[-1, -10:]
-        basictest(f, steps, sample_size, prefix='mrg cpu', inputs=input)
+
+        # Increase the number of steps if sizes implies only a few samples
+        if numpy.prod(const_size) < 10:
+            steps_ = steps * 100
+        else:
+            steps_ = steps
+        basictest(f, steps_, const_size, prefix='mrg cpu', inputs=input)
 
         if mode != 'FAST_COMPILE' and cuda_available:
             #print ''
@@ -418,7 +429,7 @@ def test_uniform():
             #print 'GPU: random?[:10], random?[-10:]'
             #print gpu_out[0, 0:10]
             #print gpu_out[-1, -10:]
-            basictest(f, steps, sample_size, prefix='mrg  gpu', inputs=input)
+            basictest(f, steps_, const_size, prefix='mrg  gpu', inputs=input)
 
             numpy.testing.assert_array_almost_equal(cpu_out, gpu_out,
                                                     decimal=6)
@@ -430,7 +441,7 @@ def test_uniform():
         uu = RR.uniform(size=size)
         ff = theano.function(var_input, uu, mode=mode)
         # It's not our problem if numpy generates 0 or 1
-        basictest(ff, steps, sample_size, prefix='numpy',
+        basictest(ff, steps_, const_size, prefix='numpy',
                   allow_01=True, inputs=input)
 
 
@@ -456,11 +467,14 @@ def test_binomial():
     x = tensor.matrix()
     v = tensor.vector()
     for mean in [0.1, 0.5]:
-        for size, var_input, input in [
-                (sample_size, [], []),
-                (x.shape, [x], [numpy.zeros(sample_size, dtype=config.floatX)]),
-                ((x.shape[0], sample_size[1]), [x],
-                 [numpy.zeros(sample_size, dtype=config.floatX)])
+        for size, const_size, var_input, input in [
+                (sample_size, sample_size, [], []),
+                (x.shape, sample_size, [x],
+                 [numpy.zeros(sample_size, dtype=config.floatX)]),
+                ((x.shape[0], sample_size[1]), sample_size, [x],
+                 [numpy.zeros(sample_size, dtype=config.floatX)]),
+                # test empty size (scalar)
+                ((), (), [], []),
                 ]:
 
             #print ''
@@ -474,7 +488,13 @@ def test_binomial():
             out = f(*input)
             #print 'random?[:10]\n', out[0, 0:10]
             #print 'random?[-1,-10:]\n', out[-1, -10:]
-            basictest(f, steps, sample_size, prefix='mrg  cpu',
+
+            # Increase the number of steps if sizes implies only a few samples
+            if numpy.prod(const_size) < 10:
+                steps_ = steps * 100
+            else:
+                steps_ = steps
+            basictest(f, steps_, const_size, prefix='mrg  cpu',
                       inputs=input, allow_01=True,
                       target_avg=mean, mean_rtol=rtol)
 
@@ -494,7 +514,7 @@ def test_binomial():
                 gpu_out = numpy.asarray(f(*input))
                 #print 'random?[:10]\n', gpu_out[0, 0:10]
                 #print 'random?[-1,-10:]\n', gpu_out[-1, -10:]
-                basictest(f, steps, sample_size, prefix='mrg  gpu',
+                basictest(f, steps_, const_size, prefix='mrg  gpu',
                           inputs=input, allow_01=True,
                           target_avg=mean, mean_rtol=rtol)
                 numpy.testing.assert_array_almost_equal(out, gpu_out,
@@ -508,7 +528,7 @@ def test_binomial():
             uu = RR.binomial(size=size, p=mean)
             ff = theano.function(var_input, uu, mode=mode)
             # It's not our problem if numpy generates 0 or 1
-            basictest(ff, steps, sample_size, prefix='numpy', allow_01=True,
+            basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
                       inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
@@ -525,24 +545,32 @@ def test_normal0():
         default_rtol = .01
     sample_size_odd = (sample_size[0], sample_size[1] - 1)
     x = tensor.matrix()
-    for size, const_size, var_input, input, avg, rtol in [
-        (sample_size, sample_size, [], [], -5., default_rtol),
+
+    for size, const_size, var_input, input, avg, rtol, std_tol in [
+        (sample_size, sample_size, [], [], -5., default_rtol, default_rtol),
         (x.shape, sample_size, [x],
          [numpy.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         ((x.shape[0], sample_size[1]), sample_size, [x],
          [numpy.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         #test odd value
-        (sample_size_odd, sample_size_odd, [], [], -5., default_rtol),
+        (sample_size_odd, sample_size_odd, [], [], -5.,
+         default_rtol, default_rtol),
         #test odd value
         (x.shape, sample_size_odd, [x],
          [numpy.zeros(sample_size_odd, dtype=config.floatX)],
-         -5., default_rtol),
+         -5., default_rtol, default_rtol),
         (sample_size, sample_size, [], [],
          numpy.arange(numpy.prod(sample_size),
                       dtype='float32').reshape(sample_size),
-         10. * std / numpy.sqrt(steps)),
+         10. * std / numpy.sqrt(steps), default_rtol),
+        # test empty size (scalar)
+        ((), (), [], [], -5., default_rtol, 0.02),
+        # test with few samples at the same time
+        ((1,), (1,), [], [], -5., default_rtol, 0.02),
+        ((2,), (2,), [], [], -5., default_rtol, 0.02),
+        ((3,), (3,), [], [], -5., default_rtol, 0.02),
             ]:
         #print ''
         #print 'ON CPU:'
@@ -555,8 +583,15 @@ def test_normal0():
         #theano.printing.debugprint(f)
         out = f(*input)
         #print 'random?[:10]\n', out[0, 0:10]
-        basictest(f, steps, const_size, target_avg=avg, target_std=std,
-                  prefix='mrg ', allow_01=True, inputs=input, mean_rtol=rtol)
+
+        # Increase the number of steps if size implies only a few samples
+        if numpy.prod(const_size) < 10:
+            steps_ = steps * 50
+        else:
+            steps_ = steps
+        basictest(f, steps_, const_size, target_avg=avg, target_std=std,
+                  prefix='mrg ', allow_01=True, inputs=input,
+                  mean_rtol=rtol, std_tol=std_tol)
 
         sys.stdout.flush()
 
@@ -578,9 +613,9 @@ def test_normal0():
             #print 'random?[:10]\n', gpu_out[0, 0:10]
             #print '----'
             sys.stdout.flush()
-            basictest(f, steps, const_size, target_avg=avg, target_std=std,
+            basictest(f, steps_, const_size, target_avg=avg, target_std=std,
                       prefix='gpu mrg ', allow_01=True, inputs=input,
-                      mean_rtol=rtol)
+                      mean_rtol=rtol, std_tol=std_tol)
             # Need to allow some rounding error as their is float
             # computation that are done on the gpu vs cpu
             assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
@@ -592,7 +627,7 @@ def test_normal0():
         nn = RR.normal(size=size, avg=avg, std=std)
         ff = theano.function(var_input, nn)
 
-        basictest(ff, steps, const_size, target_avg=avg, target_std=std,
+        basictest(ff, steps_, const_size, target_avg=avg, target_std=std,
                   prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 

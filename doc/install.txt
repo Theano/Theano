@@ -1001,6 +1001,10 @@ instructions in :ref:`windows_bleeding_edge`.
 Windows installer for AnacondaCE
 ################################
 
+.. note::
+
+   This don't work with current Anaconda. Help needed to repair this.
+
 If you installed AnacondaCE, the simplest way to install and configure
 Theano is to download and execute this `Windows installer
 for Theano on AnacondaCE for Windows

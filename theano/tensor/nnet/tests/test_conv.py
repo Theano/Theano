@@ -1,12 +1,12 @@
 import time
+
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-
 from theano.tensor.nnet import conv
-
 from theano.tensor.basic import _allclose, NotScalarConstantError
 
 
@@ -18,6 +18,8 @@ class TestConv2D(utt.InferShapeTester):
         self.input.name = 'default_V'
         self.filters = T.dtensor4('filters')
         self.filters.name = 'default_filters'
+        if not conv.imported_scipy_signal and theano.config.cxx == "":
+            raise SkipTest("conv2d tests need SciPy or a c++ compiler")
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),

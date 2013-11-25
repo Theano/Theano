@@ -53,7 +53,7 @@ copyright = '2008--2013, LISA lab'
 # The short X.Y version.
 version = '0.6'
 # The full version, including alpha/beta/rc tags.
-release = '0.6rc3'
+release = '0.6rc5'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:

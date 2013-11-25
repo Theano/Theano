@@ -1561,19 +1561,16 @@ class Scan(PureOp):
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
             maxtap = numpy.max(self.tap_array[idx])
+            if idx < self.n_mit_mot:
+                outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
+            else:
+                outmaxtap = 0
             seq = outs[idx]
             for k in self.tap_array[idx]:
-                if maxtap < 0:
-                    dim_offset = abs(maxtap)
+                if outmaxtap -k != 0:
+                    nw_seq = seq[k - mintap: -(outmaxtap-k)][::-1]
                 else:
-                    dim_offset = 0
-                if maxtap == mintap and maxtap != 0:
-                    nw_seq = seq[:abs(maxtap)]
-                elif maxtap - k != 0:
-                    nw_seq = seq[dim_offset + k - mintap - 1:\
-                                 -(maxtap - k + 1)][::-1]
-                else:
-                    nw_seq = seq[dim_offset + k - mintap - 1: -1][::-1]
+                    nw_seq = seq[k - mintap:][::-1]
                 outer_inp_seqs.append(nw_seq)
         outer_inp_seqs += [
             x[:-1][::-1] for x in self.outer_sitsot_outs(outs)]
@@ -1627,7 +1624,11 @@ class Scan(PureOp):
         n_mitmot_inps = 0
 
         for idx in xrange(self.n_mit_mot):
-            outer_inp_mitmot.append(dC_douts[idx][::-1])
+            if isinstance(dC_douts[idx].type, DisconnectedType):
+                out = outs[idx]
+                outer_inp_mitmot.append(tensor.zeros_like(out))
+            else:
+                outer_inp_mitmot.append(dC_douts[idx][::-1])
             mitmot_inp_taps.append([])
             mitmot_out_taps.append([])
             undefined = False
@@ -1648,7 +1649,7 @@ class Scan(PureOp):
                     if _sh in gof.graph.inputs([dC_dinps_t[ins_pos]]):
                         undefined = True
 
-                n_mitmot_inps_ += 1
+                n_mitmot_inps += 1
                 ins_pos += 1
                 n_mitmot_outs += 1
                 mitmot_inp_taps[idx].append(-self.tap_array[idx][jdx])

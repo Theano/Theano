@@ -351,7 +351,10 @@ def _infer_ndim_bcast(ndim, shape, *args):
                     ValueError('negative shape', s)
         # post-condition: shape may still contain both symbolic and
         # non-symbolic things
-        v_shape = tensor.stack(*pre_v_shape)
+        if len(pre_v_shape) == 0:
+            v_shape = tensor.constant([], dtype='int32')
+        else:
+            v_shape = tensor.stack(*pre_v_shape)
 
     elif shape is None:
         # The number of drawn samples will be determined automatically,
@@ -570,6 +573,54 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
     op = RandomFunction(random_integers_helper,
             tensor.TensorType(dtype=dtype, broadcastable=bcast))
     return op(random_state, size, low, high)
+
+
+def choice_helper(random_state, a, replace, p, size):
+    """
+    Helper function to draw random numbers using numpy's choice function.
+
+    This is a generalization of numpy.random.choice to the case where `a`,
+    `replace` and `p` are tensors.
+    """
+    if a.ndim > 1:
+        raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
+    if p.ndim == 1:
+        if p.size == 0:
+            p = None
+    else:
+        raise ValueError('p.ndim (%i) must be 1' % p.ndim)
+    replace = bool(replace)
+    return random_state.choice(a, size, replace, p)
+
+
+def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
+           dtype='int64'):
+    """
+    Choose values from `a` with or without replacement. `a` can be a 1-D array
+    or a positive scalar. If `a` is a scalar, the samples are drawn from the
+    range 0,...,a-1.
+
+    If the size argument is ambiguous on the number of dimensions, ndim
+    may be a plain integer to supplement the missing information.
+
+    If size is None, a scalar will be returned.
+    """
+    # numpy.random.choice is only available for numpy versions >= 1.7
+    major, minor, _ = numpy.version.short_version.split('.')
+    if (int(major), int(minor)) < (1, 7):
+        raise ImportError('choice requires at NumPy version >= 1.7 '
+                          '(%s)' % numpy.__version__)
+    a = tensor.as_tensor_variable(a)
+    if isinstance(replace, bool):
+        replace = tensor.constant(replace, dtype='int8')
+    else:
+        replace = tensor.as_tensor_variable(replace)
+    # encode p=None as an empty vector
+    p = tensor.as_tensor_variable(p or [])
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size)
+    op = RandomFunction(choice_helper, tensor.TensorType(dtype=dtype,
+                                                         broadcastable=bcast))
+    return op(random_state, size, a, replace, p)
 
 
 def permutation_helper(random_state, n, shape):
@@ -829,6 +880,19 @@ class RandomStreamsBase(object):
         """
         return self.gen(random_integers, size, low, high, ndim=ndim,
                         dtype=dtype)
+    
+    def choice(self, size=None, a=2, replace=True, p=None, ndim=None,
+               dtype='int64'):
+        """
+        Choose values from `a` with or without replacement. `a` can be a 1-D
+        array or a positive scalar. If `a` is a scalar, the samples are drawn
+        from the range 0,...,a-1.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+        """
+        return self.gen(choice, size, a, replace, p, ndim=ndim, dtype=dtype)
 
     def permutation(self, size=None, n=1, ndim=None, dtype='int64'):
         """

@@ -196,9 +196,13 @@ def scan(fn,
     inner_slices = []  # Actual slices if scan is removed from the picture
     # go through sequences picking up time slices as needed
     for i, seq in enumerate(seqs):
+        if isinstance(seq, dict):
+            seq = seq['input']
         actual_slice = seq[0]
         _seq_val = tensor.as_tensor_variable(seq)
         _seq_val_slice = _seq_val[0]
+
+        nw_slice = _seq_val_slice.type()
         # Try to transfer test_value to the new variable
         if config.compute_test_value != 'off':
             try:
@@ -212,7 +216,6 @@ def scan(fn,
                         'the inner function of scan, input value '
                         'missing %s'), e)
 
-        nw_slice = _seq_val_slice.type()
         if seq.name:
             nw_slice.name = seq.name + '[t]'
         scan_seqs.append(_seq_val)

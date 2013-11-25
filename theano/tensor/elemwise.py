@@ -1606,6 +1606,7 @@ class All(CAReduce):
             return "All{%s}" % ", ".join(map(str, self.axis))
 
     def make_node(self, input):
+        input = as_tensor_variable(input)
         if input.dtype not in ["int8", "uint8"]:
             input = theano.tensor.neq(input, 0)
         ret = super(All, self).make_node(input)
@@ -1631,6 +1632,7 @@ class Any(CAReduce):
             return "Any{%s}" % ", ".join(map(str, self.axis))
 
     def make_node(self, input):
+        input = as_tensor_variable(input)
         if input.dtype not in ["int8", "uint8"]:
             input = theano.tensor.neq(input, 0)
         ret = super(Any, self).make_node(input)

@@ -188,7 +188,11 @@ def safe_make_node(op, *inputs):
 
 def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                bad_runtime=None, grad=None, mode=None, grad_rtol=None,
-               eps=1e-10, skip=False, test_memmap=True):
+               eps=1e-10, skip=False, test_memmap=True, check_name=True):
+    """
+    :param check_name:
+        Use only for tester that aren't in Theano.
+    """
     if checks is None:
         checks = {}
     if good is None:
@@ -206,12 +210,14 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
     _bad_build, _bad_runtime, _grad = bad_build, bad_runtime, grad
     _mode, _grad_rtol, _eps, skip_ = mode, grad_rtol, eps, skip
     _test_memmap = test_memmap
+    _check_name = check_name
 
     class Checker(unittest.TestCase):
 
         op = staticmethod(_op)
         expected = staticmethod(_expected)
         checks = _checks
+        check_name = _check_name
         good = _good
         bad_build = _bad_build
         bad_runtime = _bad_runtime
@@ -223,7 +229,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         def setUp(self):
             # Verify that the test's name is correctly set.
             # Some tests reuse it outside this module.
-            eval(self.__class__.__module__ + '.' + self.__class__.__name__)
+            if self.check_name:
+                eval(self.__class__.__module__ + '.' + self.__class__.__name__)
 
             # We keep a list of temporary files created in add_memmap_values,
             # to remove them at the end of the test.
@@ -5921,6 +5928,14 @@ class T_as_tensor_variable(unittest.TestCase):
     def test_ndarray_bool(self):
         ten = as_tensor_variable(numpy.array([True, False, False, True, True]))
         assert ten.type.dtype == 'uint8'
+
+    def test_memmap(self):
+        inp = numpy.random.rand(4, 3)
+        f, fname = mkstemp()
+        new_inp = numpy.memmap(fname, dtype=inp.dtype,
+                               mode='w+', shape=inp.shape)
+        new_inp[...] = inp
+        x = as_tensor_variable(new_inp)
 
 
 class test_complex_mod(unittest.TestCase):

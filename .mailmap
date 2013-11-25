@@ -8,7 +8,9 @@
 # # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
 # # gives no duplicates.
 
+Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
 Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
+Arnaud Bergeron <abergeron@gmail.com> <abergeron@gmail.com>
 <abergeron@gmail.com> <anakha@kami.(none)>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde-Farley <dwf@cs.toronto.edu>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde Farley <dwf@cs.toronto.edu>
@@ -25,6 +27,11 @@ Francois Savard <devnull@localhost> fsavard <devnull@localhost>
 #     2	onze <onzeonline@gmail.com>
 #    25	projects@lgcm <projects@lgcm>
 #     1	tutorial/debug_faq.txt <devnull@localhost>
+Bogdan Budescu <bbudescu@gmail.com> bbudescu <bbudescu@gmail.com>
+Sebastian Berg <sebastian@sipsolutions.net> seberg <sebastian@sipsolutions.net>
+Huy Nguyen <huy@huyng.com> huyng <huy@huyng.com>
+Wei Li <kuantkid@gmail.com> kuantkid <kuantkid@gmail.com>
+Ethan Buchman <ebuchman@uoguelph.ca> ebuchman <ebuchman@uoguelph.ca>
 Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@briaree1.rqchp.qc.ca>
 Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@iro.umontreal.ca>
 Frederic Bastien <nouiz@nouiz.org> Frédéric Bastien <nouiz@nouiz.org>
@@ -55,6 +62,7 @@ James Bergstra <james.bergstra@gmail.com> james@mackie <james@mackie>
 James Bergstra <james.bergstra@gmail.com> james@x40.unstable <james@x40.unstable>
 James Bergstra <james.bergstra@gmail.com> test_rng_mrg.py <devnull@localhost>
 John Salvatier <jsalvatier@gmail.com> jsalvatier <jsalvatier@gmail.com>
+John Salvatier <jsalvatier@gmail.com> john salvatier <jsalvatier@gmail.com>
 Joseph Turian <turian@iro.umontreal.ca> Joseph Turian <turian@gmail.com>
 Joseph Turian <turian@iro.umontreal.ca> turian@grenat.iro.umontreal.ca <turian@grenat.iro.umontreal.ca>
 Joseph Turian <turian@iro.umontreal.ca> turian@lgcm <turian@lgcm>
@@ -83,3 +91,4 @@ Sander Dieleman <sanderdieleman@gmail.com> benanne <sanderdieleman@gmail.com>
 Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa <glorotxa@iro.umontreal.ca>
 Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa@timide.iro.umontreal.ca <glorotxa@timide.iro.umontreal.ca>
 Yoshua Bengio <bengioy@iro.umontreal.ca> bengioy@bengio-mac.local <bengioy@bengio-mac.local>
+Sina Honari <honaris@iro.umontreal.ca> SinaHonari <sina2222@gmail.com>

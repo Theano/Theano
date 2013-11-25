@@ -17,7 +17,7 @@ class T_OpFromGraph(unittest.TestCase):
         x, y, z = T.matrices('xyz')
         e = x + y * z
         op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
-        f = op(x, y, z) - op(y, z, x) #(1+3*5=array of 16) - (3+1*5=array of 8)
+        f = op(x, y, z) - op(y, z, x)  # (1+3*5=array of 16) - (3+1*5=array of 8)
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 2), dtype=config.floatX)
         yv = numpy.ones((2, 2), dtype=config.floatX)*3
@@ -47,7 +47,7 @@ class T_OpFromGraph(unittest.TestCase):
     def test_grad(self):
         x, y, z = T.matrices('xyz')
         e = x + y * z
-        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN', grad_depth = 2)
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN', grad_depth=2)
         f = op(x, y, z)
         f = f - T.grad(T.sum(f), y)
         fn = function([x, y, z], f)
