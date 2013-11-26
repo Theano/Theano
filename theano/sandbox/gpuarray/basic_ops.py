@@ -10,6 +10,7 @@ from theano.tensor.basic import Alloc
 
 from theano.gof.python25 import all, any
 from theano.gof.utils import MethodNotDefined
+from theano.compat import PY3
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 try:
@@ -128,16 +129,19 @@ static GpuKernel %(kname)s;""" % dict(vname=vname, kname=kname,code=code)
         kname = self.c_kernel_obj()
         flags = self.c_kernel_flags()
         # TODO: find a way to release the kernel once the module is unloaded
+        error_out = ""
+        if PY3:
+            error_out = "NULL"
         return ["""
 int types[%(numargs)u] = {%(types)s};
 if (GpuKernel_init(&%(kname)s, pygpu_default_context()->ops,
                    pygpu_default_context()->ctx, 1, &%(vname)s, NULL,
                    "%(name)s", %(numargs)s, types, %(flags)s) != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "Error initializing kernel");
-    return;
+    return %(error_out)s;
 }
 """ % dict(types=','.join(types), numargs=numargs, kname=kname, name=name,
-           vname=vname, flags=flags)]
+           vname=vname, flags=flags, error_out=error_out)]
 
 
 class HostFromGpu(Op):
