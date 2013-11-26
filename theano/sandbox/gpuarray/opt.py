@@ -170,6 +170,8 @@ def local_gpuflatten(node):
 def local_gpu_elemwise(node):
     op = node.op
     name = op.name
+    if node.outputs[0].ndim == 0:
+        return
     if name:
         name = 'Gpu'+name
     res = GpuElemwise(op.scalar_op, name=name,
@@ -242,10 +244,12 @@ def local_gpua_careduce(node):
 def local_gpua_gemv(node):
     return GpuGemv(inplace=node.op.inplace)
 
+
 @register_opt()
 @op_lifter([tensor.blas_c.CGemv])
 def local_gpua_gemv2(node):
     return GpuGemv(inplace=node.op.inplace)
+
 
 @register_opt()
 @op_lifter([tensor.blas.Gemm])
