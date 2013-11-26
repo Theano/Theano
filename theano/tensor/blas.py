@@ -1566,7 +1566,7 @@ class Dot22(GemmRelated):
             raise
 
     def __str__(self):
-        return "_dot22"
+        return self.__class__.__name__
 
     setup_z_Nz_Sz = """
         if ((NULL == %(_zout)s)
@@ -1839,7 +1839,7 @@ class Dot22Scalar(GemmRelated):
             raise
 
     def __str__(self):
-        return "_dot22scalar"
+        return self.__class__.__name__
 
     setup_z_Nz_Sz = Dot22.setup_z_Nz_Sz
 
