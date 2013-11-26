@@ -566,12 +566,15 @@ class Scan(PureOp):
                 profile = ScanProfileStats(name=self.name)
         elif self.profile:
             profile = self.profile
-        self.fn = function(wrapped_inputs,
-                           wrapped_outputs,
-                           mode=self.mode_instance,
-                           name=self.name,
-                           profile=profile,
-                           on_unused_input='ignore')
+        # make_thunk can be called many times on the same op
+        # we do not want to recompile the inner fct every time.
+        if not getattr(self, 'fn', None):
+            self.fn = function(wrapped_inputs,
+                               wrapped_outputs,
+                               mode=self.mode_instance,
+                               name=self.name,
+                               profile=profile,
+                               on_unused_input='ignore')
 
         try:
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
