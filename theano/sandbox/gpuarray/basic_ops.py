@@ -683,7 +683,7 @@ class GpuEye(GpuKernelBase, Op):
     def c_kernel_code(self):
         return """
 KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
-    ga_size nb = (ga_size)min((ga_ulong)n, (ga_ulong)m);
+    ga_size nb = n < m ? n : m;
     for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
     }
