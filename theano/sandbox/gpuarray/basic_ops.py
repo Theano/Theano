@@ -643,7 +643,7 @@ class GpuReshape(HideC, tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
 
-class GpuEye(Op):
+class GpuEye(GpuKernelBase, Op):
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -676,80 +676,65 @@ class GpuEye(Op):
     def __hash__(self):
         return hash(self.dtype) ^ hash(type(self))
 
-    def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
-
-    def c_support_code(self):
-        dtype = self.dtype
+    def c_kernel_code(self):
         return """
-CUdeviceptr (*cuda_get_ptr)(gpudata *g);
-
-//TODO OPT: Only 1 block is used.
-__global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
-    int nb_elem = min(n, m);
-    for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
+KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
+    ga_size nb = min(n, m);
+    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
     }
-}""" % locals()
+}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype))
 
-    def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+    def c_kernel_params(self):
+        return ["GA_BUFFER", "GA_SIZE", "GA_SIZE"]
+
+    def c_kernel_name(self):
+        return "k"
+
+    def c_kernel_flags(self):
+        return self._get_kernel_flags(self.dtype)
 
     def c_code(self, node, name, inp, out, sub):
-        #TODO assert that the back-end is cuda!
         n, m = inp
         z, = out
         fail = sub['fail']
-        dtype = self.dtype
-        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
+        kname = self.c_kernel_obj()
         s = """
-        npy_%(dtype)s* ptr;
-        size_t dims[] = {0, 0};
+        size_t dims[2] = {0, 0};
+        void *args[3];
+        int err;
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
         dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
-        int total_size = dims[0] * dims[1] * sizeof(float);
-        cudaError_t sts;
         Py_CLEAR(%(z)s);
-        %(z)s = pygpu_empty(2, dims,
+
+        %(z)s = pygpu_zeros(2, dims,
                             %(typecode)s,
                             GA_C_ORDER,
                             pygpu_default_context(), Py_None);
-        if (!%(z)s) {
+        if (%(z)s == NULL) {
             %(fail)s
         }
-        ptr = (npy_%(dtype)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                               %(z)s->ga.offset);
-        sts = cudaMemset(ptr, 0, total_size);
-        if (cudaSuccess != sts)
-        {
-            PyErr_Format(PyExc_MemoryError,
-                         "GpuEye: Error in memset %%d bytes of device memory.",
-                         total_size);
+
+        args[0] = &%(z)s->ga;
+        args[1] = &dims[0];
+        args[2] = &dims[1];
+        err = GpuKernel_call(&%(kname)s, 0, 1, 256, args);
+        if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "compyte error: kEye: %%s. n%%lu, m=%%lu.",
+                         GpuKernel_error(&%(kname)s, err),
+                         (unsigned long)dims[0], (unsigned long)dims[1]);
             %(fail)s;
         }
-
-        kEye_%(dtype)s<<<1, 256>>>(ptr, dims[0], dims[1]);
 
         if(%(sync)d)
             GpuArray_sync(&%(z)s->ga);
-
-        sts = cudaGetLastError();
-        if (cudaSuccess != sts)
-        {
-            PyErr_Format(PyExc_RuntimeError,
-                    "Cuda error: kEye: %%s. n=%%ld, m=%%ld.",
-                    cudaGetErrorString(sts),
-                    (long int)dims[0], (long int)dims[1]);
-            %(fail)s;
-         }
         """ % locals()
 
         return s
 
     def c_code_cache_version(self):
-        return (1,)
-
-    def c_compiler(self):
-        return NVCC_compiler
+        return (3, self.GpuKernelBase_version)
