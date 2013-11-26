@@ -278,6 +278,13 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
     Py_XINCREF(%(oname)s);
 """, version=(0,))
 
+theano.compile.register_shape_i_c_code(GpuArrayType, """
+    if(!%(oname)s)
+        %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+    ((npy_int64*)PyArray_DATA(%(oname)s))[0] =
+                              %(iname)s->ga.dimensions[%(i)s];
+""", version=(0,))
+
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
     %(oname)s = pygpu_copy(%(iname)s, GA_ANY_ORDER);

@@ -611,6 +611,16 @@ theano.compile.register_view_op_c_code(
         """,
         version=1)
 
+# Register TensorType C code for ViewOp.
+theano.compile.register_shape_i_c_code(
+        TensorType,
+        """
+        if(!%(oname)s)
+            %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+        ((npy_int64*)PyArray_DATA(%(oname)s))[0]=PyArray_DIMS(%(iname)s)[%(i)s];
+        """,
+        version=1)
+
 # Register TensorType C code for DeepCopyOp
 theano.compile.register_deep_copy_op_c_code(
         TensorType,

@@ -29,6 +29,7 @@ from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
+from theano.compile.ops import Shape_i
 
 from theano.gof.python25 import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
@@ -635,78 +636,6 @@ class MakeVectorPrinter:
             raise TypeError("Can only print make_vector.")
 T.pprint.assign(lambda pstate, r: r.owner and isinstance(
         r.owner.op, MakeVector), MakeVectorPrinter())
-
-
-class Shape_i(T.Op):
-    """
-    L{Op} to return the shape of a matrix.
-
-    @note: Non-differentiable.
-    """
-    def __init__(self, i):
-        self.i = i
-
-    def __hash__(self):
-        return hash(type(self)) ^ self.i
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.i == other.i
-
-    def __str__(self):
-        return '%s{%i}' % (self.__class__.__name__, self.i)
-
-    def make_node(self, x):
-        # x could be one of a number of types
-        # the only thing we require is that the variable have a .ndim,
-        # and that the value have a .shape
-        if not isinstance(x, T.Variable):
-            raise TypeError('x must be Variable with ndim attribute', x)
-        if x.ndim <= self.i:
-            raise TypeError('x has too few dimensions for Shape_i',
-                            (x, self.i))
-        return T.Apply(self, [x], [T.lscalar()])
-
-    def perform(self, node, inp, out_):
-        x, = inp
-        out, = out_
-        if out[0] is None:
-            out[0] = theano._asarray(x.shape[self.i], dtype='int64')
-        else:
-            out[0][...] = x.shape[self.i]
-
-    def c_code_cache_version(self):
-        return (0, 1)
-
-    def c_code(self, node, name, inp, out_, sub):
-        x, = inp
-        out, = out_
-        i = self.i
-        if isinstance(node.inputs[0].type, T.TensorType):
-            return """
-            if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
-            ((npy_int64*)PyArray_DATA(%(out)s))[0]=PyArray_DIMS(%(x)s)[%(i)s];
-            """ % locals()
-
-        elif node.inputs[0].type.__class__.__name__ == "CudaNdarrayType":
-            #Don't want to import cuda stuff here.
-            return """
-            if(!%(out)s)
-            %(out)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
-            ((npy_int64*)PyArray_DATA(%(out)s))[0]=
-                            CudaNdarray_HOST_DIMS(%(x)s)[%(i)s];
-            """ % locals()
-        else:
-            #TODO: if your type is not listed here, make a damn registry of
-            #      shape_i ops for various types of variables.
-            #      Do not continue this madness.
-            return super(Shape_i, self).c_code(node, name, (x,), (out,), sub)
-
-    def infer_shape(self, node, input_shapes):
-        return [()]
-
-    def grad(self, inp, grads):
-        return [None]
 
 
 class ShapeFeature(object):
