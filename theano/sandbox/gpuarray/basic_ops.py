@@ -10,6 +10,7 @@ from theano.tensor.basic import Alloc
 
 from theano.gof.python25 import all, any
 from theano.gof.utils import MethodNotDefined
+from theano.compat import PY3
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 try:
@@ -57,6 +58,90 @@ class HideC(object):
 
     def c_code_cache_version_apply(self, node):
         return self.c_code_cache_version()
+
+
+class GpuKernelBase(object):
+    GpuKernelBase_version = 0
+
+    def c_kernel_code(self):
+        """
+        Return the source code of the kernel.
+        """
+        raise AttributeError("c_kernel_code", type(self))
+
+    def c_kernel_params(self):
+        """
+        Return the list of typecodes for kernel parameters.
+
+        The list can contain strings ( "GA_BUFFER" ) or direct int values.
+        """
+        raise AttributeError("c_kernel_params", type(self))
+
+    def c_kernel_name(self):
+        """
+        Return the name of the kernel in the source.
+        """
+        raise AttributeError("c_kernel_name", type(self))
+
+    def c_kernel_flags(self):
+        """
+        Return a string representing the C flags for the kernel.
+
+        Example:
+          "GA_USE_CLUDA|GA_USE_DOUBLE"
+
+        self._get_kernel_flags(*dtypes) returns an appropritate string
+        for the result of this function.
+        """
+        raise AttributeError("c_kernel_flags", type(self))
+
+    def c_kernel_codevar(self):
+        return 'kcode_' + type(self).__name__ + '_' + hex(hash(self))[2:]
+
+    def c_kernel_obj(self):
+        return 'k_' + type(self).__name__ + '_' + hex(hash(self))[2:]
+
+    def _get_kernel_flags(self, *dtypes):
+        dtypes = [numpy.dtype(d) for d in dtypes]
+        flags = ['GA_USE_CLUDA']
+        if any(d == numpy.float64 for d in dtypes):
+            flags.append('GA_USE_DOUBLE')
+        if any(d.itemsize < 4 for d in dtypes):
+            flags.append('GA_USE_SMALL')
+        return '|'.join(flags)
+
+    def c_headers(self):
+        return ['compyte/types.h']
+
+    def c_support_code(self):
+        kcode = self.c_kernel_code()
+        vname = self.c_kernel_codevar()
+        kname = self.c_kernel_obj()
+        code = '\\n'.join(l for l in kcode.split('\n'))
+        return """static const char *%(vname)s = "%(code)s";
+static GpuKernel %(kname)s;""" % dict(vname=vname, kname=kname,code=code)
+
+    def c_init_code(self):
+        types = self.c_kernel_params()
+        numargs = len(types)
+        name = self.c_kernel_name()
+        vname = self.c_kernel_codevar()
+        kname = self.c_kernel_obj()
+        flags = self.c_kernel_flags()
+        # TODO: find a way to release the kernel once the module is unloaded
+        error_out = ""
+        if PY3:
+            error_out = "NULL"
+        return ["""
+int types[%(numargs)u] = {%(types)s};
+if (GpuKernel_init(&%(kname)s, pygpu_default_context()->ops,
+                   pygpu_default_context()->ctx, 1, &%(vname)s, NULL,
+                   "%(name)s", %(numargs)s, types, %(flags)s) != GA_NO_ERROR) {
+    PyErr_SetString(PyExc_RuntimeError, "Error initializing kernel");
+    return %(error_out)s;
+}
+""" % dict(types=','.join(types), numargs=numargs, kname=kname, name=name,
+           vname=vname, flags=flags, error_out=error_out)]
 
 
 class HostFromGpu(Op):
@@ -562,7 +647,7 @@ class GpuReshape(HideC, tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
 
-class GpuEye(Op):
+class GpuEye(GpuKernelBase, Op):
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -595,80 +680,65 @@ class GpuEye(Op):
     def __hash__(self):
         return hash(self.dtype) ^ hash(type(self))
 
-    def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
-
-    def c_support_code(self):
-        dtype = self.dtype
+    def c_kernel_code(self):
         return """
-CUdeviceptr (*cuda_get_ptr)(gpudata *g);
-
-//TODO OPT: Only 1 block is used.
-__global__ void kEye_%(dtype)s(npy_%(dtype)s* a, int n, int m) {
-    int nb_elem = min(n, m);
-    for (unsigned int i = threadIdx.x; i < nb_elem; i += blockDim.x) {
+KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
+    ga_size nb = n < m ? n : m;
+    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
     }
-}""" % locals()
+}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype))
 
-    def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+    def c_kernel_params(self):
+        return ["GA_BUFFER", "GA_SIZE", "GA_SIZE"]
+
+    def c_kernel_name(self):
+        return "k"
+
+    def c_kernel_flags(self):
+        return self._get_kernel_flags(self.dtype)
 
     def c_code(self, node, name, inp, out, sub):
-        #TODO assert that the back-end is cuda!
         n, m = inp
         z, = out
         fail = sub['fail']
-        dtype = self.dtype
-        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
+        kname = self.c_kernel_obj()
         s = """
-        npy_%(dtype)s* ptr;
-        size_t dims[] = {0, 0};
+        size_t dims[2] = {0, 0};
+        void *args[3];
+        int err;
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
         dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
-        int total_size = dims[0] * dims[1] * sizeof(float);
-        cudaError_t sts;
         Py_CLEAR(%(z)s);
-        %(z)s = pygpu_empty(2, dims,
+
+        %(z)s = pygpu_zeros(2, dims,
                             %(typecode)s,
                             GA_C_ORDER,
                             pygpu_default_context(), Py_None);
-        if (!%(z)s) {
+        if (%(z)s == NULL) {
             %(fail)s
         }
-        ptr = (npy_%(dtype)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                               %(z)s->ga.offset);
-        sts = cudaMemset(ptr, 0, total_size);
-        if (cudaSuccess != sts)
-        {
-            PyErr_Format(PyExc_MemoryError,
-                         "GpuEye: Error in memset %%d bytes of device memory.",
-                         total_size);
+
+        args[0] = &%(z)s->ga;
+        args[1] = &dims[0];
+        args[2] = &dims[1];
+        err = GpuKernel_call(&%(kname)s, 0, 1, 256, args);
+        if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "compyte error: kEye: %%s. n%%lu, m=%%lu.",
+                         GpuKernel_error(&%(kname)s, err),
+                         (unsigned long)dims[0], (unsigned long)dims[1]);
             %(fail)s;
         }
-
-        kEye_%(dtype)s<<<1, 256>>>(ptr, dims[0], dims[1]);
 
         if(%(sync)d)
             GpuArray_sync(&%(z)s->ga);
-
-        sts = cudaGetLastError();
-        if (cudaSuccess != sts)
-        {
-            PyErr_Format(PyExc_RuntimeError,
-                    "Cuda error: kEye: %%s. n=%%ld, m=%%ld.",
-                    cudaGetErrorString(sts),
-                    (long int)dims[0], (long int)dims[1]);
-            %(fail)s;
-         }
         """ % locals()
 
         return s
 
     def c_code_cache_version(self):
-        return (1,)
-
-    def c_compiler(self):
-        return NVCC_compiler
+        return (3, self.GpuKernelBase_version)
