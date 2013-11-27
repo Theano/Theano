@@ -626,17 +626,17 @@ prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
 def atexit_print_default_profile_mode():
-    """Print the summary of the predefined mode PROFILE_MODE if used.
+    """Print the summary of the predefined mode ProfileMode if used.
 
     This all to have the summary printed at exit when
-    config.mode=PROFILE_MODE
+    config.mode=ProfileMode
     """
     for prof_mode in prof_mode_instance_to_print:
         if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the
-#predefined mode PROFILE_MODE if it is used printed when the program terminate.
+#predefined mode ProfileMode if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
 
 

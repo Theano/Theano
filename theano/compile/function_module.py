@@ -1266,9 +1266,9 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
      - FAST_COMPILE (minimal optimization)
 
-     - PROFILE_MODE: allow to print a profile mode with mode.print_summary
+     - ProfileMode: allow to print a profile mode with mode.print_summary
 
-     - DEBUG_MODE: verify many internal conditions that are normally assumed
+     - DebugMode: verify many internal conditions that are normally assumed
        (slow)
 
     :param accept_inplace: True iff the graph can contain inplace operations
