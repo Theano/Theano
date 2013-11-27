@@ -1456,8 +1456,17 @@ def std_lib_dirs_and_libs():
             # modules, even when libpython27.lib and python27.dll are
             # available, and the *.a files have to be found earlier than
             # the other ones.
-            libdir = os.path.join(sys.base_prefix, '..', '..', '..',
-                                  'User', 'libs')
+
+            #When Canopy is installed for the user:
+            #sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #When Canopy is installed for all users:
+            #sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #So we need to use sys.prefix as it support both cases.
+            #sys.base_prefix support only one case
+            libdir = os.path.join(sys.prefix, 'libs')
+
             for f, lib in [('libpython27.a', 'libpython 1.2'),
                            ('libmsvcr90.a', 'mingw 4.5.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
