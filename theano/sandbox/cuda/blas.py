@@ -627,7 +627,7 @@ class GpuConv(GpuOp):
         out, = outputs
         assert images[1] == kerns[1]
         flops = 0
-        if self.out_mode == "valid":
+        if self.border_mode == "valid":
             # nb mul and add by output pixel
             flops = kerns[2] * kerns[3] * 2
             # nb flops by output image

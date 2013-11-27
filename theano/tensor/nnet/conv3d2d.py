@@ -1,7 +1,7 @@
 import theano
 from theano.compat import any
 from theano.gradient import DisconnectedType
-from theano.gof import Op, Apply
+from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor
 import theano.sandbox.cuda as cuda
 
@@ -300,3 +300,20 @@ def make_gpu_optimizer(op, to_gpu):
 if cuda.cuda_available:
     make_gpu_optimizer(DiagonalSubtensor, [0])
     make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
+
+
+@theano.gof.local_optimizer([None])
+def local_inplace_DiagonalSubtensor(node):
+    """ also work for IncDiagonalSubtensor """
+    if (isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor)) and
+        not node.op.inplace):
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(*node.inputs)
+        return [new_node]
+    return False
+theano.compile.optdb.register(
+    'local_inplace_DiagonalSubtensor',
+    TopoOptimizer(
+        local_inplace_DiagonalSubtensor,
+        failure_callback=TopoOptimizer.warn_inplace),
+    60, 'fast_run', 'inplace')
