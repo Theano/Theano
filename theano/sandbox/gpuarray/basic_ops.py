@@ -516,30 +516,42 @@ class GpuAlloc(HideC, Alloc):
             for (i = 0; i < %(ndim)s; i++)
                 need_new_out |= %(zz)s->ga.dimensions[i] != %(name)s_shape[i];
 
-        if (need_new_out) {
+        if (need_new_out && (%(memset_0)s)) {
+            //pygpu_zeros can be faster then empty followed by memset.
             Py_XDECREF(%(zz)s);
-            %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
+            %(zz)s = pygpu_zeros(%(ndim)s, %(name)s_shape,
                                  %(vv)s->ga.typecode, GA_C_ORDER,
                                  pygpu_default_context(), Py_None);
             if (!%(zz)s) {
                 %(fail)s
             }
-        }
-        if (%(memset_0)s && GpuArray_ISONESEGMENT(&%(zz)s->ga))
-        {
-            int err = GpuArray_memset(&%(zz)s->ga, 0);
-            if (err != GA_NO_ERROR)
-            {
-                PyErr_Format(PyExc_MemoryError,
-                             "GpuAlloc: Error memsetting %%d"
-                             " element of device memory to 0.",
-                             PyGpuArray_SIZE(%(zz)s));
-                %(fail)s;
+        } else {
+            if (need_new_out) {
+                Py_XDECREF(%(zz)s);
+                %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
+                                     %(vv)s->ga.typecode, GA_C_ORDER,
+                                     pygpu_default_context(), Py_None);
+                if (!%(zz)s) {
+                    %(fail)s
+                }
             }
-        }
-        else if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) != GA_NO_ERROR) {
-            PyErr_SetString(PyExc_ValueError, "setarray failed");
-            %(fail)s
+            if (%(memset_0)s && GpuArray_ISONESEGMENT(&%(zz)s->ga))
+            {
+                int err = GpuArray_memset(&%(zz)s->ga, 0);
+                if (err != GA_NO_ERROR)
+                {
+                    PyErr_Format(PyExc_MemoryError,
+                                 "GpuAlloc: Error memsetting %%d"
+                                 " element of device memory to 0.",
+                                 PyGpuArray_SIZE(%(zz)s));
+                    %(fail)s;
+                }
+            }
+            else if (GpuArray_setarray(&%(zz)s->ga, &%(vv)s->ga) !=
+                     GA_NO_ERROR) {
+                PyErr_SetString(PyExc_ValueError, "setarray failed");
+                %(fail)s
+            }
         }
         """ % dict(name=name, ndim=ndim, zz=zz, vv=vv,
                    fail=sub['fail'], memset_0=memset_0)
@@ -550,7 +562,7 @@ class GpuAlloc(HideC, Alloc):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_alloc = GpuAlloc()
 
