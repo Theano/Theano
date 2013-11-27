@@ -1266,7 +1266,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
      - FAST_COMPILE (minimal optimization)
 
-     - ProfileMode: allow to print a profile mode with mode.print_summary
+     - ProfileMode(deprecated): allow to print a profile mode with mode.print_summary
 
      - DebugMode: verify many internal conditions that are normally assumed
        (slow)

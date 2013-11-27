@@ -137,7 +137,7 @@ Theano defines the following modes by name:
 - ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'ProfileMode'``: Same optimization as FAST_RUN, but print some profiling information
+- ``'ProfileMode'``(deprecated): Same optimization as FAST_RUN, but print some profiling information.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,
@@ -150,7 +150,7 @@ short name        Full constructor                                              
 ``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations
 ``FAST_RUN``      ``compile.mode.Mode(linker='cvm', optimizer='fast_run')``       C implementations where available, all available graph transformations.
 ``DebugMode``     ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
-``ProfileMode``   ``compile.profilemode.ProfileMode()``                           C implementations where available, all available graph transformations, print profile information.
+``ProfileMode``   ``compile.profilemode.ProfileMode()``                           Deprecated. C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
 .. Note::
@@ -180,7 +180,7 @@ c|py_nogc      no         yes                "++"       As c|py, but without gc
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only Python code
 c&py [#cpy2]_  no         yes                "+++++"    Use C and Python code
-ProfileMode    no         no                 "++++"     Compute some extra profiling info
+ProfileMode    no         no                 "++++"     (Deprecated) Compute some extra profiling info
 DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===
 
@@ -252,6 +252,11 @@ For more detail, see :ref:`DebugMode<debugmode>` in the library.
 
 ProfileMode
 ===========
+
+.. note::
+
+    ProfileMode is deprecated. Use :attr:`config.profile` instead.
+
 
 Besides checking for errors, another important task is to profile your
 code. For this Theano uses a special mode called ProfileMode which has

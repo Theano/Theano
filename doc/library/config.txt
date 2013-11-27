@@ -258,7 +258,8 @@ import theano and print the config variable, as in:
 
 .. attribute:: mode
 
-    String value: 'Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE'
+    String value: 'Mode', 'ProfileMode'(deprecated), 'DebugMode', 'FAST_RUN',
+    'FAST_COMPILE'
 
     Default 'Mode'
 

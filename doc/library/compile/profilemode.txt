@@ -14,6 +14,10 @@
 Guide
 =====
 
+.. note::
+
+    ProfileMode is deprecated. Use :attr:`config.profile` instead.
+
 To profile a Theano graph, a special mode called ProfileMode, must be passed as
 an argument when compiling your graph. Using ProfileMode is a three-step
 process.
