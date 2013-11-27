@@ -336,3 +336,39 @@ def test_gpueye():
         # M != N, k = 0
         yield check, dtype, 3, 5
         yield check, dtype, 5, 3
+
+
+def test_hostfromgpu_shape_i():
+    """
+    Test that the shape is lifted over hostfromgpu
+    """
+
+    m = mode_with_gpu.including('local_dot_to_dot22',
+                                'local_dot22_to_dot22scalar','specialize')
+    a = T.fmatrix('a')
+    ca = theano.sandbox.gpuarray.type.GpuArrayType('float32', (False, False))()
+    av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
+    cv = gpuarray.asarray(numpy.random.rand(5, 4),
+                          dtype='float32')
+
+    gpu_from_host = theano.sandbox.gpuarray.basic_ops.gpu_from_host
+    host_from_gpu = theano.sandbox.gpuarray.basic_ops.host_from_gpu
+    f = theano.function([a], gpu_from_host(a), mode=m)
+    assert gpu_from_host in [x.op
+                             for x in f.maker.fgraph.toposort()]
+    f = theano.function([a], gpu_from_host(a).shape, mode=m)
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[0].op, T.opt.Shape_i)
+    assert isinstance(topo[1].op, T.opt.Shape_i)
+    assert isinstance(topo[2].op, T.opt.MakeVector)
+    assert tuple(f(av)) == (5, 4)
+
+    f = theano.function([ca], host_from_gpu(ca), mode=m)
+    assert host_from_gpu in [x.op
+                             for x in f.maker.fgraph.toposort()]
+    f = theano.function([ca], host_from_gpu(ca).shape, mode=m)
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[0].op, theano.compile.Shape_i)
+    assert isinstance(topo[1].op, theano.compile.Shape_i)
+    assert isinstance(topo[2].op, theano.tensor.opt.MakeVector)
+    assert tuple(f(cv)) == (5, 4)

@@ -20,8 +20,8 @@ def make_declare(loop_orders, dtypes, sub):
                 # the stride in that dimension,
                 # and the jump from an iteration to the next
                 decl += """
-                int %(var)s_n%(value)i;
-                int %(var)s_stride%(value)i;
+                npy_intp %(var)s_n%(value)i;
+                ssize_t %(var)s_stride%(value)i;
                 int %(var)s_jump%(value)i_%(j)i;
                 """ % locals()
             else:
