@@ -376,5 +376,5 @@ Finally, notice that the ``ProfileMode`` also shows which ops were running a C
 implementation.
 
 
-For more detail, see :ref:`ProfileMode<libdoc_compile_mode>` in the library.
+For more detail, see :ref:`ProfileMode<profilemode>` in the library.
 
