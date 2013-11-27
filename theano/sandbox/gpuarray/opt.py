@@ -74,7 +74,7 @@ def op_lifter(OP):
                             return [host_from_gpu(new_op)]
             return False
         local_opt.__name__ = maker.__name__
-        return local_optimizer([OP])(local_opt)
+        return local_optimizer(OP)(local_opt)
     return f
 
 
