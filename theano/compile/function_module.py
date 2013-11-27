@@ -999,13 +999,12 @@ class FunctionMaker(object):
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-        assert expanded_inputs == inputs  # JB - I added this to make sure we could delete above
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
-        fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
+        fgraph, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
         fgraph.profile = profile
 
         self.fgraph = fgraph
@@ -1053,11 +1052,11 @@ class FunctionMaker(object):
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
-                    fgraph_updated_vars(fgraph, expanded_inputs))
+                    fgraph_updated_vars(fgraph, inputs))
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
