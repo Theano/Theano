@@ -128,7 +128,6 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
-        return
         return (0,)
 
 
@@ -161,7 +160,9 @@ class GpuDot22(BlasOp, Dot22):
         double one = 1.;
         double zero = 0.;
 
-        size_t dims[] = {PyGpuArray_DIMS(%(A)s)[0], PyGpuArray_DIMS(%(B)s)[1]};
+        size_t dims[] = {0, 0};
+        dims[0] = PyGpuArray_DIMS(%(A)s)[0];
+        dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
         %(out)s = pygpu_empty(2, dims,
                             %(typecode)s,
@@ -186,7 +187,6 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return
         return (0,)
 
     def c_headers(self):
