@@ -42,10 +42,6 @@ Reference
 
 .. attribute:: FAST_RUN
 
-.. attribute:: DEBUG_MODE
-
-.. attribute:: PROFILE_MODE
-
 .. class:: Mode(object)
 
     Compilation is controlled by two attributes: the `optimizer` controls how
