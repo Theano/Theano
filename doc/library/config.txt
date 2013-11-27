@@ -274,6 +274,8 @@ import theano and print the config variable, as in:
 
     Do the vm/cvm linkers profile the execution time of Theano functions?
 
+    See :ref:`tut_profiling` for examples.
+
 .. attribute:: profile_memory
 
     Bool value: either True or False
