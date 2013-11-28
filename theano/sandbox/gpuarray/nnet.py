@@ -35,27 +35,28 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
 
     def c_support_code(self):
+        dtype = self.dtype
         return """
         __global__ void k_xent_sm_1hot_bias(int M, int N,
-            const float * x_data, int xs0, int xs1,
-            const float * b, int bs0,
-            const float * y_idx_data, int y_idxs0,
-            float * nll_data, int nlls0,
-            float * sm_data, int sms0, int sms1,
-            float * am_data, int ams0)
+            const npy_%(dtype)s* x_data, int xs0, int xs1,
+            const npy_%(dtype)s* b, int bs0,
+            const npy_%(dtype)s* y_idx_data, int y_idxs0,
+            npy_%(dtype)s* nll_data, int nlls0,
+            npy_%(dtype)s* sm_data, int sms0, int sms1,
+            npy_%(dtype)s* am_data, int ams0)
         {
           for (int row = blockIdx.x; row < M; row += gridDim.x){
 
-            const float * x = x_data + xs0 * row;
+            const npy_%(dtype)s* x = x_data + xs0 * row;
             const int y_idx = (int)y_idx_data[row * y_idxs0];
-            float * sm = sm_data + sms0 * row;
+            npy_%(dtype)s* sm = sm_data + sms0 * row;
 
-            float sum = 0.0;
+            npy_%(dtype)s sum = 0.0;
             int row_max_j = 0;
-            float row_max = x[0] + b[0];
+            npy_%(dtype)s row_max = x[0] + b[0];
             for (int j = 1; j < N; ++j)
             {
-                float row_ij = x[j*xs1] + b[j*bs0];
+                npy_%(dtype)s row_ij = x[j*xs1] + b[j*bs0];
                 //todo: store to shared memory
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
@@ -63,12 +64,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             //compute the exp
             for (int j = 0; j < N; ++j)
             {
-                float row_ij = x[j*xs1] + b[j*bs0];
-                float sm_ij = exp(row_ij - row_max);
+                npy_%(dtype)s row_ij = x[j*xs1] + b[j*bs0];
+                npy_%(dtype)s sm_ij = exp(row_ij - row_max);
                 sum += sm_ij;
                 sm[j * sms1] = sm_ij;
             }
-            float sum_inv = 1.0 / sum;
+            npy_%(dtype)s sum_inv = 1.0 / sum;
             for (int j = 0; j < N; ++j)
             {
                 sm[j * sms1] *= sum_inv;
@@ -92,6 +93,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         """
 
     def c_code(self, node, nodename, inp, out, sub):
+        dtype = self.dtype
         x, b, y_idx = inp
         nll, sm, am = out
         classname = self.__class__.__name__
@@ -176,7 +178,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
                                     NUM_VECTOR_OP_BLOCKS);
      //TODO: launch more threads per row and do parallel sum and max reductions
             int n_threads = 1;
-            int n_shared_bytes = 0; //n_threads * sizeof(float);
+            int n_shared_bytes = 0; //n_threads * sizeof(%(dtype)s);
 
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 CudaNdarray_HOST_DIMS(%(x)s)[0],
@@ -341,17 +343,18 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
+        dtype = self.dtype
         return """
         __global__ void kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s(
            int N, int K,
-           const float * dnll, const int dnll_s0,
-           const float * sm, const int sm_s0, const int sm_s1,
-           const float * y_idx, const int y_idx_s0,
-           float * dx, const int dx_s0, const int dx_s1)
+           const npy_%(dtype)s* dnll, const int dnll_s0,
+           const npy_%(dtype)s* sm, const int sm_s0, const int sm_s1,
+           const npy_%(dtype)s* y_idx, const int y_idx_s0,
+           npy_%(dtype)s* dx, const int dx_s0, const int dx_s1)
         {
             for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
-                float dnll_i = dnll[i * dnll_s0];
+                npy_%(dtype)s dnll_i = dnll[i * dnll_s0];
                 int y_i = (int)y_idx[i * y_idx_s0];
 
                 for (int j = threadIdx.x; j < K; j += blockDim.x)
