@@ -183,19 +183,19 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 PyGpuArray_DIMS(%(x)s)[0],
                 PyGpuArray_DIMS(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(x)s),
+                PyArray_DATA(%(x)s),
                 PyGpuArray_STRIDES(%(x)s)[0],
                 PyGpuArray_STRIDES(%(x)s)[1],
-                CudaNdarray_DEV_DATA(%(b)s),
+                PyArray_DATA(%(b)s),
                 PyGpuArray_STRIDES(%(b)s)[0],
-                CudaNdarray_DEV_DATA(%(y_idx)s),
+                PyArray_DATA(%(y_idx)s),
                 PyGpuArray_STRIDES(%(y_idx)s)[0],
-                CudaNdarray_DEV_DATA(%(nll)s),
+                PyArray_DATA(%(nll)s),
                 PyGpuArray_STRIDES(%(nll)s)[0],
-                CudaNdarray_DEV_DATA(%(sm)s),
+                PyArray_DATA(%(sm)s),
                 PyGpuArray_STRIDES(%(sm)s)[0],
                 PyGpuArray_STRIDES(%(sm)s)[1],
-                CudaNdarray_DEV_DATA(%(am)s),
+                PyArray_DATA(%(am)s),
                 PyGpuArray_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
@@ -312,17 +312,17 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                         PyGpuArray_DIMS(%(dx)s)[0],
                         PyGpuArray_DIMS(%(dx)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(dnll)s),
+                        PyArray_DATA(%(dnll)s),
                         PyGpuArray_STRIDES(%(dnll)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(sm)s),
+                        PyArray_DATA(%(sm)s),
                         PyGpuArray_STRIDES(%(sm)s)[0],
                         PyGpuArray_STRIDES(%(sm)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(y_idx)s),
+                        PyArray_DATA(%(y_idx)s),
                         PyGpuArray_STRIDES(%(y_idx)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(dx)s),
+                        PyArray_DATA(%(dx)s),
                         PyGpuArray_STRIDES(%(dx)s)[0],
                         PyGpuArray_STRIDES(%(dx)s)[1]
                 );
