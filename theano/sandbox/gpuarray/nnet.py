@@ -115,40 +115,40 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(x)s)[0] !=
-            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        if (PyGpuArray_DIMS(%(x)s)[0] !=
+            PyGpuArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "dimension mismatch in x,y_idx arguments");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(x)s)[1] != CudaNdarray_HOST_DIMS(%(b)s)[0])
+        if (PyGpuArray_DIMS(%(x)s)[1] != PyGpuArray_DIMS(%(b)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "dimension mismatch in x,b arguments");
             %(fail)s;
         }
         if ((NULL == %(nll)s) //initial condition
-            || (CudaNdarray_HOST_DIMS(%(nll)s)[0] !=
-                CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
+            || (PyGpuArray_DIMS(%(nll)s)[0] !=
+                PyGpuArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(nll)s);
             %(nll)s = (CudaNdarray*)CudaNdarray_NewDims(1,
-                CudaNdarray_HOST_DIMS(%(y_idx)s));
+                PyGpuArray_DIMS(%(y_idx)s));
             if(!%(nll)s)
             {
                 %(fail)s;
             }
         }
         if ((NULL == %(sm)s)
-            || (CudaNdarray_HOST_DIMS(%(sm)s)[0] !=
-                CudaNdarray_HOST_DIMS(%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(sm)s)[1] !=
-                CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            || (PyGpuArray_DIMS(%(sm)s)[0] !=
+                PyGpuArray_DIMS(%(x)s)[0])
+            || (PyGpuArray_DIMS(%(sm)s)[1] !=
+                PyGpuArray_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(sm)s);
             %(sm)s = (CudaNdarray*) CudaNdarray_NewDims(2,
-                CudaNdarray_HOST_DIMS(%(x)s));
+                PyGpuArray_DIMS(%(x)s));
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -158,12 +158,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             }
         }
         if ((NULL == %(am)s)
-            || (CudaNdarray_HOST_DIMS(%(am)s)[0] !=
-                CudaNdarray_HOST_DIMS(%(y_idx)s)[0]))
+            || (PyGpuArray_DIMS(%(am)s)[0] !=
+                PyGpuArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(am)s);
             %(am)s = (CudaNdarray*) CudaNdarray_NewDims(1,
-                CudaNdarray_HOST_DIMS(%(y_idx)s));
+                PyGpuArray_DIMS(%(y_idx)s));
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -174,15 +174,15 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             }
         }
         {
-            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
+            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
                                     NUM_VECTOR_OP_BLOCKS);
      //TODO: launch more threads per row and do parallel sum and max reductions
             int n_threads = 1;
             int n_shared_bytes = 0; //n_threads * sizeof(%(dtype)s);
 
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
-                CudaNdarray_HOST_DIMS(%(x)s)[0],
-                CudaNdarray_HOST_DIMS(%(x)s)[1],
+                PyGpuArray_DIMS(%(x)s)[0],
+                PyGpuArray_DIMS(%(x)s)[1],
                 CudaNdarray_DEV_DATA(%(x)s),
                 CudaNdarray_HOST_STRIDES(%(x)s)[0],
                 CudaNdarray_HOST_STRIDES(%(x)s)[1],
@@ -269,33 +269,33 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
-            CudaNdarray_HOST_DIMS(%(sm)s)[0])
+        if (PyGpuArray_DIMS(%(dnll)s)[0] !=
+            PyGpuArray_DIMS(%(sm)s)[0])
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] == %%i, but sm.shape[0] == %%i",
-                         CudaNdarray_HOST_DIMS(%(dnll)s)[0],
-                         CudaNdarray_HOST_DIMS(%(sm)s)[0]);
+                         PyGpuArray_DIMS(%(dnll)s)[0],
+                         PyGpuArray_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
-            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        if (PyGpuArray_DIMS(%(dnll)s)[0] !=
+            PyGpuArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
-            || (CudaNdarray_HOST_DIMS(%(dx)s)[0] !=
-                CudaNdarray_HOST_DIMS(%(sm)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(dx)s)[1] !=
-                CudaNdarray_HOST_DIMS(%(sm)s)[1]))
+            || (PyGpuArray_DIMS(%(dx)s)[0] !=
+                PyGpuArray_DIMS(%(sm)s)[0])
+            || (PyGpuArray_DIMS(%(dx)s)[1] !=
+                PyGpuArray_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
             %(dx)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(dx)s)
                 || CudaNdarray_alloc_contiguous(%(dx)s, 2,
-                                                CudaNdarray_HOST_DIMS(%(sm)s)))
+                                                PyGpuArray_DIMS(%(sm)s)))
             {
                 Py_XDECREF(%(dx)s);
                 %(dx)s = NULL;
@@ -303,14 +303,14 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
             }
         }
         {
-            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(dx)s)[0],
+            int n_blocks = std::min(PyGpuArray_DIMS(%(dx)s)[0],
                                     NUM_VECTOR_OP_BLOCKS);
-            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(dx)s)[1],256);
+            int n_threads = std::min(PyGpuArray_DIMS(%(dx)s)[1],256);
 
             kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s
                 <<<n_blocks, n_threads>>>(
-                        CudaNdarray_HOST_DIMS(%(dx)s)[0],
-                        CudaNdarray_HOST_DIMS(%(dx)s)[1],
+                        PyGpuArray_DIMS(%(dx)s)[0],
+                        PyGpuArray_DIMS(%(dx)s)[1],
 
                         CudaNdarray_DEV_DATA(%(dnll)s),
                         CudaNdarray_HOST_STRIDES(%(dnll)s)[0],
