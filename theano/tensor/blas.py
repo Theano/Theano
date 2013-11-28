@@ -1645,7 +1645,7 @@ class Dot22(GemmRelated):
 _dot22 = Dot22()
 
 
-@local_optimizer([T._dot])
+@local_optimizer([T.Dot])
 def local_dot_to_dot22(node):
     # This works for tensor.outer too because basic.outer is a macro that
     # produces a dot(dimshuffle,dimshuffle) of form 4 below
@@ -2025,7 +2025,7 @@ blas_optdb.register('local_dot22_to_dot22scalar',
 
 #from opt import register_specialize, register_canonicalize
 #@register_specialize
-@local_optimizer([])
+@local_optimizer([T.sub, T.add])
 def local_print_as_we_go_along(node):
     if node.op in (T.sub, T.add):
         debugprint(node)

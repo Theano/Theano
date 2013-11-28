@@ -347,7 +347,7 @@ compile.optdb['canonicalize'].register(
 
 @register_canonicalize
 @register_stabilize
-@gof.local_optimizer([None])
+@gof.local_optimizer([T.Dot])
 def local_0_dot_x(node):
     if not isinstance(node.op, T.Dot):
         return False
@@ -390,7 +390,7 @@ def local_0_dot_x(node):
 ######################
 
 
-@gof.local_optimizer([None, None])
+@gof.local_optimizer([DimShuffle])
 def local_dimshuffle_lift(node):
     """
     "Lifts" DimShuffle through Elemwise operations and merges
@@ -431,7 +431,7 @@ def local_dimshuffle_lift(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.DimShuffle])
 def local_lift_transpose_through_dot(node):
     """
     dot(x,y).T -> dot(y.T, x.T)
@@ -456,7 +456,7 @@ def local_lift_transpose_through_dot(node):
         return [T.dot(y.T, x.T)]
 
 
-@gof.local_optimizer([])
+@gof.local_optimizer([DimShuffle])
 def dimshuffle_as_view(node):
     op = node.op
     if not isinstance(op, DimShuffle) or op.inplace:
@@ -476,7 +476,7 @@ register_specialize(local_dimshuffle_lift)
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.DimShuffle])
 def local_dimshuffle_no_inplace_at_canonicalize(node):
     if isinstance(node.op, T.DimShuffle) and node.op.inplace:
         return [T.DimShuffle(node.op.input_broadcastable,
@@ -1213,9 +1213,10 @@ def local_shape_to_shape_i(node):
         return [shape_feature.make_vector_shape(node.inputs[0])]
 
 
+# TODO: Not sure what type of node we are expecting here
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T._shape])
+@gof.local_optimizer(None)
 def local_track_shape_i(node):
     try:
         shape_feature = node.fgraph.shape_feature
@@ -1415,7 +1416,7 @@ def local_remove_useless_assert(node):
             return [assert_(node.inputs[0], *cond)]
 
 
-@gof.local_optimizer([T.Alloc])
+@gof.local_optimizer([T.Elemwise])
 def local_alloc_elemwise(node):
     """
     elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
@@ -1534,7 +1535,7 @@ else:
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Elemwise])
 def local_upcast_elemwise_constant_inputs(node):
     """This explicitly upcasts constant inputs to elemwise Ops, when
     those Ops do implicit upcasting anyway.
@@ -1682,7 +1683,7 @@ def local_useless_subtensor(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([Subtensor])
 def local_subtensor_lift(node):
     """
     unary(x)[idx] -> unary(x[idx])#any broadcast pattern.
@@ -1892,7 +1893,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([Subtensor])
 def local_subtensor_merge(node):
     """
     Refactored optimization to deal with all cases of tensor merging.
@@ -1954,7 +1955,7 @@ def local_subtensor_merge(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([Subtensor])
 def local_subtensor_of_alloc(node):
     """alloc[x:y] -> alloc"""
     if not isinstance(node.op, Subtensor):
@@ -2007,7 +2008,7 @@ def local_subtensor_of_alloc(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([None])
+@gof.local_optimizer([T.add])
 def local_IncSubtensor_serialize(node):
     """
     When using Subtensor, gradient graphs can be ugly.
@@ -2079,7 +2080,7 @@ compile.optdb.register('pre_local_IncSubtensor_serialize',
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IncSubtensor]) # XXX: GPU
 def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
@@ -2098,7 +2099,7 @@ compile.optdb.register('local_inplace_setsubtensor',
                        'fast_run', 'inplace')  # DEBUG
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([AdvancedIncSubtensor1]) # XXX: GPU
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
@@ -2116,7 +2117,7 @@ compile.optdb.register('local_inplace_incsubtensor1',
 
 @register_canonicalize
 @register_stabilize
-@gof.local_optimizer([None])
+@gof.local_optimizer([IncSubtensor])
 def local_incsubtensor_of_allocs(node):
     """
     IncSubtensor(x, zeros, idx) -> x
@@ -2139,7 +2140,7 @@ def local_incsubtensor_of_allocs(node):
 
 @register_canonicalize
 @register_stabilize
-@gof.local_optimizer([None])
+@gof.local_optimizer([IncSubtensor])
 def local_setsubtensor_of_allocs(node):
     """
     SetSubtensor(x, x[idx], idx) -> x
@@ -2286,7 +2287,7 @@ def local_join_1(node):
 ###############
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Elemwise])
 def local_remove_switch_const_cond(node):
     """
     This optimization makes the following changes in the graph:
@@ -2369,7 +2370,7 @@ def local_mul_switch_sink(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.true_div])
+@gof.local_optimizer([T.true_div, T.int_div, T.floor_div])
 def local_div_switch_sink(node):
     """
     This optimization makes the folowing changes in the graph:
@@ -2413,7 +2414,7 @@ def local_div_switch_sink(node):
 ################
 @register_canonicalize
 @register_stabilize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Flatten])
 def local_flatten_lift(node):
     """
     Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
@@ -2434,7 +2435,7 @@ def local_flatten_lift(node):
 ##################
 
 
-@gof.local_optimizer([None, None])
+@gof.local_optimizer([T.Reshape])
 def local_reshape_chain(node):
     """
     Reshape(Reshape(shape1),shape2) -> Reshape(shape2)
@@ -2462,7 +2463,7 @@ register_canonicalize(local_reshape_chain)
 
 @register_canonicalize
 @register_stabilize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Reshape])
 def local_reshape_lift(node):
     """
     Reshape(UnaryElemwise(x)) -> UnaryElemwise(Reshape(x))
@@ -2482,7 +2483,7 @@ def local_reshape_lift(node):
 if 0:
     # TODO: Test that this optimziation works.
     @register_canonicalize
-    @gof.local_optimizer([])
+    @gof.local_optimizer([T.Reshape])
     def local_scalar_reshape(node):
         """Eliminate reshape Ops whose inputs and outputs are scalars """
         if isinstance(node.op, T.Reshape):
@@ -2498,7 +2499,7 @@ if 0:
     # TODO: Remember to take into account the new sum dtype argument if this
     #       optimization is enabled.
     @register_canonicalize
-    @gof.local_optimizer([])
+    @gof.local_optimizer([T.Sum])
     def local_sum_over_empty(node):
         if isinstance(node.op, T.Sum):
             # This optimization needs ShapeOpt and fgraph.shape_feature
@@ -2520,7 +2521,7 @@ if 0:
 ##################
 
 
-@gof.local_optimizer([None, T.fill])
+@gof.local_optimizer([T.Elemwise])
 def local_fill_cut(node):
     """
     f(fill(a,b), c) -> f(b, c)
@@ -2574,7 +2575,7 @@ register_canonicalize(local_fill_cut)
 register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 
-@gof.local_optimizer([None, T.fill])
+@gof.local_optimizer([T.Elemwise])
 def local_fill_sink(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
@@ -2662,8 +2663,7 @@ class Canonizer(gof.LocalOptimizer):
         self.external_simplifiers.append((reason, simplifier))
 
     def tracks(self):
-        return [[self.main, None], [self.inverse, None],
-                [self.reciprocal, None]]
+        return [self.main, self.inverse, self.reciprocal]
 
     def get_num_denum(self, input):
         """
@@ -3051,7 +3051,7 @@ register_canonicalize(local_neg_to_mul)
 
 
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Sum])
 def local_sum_mul_by_scalar(node):
     """sum(scalar * smth) -> scalar * sum(smth)
        sum(-smth) -> -sum(smth)
@@ -3088,7 +3088,7 @@ def local_sum_mul_by_scalar(node):
 
 
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Elemwise])
 def local_elemwise_sub_zeros(node):
     """
     Elemwise{sub}(X,X) -> zeros_like(X)
@@ -3102,7 +3102,7 @@ def local_elemwise_sub_zeros(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Sum])
 def local_sum_div_dimshuffle(node):
     '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
     if dimension l of the DimShuffle is 'x'.'''
@@ -3191,7 +3191,7 @@ def local_sum_div_dimshuffle(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Sum])
 def local_sum_all_to_none(node):
     """Sum{0,1,...N} -> Sum{}"""
     if isinstance(node.op, T.Sum):
@@ -3204,7 +3204,7 @@ def local_sum_all_to_none(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Sum])
 def local_sum_sum(node):
     """
     Sum(Sum()) -> Sum
@@ -3272,7 +3272,7 @@ def local_sum_sum(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.CAReduce])
 def local_cut_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
     if isinstance(node.op, T.CAReduce):
@@ -3288,7 +3288,7 @@ def local_cut_useless_reduce(node):
 #
 #@register_canonicalize
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.CAReduce])
 def local_reduce_broadcastable(node):
     """Remove reduction over broadcastable dimensions"""
     if isinstance(node.op, T.CAReduce):
@@ -3327,7 +3327,7 @@ def local_reduce_broadcastable(node):
 
 
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.Sum])
 def local_sum_alloc(node):
     """ sum(alloc(constant,shapes...)) => constant*prod(shapes)"""
     if isinstance(node.op, T.Sum):
@@ -3734,7 +3734,7 @@ def local_abs_lift(node):
 
 
 @register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([T.mul])
 def local_abs_merge(node):
     """
     merge abs generated by local_abs_lift when the canonizer don't
@@ -3909,8 +3909,7 @@ def attempt_distribution(factor, num, denum):
                                    neg_pairs))), num, denum
 
 
-@gof.local_optimizer([T.mul, T.add, T.mul], [T.mul, T.sub, T.mul],
-                     [T.mul, T.add, T.true_div], [T.mul, T.sub, T.true_div])
+@gof.local_optimizer([T.mul])
 def local_greedy_distributor(node):
     """
     This optimization tries to apply distributivity of multiplication
@@ -3976,7 +3975,7 @@ register_canonicalize(local_greedy_distributor)
 register_stabilize(local_greedy_distributor)
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer(None)
 def constant_folding(node):
     for input in node.inputs:
         if not isinstance(input, Constant):

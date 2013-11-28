@@ -816,7 +816,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
     return op(random_state, size, n, pvals)
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([RandomFunction])
 def random_make_inplace(node):
     op = node.op
     if isinstance(op, RandomFunction) and not op.inplace:
