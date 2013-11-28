@@ -184,19 +184,19 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
                 PyGpuArray_DIMS(%(x)s)[0],
                 PyGpuArray_DIMS(%(x)s)[1],
                 CudaNdarray_DEV_DATA(%(x)s),
-                CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                PyGpuArray_STRIDES(%(x)s)[0],
+                PyGpuArray_STRIDES(%(x)s)[1],
                 CudaNdarray_DEV_DATA(%(b)s),
-                CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                PyGpuArray_STRIDES(%(b)s)[0],
                 CudaNdarray_DEV_DATA(%(y_idx)s),
-                CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
+                PyGpuArray_STRIDES(%(y_idx)s)[0],
                 CudaNdarray_DEV_DATA(%(nll)s),
-                CudaNdarray_HOST_STRIDES(%(nll)s)[0],
+                PyGpuArray_STRIDES(%(nll)s)[0],
                 CudaNdarray_DEV_DATA(%(sm)s),
-                CudaNdarray_HOST_STRIDES(%(sm)s)[0],
-                CudaNdarray_HOST_STRIDES(%(sm)s)[1],
+                PyGpuArray_STRIDES(%(sm)s)[0],
+                PyGpuArray_STRIDES(%(sm)s)[1],
                 CudaNdarray_DEV_DATA(%(am)s),
-                CudaNdarray_HOST_STRIDES(%(am)s)[0]);
+                PyGpuArray_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if (cudaSuccess != err)
@@ -313,18 +313,18 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                         PyGpuArray_DIMS(%(dx)s)[1],
 
                         CudaNdarray_DEV_DATA(%(dnll)s),
-                        CudaNdarray_HOST_STRIDES(%(dnll)s)[0],
+                        PyGpuArray_STRIDES(%(dnll)s)[0],
 
                         CudaNdarray_DEV_DATA(%(sm)s),
-                        CudaNdarray_HOST_STRIDES(%(sm)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(sm)s)[1],
+                        PyGpuArray_STRIDES(%(sm)s)[0],
+                        PyGpuArray_STRIDES(%(sm)s)[1],
 
                         CudaNdarray_DEV_DATA(%(y_idx)s),
-                        CudaNdarray_HOST_STRIDES(%(y_idx)s)[0],
+                        PyGpuArray_STRIDES(%(y_idx)s)[0],
 
                         CudaNdarray_DEV_DATA(%(dx)s),
-                        CudaNdarray_HOST_STRIDES(%(dx)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(dx)s)[1]
+                        PyGpuArray_STRIDES(%(dx)s)[0],
+                        PyGpuArray_STRIDES(%(dx)s)[1]
                 );
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
