@@ -6,6 +6,11 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
+try:
+    import pygpu
+    from pygpu import gpuarray, elemwise
+except ImportError:
+    pass
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
@@ -90,10 +95,15 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
           }
         }
 
+        CUdeviceptr (*cuda_get_ptr)(gpudata *g);
         """
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype = self.dtype
+        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
         x, b, y_idx = inp
         nll, sm, am = out
         classname = self.__class__.__name__
@@ -133,11 +143,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
                 PyGpuArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(nll)s);
-            %(nll)s = (CudaNdarray*)CudaNdarray_NewDims(1,
-                PyGpuArray_DIMS(%(y_idx)s));
-            if(!%(nll)s)
-            {
-                %(fail)s;
+            %(nll)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
+                                %(typecode)s,
+                                GA_C_ORDER,
+                                pygpu_default_context(), Py_None);
+            if (!%(nll)s) {
+                %(fail)s
             }
         }
         if ((NULL == %(sm)s)
@@ -147,8 +158,10 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
                 PyGpuArray_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(sm)s);
-            %(sm)s = (CudaNdarray*) CudaNdarray_NewDims(2,
-                PyGpuArray_DIMS(%(x)s));
+            %(sm)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
+                                %(typecode)s,
+                                GA_C_ORDER,
+                                pygpu_default_context(), Py_None);
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -162,8 +175,10 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
                 PyGpuArray_DIMS(%(y_idx)s)[0]))
         {
             Py_XDECREF(%(am)s);
-            %(am)s = (CudaNdarray*) CudaNdarray_NewDims(1,
-                PyGpuArray_DIMS(%(y_idx)s));
+            %(am)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
+                                %(typecode)s,
+                                GA_C_ORDER,
+                                pygpu_default_context(), Py_None);
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -180,22 +195,29 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             int n_threads = 1;
             int n_shared_bytes = 0; //n_threads * sizeof(%(dtype)s);
 
+
             k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
                 PyGpuArray_DIMS(%(x)s)[0],
                 PyGpuArray_DIMS(%(x)s)[1],
-                PyArray_DATA(%(x)s),
+                (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                                   %(x)s->ga.offset);
                 PyGpuArray_STRIDES(%(x)s)[0],
                 PyGpuArray_STRIDES(%(x)s)[1],
-                PyArray_DATA(%(b)s),
+                (dtype_%(b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
+                                   %(b)s->ga.offset);
                 PyGpuArray_STRIDES(%(b)s)[0],
-                PyArray_DATA(%(y_idx)s),
+                (dtype_%(y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
+                                   %(y_idx)s->ga.offset);
                 PyGpuArray_STRIDES(%(y_idx)s)[0],
-                PyArray_DATA(%(nll)s),
+                (dtype_%(nll)s*)(((char *)cuda_get_ptr(%(nll)s->ga.data)) +
+                                   %(nll)s->ga.offset);
                 PyGpuArray_STRIDES(%(nll)s)[0],
-                PyArray_DATA(%(sm)s),
+                (dtype_%(sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
+                                   %(sm)s->ga.offset);
                 PyGpuArray_STRIDES(%(sm)s)[0],
                 PyGpuArray_STRIDES(%(sm)s)[1],
-                PyArray_DATA(%(am)s),
+                (dtype_%(am)s*)(((char *)cuda_get_ptr(%(am)s->ga.data)) +
+                                   %(am)s->ga.offset);
                 PyGpuArray_STRIDES(%(am)s)[0]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
@@ -292,14 +314,12 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                 PyGpuArray_DIMS(%(sm)s)[1]))
         {
             Py_XDECREF(%(dx)s);
-            %(dx)s = (CudaNdarray*)CudaNdarray_New();
-            if ((NULL == %(dx)s)
-                || CudaNdarray_alloc_contiguous(%(dx)s, 2,
-                                                PyGpuArray_DIMS(%(sm)s)))
-            {
-                Py_XDECREF(%(dx)s);
-                %(dx)s = NULL;
-                %(fail)s;
+            %(dx)s = pygpu_empty(2, PyGpuArray_DIMS(%(sm)s),
+                                 %(typecode)s,
+                                 GA_C_ORDER,
+                                 pygpu_default_context(), Py_None);
+            if (!%(dx)s) {
+                %(fail)s
             }
         }
         {
@@ -312,17 +332,21 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                         PyGpuArray_DIMS(%(dx)s)[0],
                         PyGpuArray_DIMS(%(dx)s)[1],
 
-                        PyArray_DATA(%(dnll)s),
+                        (dtype_%(dnll)s*)(((char *)cuda_get_ptr(%(dnll)s->ga.data)) +
+                                           %(dnll)s->ga.offset);
                         PyGpuArray_STRIDES(%(dnll)s)[0],
 
-                        PyArray_DATA(%(sm)s),
+                        (dtype_%(sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
+                                           %(sm)s->ga.offset);
                         PyGpuArray_STRIDES(%(sm)s)[0],
                         PyGpuArray_STRIDES(%(sm)s)[1],
 
-                        PyArray_DATA(%(y_idx)s),
+                        (dtype_%(y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
+                                           %(y_idx)s->ga.offset);
                         PyGpuArray_STRIDES(%(y_idx)s)[0],
 
-                        PyArray_DATA(%(dx)s),
+                        (dtype_%(dx)s*)(((char *)cuda_get_ptr(%(dx)s->ga.data)) +
+                                           %(dx)s->ga.offset);
                         PyGpuArray_STRIDES(%(dx)s)[0],
                         PyGpuArray_STRIDES(%(dx)s)[1]
                 );
@@ -375,7 +399,12 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                 }
             }
         }
+
+        CUdeviceptr (*cuda_get_ptr)(gpudata *g);
         """ % locals()
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
