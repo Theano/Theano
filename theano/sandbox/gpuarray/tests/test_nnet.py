@@ -6,10 +6,27 @@ from theano.gof.python25 import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
-# Skip test if cuda_ndarray is not available.
-import theano.sandbox.cuda as cuda
-if cuda.cuda_available == False:
-    raise SkipTest('Optional package cuda disabled')
+import theano.sandbox.gpuarray
+
+if theano.sandbox.gpuarray.pygpu is None:
+    raise SkipTest("pygpu not installed")
+
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
+    if not cuda_ndarray.use.device_number:
+        #We should not enable all the use like the flag device=gpu,
+        #as many tests don't work in that setup.
+        cuda_ndarray.use('gpu',
+                         default_to_move_computation_to_gpu=False,
+                         move_shared_float32_to_gpu=False,
+                         enable_cuda=False)
+    theano.sandbox.gpuarray.init_dev('cuda')
+
+if not theano.sandbox.gpuarray.pygpu_activated:
+    raise SkipTest("pygpu disabled")
+
+from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
+                                          GpuCrossentropySoftmax1HotWithBiasDx)
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -78,7 +95,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
                            T.nnet.CrossentropySoftmaxArgmax1HotWithBias)
                 for node in classify.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
-                           cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias)
+                           theano.sandbox.gpuarray.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias)
                 for node in classify_gpu.maker.fgraph.toposort()])
 
     out = classify(yy, b_values, dot_value)
@@ -133,7 +150,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     assert any([isinstance(node.op, T.nnet.CrossentropySoftmax1HotWithBiasDx)
                 for node in cpu_f.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
-                           cuda.nnet.GpuCrossentropySoftmax1HotWithBiasDx)
+                           theano.sandbox.gpuarray.nnet.GpuCrossentropySoftmax1HotWithBiasDx)
                 for node in gpu_f.maker.fgraph.toposort()])
 
     cpu_out = cpu_f(softmax_output_value)
