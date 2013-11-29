@@ -2116,14 +2116,17 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
             # optimize the fgraph
             compute_test_value_orig = theano.config.compute_test_value
+            add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
             try:
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
+                gof.Op.add_stack_trace_on_call = False  # Should it be 0 == i?
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(fgraph, inputs,
                                                     outputs + additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
+                gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
 
             if i:
                 li = fgraph.equivalence_tracker.event_list
