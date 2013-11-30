@@ -348,7 +348,7 @@ conv_transp_rows_stack( float* H, float* kern, float* bias, float* R,
 gpu_conv_transpd = GpuConvTransp3D()
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([ConvTransp3D])
 def local_gpu_conv_transpd(node):
     if isinstance(node.op, ConvTransp3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):

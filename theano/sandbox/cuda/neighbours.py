@@ -405,7 +405,7 @@ def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     return GpuImages2Neibs(mode)(ten4, neib_shape, neib_step)
 
 
-@local_optimizer()
+@local_optimizer([Images2Neibs])
 def use_gpu_images2neibs(node):
     if (type(node.op) is Images2Neibs and
         node.inputs[0].dtype == 'float32' and
