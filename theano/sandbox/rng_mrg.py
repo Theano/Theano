@@ -941,7 +941,7 @@ class MRG_RandomStreams(object):
         return final_samples
 
 
-@local_optimizer([None])
+@local_optimizer([mrg_uniform])
 def mrg_random_make_inplace(node):
     op = node.op
     if isinstance(op, mrg_uniform) and not op.inplace:

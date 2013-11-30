@@ -1022,17 +1022,7 @@ class PatternSub(LocalOptimizer):
         return self.op
 
     def tracks(self):
-        def helper(pattern, sofar):
-            if isinstance(pattern, (list, tuple)):
-                sofar = sofar + (pattern[0],)
-                return reduce(tuple.__add__,
-                              tuple(helper(p, sofar) for p in pattern[1:]),
-                              ())
-            elif isinstance(pattern, dict):
-                return helper(pattern['pattern'], sofar)
-            else:
-                return (sofar,)
-        return set(helper(self.in_pattern, ()))
+        return [self.op]
 
     def transform(self, node):
         """

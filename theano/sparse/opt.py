@@ -32,7 +32,7 @@ sparse.register_specialize(local_csm_properties_csm)
 
 
 # This is tested in tests/test_basic.py:test_remove0
-@gof.local_optimizer([None])
+@gof.local_optimizer([sparse.Remove0])
 def local_inplace_remove0(node):
     """
     Optimization to insert inplace versions of Remove0.
@@ -49,7 +49,7 @@ theano.compile.optdb.register('local_inplace_remove0',
                               gof.TopoOptimizer(local_inplace_remove0,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
-@gof.local_optimizer([None])
+@gof.local_optimizer([sparse.AddSD])
 def local_inplace_addsd(node):
     """
     Optimization to insert inplace versions of AddSD.
