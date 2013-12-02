@@ -29,12 +29,11 @@ from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBi
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
@@ -104,7 +103,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     assert len(out) == len(gout) == 3
     assert numpy.allclose(out[0], gout[0])
     assert numpy.allclose(out[2], gout[2], atol=3e-6), numpy.absolute(
-        gout - out).max()
+        gout[2] - out[2]).max()
     assert numpy.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
                                              for id, val in enumerate(out[1] -
                                                                       gout[1])
