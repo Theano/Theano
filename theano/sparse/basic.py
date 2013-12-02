@@ -2325,6 +2325,10 @@ class VStack(HStack):
             assert _is_sparse(b)
         out[0] = scipy.sparse.vstack(block, format=self.format,
                                      dtype=self.dtype)
+        # Some version of scipy (at least 0.14.0.dev-c4314b0)
+        # Do not cast to the wanted dtype.
+        if out[0].dtype != self.dtype:
+            out[0] = out[0].astype(self.dtype)
 
     def grad(self, inputs, (gz, )):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
