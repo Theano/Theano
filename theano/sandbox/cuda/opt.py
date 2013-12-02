@@ -602,7 +602,13 @@ def local_gpu_gemm(node):
 
 
 @register_opt()
-@local_optimizer([tensor.elemwise.CAReduce])
+@local_optimizer([tensor.elemwise.CAReduce,
+                  tensor.elemwise.All,
+                  tensor.elemwise.Any,
+                  tensor.elemwise.CAReduceDtype,
+                  tensor.elemwise.Sum,
+                  tensor.elemwise.Prod,
+                  tensor.elemwise.ProdWithoutZeros])
 def local_gpu_careduce(node):
     if isinstance(node.op, tensor.elemwise.CAReduce):
         scalar_op = node.op.scalar_op
