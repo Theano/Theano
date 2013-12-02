@@ -6,7 +6,7 @@ from theano.gof.python25 import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
-import theano.sandbox.gpuarray
+from theano.sandbox import gpuarray
 
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
@@ -20,21 +20,21 @@ if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
                          default_to_move_computation_to_gpu=False,
                          move_shared_float32_to_gpu=False,
                          enable_cuda=False)
-    theano.sandbox.gpuarray.init_dev('cuda')
+    gpuarray.init_dev('cuda')
 
-if not theano.sandbox.gpuarray.pygpu_activated:
+if not gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
 
-from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
-                                          GpuCrossentropySoftmax1HotWithBiasDx)
+from theano.sandbox.gpuarray.nnet import (
+    GpuCrossentropySoftmaxArgmax1HotWithBias,
+    GpuCrossentropySoftmax1HotWithBiasDx)
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
@@ -87,7 +87,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
                                mode=mode_without_gpu)
     classify_gpu = theano.function(inputs=[y, b, dot_result],
                                    outputs=[loss, y_pred, dW],
-                                    mode=mode_with_gpu)
+                                   mode=mode_with_gpu)
     #theano.printing.debugprint(classify)
     #theano.printing.debugprint(classify_gpu)
 
@@ -95,7 +95,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
                            T.nnet.CrossentropySoftmaxArgmax1HotWithBias)
                 for node in classify.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
-                           theano.sandbox.gpuarray.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias)
+                           GpuCrossentropySoftmaxArgmax1HotWithBias)
                 for node in classify_gpu.maker.fgraph.toposort()])
 
     out = classify(yy, b_values, dot_value)
@@ -104,7 +104,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     assert len(out) == len(gout) == 3
     assert numpy.allclose(out[0], gout[0])
     assert numpy.allclose(out[2], gout[2], atol=3e-6), numpy.absolute(
-        gout - out).max()
+        gout[2] - out[2]).max()
     assert numpy.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
                                              for id, val in enumerate(out[1] -
                                                                       gout[1])
@@ -150,7 +150,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     assert any([isinstance(node.op, T.nnet.CrossentropySoftmax1HotWithBiasDx)
                 for node in cpu_f.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
-                           theano.sandbox.gpuarray.nnet.GpuCrossentropySoftmax1HotWithBiasDx)
+                           GpuCrossentropySoftmax1HotWithBiasDx)
                 for node in gpu_f.maker.fgraph.toposort()])
 
     cpu_out = cpu_f(softmax_output_value)
@@ -164,7 +164,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
         max_i = scaled_err.argmax()
 
         print 'max err index:', max_i, max_i / batch_size,
-        print  max_i % batch_size, max_i / n_out, max_i & n_out
+        print max_i % batch_size, max_i / n_out, max_i & n_out
         print 'At that index:'
         print 'err:', scaled_err.flatten()[max_i]
         print 'absolute error:', abs_err.flatten()[max_i]
@@ -176,4 +176,4 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
         print 'y_idx_value:', y_idx_value[max_i / n_out]
 
         assert False, "numpy.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
-                rtol, atol)
+            rtol, atol)
