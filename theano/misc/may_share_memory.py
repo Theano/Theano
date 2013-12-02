@@ -28,6 +28,15 @@ else:
         return False
 
 
+from theano.sandbox import gpuarray
+if gpuarray.pygpu:
+    def _is_gpua(a):
+        return isinstance(a, gpuarray.pygpu.gpuarray.GpuArray)
+else:
+    def _is_gpua(a):
+        return False
+
+
 def may_share_memory(a, b, raise_other_type=True):
     a_ndarray = isinstance(a, numpy.ndarray)
     b_ndarray = isinstance(b, numpy.ndarray)
@@ -35,12 +44,14 @@ def may_share_memory(a, b, raise_other_type=True):
     b_sparse = _is_sparse(b)
     a_cuda = _is_cuda(a)
     b_cuda = _is_cuda(b)
+    a_gpua = _is_gpua(a)
+    b_gpua = _is_gpua(b)
 
-    if (not(a_ndarray or a_sparse or a_cuda) or
-        not(b_ndarray or b_sparse or b_cuda)):
+    if (not(a_ndarray or a_sparse or a_cuda or a_gpua) or
+        not(b_ndarray or b_sparse or b_cuda or b_gpua)):
         if raise_other_type:
             raise TypeError("may_share_memory support only ndarray"
-                            " and scipy.sparse and CudaNdarray type")
+                            " and scipy.sparse, CudaNdarray or GpuArray type")
         return False
 
     if a_ndarray and b_ndarray:
@@ -48,6 +59,8 @@ def may_share_memory(a, b, raise_other_type=True):
     if a_cuda and b_cuda:
         from theano.sandbox.cuda.type import CudaNdarrayType
         return CudaNdarrayType.may_share_memory(a, b)
-    if a_cuda or b_cuda:
+    if a_gpua and b_gpua:
+        return gpuarray.pygpu.gpuarray.may_share_memory(a, b)
+    if a_cuda or b_cuda or a_gpua or b_gpua:
         return False
     return SparseType.may_share_memory(a, b)
