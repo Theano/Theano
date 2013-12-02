@@ -30,7 +30,7 @@ To enable the memory profiler use the Theano flag:
 To enable the memory profiler use the Theano flag:
 :attr:`config.profile_memory` in addition to :attr:`config.profile`.
 
-To enable the profiler of Theano optimization phase, use the Theano
+To enable the profiling of Theano optimization phase, use the Theano
 flag: :attr:`config.profile_optimizer` in addition to
 :attr:`config.profile`.
 
