@@ -41,6 +41,7 @@ you out.
     aliasing
     shape_info
     debug_faq
+    profiling
     extending_theano
     faq
     python-memory-management

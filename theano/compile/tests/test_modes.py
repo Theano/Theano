@@ -17,7 +17,7 @@ class T_bunch_of_modes(unittest.TestCase):
         linker_classes_involved = []
 
         predef_modes = ['FAST_COMPILE', 'FAST_RUN', 'DEBUG_MODE']
-        # Use a new instance of ProfileMode instead of 'PROFILE_MODE' to
+        # Use a new instance of ProfileMode instead of 'ProfileMode' to
         # avoid printing a profile mode summary in nose output
         predef_modes.append(ProfileMode())
 
@@ -42,7 +42,7 @@ class T_bunch_of_modes(unittest.TestCase):
         # there should be
         # - VM_Linker
         # - OpWiseCLinker (FAST_RUN)
-        # - WrapLinker (PROFILE_MODE)
+        # - WrapLinker ("ProfileMode")
         # - PerformLinker (FAST_COMPILE)
         # - DebugMode's Linker  (DEBUG_MODE)
         assert 5 == len(set(linker_classes_involved))

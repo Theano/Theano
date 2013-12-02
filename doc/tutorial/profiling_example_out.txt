@@ -1,0 +1,31 @@
+Function profiling
+==================
+  Message: None
+  Time in 1 calls to Function.__call__: 5.698204e-05s
+  Time in Function.fn.__call__: 1.192093e-05s (20.921%)
+  Time in thunks: 6.198883e-06s (10.879%)
+  Total compile time: 3.642474e+00s
+    Theano Optimizer time: 7.326508e-02s
+       Theano validate time: 3.712177e-04s
+    Theano Linker time (includes C, CUDA code generation/compiling): 9.584920e-01s
+
+Class
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+  100.0%   100.0%       0.000s       2.07e-06s     C        3        3   <class 'theano.tensor.elemwise.Elemwise'>
+   ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
+
+Ops
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+  65.4%    65.4%       0.000s       2.03e-06s     C        2        2   Elemwise{add,no_inplace}
+  34.6%   100.0%       0.000s       2.15e-06s     C        1        1   Elemwise{mul,no_inplace}
+   ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
+
+Apply
+------
+<% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
+  50.0%    50.0%       0.000s       3.10e-06s      1     0   Elemwise{add,no_inplace}(x, y)
+  34.6%    84.6%       0.000s       2.15e-06s      1     2   Elemwise{mul,no_inplace}(TensorConstant{(1,) of 2.0}, Elemwise{add,no_inplace}.0)
+  15.4%   100.0%       0.000s       9.54e-07s      1     1   Elemwise{add,no_inplace}(Elemwise{add,no_inplace}.0, z)
+   ... (remaining 0 Apply instances account for 0.00%(0.00s) of the runtime)

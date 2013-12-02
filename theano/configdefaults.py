@@ -134,7 +134,7 @@ if rc == 0:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode"),
+                  "or ProfileMode(deprecated)"),
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -142,7 +142,7 @@ else:
     # g++ is not present, linker should default to python only
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode"),
+                  "or ProfileMode(deprecated)"),
                  EnumStr('py', 'vm', 'vm_nogc'),
                  in_c_key=False)
     _logger.warning('g++ not detected ! Theano will be unable to execute '
@@ -174,7 +174,7 @@ AddConfigVar('allow_gc',
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
         ("Default optimizer. If not None, will use this linker with the Mode "
-         "object (not ProfileMode or DebugMode)"),
+         "object (not ProfileMode(deprecated) or DebugMode)"),
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
         in_c_key=False)
 

@@ -21,7 +21,7 @@ Theano defines the following modes by name:
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
 - ``'DebugMode'``: A mode for debuging. See :ref:`DebugMode <debugmode>` for details.
-- ``'ProfileMode'``: A mode for profiling. See :ref:`ProfileMode <profilemode>` for details.
+- ``'ProfileMode'``: Deprecated, use the Theano flag :attr:`config.profile`.
 - ``'DEBUG_MODE'``: Deprecated. Use the string DebugMode.
 - ``'PROFILE_MODE'``: Deprecated. Use the string ProfileMode.
 
@@ -41,10 +41,6 @@ Reference
 .. attribute:: FAST_COMPILE
 
 .. attribute:: FAST_RUN
-
-.. attribute:: DEBUG_MODE
-
-.. attribute:: PROFILE_MODE
 
 .. class:: Mode(object)
 

@@ -1,0 +1,75 @@
+
+.. _tut_profiling:
+
+=========================
+Profiling Theano function
+=========================
+
+.. note::
+
+    This method replace the old ProfileMode. Do not use ProfileMode
+    anymore.
+
+Besides checking for errors, another important task is to profile your
+code. For this, you can use Theano flags and/or parameters which are
+to be passed as an argument to :func:`theano.function <function.function>`.
+
+The simplest way to profile Theano functions is to use the Theano
+flags described below. When the process exits, they will cause the
+information to be printed on stdout.
+
+
+Using the ProfileMode is a three-step process.
+
+Enabling the profiler is pretty easy. Just use the Theano flag
+:attr:`config.profile`.
+
+To enable the memory profiler use the Theano flag:
+:attr:`config.profile_memory` in addition to :attr:`config.profile`.
+
+To enable the profiling of Theano optimization phase, use the Theano
+flag: :attr:`config.profile_optimizer` in addition to
+:attr:`config.profile`.
+
+You can use the Theano flags :attr:`profiling.n_apply`,
+:attr:`profiling.n_ops` and :attr:`profiling.min_memory_size` to
+modify the quantify of information printed.
+
+The profiler will output one profile per Theano function and profile
+that is the sum of the printed profile. Each profile contains 4
+sections: global info, class info, Ops info and Apply node info.
+
+In the global section, the "Message" is the name of the Theano
+function. theano.function() has an optional parameter ``name`` that
+defaults to None. Change it to something else to help you profile many
+Theano functions. In that section, we also see the number of time the
+function was called (1) and the total time spent in all those
+calls. The time spent in Function.fn.__call__ and in thunks is useful
+to help understand Theano overhead.
+
+Also, we see the time spent in the two parts of the compilation
+process: optimization(modify the graph to make it more stable/faster)
+and the linking (compile c code and make the Python callable returned
+by function).
+
+The class, Ops and Apply nodes sections are the same information:
+information about the Apply node that ran. The Ops section takes the
+information from the Apply section and merge the Apply nodes that have
+exactly the same op. If two Apply nodes in the graph have two Ops that
+compare equal, they will be merged. Some Ops like Elemwise, will not
+compare equal, if their parameters differ (the scalar being
+executed). So the class section will merge more Apply nodes then the
+Ops section.
+
+Here is an example output when we disable some Theano optimizations to
+give you a better idea of the difference between sections. With all
+optimizations enabled, there would be only one op left in the graph.
+
+
+to run the example:
+
+  THEANO_FLAGS=optimizer_excluding=fusion:inplace,profile=True python doc/tutorial/profiling_example.py
+
+The output:
+
+.. literalinclude:: profiling_example_out.txt
