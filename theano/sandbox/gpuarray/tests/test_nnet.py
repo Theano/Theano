@@ -7,9 +7,6 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
 from theano.sandbox import gpuarray
-from theano.sandbox.gpuarray.nnet import (
-    GpuCrossentropySoftmaxArgmax1HotWithBias,
-    GpuCrossentropySoftmax1HotWithBiasDx)
 
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")

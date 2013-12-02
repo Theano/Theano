@@ -111,9 +111,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, nodename, inp, out, sub):
-        typecode_x = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        typecode_b = pygpu.gpuarray.dtype_to_typecode(node.outputs[1].dtype)
-        typecode_y_idx = pygpu.gpuarray.dtype_to_typecode(node.outputs[2].dtype)
+        typecode_x = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
+        typecode_b = pygpu.gpuarray.dtype_to_typecode(node.inputs[1].dtype)
+        typecode_y_idx = pygpu.gpuarray.dtype_to_typecode(node.inputs[2].dtype)
         itemsize_x = numpy.dtype(node.inputs[0].dtype).itemsize
         itemsize_b = numpy.dtype(node.inputs[1].dtype).itemsize
         itemsize_y_idx = numpy.dtype(node.inputs[2].dtype).itemsize
@@ -252,7 +252,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
 
     def c_code_cache_version(self):
         #return ()
-        return (4,)
+        return (5,)
 
     def c_compiler(self):
         return NVCC_compiler
