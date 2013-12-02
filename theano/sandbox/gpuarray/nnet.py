@@ -1,3 +1,5 @@
+import numpy
+
 from theano import Op, Apply
 from theano.compat.six import StringIO
 
@@ -44,31 +46,31 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     def c_headers(self):
         return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
 
-    def c_support_code_apply(self, node):
-        dtype0 = node.inputs[0].dtype
-        dtype1 = node.inputs[1].dtype
-        dtype2 = node.inputs[2].dtype
+    def c_support_code_apply(self, node, nodename):
+        dtype_x = node.inputs[0].dtype
+        dtype_b = node.inputs[1].dtype
+        dtype_y_idx = node.inputs[2].dtype
         return """
-        __global__ void k_xent_sm_1hot_bias(int M, int N,
-            const npy_%(dtype0)s* x_data, int xs0, int xs1,
-            const npy_%(dtype1)s* b, int bs0,
-            const npy_%(dtype2)s* y_idx_data, int y_idxs0,
-            npy_%(dtype)s* nll_data, int nlls0,
-            npy_%(dtype)s* sm_data, int sms0, int sms1,
-            npy_%(dtype)s* am_data, int ams0)
+        __global__ void k_xent_sm_1hot_bias_%(nodename)s(int M, int N,
+            const npy_%(dtype_x)s* x_data, int xs0, int xs1,
+            const npy_%(dtype_b)s* b, int bs0,
+            const npy_%(dtype_y_idx)s* y_idx_data, int y_idxs0,
+            npy_%(dtype_x)s* nll_data, int nlls0,
+            npy_%(dtype_x)s* sm_data, int sms0, int sms1,
+            npy_%(dtype_y_idx)s* am_data, int ams0)
         {
           for (int row = blockIdx.x; row < M; row += gridDim.x){
 
-            const npy_%(dtype0)s* x = x_data + xs0 * row;
-            const int y_idx = (int)y_idx_data[row * y_idxs0];
-            npy_%(dtype0)s* sm = sm_data + sms0 * row;
+            const npy_%(dtype_x)s* x = x_data + xs0 * row;
+            const npy_%(dtype_y_idx)s y_idx = y_idx_data[row * y_idxs0];
+            npy_%(dtype_x)s* sm = sm_data + sms0 * row;
 
-            npy_%(dtype0)s sum = 0.0;
+            npy_%(dtype_x)s sum = 0.0;
             int row_max_j = 0;
-            npy_%(dtype0)s row_max = x[0] + b[0];
+            npy_%(dtype_x)s row_max = x[0] + b[0];
             for (int j = 1; j < N; ++j)
             {
-                npy_%(dtype0)s row_ij = x[j*xs1] + b[j*bs0];
+                npy_%(dtype_x)s row_ij = x[j*xs1] + b[j*bs0];
                 //todo: store to shared memory
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
@@ -76,12 +78,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             //compute the exp
             for (int j = 0; j < N; ++j)
             {
-                npy_%(dtype0)s row_ij = x[j*xs1] + b[j*bs0];
-                npy_%(dtype0)s sm_ij = exp(row_ij - row_max);
+                npy_%(dtype_x)s row_ij = x[j*xs1] + b[j*bs0];
+                npy_%(dtype_x)s sm_ij = exp(row_ij - row_max);
                 sum += sm_ij;
                 sm[j * sms1] = sm_ij;
             }
-            npy_%(dtype0)s sum_inv = 1.0 / sum;
+            npy_%(dtype_x)s sum_inv = 1.0 / sum;
             for (int j = 0; j < N; ++j)
             {
                 sm[j * sms1] *= sum_inv;
