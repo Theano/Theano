@@ -56,10 +56,10 @@ and the linking (compile c code and make the Python callable returned
 by function).
 
 The class, Ops and Apply nodes sections are the same information:
-information about the apply node that ran. The Ops section takes the
+information about the Apply node that ran. The Ops section takes the
 information from the Apply section and merge the Apply nodes that have
 exactly the same op. If two Apply nodes in the graph have two Ops that
-compare equal, they will be merged. Some ops like Elemwise, will not
+compare equal, they will be merged. Some Ops like Elemwise, will not
 compare equal, if their parameters differ (the scalar being
 executed). So the class section will merge more Apply nodes then the
 Ops section.
