@@ -105,7 +105,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         }
 
         CUdeviceptr (*cuda_get_ptr)(gpudata *g);
-        """
+        """ % locals()
 
     def c_init_code(self):
         return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
@@ -198,14 +198,13 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             }
         }
         {
-            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
-                                    256);
+            int n_blocks = PyGpuArray_DIMS(%(x)s)[0] < 256 ? PyGpuArray_DIMS(%(x)s)[0] : 256;
      //TODO: launch more threads per row and do parallel sum and max reductions
             int n_threads = 1;
-            int n_shared_bytes = 0; //n_threads * sizeof(%(dtype)s);
+            int n_shared_bytes = 0; //n_threads * sizeof(dtype);
 
 
-            k_xent_sm_1hot_bias<<<n_blocks, n_threads, n_shared_bytes>>>(
+            k_xent_sm_1hot_bias_%(nodename)s<<<n_blocks, n_threads, n_shared_bytes>>>(
                 PyGpuArray_DIMS(%(x)s)[0],
                 PyGpuArray_DIMS(%(x)s)[1],
                 (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
@@ -336,9 +335,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
             }
         }
         {
-            int n_blocks = std::min(PyGpuArray_DIMS(%(dx)s)[0],
-                                    256);
-            int n_threads = std::min(PyGpuArray_DIMS(%(dx)s)[1],256);
+            int n_blocks = PyGpuArray_DIMS(%(dx)s)[0] < 256 ? PyGpuArray_DIMS(%(dx)s)[0] : 256;
+            int n_threads = PyGpuArray_DIMS(%(dx)s)[1] < 256 ? PyGpuArray_DIMS(%(dx)s)[1] : 256;
 
             kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s
                 <<<n_blocks, n_threads>>>(
@@ -363,7 +361,6 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                         PyGpuArray_STRIDES(%(dx)s)[0],
                         PyGpuArray_STRIDES(%(dx)s)[1]
                 );
-            CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
