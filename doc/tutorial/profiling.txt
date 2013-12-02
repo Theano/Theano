@@ -11,12 +11,12 @@ Profiling Theano function
     anymore.
 
 Besides checking for errors, another important task is to profile your
-code. For this Theano uses Theano flags and/or parameters which are
+code. For this, you can use Theano flags and/or parameters which are
 to be passed as an argument to :func:`theano.function <function.function>`.
 
-The simplest way to profile Theano function is to use the Theano flags
-described bellow. When the process exit, they will cause the printing
-of the information requested to the stdout.
+The simplest way to profile Theano functions is to use the Theano
+flags described below. When the process exits, they will cause the
+information to be printed on stdout.
 
 
 Using the ProfileMode is a three-step process.
@@ -39,35 +39,35 @@ You can use the Theano flags :attr:`profiling.n_apply`,
 modify the quantify of information printed.
 
 The profiler will output one profile per Theano function and profile
-that is the sum of the printed profile. Each profile contain 4
+that is the sum of the printed profile. Each profile contains 4
 sections: global info, class info, Ops info and Apply node info.
 
 In the global section, the "Message" is the name of the Theano
-function. theano.function() have an optional parameter name that
-default to None. Change it to something else to help you profile many
-Theano function. In that section, we also see the number of time the
+function. theano.function() has an optional parameter ``name`` that
+defaults to None. Change it to something else to help you profile many
+Theano functions. In that section, we also see the number of time the
 function was called (1) and the total time spent in all those
-calls. The time spent in Function.fn.__call__ and in thunks are useful
+calls. The time spent in Function.fn.__call__ and in thunks is useful
 to help understand Theano overhead.
 
-Also, we see the time spend in the compilation and we see the time
-spent in the 2 parts of the compilation process: optimization(modify
-the graph to make it more stable/faster) and the linking (compile c
-code and make the Python callable returned by function).
+Also, we see the time spent in the two parts of the compilation
+process: optimization(modify the graph to make it more stable/faster)
+and the linking (compile c code and make the Python callable returned
+by function).
 
-The class, Ops and Apply node are the same information: information
-about the apply node that ran. The Ops section take the information
-from the Apply section and merge the Apply node that have exactly the
-same op. For example, if two Apply node in the graph have two Ops that
+The class, Ops and Apply nodes sections are the same information:
+information about the apply node that ran. The Ops section takes the
+information from the Apply section and merge the Apply nodes that have
+exactly the same op. If two Apply nodes in the graph have two Ops that
 compare equal, they will be merged. Some ops like Elemwise, will not
-compare equal, if there parameter differ. The section class will more
-all Apply node whose Ops are from the same class. So they will merge
-addition and multiplication elemwise node.
+compare equal, if their parameters differ (the scalar being
+executed). So the class section will merge more Apply nodes then the
+Ops section.
 
-Here is an example output when we disable some Theano optimization to
-show you better the difference between section. With Theano
-optimization, that graph will result in only one operation in the
-graph.
+Here is an example output when we disable some Theano optimizations to
+give you a better idea of the difference between sections. With all
+optimizations enabled, there would be only one op left in the graph.
+
 
 to run the example:
 
