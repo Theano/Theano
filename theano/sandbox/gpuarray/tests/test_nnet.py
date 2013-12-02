@@ -12,7 +12,8 @@ if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
 # We let that import do the init of the back-end if needed.
-import theano.sandbox.gpuarray.tests.test_basic_ops
+from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
+                                                          mode_without_gpu)
 
 if not gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
@@ -20,13 +21,6 @@ if not gpuarray.pygpu_activated:
 from theano.sandbox.gpuarray.nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx)
-
-if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray')
-else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
