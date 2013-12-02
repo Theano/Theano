@@ -280,11 +280,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     def __str__(self):
         return self.__class__.__name__
 
-    def make_node(self, dy, sm, y_idx):
-        dy = as_gpuarray_variable(dy)
+    def make_node(self, dnll, sm, y_idx):
+        dnll = as_gpuarray_variable(dnll)
         sm = as_gpuarray_variable(sm)
         y_idx = as_gpuarray_variable(y_idx)
-        return Apply(self, [dy, sm, y_idx], [sm.type()])
+        return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
         #return ()
