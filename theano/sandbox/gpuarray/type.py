@@ -138,7 +138,13 @@ class GpuArrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
     def c_declare(self, name, sub):
-        return "PyGpuArrayObject *%s;" % (name,)
+        dtype = theano.tensor.TensorType(
+            dtype=self.dtype,
+            broadcastable=self.broadcastable).dtype_specs()[1]
+        return """
+        PyGpuArrayObject *%(name)s;
+        typedef %(dtype)s dtype_%(name)s;
+        """ % locals()
 
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)
