@@ -387,21 +387,22 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        dtype0 = node.inputs[0].dtype
-        dtype1 = node.inputs[1].dtype
-        dtype2 = node.inputs[2].dtype
+        dtype_dnll = node.inputs[0].dtype
+        dtype_sm = node.inputs[1].dtype
+        dtype_y_idx = node.inputs[2].dtype
+        dtype_dx = node.outputs[0].dtype
         return """
         __global__ void kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s(
            int N, int K,
-           const npy_%(dtype0)s* dnll, const int dnll_s0,
-           const npy_%(dtype1)s* sm, const int sm_s0, const int sm_s1,
-           const npy_%(dtype2)s* y_idx, const int y_idx_s0,
-           npy_%(dtype1)s* dx, const int dx_s0, const int dx_s1)
+           const npy_%(dtype_dnll)s* dnll, const int dnll_s0,
+           const npy_%(dtype_sm)s* sm, const int sm_s0, const int sm_s1,
+           const npy_%(dtype_y_idx)s* y_idx, const int y_idx_s0,
+           npy_%(dtype_dx)s* dx, const int dx_s0, const int dx_s1)
         {
             for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
-                npy_%(dtype0)s dnll_i = dnll[i * dnll_s0];
-                int y_i = (int)y_idx[i * y_idx_s0];
+                npy_%(dtype_dnll)s dnll_i = dnll[i * dnll_s0];
+                npy_%(dtype_y_idx)s y_i = y_idx[i * y_idx_s0];
 
                 for (int j = threadIdx.x; j < K; j += blockDim.x)
                 {
