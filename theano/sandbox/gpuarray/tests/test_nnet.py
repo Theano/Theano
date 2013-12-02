@@ -11,16 +11,8 @@ from theano.sandbox import gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
-    if not cuda_ndarray.use.device_number:
-        #We should not enable all the use like the flag device=gpu,
-        #as many tests don't work in that setup.
-        cuda_ndarray.use('gpu',
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False)
-    gpuarray.init_dev('cuda')
+# We let that import do the init of the back-end if needed.
+import theano.sandbox.gpuarray.tests.test_basic_ops
 
 if not gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
