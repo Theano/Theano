@@ -3225,8 +3225,23 @@ class Split(Op):
 
     def grad(self, inputs, g_outputs):
         """Join the gradients along the axis that was used to split x."""
-        _, axis, n = inputs
-        return [join(axis, *g_outputs),
+        x, axis, n = inputs
+        outputs = self(*inputs, **dict(return_list=True))
+        # If all the output gradients are disconnected, then so are the inputs
+        if python_all([isinstance(g.type, DisconnectedType)
+                       for g in g_outputs]):
+            return [DisconnectedType()(),
+                    grad_undefined(self, 1, axis),
+                    grad_undefined(self, 2, n)]
+        # Else, we have to make them zeros before joining them
+        new_g_outputs = []
+        for o, g in zip(outputs, g_outputs):
+            if isinstance(g.type, DisconnectedType):
+                new_g_outputs.append(o.zeros_like())
+            else:
+                new_g_outputs.append(g)
+
+        return [join(axis, *new_g_outputs),
                 grad_undefined(self, 1, axis),
                 grad_undefined(self, 2, n)]
 

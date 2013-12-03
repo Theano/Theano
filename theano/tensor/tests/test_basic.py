@@ -44,7 +44,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle)
+        stacklists, DimShuffle, hessian)
 
 from theano.tests import unittest_tools as utt
 
@@ -3066,6 +3066,14 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
+
+    def test_stack_hessian(self):
+        # Test the gradient of stack when used in hessian, see gh-1589
+        a = tensor.dvector('a')
+        b = tensor.dvector('b')
+        A = stack([a, b])
+        B = A.T.dot(A)
+        hessian(B.sum(), [a, b])
 
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
