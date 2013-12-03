@@ -12,7 +12,7 @@ We recommend that everybody update to this version.
 
 Highlights (since 0.6rc5):
  * Last release with support for Python 2.4 and 2.5.
- * We will try to release more frenquently.
+ * We will try to release more frequently.
  * Fix crash/installation problems.
  * Use less memory for conv3d2d.
 
@@ -96,7 +96,7 @@ Wei Li +
 XterNalz +
 
 
-A total of  people contributed to this release.
+A total of 51 people contributed to this release.
 People with a "+" by their names contributed a patch for the first time.
 
 
