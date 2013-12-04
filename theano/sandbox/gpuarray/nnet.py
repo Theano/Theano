@@ -122,6 +122,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         itemsize_am = numpy.dtype(node.outputs[2].dtype).itemsize
         x, b, y_idx = inp
         nll, sm, am = out
+        dtype_x = node.inputs[0].dtype
+        dtype_b = node.inputs[1].dtype
+        dtype_y_idx = node.inputs[2].dtype
+        dtype_nll = node.outputs[0].dtype
+        dtype_sm = node.outputs[1].dtype
+        dtype_am = node.outputs[2].dtype
         classname = self.__class__.__name__
         fail = sub['fail']
         sio = StringIO()
@@ -214,24 +220,24 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             k_xent_sm_1hot_bias_%(nodename)s<<<n_blocks, n_threads, n_shared_bytes>>>(
                 PyGpuArray_DIMS(%(x)s)[0],
                 PyGpuArray_DIMS(%(x)s)[1],
-                (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                (npy_%(dtype_x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
                                    %(x)s->ga.offset),
                 PyGpuArray_STRIDES(%(x)s)[0] / %(itemsize_x)s,
                 PyGpuArray_STRIDES(%(x)s)[1] / %(itemsize_x)s,
-                (dtype_%(b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
+                (npy_%(dtype_b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
                                    %(b)s->ga.offset),
                 PyGpuArray_STRIDES(%(b)s)[0] / %(itemsize_b)s,
-                (dtype_%(y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
+                (npy_%(dtype_y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
                                    %(y_idx)s->ga.offset),
                 PyGpuArray_STRIDES(%(y_idx)s)[0] / %(itemsize_y_idx)s,
-                (dtype_%(nll)s*)(((char *)cuda_get_ptr(%(nll)s->ga.data)) +
+                (npy_%(dtype_nll)s*)(((char *)cuda_get_ptr(%(nll)s->ga.data)) +
                                    %(nll)s->ga.offset),
                 PyGpuArray_STRIDES(%(nll)s)[0] / %(itemsize_nll)s,
-                (dtype_%(sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
+                (npy_%(dtype_sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
                                    %(sm)s->ga.offset),
                 PyGpuArray_STRIDES(%(sm)s)[0] / %(itemsize_sm)s,
                 PyGpuArray_STRIDES(%(sm)s)[1] / %(itemsize_sm)s,
-                (dtype_%(am)s*)(((char *)cuda_get_ptr(%(am)s->ga.data)) +
+                (npy_%(dtype_am)s*)(((char *)cuda_get_ptr(%(am)s->ga.data)) +
                                    %(am)s->ga.offset),
                 PyGpuArray_STRIDES(%(am)s)[0] / %(itemsize_am)s);
             cudaError_t err = cudaGetLastError();
@@ -302,6 +308,10 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         itemsize_sm = numpy.dtype(node.inputs[1].dtype).itemsize
         itemsize_y_idx = numpy.dtype(node.inputs[2].dtype).itemsize
         itemsize_dx = numpy.dtype(node.outputs[0].dtype).itemsize
+        dtype_dnll = node.inputs[0].dtype
+        dtype_sm = node.inputs[1].dtype
+        dtype_y_idx = node.inputs[2].dtype
+        dtype_dx = node.outputs[0].dtype
         dnll, sm, y_idx = inp
         dx, = out
         fail = sub['fail']
@@ -353,20 +363,20 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                         PyGpuArray_DIMS(%(dx)s)[0],
                         PyGpuArray_DIMS(%(dx)s)[1],
 
-                        (dtype_%(dnll)s*)(((char *)cuda_get_ptr(%(dnll)s->ga.data)) +
+                        (npy_%(dtype_dnll)s*)(((char *)cuda_get_ptr(%(dnll)s->ga.data)) +
                                            %(dnll)s->ga.offset),
                         PyGpuArray_STRIDES(%(dnll)s)[0] / %(itemsize_dnll)s,
 
-                        (dtype_%(sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
+                        (npy_%(dtype_sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
                                            %(sm)s->ga.offset),
                         PyGpuArray_STRIDES(%(sm)s)[0] / %(itemsize_sm)s,
                         PyGpuArray_STRIDES(%(sm)s)[1] / %(itemsize_sm)s,
 
-                        (dtype_%(y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
+                        (npy_%(dtype_y_idx)s*)(((char *)cuda_get_ptr(%(y_idx)s->ga.data)) +
                                            %(y_idx)s->ga.offset),
                         PyGpuArray_STRIDES(%(y_idx)s)[0] / %(itemsize_y_idx)s,
 
-                        (dtype_%(dx)s*)(((char *)cuda_get_ptr(%(dx)s->ga.data)) +
+                        (npy_%(dtype_dx)s*)(((char *)cuda_get_ptr(%(dx)s->ga.data)) +
                                            %(dx)s->ga.offset),
                         PyGpuArray_STRIDES(%(dx)s)[0] / %(itemsize_dx)s,
                         PyGpuArray_STRIDES(%(dx)s)[1] / %(itemsize_dx)s
