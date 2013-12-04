@@ -1809,7 +1809,6 @@ class _Linker(gof.link.LocalLinker):
 "The information we have about this optimizations is:" + str(reason) +
 "The original exception: " + str(e))
                             new_e = OptimizationInsertError(msg)
-                            new_e.reason = opt
                             exc_type, exc_value, exc_trace = sys.exc_info()
                             exc_type = OptimizationInsertError
                             exc_value = new_e
@@ -1906,7 +1905,6 @@ class _Linker(gof.link.LocalLinker):
 "The information we have about this optimizations is:" + str(reason) +
 "The original exception: " + str(e))
                             new_e = OptimizationInsertError(msg)
-                            new_e.reason = opt
                             exc_type, exc_value, exc_trace = sys.exc_info()
                             exc_type = OptimizationInsertError
                             exc_value = new_e

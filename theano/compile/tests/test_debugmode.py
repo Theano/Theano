@@ -275,7 +275,7 @@ def test_badoptimization_opt_err():
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
     except debugmode.OptimizationInsertError, e:
-        assert str(e.reason) == 'insert_bigger_b_add'
+        assert 'insert_bigger_b_add' in e.message
         return  # TEST PASS
 
     assert False
