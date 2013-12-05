@@ -192,6 +192,10 @@ class BadThunkOutput(DebugModeError):
         return ret
 
 
+class OptimizationInsertError(DebugModeError):
+    pass
+
+
 class BadOptimization(DebugModeError):
     """Exception: some variable and its substitute take different
     runtime values.
@@ -1792,6 +1796,25 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"The information we have about this optimizations is:" + str(reason) +
+"The original exception: " + str(e))
+                            new_e = OptimizationInsertError(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_type = OptimizationInsertError
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
+
 
                     if thunk_py:
                         # check output values for type-correctness
@@ -1869,8 +1892,24 @@ class _Linker(gof.link.LocalLinker):
                         ## First time, with None in output_storage
                         try:
                             thunk_c()
-                        except Exception:
-                            raise_with_op(node, thunk_c)
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"The information we have about this optimizations is:" + str(reason) +
+"The original exception: " + str(e))
+                            new_e = OptimizationInsertError(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_type = OptimizationInsertError
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
 
                         for r in node.outputs:
                             # check output values for type-correctness
