@@ -19,6 +19,7 @@ except ImportError:
 import theano
 from theano import tensor
 from theano.gof.python25 import any
+from theano.tests.unittest_tools import seed_rng
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda_ndarray
@@ -415,6 +416,7 @@ def get_valid_shapes():
 
 
 def test_valid_0_2():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [0, 2]
     verbose = 0
@@ -446,6 +448,7 @@ def test_valid_0_2():
 
 
 def test_valid_1_3_11_12():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [1, 3, 11, 12]
     verbose = 0
@@ -475,6 +478,7 @@ def test_valid_1_3_11_12():
 
 
 def test_valid_4():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [4]
     verbose = 0
@@ -506,6 +510,7 @@ def test_valid_4():
 
 
 def test_valid_5():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [5]
     verbose = 0
@@ -537,6 +542,7 @@ def test_valid_5():
 
 
 def test_valid_7_8_13():
+    seed_rng()
     shapes = get_valid_shapes()
     # This is to test the "new" lower shared memory usage.
     shapes.append(((10, 30, 60, 60), (20, 30, 40, 40),
@@ -571,6 +577,7 @@ def test_valid_7_8_13():
 
 
 def test_valid_9_10():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [9, 10]
     verbose = 0
@@ -601,6 +608,7 @@ def test_valid_9_10():
 
 
 def test_valid():
+    seed_rng()
     shapes = get_valid_shapes()
 
     #shapes=shapes[400:426]
@@ -621,6 +629,7 @@ def test_valid():
 
 
 def test_full():
+    seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
     #test image stride
@@ -682,6 +691,7 @@ def test_full():
 
 
 def test_subsample():
+    seed_rng()
     # implement when
     shapes = [((1, 1, 1, 1), (1, 1, 1, 1), (1, 1), (1, 1), (1, 1)),
               ((1, 1, 1, 1), (1, 1, 1, 1), (2, 2), (1, 1), (1, 1)),
@@ -712,6 +722,7 @@ def test_subsample():
 
 class TestConv2DGPU(unittest.TestCase):
     def test_logical_shapes(self):
+        seed_rng()
         for stride in range(1, 4):
             kshp = (10, 2, 10, 10)
             featshp = (3, 10, 11, 11)
@@ -749,6 +760,7 @@ class TestConv2DGPU(unittest.TestCase):
         Tests that when the shape gived at build time is not the same as
         run time we raise an error
         """
+        seed_rng()
         verbose = 0
         random = True
         print_ = False
@@ -860,6 +872,7 @@ def benchmark():
 
 
 def test_stack_rows_segfault_070312():
+    seed_rng()
     # 07/03/2012
     # Running this unittest with cuda-memcheck exposes an illegal read.
     # THEANO_FLAGS=device=gpu cuda-memcheck nosetests \
