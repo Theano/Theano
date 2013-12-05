@@ -138,7 +138,9 @@ class GpuArrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
     def c_declare(self, name, sub):
-        return "PyGpuArrayObject *%s;" % (name,)
+        return """
+        PyGpuArrayObject *%(name)s;
+        """ % locals()
 
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)

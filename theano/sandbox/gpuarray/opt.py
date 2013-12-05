@@ -18,6 +18,8 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                GpuReshape,
                                                GpuEye)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
+                                          GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
 from theano.sandbox.gpuarray.subtensor import GpuSubtensor
@@ -58,7 +60,6 @@ def op_lifter(OP):
         def local_opt(node):
             if type(node.op) in OP:
                 # This does not support nodes that have more than one output.
-                assert len(node.outputs) == 1
                 # either one of our inputs is on the gpu or
                 # all of our client are on the gpu
                 if (any([i.owner and i.owner.op == host_from_gpu
@@ -69,7 +70,9 @@ def op_lifter(OP):
                     # This is needed as sometimes new_op inherit from OP.
                     if new_op and new_op != node.op:
                         if isinstance(new_op, theano.Op):
-                            return [host_from_gpu(new_op(*node.inputs))]
+                            return [host_from_gpu(o) for o in new_op(*node.inputs, return_list=True)]
+                        elif isinstance(new_op, (tuple, list)):
+                            return [host_from_gpu(o) for o in new_op]
                         else:  # suppose it is a variable on the GPU
                             return [host_from_gpu(new_op)]
             return False
@@ -267,3 +270,15 @@ def local_gpua_dot22(node):
 @op_lifter([tensor.basic.Eye])
 def local_gpua_eye(node):
     return GpuEye(dtype=node.op.dtype)
+
+
+@register_opt()
+@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
+def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
+    return GpuCrossentropySoftmaxArgmax1HotWithBias()
+
+
+@register_opt()
+@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
+def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
+    return GpuCrossentropySoftmax1HotWithBiasDx()
