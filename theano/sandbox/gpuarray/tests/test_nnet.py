@@ -8,15 +8,9 @@ import theano.tests.unittest_tools as utt
 
 from theano.sandbox import gpuarray
 
-if theano.sandbox.gpuarray.pygpu is None:
-    raise SkipTest("pygpu not installed")
-
 # We let that import do the init of the back-end if needed.
 from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
                                                           mode_without_gpu)
-
-if not gpuarray.pygpu_activated:
-    raise SkipTest("pygpu disabled")
 
 from theano.sandbox.gpuarray.nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
