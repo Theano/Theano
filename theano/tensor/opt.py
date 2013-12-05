@@ -4593,7 +4593,11 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
             # we still want to fusion. So we take the set.
             if (i.owner and
                 isinstance(i.owner.op, OP) and
-                len(set([n for n, idx in i.clients])) == 1):
+                len(set([n for n, idx in i.clients])) == 1 and
+                # Do not merge elemwise that don't have the same
+                # broadcastable pattern to don't redo duplicate
+                # computation due to broadcast.
+                i.owner.outputs[0].broadcastable == node.outputs[0].broadcastable):
 
                 do_fusion = True
                 try:

@@ -871,12 +871,15 @@ class test_fusion(unittest.TestCase):
         ix, iy, iz = [theano.tensor.tensor(dtype='int32',
                                            broadcastable=[False] * len(shp),
                                            name=n) for n in 'xyz']
-        fv = fvector('r')
+        fv = fvector('v')
+        fs = fscalar('s')
+
         fwv = my_init(shp, 'float32', 1)
         fxv = my_init(shp, 'float32', 2)
         fyv = my_init(shp, 'float32', 3)
         fzv = my_init(shp, 'float32', 4)
         fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32')
+        fsv = numpy.asarray(numpy.random.rand(), dtype='float32')
         dwv = my_init(shp, 'float64', 5)
         ixv = theano._asarray(my_init(shp, num=60), dtype='int32')
         iyv = theano._asarray(my_init(shp, num=70), dtype='int32')
@@ -1035,7 +1038,13 @@ class test_fusion(unittest.TestCase):
             (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),
                 1,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),
             (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,
-                fyv),1,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'),
+                fyv),1,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'), # 70
+
+            #Cases with different broadcast pattern. They should not
+            #be merged as this would duplicate computation
+            #The graph should have 2 elemwise and 1 dimshuffle
+            (fx*theano.tensor.sin(fs),(fx,fs),(fxv,
+                fsv),3,fxv*numpy.sin(fsv),'float32'),
             ]
         if slice:
             cases = cases[slice]
