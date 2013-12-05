@@ -1559,6 +1559,7 @@ class GCC_compiler(object):
                         "         It is better to let Theano/g++ find it"
                         " automatically, but we don't do it now")
                     detect_march = False
+                    GCC_compiler.march_flags = []
                     break
 
         if detect_march:
@@ -1695,8 +1696,8 @@ class GCC_compiler(object):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-            #Add the detected -march=native equivalent flags
-            cxxflags.extend(GCC_compiler.march_flags)
+        #Add the detected -march=native equivalent flags
+        cxxflags.extend(GCC_compiler.march_flags)
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
