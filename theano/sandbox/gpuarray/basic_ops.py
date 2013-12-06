@@ -119,6 +119,8 @@ class GpuKernelBase(object):
         vname = self.c_kernel_codevar(name)
         kname = self.c_kernel_obj(name)
         code = '\\n'.join(l for l in kcode.split('\n'))
+        code = code.replace('"', '\\"')
+        print code
         return """static const char *%(vname)s = "%(code)s";
 static GpuKernel %(kname)s;""" % dict(vname=vname, kname=kname, code=code)
 
