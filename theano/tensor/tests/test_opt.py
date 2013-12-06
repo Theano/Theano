@@ -236,12 +236,12 @@ class test_canonize(unittest.TestCase):
         fyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float32').reshape(1, shp[0])
+                              'float32').reshape(1, shp[0])
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float64').reshape(1, shp[0])
+                              'float64').reshape(1, shp[0])
         cases = [
             (fx + fy, (fx, fy), (fxv, fyv), 1, 'float32'),
             (fx * fy, (fx, fy), (fxv, fyv), 1, 'float32'),
