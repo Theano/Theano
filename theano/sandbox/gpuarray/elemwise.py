@@ -122,36 +122,238 @@ class GpuElemwise(HideC, Elemwise):
                                     dict(fail='return;'))
 
         # Translate types for scalar composite ops (except complex).
-        support_code += """
+        support_code = """
+#ifdef _MSC_VER
+#define signed __int8 int8_t
+#define unsigned __int8 uint8_t
+#define signed __int16 int16_t
+#define unsigned __int16 uint16_t
+#define signed __int32 int32_t
+#define unsigned __int32 uint32_t
+#define signed __int64 int64_t
+#define unsigned __int64 uint64_t
+#else
+#include <stdint.h>
+#endif
+#define ga_bool uint8_t
+#define ga_byte int8_t
+#define ga_ubyte uint8_t
+#define ga_short int16_t
+#define ga_ushort uint16_t
+#define ga_int int32_t
+#define ga_uint uint32_t
+#define ga_long int64_t
+#define ga_ulong uint64_t
+#define ga_float float
+#define ga_double double
+#define ga_half uint16_t
+
+#define npy_int8 ga_byte
+#define npy_uint8 ga_ubyte
+#define npy_int16 ga_short
+#define npy_uint16 ga_ushort
+#define npy_int32 ga_int
+#define npy_uint32 ga_uint
+#define npy_int64 ga_long
+#define npy_uint64 ga_ulong
 #define npy_float64 ga_double
 #define npy_float32 ga_float
-#define npy_uint8 ga_ubyte
-#define npy_int8 ga_byte
-#define npy_uint16 ga_ushort
-#define npy_int16 ga_short
-#define npy_uint32 ga_uint
-#define npy_int32 ga_int
-#define npy_uint64 ga_ulong
-#define npy_int64 ga_long
 """
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
+
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_support_code_apply(self, node, nodename):
         # This is useless by itself, but will serve an eventual c_code
         # implementation
         k = self.generate_kernel(node, nodename)
-
         nd = node.inputs[0].type.ndim
-        res = []
-        for i in range(1, nd):
-            var = "static const char %s_%s[] = " % (nodename, str(i))
-            res.append(var + as_C_string_const(k.render_basic(i)) + ';')
-            res.append("static const gpukernel *%s_%s_k = NULL;" % (nodename,
-                                                                    str(i)))
-        var = "static const char %s_c[] = " % (nodename,)
-        res.append(var + as_C_string_const(k.contig_src) + ';')
-        res.append("static const gpukernel *%s_c_k = NULL;" % (nodename,))
+        import pycuda._cluda
+        res = ["CUdeviceptr (*cuda_get_ptr)(gpudata *g);",
+               pycuda._cluda.CLUDA_PREAMBLE]
+        for i in range(0, nd + 1):
+            res.append(k.render_basic(i, name="elem_" + str(i)) + ';')
+        res.append(k.contig_src + ';')
+
         return '\n'.join(res)
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))'
+                'compyte_get_extension("cuda_get_ptr");']
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        nd = node.outputs[0].ndim
+        fail = sub["fail"]
+        initial_dims = ','.join('1' for i in xrange(nd))
+        opname = str(self.scalar_op)
+
+        #check that all inputs have valid dimensions
+        emitted_inames = {}
+        code = """
+        int n_blocks = 0;
+        int threads_per_block = 0;
+        size_t numEls = 0;
+        """
+        if nd > 0:
+            code += """
+            size_t dims[%(nd)s] = {%(initial_dims)s};
+            """ % locals()
+        else:
+            code += """
+            size_t *dims = NULL;
+            """
+        for idx, iname in enumerate(inputs):
+            if iname in emitted_inames:
+                assert emitted_inames[iname] is node.inputs[idx]
+                continue
+
+            broadcasts = map(int, node.inputs[idx].broadcastable)
+            broadcasts = ', '.join(map(str, broadcasts))
+            nd = node.inputs[idx].ndim
+            if nd > 0:
+                code += """
+                int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};
+                """ % locals()
+            else:
+                code += """
+                int *broadcasts_%(iname)s = NULL;
+                """ % locals()
+            emitted_inames[iname] = node.inputs[idx]
+
+        #check that all inputs have valid dimensions
+        emitted_inames = {}
+        for idx, iname in enumerate(inputs):
+            if iname in emitted_inames:
+                continue
+            code += """
+        //std::cerr << "C_CODE %(opname)s checking input %(iname)s\\n";
+        if (%(nd)s != PyGpuArray_NDIM(%(iname)s))
+        {
+            PyErr_Format(PyExc_TypeError,
+                         "need %(nd)s dims, not %%i",
+                         PyGpuArray_NDIM(%(iname)s));
+            %(fail)s;
+        }
+        for (int i = 0; i< %(nd)s; ++i)
+        {
+            dims[i] = (dims[i] == 1) ? PyGpuArray_DIMS(%(iname)s)[i] : dims[i];
+            if ((!(broadcasts_%(iname)s[i] &&
+                 PyGpuArray_DIMS(%(iname)s)[i] == 1)) &&
+                (dims[i] != PyGpuArray_DIMS(%(iname)s)[i]))
+            {
+                //std::cerr << "C_CODE %(opname)s checking input %(iname)s failed\\n";
+                PyErr_Format(PyExc_ValueError,
+                             "GpuElemwise. Input dimension mis-match. Input"
+                             " %(idx)d (indices start at 0) has shape[%%i] == %%i"
+                             ", but the output's size on that axis is %%i.",
+                             i,
+                             PyGpuArray_DIMS(%(iname)s)[i],
+                             dims[i]
+                            );
+                %(fail)s;
+            }
+        }
+            """ % locals()
+            emitted_inames[iname] = True
+        #check that all outputs have valid dimensions
+        for idx, oname in enumerate(outputs):
+            typecode = dtype_to_typecode(node.outputs[idx].dtype)
+            if idx not in self.inplace_pattern.keys():
+                code += """
+        for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
+            if (dims[i] != PyGpuArray_DIMS(%(oname)s)[i])
+            {
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
+            }
+        }
+        if (%(oname)s && !GpuArray_CHKFLAGS(&(%(oname)s->ga), GA_C_CONTIGUOUS))
+        {
+            Py_XDECREF(%(oname)s);
+            %(oname)s = NULL;
+        }
+        if (NULL == %(oname)s)
+        {
+            %(oname)s = pygpu_empty(%(nd)d, dims,
+                            %(typecode)s, GA_C_ORDER,
+                            pygpu_default_context(), Py_None);
+            if (!%(oname)s) {
+                        //TODO, this check don't seam good.
+                        //TODO, set exception?
+                            %(fail)s
+            }
+        }
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << PyGpuArray_NDIM(%(oname)s) << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
+        """ % locals()
+            else:
+                input_idx = self.inplace_pattern[idx]
+                iname = inputs[input_idx]
+                code += """
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_INCREF(%(oname)s);
+        for (int i = 0; (i< %(nd)s) && (%(oname)s); ++i) {
+            if (dims[i] != PyGpuArray_DIMS(%(oname)s)[i])
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "GpuElemwise. Output dimension mis-match. Output"
+                             " %(idx)d (indices start at 0), working inplace"
+                             " on input %(input_idx)s, has shape[%%i] == %%i"
+                             ", but the output's size on that axis is %%i.",
+                             i,
+                             PyGpuArray_DIMS(%(oname)s)[i],
+                             dims[i]
+                            );
+                Py_DECREF(%(oname)s);
+                %(oname)s = NULL;
+                %(fail)s;
+            }
+        }
+        //std::cerr << "ELEMWISE NEW %(oname)s nd" << PyGpuArray_NDIM(%(oname)s) << "\\n";
+        //std::cerr << "ELEMWISE NEW %(oname)s data" << %(oname)s->devdata << "\\n";
+        """ % locals()
+        z = outputs[0]
+        code += """numEls = PyGpuArray_SIZE(%(z)s);
+
+        //first use at least a full warp
+        threads_per_block = std::min(numEls, (size_t)32); //WARP SIZE
+
+        //next start adding multiprocessors
+        // UP TO NUMBER OF MULTIPROCESSORS, use 30 for now.
+        n_blocks = std::min(numEls/threads_per_block +
+                               (numEls %% threads_per_block?1:0),
+                           (size_t)30);
+
+        // next start adding more warps per multiprocessor
+        if (threads_per_block * n_blocks < numEls)
+            threads_per_block = std::min(numEls/n_blocks, (size_t) 256);
+
+                //std::cerr << "calling callkernel returned\\n";
+        """ % locals()
+
+        code += "elem_%(nd)s<<<n_blocks, threads_per_block>>>(numEls,\n" % locals()
+        param = []
+        for i in range(nd):
+            param.append("%(z)s->ga.dimensions[%(i)d]" % dict(z=outputs[0],
+                                                              i=i))
+        for n, (name, var) in enumerate(zip(inputs + outputs,
+                                       node.inputs + node.outputs)):
+            if (n - len(inputs)) in self.inplace_pattern:
+                continue
+            dtype = var.dtype
+            param.append("(npy_%(dtype)s*)(cuda_get_ptr(%(name)s->ga.data))" % locals())
+            param.append("%(name)s->ga.offset" % locals())
+            for i in range(nd):
+                param.append("PyGpuArray_DIMS(%(name)s)[%(i)d] == 1 ? 0 : PyGpuArray_STRIDES(%(name)s)[%(i)d]" % locals())
+        code += ',\n'.join(param) + ");\n"
+        if config.gpuarray.sync:
+            code += "GpuArray_sync(&%(zz)s->ga);\n" % dict(zz=zz)
+        return str(code)
 
     def perform(self, node, inputs, output_storage):
         # Try to reuse the kernel from a previous call to hopefully
@@ -180,6 +382,13 @@ class GpuElemwise(HideC, Elemwise):
         node._cache_elemwise_k(*args, **dict(broadcast=True))
         if config.gpuarray.sync:
             output_storage[0][0].sync()
+
+    def c_code_cache_version(self):
+        ver = self.scalar_op.c_code_cache_version()
+        if ver:
+            return (1, ver)
+        else:
+            return ver
 
 
 class SupportCodeError(Exception):
