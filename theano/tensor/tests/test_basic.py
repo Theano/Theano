@@ -3071,9 +3071,20 @@ class T_Join_and_Split(unittest.TestCase):
         # Test the gradient of stack when used in hessian, see gh-1589
         a = tensor.dvector('a')
         b = tensor.dvector('b')
-        A = stack([a, b])
+        A = stack(a, b)
         B = A.T.dot(A)
-        hessian(B.sum(), [a, b])
+        Ha, Hb = hessian(B.sum(), [a, b])
+
+        # Try some values
+        a_v = numpy.random.rand(4)
+        b_v = numpy.random.rand(4)
+        f = theano.function([a, b], [Ha, Hb])
+        Ha_v, Hb_v = f(a_v, b_v)
+        # The Hessian is always a matrix full of 2
+        assert Ha_v.shape == (4, 4)
+        assert Hb_v.shape == (4, 4)
+        assert numpy.allclose(Ha_v, 2.)
+        assert numpy.allclose(Hb_v, 2.)
 
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
