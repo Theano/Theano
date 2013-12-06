@@ -5921,6 +5921,13 @@ class T_get_scalar_constant_value(unittest.TestCase):
             get_scalar_constant_value,
             mv[t()])
 
+    def test_shape_i(self):
+        c = theano.tensor.constant(numpy.random.rand(3, 4))
+        s = opt.Shape_i(0)(c)
+        assert get_scalar_constant_value(s) == 3
+        s = opt.Shape_i(1)(c)
+        assert get_scalar_constant_value(s) == 4
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """

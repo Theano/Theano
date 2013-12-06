@@ -566,6 +566,9 @@ def get_scalar_constant_value(v):
         if isinstance(v.owner.op, scal.Second):
             x, y = v.owner.inputs
             return get_scalar_constant_value(y)
+        if (isinstance(v.owner.op, theano.compile.ops.Shape_i) and
+            isinstance(v.owner.inputs[0], Constant)):
+            return v.owner.inputs[0].data.shape[v.owner.op.i]
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
         # mess with the stabilization optimization.
