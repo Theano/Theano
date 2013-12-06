@@ -192,10 +192,6 @@ class BadThunkOutput(DebugModeError):
         return ret
 
 
-class OptimizationInsertError(DebugModeError):
-    pass
-
-
 class BadOptimization(DebugModeError):
     """Exception: some variable and its substitute take different
     runtime values.
@@ -1803,14 +1799,16 @@ class _Linker(gof.link.LocalLinker):
                             # But this make the output uglier.
                             reason = fgraph.equivalence_tracker.reasons[
                                 node.outputs[0]]
+                            if not reason:
+                                raise
                             opt = str(reason[0][0])
                             msg = (
 "An optimization (probably %s ) inserted an apply node that raise an error." % opt +
-"The information we have about this optimizations is:" + str(reason) +
-"The original exception: " + str(e))
-                            new_e = OptimizationInsertError(msg)
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
                             exc_type, exc_value, exc_trace = sys.exc_info()
-                            exc_type = OptimizationInsertError
                             exc_value = new_e
                             raise_with_op(node, thunk_c,
                                           (exc_type, exc_value, exc_trace))
@@ -1899,14 +1897,16 @@ class _Linker(gof.link.LocalLinker):
                             # But this make the output uglier.
                             reason = fgraph.equivalence_tracker.reasons[
                                 node.outputs[0]]
+                            if not reason:
+                                raise
                             opt = str(reason[0][0])
                             msg = (
 "An optimization (probably %s ) inserted an apply node that raise an error." % opt +
-"The information we have about this optimizations is:" + str(reason) +
-"The original exception: " + str(e))
-                            new_e = OptimizationInsertError(msg)
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
                             exc_type, exc_value, exc_trace = sys.exc_info()
-                            exc_type = OptimizationInsertError
                             exc_value = new_e
                             raise_with_op(node, thunk_c,
                                           (exc_type, exc_value, exc_trace))
