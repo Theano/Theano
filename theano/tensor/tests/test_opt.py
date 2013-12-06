@@ -236,12 +236,12 @@ class test_canonize(unittest.TestCase):
         fyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float32').reshape(1, shp[0])
+                              'float32').reshape(1, shp[0])
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float64').reshape(1, shp[0])
+                              'float64').reshape(1, shp[0])
         cases = [
             (fx + fy, (fx, fy), (fxv, fyv), 1, 'float32'),
             (fx * fy, (fx, fy), (fxv, fyv), 1, 'float32'),
@@ -2570,6 +2570,15 @@ class test_shapeoptimizer(unittest.TestCase):
         mode.check_isfinite = False
         f = theano.function([], out, mode=mode)
         f()
+
+    def test_constant_merge(self):
+        """This test the error in gh-1122 that is a caused by the
+        combination of merge optimizer and ShapeFeature.
+        """
+        x = tensor.constant([0, 0])
+        y = x[1:]
+        x1 = x - tensor.join(0, y, y)
+        x1.eval()
 
     def test_local_track_shape_i(self):
         class IdentityNoShape(gof.Op):
