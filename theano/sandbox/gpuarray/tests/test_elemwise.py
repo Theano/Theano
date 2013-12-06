@@ -15,11 +15,14 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 
 from pygpu.array import gpuarray
 
+
 # This is acutally a test for GpuElemwise
 class test_gpu_Broadcast(test_Broadcast):
     op = GpuElemwise
     type = GpuArrayType
-    
+    cop = GpuElemwise
+    ctype = GpuArrayType
+
     def rand_val(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
 
@@ -27,8 +30,8 @@ class test_gpu_Broadcast(test_Broadcast):
     #cop = GpuElemwise
     #ctype = GpuArrayType
 
-    #def rand_cval(self, shp):
-    #    return rand_gpuarray(*shp, **dict(cls=gpuarray))
+    def rand_cval(self, shp):
+        return rand_gpuarray(*shp, **dict(cls=gpuarray))
 
 
 class test_GpuDimShuffle(test_DimShuffle):
