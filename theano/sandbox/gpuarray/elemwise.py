@@ -666,16 +666,14 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
 
         p = 2
         for i in range(node.inputs[0].ndim):
-            if not redux[i]:
-                var = 'gs'
-            else:
-                var = 'n'
             code += """
         proxy_dim[%(i)s] = %(input)s->ga.dimensions[%(i)s];
         args[%(p)s] = &proxy_dim[%(i)s];
-        %(var)s *= %(input)s->ga.dimensions[%(i)s];
-""" % dict(i=i, p=p, input=input, var=var)
+        n *= %(input)s->ga.dimensions[%(i)s];
+""" % dict(i=i, p=p, input=input)
             p += 1
+            if not redux[i]:
+                code += "gs *= %(input)s->ga.dimensions[%(i)s];" % dict(input=input, i=i)
 
         code += """
         args[%(p)s] = &%(input)s->ga;
@@ -693,6 +691,7 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
 
         code += """
         if (gs == 0) gs = 1;
+        n /= gs;
         err = GpuKernel_call(&%(k_var)s, 0, %(ls)s, gs, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
