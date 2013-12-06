@@ -4,12 +4,14 @@ from itertools import izip
 import numpy
 from theano import Op, Apply, scalar, config
 from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduceDtype
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
     from pygpu.reduction import ReductionKernel
+    from pygpu.gpuarray import dtype_to_typecode
 except ImportError:
     pass
 
@@ -63,10 +65,35 @@ class GpuElemwise(HideC, Elemwise):
         outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
                                 dtype=o.type.dtype)() for o in res.outputs]
         inputs = [as_gpuarray_variable(i) for i in inputs]
-        res = Apply(self, inputs, outputs)
+        node = Apply(self, inputs, outputs)
+
         # Try to generate the kernel to catch SupportCodeErrors
-        k = self.generate_kernel(res, 'test')
-        return res
+        try:
+            inps = [make_argument(i, 'i%d' % (n,)) for n, i in
+                    enumerate(node.inputs)]
+            scal_ins = [scalar.Scalar(i.dtype) for i in node.inputs]
+
+            outs = [make_argument(o, 'o%d' % (n,)) for n, o in
+                    enumerate(node.outputs) if not n in self.inplace_pattern]
+            scal_out = [scalar.Scalar(o.dtype) for o in node.outputs]
+
+            fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
+                              [o() for o in scal_out])
+            code = self.scalar_op.c_support_code_apply(fake_node, "test")
+            if code:
+                raise SupportCodeError(code)
+        except MethodNotDefined:
+            pass
+        try:
+            support_code = self.scalar_op.c_support_code()
+            if (support_code.strip() != "#define THEANO_MACRO_MOD(x,y) (x % y)" and
+                support_code.strip() != ""):
+                # The macro is fine, the C++ struct is not.
+                raise SupportCodeError(support_code)
+        except MethodNotDefined:
+            pass
+
+        return node
 
     def generate_kernel(self, node, nodename):
         inps = [make_argument(i, 'i%d' % (n,)) for n, i in
@@ -80,27 +107,9 @@ class GpuElemwise(HideC, Elemwise):
         fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
                           [o() for o in scal_out])
 
-        try:
-            code = self.scalar_op.c_support_code_apply(fake_node, nodename)
-            if code:
-                raise SupportCodeError(code)
-        except MethodNotDefined:
-            pass
-
-        support_code = ""
-        try:
-            support_code = self.scalar_op.c_support_code()
-        except MethodNotDefined:
-            pass
-
-        if (support_code.strip() != "#define THEANO_MACRO_MOD(x,y) (x % y)" and
-            support_code.strip() != ""):
-            # The macro is fine, the C++ struct is not.
-            raise SupportCodeError(support_code)
-
         scal_out = []
         oi = 0
-        for n in range(len(fake_node.outputs)):
+        for n in range(len(node.outputs)):
             if n in self.inplace_pattern:
                 scal_out.append(inps[self.inplace_pattern[n]].name+'[i]')
             else:
