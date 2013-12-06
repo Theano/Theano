@@ -731,7 +731,12 @@ class ShapeFeature(object):
             return self.lscalar_one
         else:
             # Do not call make_node for test_value
-            return Shape_i(i)(r)
+            s = Shape_i(i)(r)
+            try:
+                s = get_scalar_constant_value(s)
+            except NotScalarConstantError:
+                pass
+            return s
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""

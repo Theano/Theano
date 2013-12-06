@@ -2571,6 +2571,15 @@ class test_shapeoptimizer(unittest.TestCase):
         f = theano.function([], out, mode=mode)
         f()
 
+    def test_constant_merge(self):
+        """This test the error in gh-1122 that is a caused by the
+        combination of merge optimizer and ShapeFeature.
+        """
+        x = tensor.constant([0, 0])
+        y = x[1:]
+        x1 = x - tensor.join(0, y, y)
+        x1.eval()
+
     def test_local_track_shape_i(self):
         class IdentityNoShape(gof.Op):
             '''Op that does not infer the output shape from the input one'''
