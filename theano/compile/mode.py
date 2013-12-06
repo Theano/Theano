@@ -262,8 +262,6 @@ class Mode(object):
         self.call_time = 0
         self.fn_time = 0
         linker.mode = self  # TODO: WHY IS THIS HERE?
-        self.optimizer_time = 0
-        self.linker_time = 0
 
     def __str__(self):
         return "%s(linker = %s, optimizer = %s)" % (self.__class__.__name__,
