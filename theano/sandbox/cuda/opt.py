@@ -1050,6 +1050,21 @@ def local_gpu_conv(node):
                 return make_graph
         return ret
 
+    def values_eq_approx(a, b):
+        """This fct is needed to don't have DebugMode raise useless
+        error due to ronding error.
+
+        This happen as We reduce on the two last dimensions, so this
+        can raise the absolute error if the number of element we
+        reduce on is significant.
+
+        """
+        assert a.ndim == 4
+        atol = None
+        if a.shape[-1] * a.shape[-2] > 100:
+            atol = 3e-5
+        return tensor.TensorType.values_eq_approx(a, b, atol=atol)
+
     if node.op == gpu_from_host:
         #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
@@ -1058,12 +1073,14 @@ def local_gpu_conv(node):
             if gpu_conv is None:
                 return
             img, kern = host_input.owner.inputs
+            out = gpu_conv(gpu_from_host(img),
+                           gpu_from_host(kern))
+            out = tensor.patternbroadcast(out,
+                                          node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
-            return [tensor.patternbroadcast(
-                gpu_conv(gpu_from_host(img),
-                         gpu_from_host(kern)),
-                         node.outputs[0].broadcastable)]
+            return [out]
 
     if isinstance(node.op, conv.ConvOp):
         #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
@@ -1074,12 +1091,15 @@ def local_gpu_conv(node):
             gpu_conv = GpuConvOp_from_ConvOp(node.op)
             if gpu_conv is None:
                 return
+            out = gpu_conv(gpu_from_host(img),
+                           gpu_from_host(kern))
+            out = tensor.patternbroadcast(
+                host_from_gpu(out),
+                node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
-            return [tensor.patternbroadcast(
-                host_from_gpu(gpu_conv(gpu_from_host(img),
-                                       gpu_from_host(kern))),
-                node.outputs[0].broadcastable)]
+            return [out]
 
 import theano.tensor.signal.downsample as downsample
 
