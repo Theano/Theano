@@ -723,7 +723,7 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
         return code
 
     def c_code_cache_version(self):
-        return None
+        return (0,)
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
