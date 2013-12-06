@@ -3086,6 +3086,28 @@ class T_Join_and_Split(unittest.TestCase):
         assert numpy.allclose(Ha_v, 2.)
         assert numpy.allclose(Hb_v, 2.)
 
+    def test_stack_hessian2(self):
+        # Test the hessian macro when the gradient itself does not depend
+        # on the input (but the cost does)
+        a = tensor.dvector('a')
+        b = tensor.dvector('b')
+        A = stack([a, b])
+        Ha, Hb = hessian(A.sum(), [a, b])
+
+        # Try some values
+        a_v = numpy.random.rand(4)
+        b_v = numpy.random.rand(4)
+        f = theano.function([a, b], [Ha, Hb])
+        Ha_v, Hb_v = f(a_v, b_v)
+        print Ha_v
+        print Hb_v
+        # The Hessian is always a matrix full of 0
+        assert Ha_v.shape == (4, 4)
+        assert Hb_v.shape == (4, 4)
+        assert numpy.allclose(Ha_v, 0.)
+        assert numpy.allclose(Hb_v, 0.)
+
+
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
         also test that we remove the Join op if there is only 1 input'''
