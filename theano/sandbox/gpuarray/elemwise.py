@@ -148,16 +148,6 @@ class GpuElemwise(HideC, Elemwise):
 #define ga_double double
 #define ga_half uint16_t
 
-#define npy_int8 ga_byte
-#define npy_uint8 ga_ubyte
-#define npy_int16 ga_short
-#define npy_uint16 ga_ushort
-#define npy_int32 ga_int
-#define npy_uint32 ga_uint
-#define npy_int64 ga_long
-#define npy_uint64 ga_ulong
-#define npy_float64 ga_double
-#define npy_float32 ga_float
 """
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
@@ -378,8 +368,7 @@ class GpuElemwise(HideC, Elemwise):
             else:
                 args.append(ensure_allocated(stor, out_shape, out.type.dtype))
 
-        # the dict call is there to avoid a syntax error in python < 2.6
-        node._cache_elemwise_k(*args, **dict(broadcast=True))
+        node._cache_elemwise_k(*args, broadcast=True)
         if config.gpuarray.sync:
             output_storage[0][0].sync()
 
