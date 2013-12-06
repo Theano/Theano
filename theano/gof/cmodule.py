@@ -362,7 +362,7 @@ def get_module_hash(src_code, key):
     # it changes, then the module hash should be different.
     # We start with the source code itself (stripping blanks might avoid
     # recompiling after a basic indentation fix for instance).
-    to_hash = map(str.strip, src_code.split('\n'))
+    to_hash = [l.strip() for l in src_code.split('\n')]
     # Get the version part of the key (ignore if unversioned).
     if key[0]:
         to_hash += map(str, key[0])
