@@ -1684,6 +1684,36 @@ class GCC_compiler(object):
                                         opt_name, opt_val = opt
                                         new_flags[i] = '-march=%s' % opt_val
 
+                            # Some versions of GCC report the native arch
+                            # as "corei7-avx", but it generates illegal
+                            # instructions, and should be "corei7" instead.
+                            # Affected versions are:
+                            # - 4.6 before 4.6.4
+                            # - 4.7 before 4.7.3
+                            # - 4.8 before 4.8.1
+                            # Earlier versions did not have arch "corei7-avx"
+                            for i, p in enumerate(new_flags):
+                                if 'march' not in p:
+                                    continue
+                                opt = p.split('=')
+                                if len(opt) != 2:
+                                    # Inexpected, but do not crash
+                                    continue
+                                opt_val = opt[1]
+                                if not opt_val.endswith('-avx'):
+                                    # OK
+                                    continue
+                                # Check the version of GCC
+                                version = gcc_version_str.split('.')
+                                if len(version) != 3:
+                                    # Unexpected, but should not be a problem
+                                    continue
+                                mj, mn, patch = [int(vp) for vp in version]
+                                if (((mj, mn) == (4, 6) and patch < 4) or
+                                        ((mj, mn) == (4, 7) and patch < 3) or
+                                        ((mj, mn) == (4, 8) and patch < 1)):
+                                    new_flags[i] = p.rstrip('-avx')
+
                             # Go back to split arguments, like
                             # ["-option", "value"],
                             # as this is the way g++ expects them split.
