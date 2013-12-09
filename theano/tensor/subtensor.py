@@ -100,6 +100,7 @@ def get_canonical_form_slice(theslice, length):
 
         if step is None:
             step = 1
+            is_step_constant = True
 
         # First handle the easier and common case where `step` is 1 and
         # either `start` or `stop` is a range boundary. More specializations
