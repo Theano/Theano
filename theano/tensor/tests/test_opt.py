@@ -2366,11 +2366,13 @@ class Test_alloc_zero(unittest.TestCase):
 
 
 def test_local_subtensor_of_alloc():
-    x = tensor.matrix('x')
 
     # DebugMode should detect if something goes wrong.
     # test shape combination of odd and event shape.
-    for shape in [(3, 5), (4, 6), (3, 8), (4, 7)]:
+    for shape in [(3, 5), (4, 6), (3, 8), (4, 7),
+                  (1, 5), (5, 1)]:
+        x = tensor.tensor(dtype=theano.config.floatX,
+                          broadcastable=(shape[0] == 1, shape[1] == 1))
 
         xval = numpy.zeros(shape, dtype=config.floatX)
         yval = numpy.arange(shape[1], dtype=config.floatX)
@@ -2387,21 +2389,29 @@ def test_local_subtensor_of_alloc():
             # Only one column
             z_vec = yx[:, 3]
             assert z_vec.ndim == 1
+            # results are vector
+            slicess = []
+            if shape[0] != 1:
+                slicess.append((2, slice(None)))
+            if shape[1] != 1:
+                slicess.append((slice(None), 3))
 
-            for slices in [
-                # results are vector
-                (slice(None), 3),
-                (2, slice(None)),
-                # results are matrix
+            # results are matrix
+            slicess += [
                 (slice(None), slice(3, None)),
                 (slice(3, None), ),
                 (slice(3, None), slice(3, None)),
                 (slice(1, 3), slice(None, -1)),
                 (slice(None, None, 2)),
                 (slice(1, None, 2)),
-                ]:
+                ]
+            for slices in slicess:
                 z = yx.__getitem__(slices)
                 f = theano.function([x], z)
+                theano.printing.debugprint(f)
+#                if theano.config.mode != 'FAST_COMPILE':
+#                    assert not any([isinstance(node.op, Subtensor)
+#                                    for node in f.maker.fgraph.toposort()])
                 val = f(xval)
                 assert xval.__getitem__(slices).shape == val.shape
 

@@ -1998,7 +1998,14 @@ def local_subtensor_of_alloc(node):
             # That dimension is removed.
             pass
         else:
-            nw_dims += [T.ceil_intdiv((csl.stop - csl.start), csl.step)]
+            nw_dim = csl.stop - csl.start
+
+            if csl.step != 1:
+                # Do not add the ceil_intdiv() graphs in the graphs
+                # when this is not needed as it prevent detecting the
+                # correct broadcast pattern.
+                nw_dim = T.ceil_intdiv(nw_dim, csl.step)
+            nw_dims += [nw_dim]
 
     nw_val = val[tuple(val_slices)]
     nw_dims += dims[len(slices):]
@@ -2007,7 +2014,9 @@ def local_subtensor_of_alloc(node):
     rval = T.alloc(nw_val, *nw_dims)
     if type(rval) not in (list, tuple):
         rval = [rval]
-
+    if rval[0].type != node.outputs[0].type:
+        #This happen from time to time, we need to discover why
+        return
     return rval
 
 
