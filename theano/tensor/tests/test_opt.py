@@ -2408,7 +2408,7 @@ def test_local_subtensor_of_alloc():
             for slices in slicess:
                 z = yx.__getitem__(slices)
                 f = theano.function([x], z)
-                theano.printing.debugprint(f)
+#                theano.printing.debugprint(f)
 #                if theano.config.mode != 'FAST_COMPILE':
 #                    assert not any([isinstance(node.op, Subtensor)
 #                                    for node in f.maker.fgraph.toposort()])

@@ -559,26 +559,31 @@ def get_scalar_constant_value(v):
                                    compile.ops.OutputGuard,
                                    compile.DeepCopyOp)):
             return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, Elemwise) and \
-                isinstance(v.owner.op.scalar_op, scal.Second):
-            shape, val = v.owner.inputs
-            return get_scalar_constant_value(val)
-        if isinstance(v.owner.op, scal.Second):
-            x, y = v.owner.inputs
-            return get_scalar_constant_value(y)
         if (isinstance(v.owner.op, theano.compile.ops.Shape_i) and
             isinstance(v.owner.inputs[0], Constant)):
             return v.owner.inputs[0].data.shape[v.owner.op.i]
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
-        # mess with the stabilization optimization.
-        if (isinstance(v.owner.op, Elemwise) and isinstance(
-            v.owner.op.scalar_op, scal.Cast)) or \
-            isinstance(v.owner.op, scal.Cast):
-            const = get_scalar_constant_value(v.owner.inputs[0])
-            ret = [[None]]
-            v.owner.op.perform(v.owner, [const], ret)
-            return ret[0][0]
+        # mess with the stabilization optimization and be too slow.
+        # We put all the scalar Ops used by get_canonical_form_slice()
+        # to allow it to determine the broadcast pattern correctly.
+        elemwises = (scal.Cast, scal.Switch,
+                     scal.NEQ, scal.EQ,
+                     scal.LT, scal.GT, scal.LE, scal.GE,
+                     scal.Sub, scal.Add, scal.Mod, scal.Mul,
+                     scal.IntDiv, scal.TrueDiv,
+                     scal.Second)
+        if (isinstance(v.owner.op, Elemwise) and
+            len(v.owner.outputs) == 1 and
+            (isinstance(v.owner.op.scalar_op, elemwises) or
+            isinstance(v.owner.op, elemwises))):
+            try:
+                const = [get_scalar_constant_value(i) for i in v.owner.inputs]
+                ret = [[None]]
+                v.owner.op.perform(v.owner, const, ret)
+                return ret[0][0]
+            except NotScalarConstantError:
+                pass
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
             # This condition depends on Subtensor always embedding constant
             # indices in the Op rather than making them inputs to the Apply
