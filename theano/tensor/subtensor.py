@@ -393,8 +393,15 @@ class Subtensor(Op):
         # infer the broadcasting pattern
         padded = (idx_list
                 + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
-        broadcastable = [bc for p, bc in izip(padded, x.type.broadcastable)
-                if isinstance(p, slice)]
+        broadcastable = [bc and p.start is None and p.stop is None
+                         # No need to check step when there is only
+                         # one element and start and stop are None,
+                         # the output will always have 1 element.
+                         # We could call get_canonical_form_slice() to
+                         # catch more broadcast case. I let this to
+                         # later.
+                         for p, bc in izip(padded, x.type.broadcastable)
+                         if isinstance(p, slice)]
 
         input_types = Subtensor.collapse(idx_list,
                 lambda entry: isinstance(entry, gof.Type))

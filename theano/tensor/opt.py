@@ -2014,9 +2014,6 @@ def local_subtensor_of_alloc(node):
     rval = T.alloc(nw_val, *nw_dims)
     if type(rval) not in (list, tuple):
         rval = [rval]
-    if rval[0].type != node.outputs[0].type:
-        #This happen from time to time, we need to discover why
-        return
     return rval
 
 
