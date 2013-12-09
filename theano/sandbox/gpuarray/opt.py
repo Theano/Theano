@@ -14,7 +14,9 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                gpu_from_host,
                                                gpu_alloc,
+                                               gpu_shape,
                                                GpuAlloc,
+                                               GpuShape,
                                                GpuReshape,
                                                GpuEye)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
@@ -282,3 +284,17 @@ def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
     return GpuCrossentropySoftmax1HotWithBiasDx()
+
+
+@register_opt()
+@local_optimizer([tensor.Shape])
+def local_gpua_shape(node):
+    """
+    Can't use op_lifter as the output is on the GPU.
+    """
+    if isinstance(node.op, tensor.Shape):
+        x, = node.inputs
+        if x.owner and x.owner.op == host_from_gpu:
+            gpu_x, = x.owner.inputs
+            return [gpu_shape(gpu_x)]
+    return False

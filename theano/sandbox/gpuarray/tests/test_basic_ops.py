@@ -36,7 +36,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
                                                cuda_from_gpu, HostFromGpu,
                                                GpuFromHost, GpuReshape,
-                                               GpuEye)
+                                               GpuEye, GpuShape)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -288,6 +288,26 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
         )
 )
+
+
+def test_shape():
+    x = GpuArrayType(dtype='float32', broadcastable=[False, False, False])()
+    v = gpuarray.array(numpy.zeros((3, 4, 5), dtype='float32'))
+    f = theano.function([x], x.shape)
+    topo = f.maker.fgraph.toposort()
+    assert numpy.all(f(v) == (3, 4, 5))
+    if theano.config.mode != 'FAST_COMPILE':
+        assert len(topo) == 4
+        assert isinstance(topo[0].op, T.opt.Shape_i)
+        assert isinstance(topo[1].op, T.opt.Shape_i)
+        assert isinstance(topo[2].op, T.opt.Shape_i)
+        assert isinstance(topo[3].op, T.opt.MakeVector)
+    mode = mode_with_gpu.excluding("local_shape_to_shape_i")
+    f = theano.function([x], x.shape, mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert numpy.all(f(v) == (3, 4, 5))
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuShape)
 
 
 class G_reshape(T_reshape):
