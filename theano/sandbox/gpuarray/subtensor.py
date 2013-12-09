@@ -4,7 +4,7 @@ import numpy
 
 import theano
 from theano import tensor, gof
-from theano.tensor.subtensor import Subtensor, get_idx_list
+from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 
 from theano.gof.python25 import all, any
 
@@ -154,3 +154,128 @@ class GpuSubtensor(HideC, Subtensor):
 
     def c_code_cache_version(self):
         return (5,)
+
+
+class GpuIncSubtensor(HideC, IncSubtensor):
+    """
+    Implement IncSubtensor on the gpu.
+
+    Note: The optimization to make this inplace is in tensor/opt.
+          The same optimization handles IncSubtensor and GpuIncSubtensor.
+          This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
+          The helper methods like do_type_checking, copy_of_x, etc. specialize
+          the c_code for this Op.
+    """
+
+    def make_node(self, x, y, *inputs):
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
+        rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
+        return Apply(self, [x, y] + rval.inputs[2:], [x.type()])
+
+    def do_type_checking(self, node):
+        """ Should raise NotImplementedError if c_code does not support
+        the types involved in this node.
+        """
+
+        if not isinstance(node.inputs[0].type, CudaNdarrayType):
+            raise NotImplementedError()
+
+    def copy_of_x(self, x):
+        """
+            :param x: a string giving the name of a C variable
+                pointing to an array
+
+            :return: C code expression to make a copy of x
+
+            Base class uses `PyArrayObject *`, subclasses may override for
+            different types of arrays.
+        """
+        return """(CudaNdarray*) CudaNdarray_Copy(%(x)s)""" % locals()
+
+    def decl_view(self):
+        return "CudaNdarray* zview = NULL;"
+
+    def make_view_array(self, x, view_ndim):
+        """
+            :param x: a string identifying an array to be viewed
+            :param view_ndim: a string specifying the number of dimensions
+                to have in the view
+
+            This doesn't need to actually set up the view with the
+            right indexing; we'll do that manually later.
+        """
+        ret = """zview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
+        if (CudaNdarray_set_device_data(
+                zview,
+                CudaNdarray_DEV_DATA(%(x)s) + xview_offset/4,
+                (PyObject*) %(x)s))
+        {
+            zview = NULL;
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set the"
+                         " devdata field of the view");
+        }else{
+            cnda_mark_dev_structure_dirty(zview);
+            for(int idx=0;idx <%(view_ndim)s; idx++){
+                if(xview_dims[idx]==1)
+                    CudaNdarray_set_stride(zview, idx, 0);
+                else
+                    CudaNdarray_set_stride(zview, idx, xview_strides[idx]);
+                CudaNdarray_set_dim(zview, idx, xview_dims[idx]);
+            }
+        }
+        """ % locals()
+        return ret
+
+    def get_helper_c_code_args(self):
+        """ Return a dictionary of arguments to use with helper_c_code"""
+        return {'c_prefix': 'CudaNdarray',
+                'strides_mul': 4
+                }
+
+    def copy_into(self, view, source):
+        """
+            view: string, C code expression for an array
+            source: string, C code expression for an array
+
+            returns a C code expression to copy source into view, and
+            return 0 on success
+        """
+        return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
+
+    def set_view_base(self, x, fail):
+        return """
+        //Set the base only now
+
+        if(CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(zview),
+                                    %(x)s)){
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuSubtensor is not able to set"
+                         " the base of the view array");
+            Py_XDECREF(zview);
+            %(fail)s;
+        }""" % locals()
+
+    def add_to_zview(self, x, fail):
+
+        return """
+        PyObject * add_result = CudaNdarray_inplace_add((PyObject *) zview,
+                                                        (PyObject *) py_%(x)s);
+
+        if (! add_result )
+        {
+            Py_DECREF(zview);
+            %(fail)s;
+        }
+        else
+        {
+            Py_DECREF(add_result);
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
+        if parent_version:
+            return parent_version + (0,)
+        return ()
