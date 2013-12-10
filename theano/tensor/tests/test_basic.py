@@ -5943,6 +5943,13 @@ class T_get_scalar_constant_value(unittest.TestCase):
         s = tensor.second(c, .4)
         assert get_scalar_constant_value(s) == .4
 
+    def test_second(self):
+        #Second should apply when the value is constant but not the shape
+        c = theano.tensor.constant(numpy.random.rand())
+        shp = theano.tensor.vector()
+        s = theano.tensor.second(shp, c)
+        assert get_scalar_constant_value(s) == c.data
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """

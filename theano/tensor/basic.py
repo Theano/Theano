@@ -567,6 +567,12 @@ def get_scalar_constant_value(v):
         # mess with the stabilization optimization and be too slow.
         # We put all the scalar Ops used by get_canonical_form_slice()
         # to allow it to determine the broadcast pattern correctly.
+        if ((isinstance(v.owner.op, Elemwise) and
+             isinstance(v.owner.op.scalar_op, scal.Second)) or
+            isinstance(v.owner.op, scal.Second)):
+            # We don't need both input to be constant for second
+            shape, val = v.owner.inputs
+            return get_scalar_constant_value(val)
         elemwises = (scal.Cast, scal.Switch,
                      scal.NEQ, scal.EQ,
                      scal.LT, scal.GT, scal.LE, scal.GE,
