@@ -654,6 +654,15 @@ class GpuAlloc(HideC, Alloc):
 gpu_alloc = GpuAlloc()
 
 
+class GpuShape(HideC, tensor.Shape):
+    """
+    Implement Shape on the gpu.
+    """
+    def make_node(self, x):
+        return Apply(self, [x], [tensor.lvector()])
+gpu_shape = GpuShape()
+
+
 class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
