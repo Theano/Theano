@@ -292,7 +292,7 @@ GpuAllocTester = makeTester(
 
 def test_shape():
     x = GpuArrayType(dtype='float32', broadcastable=[False, False, False])()
-    v = gpuarray.array(numpy.zeros((3, 4, 5), dtype='float32'))
+    v = gpuarray.zeros((3, 4, 5), dtype='float32')
     f = theano.function([x], x.shape)
     topo = f.maker.fgraph.toposort()
     assert numpy.all(f(v) == (3, 4, 5))
