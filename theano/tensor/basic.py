@@ -660,13 +660,13 @@ def get_scalar_constant_value(v):
                 assert ndim == len(gp_broadcastable)
 
                 if not (idx < len(gp_broadcastable)):
-                    msg = "get_scalar_constant_value detected " + \
-                            "deterministic IndexError: x.shape[%d] " + \
-                            "when x.ndim=%d." % (ndim, idx)
+                    msg = ("get_scalar_constant_value detected " +
+                           "deterministic IndexError: x.shape[%d] " +
+                           "when x.ndim=%d.") % (ndim, idx)
                     if config.exception_verbosity == 'high':
-                        msg += 'x=%s' % min_informative_str(x)
+                        msg += 'x=%s' % min_informative_str(v)
                     else:
-                        msg += 'x=%s' % str(x)
+                        msg += 'x=%s' % str(v)
                     raise ValueError(msg)
 
                 if gp_broadcastable[idx]:
