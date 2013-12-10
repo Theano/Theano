@@ -577,19 +577,15 @@ def get_scalar_constant_value(v):
                      scal.NEQ, scal.EQ,
                      scal.LT, scal.GT, scal.LE, scal.GE,
                      scal.Sub, scal.Add, scal.Mod, scal.Mul,
-                     scal.IntDiv, scal.TrueDiv,
-                     scal.Second)
+                     scal.IntDiv, scal.TrueDiv)
         if (isinstance(v.owner.op, Elemwise) and
             len(v.owner.outputs) == 1 and
             (isinstance(v.owner.op.scalar_op, elemwises) or
             isinstance(v.owner.op, elemwises))):
-            try:
-                const = [get_scalar_constant_value(i) for i in v.owner.inputs]
-                ret = [[None]]
-                v.owner.op.perform(v.owner, const, ret)
-                return ret[0][0]
-            except NotScalarConstantError:
-                pass
+            const = [get_scalar_constant_value(i) for i in v.owner.inputs]
+            ret = [[None]]
+            v.owner.op.perform(v.owner, const, ret)
+            return ret[0][0]
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
             # This condition depends on Subtensor always embedding constant
             # indices in the Op rather than making them inputs to the Apply
