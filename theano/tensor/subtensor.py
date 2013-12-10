@@ -1847,6 +1847,7 @@ class AdvancedSubtensor(Op):
         return [advanced_inc_subtensor(theano.tensor.zeros_like(x), gz,
                                        *rest)] + \
             [DisconnectedType()()] * len(rest)
+advanced_subtensor = AdvancedSubtensor()
 
 
 class AdvancedIncSubtensor(Op):
