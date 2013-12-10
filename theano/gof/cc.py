@@ -484,6 +484,7 @@ class CLinker(link.Linker):
         self.consts = []
 
         c_support_code_apply = []
+        c_init_code_apply = []
 
         symbol = {}
 
@@ -630,7 +631,15 @@ class CLinker(link.Linker):
                 # The following will be executed if the "try" block succeeds
                 assert isinstance(c_support_code_apply[-1], basestring), (
                         str(node.op) +
-                        " didn't returned a string for c_support_code_apply")
+                        " didn't return a string for c_support_code_apply")
+            try:
+                c_init_code_apply.append(op.c_init_code_apply(node, name))
+            except utils.MethodNotDefined:
+                pass
+            else:
+                assert isinstance(c_init_code_apply[-1], basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_init_code_apply")
 
             # emit c_code
             try:
@@ -638,7 +647,7 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
             assert isinstance(behavior, basestring), (
-                str(node.op) + " didn't returned a string for c_code")
+                str(node.op) + " didn't return a string for c_code")
 
             try:
                 cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
@@ -677,6 +686,7 @@ class CLinker(link.Linker):
         self.tasks = tasks
         all_info = self.inputs + self.outputs + self.orphans
         self.c_support_code_apply = c_support_code_apply
+        self.c_init_code_apply = c_init_code_apply
 
         if (self.init_tasks, self.tasks) != self.get_init_tasks():
             print >> sys.stderr, "init_tasks\n", self.init_tasks
@@ -1292,7 +1302,7 @@ class CLinker(link.Linker):
         mod.add_function(instantiate)
         for header in self.headers():
             mod.add_include(header)
-        for init_code_block in self.init_code():
+        for init_code_block in self.init_code() + self.c_init_code_apply:
             mod.add_init_code(init_code_block)
 
         return mod

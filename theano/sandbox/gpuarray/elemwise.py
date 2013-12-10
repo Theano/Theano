@@ -11,11 +11,12 @@ try:
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
     from pygpu.reduction import ReductionKernel
-    from pygpu.gpuarray import dtype_to_typecode
+    from pygpu.gpuarray import dtype_to_typecode, dtype_to_ctype
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
+from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable, HideC,
+                                               GpuKernelBase)
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.gof.utils import MethodNotDefined
@@ -480,7 +481,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return (3,)
 
 
-class GpuCAReduce(HideC, CAReduceDtype):
+class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         if not hasattr(scalar_op, 'identity'):
             raise ValueError("No identity on scalar op")
@@ -510,6 +511,81 @@ class GpuCAReduce(HideC, CAReduceDtype):
         return Apply(res.op, [input], [otype()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        # cache the kernel object
+        self.get_kernel_cache(node)
+        return super(GpuCAReduce, self).make_thunk(node, storage_map,
+                                                   compute_map, no_recycling)
+
+    def get_kernel_cache(self, node):
+        attr = '@cache_reduction_k'
+        if self.axis is None:
+            redux = [True] * node.inputs[0].ndim
+        else:
+            redux = self.redux
+        if not hasattr(node, attr):
+            acc_dtype = getattr(self, 'acc_dtype', None)
+            if acc_dtype is None:
+                acc_dtype = node.outputs[0].type.dtype
+            if any(redux):
+                setattr(node, attr, self.generate_kernel(node, acc_dtype,
+                                                         redux))
+
+        if any(redux):
+            return getattr(node, attr)
+
+    def c_kernel_code(self, node):
+        if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
+            # Some OpenCL compilers do not accept no-arguments kernels
+            return "KERNEL void reduk(GLOBAL_MEM float *a) {}"
+        else:
+            k = self.get_kernel_cache(node)
+            _, src, _, _ = k._get_basic_kernel(k.init_local_size,
+                                               node.inputs[0].ndim)
+            return src
+
+    def c_kernel_name(self):
+        return "reduk"
+
+    def c_kernel_params(self, node):
+        if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
+            return ["GA_FLOAT"]
+        else:
+            # Make sure this is synced with the call definition in
+            # pygpu/reduction.py
+            nd = node.inputs[0].ndim
+            res = ["GA_UINT", "GA_BUFFER"]
+            res.extend("GA_UINT" for _ in range(nd))
+            res.append("GA_BUFFER")
+            res.append("GA_UINT")
+            res.extend("GA_INT" for _ in range(nd))
+            return res
+
+    def c_kernel_flags(self, node):
+        acc_dtype = getattr(self, 'acc_dtype', None)
+        if acc_dtype is None:
+            acc_dtype = node.outputs[0].type.dtype
+        return self._get_kernel_flags(node.inputs[0].type.dtype,
+                                      acc_dtype,
+                                      node.outputs[0].type.dtype)
+
+    def c_code(self, node, name, inp, out, sub):
+        if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
+            # We special case the no-reduction case since the gpu
+            # kernel has trouble handling it.
+            return """
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_copy(%(inp)s, GA_ANY_ORDER);
+        if (!%(out)s) {
+            %(fail)s
+        }
+
+        if (%(sync)d)
+            GpuArray_sync(&%(out)s->ga);
+""" % dict(out=out[0], inp=inp[0], fail=sub['fail'],
+           sync=bool(config.gpuarray.sync))
+        k = self.get_kernel_cache(node)
+        _, src, _, ls = k._get_basic_kernel(k.init_local_size,
+                                           node.inputs[0].ndim)
         if self.axis is None:
             redux = [True] * node.inputs[0].ndim
         else:
@@ -517,11 +593,136 @@ class GpuCAReduce(HideC, CAReduceDtype):
         acc_dtype = getattr(self, 'acc_dtype', None)
         if acc_dtype is None:
             acc_dtype = node.outputs[0].type.dtype
-        if any(redux):
-            node._cache_reduction_k = self.generate_kernel(node, acc_dtype,
-                                                           redux)
-        return super(GpuCAReduce, self).make_thunk(node, storage_map,
-                                                   compute_map, no_recycling)
+        input = inp[0]
+        output = out[0]
+        nd_out = node.outputs[0].ndim
+        code = """
+        size_t gs = 1;
+        unsigned int n = 1;
+        unsigned int proxy_dim[%(nd_in)s];
+        unsigned int proxy_off;
+        int proxy_str[%(nd_in)s];
+        void *args[%(n_args)s];
+        PyGpuArrayObject *tmp;
+        int err;
+""" % dict(n_args=4 + (node.inputs[0].ndim * 2), nd_in=node.inputs[0].ndim)
+
+        if nd_out != 0:
+            code += """
+        size_t out_dims[%(nd_out)s];
+        int need_out = %(output)s == NULL || %(output)s->ga.nd != %(nd_out)s;
+""" % dict(nd_out=nd_out, output=output)
+            j = 0
+            for i in range(node.inputs[0].ndim):
+                if not self.redux[i]:
+                    code += """
+         out_dims[%(j)s] = %(input)s->ga.dimensions[%(i)s];
+         if (!need_out)
+             need_out |= %(output)s->ga.dimensions[%(j)s] != out_dims[%(j)s];
+""" % dict(j=j, i=i, input=input, output=output)
+                    j += 1
+            code += """
+         if (need_out) {
+             %(output)s = pygpu_empty(%(nd_out)s, out_dims, %(out_type)s, GA_C_ORDER, pygpu_default_context(), Py_None);
+             if (!%(output)s) {
+                 %(fail)s
+             }
+         }
+""" % dict(output=output, nd_out=nd_out, fail=sub['fail'],
+           out_type=dtype_to_typecode(node.outputs[0].type.dtype))
+        else:
+            code += """
+        if (%(output)s == NULL || %(output)s->ga.nd != 0) {
+            Py_XDECREF(%(output)s);
+            %(output)s = pygpu_empty(0, NULL, %(out_type)s, GA_C_ORDER,
+                                     pygpu_default_context(), Py_None);
+            if (!%(output)s) {
+                %(fail)s
+            }
+        }
+""" % dict(output=output, fail=sub['fail'],
+           out_type=dtype_to_typecode(node.outputs[0].type.dtype))
+
+        if acc_dtype != node.outputs[0].type.dtype:
+            code += """
+        tmp = pygpu_empty(%(output)s->ga.nd, %(output)s->ga.dimensions,
+                          %(acc_type)s, GA_C_ORDER, pygpu_default_context(),
+                          Py_None);
+        if (!tmp) %(fail)s
+""" % dict(output=output, fail=sub['fail'], acc_type=dtype_to_typecode(acc_dtype))
+        else:
+            code += """
+        tmp = %(output)s;
+        Py_INCREF(tmp);
+""" % dict(output=output)
+
+        # We need the proxies since we are passing a pointer to the
+        # data into the call and therefore we need a real copy of the
+        # data in the proper type.
+        code += """
+        args[0] = &n;
+        args[1] = &tmp->ga;
+""" % dict(output=output)
+
+        p = 2
+        for i in range(node.inputs[0].ndim):
+            code += """
+        proxy_dim[%(i)s] = %(input)s->ga.dimensions[%(i)s];
+        args[%(p)s] = &proxy_dim[%(i)s];
+        n *= %(input)s->ga.dimensions[%(i)s];
+""" % dict(i=i, p=p, input=input)
+            p += 1
+            if not redux[i]:
+                code += "gs *= %(input)s->ga.dimensions[%(i)s];" % dict(input=input, i=i)
+
+        code += """
+        args[%(p)s] = &%(input)s->ga;
+        proxy_off = %(input)s->ga.offset;
+        args[%(p)s+1] = &proxy_off;
+""" % dict(p=p, input=input)
+        p += 2
+
+        for i in range(node.inputs[0].ndim):
+            code += """
+        proxy_str[%(i)s] = %(input)s->ga.strides[%(i)s];
+        args[%(p)s] = &proxy_str[%(i)s];
+""" % dict(p=p, i=i, input=input)
+            p += 1
+
+        code += """
+        if (gs == 0) gs = 1;
+        n /= gs;
+        err = GpuKernel_call(&%(k_var)s, 0, %(ls)s, gs, args);
+        if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "compyte error: GpuCAReduce: %%s.",
+                         GpuKernel_error(&%(k_var)s, err));
+            %(fail)s
+        }
+
+        if (%(cast_out)d) {
+            err = GpuArray_move(&%(output)s->ga, &tmp->ga);
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "compyte error: GpuCAReduce [cast]: %%s.",
+                             GpuArray_error(&tmp->ga, err));
+                %(fail)s
+            }
+        } else {
+            Py_XDECREF(%(output)s);
+            %(output)s = tmp;
+        }
+
+        if (%(sync)d)
+            GpuArray_sync(&%(output)s->ga);
+""" % dict(k_var=self.c_kernel_obj(name), sync=bool(config.gpuarray.sync),
+           ls=ls, fail=sub['fail'], output=output, input=input,
+           cast_out=bool(acc_dtype != node.outputs[0].type.dtype))
+
+        return code
+
+    def c_code_cache_version(self):
+        return (0,)
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
@@ -533,8 +734,7 @@ class GpuCAReduce(HideC, CAReduceDtype):
         return ReductionKernel(pygpu.get_default_context(), odtype,
                                self.scalar_op.identity, reduce_expr, redux,
                                arguments=[make_argument(node.inputs[0], 'a')],
-                               init_nd=node.inputs[0].ndim
-        )
+                               init_nd=node.inputs[0].ndim)
 
     def perform(self, node, inp, out):
         input, = inp
@@ -546,7 +746,7 @@ class GpuCAReduce(HideC, CAReduceDtype):
             redux = self.redux
 
         if any(redux):
-            output[0] = node._cache_reduction_k(input).astype(copy=False,
+            output[0] = self.get_kernel_cache(node)(input).astype(copy=False,
                                              dtype=node.outputs[0].type.dtype)
         else:
             output[0] = pygpu.gpuarray.array(input, copy=True,

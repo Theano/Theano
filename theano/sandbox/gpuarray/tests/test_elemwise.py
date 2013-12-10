@@ -55,7 +55,12 @@ class test_GpuCAReduce(test_CAReduce):
                                  test_nan=True)
 
     def test_c(self):
-        raise SkipTest("no C code")
+        for dtype in self.dtypes + self.bin_dtypes:
+            for op in self.reds:
+                self.with_linker(gof.CLinker(), op, dtype=dtype)
 
     def test_c_nan(self):
-        raise SkipTest("no C code")
+        for dtype in self.dtypes:
+            for op in self.reds:
+                self.with_linker(gof.CLinker(), op, dtype=dtype,
+                                 test_nan=True)

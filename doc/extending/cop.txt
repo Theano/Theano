@@ -62,6 +62,13 @@ There are less methods to define for an Op than for a Type:
       Allows you to specify code that will be executed once when the
       module is initialized, before anything else is executed.
 
+    .. method:: c_init_code_apply(self, node, name)
+
+      Allows you to specify code that will be executed once when the
+      module is initialized, before anything else is executed and is
+      specialized for a particular apply of an :ref:`op`. Use
+      `c_init_code` if the code is the same for each apply of an op.
+
     .. method:: c_support_code()
 
       Allows you to specify helper functions/structs that the
