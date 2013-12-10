@@ -15,7 +15,7 @@ from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
 from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
-from theano.tensor.basic import (addbroadcast, clip,
+from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
                                  ARange, TensorType)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, make_slice
@@ -86,7 +86,7 @@ def get_canonical_form_slice(theslice, length):
 
         def analyze(x):
             try:
-                x_constant = theano.tensor.get_scalar_constant_value(x)
+                x_constant = get_scalar_constant_value(x)
                 is_constant = True
             except theano.tensor.NotScalarConstantError:
                 x_constant = theano.tensor.extract_constant(x)
@@ -419,8 +419,11 @@ class Subtensor(Op):
                         broadcastable.append(bc)
                         continue
                     try:
-                        start = theano.tensor.get_scalar_constant_value(p.start)
-                        stop = theano.tensor.get_scalar_constant_value(p.stop)
+                        if p.start is None:
+                            start = 0
+                        else:
+                            start = get_scalar_constant_value(p.start)
+                        stop = get_scalar_constant_value(p.stop)
                         if stop > start:
                             broadcastable.append(True)
                             continue
