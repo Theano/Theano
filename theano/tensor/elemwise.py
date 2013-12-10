@@ -6,7 +6,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Apply, Op
+from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import pprint
@@ -419,7 +419,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
 ### Elemwise ###
 ################
 
-class Elemwise(Op):
+class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
 
@@ -487,6 +487,7 @@ class Elemwise(Op):
 
         #precompute the hash of this node
         self._rehash()
+        self.openmp=None
 
     def __getstate__(self):
         d = copy(self.__dict__)
