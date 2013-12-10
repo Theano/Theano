@@ -173,6 +173,46 @@ class GpuIncSubtensor(HideC, IncSubtensor):
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         return gof.Apply(self, [x, y] + rval.inputs[2:], [x.type()])
 
+    def perform(self, node, inputs, out_):
+        out, = out_
+        x, y = inputs[:2]
+        indices = list(reversed(inputs[2:]))
+
+        def convert(entry):
+            if isinstance(entry, gof.Type):
+                rval = indices.pop()
+                return rval
+            elif isinstance(entry, slice):
+                return slice(convert(entry.start),
+                             convert(entry.stop),
+                             convert(entry.step))
+            else:
+                return entry
+
+        cdata = tuple(map(convert, self.idx_list))
+        if len(cdata) == 1:
+            cdata = cdata[0]
+        if not self.inplace:
+            x = x.copy()
+        sub_x = x.__getitem__(cdata)
+        if sub_x.shape:
+            # we've sliced out an N-D tensor with N > 0
+            if not self.set_instead_of_inc:
+                #sub_x += y
+                pygpu.elemwise.ielemwise2(sub_x, '+', y,  broadcast=False)
+            else:
+                #sub_x += -sub_x + y
+                x.__setitem__(cdata, y)
+        else:
+            # scalar case
+            if not self.set_instead_of_inc:
+                #x.__setitem__(cdata, sub_x + y)
+                tmp = pygpu.elemwise.elemwise2(sub_x, '+', y,  sub_x, broadcast=False)
+                x.__setitem__(cdata, tmp)
+            else:
+                x.__setitem__(cdata, y)
+        out[0] = x
+
     def do_type_checking(self, node):
         """ Should raise NotImplementedError if c_code does not support
         the types involved in this node.
