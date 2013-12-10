@@ -7,6 +7,7 @@ deterministic based on the input type and the op.
 import numpy
 
 import theano
+from theano.gof.cmodule import GCC_compiler
 
 
 class MyOp(theano.compile.ops.DeepCopyOp):
@@ -57,3 +58,11 @@ def test_inter_process_cache():
         assert MyOp.nb_called == 0
     else:
         assert MyOp.nb_called == 1
+
+
+def test_flag_detection():
+    # Check that the code detecting blas flags does not raise any exception.
+    # It used to happen on python 3 because of improper string handling,
+    # but was not detected because that path is not usually taken,
+    # so we test it here directly.
+    GCC_compiler.try_flags(["-lblas"])
