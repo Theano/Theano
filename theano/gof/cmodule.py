@@ -1575,7 +1575,7 @@ class GCC_compiler(object):
                 # as stdin (which is the default) results in the process
                 # waiting forever without returning. For that reason,
                 # we use a pipe, and use the empty string as input.
-                (stdout, stderr) = p.communicate(input='')
+                (stdout, stderr) = p.communicate(input=b(''))
                 if p.returncode != 0:
                     return None
 
