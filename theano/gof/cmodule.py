@@ -25,7 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import any, PY3, next, decode, decode_iter
-from theano.compat.six import BytesIO, StringIO
+from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -1575,7 +1575,7 @@ class GCC_compiler(object):
                 # as stdin (which is the default) results in the process
                 # waiting forever without returning. For that reason,
                 # we use a pipe, and use the empty string as input.
-                (stdout, stderr) = p.communicate(input='')
+                (stdout, stderr) = p.communicate(input=b(''))
                 if p.returncode != 0:
                     return None
 
@@ -1843,12 +1843,12 @@ class GCC_compiler(object):
         if not theano.config.cxx:
             return False
 
-        code = """
+        code = b("""
         int main(int argc, char** argv)
         {
             return 0;
         }
-        """
+        """)
         return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
                 flags=flag_list, try_run=False)
 

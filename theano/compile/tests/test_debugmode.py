@@ -7,6 +7,7 @@ from theano import config
 from theano import gof
 import theano
 import theano.tensor
+from theano.compat import exc_message
 from theano.compile import debugmode
 import theano.compile
 from theano.tests import unittest_tools as utt
@@ -275,7 +276,7 @@ def test_badoptimization_opt_err():
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
     except Exception, e:
-        assert 'insert_bigger_b_add' in e.message
+        assert 'insert_bigger_b_add' in exc_message(e)
         return  # TEST PASS
 
     assert False
