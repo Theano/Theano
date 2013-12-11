@@ -299,9 +299,9 @@ class DownsampleFactorMaxGrad(Op):
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(shape2):
-                    zi = i / ds0
+                    zi = i // ds0
                     for j in xrange(shape3):
-                        zj = j / ds1
+                        zj = j // ds1
                         if (maxout[n,k,zi,zj] == x[n,k,i,j]):
                             gx[n,k,i,j] = gz[n,k,zi,zj]
                         else: gx[n,k,i,j] = 0
@@ -486,18 +486,18 @@ class DownsampleFactorMaxGradGrad(Op):
 
 		ds0, ds1 = self.ds
 		if self.ignore_border:
-		    x_usable2 = (x.shape[2] / ds0 * ds0)
+		    x_usable2 = (x.shape[2] // ds0 * ds0)
 		else: x_usable2 = x.shape[2]
 		if self.ignore_border:
-		    x_usable3 = (x.shape[3] / ds1 * ds1)
+		    x_usable3 = (x.shape[3] // ds1 * ds1)
 		else: x_usable3 = x.shape[3]
 		
 		for n in xrange(x.shape[0]):
 		    for k in xrange(x.shape[1]):
 		        for i in xrange(x_usable2):
-		            zi = i / ds0
+		            zi = i // ds0
 		            for j in xrange(x_usable3):
-		                zj = j / ds1
+		                zj = j // ds1
 		                if (maxout[n,k,zi,zj] == x[n,k,i,j]):
 		                    ggz[n,k,zi,zj] = ggx[n,k,i,j]
 
