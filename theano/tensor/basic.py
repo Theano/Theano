@@ -3338,6 +3338,7 @@ class Rebroadcast(Op):
     def c_code(self, node, nodename, inp, out, sub):
         iname, = inp
         oname, = out
+        fail = sub['fail']
         if isinstance(node.inputs[0].type, TensorType):
             code = ""
             for axis, value in self.axis.iteritems():
@@ -3346,7 +3347,7 @@ class Rebroadcast(Op):
                 if(PyArray_DIMS(%(iname)s)[%(axis)s] != 1){
                     PyErr_Format(PyExc_ValueError,
                         "Dimension %(axis)s in Rebroadcast's input was"
-                        " supposed to be 1 (got %s instead)",
+                        " supposed to be 1 (got %%d instead)",
                         PyArray_DIMS(%(iname)s)[%(axis)s]);
                     %(fail)s
                 }
