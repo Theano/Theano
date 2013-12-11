@@ -1655,8 +1655,14 @@ class Mod(BinaryScalarOp):
             """) % locals()
 
     def grad(self, (x, y), (gz, )):
+        z = self(x, y)
+        if z.type.dtype in discrete_types:
+            # The gradient does not flow in if the output is discrete
+            return [x.zeros_like(dtype=theano.config.floatX),
+                    y.zeros_like(dtype=theano.config.floatX)]
         return [gz,
-                -(x//y) * gz ]
+                -(x // y) * gz]
+
 mod = Mod(upcast_out, name='mod')
 
 
