@@ -149,6 +149,8 @@ class GpuElemwise(HideC, Elemwise):
 #define ga_double double
 #define ga_half uint16_t
 
+#include <Python.h>
+#include <numpy/npy_common.h>
 """
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
