@@ -594,7 +594,10 @@ class MakeVector(T.Op):
         ret = """
         npy_intp dims[1];
         dims[0] = %(out_shape)s;
-        %(out)s = (PyArrayObject*)PyArray_EMPTY(1, dims, %(out_dtype)s, 0);
+        if(!%(out)s || PyArray_DIMS(%(out)s)[0] == %(out_shape)s){
+            Py_XDECREF(%(out)s);
+            %(out)s = (PyArrayObject*)PyArray_EMPTY(1, dims, %(out_dtype)s, 0);
+        }
         """ % locals()
         for idx, i in enumerate(inp):
             ret += """
