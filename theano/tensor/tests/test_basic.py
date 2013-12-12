@@ -883,6 +883,7 @@ ModTester = makeBroadcastTester(
         x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
     good=copymod(_good_broadcast_div_mod_normal_float,
                  ['complex1', 'complex2']),
+    grad=_grad_broadcast_div_mod_normal,
     )
 
 
@@ -892,6 +893,7 @@ ModInplaceTester = makeBroadcastTester(
         x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
     good=copymod(_good_broadcast_div_mod_normal_float_inplace,
                  ["complex1", "complex2"]),
+    grad=_grad_broadcast_div_mod_normal,
     inplace=True)
 
 _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
