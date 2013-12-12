@@ -1,0 +1,65 @@
+.. _theano_random:
+
+=============================
+Implementing some specific Op
+=============================
+
+This page guide on the implementation of some specify type of Op:
+scalar operation and random distribution.
+
+This is useful as for scalar, it is easy to add just the scalar
+operation have it being reused with the elemwise/reduction code
+generated and optimization.
+
+For the random number, it explain the different implementation
+strategy.
+
+
+Scalar Operation
+================
+
+There is those 2 PR that add `GammaLn and Psi
+<https://github.com/Theano/Theano/pull/686/>`_ and `Gamma
+<https://github.com/Theano/Theano/pull/826/>`_ scalar op.
+
+Take care
+`Fix to grad() methods <https://github.com/Theano/Theano/commit/002872ad97919b97eaf58e095044e3c3067668e4>`_ and `impl() methods related to SciPy <https://github.com/Theano/Theano/commit/08d16c0aa6681fc53d8d0f40342551eb47ff536e>`_
+
+
+Random distribution
+===================
+
+We have 3 base random number generators. One that wrap NumPy random
+generator, one that implement MRG31k3p and one that wrap CURAND.
+
+The fastest, but less developed is CURAND. It work only on CUDA enable
+GPUs. It don't work on the CPU and it have less random distribution.
+
+The recommended and 2nd faster is MRG. It work on the GPU and CPU and
+have more distribution.
+
+The slowest is our wrapper on NumPy random generator.
+
+We explain and guide on 3 possibles implementations of new
+distribution here::
+
+1) Extend our wrapper to NumPy random function.
+   See this `PR <https://github.com/Theano/Theano/pull/1607>`_ as an example.
+
+2) Extend MRG implementation by reusing existing Theano Op. Look into
+   the ``theano/sandbox/rng_mrg.py`` file and grep for all code about
+   binomal(). This distribution use the output of the uniform
+   distribution and convert it to a binomial distribution with
+   existing Theano op. The test go in
+   ``theano/sandbox/test_rng_mrg.py``
+
+3) Extend MRG implementation with a new Op that take an uniform as
+   input. Look in the ``theano/sandbox/{rng_mrg,multinomial}.py`` file
+   and its test in ``theano/sandbox/test_multinomal.py``. This is
+   recommended when current Theano ops aren't well suited to modify
+   the uniform to the target distribution. This can happen in
+   particular is there is a loop or complicated condition.
+
+.. note::
+
+    In all cases, you must reuse the same interface as NumPy for compatibility.
