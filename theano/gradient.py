@@ -1636,12 +1636,17 @@ def hessian(cost, wrt, consider_constant=None,
         assert input.ndim == 1, \
                 "tensor.hessian expects a (list of) 1 dimensional variable "\
                 "as `wrt`"
-        expr = grad(cost, input)
+        expr = grad(cost, input, consider_constant=consider_constant,
+                    disconnected_inputs=disconnected_inputs)
+
+        # It is possible that the inputs are disconnected from expr,
+        # even if they are connected to cost.
+        # This should not be an error.
         hess, updates = theano.scan(lambda i, y, x: grad(
                             y[i],
                             x,
                             consider_constant=consider_constant,
-                            disconnected_inputs=disconnected_inputs),
+                            disconnected_inputs='ignore'),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
         assert not updates, \
