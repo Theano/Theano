@@ -167,6 +167,9 @@ class GpuIncSubtensor(HideC, IncSubtensor):
           the c_code for this Op.
     """
 
+    def c_headers(self):
+        return ['<compyte/numpy_compat.h>']
+
     def make_node(self, x, y, *inputs):
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
@@ -234,7 +237,7 @@ class GpuIncSubtensor(HideC, IncSubtensor):
         return """pygpu_copy(%(x)s, GA_ANY_ORDER)""" % locals()
 
     def decl_view(self):
-        return "PyGpuArray* zview = NULL;"
+        return "PyGpuArrayObject* zview = NULL;"
 
     def make_view_array(self, x, view_ndim):
         """//TODO
@@ -245,26 +248,20 @@ class GpuIncSubtensor(HideC, IncSubtensor):
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
         """
-        ret = """zview = (CudaNdarray*) CudaNdarray_New(%(view_ndim)s);
-        if (CudaNdarray_set_device_data(
-                zview,
-                CudaNdarray_DEV_DATA(%(x)s) + xview_offset/4,
-                (PyObject*) %(x)s))
-        {
-            zview = NULL;
-            PyErr_Format(PyExc_RuntimeError,
-                         "GpuSubtensor is not able to set the"
-                         " devdata field of the view");
-        }else{
-            cnda_mark_dev_structure_dirty(zview);
-            for(int idx=0;idx <%(view_ndim)s; idx++){
-                if(xview_dims[idx]==1)
-                    CudaNdarray_set_stride(zview, idx, 0);
-                else
-                    CudaNdarray_set_stride(zview, idx, xview_strides[idx]);
-                CudaNdarray_set_dim(zview, idx, xview_dims[idx]);
-            }
-        }
+        ret = """
+        size_t dims[%(view_ndim)s];
+        for(int i=0; i<%(view_ndim)s; i++)
+            dims[i] = xview_dims[i];
+        zview = pygpu_fromgpudata(%(x)s->ga.data,
+                                  xview_offset,
+                                  %(x)s->ga.typecode,
+                                  %(view_ndim)s,
+                                  dims,
+                                  xview_strides,
+                                  pygpu_default_context(),
+                                  1,
+                                  (PyObject *)%(x)s,
+                                  (PyObject *)&PyGpuArrayType);
         """ % locals()
         return ret
 
@@ -282,7 +279,7 @@ class GpuIncSubtensor(HideC, IncSubtensor):
             returns a C code expression to copy source into view, and
             return 0 on success
         """
-        return """GpuArray_move(%(view)s, %(source)s)""" % locals()
+        return """GpuArray_move(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
     def add_to_zview(self, x, fail):
         #TODO
