@@ -2794,19 +2794,6 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """
         return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
 
-    def set_view_base(self, x, fail):
-        return """
-        //Set the base only now
-
-        if(CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(zview),
-                                    %(x)s)){
-            PyErr_Format(PyExc_RuntimeError,
-                         "GpuSubtensor is not able to set"
-                         " the base of the view array");
-            Py_XDECREF(zview);
-            %(fail)s;
-        }""" % locals()
-
     def add_to_zview(self, x, fail):
 
         return """
