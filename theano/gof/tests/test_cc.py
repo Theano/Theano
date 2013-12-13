@@ -227,6 +227,18 @@ def test_clinker_dups():
     # note: for now the behavior of fn(2.0, 7.0) is undefined
 
 
+def test_clinker_not_used_inputs():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+    # Testing that duplicate inputs are allowed.
+    x, y, z = inputs()
+    e = add(x, y)
+    lnk = CLinker().accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    assert fn(2.0, 1.5, 1.0) == 3.5
+    # note: for now the behavior of fn(2.0, 7.0) is undefined
+
+
 def test_clinker_dups_inner():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")

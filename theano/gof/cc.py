@@ -450,8 +450,13 @@ class CLinker(link.Linker):
         fgraph = self.fgraph
         self.inputs = fgraph.inputs
         self.outputs = fgraph.outputs
+
         # list(fgraph.variables)
-        self.variables = graph.variables(self.inputs, self.outputs)
+        # We need to include the not used inputs in our variables,
+        # otherwise we can't pass them to the module.
+        self.variables = [var for var in self.inputs if not len(var.clients)]
+        self.variables += graph.variables(self.inputs, self.outputs)
+
         # The orphans field is listified to ensure a consistent order.
         #list(fgraph.orphans.difference(self.outputs))
         self.orphans = list(r for r in self.variables
@@ -1179,6 +1184,11 @@ class CLinker(link.Linker):
 
             op_pos[node] = node_pos
             fgraph_computed_set.update(node.outputs)
+
+        # Add not used input in the key
+        for ipos, var in [(i, var) for i, var in enumerate(fgraph.inputs)
+                          if not len(var.clients)]:
+            sig.append((var.type, in_sig(var, node_pos, ipos)))
 
         #crystalize the signature and version
         sig = tuple(sig)
