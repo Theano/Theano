@@ -515,10 +515,11 @@ class Elemwise(OpenMPOp):
         is left-completed to the greatest number of dimensions with 1s
         using DimShuffle.
         """
+
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
                 *[Scalar(dtype=i.type.dtype)() for i in inputs])
-
+    
         target_length = max([input.type.ndim for input in inputs])
 
         args = []
@@ -547,6 +548,7 @@ class Elemwise(OpenMPOp):
             for bcast in izip(*[input.type.broadcastable
                 for input in inputs])]] * shadow.nout
 
+        
         #inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
@@ -568,6 +570,7 @@ class Elemwise(OpenMPOp):
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
             for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
             ]
+    
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -636,7 +639,7 @@ class Elemwise(OpenMPOp):
         return rval
 
     def connection_pattern(self, node):
-
+        
         if hasattr(self.scalar_op, 'connection_pattern'):
             return self.scalar_op.connection_pattern(node)
 
@@ -771,6 +774,7 @@ class Elemwise(OpenMPOp):
         for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
                             + zip(input.shape, sinput.type.broadcastable))
                           for input, sinput in zip(inputs, node.inputs)]):
+            
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
                 # but please maintain python 2.4 compatibility
@@ -876,6 +880,7 @@ class Elemwise(OpenMPOp):
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
     def infer_shape(self, node, i_shapes):
+        
         rval = []
         for o in node.outputs:
             oshp = []
