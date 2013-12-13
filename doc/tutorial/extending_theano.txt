@@ -426,20 +426,8 @@ For more details see :ref:`random_value_in_tests`.
 
 :download:`Solution<extending_theano_solution_1.py>`
 
-Final Note
-==========
-
-A more extensive discussion of this section's content may be found in
-the advanced tutorial :ref:`Extending Theano<extending>`
-
-The section :ref:`Other ops <other_ops>` include more instruction for specific case:
-
- - :ref:`scalar_ops`
- - :ref:`scipy_ops`
- - :ref:`sparse_ops`
- - :ref:`Random ops <random_ops>`
- - :ref:`openmp_ops`
- - :ref:`numba_ops`
+Documentation
+=============
 
 See :ref:`metadocumentation`, for some information on how to generate
 the documentation.
@@ -474,3 +462,19 @@ documentation:
 
 .. automodule:: theano.misc.doubleop
     :members:
+
+Final Note
+==========
+
+A more extensive discussion of this section's content may be found in
+the advanced tutorial :ref:`Extending Theano<extending>`
+
+The section :ref:`Other ops <other_ops>` include more instruction for
+specific case:
+
+ - :ref:`scalar_ops`
+ - :ref:`scipy_ops`
+ - :ref:`sparse_ops`
+ - :ref:`Random ops <random_ops>`
+ - :ref:`openmp_ops`
+ - :ref:`numba_ops`
