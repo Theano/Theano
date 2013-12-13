@@ -3,8 +3,9 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 
+import theano
 from theano.gof.link import PerformLinker
-from theano.gof.cc import *
+from theano.gof.cc import CLinker, DualLinker, OpWiseCLinker
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
@@ -264,6 +265,7 @@ def test_opwiseclinker_straightforward():
     else:
         # The python version of bad_sub always return -10.
         assert fn(2.0, 2.0, 2.0) == -6
+
 
 def test_opwiseclinker_constant():
     x, y, z = inputs()
