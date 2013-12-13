@@ -449,7 +449,7 @@ class Elemwise(OpenMPOp):
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
-            nfunc_spec=None):
+                 nfunc_spec=None,openmp=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -487,7 +487,8 @@ class Elemwise(OpenMPOp):
 
         #precompute the hash of this node
         self._rehash()
-        self.openmp=None
+        
+        super(Elemwise,self).__init__(openmp=openmp)
 
     def __getstate__(self):
         d = copy(self.__dict__)
