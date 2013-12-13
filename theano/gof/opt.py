@@ -780,8 +780,6 @@ class LocalOptimizer(object):
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
     def __init__(self, fn, tracks=None):
-        if tracks is None:
-            tracks = []
         self.transform = fn
         self._tracks = tracks
 
@@ -1510,7 +1508,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
-                if opt.tracks is None:
+                if opt.tracks() is None:
                     self.local_optimizers_all.append(opt)
                 else:
                     for c in opt.tracks():
