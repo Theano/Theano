@@ -434,10 +434,12 @@ the advanced tutorial :ref:`Extending Theano<extending>`
 
 The section :ref:`Other ops <other_ops>` include more instruction for specific case:
 
- - :ref:`scalar operation <scalar_ops>`
- - :ref:`wrapping scipy funciton <scipy_ops>`
- - :ref:`sparse ops <sparse_ops>`
- - :ref:`random ops <random_ops>`.
+ - :ref:`scalar_ops`
+ - :ref:`scipy_ops`
+ - :ref:`sparse_ops`
+ - :ref:`Random ops <random_ops>`
+ - :ref:`openmp_ops`
+ - :ref:`numba_ops`
 
 See :ref:`metadocumentation`, for some information on how to generate
 the documentation.

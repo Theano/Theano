@@ -1,4 +1,4 @@
-.. _theano_random:
+.. _other_ops:
 
 =============================
 Implementing some specific Op
@@ -11,8 +11,9 @@ strategy.
 
 
 .. _scalar_ops:
-Scalar/Elemwise/Reduction Operation
-===================================
+
+Scalar/Elemwise/Reduction Ops
+=============================
 
 Implementing a Theano scalar allow that scalar operation to be reused
 by our elemwise operation. If the scalar operation it have c code, the
@@ -30,8 +31,9 @@ Take care
 
 
 .. _scipy_ops:
-SciPy
-=====
+
+SciPy Ops
+=========
 
 We can wrap SciPy functions in Theano. But SciPy is an optional dependency.
 Here is some code that allows the Op to be optional:
@@ -61,8 +63,9 @@ Here is some code that allows the Op to be optional:
             ...
 
 .. _sparse_ops:
-Sparse
-======
+
+Sparse Ops
+==========
 
 There is few differences if you want to make an op that use
 :ref:`sparse <tutsparse>` inputs or outputs. In particular, in the
@@ -146,6 +149,7 @@ take many paramters including parameters for the format (csr or csc), the shape,
 dtype, to have explicit 0 and to have unsorted indices.
 
 .. _random_ops:
+
 Random distribution
 ===================
 
@@ -210,3 +214,13 @@ we disable it by default. But we have all the code to have it enabled
 by default if there is more then 1 cores and that the environment
 variable OMP_NUM_THREADS isn't 1. This allow Theano to respect the
 current convention.
+
+
+.. _numba_ops:
+
+Numba Ops
+=========
+
+Want C speed without doing C code for your new Op? You can use Numba
+to generate the C code for you! Here is an `example
+Op <https://gist.github.com/nouiz/5492778#file-theano_op-py>`_ doing that.
