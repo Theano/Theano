@@ -55,7 +55,7 @@ def local_max_and_argmax(node):
             return [new, None]
 
 @register_uncanonicalize
-@gof.local_optimizer([T._shape])
+@gof.local_optimizer([T.neg])
 def local_max_to_min(node):
     """
     change -(max(-x)) to min
