@@ -183,3 +183,30 @@ distribution here::
 .. note::
 
     In all cases, you must reuse the same interface as NumPy for compatibility.
+
+
+.. _openmp_ops:
+
+OpenMP Ops
+==========
+
+To allow consistent interface of Ops that support OpenMP, we have some
+helper code. Doing this also allow to enable/disable OpenMP globally
+or per op for fine grin control.
+
+Your Op need to inherit from ``theano.gof.OpenMPOp``. If it override
+the ``__init__()`` method, it must have an ``openmp=None`` parameter
+and must call ``super(MyOpClass, self).__init__(openmp=openmp)``.
+
+The ``OpenMPOp`` class also implement ``c_compile_args`` and
+``make_thunk``. This make it add the correct g++ flag to compile with
+OpenMP. It also disable OpenMP and print a warning if the version of
+g++ don't support it.
+
+The Theano flag ``openmp`` is currently False by default as we don't
+have code that get speed up with it. The only current implementation
+is ConvOp. It speed up some cases, but slow down others. That is why
+we disable it by default. But we have all the code to have it enabled
+by default if there is more then 1 cores and that the environment
+variable OMP_NUM_THREADS isn't 1. This allow Theano to respect the
+current convention.

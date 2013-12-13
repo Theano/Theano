@@ -439,8 +439,6 @@ The section :ref:`Other ops <other_ops>` include more instruction for specific c
  - :ref:`sparse ops <sparse_ops>`
  - :ref:`random ops <random_ops>`.
 
-If you want c code speed without doing c code for a new ops, you can check using Numba with Theano :
-
 See :ref:`metadocumentation`, for some information on how to generate
 the documentation.
 
