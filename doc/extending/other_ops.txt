@@ -4,20 +4,22 @@
 Implementing some specific Op
 =============================
 
-This page guide on the implementation of some specify type of Op:
-scalar operation and random distribution.
-
-This is useful as for scalar, it is easy to add just the scalar
-operation have it being reused with the elemwise/reduction code
-generated and optimization.
+This page guide on the implementation of some specify type of Ops.
 
 For the random number, it explain the different implementation
 strategy.
 
 
-.. scalar_ops:
-Scalar Operation
-================
+.. _scalar_ops:
+Scalar/Elemwise/Reduction Operation
+===================================
+
+Implementing a Theano scalar allow that scalar operation to be reused
+by our elemwise operation. If the scalar operation it have c code, the
+elemwise implementation it will automaticaly have c code too. This
+will enable the fusion of elemwise operation with your new scalar
+operation. It can also reuse the GPU elemwise code. It is similar for
+reduction operation.
 
 There is those 2 PR that add `GammaLn and Psi
 <https://github.com/Theano/Theano/pull/686/>`_ and `Gamma
@@ -58,7 +60,7 @@ Here is some code that allows the Op to be optional:
                 raise SkipTest("SciPy needed for the SomeOp op.")
             ...
 
-.. sparse_ops:
+.. _sparse_ops:
 Sparse
 ======
 
@@ -143,7 +145,7 @@ needed sparse variable and data, you can use
 take many paramters including parameters for the format (csr or csc), the shape, the
 dtype, to have explicit 0 and to have unsorted indices.
 
-.. random_ops:
+.. _random_ops:
 Random distribution
 ===================
 
