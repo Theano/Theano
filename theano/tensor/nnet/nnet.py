@@ -1417,7 +1417,7 @@ def _is_const(z, val, approx=False):
 
 
 @opt.register_specialize
-@gof.local_optimizer([subtensor.AdvancedSubtensor])
+@gof.local_optimizer([subtensor.AdvancedSubtensor, tensor.log])
 def local_advanced_indexing_crossentropy_onehot(node):
     log = None
     sm = None
