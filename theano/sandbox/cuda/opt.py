@@ -770,9 +770,6 @@ def local_gpu_advanced_subtensor1(node):
     return False
 
 
-#tensor.opt.local_inplace_incsubtensor1.add_track(GpuAdvancedIncSubtensor1)
-#tensor.opt.local_inplace_incsubtensor1.add_track(GpuAdvancedIncSubtensor1_dev20)
-
 @register_opt()
 @local_optimizer([gpu_from_host, tensor.AdvancedIncSubtensor1])
 def local_gpu_advanced_incsubtensor1(node):
@@ -846,8 +843,6 @@ def local_gpu_advanced_incsubtensor1(node):
             return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
     return False
 
-
-#tensor.opt.local_inplace_setsubtensor.add_track(GpuIncSubtensor)
 
 @register_opt()
 @local_optimizer([gpu_from_host, tensor.IncSubtensor])
