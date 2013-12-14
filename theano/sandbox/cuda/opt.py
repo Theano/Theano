@@ -1114,7 +1114,7 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(gz)))]
 
 
-from theano.sandbox.cuda.basic_ops import gpu_join
+from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
 
 @register_opt()
@@ -1175,6 +1175,14 @@ def local_gpu_join(node):
 
             return [replacement_node]
 
+# This is a copy of the same opt in tensor to make the tests happy,
+# but I'm not convinced it is actually needed.
+@register_opt()
+@local_optimizer([GpuJoin])
+def local_gpujoin_1(node):
+    tensors = node.inputs[1:]
+    if len(tensors) == 1:
+        return [tensors[0]]
 
 # Commented out because it can result in
 #   shared =  dimshuffle(gemm_inplace(dimshuffle(shared)))
