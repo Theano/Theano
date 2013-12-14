@@ -9,8 +9,8 @@ from theano.gof import (local_optimizer, EquilibriumDB,
                         InconsistencyError, EquilibriumOptimizer)
 
 from theano.gof.python25 import all, any
+from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
-
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                gpu_from_host,
                                                gpu_alloc,
@@ -20,6 +20,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                GpuReshape,
                                                GpuEye)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
@@ -372,7 +373,7 @@ def local_gpu_conv(node):
     if node.op == gpu_from_host:
         #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
-        if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
+        if host_input.owner and isinstance(host_input.owner.op, ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
             if gpu_conv is None:
                 return
@@ -386,7 +387,7 @@ def local_gpu_conv(node):
             # differently then the gpu ConvOp
             return [out]
 
-    if isinstance(node.op, conv.ConvOp):
+    if isinstance(node.op, ConvOp):
         #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         img, kern = node.inputs
         img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
