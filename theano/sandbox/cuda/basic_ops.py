@@ -2794,7 +2794,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """
         return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
 
-    def add_to_zview(self, x, fail):
+    def add_to_zview(self, name, x, fail):
 
         return """
         PyObject * add_result = CudaNdarray_inplace_add((PyObject *) zview,
