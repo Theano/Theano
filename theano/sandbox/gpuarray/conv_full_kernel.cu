@@ -4,7 +4,8 @@
 //grid block size=batch_id
 //dynamic shared memory: img_len*img_wid+kern_len*kern_wid
 __global__ void
-conv_full_patch_split( float* img, float* kern, float* out, int img_len, int img_wid, int kern_len, int kern_wid, int nb_split)
+conv_full_patch_split(const float* img, const float* kern, float* out,
+                      int img_len, int img_wid, int kern_len, int kern_wid, int nb_split)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
   out_len = img_len + kern_len - 1;
@@ -60,7 +61,7 @@ conv_full_patch_split( float* img, float* kern, float* out, int img_len, int img
 //grid block size=batch_id, nkern
 //dynamic shared memory: img_len*img_wid+kern_len*kern_wid
 __global__ void
-conv_full_patch( float* img, float* kern, float* out,
+conv_full_patch( const float* img, const float* kern, float* out,
                  int img_len, int img_wid,
                  int kern_len, int kern_wid, int nkern, int nstack)
 {
@@ -122,7 +123,7 @@ conv_full_patch( float* img, float* kern, float* out,
 
 template<bool img_c_contiguous_2d, bool kern_c_contiguous_2d>
 __global__ void
-conv_full_patch_stack( float* img, float* kern, float* out,
+conv_full_patch_stack( const float* img, const float* kern, float* out,
                        int img_len, int img_wid,
                        int kern_len, int kern_wid, int nkern, int nstack,
                        int img_stride_col, int img_stride_row,
@@ -133,7 +134,7 @@ conv_full_patch_stack( float* img, float* kern, float* out,
   out_len = img_len + kern_len - 1;
   out_wid = img_wid + kern_wid - 1;
   nb_thread_id = blockDim.y*blockDim.x;//blockDim.z*
-  float __shared__ *kern_, *img_;
+  const float __shared__ *kern_, *img_;
   extern __shared__ float s_data[];
 
     const int batch_id = blockIdx.x;
@@ -201,7 +202,7 @@ conv_full_patch_stack( float* img, float* kern, float* out,
  */
 template<bool flipped_kern, int KERN_WIDTH, bool c_contiguous, bool split, bool low_mem >
 __global__ void
-conv_full_patch_stack_padded( float* img, float* kern, float* out,
+conv_full_patch_stack_padded( const float* img, const float* kern, float* out,
                   const int img_len, const int img_wid,
                   const int kern_len, const int kern_wid,
                   const int nkern, const int nstack,
@@ -365,7 +366,7 @@ template <> __device__ float everything_dot<1>(const float * x, const int sx, co
 }
 template<int NSTACK>
 __global__ void
-conv_full_load_everything( float* img, float* kern, float* out,
+conv_full_load_everything( const float* img, const float* kern, float* out,
                  int img_len, int img_wid,
                  int kern_len, int kern_wid, int nkern, int nstack,
                  int img_stride_col, int img_stride_row,

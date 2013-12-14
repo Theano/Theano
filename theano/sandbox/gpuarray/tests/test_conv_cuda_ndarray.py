@@ -25,6 +25,7 @@ from theano.tests.unittest_tools import seed_rng
 from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
                                                           mode_without_gpu)
 from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.conv import GpuConv
 import pygpu
 gftensor4 = GpuArrayType('float32', [False] * 4)
 
@@ -159,11 +160,11 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         t1 = time.time()
         i = gftensor4()
         k = gftensor4()
-        op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
-                                              subsample=subsample,
-                                              version=version,
-                                              verbose=verbose,
-                                              kshp=compile_kshp)(i, k)
+        op = GpuConv(border_mode=mode,
+                     subsample=subsample,
+                     version=version,
+                     verbose=verbose,
+                     kshp=compile_kshp)(i, k)
         f = theano.function([i, k], op, mode=mode_with_gpu)
         gpuval = f(img, kern)
         t2 = time.time()
@@ -731,7 +732,7 @@ class TestConv2DGPU(unittest.TestCase):
 
             func = theano.function([a, A], image_estimate, mode=mode_with_gpu)
             #theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, theano.sandbox.cuda.blas.GpuConv)
+            assert any([isinstance(node.op, GpuConv)
                         for node in func.maker.fgraph.toposort()])
 
             a_in = numpy.random.randn(*featshp).astype("float32")

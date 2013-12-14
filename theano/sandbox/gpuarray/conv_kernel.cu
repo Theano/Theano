@@ -221,7 +221,7 @@ __device__ void store_or_accumulate(float& dst,const float value ){
  */
 template<bool flipped_kern, int KERN_WIDTH, bool split>
 __global__ void
-conv_patch( float* img, float* kern, float* out,
+conv_patch( const float* img, const float* kern, float* out,
             int img_len, int img_wid, int kern_len, int kern_wid,
             int nkern, int nstack)
 {
@@ -304,7 +304,7 @@ conv_patch( float* img, float* kern, float* out,
  */
 template<bool flipped_kern, bool accumulate, int KERN_WIDTH, bool img_c_contiguous_2d, bool kern_c_contiguous_2d, bool split, bool preload_full_kern, bool subsample>
 __global__ void
-conv_patch_stack( float* img, float* kern, float* out,
+conv_patch_stack( const float* img, const float* kern, float* out,
                   int img_len, int img_wid, int kern_len, int kern_wid,
                   int out_len, int out_wid,
                   int nkern, int nstack, int img_stride_col,int img_stride_row,
@@ -375,7 +375,7 @@ conv_patch_stack( float* img, float* kern, float* out,
                                           out_row*out_wid+out_col],sum);
     }else{
 
-      float __shared__ *kern_, *img_;
+      const float __shared__ *kern_, *img_;
       int __shared__ out_len_max;
 
       kern_=kern+kern_stride_nkern*kern_id;//the good nkern
@@ -456,7 +456,7 @@ conv_patch_stack( float* img, float* kern, float* out,
  */
 template<bool flipped_kern, int KERN_WIDTH, bool c_contiguous, bool split, bool preload_full_kern>
 __global__ void
-conv_patch_stack_reduce( float* img, float* kern, float* out,
+conv_patch_stack_reduce( const float* img, const float* kern, float* out,
                   int img_len, int img_wid, int kern_len, int kern_wid,
                   int nkern, int nstack, int img_stride_col,int img_stride_row,
                   int img_stride_stack, int img_stride_batch,
@@ -572,7 +572,7 @@ conv_patch_stack_reduce( float* img, float* kern, float* out,
  */
 template<int KERN_WIDTH, bool c_contiguous>
 __global__ void
-conv_rows( float* img, float* kern, float* out,
+conv_rows( const float* img, const float* kern, float* out,
            int img_len, int img_wid, int kern_len, int kern_wid,
            int nkern, int nstack,
            int img_stride_col, int img_stride_row,
@@ -633,7 +633,7 @@ conv_rows( float* img, float* kern, float* out,
  */
 template<int KERN_WIDTH, bool c_contiguous>
 __global__ void
-conv_rows_stack( float* img, float* kern, float* out,
+conv_rows_stack( const float* img, const float* kern, float* out,
                  const int img_len, const int img_wid, const int kern_len, const int kern_wid,
                  const int nkern, const int nstack,
                  const int img_stride_col, const int img_stride_row,
@@ -731,7 +731,7 @@ conv_rows_stack( float* img, float* kern, float* out,
  */
 template<int KERN_WIDTH, bool c_contiguous, bool preload_full_kern>
 __global__ void
-conv_rows_stack2( float* img, float* kern, float* out,
+conv_rows_stack2(const float* img, const float* kern, float* out,
                  const int img_len, const int img_wid, const int kern_len, const int kern_wid,
                  const int nkern, const int nstack,
                  const int img_stride_col, const int img_stride_row,
@@ -831,8 +831,8 @@ conv_valid_row_reduce(int nB, int nK, int stacklen,
         int img_len, int img_wid, 
         int kern_len, int kern_wid,
         int out_len, int out_wid, //physical
-        float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
-        float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
+        const float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
+        const float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
         float *out, int out_str_B, int out_str_K, int out_str_R, int out_str_C ,
         int subsample_rows, int subsample_cols,
         const int initial_reduce_boundary)
@@ -859,8 +859,8 @@ conv_valid_row_reduce(int nB, int nK, int stacklen,
         float sum = 0.0f;
         if(stack_loop){
           for (; ss < stacklen; ss+=blockDim.x){
-            float * kk_0 = kern + iK*kern_str_K + ss*kern_str_S + rr*kern_str_R;
-            float * ii_0 = img + iB*img_str_B + ss*img_str_S + img_rr*img_str_R + (iC_logical + kern_wid - 1)*img_str_C;
+            const float * kk_0 = kern + iK*kern_str_K + ss*kern_str_S + rr*kern_str_R;
+            const float * ii_0 = img + iB*img_str_B + ss*img_str_S + img_rr*img_str_R + (iC_logical + kern_wid - 1)*img_str_C;
             for (int cc = 0; cc < kern_wid; ++cc)
             {
                 sum +=  kk_0[0] * ii_0[0];
@@ -869,8 +869,8 @@ conv_valid_row_reduce(int nB, int nK, int stacklen,
             }
           }
         }else{
-          float * kk_0 = kern + iK*kern_str_K + ss*kern_str_S + rr*kern_str_R;
-          float * ii_0 = img + iB*img_str_B + ss*img_str_S + img_rr*img_str_R + (iC_logical + kern_wid - 1)*img_str_C;
+          const float * kk_0 = kern + iK*kern_str_K + ss*kern_str_S + rr*kern_str_R;
+          const float * ii_0 = img + iB*img_str_B + ss*img_str_S + img_rr*img_str_R + (iC_logical + kern_wid - 1)*img_str_C;
           for (int cc = 0; cc < kern_wid; ++cc)
           {
             sum +=  kk_0[0] * ii_0[0];
@@ -925,8 +925,8 @@ conv_reference_valid(int nB, int nK, int stacklen,
         int img_len, int img_wid, 
         int kern_len, int kern_wid,
         int out_len, int out_wid, //physical
-        float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
-        float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
+        const float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
+        const float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
         float *out, int out_str_B, int out_str_K, int out_str_R, int out_str_C ,
         int subsample_rows, int subsample_cols)
 {
@@ -984,8 +984,8 @@ conv_reference_full(int nB, int nK, int stacklen,
         int img_len, int img_wid, 
         int kern_len, int kern_wid,
         int out_len, int out_wid, //physical dimensions
-        float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
-        float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
+        const float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C,
+        const float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C,
         float *out, int out_str_B, int out_str_K, int out_str_R, int out_str_C,
         int subsample_rows, int subsample_cols)
 {

@@ -1,5 +1,10 @@
+import copy
+import os
+
 import theano
-from theano import gof
+from theano import config, gof
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.sandbox.gpuarray.type import GpuArrayType
 
 
 class GpuConv(gof.Op):
@@ -114,6 +119,9 @@ class GpuConv(gof.Op):
             str(self.kshp))
 
     def make_node(self, img, kern):
+        if img.dtype != "float32" or kern.dtype != "float32":
+            raise NotImplementedError("GpuConv currently only work"
+                                      " with float32 dtype")
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
@@ -121,7 +129,8 @@ class GpuConv(gof.Op):
 
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
-        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+        out = GpuArrayType(img.dtype, broadcastable)()
+        return gof.Apply(self, [img, kern], [out])
 
     def flops(self, inputs, outputs):
         """ Useful with the hack in profilemode to print the MFlops"""
@@ -145,6 +154,8 @@ class GpuConv(gof.Op):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
         assert node.op is node_.op
+        if config.gpuarray.sync:
+            raise NotImplementedError("GpuConv do not implement gpuarray.sync Theano flag")
         if node_.op.max_threads_dim0 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
@@ -169,19 +180,29 @@ class GpuConv(gof.Op):
         return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
 
     def c_headers(self):
-        return ['cuda_ndarray.cuh', '<stdio.h>']
+        return ['<stdio.h>', 'cuda.h',
+                '<compyte/extension.h>', '<compyte/numpy_compat.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
         return (0, 20)
 
+    def c_init_code(self):
+        return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
         files = ['conv_kernel.cu', 'conv_full_kernel.cu', 'conv.cu']
-        codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
-                for f in files]
+        codes = ["CUdeviceptr (*cuda_get_ptr_raw)(gpudata *g);",
+                 "float* cuda_get_ptr(PyGpuArrayObject * o){return (float*) cuda_get_ptr_raw(o->ga.data);}",
+                 "const float* cuda_get_ptr(const PyGpuArrayObject * o){return (float*) cuda_get_ptr_raw(o->ga.data);}"]
+        codes += [open(os.path.join(os.path.split(__file__)[0], f)).read()
+                  for f in files]
         return reduce(str.__add__, codes)
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp
@@ -226,7 +247,8 @@ class GpuConv(gof.Op):
     }
 
     // TODO, make out be decref before we alloc out2!
-    CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
+    PyGpuArrayObject * out2 = (PyGpuArrayObject *)PyGpuArray_Conv(
+                                                         %(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
                                                          version, verbose,

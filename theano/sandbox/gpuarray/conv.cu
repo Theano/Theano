@@ -1,32 +1,42 @@
 // REMEMBER TO RAISE c_code_cache_version when changing this file
 //
+//TODO detect SHARED_SIZE dynamically
+#define SHARED_SIZE (16*1024)
+
 enum { ConvMode_FULL, ConvMode_VALID };
-PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * out, const int mode, const int subsample_rows, const int subsample_cols, const int version, const int verbose);
+PyObject * PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern, PyGpuArrayObject * out, const int mode,
+                           const size_t subsample_rows, const size_t subsample_cols, const int version, const int verbose);
+
+template <typename T>
+static T ceil_intdiv(T a, T b)
+{
+    return (a/b) + ((a % b) ? 1: 0);
+}
 
 /*
  * version: -1, autodetect, >=0 a specific version to use.
  *          If it can't be executed, we revert to the reference implementation
  */
 int
-CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
-                       CudaNdarray * out, int subsample_rows, int subsample_cols,
+PyGpuArray_conv_valid(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
+                       PyGpuArrayObject * out, size_t subsample_rows, size_t subsample_cols,
                        int version = -1, int verbose=0,
                        int max_threads_dim0 = 512
                        )
 {
     int work_complete = 0;
     const int shared_avail = SHARED_SIZE-150;//144 is the biggest static shared size used with compiling this file.
-    if (img->nd != 4)
+    if (PyGpuArray_NDIM(img) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required img of 4D");
         return -1;
     }
-    if (kern->nd != 4)
+    if (PyGpuArray_NDIM(kern) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required kern of 4D");
         return -1;
     }
-    if (out->nd != 4)
+    if (PyGpuArray_NDIM(out) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
@@ -40,40 +50,40 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                 version, THEANO_KERN_WID);
         fprintf(stderr,
                 "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],
-                CudaNdarray_HOST_DIMS(img)[2],CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_STRIDES(img)[0],
-                CudaNdarray_HOST_STRIDES(img)[1],
-                CudaNdarray_HOST_STRIDES(img)[2],
-                CudaNdarray_HOST_STRIDES(img)[3]);
+                PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(img)[1],
+                PyGpuArray_DIMS(img)[2],PyGpuArray_DIMS(img)[3],
+                PyGpuArray_STRIDES(img)[0]/4,
+                PyGpuArray_STRIDES(img)[1]/4,
+                PyGpuArray_STRIDES(img)[2]/4,
+                PyGpuArray_STRIDES(img)[3]/4);
         fprintf(stderr,
                 "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],
-                CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_STRIDES(kern)[0],
-                CudaNdarray_HOST_STRIDES(kern)[1],
-                CudaNdarray_HOST_STRIDES(kern)[2],
-                CudaNdarray_HOST_STRIDES(kern)[3]);
+                PyGpuArray_DIMS(kern)[0], PyGpuArray_DIMS(kern)[1],
+                PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
+                PyGpuArray_STRIDES(kern)[0]/4,
+                PyGpuArray_STRIDES(kern)[1]/4,
+                PyGpuArray_STRIDES(kern)[2]/4,
+                PyGpuArray_STRIDES(kern)[3]/4);
         fprintf(stderr,
                 "INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
-               CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1],
-               CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
-               CudaNdarray_HOST_STRIDES(out)[0],
-               CudaNdarray_HOST_STRIDES(out)[1],
-               CudaNdarray_HOST_STRIDES(out)[2],
-               CudaNdarray_HOST_STRIDES(out)[3]);
+               PyGpuArray_DIMS(out)[0], PyGpuArray_DIMS(out)[1],
+               PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
+               PyGpuArray_STRIDES(out)[0]/4,
+               PyGpuArray_STRIDES(out)[1]/4,
+               PyGpuArray_STRIDES(out)[2]/4,
+               PyGpuArray_STRIDES(out)[3]/4);
         fprintf(stderr,
                 "INFO:   subsample_rows=%d, subsample_cols=%d\n",
                 subsample_rows, subsample_cols);
     }
 
     //Check the output size is valid
-    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows));
-    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols));
+    assert (PyGpuArray_DIMS(out)[2] == ceil_intdiv(PyGpuArray_DIMS(img)[2]- PyGpuArray_DIMS(kern)[2] + 1, subsample_rows));
+    assert (PyGpuArray_DIMS(out)[3] == ceil_intdiv(PyGpuArray_DIMS(img)[3]- PyGpuArray_DIMS(kern)[3] + 1, subsample_cols));
 
-    assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
-    assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
-    assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
+    assert (PyGpuArray_DIMS(out)[0] == PyGpuArray_DIMS(img)[0]);
+    assert (PyGpuArray_DIMS(out)[1] == PyGpuArray_DIMS(kern)[0]);
+    assert (PyGpuArray_DIMS(img)[1] == PyGpuArray_DIMS(kern)[1]);
 
     // we now search through a few implementations until one applies to our arguments.
 
@@ -82,24 +92,24 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     //TODO: make a parameter the number of division
     //TODO: Should we make them in separate grid block instead?
  
-    const int nstack=CudaNdarray_HOST_DIMS(kern)[1];
-    const int nbatch=CudaNdarray_HOST_DIMS(img)[0];
-    const int nkern=CudaNdarray_HOST_DIMS(kern)[0];
-    const int img_wid=CudaNdarray_HOST_DIMS(img)[3];
-    const int img_len=CudaNdarray_HOST_DIMS(img)[2];
-    const int kern_wid=CudaNdarray_HOST_DIMS(kern)[3];
-    const int kern_len=CudaNdarray_HOST_DIMS(kern)[2];
-    const int out_wid=CudaNdarray_HOST_DIMS(out)[3];
-    const int out_len=CudaNdarray_HOST_DIMS(out)[2];
+    const int nstack=PyGpuArray_DIMS(kern)[1];
+    const int nbatch=PyGpuArray_DIMS(img)[0];
+    const int nkern=PyGpuArray_DIMS(kern)[0];
+    const int img_wid=PyGpuArray_DIMS(img)[3];
+    const int img_len=PyGpuArray_DIMS(img)[2];
+    const int kern_wid=PyGpuArray_DIMS(kern)[3];
+    const int kern_len=PyGpuArray_DIMS(kern)[2];
+    const int out_wid=PyGpuArray_DIMS(out)[3];
+    const int out_len=PyGpuArray_DIMS(out)[2];
 
-    const int img_stride_col= CudaNdarray_HOST_STRIDES(img)[3];
-    const int img_stride_row=CudaNdarray_HOST_STRIDES(img)[2];
-    const int img_stride_stack= CudaNdarray_HOST_STRIDES(img)[1];
-    const int img_stride_batch=CudaNdarray_HOST_STRIDES(img)[0];
-    const int kern_stride_col= CudaNdarray_HOST_STRIDES(kern)[3];
-    const int kern_stride_row=CudaNdarray_HOST_STRIDES(kern)[2];
-    const int kern_stride_stack= CudaNdarray_HOST_STRIDES(kern)[1];
-    const int kern_stride_nkern=CudaNdarray_HOST_STRIDES(kern)[0];
+    const int img_stride_col= PyGpuArray_STRIDES(img)[3]/4;
+    const int img_stride_row=PyGpuArray_STRIDES(img)[2]/4;
+    const int img_stride_stack= PyGpuArray_STRIDES(img)[1]/4;
+    const int img_stride_batch=PyGpuArray_STRIDES(img)[0]/4;
+    const int kern_stride_col= PyGpuArray_STRIDES(kern)[3]/4;
+    const int kern_stride_row=PyGpuArray_STRIDES(kern)[2]/4;
+    const int kern_stride_stack= PyGpuArray_STRIDES(kern)[1]/4;
+    const int kern_stride_nkern=PyGpuArray_STRIDES(kern)[0]/4;
 
     const int img_size=img_len*img_wid;
     const int kern_size=kern_len*kern_wid;
@@ -107,17 +117,17 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     const int img_size_byte = img_size*sizeof(float);
     const int kern_size_byte = kern_size*sizeof(float);
     const int out_size_byte = out_size*sizeof(float);
-    if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
+    if (!((THEANO_KERN_WID == PyGpuArray_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
       PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-                   " %d kernel columns, but the kernel we received had %d columns!",
-                   THEANO_KERN_WID, CudaNdarray_HOST_DIMS(kern)[3]);
+                   " %d kernel columns, but the kernel we received had %ud columns!",
+                   THEANO_KERN_WID, PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
 
     bool subsample = subsample_rows!=1 || subsample_cols!=1;
-    bool img_contiguous = CudaNdarray_is_c_contiguous(img);
-    bool kern_contiguous = CudaNdarray_is_c_contiguous(kern);
-    bool out_contiguous = CudaNdarray_is_c_contiguous(out);
+    bool img_contiguous = img->ga.flags & GA_C_CONTIGUOUS;
+    bool kern_contiguous = kern->ga.flags & GA_C_CONTIGUOUS;
+    bool out_contiguous = out->ga.flags & GA_C_CONTIGUOUS;
     bool c_contiguous = img_contiguous &&  kern_contiguous && out_contiguous;
 
     bool img_contiguous_2d = (img_stride_col == 1) && (img_stride_row==img_wid);
@@ -130,7 +140,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    float * kern_data_unflipped = kern->devdata;
+    const float * kern_data_unflipped = cuda_get_ptr(kern);
     int kern_stride_col_unflipped=kern_stride_col;
     int kern_stride_row_unflipped=kern_stride_row;
     if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
@@ -139,7 +149,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
       kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(kern->devdata[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
+      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     //if we remove the restriction
@@ -173,7 +183,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         dim3 grid(nbatch, nkern);
         int shared_size=(img_size + kern_size)*sizeof(float);
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int);
 
@@ -184,9 +194,9 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         CONV_PATCH_SPECIAL(THEANO_KERN_WID);
 
          f<<< grid, threads, shared_size>>>
-             (img->devdata, kern->devdata, out->devdata,
+             (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
               img_len, img_wid, kern_len, kern_wid, nkern, nstack);
-        CNDA_THREAD_SYNC;
+
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
@@ -234,7 +244,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         dim3 grid(nbatch,nkern);
         int shared_size=(img_size + (preload_full_kernel?kern_size:kern_wid))*sizeof(float);
 
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int,
@@ -277,14 +287,13 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size>>>
-             (img->devdata, kern->devdata, out->devdata,
+            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
               img_len, img_wid, kern_len, kern_wid, 
               out_len, out_wid, nkern, nstack,
               img_stride_col, img_stride_row, img_stride_stack,
               img_stride_batch, kern_stride_col, kern_stride_row,
               kern_stride_stack, kern_stride_nkern, subsample_rows, subsample_cols);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
@@ -346,7 +355,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         dim3 threads(out_wid);
         dim3 grid(out_len, nbatch*nkern);
         int shared_size=(kern_len*img_wid + kern_size)*sizeof(float);
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int,
@@ -358,14 +367,13 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         CONV_ROWS_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size >>>
-          (img->devdata, kern->devdata, out->devdata,
+            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
            kern_stride_col, kern_stride_row,
            kern_stride_stack, kern_stride_nkern);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
@@ -408,7 +416,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         int shared_size=((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
 
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int,
@@ -430,16 +438,15 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         }
 
         f<<< grid, threads, shared_size >>>
-          (img->devdata,
-           kern->devdata,
-           out->devdata,
+            (cuda_get_ptr(img),
+             cuda_get_ptr(kern),
+             cuda_get_ptr(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
            kern_stride_col, kern_stride_row,
            kern_stride_stack, kern_stride_nkern);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
@@ -503,7 +510,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
           
         int shared_size=(threads.y*img_wid + k_size)*sizeof(float);
 
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int,
@@ -518,16 +525,15 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
 
         f<<< grid, threads, shared_size >>>
-          (img->devdata,
-           kern->devdata,
-           out->devdata,
+            (cuda_get_ptr(img),
+             cuda_get_ptr(kern),
+             cuda_get_ptr(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
            kern_stride_col, kern_stride_row,
            kern_stride_stack, kern_stride_nkern);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
@@ -626,7 +632,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
             dim3 threads(out_wid, out_len, thread_z);
             dim3 grid(nbatch,nkern);
 
-            void (*f)(float*, float*, float*,
+            void (*f)(const float*, const float*, float*,
                       int, int, int, int,
                       int, int, int, int,
                       int, int,
@@ -657,13 +663,13 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
                 else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
             CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-            f<<< grid, threads, shared_size>>>(img->devdata, kern_data_unflipped, out->devdata,
+            f<<< grid, threads, shared_size>>>(cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
                                                img_len, img_wid, kern_len, kern_wid,
                                                nkern, nstack,
                                                img_stride_col, img_stride_row, img_stride_stack, img_stride_batch,
                                                kern_stride_col_unflipped, kern_stride_row_unflipped,
                                                kern_stride_stack, kern_stride_nkern);
-            CNDA_THREAD_SYNC;
+
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess == sts)
             {
@@ -705,8 +711,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         kern_len<=320 &&
         !work_complete) //conv_valid_row_reduce
     {
-        int outsize = CudaNdarray_SIZE(out);
-        int n_blocks = std::min(outsize, NUM_VECTOR_OP_BLOCKS);
+        int outsize = PyGpuArray_SIZE(out);
+        int n_blocks = std::min(outsize, 4096);
 
         int block_nstack=nstack;
         //Max of 512 threads per blocks.
@@ -736,8 +742,8 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
         void (*f)(int, int, int, int,
                   int, int, int, int, int,
-                  float*, int, int, int, int,
-                  float*, int, int, int, int,
+                  const float*, int, int, int, int,
+                  const float*, int, int, int, int,
                   float*, int, int, int, int,
                   int, int, int);
 
@@ -749,22 +755,20 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
         else
           f=conv_valid_row_reduce<true>;
         f<<<n_blocks, n_threads, n_reduce_buf>>>(
-                nbatch, nkern, CudaNdarray_HOST_DIMS(img)[1],
+                nbatch, nkern, PyGpuArray_DIMS(img)[1],
                 img_len, img_wid,
                 kern_len, kern_wid,
                 out_len, out_wid,
-                img->devdata,
-                CudaNdarray_HOST_STRIDES(img)[0], CudaNdarray_HOST_STRIDES(img)[1], 
+                cuda_get_ptr(img),
+                PyGpuArray_STRIDES(img)[0]/4, PyGpuArray_STRIDES(img)[1]/4, 
                 img_stride_row, img_stride_col,
-                kern->devdata,
-                CudaNdarray_HOST_STRIDES(kern)[0], CudaNdarray_HOST_STRIDES(kern)[1],
-                CudaNdarray_HOST_STRIDES(kern)[2], CudaNdarray_HOST_STRIDES(kern)[3],
-                out->devdata,
-                CudaNdarray_HOST_STRIDES(out)[0], CudaNdarray_HOST_STRIDES(out)[1],
-                CudaNdarray_HOST_STRIDES(out)[2], CudaNdarray_HOST_STRIDES(out)[3],
+                cuda_get_ptr(kern),
+                PyGpuArray_STRIDES(kern)[0]/4, PyGpuArray_STRIDES(kern)[1]/4,
+                PyGpuArray_STRIDES(kern)[2]/4, PyGpuArray_STRIDES(kern)[3]/4,
+                cuda_get_ptr(out),
+                PyGpuArray_STRIDES(out)[0]/4, PyGpuArray_STRIDES(out)[1]/4,
+                PyGpuArray_STRIDES(out)[2]/4, PyGpuArray_STRIDES(out)[3]/4,
                 subsample_rows, subsample_cols, initial_reduce_boundary);
-
-        CNDA_THREAD_SYNC;
 
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
@@ -791,65 +795,64 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 
     if (1 && !work_complete) //conv_reference_valid
     {
-        int outsize = CudaNdarray_SIZE(out);
-        int n_blocks = std::min(outsize, NUM_VECTOR_OP_BLOCKS);
+        int outsize = PyGpuArray_SIZE(out);
+        int n_blocks = std::min(outsize, 4096);
         int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
-                                 NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                                 256);
         if (1)
         {
             if (verbose)
               fprintf(stderr, "INFO: launching conv_reference_valid\n");
             if (verbose>1)
               fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                      nbatch, CudaNdarray_HOST_DIMS(img)[1], img_len, img_wid,
-                      img->devdata,
-                      CudaNdarray_HOST_STRIDES(img)[0],
-                      CudaNdarray_HOST_STRIDES(img)[1],
-                      CudaNdarray_HOST_STRIDES(img)[2],
-                      CudaNdarray_HOST_STRIDES(img)[3]);
+                      nbatch, PyGpuArray_DIMS(img)[1], img_len, img_wid,
+                      cuda_get_ptr(img),
+                      PyGpuArray_STRIDES(img)[0]/4,
+                      PyGpuArray_STRIDES(img)[1]/4,
+                      PyGpuArray_STRIDES(img)[2]/4,
+                      PyGpuArray_STRIDES(img)[3]/4);
             if (verbose>1)
               fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
                       nkern, nstack, kern_len, kern_wid,
-                      kern->devdata,
-                      CudaNdarray_HOST_STRIDES(kern)[0],
-                      CudaNdarray_HOST_STRIDES(kern)[1],
-                      CudaNdarray_HOST_STRIDES(kern)[2],
-                      CudaNdarray_HOST_STRIDES(kern)[3]);
+                      cuda_get_ptr(kern),
+                      PyGpuArray_STRIDES(kern)[0]/4,
+                      PyGpuArray_STRIDES(kern)[1]/4,
+                      PyGpuArray_STRIDES(kern)[2]/4,
+                      PyGpuArray_STRIDES(kern)[3]/4);
             if (verbose>1)
               fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                      CudaNdarray_HOST_DIMS(out)[0],
-                      CudaNdarray_HOST_DIMS(out)[1], out_len, out_wid,
-                      out->devdata,
-                      CudaNdarray_HOST_STRIDES(out)[0],
-                      CudaNdarray_HOST_STRIDES(out)[1],
-                      CudaNdarray_HOST_STRIDES(out)[2],
-                      CudaNdarray_HOST_STRIDES(out)[3]);
+                      PyGpuArray_DIMS(out)[0],
+                      PyGpuArray_DIMS(out)[1], out_len, out_wid,
+                      cuda_get_ptr(out),
+                      PyGpuArray_STRIDES(out)[0]/4,
+                      PyGpuArray_STRIDES(out)[1]/4,
+                      PyGpuArray_STRIDES(out)[2]/4,
+                      PyGpuArray_STRIDES(out)[3]/4);
             if (verbose>1)
               fprintf(stderr, "   launch params: %i %i %i\n",
                       outsize, n_blocks, n_threads);
         }
         conv_reference_valid<<<n_blocks, n_threads>>>(nbatch, nkern,
-                CudaNdarray_HOST_DIMS(img)[1],
+                PyGpuArray_DIMS(img)[1],
                 img_len, img_wid,
                 kern_len, kern_wid,
                 out_len, out_wid,
-                img->devdata,
-                CudaNdarray_HOST_STRIDES(img)[0],
-                CudaNdarray_HOST_STRIDES(img)[1],
-                CudaNdarray_HOST_STRIDES(img)[2],
-                CudaNdarray_HOST_STRIDES(img)[3],
-                kern->devdata,
-                CudaNdarray_HOST_STRIDES(kern)[0],
-                CudaNdarray_HOST_STRIDES(kern)[1],
-                CudaNdarray_HOST_STRIDES(kern)[2],
-                CudaNdarray_HOST_STRIDES(kern)[3],
-                out->devdata,
-                CudaNdarray_HOST_STRIDES(out)[0],
-                CudaNdarray_HOST_STRIDES(out)[1],
-                CudaNdarray_HOST_STRIDES(out)[2],
-                CudaNdarray_HOST_STRIDES(out)[3],
+                cuda_get_ptr(img),
+                PyGpuArray_STRIDES(img)[0]/4,
+                PyGpuArray_STRIDES(img)[1]/4,
+                PyGpuArray_STRIDES(img)[2]/4,
+                PyGpuArray_STRIDES(img)[3]/4,
+                cuda_get_ptr(kern),
+                PyGpuArray_STRIDES(kern)[0]/4,
+                PyGpuArray_STRIDES(kern)[1]/4,
+                PyGpuArray_STRIDES(kern)[2]/4,
+                PyGpuArray_STRIDES(kern)[3]/4,
+                cuda_get_ptr(out),
+                PyGpuArray_STRIDES(out)[0]/4,
+                PyGpuArray_STRIDES(out)[1]/4,
+                PyGpuArray_STRIDES(out)[2]/4,
+                PyGpuArray_STRIDES(out)[3]/4,
                 subsample_rows, subsample_cols);
-        CNDA_THREAD_SYNC;
 
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
@@ -864,7 +867,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
               fprintf(stderr, "INFO: 'conv_reference_valid' failed\n");
             PyErr_Format(PyExc_RuntimeError,
                          "ERROR: all implementations failed for"
-                         " CudaNdarray_conv_valid! (%s)",
+                         " PyGpuArray_conv_valid! (%s)",
                          cudaGetErrorString(sts));
             return -1;
         }
@@ -873,7 +876,7 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     {
       PyErr_Format(PyExc_RuntimeError,
                    "ERROR: no implementation(s) worked for"
-                   " CudaNdarray_conv_valid!"
+                   " PyGpuArray_conv_valid!"
                    " Version asked(%d) (-1 mean use an heuristic)",
                    version);
         return -1;
@@ -882,56 +885,56 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
 }
 
 int
-CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
-                      CudaNdarray * out, int subsample_rows,
-                      int subsample_cols, int version = -1, int verbose=0,
+PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
+                      PyGpuArrayObject * out, size_t subsample_rows,
+                      size_t subsample_cols, int version = -1, int verbose=0,
                       int max_threads_dim0=512)
 {
   //144 is the biggest static shared size used with compiling this file.
     const int shared_avail = SHARED_SIZE - 150;
 
     int work_complete = 0;
-    if (img->nd != 4)
+    if (PyGpuArray_NDIM(img) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required img of 4D");
         return -1;
     }
-    if (kern->nd != 4)
+    if (PyGpuArray_NDIM(kern) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required kern of 4D");
         return -1;
     }
-    if (out->nd != 4)
+    if (PyGpuArray_NDIM(out) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "required out of 4D");
         return -1;
     }
     // check the size of the output matrix
-    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1, subsample_rows));
-    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1, subsample_cols));
+    assert (PyGpuArray_DIMS(out)[2] == ceil_intdiv(PyGpuArray_DIMS(img)[2] + PyGpuArray_DIMS(kern)[2] - 1, subsample_rows));
+    assert (PyGpuArray_DIMS(out)[3] == ceil_intdiv(PyGpuArray_DIMS(img)[3] + PyGpuArray_DIMS(kern)[3] - 1, subsample_cols));
 
-    assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
-    assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
-    assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
+    assert (PyGpuArray_DIMS(out)[0] == PyGpuArray_DIMS(img)[0]);
+    assert (PyGpuArray_DIMS(out)[1] == PyGpuArray_DIMS(kern)[0]);
+    assert (PyGpuArray_DIMS(img)[1] == PyGpuArray_DIMS(kern)[1]);
 
-    const int nstack=CudaNdarray_HOST_DIMS(kern)[1];
-    const int nbatch=CudaNdarray_HOST_DIMS(img)[0];
-    const int nkern=CudaNdarray_HOST_DIMS(kern)[0];
-    const int img_wid=CudaNdarray_HOST_DIMS(img)[3];
-    const int img_len=CudaNdarray_HOST_DIMS(img)[2];
-    const int kern_wid=CudaNdarray_HOST_DIMS(kern)[3];
-    const int kern_len=CudaNdarray_HOST_DIMS(kern)[2];
-    const int out_wid=CudaNdarray_HOST_DIMS(out)[3];
-    const int out_len=CudaNdarray_HOST_DIMS(out)[2];
+    const int nstack=PyGpuArray_DIMS(kern)[1];
+    const int nbatch=PyGpuArray_DIMS(img)[0];
+    const int nkern=PyGpuArray_DIMS(kern)[0];
+    const int img_wid=PyGpuArray_DIMS(img)[3];
+    const int img_len=PyGpuArray_DIMS(img)[2];
+    const int kern_wid=PyGpuArray_DIMS(kern)[3];
+    const int kern_len=PyGpuArray_DIMS(kern)[2];
+    const int out_wid=PyGpuArray_DIMS(out)[3];
+    const int out_len=PyGpuArray_DIMS(out)[2];
 
-    const int img_stride_col= CudaNdarray_HOST_STRIDES(img)[3];
-    const int img_stride_row=CudaNdarray_HOST_STRIDES(img)[2];
-    const int img_stride_stack=CudaNdarray_HOST_STRIDES(img)[1];
-    const int img_stride_batch=CudaNdarray_HOST_STRIDES(img)[0];
-    const int kern_stride_col= CudaNdarray_HOST_STRIDES(kern)[3];
-    const int kern_stride_row=CudaNdarray_HOST_STRIDES(kern)[2];
-    const int kern_stride_stack= CudaNdarray_HOST_STRIDES(kern)[1];
-    const int kern_stride_nkern=CudaNdarray_HOST_STRIDES(kern)[0];
+    const int img_stride_col= PyGpuArray_STRIDES(img)[3]/4;
+    const int img_stride_row=PyGpuArray_STRIDES(img)[2]/4;
+    const int img_stride_stack=PyGpuArray_STRIDES(img)[1]/4;
+    const int img_stride_batch=PyGpuArray_STRIDES(img)[0]/4;
+    const int kern_stride_col= PyGpuArray_STRIDES(kern)[3]/4;
+    const int kern_stride_row=PyGpuArray_STRIDES(kern)[2]/4;
+    const int kern_stride_stack= PyGpuArray_STRIDES(kern)[1]/4;
+    const int kern_stride_nkern=PyGpuArray_STRIDES(kern)[0]/4;
 
     const int img_size=img_len*img_wid;
     const int kern_size=kern_len*kern_wid;
@@ -946,20 +949,20 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
     
     //const int out_size_byte = out_size*sizeof(float); // unused 
 
-    if (!((THEANO_KERN_WID == CudaNdarray_HOST_DIMS(kern)[3]) ||
+    if (!((THEANO_KERN_WID == PyGpuArray_DIMS(kern)[3]) ||
           (THEANO_KERN_WID == 0))){
       PyErr_Format(PyExc_ValueError,
                    "ERROR: This GpuConv code was compiled for"
                    " %d kernel columns, but the kernel we received"
-                   " had %d columns!",
-                   THEANO_KERN_WID, CudaNdarray_HOST_DIMS(kern)[3]);
+                   " had %ud columns!",
+                   THEANO_KERN_WID, PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
     bool subsample = subsample_rows!=1 || subsample_cols!=1;
 
-    bool img_contiguous = CudaNdarray_is_c_contiguous(img);
-    bool kern_contiguous = CudaNdarray_is_c_contiguous(kern);
-    bool out_contiguous = CudaNdarray_is_c_contiguous(out);
+    bool img_contiguous = img->ga.flags & GA_C_CONTIGUOUS;
+    bool kern_contiguous = kern->ga.flags & GA_C_CONTIGUOUS;
+    bool out_contiguous = out->ga.flags & GA_C_CONTIGUOUS;
     bool c_contiguous = img_contiguous &&  kern_contiguous && out_contiguous;
 
     bool img_contiguous_2d = (img_stride_col == 1) && (img_stride_row==img_wid);
@@ -974,7 +977,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    float * kern_data_unflipped = kern->devdata;
+    const float * kern_data_unflipped = cuda_get_ptr(kern);
     int kern_stride_col_unflipped=kern_stride_col;
     int kern_stride_row_unflipped=kern_stride_row;
     if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
@@ -983,7 +986,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
       kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(kern->devdata[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
+      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     if (verbose>1)
@@ -991,26 +994,26 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         printf("INFO: Running conv_full version=%d,"
                " MACRO kern_width=%d with inputs:\n", version, THEANO_KERN_WID);
         printf("INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-               CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(img)[1],
-               CudaNdarray_HOST_DIMS(img)[2], CudaNdarray_HOST_DIMS(img)[3],
-               CudaNdarray_HOST_STRIDES(img)[0],
-               CudaNdarray_HOST_STRIDES(img)[1],
-               CudaNdarray_HOST_STRIDES(img)[2],
-               CudaNdarray_HOST_STRIDES(img)[3]);
+               PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(img)[1],
+               PyGpuArray_DIMS(img)[2], PyGpuArray_DIMS(img)[3],
+               PyGpuArray_STRIDES(img)[0]/4,
+               PyGpuArray_STRIDES(img)[1]/4,
+               PyGpuArray_STRIDES(img)[2]/4,
+               PyGpuArray_STRIDES(img)[3]/4);
         printf("INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-               CudaNdarray_HOST_DIMS(kern)[0], CudaNdarray_HOST_DIMS(kern)[1],
-               CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
-               CudaNdarray_HOST_STRIDES(kern)[0],
-               CudaNdarray_HOST_STRIDES(kern)[1],
-               CudaNdarray_HOST_STRIDES(kern)[2],
-               CudaNdarray_HOST_STRIDES(kern)[3]);
+               PyGpuArray_DIMS(kern)[0], PyGpuArray_DIMS(kern)[1],
+               PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
+               PyGpuArray_STRIDES(kern)[0]/4,
+               PyGpuArray_STRIDES(kern)[1]/4,
+               PyGpuArray_STRIDES(kern)[2]/4,
+               PyGpuArray_STRIDES(kern)[3]/4);
         printf("INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
-               CudaNdarray_HOST_DIMS(out)[0], CudaNdarray_HOST_DIMS(out)[1],
-               CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
-               CudaNdarray_HOST_STRIDES(out)[0],
-               CudaNdarray_HOST_STRIDES(out)[1],
-               CudaNdarray_HOST_STRIDES(out)[2],
-               CudaNdarray_HOST_STRIDES(out)[3]);
+               PyGpuArray_DIMS(out)[0], PyGpuArray_DIMS(out)[1],
+               PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
+               PyGpuArray_STRIDES(out)[0]/4,
+               PyGpuArray_STRIDES(out)[1]/4,
+               PyGpuArray_STRIDES(out)[2]/4,
+               PyGpuArray_STRIDES(out)[3]/4);
     }
 
     if (!subsample &&
@@ -1063,7 +1066,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         int shared_size=img_size_padded_byte + kern_size_byte;
         if(version==5)
           shared_size=((kern_len+threads.y-1)+2*kern_len-2)*img_wid_padded*sizeof(float) + kern_size_byte;
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int,
@@ -1087,13 +1090,12 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         CONV_FULL_PATCH_STACK_PADDED_SPECIAL(THEANO_KERN_WID);
 
         f<<< grid, threads, shared_size>>>
-             (img->devdata, kern_data_unflipped, out->devdata,
+            (cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
               img_len, img_wid, kern_len, kern_wid, nkern, nstack,
               img_stride_col, img_stride_row, img_stride_stack,
               img_stride_batch, kern_stride_col_unflipped, kern_stride_row_unflipped,
               kern_stride_stack, kern_stride_nkern);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts)
         {
@@ -1147,14 +1149,13 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         //TODO assert c_continious for img, kern and out in the 2 inner dimensions.
 
         conv_full_patch<<< grid, threads, shared_size>>>
-          (img->devdata,
-           kern->devdata,
-           out->devdata,
+            (cuda_get_ptr(img),
+             cuda_get_ptr(kern),
+             cuda_get_ptr(out),
            img_len, img_wid,
            kern_len, kern_wid,
            nkern, nstack);
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
@@ -1189,30 +1190,29 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         //TODO assert c_continious for img, kern and out in the 2 inner dimensions.
 
         //typeof(conv_full_load_everything<0>) f = ;
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int, int, int,
                   int, int, int, int, int, int, int, int) = conv_full_load_everything<0>;
 
         f = conv_full_load_everything<THEANO_KERN_WID>;
 
         f<<< grid, threads, shared_size>>>
-          (img->devdata,
-           kern->devdata,
-           out->devdata,
+            (cuda_get_ptr(img),
+             cuda_get_ptr(kern),
+             cuda_get_ptr(out),
            img_len, img_wid, 
            kern_len, kern_wid,
            nkern, nstack,
-           CudaNdarray_HOST_STRIDES(img)[3],
-           CudaNdarray_HOST_STRIDES(img)[2],
-           CudaNdarray_HOST_STRIDES(img)[1],
-           CudaNdarray_HOST_STRIDES(img)[0],
-           CudaNdarray_HOST_STRIDES(kern)[3],
-           CudaNdarray_HOST_STRIDES(kern)[2],
-           CudaNdarray_HOST_STRIDES(kern)[1],
-           CudaNdarray_HOST_STRIDES(kern)[0]
+           PyGpuArray_STRIDES(img)[3]/4,
+           PyGpuArray_STRIDES(img)[2]/4,
+           PyGpuArray_STRIDES(img)[1]/4,
+           PyGpuArray_STRIDES(img)[0]/4,
+           PyGpuArray_STRIDES(kern)[3]/4,
+           PyGpuArray_STRIDES(kern)[2]/4,
+           PyGpuArray_STRIDES(kern)[1]/4,
+           PyGpuArray_STRIDES(kern)[0]/4
            );
 
-        CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
@@ -1246,7 +1246,7 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         dim3 grid(nbatch,nkern);
         int shared_size=(img_size + kern_size)*sizeof(float);
 
-        void (*f)(float*, float*, float*,
+        void (*f)(const float*, const float*, float*,
                   int, int, int, int,
                   int, int, int, int,
                   int, int, int, int);
@@ -1257,15 +1257,15 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
         else if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<false,false>;
 
         f<<< grid, threads, shared_size>>>(
-                img->devdata,
-                kern->devdata,
-                out->devdata,
+                cuda_get_ptr(img),
+                cuda_get_ptr(kern),
+                cuda_get_ptr(out),
                 img_len, img_wid,
                 kern_len, kern_wid,
                 nkern, nstack,img_stride_col, img_stride_row,
                 kern_stride_col, kern_stride_row,
                 kern_stride_stack, kern_stride_nkern);
-        CNDA_THREAD_SYNC;
+
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
         {
@@ -1290,48 +1290,48 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
     {
         if(verbose>1) fprintf(stderr, "INFO: will start conv_reference_full\n");
 
-        int outsize = CudaNdarray_SIZE(out);
-        int n_blocks = std::min(outsize, NUM_VECTOR_OP_BLOCKS);
+        int outsize = PyGpuArray_SIZE(out);
+        int n_blocks = std::min(outsize, 4096);
         int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
-                                 NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                                 256);
         if (0)
         {
             if (verbose)
               fprintf(stderr, "INFO: launching conv_reference_valid\n");
             if (verbose)
               fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                      CudaNdarray_HOST_DIMS(img)[0],
-                      CudaNdarray_HOST_DIMS(img)[1],
-                      CudaNdarray_HOST_DIMS(img)[2],
-                      CudaNdarray_HOST_DIMS(img)[3],
-                      img->devdata,
-                      CudaNdarray_HOST_STRIDES(img)[0],
-                      CudaNdarray_HOST_STRIDES(img)[1],
-                      CudaNdarray_HOST_STRIDES(img)[2],
-                      CudaNdarray_HOST_STRIDES(img)[3]);
+                      PyGpuArray_DIMS(img)[0],
+                      PyGpuArray_DIMS(img)[1],
+                      PyGpuArray_DIMS(img)[2],
+                      PyGpuArray_DIMS(img)[3],
+                      cuda_get_ptr(img),
+                      PyGpuArray_STRIDES(img)[0]/4,
+                      PyGpuArray_STRIDES(img)[1]/4,
+                      PyGpuArray_STRIDES(img)[2]/4,
+                      PyGpuArray_STRIDES(img)[3]/4);
             if (verbose)
               fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
-                      CudaNdarray_HOST_DIMS(kern)[0],
-                      CudaNdarray_HOST_DIMS(kern)[1],
-                      CudaNdarray_HOST_DIMS(kern)[2],
-                      CudaNdarray_HOST_DIMS(kern)[3],
-                      kern->devdata,
-                      CudaNdarray_HOST_STRIDES(kern)[0],
-                      CudaNdarray_HOST_STRIDES(kern)[1],
-                      CudaNdarray_HOST_STRIDES(kern)[2],
-                      CudaNdarray_HOST_STRIDES(kern)[3]
+                      PyGpuArray_DIMS(kern)[0],
+                      PyGpuArray_DIMS(kern)[1],
+                      PyGpuArray_DIMS(kern)[2],
+                      PyGpuArray_DIMS(kern)[3],
+                      cuda_get_ptr(kern),
+                      PyGpuArray_STRIDES(kern)[0]/4,
+                      PyGpuArray_STRIDES(kern)[1]/4,
+                      PyGpuArray_STRIDES(kern)[2]/4,
+                      PyGpuArray_STRIDES(kern)[3]/4
                         );
             if (verbose)
               fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                      CudaNdarray_HOST_DIMS(out)[0],
-                      CudaNdarray_HOST_DIMS(out)[1],
-                      CudaNdarray_HOST_DIMS(out)[2],
-                      CudaNdarray_HOST_DIMS(out)[3],
-                      out->devdata,
-                      CudaNdarray_HOST_STRIDES(out)[0],
-                      CudaNdarray_HOST_STRIDES(out)[1],
-                      CudaNdarray_HOST_STRIDES(out)[2],
-                      CudaNdarray_HOST_STRIDES(out)[3]);
+                      PyGpuArray_DIMS(out)[0],
+                      PyGpuArray_DIMS(out)[1],
+                      PyGpuArray_DIMS(out)[2],
+                      PyGpuArray_DIMS(out)[3],
+                      cuda_get_ptr(out),
+                      PyGpuArray_STRIDES(out)[0]/4,
+                      PyGpuArray_STRIDES(out)[1]/4,
+                      PyGpuArray_STRIDES(out)[2]/4,
+                      PyGpuArray_STRIDES(out)[3]/4);
             if (verbose)
               fprintf(stderr, "   launch params: %i %i %i\n",
                       outsize, n_blocks, n_threads);
@@ -1340,25 +1340,24 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
                       subsample_rows, subsample_cols);
         }
         conv_reference_full<<<n_blocks, n_threads>>>(
-                CudaNdarray_HOST_DIMS(img)[0], CudaNdarray_HOST_DIMS(kern)[0],
-                CudaNdarray_HOST_DIMS(img)[1],
-                CudaNdarray_HOST_DIMS(img)[2], CudaNdarray_HOST_DIMS(img)[3],
-                CudaNdarray_HOST_DIMS(kern)[2], CudaNdarray_HOST_DIMS(kern)[3],
-                CudaNdarray_HOST_DIMS(out)[2], CudaNdarray_HOST_DIMS(out)[3],
-                img->devdata, CudaNdarray_HOST_STRIDES(img)[0],
-                CudaNdarray_HOST_STRIDES(img)[1],
-                CudaNdarray_HOST_STRIDES(img)[2],
-                CudaNdarray_HOST_STRIDES(img)[3],
-                kern->devdata, CudaNdarray_HOST_STRIDES(kern)[0],
-                CudaNdarray_HOST_STRIDES(kern)[1],
-                CudaNdarray_HOST_STRIDES(kern)[2],
-                CudaNdarray_HOST_STRIDES(kern)[3],
-                out->devdata, CudaNdarray_HOST_STRIDES(out)[0],
-                CudaNdarray_HOST_STRIDES(out)[1],
-                CudaNdarray_HOST_STRIDES(out)[2],
-                CudaNdarray_HOST_STRIDES(out)[3],
+                PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(kern)[0],
+                PyGpuArray_DIMS(img)[1],
+                PyGpuArray_DIMS(img)[2], PyGpuArray_DIMS(img)[3],
+                PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
+                PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
+                cuda_get_ptr(img), PyGpuArray_STRIDES(img)[0]/4,
+                PyGpuArray_STRIDES(img)[1]/4,
+                PyGpuArray_STRIDES(img)[2]/4,
+                PyGpuArray_STRIDES(img)[3]/4,
+                cuda_get_ptr(kern), PyGpuArray_STRIDES(kern)[0]/4,
+                PyGpuArray_STRIDES(kern)[1]/4,
+                PyGpuArray_STRIDES(kern)[2]/4,
+                PyGpuArray_STRIDES(kern)[3]/4,
+                cuda_get_ptr(out), PyGpuArray_STRIDES(out)[0]/4,
+                PyGpuArray_STRIDES(out)[1]/4,
+                PyGpuArray_STRIDES(out)[2]/4,
+                PyGpuArray_STRIDES(out)[3]/4,
                 subsample_rows, subsample_cols);
-        CNDA_THREAD_SYNC;
 
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess == sts) 
@@ -1392,9 +1391,9 @@ CudaNdarray_conv_full(const CudaNdarray *img, const CudaNdarray * kern,
 }
 
 PyObject *
-CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
-                 CudaNdarray * out, const int mode,
-                 const int subsample_rows, const int subsample_cols,
+PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
+                 PyGpuArrayObject * out, const int mode,
+                 const size_t subsample_rows, const size_t subsample_cols,
                  const int version, const int verbose,
                  const int max_threads_dim0 = 512
                  )
@@ -1402,43 +1401,43 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     // Re-use the out object if possible.  If the out object it not used, then its refcount is not modified.
     //  If the out object is re-used then it is returned, and its refcount is incremented by 1.
     //
-    if (img->nd != 4)
+    if (PyGpuArray_NDIM(img) != 4)
     {
-      PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required");
+      PyErr_SetString(PyExc_ValueError, "PyGpuArray 4-D tensor required");
       return NULL;
     }
-    if (kern->nd != 4)
+    if (PyGpuArray_NDIM(kern) != 4)
     {
-      PyErr_SetString(PyExc_ValueError, "CudaNdarray 4-D tensor required");
+      PyErr_SetString(PyExc_ValueError, "PyGpuArray 4-D tensor required");
       return NULL;
     }
 
-    int out_dim[4];
-    out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
-    out_dim[1] = CudaNdarray_HOST_DIMS(kern)[0];
-    int logical_rows, logical_cols;
+    size_t out_dim[4];
+    out_dim[0] = PyGpuArray_DIMS(img)[0];
+    out_dim[1] = PyGpuArray_DIMS(kern)[0];
+    size_t logical_rows, logical_cols;
     if (mode == ConvMode_VALID)
     {
-        logical_rows = CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1;
-        logical_cols = CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1;
+        logical_rows = PyGpuArray_DIMS(img)[2] - PyGpuArray_DIMS(kern)[2] + 1;
+        logical_cols = PyGpuArray_DIMS(img)[3] - PyGpuArray_DIMS(kern)[3] + 1;
     }
     else
     {
-        logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
-        logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
+        logical_rows = PyGpuArray_DIMS(img)[2] + PyGpuArray_DIMS(kern)[2] - 1;
+        logical_cols = PyGpuArray_DIMS(img)[3] + PyGpuArray_DIMS(kern)[3] - 1;
     }
     out_dim[2] = ceil_intdiv(logical_rows, subsample_rows);
     out_dim[3] = ceil_intdiv(logical_cols, subsample_cols);
 
-    CudaNdarray * rval = NULL;
+    PyGpuArrayObject * rval = NULL;
 
     if ( out
-         && out->nd==4
-         && CudaNdarray_is_c_contiguous(out)
-         && CudaNdarray_HOST_DIMS(out)[0]==out_dim[0]
-         && CudaNdarray_HOST_DIMS(out)[1]==out_dim[1]
-         && CudaNdarray_HOST_DIMS(out)[2]==out_dim[2]
-         && CudaNdarray_HOST_DIMS(out)[3]==out_dim[3])
+         && PyGpuArray_NDIM(out)==4
+         && out->ga.flags & GA_C_CONTIGUOUS
+         && PyGpuArray_DIMS(out)[0]==out_dim[0]
+         && PyGpuArray_DIMS(out)[1]==out_dim[1]
+         && PyGpuArray_DIMS(out)[2]==out_dim[2]
+         && PyGpuArray_DIMS(out)[3]==out_dim[3])
     {
       rval = out;
       Py_INCREF(rval);
@@ -1458,20 +1457,22 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
                 "INFO: Conv don't have an 'out' argument"
                 " structure.\n");
 
-      rval = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+      rval = pygpu_zeros(4, out_dim,
+                         img->ga.typecode, GA_C_ORDER,
+                         pygpu_default_context(), Py_None);
       //rval might be null
     }
     if ((rval==NULL)
-        || ((mode==ConvMode_VALID) && CudaNdarray_conv_valid(img, kern, rval,
-                                                             subsample_rows,
-                                                             subsample_cols,
-                                                             version, verbose,
-                                                             max_threads_dim0))
-        || ((mode==ConvMode_FULL) && CudaNdarray_conv_full(img, kern, rval,
-                                                           subsample_rows,
-                                                           subsample_cols,
-                                                           version, verbose,
-                                                           max_threads_dim0))
+        || ((mode==ConvMode_VALID) && PyGpuArray_conv_valid(img, kern, rval,
+                                                            subsample_rows,
+                                                            subsample_cols,
+                                                            version, verbose,
+                                                            max_threads_dim0))
+        || ((mode==ConvMode_FULL) && PyGpuArray_conv_full(img, kern, rval,
+                                                          subsample_rows,
+                                                          subsample_cols,
+                                                          version, verbose,
+                                                          max_threads_dim0))
             )
     {
         // if rval is something we just allocated,
