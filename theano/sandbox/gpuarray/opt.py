@@ -306,3 +306,101 @@ def local_gpua_shape(node):
             gpu_x, = x.owner.inputs
             return [gpu_shape(gpu_x)]
     return False
+
+
+@register_opt()
+@local_optimizer([])
+def local_gpu_conv(node):
+    """
+    gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+
+    conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+    """
+    def GpuConvOp_from_ConvOp(op):
+        logical_img_hw = None
+
+        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
+            return None
+        #print op.kshp, op.imshp[1:3]
+        #print op.kshp_logical, logical_img_hw
+        ret = GpuConv(border_mode=op.out_mode,
+                    subsample=(op.dx, op.dy),
+                    logical_img_hw=logical_img_hw,
+                    logical_kern_hw=op.kshp_logical,
+                    logical_kern_align_top=op.kshp_logical_top_aligned,
+                    kshp=op.kshp,
+                    version=op.version,
+                    verbose=op.verbose,
+                    imshp=op.imshp,
+                    )
+        if op.imshp_logical is not None:
+            logical_img_hw = op.imshp_logical[1:3]
+            if logical_img_hw != op.imshp[1:3]:
+                # this case is not implemented
+                #return None
+                rstride = int(numpy.ceil(op.imshp_logical[1] /
+                                         float(op.imshp[1])))
+                cstride = int(numpy.ceil(op.imshp_logical[2] /
+                                         float(op.imshp[2])))
+
+                def make_graph(img, kern):
+                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
+                                       img.shape[0], *op.imshp_logical)
+                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
+                                               img)
+                    img = gpu_from_host(img)
+                    return ret(img, kern)
+
+                return make_graph
+        return ret
+
+    def values_eq_approx(a, b):
+        """This fct is needed to don't have DebugMode raise useless
+        error due to ronding error.
+
+        This happen as We reduce on the two last dimensions, so this
+        can raise the absolute error if the number of element we
+        reduce on is significant.
+
+        """
+        assert a.ndim == 4
+        atol = None
+        if a.shape[-1] * a.shape[-2] > 100:
+            atol = 3e-5
+        return tensor.TensorType.values_eq_approx(a, b, atol=atol)
+
+    if node.op == gpu_from_host:
+        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
+            gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
+            if gpu_conv is None:
+                return
+            img, kern = host_input.owner.inputs
+            out = gpu_conv(gpu_from_host(img),
+                           gpu_from_host(kern))
+            out = tensor.patternbroadcast(out,
+                                          node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx
+            # in some case the ConvOp broadcast the last 2 dimensions
+            # differently then the gpu ConvOp
+            return [out]
+
+    if isinstance(node.op, conv.ConvOp):
+        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+        img, kern = node.inputs
+        img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
+        kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
+        if img_on_gpu or kern_on_gpu:
+            gpu_conv = GpuConvOp_from_ConvOp(node.op)
+            if gpu_conv is None:
+                return
+            out = gpu_conv(gpu_from_host(img),
+                           gpu_from_host(kern))
+            out = tensor.patternbroadcast(
+                host_from_gpu(out),
+                node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx
+            # in some case the ConvOp broadcast the last 2 dimensions
+            # differently then the gpu ConvOp
+            return [out]
