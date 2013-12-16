@@ -1189,7 +1189,7 @@ class CLinker(link.Linker):
         # Add not used input in the key
         for ipos, var in [(i, var) for i, var in enumerate(fgraph.inputs)
                           if not len(var.clients)]:
-            sig.append((var.type, in_sig(var, node_pos, ipos)))
+            sig.append((var.type, in_sig(var, -1, ipos)))
 
         #crystalize the signature and version
         sig = tuple(sig)
