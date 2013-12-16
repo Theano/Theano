@@ -14,13 +14,11 @@ install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install conda"
   - "conda init"
+# We support scipy 0.7.2, but it is not available on pypi anymore.
+# 0.8 is available on PyPi but we need to compile it (15m)
+# 0.11.0 is the oldest on conda.
   - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
   - "source activate py26"
-#  - "pip install -q numpy==1.5 --use-mirrors"
-# We support scipy 0.7.2, but it is not available on pypi anymore.
-# So we test with 0.8. Our internal buildbot have 0.7.2.
-# We install it later only for the PART that need it.
-#  - "pip install -q scipy==0.8 --use-mirrors"
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
@@ -32,8 +30,6 @@ env:
 #  - PART="-e test_basic.py theano/tensor/tests"
 
 script:
-  - "if [ `expr \"$PART\" : '.*sparse'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
-  - "if [ `expr \"$PART\" : '.*nnet'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
   - python --version
   - uname -a
