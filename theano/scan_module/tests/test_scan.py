@@ -1586,17 +1586,19 @@ class T_Scan(unittest.TestCase):
             vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
             params = [u1, u2, x0, y0, W_in1]
             gparams = theano.tensor.grad(cost, params)
-            grad_fn = theano.function([u1, u2, x0, y0, W_in1],
-                                      gparams,
-                                      updates=updates,
-                                      no_default_updates=True,
-                                      allow_input_downcast=True)
-
+            print >> sys.stderr, "."
             cost_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       cost,
                                       updates=updates,
                                       no_default_updates=True,
                                       allow_input_downcast=True)
+            print >> sys.stderr, "."
+            grad_fn = theano.function([u1, u2, x0, y0, W_in1],
+                                      gparams,
+                                      updates=updates,
+                                      no_default_updates=True,
+                                      allow_input_downcast=True)
+            print >> sys.stderr, "."
         finally:
             theano.config.compute_test_value = old1
             theano.config.compute_test_value_opt = old2
