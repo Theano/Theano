@@ -14,7 +14,7 @@ install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
   - "pip install conda"
   - "conda init"
-  - "conda create -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
+  - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
   - "source activate py26"
 #  - "pip install -q numpy==1.5 --use-mirrors"
 # We support scipy 0.7.2, but it is not available on pypi anymore.
