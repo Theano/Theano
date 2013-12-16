@@ -804,7 +804,7 @@ def local_optimizer(tracks):
             if len(tracks) is 0:
                 raise ValueError, ("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
             for t in tracks:
-                if not (isinstance(t, type) or isinstance(t, op.Op)):
+                if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
                     raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
         rval = FromFunctionLocalOptimizer(f, tracks)
         rval.__name__ = f.__name__
