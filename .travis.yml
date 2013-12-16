@@ -19,7 +19,7 @@ install:
 # 0.11.0 is the oldest on conda.
   - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
   - "source activate py26"
-  - "pip install . --no-deps --use-mirrors"
+  - "pip-2.6 install . --no-deps --use-mirrors"
 # command to run tests
 env:
 #  - PART="theano/scan_module/"
@@ -32,7 +32,7 @@ env:
 script:
   - source activate py26
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
-  - python --version
+  - python2.6 --version
   - uname -a
   - free -m
   - df -h
