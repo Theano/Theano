@@ -215,6 +215,13 @@ by default if there is more then 1 cores and that the environment
 variable OMP_NUM_THREADS isn't 1. This allow Theano to respect the
 current convention.
 
+.. note:
+
+   The OpenMP parameter of an Op should not be used in its __eq__ and
+   __hash__ methods. Those methods are used to merge equivalent
+   computation in a Theano graph. If we have 2 Apply nodes with the
+   same inputs and they execute 2 ConvOp that only differ on the
+   OpenMP parameter, we want them to be merged.
 
 .. _numba_ops:
 
