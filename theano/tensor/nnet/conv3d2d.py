@@ -266,7 +266,7 @@ def make_gpu_optimizer(op, to_gpu):
     :param to_gpu: a list of op inputs that are moved to the GPU.
 
     """
-    @theano.gof.local_optimizer([])
+    @theano.gof.local_optimizer([op, cuda.gpu_from_host])
     def local_to_gpu(node):
         """
         op(host_from_gpu()) -> host_from_gpu(op)
@@ -302,7 +302,7 @@ if cuda.cuda_available:
     make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
 
 
-@theano.gof.local_optimizer([None])
+@theano.gof.local_optimizer([DiagonalSubtensor, IncDiagonalSubtensor])
 def local_inplace_DiagonalSubtensor(node):
     """ also work for IncDiagonalSubtensor """
     if (isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor)) and

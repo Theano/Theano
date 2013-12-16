@@ -736,6 +736,14 @@ class LocalOptimizer(object):
             _optimizer_idx[0] += 1
         return self._optimizer_idx
 
+    def tracks(self):
+        """
+        Return the list of op classes that this opt applies to.
+
+        Return None to apply to all nodes.
+        """
+        return None
+
     def transform(self, node):
         """Transform a subgraph whose output is `node`.
 
@@ -772,8 +780,6 @@ class LocalOptimizer(object):
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
     def __init__(self, fn, tracks=None):
-        if tracks is None:
-            tracks = []
         self.transform = fn
         self._tracks = tracks
 
@@ -791,9 +797,15 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
                 id(self))
 
 
-def local_optimizer(*tracks):
+def local_optimizer(tracks):
     def decorator(f):
         """WRITEME"""
+        if tracks is not None:
+            if len(tracks) is 0:
+                raise ValueError, ("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
+            for t in tracks:
+                if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
+                    raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
         rval = FromFunctionLocalOptimizer(f, tracks)
         rval.__name__ = f.__name__
         return rval
@@ -870,7 +882,7 @@ class OpSub(LocalOptimizer):
         return self.op1
 
     def tracks(self):
-        return [[self.op1]]
+        return [self.op1]
 
     def transform(self, node):
         if node.op != self.op1:
@@ -901,7 +913,7 @@ class OpRemove(LocalOptimizer):
         return self.op
 
     def tracks(self):
-        return [[self.op]]
+        return [self.op]
 
     def transform(self, node):
         if node.op != self.op:
@@ -1008,17 +1020,7 @@ class PatternSub(LocalOptimizer):
         return self.op
 
     def tracks(self):
-        def helper(pattern, sofar):
-            if isinstance(pattern, (list, tuple)):
-                sofar = sofar + (pattern[0],)
-                return reduce(tuple.__add__,
-                              tuple(helper(p, sofar) for p in pattern[1:]),
-                              ())
-            elif isinstance(pattern, dict):
-                return helper(pattern['pattern'], sofar)
-            else:
-                return (sofar,)
-        return set(helper(self.in_pattern, ()))
+        return [self.op]
 
     def transform(self, node):
         """
@@ -1500,12 +1502,17 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             None,
             ignore_newtrees=True,
             failure_callback=failure_callback)
-        self.local_optimizers = []
+        self.local_optimizers_map = dict()
+        self.local_optimizers_all = []
         self.global_optimizers = []
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
-                self.local_optimizers.append(opt)
+                if opt.tracks() is None:
+                    self.local_optimizers_all.append(opt)
+                else:
+                    for c in opt.tracks():
+                        self.local_optimizers_map.setdefault(c, []).append(opt)
             else:
                 self.global_optimizers.append(opt)
         self.max_depth = max_depth
@@ -1513,10 +1520,21 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
 
+    def get_local_optimizers(self):
+        for opt in self.local_optimizers_all:
+            yield opt
+        # if repeat is not a problem we can drop the set
+        s = set()
+        for lopt in self.local_optimizers_map.values():
+            for opt in lopt:
+                if opt not in s:
+                    yield opt
+                    s.add(opt)
+
     def add_requirements(self, fgraph):
         super(EquilibriumOptimizer, self).add_requirements(fgraph)
         fgraph.attach_feature(ChangeTracker())
-        for opt in self.local_optimizers:
+        for opt in self.get_local_optimizers():
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
             opt.add_requirements(fgraph)
@@ -1542,7 +1560,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         time_opts = {}
         io_toposort_timing = []
         nb_nodes = []
-        for opt in self.global_optimizers + self.local_optimizers:
+        for opt in self.global_optimizers + list(self.get_local_optimizers()):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
 
@@ -1595,7 +1613,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     node = q.pop()
                     current_node = node
 
-                    for lopt in self.local_optimizers:
+                    for lopt in (self.local_optimizers_all +
+                                 self.local_optimizers_map.get(type(node.op), []) +
+                                 self.local_optimizers_map.get(node.op, [])):
                         t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
@@ -1634,7 +1654,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print >> stream, "%s%s %s id=%i" % (
                 (' ' * level), self.__class__.__name__, name, id(self))
         if depth != 0:
-            for lopt in self.local_optimizers:
+            for lopt in self.get_local_optimizers():
                 lopt.print_summary(stream, level=(level + 2),
                                    depth=(depth - 1))
 
@@ -1654,7 +1674,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 start_nb_nodes, end_nb_nodes, max_nb_nodes)
         print >> stream, blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing)
-        s = sum([time_opts[o] for o in opt.local_optimizers])
+        s = sum([time_opts[o] for o in opt.get_local_optimizers()])
         print >> stream, blanc, "  time in local optimizers %.3fs" % s
         s = sum([time_opts[o] for o in opt.global_optimizers])
         print >> stream, blanc, "  time in global optimizers %.3fs" % s
@@ -1679,7 +1699,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         not_used = 0
         not_used_time = 0
         process_count = {}
-        for o in opt.global_optimizers + opt.local_optimizers:
+        for o in opt.global_optimizers + list(opt.get_local_optimizers()):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in count.iteritems():
@@ -1707,8 +1727,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         #(opt, loop_timing, loop_process_count, max_nb_nodes,
         # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
 
-        local_optimizers = set(prof1[0].local_optimizers).union(
-            prof2[0].local_optimizers)
+        local_optimizers = set(prof1[0].get_local_optimizers()).union(
+            prof2[0].get_local_optimizers())
         global_optimizers = set(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
         new_opt = EquilibriumOptimizer(

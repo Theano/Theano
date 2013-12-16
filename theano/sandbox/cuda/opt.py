@@ -121,7 +121,7 @@ gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
                     'merge')  # TODO: how to make it mandatory for gpu_seqopt?
 
 
-@local_optimizer([])
+@local_optimizer([gpu_from_host, host_from_gpu])
 def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
         return [node.inputs[0].owner.inputs[0]]
@@ -170,7 +170,7 @@ def dtype_in_elemwise_supported(op):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.Elemwise])
 def local_gpu_elemwise_0(node):
     """elemwise(..., host_from_gpu, ...)
        -> host_from_gpu(elemwise(gpu_from_host, ..., gpu_from_host)
@@ -229,7 +229,7 @@ def local_gpu_elemwise_0(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host])
 def local_gpu_elemwise_1(node):
     """
     gpu_from_host(Elemwise)) -> GpuElemwise(gpu_from_host(...))
@@ -265,7 +265,7 @@ def local_gpu_elemwise_1(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.DimShuffle, gpu_from_host])
 def local_gpu_dimshuffle_0(node):
     """
     dimshuffle(host_from_gpu()) -> host_from_gpu(gpu_dimshuffle)
@@ -290,7 +290,7 @@ def local_gpu_dimshuffle_0(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.SpecifyShape, gpu_from_host])
 def local_gpu_specifyShape_0(node):
     """
     specify_shape(host_from_gpu()) -> host_from_gpu(specify_shape)
@@ -313,7 +313,7 @@ def local_gpu_specifyShape_0(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host]) # XXX: broken: tensor.basic.dot is not an op
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
@@ -376,7 +376,7 @@ def local_gpu_dot_to_dot22(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([theano.ifelse.IfElse, gpu_from_host])
 def local_gpu_lazy_ifelse(node):
     """
     gpu_from_host(ifelse) -> gpu_ifelse(gpu_from_host)
@@ -434,7 +434,7 @@ def local_gpu_lazy_ifelse(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.blas._dot22])
 def local_gpu_dot22(node):
     """
     gpu_from_host(dot22) -> gpudot(gpu_from_host)
@@ -456,7 +456,7 @@ def local_gpu_dot22(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.blas._dot22scalar])
 def local_gpu_dot22scalar(node):
     """
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
@@ -482,7 +482,7 @@ def local_gpu_dot22scalar(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.blas_c.CGemv, tensor.blas.Gemv])
 def local_gpu_gemv(node):
     """
     gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
@@ -523,7 +523,8 @@ def local_gpu_gemv(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.blas_c.CGer, tensor.blas.Ger,
+                  tensor.blas_scipy.ScipyGer])
 def local_gpu_ger(node):
     """
     gpu_from_host(ger) -> gpu_ger(gpu_from_host)
@@ -566,7 +567,7 @@ def local_gpu_ger(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.blas.gemm_no_inplace, gpu_from_host])
 def local_gpu_gemm(node):
     """
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
@@ -601,7 +602,13 @@ def local_gpu_gemm(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.elemwise.CAReduce,
+                  tensor.elemwise.All,
+                  tensor.elemwise.Any,
+                  tensor.elemwise.CAReduceDtype,
+                  tensor.elemwise.Sum,
+                  tensor.elemwise.Prod,
+                  tensor.elemwise.ProdWithoutZeros])
 def local_gpu_careduce(node):
     if isinstance(node.op, tensor.elemwise.CAReduce):
         scalar_op = node.op.scalar_op
@@ -671,7 +678,7 @@ def local_gpu_careduce(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.Reshape])
 def local_gpu_reshape(node):
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -705,7 +712,7 @@ def local_gpu_reshape(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.Flatten])
 def local_gpu_flatten(node):
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -724,7 +731,7 @@ def local_gpu_flatten(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.Subtensor])
 def local_gpu_subtensor(node):
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -745,7 +752,7 @@ def local_gpu_subtensor(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.AdvancedSubtensor1])
 def local_gpu_advanced_subtensor1(node):
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -764,7 +771,7 @@ def local_gpu_advanced_subtensor1(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.AdvancedIncSubtensor1])
 def local_gpu_advanced_incsubtensor1(node):
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
@@ -838,7 +845,7 @@ def local_gpu_advanced_incsubtensor1(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.IncSubtensor])
 def local_gpu_incsubtensor(node):
     if node.op == gpu_from_host:
         host_output = node.inputs[0]
@@ -885,7 +892,7 @@ def local_gpu_incsubtensor(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.Shape])
 def local_gpu_shape(node):
     if isinstance(node.op, tensor.Shape):
         x, = node.inputs
@@ -896,7 +903,7 @@ def local_gpu_shape(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.Rebroadcast])
 def local_gpu_rebroadcast(node):
     '''rebroadcast(host_from_gpu(x)) -> host_from_gpu(rebroadcast(x))'''
     if isinstance(node.op, tensor.Rebroadcast):
@@ -911,7 +918,7 @@ def gpu_print_wrapper(op, cnda):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.printing.Print])
 def local_gpu_print_op(node):
     if isinstance(node.op, tensor.printing.Print):
         x, = node.inputs
@@ -932,7 +939,7 @@ import theano.tensor.nnet
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
 def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
     if isinstance(node.op, tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias):
         x, b, y = node.inputs
@@ -962,7 +969,7 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
     if isinstance(node.op, tensor.nnet.CrossentropySoftmax1HotWithBiasDx):
         dnll, sm, yidx = node.inputs
@@ -977,7 +984,7 @@ def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.nnet.Softmax])
 def local_gpu_softmax(node):
     if isinstance(node.op, tensor.nnet.Softmax):
         x, = node.inputs
@@ -989,7 +996,7 @@ def local_gpu_softmax(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.nnet.SoftmaxWithBias])
 def local_gpu_softmax_with_bias(node):
     if isinstance(node.op, tensor.nnet.SoftmaxWithBias):
         x, b = node.inputs
@@ -1005,7 +1012,7 @@ from theano.tensor.nnet import conv
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, conv.ConvOp])
 def local_gpu_conv(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
@@ -1105,7 +1112,7 @@ import theano.tensor.signal.downsample as downsample
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([downsample.DownsampleFactorMax])
 def local_gpu_downsample_factor_max(node):
     if isinstance(node.op, downsample.DownsampleFactorMax):
         x, = node.inputs
@@ -1115,7 +1122,7 @@ def local_gpu_downsample_factor_max(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([downsample.DownsampleFactorMaxGrad])
 def local_gpu_downsample_factor_max_grad(node):
     if isinstance(node.op, downsample.DownsampleFactorMaxGrad):
         x, z, gz = node.inputs
@@ -1127,11 +1134,11 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(gz)))]
 
 
-from theano.sandbox.cuda.basic_ops import gpu_join
+from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([tensor.Join])
 def local_gpu_join(node):
     """
     Inspired by the opt for convop.
@@ -1188,6 +1195,14 @@ def local_gpu_join(node):
 
             return [replacement_node]
 
+# This is a copy of the same opt in tensor to make the tests happy,
+# but I'm not convinced it is actually needed.
+@register_opt()
+@local_optimizer([GpuJoin])
+def local_gpujoin_1(node):
+    tensors = node.inputs[1:]
+    if len(tensors) == 1:
+        return [tensors[0]]
 
 # Commented out because it can result in
 #   shared =  dimshuffle(gemm_inplace(dimshuffle(shared)))
@@ -1205,7 +1220,7 @@ def local_inplace_gemv(node):
         return [gpu_gemv_inplace(*node.inputs)]
 
 
-@local_optimizer([gpu_gemm_no_inplace])
+@local_optimizer([gpu_ger_no_inplace])
 def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]
@@ -1336,7 +1351,7 @@ optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
 
 
 @register_opt()
-@local_optimizer([tensor.Alloc])
+@local_optimizer([tensor.alloc])
 def local_gpualloc(node):
     replace = False
     if node.op == tensor.alloc:
@@ -1383,7 +1398,7 @@ def local_gpualloc(node):
 
 
 @register_opt()
-@local_optimizer([tensor.Alloc])
+@local_optimizer([GpuAlloc])
 def local_gpualloc_memset_0(node):
     if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
         inp = node.inputs[0]
@@ -1395,7 +1410,7 @@ def local_gpualloc_memset_0(node):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([gpu_from_host, tensor.Eye])
 def local_gpu_eye(node):
     """
     gpu_from_host(eye) -> gpueye(gpu_from_host)
@@ -1479,7 +1494,7 @@ def tensor_to_cuda(x):
 
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer(None) # XXX: linalg is in sandbox, so don't import it globally
 def local_gpu_extract_diagonal(node):
     """
     extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
@@ -1505,7 +1520,7 @@ def local_gpu_extract_diagonal(node):
 
 
 @register_opt('scan')
-@local_optimizer([])
+@local_optimizer([gpu_from_host, scan_op.Scan])
 def gpuScanOptimization(node):
     """
     scan(host_from_gpu) -> host_from_gpu(GPUscan)

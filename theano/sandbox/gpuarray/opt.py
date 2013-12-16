@@ -112,7 +112,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-@local_optimizer([])
+@local_optimizer([gpu_from_host, host_from_gpu])
 def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
         return [node.inputs[0].owner.inputs[0]]

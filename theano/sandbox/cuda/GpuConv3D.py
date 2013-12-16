@@ -284,7 +284,7 @@ conv_rows_stack( float* img, float* kern, float* bias, float* out,
 gpu_convd = GpuConv3D()
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([Conv3D])
 def local_gpu_conv3d(node):
     if isinstance(node.op, Conv3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):

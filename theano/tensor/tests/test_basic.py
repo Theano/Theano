@@ -3361,10 +3361,8 @@ class T_Join_and_Split(unittest.TestCase):
         utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
-        """
-        Test that all broadcastable flags are preserved by a
-        single-input join.
-        """
+        # Test that all broadcastable flags are preserved by a
+        # single-input join.
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         a = self.shared(a_val, broadcastable=(True, False, True))
@@ -3387,10 +3385,8 @@ class T_Join_and_Split(unittest.TestCase):
         #self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
-        """
-        Test that the right broadcastable flags get set for a join
-        with many inputs and many input dimensions.
-        """
+        # Test that the right broadcastable flags get set for a join
+        # with many inputs and many input dimensions.
         a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 0])()
         b = TensorType(dtype=self.floatX, broadcastable=[1, 1, 1, 0, 0, 0])()
         c = TensorType(dtype=self.floatX, broadcastable=[1, 0, 0, 0, 0, 0])()
@@ -3479,20 +3475,16 @@ class T_Join_and_Split(unittest.TestCase):
             f(get_mat(3, 4), get_mat(3, 4), get_mat(2, 5))
 
     def test_rebroadcast(self):
-        """
-        Regression test for a crash that used to happen when rebroadcasting.
-        """
+        # Regression test for a crash that used to happen when rebroadcasting.
         x = tensor.TensorType(self.floatX, [False, False, True])()
         u = tensor.TensorType(self.floatX, [False, False, True])()
         # This line used to crash.
         z = tensor.concatenate([x, -u], axis=2)
 
     def test_concatenate_same(self):
-        """
-        Test that we can concatenate the same tensor multiple time.
+        # Test that we can concatenate the same tensor multiple time.
 
-        In the past it was broken on the GPU.
-        """
+        # In the past it was broken on the GPU.
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         T_shared = self.shared(rng.rand(3, 4).astype(self.floatX))
         Tout = tensor.concatenate([T_shared, T_shared])

@@ -589,7 +589,7 @@ opt.local_mul_canonizer.add_simplifier(softmax_simplifier,
 
 if 0:
     @opt.register_specialize
-    @gof.local_optimizer([])
+    @gof.local_optimizer([tensor.add])
     def local_softmax_grad(node):
         '''dy*sm - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm -> softmax_grad(dy,sm)'''
         #TODO what if the signs are changed?
@@ -1417,7 +1417,7 @@ def _is_const(z, val, approx=False):
 
 
 @opt.register_specialize
-@gof.local_optimizer([])
+@gof.local_optimizer([subtensor.AdvancedSubtensor, tensor.log])
 def local_advanced_indexing_crossentropy_onehot(node):
     log = None
     sm = None

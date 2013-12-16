@@ -72,7 +72,7 @@ def hints(variable):
 
 
 @register_canonicalize
-@local_optimizer([])
+@local_optimizer([Hint])
 def remove_hint_nodes(node):
     if is_hint_node(node):
         # transfer hints from graph to Feature
@@ -224,7 +224,7 @@ def is_positive(v):
 
 
 @register_stabilize
-@local_optimizer([])
+@local_optimizer([Dot, Dot22])
 def inv_as_solve(node):
     if not imported_scipy:
         return False
@@ -242,7 +242,7 @@ def inv_as_solve(node):
 @register_canonicalize
 @register_stabilize
 @register_specialize
-@local_optimizer([])
+@local_optimizer([DimShuffle])
 def no_transpose_symmetric(node):
     if isinstance(node.op, DimShuffle):
         x = node.inputs[0]
@@ -253,7 +253,7 @@ def no_transpose_symmetric(node):
 
 
 @register_stabilize
-@local_optimizer([])
+@local_optimizer(None) # XXX: solve is defined later and can't be used here
 def psd_solve_with_chol(node):
     if node.op == solve:
         A, b = node.inputs  # result is solution Ax=b
@@ -269,7 +269,7 @@ def psd_solve_with_chol(node):
 
 @register_stabilize
 @register_specialize
-@local_optimizer([])
+@local_optimizer(None) # XXX: det is defined later and can't be used here
 def local_det_chol(node):
     """
     If we have det(X) and there is already an L=cholesky(X)
@@ -287,7 +287,7 @@ def local_det_chol(node):
 @register_canonicalize
 @register_stabilize
 @register_specialize
-@local_optimizer([])
+@local_optimizer([tensor.log])
 def local_log_prod_sqr(node):
     if node.op == tensor.log:
         x, = node.inputs
@@ -307,7 +307,7 @@ def local_log_prod_sqr(node):
 @register_canonicalize
 @register_stabilize
 @register_specialize
-@local_optimizer([])
+@local_optimizer([tensor.log])
 def local_log_pow(node):
     if node.op == tensor.log:
         x, = node.inputs

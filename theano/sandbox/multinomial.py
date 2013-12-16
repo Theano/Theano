@@ -337,7 +337,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         """ % locals()
 
 
-@local_optimizer()
+@local_optimizer([MultinomialFromUniform])
 def local_gpu_multinomial(node):
     if type(node.op) is MultinomialFromUniform:
         p, u = node.inputs
