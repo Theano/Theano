@@ -3,8 +3,9 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 
+import theano
 from theano.gof.link import PerformLinker
-from theano.gof.cc import *
+from theano.gof.cc import CLinker, DualLinker, OpWiseCLinker
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
@@ -227,6 +228,18 @@ def test_clinker_dups():
     # note: for now the behavior of fn(2.0, 7.0) is undefined
 
 
+def test_clinker_not_used_inputs():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+    # Testing that duplicate inputs are allowed.
+    x, y, z = inputs()
+    e = add(x, y)
+    lnk = CLinker().accept(Env([x, y, z], [e]))
+    fn = lnk.make_function()
+    assert fn(2.0, 1.5, 1.0) == 3.5
+    # note: for now the behavior of fn(2.0, 7.0) is undefined
+
+
 def test_clinker_dups_inner():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -252,6 +265,7 @@ def test_opwiseclinker_straightforward():
     else:
         # The python version of bad_sub always return -10.
         assert fn(2.0, 2.0, 2.0) == -6
+
 
 def test_opwiseclinker_constant():
     x, y, z = inputs()
