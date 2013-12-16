@@ -1699,7 +1699,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         not_used = 0
         not_used_time = 0
         process_count = {}
-        for o in opt.global_optimizers + opt.get_local_optimizers():
+        for o in opt.global_optimizers + list(opt.get_local_optimizers()):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in count.iteritems():
