@@ -1119,12 +1119,15 @@ class Elemwise(OpenMPOp):
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
 
+                    if self.openmp:
+                        contig+="""#pragma parallel for"""
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
                     }
                     """ % locals()
+
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
@@ -1140,6 +1143,7 @@ class Elemwise(OpenMPOp):
                 %(loop)s
             }
             """ % locals()
+        
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):

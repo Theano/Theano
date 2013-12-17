@@ -171,7 +171,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
     """ % dict(locals(), **sub)
 
 
-def make_loop(loop_orders, dtypes, loop_tasks, sub):
+def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
     """
     Make a nested loop over several arrays and associate specific code
     to each level of nesting.
@@ -206,13 +206,15 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub):
             update += "%(var)s_iter += %(var)s_jump%(index)s_%(i)s;\n" % locals()
             if index != 'x':
                 suitable_n = "%(var)s_n%(index)s" % locals()
-        return """
+        s="""
         %(preloop)s
         for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
             %(code)s
             %(update)s
         }
         """ % locals()
+        
+        return s
 
     preloops = {}
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
@@ -229,14 +231,15 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub):
         s = preloops.get(0, "")
     else:
         s = ""
-        for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+    
+    for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
     return "{%s}" % s
 
 
-def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub):
+def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,openmp=None):
     '''A bit like make_loop, but when only the inner-most loop executes code.
 
     All the loops will be reordered so that the loops over the output tensor
