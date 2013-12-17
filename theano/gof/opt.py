@@ -289,9 +289,9 @@ class SeqOptimizer(Optimizer, list):
                          prof2[1][idx2])
             new_l.append(l)
             if hasattr(l, 'merge_profile'):
-                assert len(prof1[5][idx1]) == len(prof2[5][idx1])
-                new_sub_profile.append(l.merge_profile(prof1[5][idx1],
-                                                       prof2[5][idx2]))
+                assert len(prof1[6][idx1]) == len(prof2[6][idx2])
+                new_sub_profile.append(l.merge_profile(prof1[6][idx1],
+                                                       prof2[6][idx2]))
             else:
                 new_sub_profile.append(None)
 
@@ -315,10 +315,10 @@ class SeqOptimizer(Optimizer, list):
                         p = prof2
                     new_t[idx] += p[1][p[0].index(l)]
                     if hasattr(l, 'merge_profile'):
-                        assert len(p[5][p[0].index(l)]) == \
+                        assert len(p[6][p[0].index(l)]) == \
                                 len(new_sub_profile[idx])
                         new_sub_profile[idx] = l.merge_profile(
-                            new_sub_profile[idx], p[5][p[0].index(l)])
+                            new_sub_profile[idx], p[6][p[0].index(l)])
                     else:
                         new_sub_profile[idx] = None
                 continue
@@ -329,14 +329,19 @@ class SeqOptimizer(Optimizer, list):
             new_t.append(p[1][p[0].index(l)])
             idx = p[0].index(l)
             new_l.append(l)
-            new_sub_profile.append(p[5][idx])
+            new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
-        assert set(prof1[0]).issubset(set(new_l))
-#        assert set(prof2[0]).issubset(set(new_l))
+        #We need to assert based on the name as we merge also based on
+        #the name.
+        assert set([l.name for l in prof1[0]]).issubset(
+            set([l.name for l in new_l]))
+        assert set([l.name for l in prof2[0]]).issubset(
+            set([l.name for l in new_l]))
         assert len(new_t) == len(new_opt) == len(new_sub_profile)
         return (new_opt, new_t, prof1[2] + prof2[2],
-                -1, -1, new_sub_profile)
+                prof1[3] + prof2[3],
+                -1, -1, new_sub_profile, [])
 
 
 class _metadict:
@@ -1746,7 +1751,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
-        loop_process_count = prof1[2].copy()
+        loop_process_count = list(prof1[2])
         for i in range(len(loop_process_count)):
             process_count = loop_process_count[i]
             for process, count in prof2[2][i].iteritems():
@@ -1755,7 +1760,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 else:
                     process_count[process] = count
         for i in range(len(loop_process_count), len(prof2[2])):
-            loop_process_count.append(prof2[2].copy())
+            loop_process_count.append(list(prof2[2]))
 
         max_nb_nodes = max(prof1[3], prof2[3])
 
