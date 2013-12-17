@@ -378,7 +378,7 @@ class _tensor_py_operators:
                         theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(arg, axis)
             else:
-                return theano.tensor.subtensor.AdvancedSubtensor()(self, *args)
+                return theano.tensor.subtensor.advanced_subtensor(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a

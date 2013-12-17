@@ -15,7 +15,7 @@ from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
 from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
-from theano.tensor.basic import (addbroadcast, clip,
+from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
                                  ARange, TensorType)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, make_slice
@@ -86,7 +86,7 @@ def get_canonical_form_slice(theslice, length):
 
         def analyze(x):
             try:
-                x_constant = theano.tensor.get_scalar_constant_value(x)
+                x_constant = get_scalar_constant_value(x)
                 is_constant = True
             except theano.tensor.NotScalarConstantError:
                 x_constant = theano.tensor.extract_constant(x)
@@ -100,6 +100,7 @@ def get_canonical_form_slice(theslice, length):
 
         if step is None:
             step = 1
+            is_step_constant = True
 
         # First handle the easier and common case where `step` is 1 and
         # either `start` or `stop` is a range boundary. More specializations
@@ -390,12 +391,6 @@ class Subtensor(Op):
             exception.subtensor_invalid = True
             raise exception
 
-        # infer the broadcasting pattern
-        padded = (idx_list
-                + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
-        broadcastable = [bc for p, bc in izip(padded, x.type.broadcastable)
-                if isinstance(p, slice)]
-
         input_types = Subtensor.collapse(idx_list,
                 lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
@@ -407,6 +402,34 @@ class Subtensor(Op):
                 raise TypeError(
                     "Wrong type for Subtensor template. Expected %s, got %s."
                     % (input.type, expected_type))
+
+        # infer the broadcasting pattern
+        padded = (idx_list
+                + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
+        broadcastable = []
+        for i, (p, bc) in enumerate(izip(padded, x.type.broadcastable)):
+            if isinstance(p, slice):
+                if bc and p.start in [None, 0]:
+                    # No need to check step when there is only
+                    # one element.
+                    # We could call get_canonical_form_slice() to
+                    # catch more broadcast case. I let this to
+                    # later.
+                    if p.stop is None:
+                        broadcastable.append(bc)
+                        continue
+                    try:
+                        if p.start is None:
+                            start = 0
+                        else:
+                            start = get_scalar_constant_value(p.start)
+                        stop = get_scalar_constant_value(p.stop)
+                        if stop > start:
+                            broadcastable.append(True)
+                            continue
+                    except theano.tensor.NotScalarConstantError:
+                        pass
+                broadcastable.append(False)
 
         return gof.Apply(self,
                          (x, ) + inputs,
@@ -1824,6 +1847,7 @@ class AdvancedSubtensor(Op):
         return [advanced_inc_subtensor(theano.tensor.zeros_like(x), gz,
                                        *rest)] + \
             [DisconnectedType()()] * len(rest)
+advanced_subtensor = AdvancedSubtensor()
 
 
 class AdvancedIncSubtensor(Op):

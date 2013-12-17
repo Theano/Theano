@@ -94,6 +94,8 @@ def debugprint(obj, depth=-1, print_type=False,
     elif isinstance(obj, gof.FunctionGraph):
         results_to_print.extend(obj.outputs)
         order = obj.toposort()
+    elif isinstance(obj, (int, long, float, numpy.ndarray)):
+        print obj
     else:
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
