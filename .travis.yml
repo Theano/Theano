@@ -18,8 +18,10 @@ install:
 # 0.8 is available on PyPi but we need to compile it (15m)
 # 0.11.0 is the oldest on conda.
   - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
+  - "source ~/virtualenv/python2.7/bin/deactivate"
   - "source activate py26"
-  - "pip-2.6 install . --no-deps --use-mirrors"
+  - "which pip"
+  - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
 #  - PART="theano/scan_module/"
