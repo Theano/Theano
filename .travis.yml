@@ -12,8 +12,8 @@ before_install:
 #  - sudo apt-get install -q libopenblas-dev
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
-  - "pip install conda"
-  - "conda init"
+  - "sudo pip install conda"
+  - "sudo conda init"
 # We support scipy 0.7.2, but it is not available on pypi anymore.
 # 0.8 is available on PyPi but we need to compile it (15m)
 # 0.11.0 is the oldest on conda.
