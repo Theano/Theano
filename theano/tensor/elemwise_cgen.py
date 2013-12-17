@@ -213,7 +213,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
             %(update)s
         }
         """ % locals()
-        print s
+        
         return s
 
     preloops = {}
