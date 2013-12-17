@@ -1,14 +1,14 @@
 # After changing this file, check it on:
 # http://lint.travis-ci.org/
 
-language: python
-python:
+language: c
+#python:
 #  - "2.6"
-  - "2.7" #This is the version needed for conda. We will use py26 for Theano.
+#  - "2.7" #This is the version needed for conda. We will use py26 for Theano.
 #  - "3.2"
 # command to install dependencies
 before_install:
-  - sudo apt-get install -q libatlas3gf-base libatlas-dev liblapack-dev gfortran
+  - sudo apt-get install -q libatlas3gf-base libatlas-dev liblapack-dev gfortran python-pip
 #  - sudo apt-get install -q libopenblas-dev
 install:
 # If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
