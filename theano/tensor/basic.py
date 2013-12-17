@@ -3362,7 +3362,7 @@ class Rebroadcast(Op):
             #TODO: if your type is not listed here, make a damn registry of
             #      shape_i ops for various types of variables.
             #      Do not continue this madness.
-            return super(Rebroadcast, self).c_code(node, nodename, (x,), (out,), sub)
+            return super(Rebroadcast, self).c_code(node, nodename, inp, out, sub)
 
     def c_code_cache_version(self):
         return (1,)
