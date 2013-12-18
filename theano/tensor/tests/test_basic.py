@@ -5960,15 +5960,15 @@ class T_get_scalar_constant_value(unittest.TestCase):
         # elemwise are in the fct.
         c = theano.tensor.constant(numpy.random.rand())
         s = c + 1
-        assert get_scalar_constant_value(s) == c.data + 1
+        assert numpy.allclose(get_scalar_constant_value(s), c.data + 1)
         s = c - 1
-        assert get_scalar_constant_value(s) == c.data - 1
+        assert numpy.allclose(get_scalar_constant_value(s), c.data - 1)
         s = c * 1.2
-        assert get_scalar_constant_value(s) == c.data * 1.2
+        assert numpy.allclose(get_scalar_constant_value(s), c.data * 1.2)
         s = c < 0.5
-        assert get_scalar_constant_value(s) == int(c.data < 0.5)
+        assert numpy.allclose(get_scalar_constant_value(s), int(c.data < 0.5))
         s = tensor.second(c, .4)
-        assert get_scalar_constant_value(s) == .4
+        assert numpy.allclose(get_scalar_constant_value(s), .4)
 
     def test_second(self):
         #Second should apply when the value is constant but not the shape
