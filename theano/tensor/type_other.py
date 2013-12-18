@@ -66,4 +66,7 @@ class NoneTypeT(Type):
     def __str__(self):
         return "None"
 
+# This is a variable instance. It can be used only once per fgraph.
+# So use NoneConst.clone() before using it in a Theano graph.
+# Use NoneConst.equal(x) to check if two variable are NoneConst.
 NoneConst = Constant(NoneTypeT(), None, name='None')

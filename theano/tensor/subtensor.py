@@ -1704,7 +1704,7 @@ advanced_inc_subtensor1 = AdvancedIncSubtensor1()
 
 def as_index_variable(idx):
     if idx is None:
-        return NoneConst
+        return NoneConst.clone()
     if isinstance(idx, slice):
         return make_slice(idx)
     idx = theano.tensor.as_tensor_variable(idx)
