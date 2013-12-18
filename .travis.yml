@@ -17,11 +17,11 @@ install:
 # We support scipy 0.7.2, but it is not available on pypi anymore.
 # 0.8 is available on PyPi but we need to compile it (15m)
 # 0.11.0 is the oldest on conda.
-  - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
+  - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0 nose"
 #  - "source ~/virtualenv/python2.7/bin/deactivate"
 #  - "source activate py26"
   - "which pip"
-  - "/home/travis/envs/py26/bin/pip install . --no-deps --use-mirrors"
+  - "/home/travis/envs/py26/bin/python setup.py install"
 # command to run tests
 env:
 #  - PART="theano/scan_module/"
