@@ -20,11 +20,11 @@ install:
   - "pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
-  - PART="theano/tensor/nnet/ theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/tests/ theano/compat theano/scan_module/"
+  - PART="theano/scan_module/"
 # This part is select such that all scipy code is there.
 # We install scipy only for this part to make the test time faster.
-  - PART="theano/sandbox theano/sparse theano/scalar/"
-  - PART="theano/tensor/tests/test_basic.py"
+  - PART="theano/sandbox theano/sparse theano/scalar/ theano/tensor/nnet/"
+  - PART="theano/tensor/tests/test_basic.py theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/tests/ theano/compat"
   - PART="-e test_basic.py theano/tensor/tests"
 script:
   - "if [ `expr \"$PART\" : '.*sparse'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
