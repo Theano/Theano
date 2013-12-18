@@ -3298,6 +3298,7 @@ def local_cut_useless_reduce(node):
 # see gh-790 issue.
 #
 #@register_canonicalize
+@register_uncanonicalize
 @register_specialize
 @gof.local_optimizer(ALL_REDUCE)
 def local_reduce_broadcastable(node):
