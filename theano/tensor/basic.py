@@ -1404,7 +1404,7 @@ class MaxAndArgmax(Op):
         else:
             all_axes = range(x.ndim)
         if axis is None:
-            axis = NoneConst
+            axis = NoneConst.clone()
         else:
             axis = _as_tensor_variable(axis)
             assert axis.ndim == 0
@@ -1428,7 +1428,7 @@ class MaxAndArgmax(Op):
         x, axis = inp
         max, argmax = out
         fail = sub["fail"]
-        assert node.inputs[1] is theano.tensor.type_other.NoneConst or node.inputs[1].ndim == 0
+        assert NoneConst.equals(node.inputs[1]) or node.inputs[1].ndim == 0
         ret = """
         int axis;
         if((PyObject*)%(axis)s == Py_None){
@@ -1532,7 +1532,7 @@ class MaxAndArgmax(Op):
         # the gradient on its inputs is zero
         if g_max_disconnected:
             return [x.zeros_like(), axis_grad]
-        if axis is NoneConst:
+        if NoneConst.equals(axis):
             axis_ = range(x.ndim)
         else:
             axis_ = axis
@@ -1541,7 +1541,7 @@ class MaxAndArgmax(Op):
         # Raise the g_max and xmax to the same number of dim as the input.
         pattern = []
         out_dim = 0
-        if axis is NoneConst:
+        if NoneConst.equals(axis):
             # We are taking the max/argmax over all dimensions.
             axis = None
         for i in range(x.ndim):
