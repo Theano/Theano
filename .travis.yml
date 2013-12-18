@@ -19,9 +19,9 @@ install:
 # 0.11.0 is the oldest on conda.
   - "conda create --yes -n py26 python=2.6 numpy=1.5.1 scipy=0.11.0"
 #  - "source ~/virtualenv/python2.7/bin/deactivate"
-  - "source activate py26"
+#  - "source activate py26"
   - "which pip"
-  - "/home/travis/virtualenv/python2.7/envs/py26/bin/pip install . --no-deps --use-mirrors"
+  - "/home/travis/envs/py26/bin/pip install . --no-deps --use-mirrors"
 # command to run tests
 env:
 #  - PART="theano/scan_module/"
@@ -32,7 +32,7 @@ env:
 #  - PART="-e test_basic.py theano/tensor/tests"
 
 script:
-  - source activate py26
+#  - source activate py26
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
 #  - python2.6 --version
   - uname -a
@@ -40,7 +40,7 @@ script:
   - df -h
   - ulimit -a
   - echo $PART
-  - /home/travis/virtualenv/python2.7/envs/py26/bin/theano-nose -v $PART
+  - /home/travis/envs/py26/bin/theano-nose -v $PART
 
 
 #after_script:
