@@ -50,6 +50,7 @@ class ScipyGer(Ger):
             else:
                 A = local_ger(calpha[0], cx[0], cy[0], a=A,
                         overwrite_a=int(self.destructive))
+            compute_map[node.outputs[0]][0] = True
             cZ[0] = A
 
         #TODO: If this is currently an unofficial part of the thunk API,
