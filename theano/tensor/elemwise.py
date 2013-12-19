@@ -919,10 +919,12 @@ class Elemwise(OpenMPOp):
 
         inames = gof.utils.uniq(inames)
         inputs = gof.utils.uniq(node.inputs)
+
         # assert that inames and inputs order stay consistent.
         # This is to protect again futur change of uniq.
         assert len(inames) == len(inputs)
         ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
+        
         assert all([x == y for x,y in zip(ii, inames)])
         assert all([x == y for x,y in zip(iii, inputs)])
 
@@ -942,6 +944,8 @@ class Elemwise(OpenMPOp):
         # (output, name, name of the c type), transposed
         real = zip(*[(r, s, r.type.dtype_specs()[1])
                      for r, s in izip(node.outputs, onames) if r not in dmap])
+
+        
         if real:
             real_outputs, real_onames, real_odtypes = real
         else:
@@ -967,14 +971,17 @@ class Elemwise(OpenMPOp):
         # dimensionality)
         nnested = len(orders[0])
         sub = dict(sub)
+    
         for i, (input, iname) in enumerate(izip(inputs, inames)):
             # the c generators will substitute the input names for
             # references to loop variables lv0, lv1, ...
             sub['lv%i' % i] = iname
+    
 
         decl = cgen.make_declare(orders, idtypes, sub)
+        
         checks = cgen.make_checks(orders, idtypes, sub)
-
+    
         # Check if all inputs (except broadcasted scalar) are fortran.
         # In that case, create an fortran output ndarray.
         z = zip(inames, inputs)
@@ -985,7 +992,7 @@ class Elemwise(OpenMPOp):
         # NumPy C and F contig not always set as both of them.
         if len(alloc_fortran) == 0:
             alloc_fortran = '0'
-
+        
         alloc = ""
         # We loop over the "real" outputs, i.e., those that are not
         # inplace (must be allocated) and we declare/allocate/check
@@ -1001,6 +1008,7 @@ class Elemwise(OpenMPOp):
                                      fortran=alloc_fortran)
             alloc += cgen.make_checks([range(nnested)], [odtype],
                                       dict(sub, lv0=oname))
+    
         olv_index = i  # index of the last output
 
         # We loop over the "aliased" outputs, i.e., those that are
@@ -1035,7 +1043,7 @@ class Elemwise(OpenMPOp):
             "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
                 for name, dtype in izip(inames + list(real_onames),
                                        idtypes + list(real_odtypes))])
-
+    
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
@@ -1047,6 +1055,7 @@ class Elemwise(OpenMPOp):
                 ["%s_i" % s for s in _inames],
                 ["%s_i" % s for s in onames],
                 sub)
+
         code = """
         {
             %(defines)s
@@ -1055,6 +1064,9 @@ class Elemwise(OpenMPOp):
             %(undefs)s
         }
         """ % locals()
+        
+        print code
+        
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1166,6 +1178,7 @@ class Elemwise(OpenMPOp):
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+        
         if all(version):
             return tuple(version)
         else:

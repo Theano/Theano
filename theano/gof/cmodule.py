@@ -63,6 +63,8 @@ AddConfigVar('cmodule.compilation_warning',
 
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
+#_logger.setLevel(logging.DEBUG)
+
 
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"

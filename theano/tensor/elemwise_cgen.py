@@ -216,6 +216,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
         print s
         return s
 
+
     preloops = {}
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
         for j, index in enumerate(loop_order):
@@ -233,9 +234,10 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
         s = ""
     
     for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
-            s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
+        s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
+    
     return "{%s}" % s
 
 
@@ -249,6 +251,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,ope
 
     The output tensor's index among the loop variables is indicated by olv_index.
     '''
+    print "use reordered loop"
 
     # Number of variables
     nvars = len(init_loop_orders)
