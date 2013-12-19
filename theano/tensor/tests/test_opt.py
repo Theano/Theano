@@ -1181,6 +1181,20 @@ class test_fusion(unittest.TestCase):
             shp = (5, 5, 5)
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
+    def test_fusion_35inputs(self):
+        # Make sure a fused graph with more than 35 inputs does not segfault
+        # or error.
+        inpts = vectors(['i%i' % i for i in range(35)])
+        # Make an elemwise graph looking like:
+        # sin(i34 + sin(i33 + sin(... i1 + sin(i0) ...)))
+        out = tensor.sin(inpts[0])
+        for idx in range(1, 35):
+            out = tensor.sin(inpts[idx] + out)
+
+        f = function(inpts, out)
+        # Test it on some dummy values
+        f(*[range(i, 4 + i) for i in range(35)])
+
     def speed_fusion(self, shared_fn=shared, gpu=False, s=None):
         """
         param type s: a slice object
