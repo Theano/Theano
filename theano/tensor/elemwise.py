@@ -1120,7 +1120,7 @@ class Elemwise(OpenMPOp):
                             """ % locals()
 
                     if self.openmp:
-                        contig+="""#pragma parallel for"""
+                        contig+="""#pragma omp parallel for"""
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
