@@ -10,7 +10,7 @@ language: c
 
 # command to install dependencies
 before_install:
-  - sudo apt-get install -q g++ python-pip libopenblas-dev
+  - sudo apt-get install -q g++ libatlas3gf-base libatlas-dev liblapack-dev python-pip
 
 install:
   - "sudo pip install conda"
