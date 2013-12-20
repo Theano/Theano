@@ -765,6 +765,13 @@ class Elemwise(Op):
         return ret
 
     def perform(self, node, inputs, output_storage):
+        if len(node.inputs) >= 32:
+            # Some versions of NumPy will segfault, other will raise a
+            # ValueError, if the number of inputs to a ufunc is 32 or more.
+            # In that case, the C version should be used, or Elemwise fusion
+            # should be disabled.
+            super(Elemwise, self).perform(node, inputs, output_storage)
+
         maxsize = max(len(input.shape) for input in inputs)
         for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
                             + zip(input.shape, sinput.type.broadcastable))
