@@ -6,35 +6,59 @@ from theano.gof import ops_with_inner_function
 
 
 class OpFromGraph(gof.Op):
-    """This create an `Op` from a list of input variables and a list of output
-    variables.
+    """This create an `Op` from inputs and outputs list of variables.
 
     The signature is similar to theano.function() and the resulting
     `Op` perform will do the same operation as::
-      orig_function(inputs, outputs, **kwargs)
 
-    Example:
-      x, y, z = tensor.scalars('xyz')
-      e = x + y * z
-      op = OpFromGraph([x, y, z], [e], linker='c')
-      # op behaves like a normal theano op
-      e2 = op(x, y, z) + op(z, y, x)
-      fn = function([x, y, z], [e2])
+        orig_function(inputs, outputs, **kwargs)
 
-
-    TODO: - examples
-          - __hash__, __eq__ otherwise won't merge
-          - c_code() to remove the double overhead?
-          - opt to unfold it, work inplace on inputs
-          - grad() make it support DisconnectedType and the new interface
-          - check how it work with updates.
-          - add test with constant as input or inside the inner graph.
-          - Add support for the GPU? Probably just need an opt to remove transfer
-          - Add support to pickle this Op.
+    TODO:
+        - examples for a multi-layer mlp. where?
+        - __hash__, __eq__ otherwise won't merge, try gof.opt.is_same_graph_with_merge(op1.new_outputs, op2, new_outputs)
+        - c_code() to remove the double overhead?
+        - opt to unfold it, work inplace on inputs
+        - grad() make it support DisconnectedType and the new interface
+        - check how it work with updates.
+        - add test with constant as input or inside the inner graph.
+        - Add support for the GPU? Probably just need an opt to remove transfer
+        - Add support to pickle this Op.
+        - Add support/test with random generator
     :note:
-        We support unused inputs. This is needed for the grad.
-        We support shared variable in the inner graph. This is automatic and
-        invisible to the user.
+        - We support shared variable in the inner graph. This is automatic and
+          invisible to the user. They can be as input to the node or in the
+          inner graph.
+        - We support unused inputs. This is needed for the grad.
+
+    Example 1:
+
+    .. code-block:: python
+
+        from theano import function, OpFromGraph, tensor
+        x, y, z = tensor.scalars('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e])
+        # op behaves like a normal theano op
+        e2 = op(x, y, z) + op(z, y, x)
+        fn = function([x, y, z], [e2])
+
+
+
+    Example 2 with shared variable:
+
+    .. code-block:: python
+
+        import numpy
+        import theano
+        from theano import config, function, OpFromGraph, tensor
+        x, y, z = tensor.scalars('xyz')
+        s = theano.shared(numpy.random.rand(2, 2).astype(config.floatX))
+        e = x + y * z + s
+        op = OpFromGraph([x, y, z], [e])
+        # op behaves like a normal theano op
+        e2 = op(x, y, z) + op(z, y, x)
+        fn = function([x, y, z], [e2])
+
     """
 
     def __init__(self, inputs, outputs, **kwargs):
