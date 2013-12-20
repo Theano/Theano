@@ -1065,7 +1065,7 @@ class Elemwise(OpenMPOp):
         }
         """ % locals()
         
-        print code
+        
         
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
@@ -1131,14 +1131,14 @@ class Elemwise(OpenMPOp):
                             """ % locals()
 
                     if self.openmp:
-                        contig+="""#pragma parallel for"""
+                        contig+="""#pragma omp parallel for"""
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
                     }
                     """ % locals()
-
+            print contig
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
