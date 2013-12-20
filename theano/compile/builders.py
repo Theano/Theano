@@ -5,19 +5,13 @@ from theano.gof import ops_with_inner_function
 
 
 class OpFromGraph(gof.Op):
-    """
-    This create an L{Op} from a list of input variables and a list of output
+    """This create an `Op` from a list of input variables and a list of output
     variables.
 
-    The signature is the same as the signature of L{FunctionFactory}
-    and/or function and the resulting L{Op}'s perform will do the same
-    operation as::
+    The signature is similar to theano.function() and the resulting
+    `Op` perform will do the same operation as::
       function(inputs, outputs, **kwargs)
 
-    Take note that the following options, if provided, must take the
-    value(s) listed below:
-      unpack_single = False
-      borrow_outputs = False
 
     OpFromGraph takes an additional input, grad_depth. If grad_depth
     is n, OpFromGraph will make special Ops for gradients up to the
@@ -32,6 +26,15 @@ class OpFromGraph(gof.Op):
       # op behaves like a normal theano op
       e2 = op(x, y, z) + op(z, y, x)
       fn = function([x, y, z], [e2])
+
+
+    TODO: -examples
+          - support shared var
+          - __hash__, __eq__ otherwise won't merge
+          - c_code() to remove the double overhead?
+          - move call to function to make_thunk().
+          - opt to unfold it, work inplace on inputs
+          - move grad stuff from __init__ to grad()
     """
 
     def __init__(self, inputs, outputs, grad_depth=1, **kwargs):
