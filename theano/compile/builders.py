@@ -79,10 +79,11 @@ class OpFromGraph(gof.Op):
             output[0] = variable.copy()
 
     def grad(self, inputs, output_grads):
-        # OpFromGraph doesn't implement a connection_pattern, so for now we regard
-        # all inputs and outputs as connected. This will compute the right numerical
-        # value for the gradients but could fail to raise the disconnected inputs error
-        # in some cases.
+        # OpFromGraph doesn't implement a connection_pattern, so for
+        # now we regard all inputs and outputs as connected. This will
+        # compute the right numerical value for the gradients but
+        # could fail to raise the disconnected inputs error in some
+        # cases.
         gs = G.grad(cost=None, known_grads=dict(zip(self.outputs, output_grads)),
                     wrt=self.inputs, disconnected_inputs='ignore')
         grad_ops = []
