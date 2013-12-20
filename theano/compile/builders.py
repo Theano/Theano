@@ -12,13 +12,6 @@ class OpFromGraph(gof.Op):
     `Op` perform will do the same operation as::
       function(inputs, outputs, **kwargs)
 
-
-    OpFromGraph takes an additional input, grad_depth. If grad_depth
-    is n, OpFromGraph will make special Ops for gradients up to the
-    nth level, allowing the user to differentiate this op up to n
-    times. The parameter defaults to 1. If grad_depth == 0, the op
-    will not be differentiable.
-
     Example:
       x, y, z = tensor.scalars('xyz')
       e = x + y * z
@@ -34,10 +27,9 @@ class OpFromGraph(gof.Op):
           - c_code() to remove the double overhead?
           - move call to function to make_thunk().
           - opt to unfold it, work inplace on inputs
-          - move grad stuff from __init__ to grad()
     """
 
-    def __init__(self, inputs, outputs, grad_depth=1, **kwargs):
+    def __init__(self, inputs, outputs, **kwargs):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list', outputs)
         for i in inputs + outputs:
@@ -60,25 +52,6 @@ class OpFromGraph(gof.Op):
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
 
-        if grad_depth > 0:
-            output_grads = [t() for t in self.output_types]
-            # OpFromGraph doesn't implement a connection_pattern, so for now we regard
-            # all inputs and outputs as connected. This will compute the right numerical
-            # value for the gradients but could fail to raise the disconnected inputs error
-            # in some cases.
-            gs = G.grad(cost=None, known_grads=dict(zip(self.outputs, output_grads)),
-                    wrt=self.inputs, disconnected_inputs='ignore')
-            self.grad_ops = []
-            for g in gs:
-                if g is None:
-                    self.grad_ops.append(lambda *args: None)
-                else:
-                    # It is normal if some inputs are not needed in order
-                    # to compute the gradient, so we ignore them.
-                    self.grad_ops.append(OpFromGraph(inputs + output_grads,
-                                                     [g],
-                                                     grad_depth=grad_depth - 1,
-                                                     on_unused_input='ignore'))
 
     def __eq__(self, other):
         #TODO: recognize a copy
@@ -106,10 +79,24 @@ class OpFromGraph(gof.Op):
             output[0] = variable.copy()
 
     def grad(self, inputs, output_grads):
-        if hasattr(self, 'grad_ops'):
-            return [go(*(inputs + output_grads)) for go in self.grad_ops]
-        else:
-            raise NotImplementedError
+        # OpFromGraph doesn't implement a connection_pattern, so for now we regard
+        # all inputs and outputs as connected. This will compute the right numerical
+        # value for the gradients but could fail to raise the disconnected inputs error
+        # in some cases.
+        gs = G.grad(cost=None, known_grads=dict(zip(self.outputs, output_grads)),
+                    wrt=self.inputs, disconnected_inputs='ignore')
+        grad_ops = []
+        for g in gs:
+            if g is None:
+                grad_ops.append(lambda *args: None)
+            else:
+                # It is normal if some inputs are not needed in order
+                # to compute the gradient, so we ignore them.
+                grad_ops.append(OpFromGraph(self.inputs + output_grads,
+                                            [g],
+                                            on_unused_input='ignore'))
+
+        return [go(*(inputs + output_grads)) for go in grad_ops]
 
 # Since OpFromGraph contains a Theano compiled function, we should let
 # DebugMode know about it

@@ -47,7 +47,7 @@ class T_OpFromGraph(unittest.TestCase):
     def test_grad(self):
         x, y, z = T.matrices('xyz')
         e = x + y * z
-        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN', grad_depth=2)
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
         f = op(x, y, z)
         f = f - T.grad(T.sum(f), y)
         fn = function([x, y, z], f)
@@ -55,6 +55,19 @@ class T_OpFromGraph(unittest.TestCase):
         yv = numpy.ones((2, 2), dtype=config.floatX)*3
         zv = numpy.ones((2, 2), dtype=config.floatX)*5
         assert numpy.all(11.0 == fn(xv, yv, zv))
+
+    def test_grad_grad(self):
+        x, y, z = T.matrices('xyz')
+        e = x + y * z
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
+        f = op(x, y, z)
+        f = f - T.grad(T.sum(f), y)
+        f = f - T.grad(T.sum(f), y)
+        fn = function([x, y, z], f)
+        xv = numpy.ones((2, 2), dtype=config.floatX)
+        yv = numpy.ones((2, 2), dtype=config.floatX)*3
+        zv = numpy.ones((2, 2), dtype=config.floatX)*5
+        assert numpy.allclose(6.0, fn(xv, yv, zv))
 
     def test_shared(self):
         x, y, z = T.matrices('xyz')
