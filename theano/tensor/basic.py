@@ -1472,11 +1472,19 @@ class MaxAndArgmax(Op):
                 %(fail)s;
             }
         }
+        if(PyArray_TYPE(%(argmax)s) != NPY_INT64){
+            PyObject * tmp = PyArray_Cast(%(argmax)s, NPY_INT64);
+            if (NULL == tmp){
+                %(fail)s;
+            }
+            Py_DECREF(%(argmax)s);
+            %(argmax)s = (PyArrayObject*)tmp;
+        }
         """
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
