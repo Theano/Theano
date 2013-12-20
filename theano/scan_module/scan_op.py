@@ -1307,7 +1307,9 @@ class Scan(PureOp):
                                            known_grads={y: g_y}, wrt=x)
                 except gradient.NullTypeGradError:
                     # It means the gradient is undefined (which implies
-                    # is connected)
+                    # is connected).
+                    # Warning: x is not the right gradient here, but the only
+                    # thing we will check later is whether it is None.
                     gmp[x] = x
                 except gradient.DisconnectedInputError:
                     gmp[x] = None
@@ -1805,7 +1807,7 @@ class Scan(PureOp):
                 type_outs.append('connected')
 
             inner_inp_mitmot += [dC_dXts[out_pos],
-                              dC_dXtm1s[ins_pos - self.n_seqs]]
+                                 dC_dXtm1s[ins_pos - self.n_seqs]]
             n_mitmot_outs += 1
             out_pos += 1
             ins_pos += 1
@@ -1888,12 +1890,12 @@ class Scan(PureOp):
         info['mode'] = self.mode
 
         outer_inputs = ([grad_steps] +
-                       outer_inp_seqs +
-                       outer_inp_mitmot +
-                       outer_inp_sitsot +
-                       [inputs[0] for x in xrange(n_nit_sot)] +
-                       self.outer_shared(inputs) +
-                       self.outer_non_seqs(inputs))
+                        outer_inp_seqs +
+                        outer_inp_mitmot +
+                        outer_inp_sitsot +
+                        [inputs[0] for x in xrange(n_nit_sot)] +
+                        self.outer_shared(inputs) +
+                        self.outer_non_seqs(inputs))
 
         inner_other_args = self_inputs[offset:]
         inner_gfn_ins = (inner_inp_seqs +
@@ -1904,6 +1906,7 @@ class Scan(PureOp):
         inner_gfn_outs = (inner_out_mitmot +
                           inner_out_sitsot +
                           inner_out_nitsot)
+
         local_op = Scan(inner_gfn_ins, inner_gfn_outs, info)
         outputs = local_op(*outer_inputs)
         if type(outputs) not in (list, tuple):
