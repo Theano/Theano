@@ -490,6 +490,7 @@ class Elemwise(OpenMPOp):
         
         super(Elemwise,self).__init__(openmp=openmp)
 
+
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
@@ -1162,7 +1163,10 @@ class Elemwise(OpenMPOp):
         return code
 
     def c_headers(self):
-        return ['<vector>', '<algorithm>']
+        ret=['<vector>', '<algorithm>']
+        if self.openmp :
+             ret+=["<omp.h>"]
+        return ret
 
     def c_support_code(self):
         return self.scalar_op.c_support_code()
