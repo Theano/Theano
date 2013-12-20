@@ -765,4 +765,6 @@ def test_gradient_scan():
 
     x = tensor.vector(dtype='float32')
     values, updates = theano.scan(one_step, outputs_info=x, n_steps=10)
-    theano.grad(tensor.sum(values[-1]), w)
+    gw = theano.grad(tensor.sum(values[-1]), w)
+    f = theano.function([x], gw)
+    f(numpy.arange(1, dtype='float32'))
