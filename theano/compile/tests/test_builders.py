@@ -73,8 +73,6 @@ class T_OpFromGraph(unittest.TestCase):
         x, y, z = T.matrices('xyz')
         s = shared(numpy.random.rand(2, 2).astype(config.floatX))
         e = x + y * z + s
-        self.assertRaises(NotImplementedError, OpFromGraph, [x, y, z], [e], mode='FAST_RUN')
-        return
         op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
         f = op(x, y, z) - op(y, z, x)  # (1+3*5=array of 16) - (3+1*5=array of 8)
         fn = function([x, y, z], f)
@@ -85,6 +83,26 @@ class T_OpFromGraph(unittest.TestCase):
         #print fn.maker.fgraph.toposort()
         assert numpy.allclose(8.0, fn(xv, yv, zv))
         assert numpy.allclose(8.0, fn(xv, yv, zv))
+
+    def test_shared_grad(self):
+        x, y, z = T.matrices('xyz')
+        s = shared(numpy.random.rand(2, 2).astype(config.floatX))
+        e = x + y * z + s
+        op = OpFromGraph([x, y, z], [e], mode='FAST_RUN')
+        f = op(x, y, z)
+        f = f - T.grad(T.sum(f), y)
+        fn = function([x, y, z], f)
+        xv = numpy.ones((2, 2), dtype=config.floatX)
+        yv = numpy.ones((2, 2), dtype=config.floatX) * 3
+        zv = numpy.ones((2, 2), dtype=config.floatX) * 5
+        assert numpy.allclose(11.0 + s.get_value(), fn(xv, yv, zv))
+
+        # grad again the shared variable
+        f = op(x, y, z)
+        f = f - T.grad(T.sum(f), s)
+        fn = function([x, y, z], f)
+        assert numpy.allclose(15.0 + s.get_value(),
+                              fn(xv, yv, zv))
 
 
 if __name__ == '__main__':

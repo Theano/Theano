@@ -9,8 +9,6 @@ from theano.compile.mode import *
 
 from theano.compile.io import *
 
-from theano.compile.builders import *
-
 from theano.compile.module import *
 
 from theano.compile.debugmode import DebugMode
@@ -24,5 +22,7 @@ from theano.compile.profilemode import ProfileMode
 from theano.compile.sharedvalue import (shared, shared_constructor,
                                         SharedVariable)
 from theano.compile.pfunc import pfunc, Param, rebuild_collect_shared
+
+from theano.compile.builders import *
 
 from theano.compile.function import function

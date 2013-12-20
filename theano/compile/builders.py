@@ -1,6 +1,7 @@
 from theano import gof
 from theano import gradient as G
 from theano.compile.function_module import orig_function
+from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
 
 
@@ -10,7 +11,7 @@ class OpFromGraph(gof.Op):
 
     The signature is similar to theano.function() and the resulting
     `Op` perform will do the same operation as::
-      function(inputs, outputs, **kwargs)
+      orig_function(inputs, outputs, **kwargs)
 
     Example:
       x, y, z = tensor.scalars('xyz')
@@ -21,12 +22,19 @@ class OpFromGraph(gof.Op):
       fn = function([x, y, z], [e2])
 
 
-    TODO: -examples
-          - support shared var
+    TODO: - examples
           - __hash__, __eq__ otherwise won't merge
           - c_code() to remove the double overhead?
           - opt to unfold it, work inplace on inputs
           - grad() make it support DisconnectedType and the new interface
+          - check how it work with updates.
+          - add test with constant as input or inside the inner graph.
+          - Add support for the GPU? Probably just need an opt to remove transfer
+          - Add support to pickle this Op.
+    :note:
+        We support unused inputs. This is needed for the grad.
+        We support shared variable in the inner graph. This is automatic and
+        invisible to the user.
     """
 
     def __init__(self, inputs, outputs, **kwargs):
@@ -39,12 +47,27 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs:
             raise TypeError('updates are not allowed in kwargs')
 
-        shared_inputs = [var for var in gof.graph.inputs(outputs)
+        # To support correctly shared variables the inner fct should
+        # not see them. Otherwise their is problem with the gradient.
+        self.shared_inputs = [var for var in gof.graph.inputs(outputs)
                               if isinstance(var, SharedVariable)]
-        if shared_inputs:
-            raise NotImplementedError(
-                "OpFromGraph do not support SharedVariable in the inner graph")
+        used_inputs = [var for var in gof.graph.inputs(outputs)
+                       if not isinstance(var, gof.Constant)]
+        shared_vars = [var.type() for var in self.shared_inputs]
+        new = rebuild_collect_shared(outputs, inputs=inputs + shared_vars,
+                                     replace=dict(zip(self.shared_inputs,
+                                                      shared_vars)),
+                                     copy_inputs_over=False)
+        (new_inputs, new_outputs,
+         [clone_d, update_d, update_expr, shared_inputs]) = new
+        assert len(new_inputs) == len(inputs) + len(self.shared_inputs)
+        assert len(new_outputs) == len(outputs)
+        assert not update_d
+        assert not update_expr
+        assert not shared_inputs
 
+        self.new_inputs = new_inputs
+        self.new_outputs = new_outputs
         self.inputs = inputs
         self.outputs = outputs
         self.kwargs = kwargs
@@ -66,14 +89,16 @@ class OpFromGraph(gof.Op):
                 raise TypeError("Wrong type, expected %s but got %s"
                         % (type, input.type))
         return gof.Apply(self,
-                         inputs,
+                         list(inputs) + self.shared_inputs,
                          [type() for type in self.output_types])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         ret = super(OpFromGraph, self).make_thunk(node, storage_map,
                                                   compute_map, no_recycling)
         if not hasattr(self, "fn"):
-            self.fn = orig_function(self.inputs, self.outputs, **self.kwargs)
+            self.fn = orig_function(self.new_inputs,
+                                    self.new_outputs,
+                                    **self.kwargs)
         return ret
 
     def perform(self, node, inputs, outputs):
@@ -94,8 +119,9 @@ class OpFromGraph(gof.Op):
             grad_ops = self.grad_ops
         else:
             gs = G.grad(cost=None,
-                        known_grads=dict(zip(self.outputs, output_grads)),
-                        wrt=self.inputs, disconnected_inputs='ignore')
+                        known_grads=dict(zip(self.new_outputs, output_grads)),
+                        wrt=self.new_inputs,
+                        disconnected_inputs='ignore')
 
             grad_ops = []
             for g in gs:
@@ -104,7 +130,7 @@ class OpFromGraph(gof.Op):
                 else:
                     # It is normal if some inputs are not needed in order
                     # to compute the gradient, so we ignore them.
-                    grad_ops.append(OpFromGraph(self.inputs + output_grads,
+                    grad_ops.append(OpFromGraph(self.new_inputs + output_grads,
                                                 [g],
                                                 on_unused_input='ignore'))
             self.grad_ops = grad_ops
