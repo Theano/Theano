@@ -25,8 +25,8 @@ class OpFromGraph(gof.Op):
           - support shared var
           - __hash__, __eq__ otherwise won't merge
           - c_code() to remove the double overhead?
-          - move call to function to make_thunk().
           - opt to unfold it, work inplace on inputs
+          - grad() make it support DisconnectedType and the new interface
     """
 
     def __init__(self, inputs, outputs, **kwargs):
@@ -42,13 +42,12 @@ class OpFromGraph(gof.Op):
         shared_inputs = [var for var in gof.graph.inputs(outputs)
                               if isinstance(var, SharedVariable)]
         if shared_inputs:
-            raise NotImplementedError("OpFromGraph do not support SharedVariable in the inner graph")
-        # TODO: the graph may have implicit inputs like
-        #       SharedVariable instances.
-        #       what impact to they have on the validity of this Op?
-        self.fn = orig_function(inputs, outputs, **kwargs)
+            raise NotImplementedError(
+                "OpFromGraph do not support SharedVariable in the inner graph")
+
         self.inputs = inputs
         self.outputs = outputs
+        self.kwargs = kwargs
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
 
@@ -69,6 +68,13 @@ class OpFromGraph(gof.Op):
         return gof.Apply(self,
                          inputs,
                          [type() for type in self.output_types])
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        ret = super(OpFromGraph, self).make_thunk(node, storage_map,
+                                                  compute_map, no_recycling)
+        if not hasattr(self, "fn"):
+            self.fn = orig_function(self.inputs, self.outputs, **self.kwargs)
+        return ret
 
     def perform(self, node, inputs, outputs):
         variables = self.fn(*inputs)
