@@ -47,6 +47,10 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs:
             raise TypeError('updates are not allowed in kwargs')
 
+        shared_inputs = [var for var in gof.graph.inputs(outputs)
+                              if isinstance(var, SharedVariable)]
+        if shared_inputs:
+            raise NotImplementedError("OpFromGraph do not support SharedVariable in the inner graph")
         # TODO: the graph may have implicit inputs like
         #       SharedVariable instances.
         #       what impact to they have on the validity of this Op?
