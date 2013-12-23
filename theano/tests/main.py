@@ -2,6 +2,7 @@ import os, unittest, sys
 import nose.plugins.builtin
 
 from nose.config import Config
+from nose.plugins.manager import PluginManager
 from numpy.testing.nosetester import import_nose, NoseTester
 from numpy.testing.noseclasses import KnownFailure, NumpyTestProgram
 
@@ -123,8 +124,11 @@ class TheanoNoseTester(NoseTester):
         argv, plugins = self.prepare_test_args(verbose, extra_argv, coverage,
                 capture, knownfailure)
 
-        cfg = Config(includeExe=True)
-        t = NumpyTestProgram(argv=argv, exit=False, plugins=plugins, config=cfg)
+        # The "plugins" keyword of NumpyTestProgram gets ignored if config is
+        # specified. Moreover, using "addplugins" instead can lead to strange
+        # errors. So, we specify the plugins in the Config as well.
+        cfg = Config(includeExe=True, plugins=PluginManager(plugins=plugins))
+        t = NumpyTestProgram(argv=argv, exit=False, config=cfg)
         return t.result
 
 
