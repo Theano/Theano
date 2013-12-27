@@ -486,10 +486,8 @@ class Elemwise(OpenMPOp):
                     scalar_op.nout)
 
         #precompute the hash of this node
-        self._rehash()
-        
+        self._rehash()        
         super(Elemwise,self).__init__(openmp=openmp)
-
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -516,11 +514,9 @@ class Elemwise(OpenMPOp):
         is left-completed to the greatest number of dimensions with 1s
         using DimShuffle.
         """
-
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
-                *[Scalar(dtype=i.type.dtype)() for i in inputs])
-    
+                *[Scalar(dtype=i.type.dtype)() for i in inputs]) 
         target_length = max([input.type.ndim for input in inputs])
 
         args = []
@@ -548,8 +544,7 @@ class Elemwise(OpenMPOp):
         out_broadcastables = [[all(bcast)
             for bcast in izip(*[input.type.broadcastable
                 for input in inputs])]] * shadow.nout
-
-        
+      
         #inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
@@ -570,8 +565,7 @@ class Elemwise(OpenMPOp):
 
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
             for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
-            ]
-    
+            ]   
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -639,8 +633,7 @@ class Elemwise(OpenMPOp):
 
         return rval
 
-    def connection_pattern(self, node):
-        
+    def connection_pattern(self, node):       
         if hasattr(self.scalar_op, 'connection_pattern'):
             return self.scalar_op.connection_pattern(node)
 
@@ -774,8 +767,7 @@ class Elemwise(OpenMPOp):
         maxsize = max(len(input.shape) for input in inputs)
         for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
                             + zip(input.shape, sinput.type.broadcastable))
-                          for input, sinput in zip(inputs, node.inputs)]):
-            
+                          for input, sinput in zip(inputs, node.inputs)]):           
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
                 # but please maintain python 2.4 compatibility
@@ -880,8 +872,7 @@ class Elemwise(OpenMPOp):
         # unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
-    def infer_shape(self, node, i_shapes):
-        
+    def infer_shape(self, node, i_shapes):       
         rval = []
         for o in node.outputs:
             oshp = []
@@ -924,8 +915,7 @@ class Elemwise(OpenMPOp):
         # assert that inames and inputs order stay consistent.
         # This is to protect again futur change of uniq.
         assert len(inames) == len(inputs)
-        ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
-        
+        ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))       
         assert all([x == y for x,y in zip(ii, inames)])
         assert all([x == y for x,y in zip(iii, inputs)])
 
@@ -945,8 +935,6 @@ class Elemwise(OpenMPOp):
         # (output, name, name of the c type), transposed
         real = zip(*[(r, s, r.type.dtype_specs()[1])
                      for r, s in izip(node.outputs, onames) if r not in dmap])
-
-        
         if real:
             real_outputs, real_onames, real_odtypes = real
         else:
@@ -971,18 +959,14 @@ class Elemwise(OpenMPOp):
         # number of nested loops we will need (all inputs have same
         # dimensionality)
         nnested = len(orders[0])
-        sub = dict(sub)
-    
+        sub = dict(sub)   
         for i, (input, iname) in enumerate(izip(inputs, inames)):
             # the c generators will substitute the input names for
             # references to loop variables lv0, lv1, ...
             sub['lv%i' % i] = iname
     
-
-        decl = cgen.make_declare(orders, idtypes, sub)
-        
-        checks = cgen.make_checks(orders, idtypes, sub)
-    
+        decl = cgen.make_declare(orders, idtypes, sub)      
+        checks = cgen.make_checks(orders, idtypes, sub)    
         # Check if all inputs (except broadcasted scalar) are fortran.
         # In that case, create an fortran output ndarray.
         z = zip(inames, inputs)
@@ -993,7 +977,7 @@ class Elemwise(OpenMPOp):
         # NumPy C and F contig not always set as both of them.
         if len(alloc_fortran) == 0:
             alloc_fortran = '0'
-        
+       
         alloc = ""
         # We loop over the "real" outputs, i.e., those that are not
         # inplace (must be allocated) and we declare/allocate/check
@@ -1040,11 +1024,12 @@ class Elemwise(OpenMPOp):
         # We declare the scalar variables used in the inner loop to do
         # the element-wise computation. Aliased scalar variables need
         # not be declared, as they are #defined in defines
-        task_decl = "".join([
-            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                for name, dtype in izip(inames + list(real_onames),
-                                       idtypes + list(real_odtypes))])
-    
+        # task_decl = "".join([
+        #     "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
+        #         for name, dtype in izip(inames + list(real_onames),
+        #                                idtypes + list(real_odtypes))]
+        #                    )
+        
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
@@ -1057,17 +1042,25 @@ class Elemwise(OpenMPOp):
                 ["%s_i" % s for s in onames],
                 sub)
 
+        # code = """
+        # {
+        #     %(defines)s
+        #     %(task_decl)s
+        #     %(task_code)s
+        #     %(undefs)s
+        # }
+        # """ % locals()
+
+
         code = """
         {
             %(defines)s
-            %(task_decl)s
             %(task_code)s
             %(undefs)s
         }
         """ % locals()
-        
-        
-        
+
+
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1076,7 +1069,7 @@ class Elemwise(OpenMPOp):
                 all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
             else:
                 all_code = [code]
-
+            
             loop = cgen.make_loop(
                 loop_orders=orders + [range(nnested)] * len(real_onames),
                 dtypes=(idtypes + list(real_odtypes)),
@@ -1129,10 +1122,7 @@ class Elemwise(OpenMPOp):
                         else:
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
-                            """ % locals()
-
-
-                    
+                            """ % locals()                   
                     if self.openmp:
                         contig+="""#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
                     contig += """
@@ -1140,8 +1130,7 @@ class Elemwise(OpenMPOp):
                         %(index)s
                         %(task_code)s;
                     }
-                    """ % locals()
-            
+                    """ % locals()            
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
@@ -1166,8 +1155,6 @@ class Elemwise(OpenMPOp):
 
     def c_headers(self):
         ret=['<vector>', '<algorithm>']
-        if self.openmp :
-             ret+=["<omp.h>"]
         return ret
 
     def c_support_code(self):
@@ -1188,7 +1175,10 @@ class Elemwise(OpenMPOp):
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
-        
+        if self.openmp:
+            version.append(('openmp',True))
+        else:
+            version.append(('openmp',False))
         if all(version):
             return tuple(version)
         else:

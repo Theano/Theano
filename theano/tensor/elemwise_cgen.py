@@ -196,26 +196,25 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
     @param sub: Maps 'lv#' to a suitable variable name.
       The 'lvi' variable corresponds to the ith element of loop_orders.
     """
-
     def loop_over(preloop, code, indices, i):
         iterv = 'ITER_%i' % i
         update = ""
         suitable_n = "1"
         for j, index in enumerate(indices):
             var = sub['lv%i' % j]
-            update += "%(var)s_iter += %(var)s_jump%(index)s_%(i)s;\n" % locals()
+            dtype=dtypes[j]
+            update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter + %(iterv)s * %(var)s_jump%(index)s_%(i)s );\n" % locals()
+            #update += "%(var)s_iter += %(var)s_jump%(index)s_%(i)s;\n" % locals()
             if index != 'x':
                 suitable_n = "%(var)s_n%(index)s" % locals()
-        s="""
+        return"""
         %(preloop)s
-        for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
-            %(code)s
+        for (int %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++) {
+            printf("%%d \\n", %(iterv)s); 
             %(update)s
+            %(code)s
         }
         """ % locals()
-        
-        return s
-
 
     preloops = {}
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
@@ -237,7 +236,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub,openmp=None):
         s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
-    
+
     return "{%s}" % s
 
 
@@ -251,8 +250,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,ope
 
     The output tensor's index among the loop variables is indicated by olv_index.
     '''
-    print "use reordered loop"
-
+    
     # Number of variables
     nvars = len(init_loop_orders)
     # Number of loops (dimensionality of the variables)
