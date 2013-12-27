@@ -1131,15 +1131,17 @@ class Elemwise(OpenMPOp):
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
 
+
+                    
                     if self.openmp:
-                        contig+="""#pragma omp parallel for"""
+                        contig+="""#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
                     }
                     """ % locals()
-            print contig
+            
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
