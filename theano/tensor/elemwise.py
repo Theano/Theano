@@ -6,7 +6,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Apply, Op
+from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar
 from theano.printing import pprint
@@ -419,7 +419,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
 ### Elemwise ###
 ################
 
-class Elemwise(Op):
+class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
 
@@ -449,7 +449,7 @@ class Elemwise(Op):
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
-            nfunc_spec=None):
+                 nfunc_spec=None,openmp=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -486,8 +486,9 @@ class Elemwise(Op):
                     scalar_op.nout)
 
         #precompute the hash of this node
-        self._rehash()
-
+        self._rehash()        
+        super(Elemwise,self).__init__(openmp=openmp)
+       
     def __getstate__(self):
         d = copy(self.__dict__)
         d.pop('ufunc')
@@ -515,8 +516,7 @@ class Elemwise(Op):
         """
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
-                *[Scalar(dtype=i.type.dtype)() for i in inputs])
-
+                *[Scalar(dtype=i.type.dtype)() for i in inputs]) 
         target_length = max([input.type.ndim for input in inputs])
 
         args = []
@@ -544,7 +544,7 @@ class Elemwise(Op):
         out_broadcastables = [[all(bcast)
             for bcast in izip(*[input.type.broadcastable
                 for input in inputs])]] * shadow.nout
-
+      
         #inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
@@ -565,7 +565,7 @@ class Elemwise(Op):
 
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
             for dtype, broadcastable in izip(out_dtypes, out_broadcastables)
-            ]
+            ]   
         return Apply(self, inputs, outputs)
 
     def __eq__(self, other):
@@ -633,8 +633,7 @@ class Elemwise(Op):
 
         return rval
 
-    def connection_pattern(self, node):
-
+    def connection_pattern(self, node):       
         if hasattr(self.scalar_op, 'connection_pattern'):
             return self.scalar_op.connection_pattern(node)
 
@@ -775,7 +774,7 @@ class Elemwise(Op):
         maxsize = max(len(input.shape) for input in inputs)
         for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
                             + zip(input.shape, sinput.type.broadcastable))
-                          for input, sinput in zip(inputs, node.inputs)]):
+                          for input, sinput in zip(inputs, node.inputs)]):           
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
                 # but please maintain python 2.4 compatibility
@@ -880,7 +879,7 @@ class Elemwise(Op):
         # unfortunately it tends to segfault
         # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
 
-    def infer_shape(self, node, i_shapes):
+    def infer_shape(self, node, i_shapes):       
         rval = []
         for o in node.outputs:
             oshp = []
@@ -919,10 +918,11 @@ class Elemwise(Op):
 
         inames = gof.utils.uniq(inames)
         inputs = gof.utils.uniq(node.inputs)
+
         # assert that inames and inputs order stay consistent.
         # This is to protect again futur change of uniq.
         assert len(inames) == len(inputs)
-        ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
+        ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))       
         assert all([x == y for x,y in zip(ii, inames)])
         assert all([x == y for x,y in zip(iii, inputs)])
 
@@ -966,15 +966,14 @@ class Elemwise(Op):
         # number of nested loops we will need (all inputs have same
         # dimensionality)
         nnested = len(orders[0])
-        sub = dict(sub)
+        sub = dict(sub)   
         for i, (input, iname) in enumerate(izip(inputs, inames)):
             # the c generators will substitute the input names for
             # references to loop variables lv0, lv1, ...
             sub['lv%i' % i] = iname
-
-        decl = cgen.make_declare(orders, idtypes, sub)
-        checks = cgen.make_checks(orders, idtypes, sub)
-
+    
+        decl = cgen.make_declare(orders, idtypes, sub)      
+        checks = cgen.make_checks(orders, idtypes, sub)    
         # Check if all inputs (except broadcasted scalar) are fortran.
         # In that case, create an fortran output ndarray.
         z = zip(inames, inputs)
@@ -985,7 +984,7 @@ class Elemwise(Op):
         # NumPy C and F contig not always set as both of them.
         if len(alloc_fortran) == 0:
             alloc_fortran = '0'
-
+       
         alloc = ""
         # We loop over the "real" outputs, i.e., those that are not
         # inplace (must be allocated) and we declare/allocate/check
@@ -1001,6 +1000,7 @@ class Elemwise(Op):
                                      fortran=alloc_fortran)
             alloc += cgen.make_checks([range(nnested)], [odtype],
                                       dict(sub, lv0=oname))
+    
         olv_index = i  # index of the last output
 
         # We loop over the "aliased" outputs, i.e., those that are
@@ -1028,13 +1028,6 @@ class Elemwise(Op):
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
-        # We declare the scalar variables used in the inner loop to do
-        # the element-wise computation. Aliased scalar variables need
-        # not be declared, as they are #defined in defines
-        task_decl = "".join([
-            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                for name, dtype in izip(inames + list(real_onames),
-                                       idtypes + list(real_odtypes))])
 
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
@@ -1050,7 +1043,6 @@ class Elemwise(Op):
         code = """
         {
             %(defines)s
-            %(task_decl)s
             %(task_code)s
             %(undefs)s
         }
@@ -1063,20 +1055,18 @@ class Elemwise(Op):
                 all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
             else:
                 all_code = [code]
-
             loop = cgen.make_loop(
                 loop_orders=orders + [range(nnested)] * len(real_onames),
                 dtypes=(idtypes + list(real_odtypes)),
                 loop_tasks=all_code,
-                sub=sub)
+                sub=sub, reduce=False, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
                 init_loop_orders=orders + [range(nnested)] * len(real_onames),
                 olv_index=olv_index,
                 dtypes=(idtypes + list(real_odtypes)),
                 inner_task=code,
-                sub=sub)
-
+                sub=sub,openmp=self.openmp)
         # If all inputs and outputs are contiguous
         # and the scalar op define optimized code for that case
         # use it! The scalar_op need to check the broadcast flag himself.
@@ -1116,14 +1106,14 @@ class Elemwise(Op):
                         else:
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
-                            """ % locals()
-
+                            """ % locals()             
+                    if self.openmp:
+                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
-                    }
-                    """ % locals()
+                    }""" % locals()    
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
@@ -1146,7 +1136,8 @@ class Elemwise(Op):
         return code
 
     def c_headers(self):
-        return ['<vector>', '<algorithm>']
+        ret = ['<vector>', '<algorithm>']
+        return ret
 
     def c_support_code(self):
         return self.scalar_op.c_support_code()
@@ -1166,6 +1157,10 @@ class Elemwise(Op):
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+        if self.openmp:
+            version.append(('openmp', True))
+        else:
+            version.append(('openmp', False))
         if all(version):
             return tuple(version)
         else:
@@ -1226,6 +1221,7 @@ class CAReduce(Op):
                 - list of dimensions that we want to reduce
                 - if None, all dimensions are reduced
         """
+
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError((
                 "CAReduce only supports binary functions with a single "
@@ -1559,7 +1555,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
             all_code = [task0_decl + code1]
         loop = cgen.make_loop(
                 [order, range(nnested) + ['x'] * len(axis)],
-                [idtype, adtype], all_code, sub)
+                [idtype, adtype], all_code, sub,reduce=True)
 
         end = ""
         if adtype != odtype:
