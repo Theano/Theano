@@ -1016,7 +1016,6 @@ class Elemwise(OpenMPOp):
             # We alias the scalar variables
             defines += "#define %(oname)s_i %(iname)s_i" % locals()
             undefs += "#undef %(oname)s_i" % locals()
-            
 
         # Note: here, olv_index is either the index of the last output
         # which is allocated, OR, if there are any aliased outputs,
@@ -1034,9 +1033,6 @@ class Elemwise(OpenMPOp):
                 ["%s_i" % s for s in _inames],
                 ["%s_i" % s for s in onames],
                 sub)
-                   
-
-
         code = """
         {
             %(defines)s
@@ -1044,8 +1040,6 @@ class Elemwise(OpenMPOp):
             %(undefs)s
         }
         """ % locals()
-
-
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1054,12 +1048,11 @@ class Elemwise(OpenMPOp):
                 all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
             else:
                 all_code = [code]
-                
             loop = cgen.make_loop(
                 loop_orders=orders + [range(nnested)] * len(real_onames),
                 dtypes=(idtypes + list(real_odtypes)),
                 loop_tasks=all_code,
-                sub=sub,reduce=False,openmp=self.openmp)
+                sub=sub, reduce=False, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
                 init_loop_orders=orders + [range(nnested)] * len(real_onames),
@@ -1067,7 +1060,6 @@ class Elemwise(OpenMPOp):
                 dtypes=(idtypes + list(real_odtypes)),
                 inner_task=code,
                 sub=sub,openmp=self.openmp)
-
         # If all inputs and outputs are contiguous
         # and the scalar op define optimized code for that case
         # use it! The scalar_op need to check the broadcast flag himself.
@@ -1107,15 +1099,14 @@ class Elemwise(OpenMPOp):
                         else:
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
-                            """ % locals()                   
+                            """ % locals()             
                     if self.openmp:
-                        contig+="""#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
+                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
-                    }
-                    """ % locals()            
+                    }""" % locals()    
             if contig is not None:
                 z = zip(inames + onames, inputs + node.outputs)
                 cond1 = ' && '.join(["PyArray_ISCONTIGUOUS(%s)" % arr
@@ -1131,7 +1122,6 @@ class Elemwise(OpenMPOp):
                 %(loop)s
             }
             """ % locals()
-        
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):
@@ -1139,7 +1129,7 @@ class Elemwise(OpenMPOp):
         return code
 
     def c_headers(self):
-        ret=['<vector>', '<algorithm>']
+        ret = ['<vector>', '<algorithm>']
         return ret
 
     def c_support_code(self):
@@ -1161,9 +1151,9 @@ class Elemwise(OpenMPOp):
         for i in node.inputs + node.outputs:
             version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
         if self.openmp:
-            version.append(('openmp',True))
+            version.append(('openmp', True))
         else:
-            version.append(('openmp',False))
+            version.append(('openmp', False))
         if all(version):
             return tuple(version)
         else:
