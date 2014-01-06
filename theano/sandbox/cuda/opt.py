@@ -1069,8 +1069,9 @@ def local_gpu_conv(node):
         assert a.ndim == 4
         atol = None
         if a.shape[-1] * a.shape[-2] > 100:
+            #For float32 the default atol is 1e-5
             atol = 3e-5
-        return tensor.TensorType.values_eq_approx(a, b, atol=atol)
+        return CudaNdarrayType.values_eq_approx(a, b, atol=atol)
 
     if node.op == gpu_from_host:
         #gpu_from_host(conv) -> gpu_conv(gpu_from_host)

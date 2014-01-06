@@ -183,11 +183,16 @@ class CudaNdarrayType(Type):
         return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
 
     @staticmethod
-    def values_eq_approx(a, b, allow_remove_inf=False):
+    def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
+                         rtol=None, atol=None):
         #TODO: make the comparaison without transfert.
-        return tensor.TensorType.values_eq_approx(numpy.asarray(a),
-                                                  numpy.asarray(b),
-                allow_remove_inf=allow_remove_inf)
+        return tensor.TensorType.values_eq_approx(
+            numpy.asarray(a),
+            numpy.asarray(b),
+            allow_remove_inf=allow_remove_inf,
+            allow_remove_nan=allow_remove_nan,
+            rtol=rtol, atol=atol
+        )
 
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that
