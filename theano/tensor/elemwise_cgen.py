@@ -213,8 +213,8 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
             if index != 'x':
                 suitable_n = "%(var)s_n%(index)s" % locals()
         if openmp:
-            openmp_minsize = theano.config.openmp_minsize
-            forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_minsize)s)\n""" % locals()
+            openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
+            forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         else:
             forloop = ""
         forloop += """for (int %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
@@ -428,8 +428,8 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
             update = pointer_update
         if i == 0:
             if openmp:
-                openmp_minsize = theano.config.openmp_minsize
-                forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_minsize)s)\n""" % locals() 
+                openmp_elemwise_minsize= theano.config.openmp_elemwise_minsize
+                forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         forloop += "for(int %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
 
         loop = """

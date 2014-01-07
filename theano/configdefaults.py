@@ -469,7 +469,7 @@ AddConfigVar('openmp',
              in_c_key=False,
          )
 
-AddConfigVar('openmp_minsize',
+AddConfigVar('openmp_elemwise_minsize',
              "If OpenMP is enable, this is the minimum size of vector "
              "for which  the openmp parallel for is enable."
              "Used in element wise ops",

@@ -1141,7 +1141,7 @@ class Elemwise(OpenMPOp):
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
                     if self.openmp:
-                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_minsize)
+                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
