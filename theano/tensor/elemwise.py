@@ -1168,10 +1168,7 @@ class Elemwise(OpenMPOp):
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
-        if self.openmp:
-            version.append(('openmp', True))
-        else:
-            version.append(('openmp', False))
+        version.append(('openmp', self.openmp))
         if all(version):
             return tuple(version)
         else:
