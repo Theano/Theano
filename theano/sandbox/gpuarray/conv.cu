@@ -132,9 +132,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     const int kern_size_byte = kern_size*sizeof(float);
     const int out_size_byte = out_size*sizeof(float);
     if (!((THEANO_KERN_WID == PyGpuArray_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
-      PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-                   " %d kernel columns, but the kernel we received had %ud columns!",
-                   THEANO_KERN_WID, PyGpuArray_DIMS(kern)[3]);
+     PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
+                   " %d kernel columns, but the kernel we received had %llud columns!",
+                   THEANO_KERN_WID, (unsigned long long)PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
 
@@ -319,19 +319,21 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                       " img_c_contiguous_2d=%i,"
                       " kern_c_contiguous_2d=%i, nb_split=%i,"
                       " preload_full_kernel=%i,"
-                      " subsample_rows=%i, subsample_cols=%i\n",
+                      " subsample_rows=%llu, subsample_cols=%llu\n",
                       threads.x, threads.y, grid.x, grid.y,
                       shared_size, threads.x * threads.y,
                       THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
                       nb_split, preload_full_kernel,
-                      subsample_rows, subsample_cols);
+                      (unsigned long long)subsample_rows,
+                      (unsigned long long)subsample_cols);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_patch_stack' version with nb_split=%i"
                       " and preload_full_kernel=%i,"
-                      " subsample_rows=%i, subsample_cols=%i\n",
+                      " subsample_rows=%llu, subsample_cols=%llu\n",
                       nb_split, preload_full_kernel,
-                      subsample_rows, subsample_cols);
+                      (unsigned long long)subsample_rows,
+                      (unsigned long long)subsample_cols);
             work_complete = true;
         }
         else
@@ -344,12 +346,13 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                       " kern_width=%i, img_c_contiguous_2d=%i,"
                       " kern_c_contiguous_2d=%i, nb_split=%i,"
                       " preload_full_kernel=%i,"
-                      " subsample_rows=%i, subsample_cols=%i\n",
+                      " subsample_rows=%llu, subsample_cols=%llu\n",
                       threads.x, threads.y, grid.x, grid.y,
                       shared_size, threads.x * threads.y,
                       THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
                       nb_split, preload_full_kernel,
-                      subsample_rows, subsample_cols);
+                      (unsigned long long)subsample_rows,
+                      (unsigned long long)subsample_cols);
             if (verbose)
               fprintf(stderr,
                       "INFO: impl 'conv_patch_stack' failed (%s),"
@@ -818,30 +821,35 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             if (verbose)
               fprintf(stderr, "INFO: launching conv_reference_valid\n");
             if (verbose>1)
-              fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                      nbatch, PyGpuArray_DIMS(img)[1], img_len, img_wid,
+              fprintf(stderr, "      img : %i %llu %i %i %p  "
+                      "%lld %lld %lld %lld\n",
+                      nbatch, (unsigned long long)PyGpuArray_DIMS(img)[1],
+                      img_len, img_wid,
                       cuda_get_ptr(img),
-                      PyGpuArray_STRIDES(img)[0]/4,
-                      PyGpuArray_STRIDES(img)[1]/4,
-                      PyGpuArray_STRIDES(img)[2]/4,
-                      PyGpuArray_STRIDES(img)[3]/4);
+                      (long long)PyGpuArray_STRIDES(img)[0]/4,
+                      (long long)PyGpuArray_STRIDES(img)[1]/4,
+                      (long long)PyGpuArray_STRIDES(img)[2]/4,
+                      (long long)PyGpuArray_STRIDES(img)[3]/4);
             if (verbose>1)
-              fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
+              fprintf(stderr, "      kern: %i %i %i %i %p  "
+                      "%lld %lld %lld %lld\n",
                       nkern, nstack, kern_len, kern_wid,
                       cuda_get_ptr(kern),
-                      PyGpuArray_STRIDES(kern)[0]/4,
-                      PyGpuArray_STRIDES(kern)[1]/4,
-                      PyGpuArray_STRIDES(kern)[2]/4,
-                      PyGpuArray_STRIDES(kern)[3]/4);
+                      (long long)PyGpuArray_STRIDES(kern)[0]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[1]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[2]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[3]/4);
             if (verbose>1)
-              fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                      PyGpuArray_DIMS(out)[0],
-                      PyGpuArray_DIMS(out)[1], out_len, out_wid,
+                fprintf(stderr, "      out : %llu %llu %i %i %p  "
+                        "%lld %lld %lld %lld\n",
+                      (unsigned long long)PyGpuArray_DIMS(out)[0],
+                      (unsigned long long)PyGpuArray_DIMS(out)[1],
+                      out_len, out_wid,
                       cuda_get_ptr(out),
-                      PyGpuArray_STRIDES(out)[0]/4,
-                      PyGpuArray_STRIDES(out)[1]/4,
-                      PyGpuArray_STRIDES(out)[2]/4,
-                      PyGpuArray_STRIDES(out)[3]/4);
+                      (long long)PyGpuArray_STRIDES(out)[0]/4,
+                      (long long)PyGpuArray_STRIDES(out)[1]/4,
+                      (long long)PyGpuArray_STRIDES(out)[2]/4,
+                      (long long)PyGpuArray_STRIDES(out)[3]/4);
             if (verbose>1)
               fprintf(stderr, "   launch params: %i %i %i\n",
                       outsize, n_blocks, n_threads);
@@ -968,8 +976,8 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
       PyErr_Format(PyExc_ValueError,
                    "ERROR: This GpuConv code was compiled for"
                    " %d kernel columns, but the kernel we received"
-                   " had %ud columns!",
-                   THEANO_KERN_WID, PyGpuArray_DIMS(kern)[3]);
+                   " had %llud columns!",
+                   THEANO_KERN_WID, (unsigned long long)PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
     bool subsample = subsample_rows!=1 || subsample_cols!=1;
@@ -1007,27 +1015,36 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
     {
         printf("INFO: Running conv_full version=%d,"
                " MACRO kern_width=%d with inputs:\n", version, THEANO_KERN_WID);
-        printf("INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n", 
-               PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(img)[1],
-               PyGpuArray_DIMS(img)[2], PyGpuArray_DIMS(img)[3],
-               PyGpuArray_STRIDES(img)[0]/4,
-               PyGpuArray_STRIDES(img)[1]/4,
-               PyGpuArray_STRIDES(img)[2]/4,
-               PyGpuArray_STRIDES(img)[3]/4);
-        printf("INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-               PyGpuArray_DIMS(kern)[0], PyGpuArray_DIMS(kern)[1],
-               PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
-               PyGpuArray_STRIDES(kern)[0]/4,
-               PyGpuArray_STRIDES(kern)[1]/4,
-               PyGpuArray_STRIDES(kern)[2]/4,
-               PyGpuArray_STRIDES(kern)[3]/4);
-        printf("INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
-               PyGpuArray_DIMS(out)[0], PyGpuArray_DIMS(out)[1],
-               PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
-               PyGpuArray_STRIDES(out)[0]/4,
-               PyGpuArray_STRIDES(out)[1]/4,
-               PyGpuArray_STRIDES(out)[2]/4,
-               PyGpuArray_STRIDES(out)[3]/4);
+        printf("INFO:   img  dim: %llu %llu %llu %llu  "
+               "img  stride: %lld %lld %lld %lld\n",
+               (unsigned long long)PyGpuArray_DIMS(img)[0],
+               (unsigned long long)PyGpuArray_DIMS(img)[1],
+               (unsigned long long)PyGpuArray_DIMS(img)[2],
+               (unsigned long long)PyGpuArray_DIMS(img)[3],
+               (long long)PyGpuArray_STRIDES(img)[0]/4,
+               (long long)PyGpuArray_STRIDES(img)[1]/4,
+               (long long)PyGpuArray_STRIDES(img)[2]/4,
+               (long long)PyGpuArray_STRIDES(img)[3]/4);
+        printf("INFO:   kern dim: %llu %llu %llu %llu  "
+               "kern stride: %lld %lld %lld %lld\n",
+               (unsigned long long)PyGpuArray_DIMS(kern)[0],
+               (unsigned long long)PyGpuArray_DIMS(kern)[1],
+               (unsigned long long)PyGpuArray_DIMS(kern)[2],
+               (unsigned long long)PyGpuArray_DIMS(kern)[3],
+               (long long)PyGpuArray_STRIDES(kern)[0]/4,
+               (long long)PyGpuArray_STRIDES(kern)[1]/4,
+               (long long)PyGpuArray_STRIDES(kern)[2]/4,
+               (long long)PyGpuArray_STRIDES(kern)[3]/4);
+        printf("INFO:   out dim: %llu %llu %llu %llu  "
+               "out stride: %lld %lld %lld %lld\n",
+               (unsigned long long)PyGpuArray_DIMS(out)[0],
+               (unsigned long long)PyGpuArray_DIMS(out)[1],
+               (unsigned long long)PyGpuArray_DIMS(out)[2],
+               (unsigned long long)PyGpuArray_DIMS(out)[3],
+               (long long)PyGpuArray_STRIDES(out)[0]/4,
+               (long long)PyGpuArray_STRIDES(out)[1]/4,
+               (long long)PyGpuArray_STRIDES(out)[2]/4,
+               (long long)PyGpuArray_STRIDES(out)[3]/4);
     }
 
     if (!subsample &&
@@ -1313,45 +1330,49 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
             if (verbose)
               fprintf(stderr, "INFO: launching conv_reference_valid\n");
             if (verbose)
-              fprintf(stderr, "      img : %i %i %i %i %p  %i %i %i %i\n",
-                      PyGpuArray_DIMS(img)[0],
-                      PyGpuArray_DIMS(img)[1],
-                      PyGpuArray_DIMS(img)[2],
-                      PyGpuArray_DIMS(img)[3],
+              fprintf(stderr, "      img : %llu %llu %llu %llu %p  "
+                      "%lld %lld %lld %lld\n",
+                      (unsigned long long)PyGpuArray_DIMS(img)[0],
+                      (unsigned long long)PyGpuArray_DIMS(img)[1],
+                      (unsigned long long)PyGpuArray_DIMS(img)[2],
+                      (unsigned long long)PyGpuArray_DIMS(img)[3],
                       cuda_get_ptr(img),
-                      PyGpuArray_STRIDES(img)[0]/4,
-                      PyGpuArray_STRIDES(img)[1]/4,
-                      PyGpuArray_STRIDES(img)[2]/4,
-                      PyGpuArray_STRIDES(img)[3]/4);
+                      (long long)PyGpuArray_STRIDES(img)[0]/4,
+                      (long long)PyGpuArray_STRIDES(img)[1]/4,
+                      (long long)PyGpuArray_STRIDES(img)[2]/4,
+                      (long long)PyGpuArray_STRIDES(img)[3]/4);
             if (verbose)
-              fprintf(stderr, "      kern: %i %i %i %i %p  %i %i %i %i\n",
-                      PyGpuArray_DIMS(kern)[0],
-                      PyGpuArray_DIMS(kern)[1],
-                      PyGpuArray_DIMS(kern)[2],
-                      PyGpuArray_DIMS(kern)[3],
+              fprintf(stderr, "      kern: %llu %llu %llu %llu %p  "
+                      "%lld %lld %lld %lld\n",
+                      (unsigned long long)PyGpuArray_DIMS(kern)[0],
+                      (unsigned long long)PyGpuArray_DIMS(kern)[1],
+                      (unsigned long long)PyGpuArray_DIMS(kern)[2],
+                      (unsigned long long)PyGpuArray_DIMS(kern)[3],
                       cuda_get_ptr(kern),
-                      PyGpuArray_STRIDES(kern)[0]/4,
-                      PyGpuArray_STRIDES(kern)[1]/4,
-                      PyGpuArray_STRIDES(kern)[2]/4,
-                      PyGpuArray_STRIDES(kern)[3]/4
+                      (long long)PyGpuArray_STRIDES(kern)[0]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[1]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[2]/4,
+                      (long long)PyGpuArray_STRIDES(kern)[3]/4
                         );
             if (verbose)
-              fprintf(stderr, "      out : %i %i %i %i %p  %i %i %i %i\n",
-                      PyGpuArray_DIMS(out)[0],
-                      PyGpuArray_DIMS(out)[1],
-                      PyGpuArray_DIMS(out)[2],
-                      PyGpuArray_DIMS(out)[3],
+                fprintf(stderr, "      out : %llu %llu %llu %llu %p  "
+                        "%lld %lld %lld %lld\n",
+                      (unsigned long long)PyGpuArray_DIMS(out)[0],
+                      (unsigned long long)PyGpuArray_DIMS(out)[1],
+                      (unsigned long long)PyGpuArray_DIMS(out)[2],
+                      (unsigned long long)PyGpuArray_DIMS(out)[3],
                       cuda_get_ptr(out),
-                      PyGpuArray_STRIDES(out)[0]/4,
-                      PyGpuArray_STRIDES(out)[1]/4,
-                      PyGpuArray_STRIDES(out)[2]/4,
-                      PyGpuArray_STRIDES(out)[3]/4);
+                      (long long)PyGpuArray_STRIDES(out)[0]/4,
+                      (long long)PyGpuArray_STRIDES(out)[1]/4,
+                      (long long)PyGpuArray_STRIDES(out)[2]/4,
+                      (long long)PyGpuArray_STRIDES(out)[3]/4);
             if (verbose)
               fprintf(stderr, "   launch params: %i %i %i\n",
                       outsize, n_blocks, n_threads);
             if (verbose)
-              fprintf(stderr, "   subsample params: %i %i\n",
-                      subsample_rows, subsample_cols);
+                fprintf(stderr, "   subsample params: %llu %llu\n",
+                        (unsigned long long)subsample_rows,
+                        (unsigned long long)subsample_cols);
         }
         conv_reference_full<<<n_blocks, n_threads>>>(
                 PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(kern)[0],
