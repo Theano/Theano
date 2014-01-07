@@ -1820,7 +1820,7 @@ class AddSD(gof.op.Op):
                     pos = row * Yi + col * Yj;
                     zdata[pos] = ydata[pos] + data[ind];
                   }
-                 } 
+                 }
                 }
              """ % dict(locals(), **sub)
         return code
@@ -2302,7 +2302,7 @@ def hstack(blocks, format=None, dtype=None):
 
     blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        dtype = theano.scalar.upcast([i.dtype for i in blocks])
+        dtype = theano.scalar.upcast(*[i.dtype for i in blocks])
     return HStack(format=format, dtype=dtype)(*blocks)
 
 
@@ -2378,7 +2378,7 @@ def vstack(blocks, format=None, dtype=None):
 
     blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        dtype = theano.scalar.upcast([i.dtype for i in blocks])
+        dtype = theano.scalar.upcast(*[i.dtype for i in blocks])
     return VStack(format=format, dtype=dtype)(*blocks)
 
 
