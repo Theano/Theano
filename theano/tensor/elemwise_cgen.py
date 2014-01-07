@@ -254,10 +254,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
             preloops.setdefault(0, "")
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 
-    if len(loop_tasks) == 1:
-        s = preloops.get(0, "")
-    else:
-        s = ""
+    s = ""
     if reduce:
         loop_over = loop_over_reduce
     else:
