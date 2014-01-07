@@ -1255,7 +1255,7 @@ class IncSubtensor(Op):
 
         copy_into = self.copy_into("zview", y)
 
-        add_to_zview = self.add_to_zview(y, fail)
+        add_to_zview = self.add_to_zview(name, y, fail)
 
         make_modification = """
         if (%(op_is_set)s)
@@ -1353,7 +1353,7 @@ class IncSubtensor(Op):
         """
         return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
 
-    def add_to_zview(self, x, fail):
+    def add_to_zview(self, name, x, fail):
         """ Return C code to add x to zview. Should DECREF zview if the
         add fails."""
 
