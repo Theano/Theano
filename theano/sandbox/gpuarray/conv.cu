@@ -4,8 +4,11 @@
 #define SHARED_SIZE (16*1024)
 
 enum { ConvMode_FULL, ConvMode_VALID };
-PyObject * PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern, PyGpuArrayObject * out, const int mode,
-                           const size_t subsample_rows, const size_t subsample_cols, const int version, const int verbose);
+PyObject * PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
+                           PyGpuArrayObject * out, const int mode,
+                           const size_t subsample_rows,
+                           const size_t subsample_cols,
+                           const int version, const int verbose);
 
 template <typename T>
 static T ceil_intdiv(T a, T b)
@@ -18,11 +21,12 @@ static T ceil_intdiv(T a, T b)
  *          If it can't be executed, we revert to the reference implementation
  */
 int
-PyGpuArray_conv_valid(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
-                       PyGpuArrayObject * out, size_t subsample_rows, size_t subsample_cols,
-                       int version = -1, int verbose=0,
-                       int max_threads_dim0 = 512
-                       )
+PyGpuArray_conv_valid(const PyGpuArrayObject *img,
+                      const PyGpuArrayObject * kern,
+                      PyGpuArrayObject * out, size_t subsample_rows,
+                      size_t subsample_cols,
+                      int version = -1, int verbose=0,
+                      int max_threads_dim0 = 512)
 {
     int work_complete = 0;
     const int shared_avail = SHARED_SIZE-150;//144 is the biggest static shared size used with compiling this file.
@@ -49,32 +53,42 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img, const PyGpuArrayObject * kern
                 " MACRO kern_width=%d with inputs:\n",
                 version, THEANO_KERN_WID);
         fprintf(stderr,
-                "INFO:   img  dim: %i %i %i %i  img  stride: %i %i %i %i\n",
-                PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(img)[1],
-                PyGpuArray_DIMS(img)[2],PyGpuArray_DIMS(img)[3],
-                PyGpuArray_STRIDES(img)[0]/4,
-                PyGpuArray_STRIDES(img)[1]/4,
-                PyGpuArray_STRIDES(img)[2]/4,
-                PyGpuArray_STRIDES(img)[3]/4);
+                "INFO:   img  dim: %llu %llu %llu %llu  "
+                "img  stride: %lld %lld %lld %lld\n",
+                (unsigned long long)PyGpuArray_DIMS(img)[0],
+                (unsigned long long)PyGpuArray_DIMS(img)[1],
+                (unsigned long long)PyGpuArray_DIMS(img)[2],
+                (unsigned long long)PyGpuArray_DIMS(img)[3],
+                (long long)PyGpuArray_STRIDES(img)[0]/4,
+                (long long)PyGpuArray_STRIDES(img)[1]/4,
+                (long long)PyGpuArray_STRIDES(img)[2]/4,
+                (long long)PyGpuArray_STRIDES(img)[3]/4);
         fprintf(stderr,
-                "INFO:   kern dim: %i %i %i %i  kern stride: %i %i %i %i\n",
-                PyGpuArray_DIMS(kern)[0], PyGpuArray_DIMS(kern)[1],
-                PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
-                PyGpuArray_STRIDES(kern)[0]/4,
-                PyGpuArray_STRIDES(kern)[1]/4,
-                PyGpuArray_STRIDES(kern)[2]/4,
-                PyGpuArray_STRIDES(kern)[3]/4);
+                "INFO:   kern dim: %llu %llu %llu %llu  "
+                "kern stride: %lld %lld %lld %lld\n",
+                (unsigned long long)PyGpuArray_DIMS(kern)[0],
+                (unsigned long long)PyGpuArray_DIMS(kern)[1],
+                (unsigned long long)PyGpuArray_DIMS(kern)[2],
+                (unsigned long long)PyGpuArray_DIMS(kern)[3],
+                (long long)PyGpuArray_STRIDES(kern)[0]/4,
+                (long long)PyGpuArray_STRIDES(kern)[1]/4,
+                (long long)PyGpuArray_STRIDES(kern)[2]/4,
+                (long long)PyGpuArray_STRIDES(kern)[3]/4);
         fprintf(stderr,
-                "INFO:   out dim: %i %i %i %i  out stride: %i %i %i %i\n",
-               PyGpuArray_DIMS(out)[0], PyGpuArray_DIMS(out)[1],
-               PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
-               PyGpuArray_STRIDES(out)[0]/4,
-               PyGpuArray_STRIDES(out)[1]/4,
-               PyGpuArray_STRIDES(out)[2]/4,
-               PyGpuArray_STRIDES(out)[3]/4);
+                "INFO:   out dim: %llu %llu %llu %llu  "
+                "out stride: %lld %lld %lld %lld\n",
+                (unsigned long long)PyGpuArray_DIMS(out)[0],
+                (unsigned long long)PyGpuArray_DIMS(out)[1],
+                (unsigned long long)PyGpuArray_DIMS(out)[2],
+                (unsigned long long)PyGpuArray_DIMS(out)[3],
+                (long long)PyGpuArray_STRIDES(out)[0]/4,
+                (long long)PyGpuArray_STRIDES(out)[1]/4,
+                (long long)PyGpuArray_STRIDES(out)[2]/4,
+                (long long)PyGpuArray_STRIDES(out)[3]/4);
         fprintf(stderr,
-                "INFO:   subsample_rows=%d, subsample_cols=%d\n",
-                subsample_rows, subsample_cols);
+                "INFO:   subsample_rows=%llu, subsample_cols=%llu\n",
+                (unsigned long long)subsample_rows,
+                (unsigned long long)subsample_cols);
     }
 
     //Check the output size is valid
