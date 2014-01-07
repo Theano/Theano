@@ -1029,14 +1029,6 @@ class Elemwise(OpenMPOp):
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
-        # We declare the scalar variables used in the inner loop to do
-        # the element-wise computation. Aliased scalar variables need
-        # not be declared, as they are #defined in defines
-        task_decl = "".join([
-            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                for name, dtype in izip(inames + list(real_onames),
-                                       idtypes + list(real_odtypes))])
-
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
@@ -1051,7 +1043,6 @@ class Elemwise(OpenMPOp):
         code = """
         {
             %(defines)s
-            %(task_decl)s
             %(task_code)s
             %(undefs)s
         }
@@ -1069,14 +1060,14 @@ class Elemwise(OpenMPOp):
                 loop_orders=orders + [range(nnested)] * len(real_onames),
                 dtypes=(idtypes + list(real_odtypes)),
                 loop_tasks=all_code,
-                sub=sub)
+                sub=sub, reduce=False, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
                 init_loop_orders=orders + [range(nnested)] * len(real_onames),
                 olv_index=olv_index,
                 dtypes=(idtypes + list(real_odtypes)),
                 inner_task=code,
-                sub=sub)
+                sub=sub, openmp=self.openmp)
 
         # If all inputs and outputs are contiguous
         # and the scalar op define optimized code for that case
@@ -1562,7 +1553,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
             all_code = [task0_decl + code1]
         loop = cgen.make_loop(
                 [order, range(nnested) + ['x'] * len(axis)],
-                [idtype, adtype], all_code, sub)
+                [idtype, adtype], all_code, sub, reduce=True)
 
         end = ""
         if adtype != odtype:
