@@ -408,7 +408,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         declare_iter += "%(var)s_iter = (%(dtype)s*)(PyArray_DATA(%(var)s));\n" % locals()
 
     pointer_update = ''
-    for j in xrange(nvars):
+    for j , dtype in enumerate(dtypes):
         var = sub["lv%i" % j]
         pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter"%locals()
         tot_jump = ''
