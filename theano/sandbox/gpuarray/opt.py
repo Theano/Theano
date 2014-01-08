@@ -24,7 +24,7 @@ from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBi
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduce)
-from theano.sandbox.gpuarray.subtensor import GpuSubtensor
+from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
 from theano.sandbox.gpuarray.type import GpuArrayConstant
 
 gpu_optimizer = EquilibriumDB()
@@ -232,6 +232,14 @@ def local_gpua_specifyShape(node):
 @op_lifter([tensor.Subtensor])
 def local_gpua_subtensor(node):
     return GpuSubtensor(node.op.idx_list)
+
+
+@register_opt()
+@op_lifter([tensor.IncSubtensor])
+def local_gpua_incsubtensor(node):
+    return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
+                           node.op.set_instead_of_inc,
+                           node.op.destroyhandler_tolerate_aliased)
 
 
 @register_opt()

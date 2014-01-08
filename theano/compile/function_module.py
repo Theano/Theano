@@ -1036,7 +1036,7 @@ class FunctionMaker(object):
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
-            raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
+            raise ValueError("'linker' parameter of FunctionMaker should be a Linker with an accept method " \
                              "or one of %s" % theano.compile.mode.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
