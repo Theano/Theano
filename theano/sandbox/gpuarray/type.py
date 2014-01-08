@@ -107,7 +107,7 @@ class GpuArrayType(Type):
             return GpuArrayType.values_eq(a, b)
         else:
             res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
-                            op_tmpl="res[i] = ((%(a)s - %(b)s) <"
+                            op_tmpl="res[i] = (fabs(%(a)s - %(b)s) <"
                             "(1e-8 + 1e-5 * fabs(%(b)s)))")
             return numpy.asarray(res).all()
 
