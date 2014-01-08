@@ -370,7 +370,7 @@ def local_gpu_conv(node):
         if a.shape[-1] * a.shape[-2] > 100:
             #For float32 the default atol is 1e-5
             atol = 3e-5
-        return CudaNdarrayType.values_eq_approx(a, b, atol=atol)
+        return GpuArrayType.values_eq_approx(a, b, atol=atol)
 
     img, kern = node.inputs
     gpu_conv = GpuConvOp_from_ConvOp(node.op)
