@@ -9,8 +9,8 @@ from theano.gof import (local_optimizer, EquilibriumDB,
                         InconsistencyError, EquilibriumOptimizer)
 
 from theano.gof.python25 import all, any
+from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
-
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                gpu_from_host,
                                                gpu_alloc,
@@ -20,6 +20,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                GpuReshape,
                                                GpuEye)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
@@ -61,8 +62,8 @@ def op_lifter(OP):
     def f(maker):
         def local_opt(node):
             if type(node.op) in OP:
-                # This does not support nodes that have more than one output.
-                # either one of our inputs is on the gpu or
+
+                # Either one of our inputs is on the gpu or
                 # all of our client are on the gpu
                 if (any([i.owner and i.owner.op == host_from_gpu
                          for i in node.inputs]) or
@@ -72,7 +73,8 @@ def op_lifter(OP):
                     # This is needed as sometimes new_op inherit from OP.
                     if new_op and new_op != node.op:
                         if isinstance(new_op, theano.Op):
-                            return [host_from_gpu(o) for o in new_op(*node.inputs, return_list=True)]
+                            return [host_from_gpu(o) for o in
+                                    new_op(*node.inputs, return_list=True)]
                         elif isinstance(new_op, (tuple, list)):
                             return [host_from_gpu(o) for o in new_op]
                         else:  # suppose it is a variable on the GPU
@@ -306,3 +308,82 @@ def local_gpua_shape(node):
             gpu_x, = x.owner.inputs
             return [gpu_shape(gpu_x)]
     return False
+
+
+@register_opt()
+@op_lifter([gpu_from_host, ConvOp])
+def local_gpu_conv(node):
+    """
+    gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+
+    conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+    """
+    def GpuConvOp_from_ConvOp(op):
+        logical_img_hw = None
+
+        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
+            return None
+        #print op.kshp, op.imshp[1:3]
+        #print op.kshp_logical, logical_img_hw
+        ret = GpuConv(border_mode=op.out_mode,
+                    subsample=(op.dx, op.dy),
+                    logical_img_hw=logical_img_hw,
+                    logical_kern_hw=op.kshp_logical,
+                    logical_kern_align_top=op.kshp_logical_top_aligned,
+                    kshp=op.kshp,
+                    version=op.version,
+                    verbose=op.verbose,
+                    imshp=op.imshp,
+                    )
+        if op.imshp_logical is not None:
+            logical_img_hw = op.imshp_logical[1:3]
+            if logical_img_hw != op.imshp[1:3]:
+                # this case is not implemented
+                #return None
+                rstride = int(numpy.ceil(op.imshp_logical[1] /
+                                         float(op.imshp[1])))
+                cstride = int(numpy.ceil(op.imshp_logical[2] /
+                                         float(op.imshp[2])))
+
+                def make_graph(img, kern):
+                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
+                                       img.shape[0], *op.imshp_logical)
+                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
+                                               img)
+                    img = gpu_from_host(img)
+                    return ret(img, kern)
+
+                return make_graph
+        return ret
+
+    def values_eq_approx(a, b):
+        """This fct is needed to don't have DebugMode raise useless
+        error due to ronding error.
+
+        This happen as We reduce on the two last dimensions, so this
+        can raise the absolute error if the number of element we
+        reduce on is significant.
+
+        """
+        assert a.ndim == 4
+        atol = None
+        if a.shape[-1] * a.shape[-2] > 100:
+            #For float32 the default atol is 1e-5
+            atol = 3e-5
+        return GpuArrayType.values_eq_approx(a, b, atol=atol)
+
+    img, kern = node.inputs
+    gpu_conv = GpuConvOp_from_ConvOp(node.op)
+    if gpu_conv is None:
+        return
+    out = gpu_conv(gpu_from_host(img),
+                   gpu_from_host(kern))
+    # in some case the ConvOp broadcast the last 2 dimensions
+    # differently then the gpu ConvOp
+    out = tensor.patternbroadcast(
+        host_from_gpu(out),
+        node.outputs[0].broadcastable)
+    #op_lifter want the output on the GPU.
+    out = gpu_from_host(out)
+    out.values_eq_approx = values_eq_approx
+    return [out]

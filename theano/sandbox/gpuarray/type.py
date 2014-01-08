@@ -100,15 +100,33 @@ class GpuArrayType(Type):
         return numpy.asarray(compare(a, '==', b)).all()
 
     @staticmethod
-    def values_eq_approx(a, b):
+    def values_eq_approx(a, b,
+                         allow_remove_inf=False, allow_remove_nan=False,
+                         rtol=None, atol=None):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
         if 'int' in str(a.dtype):
             return GpuArrayType.values_eq(a, b)
         else:
+            if allow_remove_inf or allow_remove_nan:
+                raise NotImplementedError(
+                    "GpuArrayType.values_eq_approx() don't implemented the"
+                    " allow_remove_inf and allow_remove_nan parameter")
+            narrow = 'float32', 'complex64'
+            if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
+                atol_ = theano.tensor.basic.float32_atol
+                rtol_ = theano.tensor.basic.float32_rtol
+            else:
+                atol_ = theano.tensor.basic.float64_atol
+                rtol_ = theano.tensor.basic.float64_rtol
+            if rtol is not None:
+                rtol_ = rtol
+            if atol is not None:
+                atol_ = atol
             res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
-                            op_tmpl="res[i] = ((%(a)s - %(b)s) <"
-                            "(1e-8 + 1e-5 * fabs(%(b)s)))")
+                            op_tmpl="res[i] = (fabs(%%(a)s - %%(b)s) <"
+                            "(%(atol_)s + %(rtol_)s * fabs(%%(b)s)))" %
+                            locals())
             return numpy.asarray(res).all()
 
     def value_zeros(self, shape):
