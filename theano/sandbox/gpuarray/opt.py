@@ -73,7 +73,8 @@ def op_lifter(OP):
                     # This is needed as sometimes new_op inherit from OP.
                     if new_op and new_op != node.op:
                         if isinstance(new_op, theano.Op):
-                            return [host_from_gpu(o) for o in new_op(*node.inputs, return_list=True)]
+                            return [host_from_gpu(o) for o in
+                                    new_op(*node.inputs, return_list=True)]
                         elif isinstance(new_op, (tuple, list)):
                             return [host_from_gpu(o) for o in new_op]
                         else:  # suppose it is a variable on the GPU
