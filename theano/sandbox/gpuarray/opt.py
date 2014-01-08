@@ -62,8 +62,8 @@ def op_lifter(OP):
     def f(maker):
         def local_opt(node):
             if type(node.op) in OP:
-                # This does not support nodes that have more than one output.
-                # either one of our inputs is on the gpu or
+
+                # Either one of our inputs is on the gpu or
                 # all of our client are on the gpu
                 if (any([i.owner and i.owner.op == host_from_gpu
                          for i in node.inputs]) or
