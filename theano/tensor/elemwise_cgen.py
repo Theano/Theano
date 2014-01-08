@@ -171,8 +171,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
     }
     """ % dict(locals(), **sub)
 
-
-def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
+def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
     """
     Make a nested loop over several arrays and associate specific code
     to each level of nesting.
@@ -197,12 +196,8 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
     @param sub: Maps 'lv#' to a suitable variable name.
       The 'lvi' variable corresponds to the ith element of loop_orders.
 
-    @type reduce: boolean
-    @param reduce: true if this function is called from CAReduce
-      false if it is called from Elemwise,because in elemnwise to use
-      openmp the code must be rearranged
     """
-    def loop_over_elemwise(preloop, code, indices, i):
+    def loop_over(preloop, code, indices, i):
         iterv = 'ITER_%i' % i
         update = ""
         suitable_n = "1"
@@ -226,23 +221,6 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
         }
         """ % locals()
 
-    def loop_over_reduce(preloop, code, indices, i):
-        iterv = 'ITER_%i' % i
-        update = ""
-        suitable_n = "1"
-        for j, index in enumerate(indices):
-            var = sub['lv%i' % j]
-            update += "%(var)s_iter += %(var)s_jump%(index)s_%(i)s;\n" % locals()
-            if index != 'x':
-                suitable_n = "%(var)s_n%(index)s" % locals()
-        return """
-        %(preloop)s
-        for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
-            %(code)s
-            %(update)s
-        }
-        """ % locals()
-
     preloops = {}
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
         for j, index in enumerate(loop_order):
@@ -255,12 +233,8 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, reduce=False, openmp=None):
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 
     s = ""
-    if reduce:
-        loop_over = loop_over_reduce
-    else:
-        loop_over = loop_over_elemwise
 
-        for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+    for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
@@ -477,13 +451,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
 ### DimShuffle ###
 ##################
 
-
-
 #################
 ### Broadcast ###
 #################
-
-
 
 
 ################
@@ -491,7 +461,67 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
 ################
 
 
+def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
+    """
+    Make a nested loop over several arrays and associate specific code
+    to each level of nesting.
 
+    @type loop_orders: list of N tuples of length M.
+    @param loop_orders: Each value of each
+      tuple can be either the index of a dimension to loop over or
+      the letter 'x' which means there is no looping to be done
+      over that variable at that point (in other words we broadcast
+      over that dimension). If an entry is an integer, it will become
+      an alias of the entry of that rank.
 
+    @type loop_tasks: list of M+1 pieces of code.
+    @param loop_tasks: The ith loop_task is a pair of strings, the first
+      string is code to be executed before the ith loop starts, the second
+      one contains code to be executed just before going to the next element
+      of the ith dimension.
+      The last element if loop_tasks is a single string, containing code
+      to be executed at the very end.
 
+    @type sub: a dictionary.
+    @param sub: Maps 'lv#' to a suitable variable name.
+      The 'lvi' variable corresponds to the ith element of loop_orders.
+    """
+
+    def loop_over(preloop, code, indices, i):
+        iterv = 'ITER_%i' % i
+        update = ""
+        suitable_n = "1"
+        for j, index in enumerate(indices):
+            var = sub['lv%i' % j]
+            update += "%(var)s_iter += %(var)s_jump%(index)s_%(i)s;\n" % locals()
+            if index != 'x':
+                suitable_n = "%(var)s_n%(index)s" % locals()
+        return """
+        %(preloop)s
+        for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
+            %(code)s
+            %(update)s
+        }
+        """ % locals()
+
+    preloops = {}
+    for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
+        for j, index in enumerate(loop_order):
+            if index != 'x':
+                preloops.setdefault(j, "")
+                preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                break
+        else: # all broadcastable
+            preloops.setdefault(0, "")
+            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+
+    if len(loop_tasks) == 1:
+        s = preloops.get(0, "")
+    else:
+        s = ""
+        for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+            s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
+
+    s += loop_tasks[-1]
+    return "{%s}" % s
 

@@ -1091,7 +1091,7 @@ class Elemwise(OpenMPOp):
                     loop_orders=loop_orders,
                     dtypes=dtypes,
                     loop_tasks=all_code,
-                    sub=sub, reduce=False, openmp=self.openmp)
+                    sub=sub, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
                 init_loop_orders=loop_orders,
@@ -1582,9 +1582,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
                         + [("", code1), ""])
         else:
             all_code = [task0_decl + code1]
-        loop = cgen.make_loop(
+        loop = cgen.make_loop_careduce(
                 [order, range(nnested) + ['x'] * len(axis)],
-                [idtype, adtype], all_code, sub, reduce=True)
+                [idtype, adtype], all_code, sub)
 
         end = ""
         if adtype != odtype:
