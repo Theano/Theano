@@ -9,6 +9,7 @@ from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
 
 from theano.sandbox.gpuarray.type import GpuArrayType
 
+
 def test_deep_copy():
     a = rand_gpuarray(20, dtype='float32')
     g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
