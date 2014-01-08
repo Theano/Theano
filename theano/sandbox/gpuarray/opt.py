@@ -311,7 +311,7 @@ def local_gpua_shape(node):
 
 
 @register_opt()
-@local_optimizer([])
+@op_lifter([gpu_from_host, ConvOp])
 def local_gpu_conv(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
@@ -372,38 +372,18 @@ def local_gpu_conv(node):
             atol = 3e-5
         return CudaNdarrayType.values_eq_approx(a, b, atol=atol)
 
-    if node.op == gpu_from_host:
-        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
-        host_input = node.inputs[0]
-        if host_input.owner and isinstance(host_input.owner.op, ConvOp):
-            gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
-            if gpu_conv is None:
-                return
-            img, kern = host_input.owner.inputs
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
-            out = tensor.patternbroadcast(out,
-                                          node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx
-            # in some case the ConvOp broadcast the last 2 dimensions
-            # differently then the gpu ConvOp
-            return [out]
-
-    if isinstance(node.op, ConvOp):
-        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
-        img, kern = node.inputs
-        img_on_gpu = (img.owner and img.owner.op == host_from_gpu)
-        kern_on_gpu = (kern.owner and kern.owner.op == host_from_gpu)
-        if img_on_gpu or kern_on_gpu:
-            gpu_conv = GpuConvOp_from_ConvOp(node.op)
-            if gpu_conv is None:
-                return
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
-            out = tensor.patternbroadcast(
-                host_from_gpu(out),
-                node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx
-            # in some case the ConvOp broadcast the last 2 dimensions
-            # differently then the gpu ConvOp
-            return [out]
+    img, kern = node.inputs
+    gpu_conv = GpuConvOp_from_ConvOp(node.op)
+    if gpu_conv is None:
+        return
+    out = gpu_conv(gpu_from_host(img),
+                   gpu_from_host(kern))
+    # in some case the ConvOp broadcast the last 2 dimensions
+    # differently then the gpu ConvOp
+    out = tensor.patternbroadcast(
+        host_from_gpu(out),
+        node.outputs[0].broadcastable)
+    #op_lifter want the output on the GPU.
+    out = gpu_from_host(out)
+    out.values_eq_approx = values_eq_approx
+    return [out]
