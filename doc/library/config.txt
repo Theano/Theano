@@ -211,6 +211,13 @@ import theano and print the config variable, as in:
     The best is to define it via Theano configuration
     file or with the environment variable THEANO_FLAGS.
 
+.. attribute:: openmp_elemwise_minsize
+
+   Positive int value, default: 200000.
+
+   This specifies the vectors minimum size for which elemwise ops
+   use openmp, if openmp is enable.
+
 .. attribute:: cast_policy
 
     String value: either 'numpy+floatX' or 'custom'
