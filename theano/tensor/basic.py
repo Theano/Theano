@@ -2748,7 +2748,8 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 
 @constructor
-def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
+def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None,
+         no_zeros_in_input=False):
     """
     Computes the product along the given axis(es) of a tensor `input`
 
@@ -2762,7 +2763,8 @@ def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
     For full documentation see ``tensor.elemwise.Prod``.
     """
 
-    out = elemwise.Prod(axis, dtype=dtype, acc_dtype=acc_dtype)(input)
+    out = elemwise.Prod(axis, dtype=dtype, acc_dtype=acc_dtype,
+                        no_zeros_in_input=no_zeros_in_input)(input)
 
     if keepdims:
         out = makeKeepDims(input, out, axis)
