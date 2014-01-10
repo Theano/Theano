@@ -581,6 +581,38 @@ class test_Prod(unittest.TestCase):
 
         #unittest_tools.verify_grad(fn5, [x_val])
 
+    def test_prod_no_zeros_in_input(self):
+        x = theano.tensor.dmatrix()
+        x_val = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
+        pwz = Prod(axis=1, no_zeros_in_input=True)(x)
+        fn = theano.function([x], pwz, mode=self.mode)
+
+        assert numpy.allclose(fn(x_val), [6, 120, 504])
+
+        pwz = Prod(no_zeros_in_input=True)(x)
+        g = theano.grad(pwz, x)
+        gg = theano.grad(g.sum(), x)
+        fn = theano.function([x], g, mode=self.mode)
+        assert numpy.allclose(fn(x_val),
+                              [[362880., 181440., 120960.],
+                               [90720., 72576., 60480.],
+                               [51840., 45360., 40320.]])
+        fn = theano.function([x], gg, mode=self.mode)
+        assert numpy.allclose(fn(x_val),
+                              [[663696., 422568., 301872.],
+                               [233964., 190800., 161016.],
+                               [139248., 122652., 109584.]])
+        unittest_tools.verify_grad(Prod(axis=1, no_zeros_in_input=True),
+                                   [x_val],
+                                   mode=self.mode)
+        unittest_tools.verify_grad(Prod(no_zeros_in_input=True), [x_val],
+                                   mode=self.mode)
+
+        def second_deriv(x):
+            return theano.grad(Prod(no_zeros_in_input=True)(x), x)
+        unittest_tools.verify_grad(second_deriv, [x_val],
+                                   mode=self.mode)
+
     def test_prod_without_zeros(self):
         x = theano.tensor.dmatrix()
         x_val = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]], dtype='float32')
