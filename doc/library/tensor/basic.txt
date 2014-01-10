@@ -816,8 +816,7 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None,
-                   no_zeros_in_input=False)
+.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None, no_zeros_in_input=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the product
@@ -857,8 +856,8 @@ Reductions
 	 some small speed up and allow second derivative set
 	 ``no_zeros_in_inputs`` to ``True``. It default to ``False``.
 
-	 It is the user responsability to make sure there is no zeros
-	 in the inputs. If there is, the grad will be wrong.
+	 **It is the user responsability to make sure there is no zeros
+	 in the inputs. If there is, the grad will be wrong.**
 
     :Returns: product of every term in *x* along *axis*
 
