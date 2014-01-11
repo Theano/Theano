@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano.tests import unittest_tools as utt
 from theano.sandbox.gpuarray.basic_ops import GpuAlloc, GpuReshape, gpu_alloc
-from theano.sandbox.gpuarray.elemwise import GpuCAReduceCPY
+from theano.sandbox.gpuarray.elemwise import GpuCAReduce
 import theano.sandbox.gpuarray
 from theano.tests.unittest_tools import SkipTest
 
@@ -69,7 +69,7 @@ def test_sum_prod():
         res = f(val)
         utt.assert_allclose(res, val.sum())
         assert res.shape == ()
-        assert GpuCAReduceCPY in [type(node.op)
+        assert GpuCAReduce in [type(node.op)
                                for node in f.maker.fgraph.toposort()]
 
 
