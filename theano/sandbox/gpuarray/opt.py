@@ -24,7 +24,7 @@ from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
-                                              GpuDimShuffle, GpuCAReduce)
+                                              GpuDimShuffle, GpuCAReduceCPY)
 from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
 from theano.sandbox.gpuarray.type import GpuArrayConstant
 
@@ -249,7 +249,7 @@ def local_gpua_incsubtensor(node):
 def local_gpua_careduce(node):
     if (isinstance(node.op.scalar_op, scalar.basic.Add) or
         isinstance(node.op.scalar_op, scalar.basic.Mul)):
-        return GpuCAReduce(node.op.scalar_op, axis=node.op.axis,
+        return GpuCAReduceCPY(node.op.scalar_op, axis=node.op.axis,
                            dtype=getattr(node.op, 'dtype', None),
                            acc_dtype=getattr(node.op, 'acc_dtype', None))
 

@@ -10,7 +10,7 @@ from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, GpuDimShuffle,
-                                              GpuCAReduce)
+                                              GpuCAReduceCPY)
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from pygpu.array import gpuarray
@@ -37,10 +37,11 @@ class test_gpu_Broadcast(test_Broadcast):
 class test_GpuDimShuffle(test_DimShuffle):
     op = GpuDimShuffle
 
-class test_GpuCAReduce(test_CAReduce):
+
+class test_GpuCAReduceCPY(test_CAReduce):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
-    op = GpuCAReduce
+    op = GpuCAReduceCPY
     reds = [scalar.add, scalar.mul]
 
     def test_perform(self):

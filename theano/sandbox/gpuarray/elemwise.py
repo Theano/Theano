@@ -518,7 +518,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return (3,)
 
 
-class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
+class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         if not hasattr(scalar_op, 'identity'):
             raise ValueError("No identity on scalar op")
@@ -550,7 +550,7 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         # cache the kernel object
         self.get_kernel_cache(node)
-        return super(GpuCAReduce, self).make_thunk(node, storage_map,
+        return super(GpuCAReduceCPY, self).make_thunk(node, storage_map,
                                                    compute_map, no_recycling)
 
     def get_kernel_cache(self, node):
@@ -732,7 +732,7 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
         err = GpuKernel_call(&%(k_var)s, 0, %(ls)s, gs, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
-                         "compyte error: GpuCAReduce: %%s.",
+                         "compyte error: GpuCAReduceCPY: %%s.",
                          GpuKernel_error(&%(k_var)s, err));
             %(fail)s
         }
@@ -741,7 +741,7 @@ class GpuCAReduce(GpuKernelBase, HideC, CAReduceDtype):
             err = GpuArray_move(&%(output)s->ga, &tmp->ga);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "compyte error: GpuCAReduce [cast]: %%s.",
+                             "compyte error: GpuCAReduceCPY [cast]: %%s.",
                              GpuArray_error(&tmp->ga, err));
                 %(fail)s
             }
