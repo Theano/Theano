@@ -846,18 +846,18 @@ Reductions
 
     :Parameter: *no_zeros_in_input* - The grad of prod is complicated
          as we need to handle 3 different cases: without zeros in the
-         input reduced group, with 1 zeros or with more zeros.
+         input reduced group, with 1 zero or with more zeros.
 
 	 This could slow you down, but more importantly, we currently
 	 don't support the second derivative of the 3 cases. So you
-	 can not take the second derivative of the default prod().
+	 cannot take the second derivative of the default prod().
 
 	 To remove the handling of the special cases of 0 and so get
 	 some small speed up and allow second derivative set
-	 ``no_zeros_in_inputs`` to ``True``. It default to ``False``.
+	 ``no_zeros_in_inputs`` to ``True``. It defaults to ``False``.
 
-	 **It is the user responsability to make sure there is no zeros
-	 in the inputs. If there is, the grad will be wrong.**
+	 **It is the user responsibility to make sure there are no zeros
+	 in the inputs. If there are, the grad will be wrong.**
 
     :Returns: product of every term in *x* along *axis*
 
