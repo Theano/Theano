@@ -183,7 +183,7 @@ class GpuConv(gof.Op):
 
     def c_headers(self):
         return ['<stdio.h>', 'cuda.h',
-                '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+                '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files

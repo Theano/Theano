@@ -191,7 +191,7 @@ class GpuDot22(BlasOp, Dot22):
 
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()
-        return ret + ['<compyte/numpy_compat.h>']
+        return ret + ['<numpy_compat.h>']
 
 gpu_dot22 = GpuDot22()
 

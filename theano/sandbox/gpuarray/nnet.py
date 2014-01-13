@@ -44,7 +44,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_support_code_apply(self, node, nodename):
         dtype_x = node.inputs[0].dtype
@@ -297,7 +297,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return (6,)
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
         return NVCC_compiler

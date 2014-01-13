@@ -563,7 +563,7 @@ class GpuAlloc(HideC, Alloc):
         return Apply(self, [value] + res.inputs[1:], [otype()])
 
     def c_headers(self):
-        return ['<compyte/numpy_compat.h>']
+        return ['<numpy_compat.h>']
 
     def perform(self, node, inputs, outs):
         out, = outs

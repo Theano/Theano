@@ -165,7 +165,7 @@ class GpuElemwise(HideC, Elemwise):
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
         return NVCC_compiler
