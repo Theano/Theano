@@ -27,7 +27,6 @@ if cuda_available:
 
 from theano.sandbox.gpuarray.basic_ops import GpuKernelBase
 from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 def matVecModM(A, s, m):
     # return (A * s) % m
