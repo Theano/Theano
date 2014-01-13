@@ -510,7 +510,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
-                || (PyArray_NDIM(%(o_sample)s) != %(ndim)s));
+                || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
         if (PyArray_NDIM(%(size)s) != 1)
         {
