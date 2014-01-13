@@ -197,7 +197,7 @@ class mrg_uniform(mrg_uniform_base):
         o_rstate, o_sample = out
         numpy_version = numpy.__version__.split('.')
         if not self.warned_numpy_version and int(numpy_version[0]) <= 1 and int(numpy_version[1]) <3 :
-            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
+            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory."
             self.warned_numpy_version = True
 
         n_elements = 1
