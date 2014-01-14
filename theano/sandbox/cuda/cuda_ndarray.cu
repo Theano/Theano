@@ -37,6 +37,8 @@ PyObject *
 CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args);
 static PyObject *CudaNdarray_get_shape(CudaNdarray *self, void *closure);
 
+cudaStream_t streams[32];
+
 
 /**
  *
