@@ -501,9 +501,23 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self)
 
 DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
 
+DllExport int CudaNdarray_block_gemm(float alpha, 
+        const CudaNdarray * A, 
+        const CudaNdarray * B, 
+        float beta, 
+        CudaNdarray * C);
 DllExport int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
 DllExport int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
+DllExport int CudaNdarray_block_sgemv(float alpha, 
+        const CudaNdarray * A, 
+        const CudaNdarray * B, 
+        float beta, 
+        CudaNdarray * C); 
 DllExport int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, CudaNdarray* A);
+DllExport int CudaNdarray_block_sger(float alpha, 
+        const CudaNdarray * x, 
+        const CudaNdarray * y, 
+        CudaNdarray* A);
 
 DllExport int CudaNdarray_reduce_sum(CudaNdarray * self, CudaNdarray * A);
 DllExport int CudaNdarray_reduce_prod(CudaNdarray * self, CudaNdarray * A);
