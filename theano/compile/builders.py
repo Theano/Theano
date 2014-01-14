@@ -6,10 +6,10 @@ from theano.gof import ops_with_inner_function
 
 
 class OpFromGraph(gof.Op):
-    """This create an `Op` from inputs and outputs list of variables.
+    """This creates an `Op` from inputs and outputs lists of variables.
 
     The signature is similar to theano.function() and the resulting
-    `Op` perform will do the same operation as::
+    `Op`'s perform will do the same operation as::
 
         orig_function(inputs, outputs, **kwargs)
 
@@ -19,13 +19,13 @@ class OpFromGraph(gof.Op):
         - c_code() to remove the double overhead?
         - opt to unfold it, work inplace on inputs
         - grad() make it support DisconnectedType and the new interface
-        - check how it work with updates.
+        - check how it works with updates.
         - add test with constant as input or inside the inner graph.
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
     :note:
-        - We support shared variable in the inner graph. This is automatic and
+        - We support shared variables in the inner graph. This is automatic and
           invisible to the user. They can be as input to the node or in the
           inner graph.
         - We support unused inputs. This is needed for the grad.

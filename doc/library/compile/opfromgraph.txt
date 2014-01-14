@@ -4,23 +4,23 @@
 OpFromGraph
 ===========
 
-This page descripbe :class:`theano.OpFromGraph
-<theano.compile.builders.OpFromGraph>`. an Op that allow to
+This page describes :class:`theano.OpFromGraph
+<theano.compile.builders.OpFromGraph>`, an Op that allows to
 encapsulate a Theano graph in an op.
 
 This can be used to encapsulate some functionality in one block. It is
-useful to scale Theano compilation for regular bigger graph when we
+useful to scale Theano compilation for regular bigger graphs when we
 reuse that encapsulated fonctionality with different inputs many
 times. Due to this encapsulation, it can make Theano compilation phase
-faster for graph with many nodes.
+faster for graphs with many nodes.
 
-Using this for small graph isn't recommanded as it disable
-optimization between what is inside the encapsulation and outside it.
+Using this for small graphs is not recommended as it disables
+optimizations between what is inside the encapsulation and outside of it.
 
 .. note:
 
-    This wasn't used widely up to now. If you have any
-    questions/comments don't contact us on the mailing list.
+    This was not used widely up to now. If you have any
+    questions/comments do not hesitate to contact us on the mailing list.
 
 
 
