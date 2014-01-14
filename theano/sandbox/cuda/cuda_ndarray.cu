@@ -1474,6 +1474,16 @@ __global__ void k_ielem_3(const int d0, const int d1, const int d2,
                   case CPY:
                     a[i0*sA0 + i1*sA1 + i2*sA2] = b[i0*sB0 + i1*sB1 + i2*sB2];
                     break;
+                  case SIGMOID:
+                    // sig(x) = 1/(1+exp(-x))
+                    a[i0*sA0 + i1*sA1 + i2*sA2] = 1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2]));
+                    break;
+                  case ISIGMOID:
+                    // sig^-1(x) = sig(x)*sig(1-x)
+                    a[i0*sA0 + i1*sA1 + i2*sA2] = (1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2])))*
+                                                  (1./(1.+exp(-1. + b[i0*sB0 + i1*sB1 + i2*sB2])));
+                    break;
+                        
                 }
             }
         }
@@ -1503,6 +1513,17 @@ __global__ void k_ielem_4(const int d0, const int d1, const int d2, const int d3
                             a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3]
                             = b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3];
                             break;
+                        case SIGMOID:
+                            a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3]
+                            = 1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3]));
+                            break;
+                        case ISIGMOID:
+                            a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3]
+                            = (1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3])))*
+                            (1./(1.+exp(-1+b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3])));
+
+                            break;
+
                     }
                 }
             }
@@ -1539,6 +1560,16 @@ __global__ void k_ielem_6(const int d0, const int d1,
                             case CPY:
                                 a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3 + i4*sA4 + i5*sA5]
                                     = b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3 + i4*sB4 + i5*sB5];
+                                break;
+                            case SIGMOID:
+                                a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3 + i4*sA4 + i5*sA5]
+                                    = 1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3 + i4*sB4 + i5*sB5]));
+                                break;
+                            case ISIGMOID:
+                                a[i0*sA0 + i1*sA1 + i2*sA2 + i3*sA3 + i4*sA4 + i5*sA5]
+                                    = (1./(1.+exp(-b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3 + i4*sB4 + i5*sB5])))*
+                                      (1./(1.+exp(-1+b[i0*sB0 + i1*sB1 + i2*sB2 + i3*sB3 + i4*sB4 + i5*sB5])));
+
                                 break;
                             }
                         }

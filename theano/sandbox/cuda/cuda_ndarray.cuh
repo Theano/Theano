@@ -132,6 +132,8 @@ enum operator_t
     IADD=0,
     IDIV,
     CPY,
+    SIGMOID,
+    ISIGMOID,
     N_ELEMWISE_OPS // This is to know the number of operation
 };
 
