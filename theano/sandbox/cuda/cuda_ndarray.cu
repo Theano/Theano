@@ -3102,6 +3102,10 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         }
     }
 
+    for (int i=0; i< 32; i++)
+    {
+        cudaStreamCreate(&streams[i]);
+    }
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -3129,8 +3133,16 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
 
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
+
+    for(int i =0; i< 32;i++){
+        // synchronize streams
+        cudaStreamSynchronize( streams[i] ) ;
+        //        //destroy streams
+        cudaStreamDestroy( streams[i] ) ;
+    }
     cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
+
     Py_INCREF(Py_None);
     return Py_None;
 }
