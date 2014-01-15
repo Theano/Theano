@@ -116,6 +116,105 @@ def test_dot22scalar():
     cmp((0, 0), (0, 0))
 
 
+def test_block_gemm():
+    bs = 2**4
+    size =2**14
+    cols = 2**7
+    bottleneck = 2**8
+
+    valX = numpy.random.uniform(size=(bs,size)).astype('float32')
+    X = theano.shared(valX, 'x')
+
+    valW1 = numpy.random.uniform(size=(cols, size//cols,size//cols)).astype('float32')
+    W0 = theano.shared(valW1, 'W')
+
+    valW2 = numpy.random.uniform(size=(size, bottleneck)).astype('float32')
+    Wb0 = theano.shared(valW2, 'Wb0')
+
+    valW3 = numpy.random.uniform(size=(bottleneck, size)).astype('float32')
+    Wb1 = theano.shared(valW3, 'Wb1')
+
+    Xtp1 = tensor.dot(tensor.dot(X, Wb0), Wb1) + b
+
+    Xtp1 = theano.tensor.extra_ops.block_dot(Xtp1.reshape((bs,cols,
+                                                           size//cols)).dimshuffle(1,0,2),
+                                             X.reshape((bs, cols,
+                                                        size//cols)).dimshuffle(1,0,2),
+                                             W0).dimshuffle(1,0,2).reshape((bs,size))
+    Xtp1 = tensor.tanh(Xtp1)
+    cost = Xtp1.sum()
+    params = [W0, Wb0, Wb1]
+    gparams = tensor.grad(cost, params)
+    updates = [(p, p + .1*g) for p,g in zip(params, gparams)]
+    updates += [(X, Xtp1)]
+    fn3 = theano.function([],Xtp1.sum(), updates=updates, name='Func3')
+    tmg = 0
+    for stp in xrange(50):
+        _x0 = X.get_value()
+        st = time.time()
+        fn3()
+        tmg += time.time() - st
+        nwX = X.get_value()
+        px = numpy.zeros((cols, bs, size//cols), dtype='float32')
+        for dx in xrange(cols):
+            px[dx] = numpy.dot(_x0.reshape((bs, cols,
+                                            size//cols)).transpose(1,0,2)[dx], valW1[dx])
+        fvals = px.transpose(1,0,2).reshape((bs, size)) +\
+                numpy.dot(numpy.dot(_x0, valW2), valW3) + b.get_value()
+        fvals = numpy.tanh(fvals)
+        if not numpy.all(fvals == nwX):
+            print 'Error in GPU implementation of block gemm'
+        assert numpy.all(fvals == nwX)
+
+def test_block_gemv():
+    size =2**14
+    cols = 2**7
+    bottleneck = 2**8
+
+    valX = numpy.random.uniform(size=(size)).astype('float32')
+    X = theano.shared(valX, 'x')
+
+    valW1 = numpy.random.uniform(size=(cols, size//cols,size//cols)).astype('float32')
+    W0 = theano.shared(valW1, 'W')
+
+    valW2 = numpy.random.uniform(size=(size, bottleneck)).astype('float32')
+    Wb0 = theano.shared(valW2, 'Wb0')
+
+    valW3 = numpy.random.uniform(size=(bottleneck, size)).astype('float32')
+    Wb1 = theano.shared(valW3, 'Wb1')
+
+    Xtp1 = tensor.dot(tensor.dot(X, Wb0), Wb1) + b
+
+    Xtp1 = theano.tensor.extra_ops.block_dot(Xtp1.reshape((cols,
+                                                           size//cols)),
+                                             X.reshape((cols,
+                                                        size//cols)),
+                                             W0).flatten()
+    Xtp1 = tensor.tanh(Xtp1)
+    cost = Xtp1.sum()
+    params = [W0, Wb0, Wb1]
+    gparams = tensor.grad(cost, params)
+    updates = [(p, p + .1*g) for p,g in zip(params, gparams)]
+    updates += [(X, Xtp1)]
+    fn3 = theano.function([],Xtp1.sum(), updates=updates, name='Func3')
+    tmg = 0
+    for stp in xrange(50):
+        _x0 = X.get_value()
+        st = time.time()
+        fn3()
+        tmg += time.time() - st
+        nwX = X.get_value()
+        px = numpy.zeros((cols, size//cols), dtype='float32')
+        for dx in xrange(cols):
+            px[dx] = numpy.dot(_x0.reshape((cols,
+                                            size//cols))[dx], valW1[dx])
+        fvals = px.reshape((size,)) +\
+                numpy.dot(numpy.dot(_x0, valW2), valW3) + b.get_value()
+        fvals = numpy.tanh(fvals)
+        if not numpy.all(fvals == nwX):
+            print 'Error in GPU implementation of block gemm'
+        assert numpy.all(fvals == nwX)
+
 def test_gemm():
     def cmp(a_shp, b_shp):
         a0 = my_rand(*a_shp)
