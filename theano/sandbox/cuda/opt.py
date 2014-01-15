@@ -26,6 +26,12 @@ from theano.sandbox.cuda.basic_ops import (
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+from theano.sandbox.cuda.blas import gpu_block_gemv_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_ger_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemm_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemv_inplace
+from theano.sandbox.cuda.blas import gpu_block_ger_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemm_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1226,6 +1232,23 @@ def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]
 
+@local_optimizer([gpu_block_gemm_no_inplace])
+def local_inplace_block_gemm(node):
+    if node.op == gpu_block_gemm_no_inplace:
+        return [gpu_block_gemm_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_block_gemv_no_inplace])
+def local_inplace_block_gemv(node):
+    if node.op == gpu_block_gemv_no_inplace:
+        return [gpu_block_gemv_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_block_ger_no_inplace])
+def local_inplace_block_ger(node):
+    if node.op == gpu_block_ger_no_inplace:
+        return [gpu_block_ger_inplace(*node.inputs)]
+
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
@@ -1234,6 +1257,9 @@ optdb.register('InplaceGpuBlasOpt',
                tensor.opt.in2out(local_inplace_gemm,
                                  local_inplace_gemv,
                                  local_inplace_ger,
+                                 local_inplace_block_gemm,
+                                 local_inplace_block_gemv,
+                                 local_inplace_block_ger,
                                  name="InplaceGpuBlasOpt"),
                70.0, 'fast_run', 'inplace', 'gpu')
 
