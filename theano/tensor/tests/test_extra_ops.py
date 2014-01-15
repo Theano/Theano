@@ -1,11 +1,12 @@
 import numpy as np
 import numpy
 
+import unittest
 import theano
 from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (BinCountOp, bincount, DiffOp, diff,
         squeeze, RepeatOp, repeat, Bartlett, bartlett,
-        FillDiagonal, fill_diagonal)
+        FillDiagonal, fill_diagonal, block_dot)
 from theano import tensor as T
 from theano import config, tensor, function
 
@@ -383,10 +384,109 @@ class TestFillDiagonal(utt.InferShapeTester):
                                 self.op_class,
                                 warn=False)
 
+class TestBlockDot(unittest.TestCase):
+
+
+    rng = numpy.random.RandomState(seed=utt.fetch_seed())
+    def setUp(self):
+        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
+    def test_perform(self):
+        bias = tensor.matrix()
+        x = tensor.tensor3()
+        y = tensor.tensor3()
+        f = function([bias, x, y], block_dot(bias, x,y))
+        for blocks in [1, 4]:
+            for shp in [(8, 8), (5, 8), (8, 5)]:
+                shp1 = (blocks, shp[0], shp[1])
+                shp2 = (blocks, shp[1], shp[0])
+                shp3 = (blocks, shp[0])
+                a = self.rng.rand(*shp1).astype(config.floatX)
+                b = self.rng.rand(*shp2).astype(config.floatX)
+                bias = self.rng.rand(*shp3).astype(config.floatX)
+                out = f(bias, a,b)
+                nout = numpy.zeros((blocks, shp[0], shp[0]),
+                                   dtype=config.floatX)
+                for d in xrange(blocks):
+                    nout[d] = numpy.dot(a[d], b[d]) + bias[d]
+                assert numpy.allclose(out, nout)
+
+        bias = tensor.matrix()
+        x = tensor.matrix()
+        y = tensor.tensor3()
+        f = function([bias, x, y], block_dot(bias, x,y))
+        for blocks in [1, 4]:
+            for shp in [(8, 8), (5, 8), (8, 5)]:
+                shp1 = (blocks, shp[1])
+                shp2 = (blocks, shp[1], shp[0])
+                shp3 = (blocks, shp[0])
+                a = self.rng.rand(*shp1).astype(config.floatX)
+                b = self.rng.rand(*shp2).astype(config.floatX)
+                bias = self.rng.rand(*shp3).astype(config.floatX)
+                out = f(bias, a,b)
+                nout = numpy.zeros((blocks, shp[0]),
+                                   dtype=config.floatX)
+                for d in xrange(blocks):
+                    nout[d] = numpy.dot(a[d], b[d]) + bias[d]
+                assert numpy.allclose(out, nout)
+
+        bias = tensor.matrix()
+        x = tensor.tensor3()
+        y = tensor.matrix()
+        f = function([bias, x, y], block_dot(bias, x,y))
+        for blocks in [1, 4]:
+            for shp in [(8, 8), (5, 8), (8, 5)]:
+                shp1 = (blocks, shp[0], shp[1])
+                shp2 = (blocks, shp[1])
+                shp3 = (blocks, shp[0])
+                a = self.rng.rand(*shp1).astype(config.floatX)
+                b = self.rng.rand(*shp2).astype(config.floatX)
+                bias = self.rng.rand(*shp3).astype(config.floatX)
+                out = f(bias, a,b)
+                nout = numpy.zeros((blocks, shp[0]),
+                                   dtype=config.floatX)
+                for d in xrange(blocks):
+                    nout[d] = numpy.dot(a[d], b[d]) + bias[d]
+                assert numpy.allclose(out, nout)
+
+        bias = tensor.vector()
+        x = tensor.matrix()
+        y = tensor.matrix()
+        f = function([bias, x, y], block_dot(bias,x,y))
+        for blocks in [1, 4]:
+            for shp in [8, 5]:
+                shp1 = (blocks, shp)
+                shp2 = (blocks, shp)
+                shp3 = (blocks,)
+                a = self.rng.rand(*shp1).astype(config.floatX)
+                b = self.rng.rand(*shp2).astype(config.floatX)
+                bias = self.rng.rand(*shp3).astype(config.floatX)
+                out = f(bias, a,b)
+                nout = numpy.zeros((blocks,),
+                                   dtype=config.floatX)
+                for d in xrange(blocks):
+                    nout[d] = numpy.dot(a[d], b[d]) + bias[d]
+                assert numpy.allclose(out, nout)
+    def test_gradient(self):
+        utt.verify_grad(block_dot, [numpy.random.rand(3, 5),
+                                    numpy.random.rand(3,5, 8),
+                                    numpy.random.rand(3,8,5)],
+                        n_tests=1, rng=TestBlockDot.rng)
+        utt.verify_grad(block_dot, [numpy.random.rand(3,8),
+                                    numpy.random.rand(3,5),
+                                    numpy.random.rand(3, 5,8)],
+                        n_tests=1, rng=TestBlockDot.rng)
+        utt.verify_grad(block_dot, [numpy.random.rand(3, 5),
+                                    numpy.random.rand(3,5, 8),
+                                        numpy.random.rand(3, 8)],
+                        n_tests=1, rng=TestBlockDot.rng)
+        utt.verify_grad(block_dot, [numpy.random.rand(3,), numpy.random.rand(3, 8),
+                                        numpy.random.rand(3, 8)],
+                        n_tests=1, rng=TestBlockDot.rng)
+
+
 if __name__ == "__main__":
     utt.unittest.main()
-    t = TestFillDiagonal('setUp')
+    t = TestBlockDot()
     t.setUp()
     t.test_perform()
     t.test_gradient()
-    t.test_infer_shape()
