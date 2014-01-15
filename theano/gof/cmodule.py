@@ -1771,37 +1771,9 @@ class GCC_compiler(object):
             # link with libpython.
             cxxflags.append('-DMS_WIN64')
 
-        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
         if sys.platform == 'darwin':
+            # Use the already-loaded python symbols.
             cxxflags.extend(['-undefined', 'dynamic_lookup'])
-            python_inc = distutils.sysconfig.get_python_inc()
-            # link with the framework library *if specifically requested*
-            # config.mac_framework_link is by default False, since on some mac
-            # installs linking with -framework causes a Bus Error
-            if (python_inc.count('Python.framework') > 0 and
-                config.cmodule.mac_framework_link):
-                cxxflags.extend(['-framework', 'Python'])
-            if 'Anaconda' in sys.version:
-                new_path = os.path.join(sys.prefix, "lib")
-                new_path = os.path.realpath(new_path)
-                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
-                if v is not None:
-                    # This will resolve symbolic links
-                    v = os.path.realpath(v)
-
-                # The python __import__ don't seam to take into account
-                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
-                # when we set with os.environ['...'] = X or os.putenv()
-                # So we tell the user and tell him what todo.
-                if v is None or new_path not in v.split(":"):
-                    raise Exception(
-                        "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
-                        "the '%s' path in its value. This will make "
-                        "Theano unable to compile c code. Update "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value, this will fix this error."
-                        % new_path)
 
         return cxxflags
 
