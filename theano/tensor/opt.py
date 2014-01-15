@@ -38,6 +38,7 @@ from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox, DestroyHandler
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
 from theano.compat.six import StringIO
+from theano.tensor.extra_ops import BlockDot
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -385,6 +386,21 @@ def local_0_dot_x(node):
                             "(%s, %s)",
                             x.type, y.type)
 
+@gof.local_optimizer([BlockDot])
+def block_dot_inplace(node):
+    op = node.op
+    if not isinstance(op, BlockDot) or op.inplace:
+        return False
+    new_op = op.__class__(inplace=True)
+    return [new_op(*node.inputs)]
+
+#Step 60 is the inplace optimization stage.
+compile.optdb.register('block_dot_inplace',
+                       TopoOptimizer(
+                           block_dot_inplace,
+                           failure_callback=TopoOptimizer.warn_inplace),
+                       60,
+                       'fast_run', 'inplace')
 ######################
 # DimShuffle lifters #
 ######################
