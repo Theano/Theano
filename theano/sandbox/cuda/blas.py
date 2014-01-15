@@ -516,6 +516,9 @@ class GpuBlockGemm(GpuOp):
         """
 
         return  sio.getvalue() % locals()
+gpu_block_gemm_no_inplace = GpuBlockGemm(inplace=False)
+gpu_block_gemm_inplace = GpuBlockGemm(inplace=True)
+
 
 class GpuBlockGemv(GpuOp):
     """
@@ -618,6 +621,8 @@ class GpuBlockGemv(GpuOp):
         }
         """
         return sio.getvalue() % locals()
+gpu_block_gemv_no_inplace = GpuBlockGemv(inplace=False)
+gpu_block_gemv_inplace = GpuBlockGemv(inplace=True)
 
 class GpuBlockGer(GpuOp):
     """
@@ -728,6 +733,8 @@ class GpuBlockGer(GpuOp):
         }
         """
         return sio.getvalue() % locals()
+gpu_block_ger_no_inplace = GpuBlockGer(inplace=False)
+gpu_block_ger_inplace = GpuBlockGer(inplace=True)
 
 class GpuGer(GpuOp):
     """
