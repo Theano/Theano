@@ -4112,7 +4112,7 @@ int CudaNdarray_block_gemm(float alpha, const CudaNdarray * A, const CudaNdarray
         Py_XDECREF(B_new);\
         return -1; \
     }
-
+    cudaStreamSynchronize(0); // sync the default stream
     for (int block=0; block< CudaNdarray_HOST_DIMS(B)[0]; block++)
     {
         cublasSetKernelStream(streams[block%32]);
@@ -4219,6 +4219,10 @@ int CudaNdarray_block_gemm(float alpha, const CudaNdarray * A, const CudaNdarray
         };
     };
     CNDA_THREAD_SYNC;
+    for(int i =0; i< 32;i++){
+        // synchronize streams
+        cudaStreamSynchronize( streams[i] );
+    };
     Py_XDECREF(A_new);
     Py_XDECREF(B_new);
 
@@ -4678,6 +4682,7 @@ int CudaNdarray_block_sgemv(float alpha, const CudaNdarray * A, const CudaNdarra
     if (sa_2 == 0)
         sa_2 = 1;
 
+    cudaStreamSynchronize(0); // sync the default stream
     if (CudaNdarray_SIZE(C)) {
         if ((CudaNdarray_HOST_DIMS(A)[1] <= 1)
             || ((CudaNdarray_HOST_STRIDES(A)[1] == 1)
@@ -4738,6 +4743,10 @@ int CudaNdarray_block_sgemv(float alpha, const CudaNdarray * A, const CudaNdarra
     }
 
     CNDA_THREAD_SYNC;
+    for(int i =0; i< 32;i++){
+        // synchronize streams
+        cudaStreamSynchronize( streams[i] ) ;
+    };
     Py_XDECREF(A_new);
     Py_XDECREF(B_new);
 
@@ -4750,7 +4759,7 @@ int CudaNdarray_block_sgemv(float alpha, const CudaNdarray * A, const CudaNdarra
         return -1;
     }
     return 0;
-}
+};
 
 int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, CudaNdarray * A) {
     if (x->nd != 1) { PyErr_SetString(PyExc_ValueError, "non-vector arg x to sger"); return -1; }
@@ -4920,6 +4929,7 @@ int CudaNdarray_block_sger(float alpha, const CudaNdarray * x, const CudaNdarray
     int sa_2 = (CudaNdarray_HOST_DIMS(A)[2] > 1) ? CudaNdarray_HOST_STRIDES(A)[2]
                                                  : 1;
 
+    cudaStreamSynchronize(0); // sync the default stream
     if(CudaNdarray_SIZE(A)){
         // If A is in col-major
         if ((CudaNdarray_HOST_DIMS(A)[1] <= 1)
@@ -4966,6 +4976,10 @@ int CudaNdarray_block_sger(float alpha, const CudaNdarray * x, const CudaNdarray
         }
     }
     CNDA_THREAD_SYNC;
+    for(int i =0; i< 32;i++){
+        // synchronize streams
+        cudaStreamSynchronize( streams[i] ) ;
+    };
     Py_XDECREF(x_new);
     Py_XDECREF(y_new);
 
