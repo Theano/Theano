@@ -8,6 +8,7 @@ import unittest
 import cPickle
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 from numpy.testing import dec
 
 import theano
@@ -1525,6 +1526,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
+    @attr('slow')
     def test_grad_multiple_outs_taps(self):
         l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -3659,6 +3661,7 @@ class T_Scan(unittest.TestCase):
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
+    @attr('slow')
     def test_hessian_bug_grad_grad_two_scans(self):
         #Bug reported by Bitton Tenessi
 

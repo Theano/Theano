@@ -10,6 +10,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -2142,6 +2143,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             print 'shape: %s' % (x_s,)
             print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
 
+    @attr('slow')
     def test_none_slice(self):
         # Test case of two slices, var[b1:e1:s1][b2:e2:s2]
         # where any of the b, e, and s can be None

@@ -13,6 +13,7 @@ import __builtin__
 builtin_min = __builtin__.min
 
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
@@ -4050,6 +4051,7 @@ class t_dot(unittest.TestCase):
         utt.verify_grad(dot, [rand(2, 3, 4), rand(4, 5)])
         utt.verify_grad(dot, [rand(2, 3, 4), rand(3, 4, 5)])
 
+    @attr('slow')
     def test_broadcastable_patterns(self):
 
         #
