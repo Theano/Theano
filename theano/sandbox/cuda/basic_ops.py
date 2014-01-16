@@ -3226,6 +3226,12 @@ class GpuContiguous(GpuOp):
 
         return [dout]
 
+    def R_op(self, inputs, evals):
+        x, = inputs
+        ev, = evals
+        ev = as_cuda_ndarray_variable(ev)
+        return [ev]
+
     def __str__(self):
         return self.__class__.__name__
 

@@ -3048,6 +3048,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
     int card_nb = 0;
     int card_number_provided = 1;
 
+
     PyArg_ParseTuple(args, "|i", &card_nb); // if we're given something wildly invalid, this will throw a TypeError
 
     if(PyTuple_Size(args) == 0) {
