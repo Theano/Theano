@@ -6,6 +6,8 @@ from numpy import (arange, array, common_type, complex64, complex128, float32,
                   float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_array_almost_equal
 
+from nose.plugins.attrib import attr
+
 import theano
 import theano.tensor as T
 from theano import tensor, Param, shared, config
@@ -1186,6 +1188,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
+    @attr('slow')
     def test_gemv1(self):
         self.t_gemv1((3, 2))
         self.t_gemv1((0, 2))

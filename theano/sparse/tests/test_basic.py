@@ -2110,6 +2110,7 @@ class CastTester(utt.InferShapeTester):
     def setUp(self):
         super(CastTester, self).setUp()
 
+    # slow but only test
     def test_cast(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:

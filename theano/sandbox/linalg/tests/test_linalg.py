@@ -34,6 +34,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        )
 from theano.sandbox.linalg import eig, eigh
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 
 def check_lower_triangular(pd, ch_f):
@@ -93,6 +94,9 @@ def test_cholesky_grad():
                                    rng, eps=eps))
 
 
+# This is possibly redundant since we already have a test for the op
+# and its grad above.
+@attr('slow')
 def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
@@ -395,6 +399,7 @@ class test_diag(unittest.TestCase):
         x = rng.rand(5, 4).astype(self.floatX)
         tensor.verify_grad(extract_diag, [x], rng=rng)
 
+    @attr('slow')
     def test_extract_diag_empty(self):
         c = self.shared(numpy.array([[], []], self.floatX))
         f = theano.function([], extract_diag(c), mode=self.mode)

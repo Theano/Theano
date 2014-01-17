@@ -1997,6 +1997,7 @@ class TestAlloc(unittest.TestCase):
                                   numpy.zeros(shp))
 
 
+# This is slow for the ('int8', 3) version.
 def test_eye():
     def check(dtype, N, M_=None, k=0):
         # Theano does not accept None as a tensor.
