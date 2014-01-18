@@ -8,6 +8,73 @@ tensor = basic
 from theano.gradient import DisconnectedType
 
 
+class CumsumOp(theano.Op):
+    # See function cumsum for docstring
+    def __init__(self, axis=None):
+        self.axis = axis
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.axis == other.axis)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axis)
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)
+        out_type = x.type()
+
+        if self.axis is None:
+            out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
+
+        return theano.Apply(self, [x], [out_type])
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage[0]
+        z[0] = np.cumsum(x, axis=self.axis)
+
+    def grad(self, inputs, output_gradients):
+        [gi] = output_gradients
+        gi = theano.printing.Print("Grad")(gi)
+
+        if self.axis is None:
+            return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
+
+        # from ipdb import set_trace as dbg
+        # dbg()
+
+        # We need to reverse the gradients along ``self.axis``,
+        #  compute cumsum, then reverse again
+        reverse_slicing = [slice(None,None,None)] * gi.ndim
+        reverse_slicing[self.axis] = slice(None,None,-1)
+        reverse_slicing = tuple(reverse_slicing)
+        return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+
+    def infer_shape(self, node, shapes):
+        if self.axis is None:
+            return [(np.prod(shapes[0]),)]  # Flatten
+
+        return shapes
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def cumsum(x, axis=None):
+    """Return the cumulative sum of the elements along a given axis.
+
+    Wraping of numpy.cumsum.
+
+    :param x: Input tensor variable.
+
+    :param axis: The axis along which the cumulative sum is computed.
+        The default (None) is to compute the cumsum over the flattened array.
+
+    .. versionadded:: 0.6.1
+    """
+    return CumsumOp(axis=axis)(x)
+
 class DiffOp(theano.Op):
     # See function diff for docstring
     def __init__(self, n=1, axis=-1):

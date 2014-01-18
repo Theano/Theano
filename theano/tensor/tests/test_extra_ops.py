@@ -3,15 +3,57 @@ import numpy
 
 import theano
 from theano.tests import unittest_tools as utt
-from theano.tensor.extra_ops import (BinCountOp, bincount, DiffOp, diff,
-        squeeze, RepeatOp, repeat, Bartlett, bartlett,
-        FillDiagonal, fill_diagonal)
+from theano.tensor.extra_ops import (CumsumOp, cumsum, BinCountOp, bincount, DiffOp, diff,
+                                     squeeze, RepeatOp, repeat, Bartlett, bartlett,
+                                     FillDiagonal, fill_diagonal)
 from theano import tensor as T
 from theano import config, tensor, function
 
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
+
+class TestCumsumOp(utt.InferShapeTester):
+
+    def setUp(self):
+        super(TestCumsumOp, self).setUp()
+        self.op_class = CumsumOp
+        self.op = CumsumOp()
+
+    def test_cumsumOp(self):
+        x = T.tensor3('x')
+        a = np.random.random((30, 50, 20)).astype(config.floatX)
+
+        f = theano.function([x], cumsum(x))
+        assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
+
+        for axis in range(len(a.shape)):
+            f = theano.function([x], cumsum(x, axis=axis))
+            assert np.allclose(np.cumsum(a, axis=axis), f(a))
+
+    def test_infer_shape(self):
+        x = T.tensor3('x')
+        a = np.random.random((30, 50, 20)).astype(config.floatX)
+
+        # Test axis=None
+        self._compile_and_check([x],
+                                [self.op(x)],
+                                [a],
+                                self.op_class)
+
+        for axis in range(len(a.shape)):
+            self._compile_and_check([x],
+                                    [cumsum(x, axis=axis)],
+                                    [a],
+                                    self.op_class)
+
+    def test_grad(self):
+        a = np.random.random((3, 5, 2)).astype(config.floatX)
+
+        utt.verify_grad(self.op, [a])  # Test axis=None
+
+        for axis in range(len(a.shape)):
+            utt.verify_grad(CumsumOp(axis=axis), [a])
 
 
 class TestBinCountOp(utt.InferShapeTester):
