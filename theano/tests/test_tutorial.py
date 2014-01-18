@@ -9,7 +9,9 @@ import numpy
 from numpy import array
 
 from theano import config
-from theano.tests  import unittest_tools as utt
+from theano.tests import unittest_tools as utt
+from theano.sandbox.rng_mrg import MRG_RandomStreams
+from theano.tensor.shared_randomstreams import RandomStreams
 
 
 class T_extending(unittest.TestCase):
@@ -650,7 +652,86 @@ class T_examples(unittest.TestCase):
         rng.set_state(state_after_v0)
         rv_u.rng.set_value(rng, borrow=True)
         v2 = f()             # v2 != v1
+        v3 = f()             # v3 == v1
         assert numpy.all(v1 != v2)
+        assert numpy.all(v1 == v3)
+
+    def test_copy_random_state(self):
+
+        class Graph():
+            def __init__(self, seed=123):
+                self.rng = RandomStreams(seed)
+                self.y = self.rng.uniform(size=(1,))
+
+        g1 = Graph(seed=123)
+        f1 = theano.function([], g1.y)
+
+        g2 = Graph(seed=987)
+        f2 = theano.function([], g2.y)
+
+        #print 'By default, the two functions are out of sync.'
+        v1 =  f1()
+        v2 =  f2()
+
+        def copy_random_state(g1, g2):
+            if isinstance(g1.rng, MRG_RandomStreams):
+                g2.rng.rstate = g1.rng.rstate
+            for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+                su2[0].set_value(su1[0].get_value())
+
+        #print 'We now copy the state of the theano random number generators.'
+        copy_random_state(g1, g2)
+        v3 = f1()
+        v4 = f2()
+        assert numpy.allclose(v1, 0.72803009)
+        assert numpy.allclose(v2, 0.55056769)
+        assert numpy.allclose(v3, 0.59044123)
+        assert numpy.allclose(v4, 0.59044123)
+
+    def test_examples_real_example(self):
+        rng = numpy.random
+
+        N = 400
+        feats = 784
+        D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
+        training_steps = 10000
+
+        # Declare Theano symbolic variables
+        x = T.matrix("x")
+        y = T.vector("y")
+        w = theano.shared(rng.randn(feats), name="w")
+        b = theano.shared(0., name="b")
+        print "Initial model:"
+        print w.get_value(), b.get_value()
+
+        # Construct Theano expression graph
+        p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
+        prediction = p_1 > 0.5                    # The prediction thresholded
+        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
+        cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
+        gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
+                                                  # (we shall return to this in a
+                                                  # following section of this tutorial)
+
+        # Compile
+        train = theano.function(
+            inputs=[x,y],
+            outputs=[prediction, xent],
+            updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
+        predict = theano.function(inputs=[x], outputs=prediction)
+
+        # Train
+        for i in range(training_steps):
+            pred, err = train(D[0], D[1])
+
+        print "Final model:"
+        print w.get_value(), b.get_value()
+        print "target values for D:", D[1]
+        print "prediction on D:", predict(D[0])
+
+        # A user reported that this happened on the mailig list.
+        assert not numpy.isnan(b.get_value()).any()
+        assert not numpy.isnan(w.get_value()).any()
 
 
 class T_aliasing(unittest.TestCase):
