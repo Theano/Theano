@@ -41,9 +41,6 @@ class CumsumOp(theano.Op):
         if self.axis is None:
             return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
 
-        # from ipdb import set_trace as dbg
-        # dbg()
-
         # We need to reverse the gradients along ``self.axis``,
         #  compute cumsum, then reverse again
         reverse_slicing = [slice(None,None,None)] * gi.ndim
