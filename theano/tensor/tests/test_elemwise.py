@@ -487,7 +487,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
-    def test_infer_shape(self):
+    def test_infer_shape(self, dtype=None):
+        if dtype is None:
+            dtype = theano.config.floatX
         for xsh, tosum in [((5, 6), None),
                            ((5, 6), (0, 1)),
                            ((5, 6), (0, )),
@@ -502,8 +504,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                            ((5, 6), ()),
                            ((5, 0), ()),
                            ((), None),
-                           ((), ())]:
-            dtype = theano.config.floatX
+                           ((), ())
+            ]:
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))
