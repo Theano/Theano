@@ -162,13 +162,26 @@ def test_add_canonizer_problem0():
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
+
+        #1. ((a/x + b/y) * x * y) --> a*y + b*x
         e = (a / z + b / x) * x * z
         g = FunctionGraph([a, b, c, d, x, y, z], [e])
-        ##print pprint(g.outputs[0])
+        #print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor),
                           order='out_to_in').optimize(g)
-        ##print pprint(g.outputs[0])
+        #print pprint(g.outputs[0])
+        assert str(pprint(g.outputs[0])) == "((a * x) + (b * z))"
+
+        #2. ((a/x + b) * x) --> a + b*x
+        e = (a / x + b) * x
+        g = FunctionGraph([a, b, x], [e])
+        #print pprint(g.outputs[0])
+        mul_canonizer.optimize(g)
+        gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor),
+                          order='out_to_in').optimize(g)
+        #print pprint(g.outputs[0])
+        assert str(pprint(g.outputs[0])) == "(a + (b * x))"
 
     def test_kording_bug(self):
         x, y = vectors('xy')

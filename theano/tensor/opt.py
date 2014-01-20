@@ -3936,7 +3936,7 @@ def attempt_distribution(factor, num, denum):
                                    neg_pairs))), num, denum
 
 
-@gof.local_optimizer([T.mul])
+@gof.local_optimizer([T.mul, T.true_div])
 def local_greedy_distributor(node):
     """
     This optimization tries to apply distributivity of multiplication
@@ -3948,9 +3948,10 @@ def local_greedy_distributor(node):
     The following expressions are simplified:
     1. ((a/x + b/y) * x * y) --> a*y + b*x
     2. ((a/x + b) * x) --> a + b*x
+    3. There other form too where node is a true_div.
 
     The following expressions are not simplified:
-    3. ((a + b) * x) -/-> a*x + b*x
+    4. ((a + b) * x) -/-> a*x + b*x
 
     This optimization aims to reduce computational cost. It may also
     increase numerical stability, e.g. when x and/or y tend to 0 in

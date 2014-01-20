@@ -468,7 +468,7 @@ The preceding elements are featured in this more realistic example.  It will be 
   
   N = 400
   feats = 784
-  D = (rng.randn(N, feats), rng.randint(size=N,low=0, high=2))
+  D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
   training_steps = 10000
   
   # Declare Theano symbolic variables
@@ -484,7 +484,7 @@ The preceding elements are featured in this more realistic example.  It will be 
   prediction = p_1 > 0.5                    # The prediction thresholded
   xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
   cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
-  gw,gb = T.grad(cost, [w, b])              # Compute the gradient of the cost
+  gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
                                             # (we shall return to this in a
                                             # following section of this tutorial)
 
