@@ -1,9 +1,13 @@
 import copy
 from itertools import izip
+from StringIO import StringIO
 
 import numpy
 from theano import Op, Apply, scalar, config
-from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduceDtype
+from theano import scalar as scal
+from theano.scalar import Scalar
+from theano.tensor.elemwise import (Elemwise, DimShuffle,
+                                    CAReduce, CAReduceDtype)
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
@@ -518,7 +522,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return (3,)
 
 
-class GpuCAReduce(GpuOp):
+class GpuCAReduce(HideC, CAReduce):
     """GpuCAReduce is a Reduction along some dimensions by a scalar op.
 
     The dimensions along which to reduce is specified by the
@@ -552,36 +556,57 @@ class GpuCAReduce(GpuOp):
 
     """
 
-    def __init__(self, reduce_mask, scalar_op):
-        self.reduce_mask = tuple(reduce_mask)
-        self.scalar_op = scalar_op
+    def __init__(self, scalar_op, axis=None,
+                 reduce_mask=None):
+        if reduce_mask is not None:
+            reduce_mask = tuple(reduce_mask)
+        self.reduce_mask = reduce_mask
+
         # used to make sure that calls to scalar op
         # have unique name arguments
         self._n_scalar_op_calls = 0
+        if not hasattr(scalar_op, 'identity'):
+            raise ValueError("No identity on scalar op")
+        CAReduce.__init__(self, scalar_op, axis=axis)
 
     def __eq__(self, other):
         return (type(self) == type(other) and
+                self.axis == other.axis and
                 self.reduce_mask == other.reduce_mask and
                 self.scalar_op == other.scalar_op)
 
     def __hash__(self):
         return (hash(type(self)) ^
+                hash(self.axis) ^
                 hash(self.reduce_mask) ^
                 hash(type(self.scalar_op)))
 
     def __str__(self):
-        return "GpuCAReduce{%s}{%s}" % (
-                str(self.scalar_op),
-                ','.join(str(i) for i in self.reduce_mask)
-                )
+        ax = ''
+        if self.axis is not None:
+            ax = '{%s}' % (', '.join(str(x) for x in self.axis),)
+        return "GpuCAReduce{%s}%s" % (str(self.scalar_op), ax)
 
     def make_node(self, x):
-        x = as_gpu_array_varible(x)
+        x = as_gpuarray_variable(x)
+        assert x.dtype == "float32"
+        ret = super(GpuCAReduce, self).make_node(x)
+        self = copy.copy(self)
+        self.axis = ret.op.axis
+        if self.reduce_mask is None:
+            if self.axis is None:
+                reduce_mask = [1] * x.type.ndim
+            else:
+                reduce_mask = [0] * x.type.ndim
+                for a in self.axis:
+                    assert reduce_mask[a] == 0
+                    reduce_mask[a] = 1
+            self.reduce_mask = tuple(reduce_mask)
+
         if (x.type.ndim != len(self.reduce_mask)):
             raise TypeError("x must have rank %i" % len(self.reduce_mask))
-        o_broadcast = [x.type.broadcastable[i] for i
-                       in xrange(x.type.ndim) if not self.reduce_mask[i]]
-        return Apply(self, [x], [GpuArrayType(x.type.dtype, o_broadcast)()])
+        return Apply(self, [x], [GpuArrayType(x.dtype,
+                                              ret.outputs[0].type.broadcastable)()])
 
     """
     This method must be commented, because there's no way
