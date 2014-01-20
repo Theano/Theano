@@ -793,7 +793,10 @@ class GpuCAReduce(GpuOp):
                         (float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset),
                         PyGpuArray_STRIDES(%(z)s)[0]/4
                         );
-                CNDA_THREAD_SYNC;
+                [
+        if config.gpuarray.sync:
+            code += "GpuArray_sync(&%(zz)s->ga);\n" % dict(zz=zz)
+                ]
                 if (cudaSuccess != cudaGetLastError())
                 {
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: ... );
@@ -841,10 +844,12 @@ class GpuCAReduce(GpuOp):
             print >> sio, """
                     ,PyGpuArray_STRIDES(%(z)s)[%(i)s]/4
             """ % locals()
-
+        sync = ""
+        if config.gpuarray.sync:
+            sync = """GpuArray_sync(&%(z)s->ga);""" % locals()
         print >> sio, """
                     );
-            CNDA_THREAD_SYNC;
+            %(sync)s
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
@@ -1273,6 +1278,9 @@ class GpuCAReduce(GpuOp):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
+        sync = ""
+        if config.gpuarray.sync:
+            sync = """GpuArray_sync(&%(z)s->ga);""" % locals()
         print >> sio, """
         {
             int verbose = 0;
@@ -1302,7 +1310,7 @@ class GpuCAReduce(GpuOp):
                     1,
                     PyGpuArray_STRIDES(%(z)s)[0]/4
                     );
-            CNDA_THREAD_SYNC;
+            %(sync)s
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
@@ -1326,6 +1334,9 @@ class GpuCAReduce(GpuOp):
         makecall_inner = self._makecall(node, name, x, z, fail,
                                         pattern="010_inner")
         pattern = ''.join(str(i) for i in self.reduce_mask)
+        sync = ""
+        if config.gpuarray.sync:
+            sync = """GpuArray_sync(&%(z)s->ga);""" % locals()
         print >> sio, """
         {
             //int n_summations = PyGpuArray_DIMS(%(x)s)[0] * PyGpuArray_DIMS(%(x)s)[2];
@@ -1370,7 +1381,7 @@ class GpuCAReduce(GpuOp):
                         PyGpuArray_STRIDES(%(z)s)[0]/4,
                         PyGpuArray_STRIDES(%(z)s)[1]/4
                         );
-                CNDA_THREAD_SYNC;
+                %(sync)s
                 cudaError_t sts = cudaGetLastError();
                 if (cudaSuccess != sts)
                 {
@@ -1425,7 +1436,7 @@ class GpuCAReduce(GpuOp):
                       );
                   %(makecall)s
                 }
-                CNDA_THREAD_SYNC;
+                %(sync)s
                 cudaError_t sts = cudaGetLastError();
                 if (cudaSuccess != sts)
                 {
