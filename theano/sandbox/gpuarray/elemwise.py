@@ -596,6 +596,8 @@ class GpuCAReduce(GpuOp):
         # been added to the python bindings yet
         z[0] = x.reduce_sum(self.reduce_mask)
     """
+    def perform(self, node, inp, out):
+        raise MethodNotDefined("")
 
     def supports_c_code(self, inputs):
         """ Returns True if the current op and reduce pattern
