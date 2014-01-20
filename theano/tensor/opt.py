@@ -3936,7 +3936,7 @@ def attempt_distribution(factor, num, denum):
                                    neg_pairs))), num, denum
 
 
-@gof.local_optimizer([T.mul, T.true_div])
+@gof.local_optimizer([T.mul, T.true_div, T.inv])
 def local_greedy_distributor(node):
     """
     This optimization tries to apply distributivity of multiplication
