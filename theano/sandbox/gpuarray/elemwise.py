@@ -658,10 +658,10 @@ class GpuCAReduce(GpuOp):
 
         #check input
         print >> sio, """
-        if (%(x)s->nd != %(nd_in)s)
+        if (PyGpuArray_NDIM(%(x)s) != %(nd_in)s)
         {
             PyErr_Format(PyExc_TypeError,
-                         "required nd=%(nd_in)s, got nd=%%i", %(x)s->nd);
+                         "required nd=%(nd_in)s, got nd=%%i", PyGpuArray_NDIM(%(x)s));
             %(fail)s;
         }
         """ % locals()
@@ -690,7 +690,7 @@ class GpuCAReduce(GpuOp):
         # check the basics of out output
         print >> sio, """
         if (  !%(z)s
-           || (%(z)s->nd != %(nd_out)s)
+           || (PyGpuArray_NDIM(%(z)s) != %(nd_out)s)
         """ % locals()
 
         #ensure that the output has the right non-reduced dimensions
@@ -705,19 +705,22 @@ class GpuCAReduce(GpuOp):
         {
             """ % locals()
         if nd_out > 0:
-            print >> sio, "int new_dims[%(nd_out)s]; " % locals()
+            print >> sio, "size_t new_dims[%(nd_out)s]; " % locals()
         else:
-            print >> sio, "int *new_dims=NULL; "
+            print >> sio, "size_t *new_dims=NULL; "
 
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]:
                 print >> sio, 'new_dims[%(j)s] = PyGpuArray_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
-
+        out_typecode = dtype_to_typecode(node.outputs[0].dtype)
         print >> sio, """
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
+            %(z)s = pygpu_empty(%(nd_out)s, new_dims,
+                                %(out_typecode)s, GA_C_ORDER,
+                                pygpu_default_context(),
+                                Py_None);
             if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
@@ -729,7 +732,7 @@ class GpuCAReduce(GpuOp):
         # \begin bracket the reduction in a check that there is
         # actually work to do
         if getattr(self.scalar_op, 'identity', None) == 0:
-            zero_shp = "cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float))" % locals()
+            zero_shp = "cudaMemset((float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset), 0, PyGpuArray_SIZE(%(z)s) * sizeof(float))" % locals()
         #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             zero_shp = """
@@ -738,10 +741,10 @@ class GpuCAReduce(GpuOp):
             %(fail)s;
             """ % locals()
         print >> sio, """
-        if (CudaNdarray_SIZE(%(z)s) && ! CudaNdarray_SIZE(%(x)s)){
+        if (PyGpuArray_SIZE(%(z)s) && ! PyGpuArray_SIZE(%(x)s)){
             %(zero_shp)s;
         }
-        else if (CudaNdarray_SIZE(%(z)s))
+        else if (PyGpuArray_SIZE(%(z)s))
         {
         """ % locals()
 
@@ -753,7 +756,7 @@ class GpuCAReduce(GpuOp):
             #check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
             #TODO: check if we are ccontiguous when we un-dimshuffle
             #TODO: if only some dims are ccontiguous, call version with less dims.
-            print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
+            print >> sio, 'if(%(x)s->ga.flags & GA_C_CONTIGUOUS){'%locals()
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
             getattr(self, 'c_code_reduce_%s'%(''.join(
@@ -784,11 +787,11 @@ class GpuCAReduce(GpuOp):
                                                 n_shared>>>(
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
-                        CudaNdarray_DEV_DATA(%(x)s),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                        CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_HOST_STRIDES(%(z)s)[0]
+                        (float *)(((char *)cuda_get_ptr(%(x)s->ga.data))+%(x)s->ga.offset),
+                        PyGpuArray_STRIDES(%(x)s)[0]/4,
+                        PyGpuArray_STRIDES(%(x)s)[1]/4,
+                        (float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset),
+                        PyGpuArray_STRIDES(%(z)s)[0]/4
                         );
                 CNDA_THREAD_SYNC;
                 if (cudaSuccess != cudaGetLastError())
@@ -802,8 +805,8 @@ class GpuCAReduce(GpuOp):
             pattern = ''.join(str(c) for c in self.reduce_mask)
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
-        shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["PyGpuArray_DIMS(%s)[%d]" % (x, i)
+        shapes_format = "shape=(%s)" % ",".join(["%llu"] * node.inputs[0].ndim)
+        shapes_data = ",".join(["(unsigned long long) PyGpuArray_DIMS(%s)[%d]" % (x, i)
                                 for i in range(node.inputs[0].ndim)])
 
         print >> sio, """
@@ -825,18 +828,18 @@ class GpuCAReduce(GpuOp):
                     PyGpuArray_DIMS(%(x)s)[%(i)s],
             """ % locals()
         print >> sio, """
-                    CudaNdarray_DEV_DATA(%(x)s)
+                    (float *)(((char *)cuda_get_ptr(%(x)s->ga.data))+%(x)s->ga.offset)
             """ % locals()
         for i in xrange(ndim):
             print >> sio, """
-                    ,CudaNdarray_HOST_STRIDES(%(x)s)[%(i)s]
+                    ,PyGpuArray_STRIDES(%(x)s)[%(i)s]/4
             """ % locals()
         print >> sio, """
-                    ,CudaNdarray_DEV_DATA(%(z)s)
+                    ,(float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset)
             """ % locals()
         for i in xrange(nd_out):
             print >> sio, """
-                    ,CudaNdarray_HOST_STRIDES(%(z)s)[%(i)s]
+                    ,PyGpuArray_STRIDES(%(z)s)[%(i)s]/4
             """ % locals()
 
         print >> sio, """
@@ -966,8 +969,8 @@ class GpuCAReduce(GpuOp):
 
         dtype = x.dtype
 
-        dummy_left = scal.Scalar(dtype=dtype)()
-        dummy_right = scal.Scalar(dtype=dtype)()
+        dummy_left = Scalar(dtype=dtype)()
+        dummy_right = Scalar(dtype=dtype)()
 
         dummy_node = self.scalar_op.make_node(dummy_left, dummy_right)
 
@@ -1123,7 +1126,7 @@ class GpuCAReduce(GpuOp):
         C contiguous.
         """
         if getattr(self.scalar_op, 'identity', None) == 0:
-            zero_shp = "cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float))" % locals()
+            zero_shp = "cudaMemset((float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset), 0, PyGpuArray_SIZE(%(z)s) * sizeof(float))" % locals()
         #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             zero_shp = """
@@ -1132,25 +1135,29 @@ class GpuCAReduce(GpuOp):
             %(fail)s;
             """ % locals()
 
+        sync = ""
+        if config.gpuarray.sync:
+            sync = """GpuArray_sync(&%(z)s->ga);""" % locals()
         print >> sio, """
         {
-          if(CudaNdarray_SIZE(%(x)s)==0){
+          if(PyGpuArray_SIZE(%(x)s)==0){
             %(zero_shp)s;
           }else{
             int verbose = 0;
             dim3 n_threads(
-                    std::min(CudaNdarray_SIZE(%(x)s),
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                    std::min(PyGpuArray_SIZE(%(x)s),
+                            (size_t) 256));
             dim3 n_blocks(1);
             if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
                                 " n_threads.x=%%d, size=%%d, ndim=%%d\\n",
-                                n_threads.x,CudaNdarray_SIZE(%(x)s),%(x)s->nd);
+                                n_threads.x,PyGpuArray_SIZE(%(x)s),
+                                PyGpuArray_NDIM(%(x)s));
             int n_shared = sizeof(float) * n_threads.x;
             kernel_reduce_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_SIZE(%(x)s),
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_DEV_DATA(%(z)s));
-            CNDA_THREAD_SYNC;
+                    PyGpuArray_SIZE(%(x)s),
+                    (float *)(((char *)cuda_get_ptr(%(x)s->ga.data))+%(x)s->ga.offset),
+                    (float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset));
+            %(sync)s
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
@@ -1177,7 +1184,7 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                            (size_t) 256));
             dim3 n_blocks(1);
             %(makecall)s
         }
@@ -1190,8 +1197,8 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[1],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            while (n_threads.y * n_threads.x <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
+                            (size_t) 256));
+            while (n_threads.y * n_threads.x <= 256) ++n_threads.y;
             n_threads.y -= 1;
             if (n_threads.y > PyGpuArray_DIMS(%(x)s)[0])
                 n_threads.y = PyGpuArray_DIMS(%(x)s)[0];
@@ -1212,12 +1219,12 @@ class GpuCAReduce(GpuOp):
         N_pattern = ''.join(['1'] * N)
         param_dim = ",".join(["PyGpuArray_DIMS(%s)[%d]" % (x, i)
                               for i in xrange(N + 1)])
-        strides_dim = ",".join(["CudaNdarray_HOST_STRIDES(%s)[%d]"
+        strides_dim = ",".join(["PyGpuArray_STRIDES(%s)[%d]/4"
                                 % (x, i) for i in xrange(N + 1)])
 
         threads_y = """
             //get as many y threads as we can fit
-            while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * (n_threads.y+1) <= 256)
             {
                 if (n_threads.y < PyGpuArray_DIMS(%(x)s)[%(N)s-1])
                     n_threads.y += 1;
@@ -1227,7 +1234,7 @@ class GpuCAReduce(GpuOp):
 
         threads_z = """
             //get as many z threads as we can fit
-            while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * n_threads.y * (n_threads.z+1) <= 256)
             {
                 if (n_threads.z < PyGpuArray_DIMS(%(x)s)[%(N)s-2])
                     n_threads.z += 1;
@@ -1247,11 +1254,11 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[%(N)s],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                            (size_t) 256));
             %(threads_y)s
             %(threads_z)s
             dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[0],
-                                   NUM_VECTOR_OP_BLOCKS));
+                                   (size_t) 4096));
             %(makecall)s
         }
         """ % locals()
@@ -1271,10 +1278,10 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                            (size_t) 256));
             dim3 n_blocks(1,
                 std::min(PyGpuArray_DIMS(%(x)s)[1],
-                    NUM_VECTOR_OP_BLOCKS));
+                    (size_t) 4096));
             if (verbose) {
               fprintf(stderr,
                 "running kernel_reduce_10_%(name)s n_blocks=(%%i,%%i)\\n",
@@ -1287,13 +1294,13 @@ class GpuCAReduce(GpuOp):
                     1,
                     PyGpuArray_DIMS(%(x)s)[0],
                     PyGpuArray_DIMS(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(x)s),
+                    (float *)(((char *)cuda_get_ptr(%(x)s->ga.data))+%(x)s->ga.offset),
                     1,
-                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                    CudaNdarray_DEV_DATA(%(z)s),
+                    PyGpuArray_STRIDES(%(x)s)[0]/4,
+                    PyGpuArray_STRIDES(%(x)s)[1]/4,
+                    (float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset),
                     1,
-                    CudaNdarray_HOST_STRIDES(%(z)s)[0]
+                    PyGpuArray_STRIDES(%(z)s)[0]/4
                     );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
@@ -1350,18 +1357,18 @@ class GpuCAReduce(GpuOp):
                 // The gridsize would ideally be (A, D).  But we do the following logic to make
                 // sure we don't ask for a grid that is too big.
                 dim3 n_blocks(A,D);
-                if (n_blocks.x > NUM_VECTOR_OP_BLOCKS) n_blocks.x = NUM_VECTOR_OP_BLOCKS;
-                if (n_blocks.x*n_blocks.y > NUM_VECTOR_OP_BLOCKS) n_blocks.y = NUM_VECTOR_OP_BLOCKS/n_blocks.x;
+                if (n_blocks.x > 4096) n_blocks.x = 4096;
+                if (n_blocks.x*n_blocks.y > 4096) n_blocks.y = 4096/n_blocks.x;
                 int n_shared = 0;
                 kernel_reduce_010_AD_%(name)s<<<n_blocks, n_threads, n_shared>>>(
                 A,B,C,D,
-                        CudaNdarray_DEV_DATA(%(x)s),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                        CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                        (float *)(((char *)cuda_get_ptr(%(x)s->ga.data))+%(x)s->ga.offset),
+                        PyGpuArray_STRIDES(%(x)s)[0]/4,
+                        PyGpuArray_STRIDES(%(x)s)[1]/4,
+                        PyGpuArray_STRIDES(%(x)s)[2]/4,
+                        (float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset),
+                        PyGpuArray_STRIDES(%(z)s)[0]/4,
+                        PyGpuArray_STRIDES(%(z)s)[1]/4
                         );
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
@@ -1385,36 +1392,36 @@ class GpuCAReduce(GpuOp):
                 int verbose = 2;
 
                   dim3 n_threads(std::min(32,PyGpuArray_DIMS(%(x)s)[2]));
-                  while(    (n_threads.x*(n_threads.y+1)<=NUM_VECTOR_OP_THREADS_PER_BLOCK)
+                  while(    (n_threads.x*(n_threads.y+1)<=256)
                          && (n_threads.y<PyGpuArray_DIMS(%(x)s)[1])){
                       n_threads.y++;
                   }
 
                   dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[0],
-                                (int)NUM_VECTOR_OP_BLOCKS));
+                                (int)4096));
                   n_blocks.y = std::min(
                       ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x),
-                      (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
+                      (int)(4096 / n_blocks.x)
                       );
-                if(std::min(std::min(CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                                     CudaNdarray_HOST_STRIDES(%(x)s)[1]),
-                            CudaNdarray_HOST_STRIDES(%(x)s)[2])
-                   ==CudaNdarray_HOST_STRIDES(%(x)s)[2]
+                if(std::min(std::min(PyGpuArray_STRIDES(%(x)s)[0]/4,
+                                     PyGpuArray_STRIDES(%(x)s)[1]/4),
+                            PyGpuArray_STRIDES(%(x)s)[2]/4)
+                   ==PyGpuArray_STRIDES(%(x)s)[2]/4
                   && n_blocks.y==ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x)){
                   if(verbose>1)
                     printf("n_block.x.1=%%d, n_block.x.2=%%d, n_block.y.1=%%d, n_block.y.2=%%d,\\n",
-                           PyGpuArray_DIMS(%(x)s)[0],NUM_VECTOR_OP_BLOCKS,
+                           PyGpuArray_DIMS(%(x)s)[0],4096,
                            ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x),
-                                       (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x));
+                                       (int)(4096 / n_blocks.x));
                   assert(n_threads.x<=32);
                   %(makecall_inner)s
                 }else{
                   n_threads.x = std::min(PyGpuArray_DIMS(%(x)s)[1],
-                                  (int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                  n_blocks.x = std::min(PyGpuArray_DIMS(%(x)s)[0], (int)NUM_VECTOR_OP_BLOCKS);
+                                         (size_t) 256);
+                  n_blocks.x = std::min(PyGpuArray_DIMS(%(x)s)[0], (int)4096);
                   n_blocks.y = std::min(
                       PyGpuArray_DIMS(%(x)s)[2],
-                      (int)(NUM_VECTOR_OP_BLOCKS / n_blocks.x)
+                      (int)(4096 / n_blocks.x)
                       );
                   %(makecall)s
                 }
@@ -1443,8 +1450,8 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[3],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+                             (size_t) 256));
+            while (n_threads.x * n_threads.y <= 256)
             {
                 if (n_threads.y > PyGpuArray_DIMS(%(x)s)[1]) break;
                 n_threads.y += 1;
@@ -1465,9 +1472,9 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[1], NUM_VECTOR_OP_BLOCKS));
-            while (n_blocks.x * (n_blocks.y+1) <= NUM_VECTOR_OP_BLOCKS && n_blocks.y <= PyGpuArray_DIMS(%(x)s)[2])
+                             (size_t) 256));
+            dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[1], 4096));
+            while (n_blocks.x * (n_blocks.y+1) <= 4096 && n_blocks.y <= PyGpuArray_DIMS(%(x)s)[2])
             {
                 n_blocks.y += 1;
             }
@@ -1482,8 +1489,8 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[1],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            while (n_threads.x*n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+                             (size_t) 256));
+            while (n_threads.x*n_threads.y <= 256)
             {
                 if (n_threads.y > PyGpuArray_DIMS(%(x)s)[0])
                     break;
@@ -1503,11 +1510,11 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[2],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                             (size_t) 256));
             dim3 n_blocks(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                        NUM_VECTOR_OP_BLOCKS));
-            while (n_blocks.x * n_blocks.y <= NUM_VECTOR_OP_BLOCKS)
+                        4096));
+            while (n_blocks.x * n_blocks.y <= 4096)
             {
                 if (n_blocks.y > PyGpuArray_DIMS(%(x)s)[1])
                     break;
@@ -1525,10 +1532,10 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[2],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                             (size_t) 256));
 
             //get as many y threads as we can fit
-            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * n_threads.y <= 256)
             {
                 if (n_threads.y > PyGpuArray_DIMS(%(x)s)[1])
                     break;
@@ -1537,7 +1544,7 @@ class GpuCAReduce(GpuOp):
             n_threads.y -= 1;
 
             //get as many z threads as we can fit
-            while (n_threads.x * n_threads.y * n_threads.z <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * n_threads.y * n_threads.z <= 256)
             {
                 if (n_threads.z > PyGpuArray_DIMS(%(x)s)[0])
                     break;
@@ -1558,9 +1565,9 @@ class GpuCAReduce(GpuOp):
 
             dim3 n_blocks(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                        NUM_VECTOR_OP_BLOCKS));
+                        4096));
 
-            while (n_blocks.x * n_blocks.y <= NUM_VECTOR_OP_BLOCKS &&
+            while (n_blocks.x * n_blocks.y <= 4096 &&
                    n_blocks.y < PyGpuArray_DIMS(%(x)s)[1])
             {
                 n_blocks.y += 1;
@@ -1568,8 +1575,8 @@ class GpuCAReduce(GpuOp):
 
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[3],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK
+                             (size_t) 256));
+            while (n_threads.x * n_threads.y <= 256
                    && n_threads.y < PyGpuArray_DIMS(%(x)s)[2]
                    && n_threads.x * n_threads.y * sizeof(float) <=(15*1024-200))
             {
@@ -1587,10 +1594,10 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[2],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                             (size_t) 256));
 
             //get as many y threads as we can fit
-            while (n_threads.x * n_threads.y <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * n_threads.y <= 256)
             {
                 if (n_threads.y > PyGpuArray_DIMS(%(x)s)[1])
                     break;
@@ -1599,7 +1606,7 @@ class GpuCAReduce(GpuOp):
             n_threads.y -= 1;
 
             //get as many z threads as we can fit
-            while (n_threads.x * n_threads.y * n_threads.z <= NUM_VECTOR_OP_THREADS_PER_BLOCK)
+            while (n_threads.x * n_threads.y * n_threads.z <= 256)
             {
                 if (n_threads.z > PyGpuArray_DIMS(%(x)s)[0])
                     break;
@@ -1622,13 +1629,13 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[3],
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                             (size_t) 256));
 
-            while (n_threads.x * (n_threads.y+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.y;
+            while (n_threads.x * (n_threads.y+1) <= 256) ++n_threads.y;
             if (n_threads.y > PyGpuArray_DIMS(%(x)s)[2])
                 n_threads.y = PyGpuArray_DIMS(%(x)s)[2];
 
-            while (n_threads.x * n_threads.y * (n_threads.z+1) <= NUM_VECTOR_OP_THREADS_PER_BLOCK) ++n_threads.z;
+            while (n_threads.x * n_threads.y * (n_threads.z+1) <= 256) ++n_threads.z;
             if (n_threads.z > 64)
                 n_threads.z = 64;
             if (n_threads.z > PyGpuArray_DIMS(%(x)s)[0])
@@ -2235,6 +2242,7 @@ class GpuCAReduce(GpuOp):
                 %(reducebuf)s
             }
             """ % locals()
+        print >> sio, "CUdeviceptr (*cuda_get_ptr)(gpudata *g);"
         return sio.getvalue()
 
 

@@ -66,6 +66,10 @@ class test_GpuCAReduceCPY(test_CAReduce):
                 self.with_linker(gof.CLinker(), op, dtype=dtype,
                                  test_nan=True)
 
+    def test_infer_shape(self):
+        for dtype in self.dtypes:
+            test_CAReduce.test_infer_shape(self, dtype)
+
 
 class test_GpuCAReduce(test_GpuCAReduceCPY):
     dtypes = ["float32"]
