@@ -147,6 +147,8 @@ def as_tensor_variable(x, name=None, ndim=None):
         If an `Apply` with more than one output is fetched.
     AsTensorError
         If `x` cannot be converted to a TensorType Variable.
+    TypeError
+        If `x` cannot be made into a Variable with `ndim` dimensions.
 
     """
     if hasattr(x, '_as_TensorVariable'):

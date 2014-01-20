@@ -6,7 +6,9 @@ import numpy
 
 import theano
 from theano.tests import unittest_tools as utt
-from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
+
+from theano.tensor.extra_ops import (SearchsortedOp, searchsorted,
+                                     CumsumOp, cumsum, CumprodOp, cumprod,
                                      CpuContiguous, cpu_contiguous, BinCountOp,
                                      bincount, DiffOp, diff, squeeze, compress,
                                      RepeatOp, repeat, Bartlett, bartlett,
@@ -35,6 +37,123 @@ def test_cpu_contiguous():
 
     theano.tests.unittest_tools.verify_grad(cpu_contiguous,
                                             [numpy.random.rand(5, 7, 2)])
+
+
+class TestSearchsortedOp(utt.InferShapeTester):
+
+    def setUp(self):
+        super(TestSearchsortedOp, self).setUp()
+        self.op_class = SearchsortedOp
+        self.op = SearchsortedOp()
+
+        self.x = T.vector('x')
+        self.v = T.tensor3('v')
+
+        self.a = np.random.random(100).astype(config.floatX)
+        self.b = np.random.random((10, 20, 5)).astype(config.floatX)
+        self.idx_sorted = np.argsort(self.a)
+
+    def tearDown(self):
+        self.x = None
+        self.v = None
+        self.a = None
+        self.b = None
+        self.idx_sorted = None
+
+    def test_searchsortedOp_on_sorted_input(self):
+        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
+                            mode="DebugMode")
+        assert np.allclose(
+                np.searchsorted(self.a[self.idx_sorted], self.b),
+                f(self.a[self.idx_sorted], self.b))
+
+    def test_searchsortedOp_on_none_sorter(self):
+        # Current implementation of numpy.searchsorted
+        # does not raise an error if `x` is not sorted and sorter is None.
+        sorter = T.vector('sorter', dtype="int64")
+        f = theano.function([self.x, self.v, sorter],
+                            searchsorted(self.x, self.v, sorter=sorter))
+        #  assert np.allclose(
+        #          np.searchsorted(self.a, self.b, sorter=None),
+        #          f(self.a, self.b, sorter=None))
+        self.assertRaises(ValueError, f,
+                          self.a[self.idx_sorted], self.b, None)
+
+    def test_searchsortedOp_on_float_sorter(self):
+        sorter = T.vector('sorter', dtype="float32")
+        self.assertRaises(TypeError, searchsorted,
+                          self.x, self.v, sorter=sorter)
+
+    def test_searchsortedOp_on_int_sorter(self):
+        compatible_types = ('int8', 'int16', 'int32', 'int64',)
+                            #  'uint8', 'uint16', 'uint32', 'uint64')
+        for dtype in compatible_types:
+            sorter = T.vector('sorter', dtype=dtype)
+            f = theano.function([self.x, self.v, sorter],
+                                searchsorted(self.x, self.v, sorter=sorter),
+                                mode="DebugMode", allow_input_downcast=True)
+            assert np.allclose(
+                    np.searchsorted(self.a, self.b, sorter=self.idx_sorted),
+                    f(self.a, self.b, self.idx_sorted))
+
+    def test_searchsortedOp_on_right_side(self):
+        f = theano.function([self.x, self.v],
+                            searchsorted(self.x, self.v, side='right'),
+                            mode="DebugMode")
+        assert np.allclose(
+                np.searchsorted(self.a, self.b, side='right'),
+                f(self.a, self.b))
+
+    def test_use_c_code(self):
+        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
+                            mode="FAST_RUN")
+        assert np.allclose(
+                np.searchsorted(self.a[self.idx_sorted], self.b),
+                f(self.a[self.idx_sorted], self.b))
+
+        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
+                            mode=theano.compile.Mode(linker="c",
+                            optimizer='fast_run'))
+        assert np.allclose(
+                np.searchsorted(self.a[self.idx_sorted], self.b),
+                f(self.a[self.idx_sorted], self.b))
+
+    def test_infer_shape(self):
+        # Test using default parameters' value
+        self._compile_and_check([self.x, self.v],
+                                [searchsorted(self.x, self.v)],
+                                [self.a[self.idx_sorted], self.b],
+                                self.op_class)
+
+        # Test parameter ``sorter``
+        sorter = T.vector('sorter', dtype="int64")
+        self._compile_and_check([self.x, self.v, sorter],
+                                [searchsorted(self.x, self.v, sorter=sorter)],
+                                [self.a, self.b, self.idx_sorted],
+                                self.op_class)
+
+        # Test parameter ``side``
+        self.a = np.ones(10).astype(config.floatX)
+        self.b = np.ones(shape=(1, 2, 3)).astype(config.floatX)
+        self._compile_and_check([self.x, self.v],
+                                [searchsorted(self.x, self.v, side='right')],
+                                [self.a, self.b],
+                                self.op_class)
+
+    def test_grad(self):
+        self.a = np.random.random(100).astype(config.floatX)
+        self.b = np.random.random((1, 2, 5)).astype(config.floatX)
+        self.idx_sorted = np.argsort(self.a)
+
+        self.assertRaises(theano.gradient.NullTypeGradError,
+                          utt.verify_grad, self.op,
+                          [self.a[self.idx_sorted], self.b])
+
+        self.a = np.random.random(100).astype(config.floatX)
+        self.b = np.random.random(10).astype(config.floatX)
+        self.idx_sorted = np.argsort(self.a)
+
+        utt.verify_grad(self.op, [self.a[self.idx_sorted], self.b])
 
 
 class TestCumsumOp(utt.InferShapeTester):
