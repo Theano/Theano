@@ -692,6 +692,9 @@ class _tensor_py_operators(object):
     def cumprod(self, axis=None):
         return theano.tensor.extra_ops.cumprod(self, axis)
 
+    def searchsorted(self, v, side='left', sorter=None):
+        return theano.tensor.extra_ops.searchsorted(self, v, side, sorter)
+
     def ptp(self, axis=None):
         """See 'theano.tensor.ptp'."""
 

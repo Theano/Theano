@@ -68,6 +68,132 @@ class CpuContiguous(theano.Op):
 cpu_contiguous = CpuContiguous()
 
 
+class SearchsortedOp(theano.Op):
+    """Wrapper of numpy.searchsorted.
+
+    For full documentation, see :func:`searchsorted`.
+
+    See Also
+    --------
+    searchsorted : numpy-like function to use the SearchsortedOp
+
+    """
+
+    __props__ = ("side", )
+
+    def __init__(self, side='left'):
+        self.side = side
+
+    def make_node(self, x, v, sorter=None):
+        x = basic.as_tensor(x, ndim=1)
+        v = basic.as_tensor(v)
+        out_type = v.type.clone(dtype='int64')
+        if sorter is None:
+            return theano.Apply(self, [x, v], [out_type()])
+        else:
+            sorter = basic.as_tensor(sorter, ndim=1)
+            if sorter.type not in basic.int_vector_types:
+                raise TypeError('sorter must be an integer vector',
+                                sorter.type)
+            return theano.Apply(self, [x, v, sorter], [out_type()])
+
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        v = inputs[1]
+        if len(node.inputs) == 3:
+            sorter = inputs[2]
+        else:
+            sorter = None
+        z = output_storage[0]
+
+        z[0] = np.searchsorted(x, v, side=self.side, sorter=sorter)
+
+    def c_code(self, node, name, inames, onames, sub):
+        sorter = None
+        if len(node.inputs) == 3:
+            x, v, sorter = inames
+        else:
+            x, v = inames
+        if not sorter:
+            sorter = "NULL"
+        z, = onames
+        side = "NPY_SEARCHRIGHT" if self.side == 'right' else "NPY_SEARCHLEFT"
+        fail = sub['fail']
+
+        return """
+            Py_XDECREF(%(z)s);
+            %(z)s = (PyArrayObject*) PyArray_SearchSorted(%(x)s, (PyObject*) %(v)s,
+                                                          %(side)s, (PyObject*) %(sorter)s);
+            if (!%(z)s)
+                %(fail)s;
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (0, 1, 2)
+
+    def grad(self, inputs, output_gradients):
+        num_ins = len(inputs)
+        if num_ins == 3:
+            x, v, sorter = inputs
+        else:
+            x, v = inputs
+
+        x_grad = x.zeros_like()
+        if v.ndim == 1:
+            v_grad = v.zeros_like()
+        else:
+            v_grad = theano.gradient.grad_not_implemented(
+                    self, 1, v, "Grad is not implemented for inputs with "
+                                "number of dimension other than 1.")
+        if num_ins == 3:
+            sorter_grad = theano.gradient.grad_undefined(
+                    self, 2, sorter,
+                    "searchsorted is not defined for non-integer sorter so "
+                    "searchsorted(x, nb, sorter+eps), for eps > 0, "
+                    "is undefined")
+            return [x_grad, v_grad, sorter_grad]
+        else:
+            return [x_grad, v_grad]
+
+
+def searchsorted(x, v, side='left', sorter=None):
+    """Find indices where elements should be inserted to maintain order.
+
+    Wraping of numpy.searchsorted. Find the indices into a sorted array
+    `x` such that, if the corresponding elements in `v` were inserted
+    before the indices, the order of `x` would be preserved.
+
+    Parameters
+    ----------
+    x: 1-D tensor (array-like)
+        Input array. If `sorter` is None, then it must be sorted in
+        ascending order, otherwise `sorter` must be an array of indices
+        that sort it.
+    v: tensor (array-like)
+        Contains the values to be inserted into `x`.
+    side: {'left', 'right'}, optional.
+        If 'left' (default), the index of the first suitable
+        location found is given. If 'right', return the last such index. If
+        there is no suitable index, return either 0 or N (where N is the length
+        of `x`).
+    sorter: 1-D tensor of integers (array-like), optional
+        Contains indices that sort array `x` into ascending order.
+        They are typically the result of argsort.
+
+    .. versionadded:: 0.8.2
+
+    Returns
+    -------
+    indices : tensor of integers (int64)
+        Array of insertion points with the same shape as `v`.
+
+    """
+    return SearchsortedOp(side=side)(x, v, sorter)
+
+
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
 
