@@ -205,9 +205,11 @@ if __name__ == "__main__":
         gpu
         K20m/ECC                 0.07s
         K20/NOECC                0.07s
-        M2070                    0.25s         0.27s         0.32s
-        M2050(Amazon)            0.25s
         C2075                           0.25s
+        M2075                    0.25s
+        M2070                    0.25s         0.27s         0.32s
+        M2070-Q                  0.48s         0.27s         0.32s
+        M2050(Amazon)            0.25s
         C1060                                                0.46s
 
         GTX Titan(D15U-50)0.06s  0.06s  don't work
