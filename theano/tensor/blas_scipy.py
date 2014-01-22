@@ -26,6 +26,7 @@ class ScipyGer(Ger):
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
 
         # get vars for containers
         cA, calpha, cx, cy = node_input_storage
@@ -51,6 +52,8 @@ class ScipyGer(Ger):
                 A = local_ger(calpha[0], cx[0], cy[0], a=A,
                         overwrite_a=int(self.destructive))
             cZ[0] = A
+            for o in node_output_compute:
+                o[0] = True
 
         #TODO: If this is currently an unofficial part of the thunk API,
         #      then maybe it should be documented and made official?
