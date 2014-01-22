@@ -697,7 +697,9 @@ class test_IsInf_IsNan(unittest.TestCase):
                     (x.ndim == 1 and input is not self.vector)):
                     # We only test with the appropriate input type.
                     continue
-                assert (theano_isfunc(x) == numpy_isfunc(x)).all()
+                t_out = theano_isfunc(x)
+                n_out = numpy_isfunc(x)
+                assert (t_out == n_out).all(), (t_out, n_out)
 
     def test_isinf(self):
         return self.run_isfunc('isinf')

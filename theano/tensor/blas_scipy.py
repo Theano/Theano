@@ -26,6 +26,7 @@ class ScipyGer(Ger):
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
 
         # get vars for containers
         cA, calpha, cx, cy = node_input_storage
@@ -51,6 +52,8 @@ class ScipyGer(Ger):
                 A = local_ger(calpha[0], cx[0], cy[0], a=A,
                         overwrite_a=int(self.destructive))
             cZ[0] = A
+            for o in node_output_compute:
+                o[0] = True
 
         #TODO: If this is currently an unofficial part of the thunk API,
         #      then maybe it should be documented and made official?
@@ -59,15 +62,18 @@ class ScipyGer(Ger):
         rval.lazy = False
         return rval
 
+scipy_ger_no_inplace = ScipyGer(False)
+scipy_ger_inplace = ScipyGer(True)
+
 @local_optimizer([ger, ger_destructive])
 def use_scipy_ger(node):
     if node.op == ger:
-        return [ScipyGer(False)(*node.inputs)]
+        return [scipy_ger_no_inplace(*node.inputs)]
 
-@local_optimizer([ScipyGer(False)])
+@local_optimizer([scipy_ger_no_inplace])
 def make_ger_destructive(node):
-    if node.op == ScipyGer(False):
-        return [ScipyGer(True)(*node.inputs)]
+    if node.op == scipy_ger_no_inplace:
+        return [scipy_ger_inplace(*node.inputs)]
 
 use_scipy_blas = in2out(use_scipy_ger)
 make_scipy_blas_destructive = in2out(make_ger_destructive)
