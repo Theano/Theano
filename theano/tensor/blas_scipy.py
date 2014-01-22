@@ -59,15 +59,18 @@ class ScipyGer(Ger):
         rval.lazy = False
         return rval
 
+scipy_ger_no_inplace = ScipyGer(False)
+scipy_ger_inplace = ScipyGer(True)
+
 @local_optimizer([ger, ger_destructive])
 def use_scipy_ger(node):
     if node.op == ger:
-        return [ScipyGer(False)(*node.inputs)]
+        return [scipy_ger_no_inplace(*node.inputs)]
 
-@local_optimizer([ScipyGer(False)])
+@local_optimizer([scipy_ger_no_inplace])
 def make_ger_destructive(node):
-    if node.op == ScipyGer(False):
-        return [ScipyGer(True)(*node.inputs)]
+    if node.op == scipy_ger_no_inplace:
+        return [scipy_ger_inplace(*node.inputs)]
 
 use_scipy_blas = in2out(use_scipy_ger)
 make_scipy_blas_destructive = in2out(make_ger_destructive)
