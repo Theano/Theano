@@ -261,16 +261,22 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
         #if numpy was linked with library that are not installed, we
         #can't reuse them.
         if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
-            return ' '.join(
-                        #TODO: the Gemm op below should separate the
-                        # -L and -l arguments into the two callbacks
-                        # that CLinker uses for that stuff.  for now,
-                        # we just pass the whole ldflags as the -l
-                        # options part.
-                        ['-L%s' % l for l in blas_info['library_dirs']] +
-                        ['-l%s' % l for l in blas_info['libraries']] +
-                        [])
-#                       ['-I%s' % l for l in blas_info['include_dirs']])
+            ret = (
+                #TODO: the Gemm op below should separate the
+                # -L and -l arguments into the two callbacks
+                # that CLinker uses for that stuff.  for now,
+                # we just pass the whole ldflags as the -l
+                # options part.
+                ['-L%s' % l for l in blas_info['library_dirs']] +
+                ['-l%s' % l for l in blas_info['libraries']] +
+                [])
+#               ['-I%s' % l for l in blas_info['include_dirs']])
+            #if numpy was linked with library that are not installed or
+            #the dev version of the package is not currently available, we
+            #can't reuse them.
+            if GCC_compiler.try_flags(ret):
+                return ' '.join(ret)
+
     except KeyError:
         pass
 
