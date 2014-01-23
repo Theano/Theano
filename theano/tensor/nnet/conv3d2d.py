@@ -164,7 +164,7 @@ def conv3d(signals, filters,
            border_mode='valid'):
     """Convolve spatio-temporal filters with a movie.
 
-    It flip the filters.
+    It flips the filters.
 
     :param signals: timeseries of images whose pixels have color channels.
             shape: [Ns, Ts, C, Hs, Ws]
