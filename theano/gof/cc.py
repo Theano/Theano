@@ -255,6 +255,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     # TODO: add some error checking to make sure storage_<x> are
     # 1-element lists and __ERROR is a 3-elements list.
     struct_code = """
+    namespace {
     struct %(name)s {
         PyObject* __ERROR;
 
@@ -287,6 +288,7 @@ def struct_gen(args, struct_builders, blocks, sub):
             %(do_return)s
         }
     };
+    }
     """ % sub
 
     return struct_code
