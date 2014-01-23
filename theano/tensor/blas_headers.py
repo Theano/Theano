@@ -94,7 +94,7 @@ def detect_macos_sdot_bug():
     test_fix_code = textwrap.dedent("""\
         extern "C" float sdot_(int*, float*, int*, float*, int*);
         extern "C" float cblas_sdot(int, float*, int, float*, int);
-        float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+        static float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
         {
             return cblas_sdot(*Nx, x, *Sx, y, *Sy);
         }
@@ -924,7 +924,7 @@ def blas_header_text():
         if detect_macos_sdot_bug.fix_works:
             header += textwrap.dedent("""\
                     extern "C" float cblas_sdot(int, float*, int, float*, int);
-                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    static float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
                     {
                         return cblas_sdot(*Nx, x, *Sx, y, *Sy);
                     }
@@ -932,7 +932,7 @@ def blas_header_text():
         else:
             # Make sure the buggy version of sdot_ is never used
             header += textwrap.dedent("""\
-                    float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
+                    static float sdot_(int* Nx, float* x, int* Sx, float* y, int* Sy)
                     {
                         fprintf(stderr,
                             "FATAL: The implementation of BLAS SDOT "
