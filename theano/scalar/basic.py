@@ -792,14 +792,14 @@ class ScalarOp(Op):
             if not callable(output_types_preference):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
-                    self.__class__, output_types_preference)
+                    (self.__class__, output_types_preference))
             self.output_types_preference = output_types_preference
 
     def make_node(self, *inputs):
         if self.nin >= 0:
             if len(inputs) != self.nin:
                 raise TypeError("Wrong number of inputs for %s.make_node (got %i(%s), expected %i)" %
-                                self, len(inputs), str(inputs), self.nin)
+                                (self, len(inputs), str(inputs), self.nin))
         inputs = [as_scalar(input) for input in inputs]
         outputs = [t() for t in self.output_types([input.type
                                                    for input in inputs])]
