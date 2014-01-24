@@ -693,14 +693,20 @@ class T_examples(unittest.TestCase):
 
         N = 400
         feats = 784
-        D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
+        D = (rng.randn(N, feats).astype(config.floatX),
+             rng.randint(size=N, low=0, high=2).astype(config.floatX))
         training_steps = 10000
+        if config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
+            training_steps = 10
 
         # Declare Theano symbolic variables
         x = T.matrix("x")
         y = T.vector("y")
-        w = theano.shared(rng.randn(feats), name="w")
-        b = theano.shared(0., name="b")
+        # The *.03 have been added to have DebugMode don't complain
+        w = theano.shared(rng.randn(feats).astype(config.floatX) * .03,
+                          name="w")
+        b = theano.shared(numpy.asarray(0., dtype=config.floatX),
+                          name="b")
         print "Initial model:"
         print w.get_value(), b.get_value()
 
