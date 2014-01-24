@@ -630,8 +630,10 @@ def local_gpu_careduce(node):
                     if rval.type == node.outputs[0].type:
                         return [rval]
                     else:
-                        print >> sys.stderr, \
-                                "WARNING: local_gpu_careduce got type wrong"
+                        print >> sys.stderr, (
+                            "WARNING: local_gpu_careduce got type wrong",
+                            unreshaped_reduce.type, node.outputs[0].type,
+                            node)
                         return None
                 else:
 
