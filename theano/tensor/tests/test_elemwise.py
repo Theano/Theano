@@ -410,21 +410,18 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
                     self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
 
-            #test CAReduce.infer_shape
-            #the Shape op don't implement c_code!
-            if isinstance(linker, gof.PerformLinker):
-                x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
-                if tensor_op is None:
-                    e = self.op(scalar_op, axis=tosum)(x)
-                else:
-                    e = tensor_op(x, axis=tosum)
-                if tosum is None:
-                    tosum = range(len(xsh))
-                f = copy(linker).accept(FunctionGraph([x],
-                     [e.shape])).make_function()
-                if not(scalar_op in [scalar.maximum, scalar.minimum] and
-                       ((xsh == () or numpy.prod(xsh) == 0))):
-                    assert all(f(xv) == zv.shape)
+            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            if tensor_op is None:
+                e = self.op(scalar_op, axis=tosum)(x)
+            else:
+                e = tensor_op(x, axis=tosum)
+            if tosum is None:
+                tosum = range(len(xsh))
+            f = copy(linker).accept(FunctionGraph([x],
+                                                  [e.shape])).make_function()
+            if not(scalar_op in [scalar.maximum, scalar.minimum] and
+                   ((xsh == () or numpy.prod(xsh) == 0))):
+                assert all(f(xv) == zv.shape)
 
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
