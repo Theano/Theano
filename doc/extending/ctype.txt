@@ -553,3 +553,20 @@ respectively. See an example for the type ``CudaNdarrayType`` (GPU
 array) in the file `theano/sandbox/cuda/type.py`. The version
 parameter is what is returned by ViewOp.c_code_cache_version(). By
 default, it will recompile the c code for each process.
+
+
+Shape and Shape_i
+=================
+
+We have 2 generic Ops Shape and Shape_i that return the shape of any
+Theano Variable that have a shape attribute and Shape_i return only of
+the element of the shape.
+
+
+.. code-block:: python
+
+   theano.compile.ops.register_shape_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
+   theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
+
+The c code work as the ViewOp. Shape_i have the additional i parameter
+that you can use with %(i)s.
