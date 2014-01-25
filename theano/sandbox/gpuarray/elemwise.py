@@ -760,9 +760,11 @@ class GpuCAReduce(HideC, CAReduce):
             zero_shp = "cudaMemset((float *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset), 0, PyGpuArray_SIZE(%(z)s) * sizeof(float))" % locals()
         #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
+            scalar_op = self.scalar_op
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
-                         "GpuCAReduce not implemented when input shape is 0 for this scalar_op");
+                         "GpuCAReduce not implemented when input shape is 0"
+                         " for this scalar_op: %(scalar_op)s");
             %(fail)s;
             """ % locals()
         print >> sio, """
