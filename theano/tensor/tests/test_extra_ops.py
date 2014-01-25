@@ -24,11 +24,11 @@ class TestCumsumOp(utt.InferShapeTester):
         x = T.tensor3('x')
         a = np.random.random((30, 50, 20)).astype(config.floatX)
 
-        f = theano.function([x], cumsum(x))
+        f = theano.function([x], cumsum(x), mode="DebugMode")
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
         for axis in range(len(a.shape)):
-            f = theano.function([x], cumsum(x, axis=axis))
+            f = theano.function([x], cumsum(x, axis=axis), mode="DebugMode")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
     def test_infer_shape(self):

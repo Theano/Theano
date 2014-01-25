@@ -36,7 +36,6 @@ class CumsumOp(theano.Op):
 
     def grad(self, inputs, output_gradients):
         [gi] = output_gradients
-        gi = theano.printing.Print("Grad")(gi)
 
         if self.axis is None:
             return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
@@ -53,6 +52,41 @@ class CumsumOp(theano.Op):
             return [(np.prod(shapes[0]),)]  # Flatten
 
         return shapes
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        z, = onames
+        axis = self.axis
+        fail = sub['fail']
+
+        if self.axis is None:
+            code = """
+                npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
+                Py_XDECREF(%(z)s);
+                %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                }
+            """ % locals()
+        else:
+            code = """
+                Py_XDECREF(%(z)s);
+                %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_SHAPE(%(x)s), type_num_%(x)s);
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumSum(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                }
+            """ % locals()
+
+        return code
+
+    def c_code_cache_version(self):
+        return (1,)
 
     def __str__(self):
         return self.__class__.__name__
