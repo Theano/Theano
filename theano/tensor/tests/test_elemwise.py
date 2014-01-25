@@ -402,13 +402,21 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 if scalar_op in [scalar.and_, scalar.or_]:
                     zv = numpy.asarray(zv, dtype='int8')
                 if test_nan:
-                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv),
-                                                                       zv),
-                                    (f(xv), zv))
+                    try:
+                        self.assertTrue(
+                            theano.tensor.TensorType.values_eq(f(xv), zv),
+                            (f(xv), zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
                 else:
-                    f_xv = f(xv)
-                    self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
-                    self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    try:
+                        f_xv = f(xv)
+                        self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                        self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
 
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
@@ -421,7 +429,11 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                                                   [e.shape])).make_function()
             if not(scalar_op in [scalar.maximum, scalar.minimum] and
                    ((xsh == () or numpy.prod(xsh) == 0))):
-                assert all(f(xv) == zv.shape)
+                try:
+                    assert all(f(xv) == zv.shape)
+                except NotImplementedError:
+                    # GpuCAReduce don't implement all cases when size is 0
+                    assert xv.size == 0
 
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
