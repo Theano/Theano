@@ -284,24 +284,26 @@ class test_Broadcast(unittest.TestCase):
 
 class test_CAReduce(unittest_tools.InferShapeTester):
     op = CAReduce
+    cases = [((5, 6), None),
+             ((5, 6), (0, 1)),
+             ((5, 6), (0, )),
+             ((5, 6), (1, )),
+             ((5, 6), (-1, )),
+             ((5, 6), (-2, )),
+             ((5, 6), ()),
+             ((2, 3, 4, 5), (0, 1, 3)),
+             ((2, 3, 4, 5), (-2, -3)),
+             ((5, 0), None),
+             ((5, 0), (0, )),
+             ((5, 0), (1, )),
+             ((5, 0), ()),
+             ((), None),
+             ((), ())
+         ]
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((5, 6), ()),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())]:
+        for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
@@ -490,22 +492,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
     def test_infer_shape(self, dtype=None):
         if dtype is None:
             dtype = theano.config.floatX
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 6), ()),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())
-            ]:
+        for xsh, tosum in self.cases:
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))

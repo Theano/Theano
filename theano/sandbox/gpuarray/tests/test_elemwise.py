@@ -74,6 +74,23 @@ class test_GpuCAReduceCPY(test_CAReduce):
 class test_GpuCAReduce(test_GpuCAReduceCPY):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
+    bin_dtypes = []
+    cases = [((5, 6), None),
+             ((5, 6), (0, 1)),
+             ((5, 6), (0, )),
+             ((5, 6), (1, )),
+             ((5, 6), (-1, )),
+             ((5, 6), (-2, )),
+             #((5, 6), ()),  #reduce on no axis(copy) isn't implemented
+             #((2, 3, 4, 5), (0, 1, 3)), mask 1101 isn't implemented
+             #((2, 3, 4, 5), (-2, -3)), mask 0110 isn't implemented
+             ((5, 0), None),
+             ((5, 0), (0, )),
+             ((5, 0), (1, )),
+             #((5, 0), ()), reduce on no axis isn't implemented
+             #((), None), reduce on no axis isn't implemented
+             #((), ()) reduce on no axis isn't implemented
+        ]
     op = GpuCAReduce
     reds = [scalar.add, scalar.mul]
 
