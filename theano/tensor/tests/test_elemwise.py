@@ -507,8 +507,10 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 tosum = range(len(xsh))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [self.op(scalar.add, axis=tosum)(x)],
-                            [xv], self.op, ["local_cut_useless_reduce"])
+                                    [self.op(scalar.add, axis=tosum)(x)],
+                                    [xv], self.op,
+                                    ["local_cut_useless_reduce"],
+                                    warn=0 not in xsh)
 
 
 class test_Prod(unittest.TestCase):
