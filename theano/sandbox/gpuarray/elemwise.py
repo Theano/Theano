@@ -1429,37 +1429,40 @@ class GpuCAReduce(HideC, CAReduce):
             {
                 int verbose = 2;
 
-                  dim3 n_threads(std::min(32,PyGpuArray_DIMS(%(x)s)[2]));
+                  dim3 n_threads(std::min((size_t) 32,
+                                          PyGpuArray_DIMS(%(x)s)[2]));
                   while(    (n_threads.x*(n_threads.y+1)<=256)
                          && (n_threads.y<PyGpuArray_DIMS(%(x)s)[1])){
                       n_threads.y++;
                   }
 
                   dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[0],
-                                (int)4096));
+                                (size_t)4096));
                   n_blocks.y = std::min(
-                      ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x),
-                      (int)(4096 / n_blocks.x)
+                      ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],
+                                  (size_t)n_threads.x),
+                      (size_t)(4096 / n_blocks.x)
                       );
                 if(std::min(std::min(PyGpuArray_STRIDES(%(x)s)[0]/4,
                                      PyGpuArray_STRIDES(%(x)s)[1]/4),
                             PyGpuArray_STRIDES(%(x)s)[2]/4)
                    ==PyGpuArray_STRIDES(%(x)s)[2]/4
-                  && n_blocks.y==ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x)){
+                  && n_blocks.y==ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],
+                                             (size_t)n_threads.x)){
                   if(verbose>1)
                     printf("n_block.x.1=%%d, n_block.x.2=%%d, n_block.y.1=%%d, n_block.y.2=%%d,\\n",
                            PyGpuArray_DIMS(%(x)s)[0],4096,
-                           ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(int)n_threads.x),
-                                       (int)(4096 / n_blocks.x));
+                           ceil_intdiv(PyGpuArray_DIMS(%(x)s)[2],(size_t)n_threads.x),
+                                       (size_t)(4096 / n_blocks.x));
                   assert(n_threads.x<=32);
                   %(makecall_inner)s
                 }else{
                   n_threads.x = std::min(PyGpuArray_DIMS(%(x)s)[1],
                                          (size_t) 256);
-                  n_blocks.x = std::min(PyGpuArray_DIMS(%(x)s)[0], (int)4096);
+                  n_blocks.x = std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)4096);
                   n_blocks.y = std::min(
                       PyGpuArray_DIMS(%(x)s)[2],
-                      (int)(4096 / n_blocks.x)
+                      (size_t)(4096 / n_blocks.x)
                       );
                   %(makecall)s
                 }
@@ -1511,7 +1514,7 @@ class GpuCAReduce(HideC, CAReduce):
             dim3 n_threads(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
                              (size_t) 256));
-            dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[1], 4096));
+            dim3 n_blocks(std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)4096));
             while (n_blocks.x * (n_blocks.y+1) <= 4096 && n_blocks.y <= PyGpuArray_DIMS(%(x)s)[2])
             {
                 n_blocks.y += 1;
@@ -1551,7 +1554,7 @@ class GpuCAReduce(HideC, CAReduce):
                              (size_t) 256));
             dim3 n_blocks(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                        4096));
+                             (size_t) 4096));
             while (n_blocks.x * n_blocks.y <= 4096)
             {
                 if (n_blocks.y > PyGpuArray_DIMS(%(x)s)[1])
@@ -1603,7 +1606,7 @@ class GpuCAReduce(HideC, CAReduce):
 
             dim3 n_blocks(
                     std::min(PyGpuArray_DIMS(%(x)s)[0],
-                        4096));
+                             (size_t) 4096));
 
             while (n_blocks.x * n_blocks.y <= 4096 &&
                    n_blocks.y < PyGpuArray_DIMS(%(x)s)[1])
@@ -2281,6 +2284,13 @@ class GpuCAReduce(HideC, CAReduce):
             }
             """ % locals()
         print >> sio, "CUdeviceptr (*cuda_get_ptr)(gpudata *g);"
+        print >> sio, """
+        template <typename T>
+        static T ceil_intdiv(T a, T b)
+        {
+            return (a/b) + ((a % b) ? 1: 0);
+        }
+        """
         return sio.getvalue()
 
 
