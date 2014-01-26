@@ -74,7 +74,7 @@ class CumsumOp(theano.Op):
         else:
             code = """
                 Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_SHAPE(%(x)s), type_num_%(x)s);
+                %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
 
                 if (!%(z)s)
                     %(fail)s;
