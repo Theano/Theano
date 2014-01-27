@@ -4,6 +4,8 @@ import numpy
 import theano
 from theano.tensor import basic
 from theano import gof, scalar
+from theano.tensor.sharedvar import tensor_constructor as _shared
+from collections import OrderedDict
 tensor = basic
 from theano.gradient import DisconnectedType
 
@@ -507,3 +509,265 @@ def fill_diagonal(a, val):
     .. versionadded:: 0.6
     """
     return fill_diagonal_(a, val)
+
+
+class BlockDot(gof.Op):
+    def __init__(self, inplace=False):
+        """
+        Computes only the forward pass when doing the class like structure
+        that Tomas proposed to speed up the output layer (which contains
+        many softmax units)
+        """
+        self.inplace = inplace
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace)
+
+    def make_node(self, *inputs):
+        inputs = map(tensor.as_tensor_variable, inputs)
+        # We restrict the op to matrix x matrix and vector x matrix !
+
+        i_broadcastables = [input.type.broadcastable[1:] for input in
+                            inputs[1:]]
+        bx, by = i_broadcastables
+        if len(by) == 2:  # y is a matrix
+            bz = bx[:-1] + by[-1:]
+        elif len(by) == 1:  # y is vector
+            bz = bx[:-1]
+
+        i_dtypes = [input.type.dtype for input in inputs]
+        outputs = [tensor.tensor(scalar.upcast(*i_dtypes), (False,) + bz)]
+        return gof.Apply(self, inputs, outputs)
+
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
+        node_input_compute = [compute_map[r] for r in node.inputs]
+        node_output_compute = [compute_map[r] for r in node.outputs]
+        def init_shape(var, exclude_leading_dim=True):
+            shape = []
+            if exclude_leading_dim:
+                broad = var.broadcastable[1:]
+            else:
+                broad = var.broadcastable
+            for b in broad:
+                if b:
+                    shape += [1]
+                else:
+                    shape += [2]
+            return shape
+
+        self.b = _shared(numpy.zeros(init_shape(node.inputs[0]),
+                                     dtype=node.inputs[0].dtype))
+        self.A = _shared(numpy.zeros(init_shape(node.inputs[1]),
+                                    dtype=node.inputs[1].dtype))
+        self.B = _shared(numpy.zeros(init_shape(node.inputs[2]),
+                                    dtype=node.inputs[2].dtype))
+        out = self.b + tensor.dot(self.A, self.B)
+        self.out = _shared(numpy.zeros(init_shape(out, False), dtype=out.dtype))
+        updates  = OrderedDict({self.out:out})
+        self.step = theano.function(
+            [],
+            [],
+            name='step',
+            updates=updates)
+
+        p = self.execute
+        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+            r = p(n, [x[0] for x in i], o)
+            for o in node.outputs:
+                compute_map[o][0] = True
+            return r
+        self.tmp_h = None
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.perform = p
+        rval.lazy = False
+        return rval
+
+
+    def execute(self, node, inputs, _outs):
+
+        b, A, B = inputs
+        if A.ndim == 3 and B.ndim == 3:
+            nw_shape = (A.shape[0], A.shape[1],
+                    B.shape[2])
+        elif A.ndim ==3 and B.ndim == 2:
+            nw_shape = (A.shape[0], A.shape[1])
+        elif A.ndim ==2 and B.ndim == 3:
+            nw_shape = (A.shape[0], B.shape[2])
+        elif A.ndim==2 and B.ndim == 2:
+            nw_shape = (A.shape[0])
+
+
+        if _outs[0][0] is not None and _outs[0][0].shape == nw_shape:
+            pass
+        else:
+            _outs[0][0] = numpy.zeros(nw_shape, dtype=self.out.dtype)
+
+        for dx in xrange(A.shape[0]):
+            self.b.set_value(b[dx], borrow=True)
+            self.A.set_value(A[dx], borrow=True)
+            self.B.set_value(B[dx], borrow=True)
+            self.step()
+            values = self.out.get_value(borrow=True,
+                                        return_internal_type=True)
+            _outs[0][0][dx] = values
+
+    def grad(self, inp, grads):
+
+        b, x, y = inp
+        gz, = grads
+        xdim, ydim, gdim = x.type.ndim, y.type.ndim, gz.type.ndim
+
+        #grad is scalar, so x is vector and y is vector
+        if gdim == 1:
+            bgrad = gz
+            xgrad = gz.dimshuffle(0,'x') * y
+            ygrad = gz.dimshuffle(0,'x') * x
+
+        #x is vector, y is matrix, grad is vector
+        elif xdim == 2 and ydim == 3:
+            xgrad = block_dot(tensor.zeros_like(x), gz, y.dimshuffle(0,2,1))
+            ygrad = block_dot(tensor.zeros_like(y), x.dimshuffle(0,1,'x'), gz.dimshuffle(0,'x',1))
+            bgrad = gz
+
+        #x is matrix, y is vector, grad is vector
+        elif xdim == 3 and ydim == 2:
+            xgrad = block_dot(tensor.zeros_like(x), gz.dimshuffle(0,1,'x'), y.dimshuffle(0,'x',1))
+            ygrad = block_dot(tensor.zeros_like(y), x.dimshuffle(0,2,1), gz)
+            bgrad = gz
+
+        #x is matrix, y is matrix, grad is matrix
+        elif xdim == ydim == 3:
+            xgrad = block_dot(tensor.zeros_like(x), gz, y.dimshuffle(0,2,1))
+            ygrad = block_dot(tensor.zeros_like(y), x.dimshuffle(0,2,1), gz)
+            if b.ndim < gz.ndim:
+                bgrad = gz.sum(1)
+            else:
+                bgrad = gz
+
+        # If x or y contain broadcastable dimensions but only one of
+        # them know that a matching dimensions is broadcastable, the
+        # above code don't always return the right broadcast pattern.
+        # This cause problem down the road. See gh-1461.
+        if xgrad.broadcastable != x.broadcastable:
+            xgrad = tensor.patternbroadcast(xgrad, x.broadcastable)
+        if ygrad.broadcastable != y.broadcastable:
+            ygrad = tensor.patternbroadcast(ygrad, y.broadcastable)
+
+        rval = bgrad, xgrad, ygrad
+
+        for elem in rval:
+            assert elem.dtype.find('float') != -1
+
+        return rval
+
+    def R_op(self, inputs, eval_points):
+        # R_op for a \dot b evaluted at c for a and d for b is
+        # simply c \dot b + a \dot d
+
+
+        assert len(inputs) == 3
+        assert len(eval_points) == 3
+        if eval_points[0] is None and eval_points[1] is None and\
+            eval_points[2] is None:
+            return [None]
+
+        debugger_available = config.compute_test_value != 'off'
+
+        if debugger_available:
+            try:
+                iv0 = gof.op.get_test_value(inputs[0])
+            except AttributeError:
+                gof.op.missing_test_message(
+                    'first input passed to Dot.R_op has no test value')
+                debugger_available = False
+
+            try:
+                iv1 = gof.op.get_test_value(inputs[1])
+            except AttributeError:
+                gof.op.missing_test_message(
+                    'second input passed to Dot.R_op has no test value')
+                debugger_available = False
+
+            try:
+                iv2 = gof.op.get_test_value(inputs[2])
+            except AttributeError:
+                gof.op.missing_test_message(
+                    'second input passed to Dot.R_op has no test value')
+                debugger_available = False
+
+            if eval_points[0]:
+                try:
+                    ev0 = gof.op.get_test_value(eval_points[0])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'first eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+            if eval_points[1]:
+                try:
+                    ev1 = gof.op.get_test_value(eval_points[1])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'second eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+            if eval_points[2]:
+                try:
+                    ev2 = gof.op.get_test_value(eval_points[2])
+                except AttributeError:
+                    gof.op.missing_test_message(
+                        'second eval point passed to Dot.R_op has no test value')
+                    debugger_available = False
+
+
+        if debugger_available:
+            input_values = [iv0, iv1, iv2]
+            eval_point_values = [ev0, ev1, ev2]
+
+            for i in xrange(2):
+                if eval_point_values[i] is not None and \
+                   input_values[i].shape != eval_point_values[i].shape:
+                    raise ValueError('input ' + str(i) + ' and eval_point ' +
+                                     str(i) + ' to Dot.R_op '
+                                     'should have the '
+                                     'same shape, but their shapes are'
+                                     ' %s and %s, respectively' % (
+                            str(input_values[i].shape),
+                            str(eval_point_values[i].shape)))
+        if eval_points[0]:
+            if eval_points[1]:
+                ev0_0 = eval_points[0]
+                ev0_1 = tensor.zeros_like(inputs[0])
+            elif eval_points[2]:
+                ev0_0 = tensor.zeros_like(inputs[0])
+                ev0_1 = eval_points[0]
+            else:
+                ev0_0 = tensor.zeros_like(inputs[0])
+                ev0_1 = tensor.zeros_like(inputs[0])
+        else:
+            ev0_0 = tensor.zeros_like(inputs[0])
+            ev0_1 = tensor.zeros_like(inputs[0])
+
+        if eval_points[0]:
+            t1 = self(ev0_0, eval_points[0], inputs[1])
+        if eval_points[1]:
+            t2 = self(ev0_1, inputs[0], eval_points[1])
+
+        if eval_points[0] and eval_points[1]:
+            return [t1 + t2]
+        elif eval_points[0]:
+            return [t1]
+        else:
+            return [t2]
+
+def block_dot(b, A,B):
+    return BlockDot()(b, A,B)
+
+
+
+

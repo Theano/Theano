@@ -26,6 +26,12 @@ from theano.sandbox.cuda.basic_ops import (
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+from theano.sandbox.cuda.blas import gpu_block_gemv_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_ger_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemm_no_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemv_inplace
+from theano.sandbox.cuda.blas import gpu_block_ger_inplace
+from theano.sandbox.cuda.blas import gpu_block_gemm_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -563,6 +569,147 @@ def local_gpu_ger(node):
                     gpu_from_host(x),
                     gpu_from_host(y)
                     ))]
+    return False
+
+@register_opt()
+@local_optimizer([tensor.extra_ops.BlockDot, gpu_from_host])
+def local_gpu_block_dot(node):
+    """
+    gpu_from_host(block_dot) -> gpu_block_dot(gpu_from_host)
+
+    block_dot(host_from_gpu) -> host_from_gpu(gpu_block_dot)
+    """
+    if node.op == gpu_from_host:
+        host_input = node.inputs[0]
+        if host_input.owner and \
+           isinstance(host_input.owner.op, tensor.extra_ops.BlockDot):
+            op = host_input.owner.op
+            b, A, B = host_input.owner.inputs
+            # GEMM
+            if (A.ndim ==3 and A.broadcastable == (False, False, False) and
+                B.ndim ==3 and B.broadcastable == (False, False, False)):
+                return [gpu_block_gemm_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1)))]
+            if (A.ndim ==3 and B.ndim == 2):
+                return [gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1)))]
+            if (A.broadcastable==(False, False, False) and
+                 B.broadcastable==(False, False, True)):
+                return [
+                    gpu_from_host(host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1)))).dimshuffle(0,1,'x'))]
+            if (A.ndim ==2 and B.ndim == 3):
+                return [gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(B.dimshuffle(0,2,1)),
+                    gpu_from_host(A),
+                    theano.tensor.constant(numpy.float32(1)))]
+
+            if (A.broadcastable==(False, True, False) and
+                B.broadcastable==(False, False, False)):
+                return [gpu_from_host(
+                host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(B.dimshuffle(0,2,1)),
+                    gpu_from_host(A[:,0]),
+                    theano.tensor.constant(numpy.float32(1)))).dimshuffle(0,'x',1))]
+
+            if (A.ndim ==2 and B.ndim == 2):
+                return [gpu_block_ger_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A[:,:,0]),
+                    gpu_from_host(B[:,0]))]
+
+            if (A.broadcastable==(False, False, True) and
+                B.broadcastable==(False, True, False)):
+                # Do I need to remove extra dimensions?
+                return [gpu_block_ger_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A[:,:,0]),
+                    gpu_from_host(B[:,0]))]
+
+
+    if isinstance(node.op, tensor.extra_ops.BlockDot):
+        b, A,B = node.inputs
+        b_on_gpu = (b.owner and b.owner.op == host_from_gpu)
+        A_on_gpu = (A.owner and A.owner.op == host_from_gpu)
+        B_on_gpu = (B.owner and B.owner.op == host_from_gpu)
+        if b_on_gpu or A_on_gpu or B_on_gpu:
+
+            if (A.ndim ==3 and A.broadcastable == (False, False, False) and
+                B.ndim ==3 and B.broadcastable == (False, False, False)):
+                return [host_from_gpu(gpu_block_gemm_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1))))]
+            if (A.ndim ==3 and B.ndim == 2):
+                return [host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1))))]
+            if (A.broadcastable==(False, False, False) and
+                 B.broadcastable==(False, False, True)):
+                return [
+                    host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A),
+                    gpu_from_host(B),
+                    theano.tensor.constant(numpy.float32(1)))).dimshuffle(0,1,'x')]
+            if (A.ndim ==2 and B.ndim == 3):
+                return [host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(B.dimshuffle(0,2,1)),
+                    gpu_from_host(A),
+                    theano.tensor.constant(numpy.float32(1))))]
+
+            if (A.broadcastable==(False, True, False) and
+                B.broadcastable==(False, False, False)):
+                return [
+                host_from_gpu(gpu_block_gemv_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(B.dimshuffle(0,2,1)),
+                    gpu_from_host(A[:,0]),
+                    theano.tensor.constant(numpy.float32(1)))).dimshuffle(0,'x',1)]
+
+            if (A.ndim ==2 and B.ndim == 2):
+                return [host_from_gpu(gpu_block_ger_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A[:,:,0]),
+                    gpu_from_host(B[:,0])))]
+
+            if (A.broadcastable==(False, False, True) and
+                B.broadcastable==(False, True, False)):
+                # Do I need to remove extra dimensions?
+                return [host_from_gpu(gpu_block_ger_no_inplace(
+                    gpu_from_host(b),
+                    theano.tensor.constant(numpy.float32(1)),
+                    gpu_from_host(A[:,:,0]),
+                    gpu_from_host(B[:,0])))]
+
     return False
 
 
@@ -1232,6 +1379,23 @@ def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]
 
+@local_optimizer([gpu_block_gemm_no_inplace])
+def local_inplace_block_gemm(node):
+    if node.op == gpu_block_gemm_no_inplace:
+        return [gpu_block_gemm_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_block_gemv_no_inplace])
+def local_inplace_block_gemv(node):
+    if node.op == gpu_block_gemv_no_inplace:
+        return [gpu_block_gemv_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_block_ger_no_inplace])
+def local_inplace_block_ger(node):
+    if node.op == gpu_block_ger_no_inplace:
+        return [gpu_block_ger_inplace(*node.inputs)]
+
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
@@ -1240,6 +1404,9 @@ optdb.register('InplaceGpuBlasOpt',
                tensor.opt.in2out(local_inplace_gemm,
                                  local_inplace_gemv,
                                  local_inplace_ger,
+                                 local_inplace_block_gemm,
+                                 local_inplace_block_gemv,
+                                 local_inplace_block_ger,
                                  name="InplaceGpuBlasOpt"),
                70.0, 'fast_run', 'inplace', 'gpu')
 
