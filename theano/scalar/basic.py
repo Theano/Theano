@@ -245,7 +245,8 @@ class Scalar(Type):
     def c_declare(self, name, sub):
         return """
         %(dtype)s %(name)s;
-        typedef %(dtype)s %(name)s_dtype;
+        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+        typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
