@@ -1435,18 +1435,21 @@ class MaxAndArgmax(Op):
         x, axis = inp
         max, argmax = out
         fail = sub["fail"]
-        assert NoneConst.equals(node.inputs[1]) or node.inputs[1].ndim == 0
-        ret = """
-        int axis;
-        if((PyObject*)%(axis)s == Py_None){
-            axis = NPY_MAXDIMS;
-        }else{
-            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
+
+        if NoneConst.equals(node.inputs[1]):
+            axis_code = "axis = NPY_MAXDIMS;"
+        else:
+            assert node.inputs[1].ndim == 0
+            axis_code = """
+            axis = ((%(dtype)s)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
                 PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, bad axis argument");
                 %(fail)s
             }
-        }
+            """ % locals()
+        ret = """
+        int axis;
+        %(axis_code)s
         %(max)s = (PyArrayObject*)PyArray_Max(%(x)s, axis, NULL);
         if(%(max)s == NULL){
             PyErr_SetString(PyExc_ValueError,
