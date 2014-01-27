@@ -1441,7 +1441,7 @@ class MaxAndArgmax(Op):
         else:
             assert node.inputs[1].ndim == 0
             axis_code = """
-            axis = ((%(dtype)s)PyArray_DATA(%(axis)s))[0];
+            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
                 PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, bad axis argument");
                 %(fail)s
