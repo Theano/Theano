@@ -612,7 +612,7 @@ theano.compile.register_view_op_c_code(
         version=1)
 
 
-# Register TensorType C code for ViewOp.
+# Register TensorType C code for Shape Op.
 theano.compile.register_shape_c_code(
     TensorType,
     """
