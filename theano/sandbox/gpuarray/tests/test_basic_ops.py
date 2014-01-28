@@ -202,17 +202,17 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
 def test_transfer_cpu_gpu():
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
+    for shp in [(5, 4), (5, 0)]:
+        av = numpy.asarray(rng.rand(*shp), dtype='float32')
+        gv = gpuarray.array(av)
     
-    av = numpy.asarray(rng.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av)
-    
-    f = theano.function([a], gpu_from_host(a))
-    fv = f(av)
-    assert GpuArrayType.values_eq(fv, gv)
+        f = theano.function([a], gpu_from_host(a))
+        fv = f(av)
+        assert GpuArrayType.values_eq(fv, gv)
 
-    f = theano.function([g], host_from_gpu(g))
-    fv = f(gv)
-    assert numpy.all(fv == av)
+        f = theano.function([g], host_from_gpu(g))
+        fv = f(gv)
+        assert numpy.all(fv == av)
 
 
 def test_transfer_strided():

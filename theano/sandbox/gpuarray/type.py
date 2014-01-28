@@ -97,6 +97,9 @@ class GpuArrayType(Type):
             return False
         if a.typecode != b.typecode:
             return False
+        # compare() can't handle 0-sized arrays.
+        if a.size == 0:
+            return True
         return numpy.asarray(compare(a, '==', b)).all()
 
     @staticmethod
@@ -105,6 +108,9 @@ class GpuArrayType(Type):
                          rtol=None, atol=None):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
+        # Can't compare 0-sized arrays.
+        if a.size == 0:
+            return True
         if 'int' in str(a.dtype):
             return GpuArrayType.values_eq(a, b)
         else:
