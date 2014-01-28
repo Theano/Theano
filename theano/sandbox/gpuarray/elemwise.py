@@ -169,7 +169,8 @@ class GpuElemwise(HideC, Elemwise):
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
+                '<compyte/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -205,8 +206,7 @@ class GpuElemwise(HideC, Elemwise):
 #define GDIM_1 gridDim.y
 #define GDIM_2 gridDim.z
 """
-        res = ["CUdeviceptr (*cuda_get_ptr)(gpudata *g);",
-               CLUDA_PREAMBLE]
+        res = [CLUDA_PREAMBLE]
         for i in range(0, nd + 1):
             res.append(k.render_basic(i, name="elem_" + str(i)) + ';')
         res.append(k.contig_src + ';')
@@ -214,8 +214,7 @@ class GpuElemwise(HideC, Elemwise):
         return '\n'.join(res)
 
     def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))'
-                'compyte_get_extension("cuda_get_ptr");']
+        return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
         nd = node.outputs[0].ndim
@@ -417,7 +416,7 @@ class GpuElemwise(HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (1, ver)
+            return (2, ver)
         else:
             return ver
 
@@ -519,7 +518,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return process
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 class GpuCAReduce(HideC, CAReduce):
@@ -660,14 +659,14 @@ class GpuCAReduce(HideC, CAReduce):
         return True
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
+                '<compyte/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
 
     def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))'
-                'compyte_get_extension("cuda_get_ptr");']
+        return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -2283,7 +2282,6 @@ class GpuCAReduce(HideC, CAReduce):
                 %(reducebuf)s
             }
             """ % locals()
-        print >> sio, "CUdeviceptr (*cuda_get_ptr)(gpudata *g);"
         print >> sio, """
         template <typename T>
         static T ceil_intdiv(T a, T b)
