@@ -3391,9 +3391,13 @@ def local_sum_alloc(node):
 
 @gof.local_optimizer([T.mul])
 def local_mul_to_neg(node):
-    if node.op == T.mul and N.all(
+    if (node.op == T.mul and
         local_mul_canonizer.get_constant(node.inputs[0]) == -1.0):
-        other_prod = local_mul_canonizer.merge_num_denum(node.inputs[1:], [])
+        num = node.inputs[1:]
+        if len(num) == 1:
+            other_prod = num[0]
+        else:
+            other_prod = local_mul_canonizer.main(*num)
         if other_prod.type == node.outputs[0].type:
             return [-other_prod]
         # else the multiplication is also acting as a cast, so we
