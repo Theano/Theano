@@ -616,15 +616,15 @@ theano.compile.register_view_op_c_code(
 theano.compile.register_shape_c_code(
     TensorType,
     """
-    npy_intp shape[] = {PyArray_NDIM(%(inames)s)};
-    if(%(onames)s == NULL || (PyArray_DIMS(%(onames)s)[0] != shape[0]))
+    npy_intp shape[] = {PyArray_NDIM(%(iname)s)};
+    if(%(oname)s == NULL || (PyArray_DIMS(%(oname)s)[0] != shape[0]))
     {
-        Py_XDECREF(%(onames)s);
-        %(onames)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
+        Py_XDECREF(%(oname)s);
+        %(oname)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
     }
     for(int i=0;i<shape[0];i++)
     {
-        ((npy_int64*)PyArray_GETPTR1(%(onames)s, i))[0] = PyArray_DIMS(%(inames)s)[i];
+        ((npy_int64*)PyArray_GETPTR1(%(oname)s, i))[0] = PyArray_DIMS(%(iname)s)[i];
     }
     """,
     version=1)
