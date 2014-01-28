@@ -49,7 +49,7 @@ class CumsumOp(theano.Op):
 
     def infer_shape(self, node, shapes):
         if self.axis is None:
-            return [(np.prod(shapes[0]),)]  # Flatten
+            return [(tensor.prod(shapes[0]),)]  # Flatten
 
         return shapes
 
@@ -59,11 +59,14 @@ class CumsumOp(theano.Op):
         axis = self.axis
         fail = sub['fail']
 
-        if self.axis is None:
+        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
             code = """
                 npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
-                Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                }
 
                 if (!%(z)s)
                     %(fail)s;
@@ -73,8 +76,11 @@ class CumsumOp(theano.Op):
             """ % locals()
         else:
             code = """
-                Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                }
 
                 if (!%(z)s)
                     %(fail)s;
@@ -86,10 +92,10 @@ class CumsumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s{%s}" % (self.__class__.__name__, self.axis)
 
 
 def cumsum(x, axis=None):

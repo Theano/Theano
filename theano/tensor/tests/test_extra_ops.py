@@ -22,14 +22,25 @@ class TestCumsumOp(utt.InferShapeTester):
 
     def test_cumsumOp(self):
         x = T.tensor3('x')
-        a = np.random.random((30, 50, 20)).astype(config.floatX)
+        a = np.random.random((3, 5, 2)).astype(config.floatX)
+        b = np.random.random((30, 5, 2)).astype(config.floatX)
 
         f = theano.function([x], cumsum(x), mode="DebugMode")
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
+        # Test without garbage collector
+        f = theano.function([x], cumsum(x).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run") )
+        assert np.allclose(np.cumsum(a).sum(), f(a))  # Test axis=None
+        assert np.allclose(np.cumsum(b).sum(), f(b))  # Would fail without re-allocation
+
         for axis in range(len(a.shape)):
             f = theano.function([x], cumsum(x, axis=axis), mode="DebugMode")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
+
+            # Test without garbage collector
+            f = theano.function([x], cumsum(x, axis=axis).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run"))
+            assert np.allclose(np.cumsum(a, axis=axis).sum(), f(a))
+            assert np.allclose(np.cumsum(b, axis=axis).sum(), f(b))  # Would fail without re-allocation
 
     def test_infer_shape(self):
         x = T.tensor3('x')
@@ -53,7 +64,7 @@ class TestCumsumOp(utt.InferShapeTester):
         utt.verify_grad(self.op, [a])  # Test axis=None
 
         for axis in range(len(a.shape)):
-            utt.verify_grad(CumsumOp(axis=axis), [a])
+            utt.verify_grad(self.op_class(axis=axis), [a])
 
 
 class TestBinCountOp(utt.InferShapeTester):
