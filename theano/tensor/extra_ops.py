@@ -92,7 +92,7 @@ class CumsumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (1,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -199,7 +199,7 @@ class CumprodOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (1,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)

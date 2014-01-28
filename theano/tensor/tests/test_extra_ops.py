@@ -10,6 +10,7 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      FillDiagonal, fill_diagonal)
 from theano import tensor as T
 from theano import config, tensor, function
+from theano.compile import DebugMode
 
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
@@ -25,24 +26,14 @@ class TestCumsumOp(utt.InferShapeTester):
     def test_cumsumOp(self):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
-        b = np.random.random((30, 5, 2)).astype(config.floatX)
 
-        f = theano.function([x], cumsum(x), mode="DebugMode")
+        f = theano.function([x], cumsum(x), mode=DebugMode(check_preallocated_output="ALL"))
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
-        # Test without garbage collector
-        f = theano.function([x], cumsum(x).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run") )
-        assert np.allclose(np.cumsum(a).sum(), f(a))  # Test axis=None
-        assert np.allclose(np.cumsum(b).sum(), f(b))  # Would fail without re-allocation
-
         for axis in range(len(a.shape)):
-            f = theano.function([x], cumsum(x, axis=axis), mode="DebugMode")
+            f = theano.function([x], cumsum(x, axis=axis), mode=DebugMode(check_preallocated_output="ALL"))
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
-            # Test without garbage collector
-            f = theano.function([x], cumsum(x, axis=axis).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run"))
-            assert np.allclose(np.cumsum(a, axis=axis).sum(), f(a))
-            assert np.allclose(np.cumsum(b, axis=axis).sum(), f(b))  # Would fail without re-allocation
 
     def test_infer_shape(self):
         x = T.tensor3('x')
@@ -79,24 +70,13 @@ class TestCumprodOp(utt.InferShapeTester):
     def test_CumprodOp(self):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
-        b = np.random.random((30, 5, 2)).astype(config.floatX)
 
-        f = theano.function([x], cumprod(x), mode="DebugMode")
+        f = theano.function([x], cumprod(x), mode=DebugMode(check_preallocated_output="ALL"))
         assert np.allclose(np.cumprod(a), f(a))  # Test axis=None
 
-        # Test without garbage collector
-        f = theano.function([x], cumprod(x).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run") )
-        assert np.allclose(np.cumprod(a).sum(), f(a))  # Test axis=None
-        assert np.allclose(np.cumprod(b).sum(), f(b))  # Would fail without re-allocation
-
         for axis in range(len(a.shape)):
-            f = theano.function([x], cumprod(x, axis=axis), mode="DebugMode")
+            f = theano.function([x], cumprod(x, axis=axis), mode=DebugMode(check_preallocated_output="ALL"))
             assert np.allclose(np.cumprod(a, axis=axis), f(a))
-
-            # Test without garbage collector
-            f = theano.function([x], cumprod(x, axis=axis).sum(), mode=theano.compile.Mode(linker="cvm_nogc", optimizer="fast_run"))
-            assert np.allclose(np.cumprod(a, axis=axis).sum(), f(a))
-            assert np.allclose(np.cumprod(b, axis=axis).sum(), f(b))  # Would fail without re-allocation
 
     def test_infer_shape(self):
         x = T.tensor3('x')
