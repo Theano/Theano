@@ -3449,7 +3449,7 @@ def local_mul_zero(node):
             except NotScalarConstantError:
                 continue
             #print 'MUL by value', value, node.inputs
-            if N.all(value == 0):
+            if value == 0:
                 #print '... returning zeros'
                 return _fill_chain(theano._asarray(0, dtype=otype.dtype),
                                    node.inputs)
@@ -3487,9 +3487,9 @@ register_canonicalize(local_inv_canon)
 @gof.local_optimizer([T.pow])
 def local_pow_canonicalize(node):
     if node.op == T.pow:
-        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 0):
+        if local_mul_canonizer.get_constant(node.inputs[1]) == 0:
             return [broadcast_like(1, node.outputs[0], node.fgraph)]
-        if N.all(local_mul_canonizer.get_constant(node.inputs[1]) == 1):
+        if local_mul_canonizer.get_constant(node.inputs[1]) == 1:
             return [broadcast_like(node.inputs[0], node.outputs[0], node.fgraph)]
     else:
         return False
