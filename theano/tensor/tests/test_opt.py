@@ -326,13 +326,11 @@ class test_canonize(unittest.TestCase):
         fxv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
-        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float32').reshape(1, shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32').reshape(1, shp[0])
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
-        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float64').reshape(1, shp[0])
+        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float64').reshape(1, shp[0])
         cases = [
             (fx + fy, (fx, fy), (fxv, fyv), 1, 'float32'),
             (fx * fy, (fx, fy), (fxv, fyv), 1, 'float32'),
@@ -433,14 +431,12 @@ class test_canonize(unittest.TestCase):
         fyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fwv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
-        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float32').reshape(1, shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32').reshape(1, shp[0])
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dwv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
-        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float64').reshape(1, shp[0])
+        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float64').reshape(1, shp[0])
 
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
@@ -695,8 +691,7 @@ class test_canonize(unittest.TestCase):
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
-        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'float32').reshape(1, shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32').reshape(1, shp[0])
         #We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode = compile.mode.get_default_mode()
@@ -1217,8 +1212,10 @@ class test_fusion(unittest.TestCase):
         mode2 = copy.copy(compile.get_default_mode())
         mode2._optimizer = mode2._optimizer.excluding('local_elemwise_fusion')
         print "test with linker", str(mode1.linker)
-        times1 = self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            nb_repeat, assert_len_topo=False, slice=s)
-        times2 = self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            nb_repeat, assert_len_topo=False, slice=s)
+        times1 = self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat,
+                         assert_len_topo=False, slice=s)
+        times2 = self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat,
+                         assert_len_topo=False, slice=s)
         print "times1 with local_elemwise_fusion"
         print times1, times1.min(), times1.max(), times1.sum()
         print "times2 without local_elemwise_fusion"
@@ -1256,11 +1253,12 @@ class test_fusion(unittest.TestCase):
         linker = gof.OpWiseCLinker
         mode = compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
         mode = compile.ProfileMode()
-        print "time", self.do(mode, shared, shp=(1000, 1000), gpu=
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        False, assert_len_topo=False, slice=s, nb_repeat=100)
+        print "time", self.do(mode, shared, shp=(1000, 1000), gpu=False,
+                              assert_len_topo=False, slice=s, nb_repeat=100)
 
-
-    def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'), shared_fn=shared, shp=(3000,3000), gpu=False, nb_repeat=30, assert_len_topo=True, slice=None):
+    def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),
+                        shared_fn=shared, shp=(3000,3000), gpu=False,
+                        nb_repeat=30, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
         verify that the elemwise fusion work
