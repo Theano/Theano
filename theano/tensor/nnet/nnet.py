@@ -1398,7 +1398,7 @@ def _check_rows_is_arange_len_labels(rows, labels):
             shape_subtensor = stop.owner
             if list(shape_subtensor.op.idx_list) == [0]:
                 shape_var, = shape_subtensor.inputs
-                if shape_var.owner and shape_var.owner.op == tensor._shape:
+                if shape_var.owner and shape_var.owner.op == tensor.shape:
                     return shape_var.owner.inputs[0] is labels
         else:
             shape_of = stop.owner.fgraph.shape_feature.shape_of
