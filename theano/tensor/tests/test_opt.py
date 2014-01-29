@@ -4000,27 +4000,6 @@ def test_local_join_1():
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
 
-def test_local_mul_to_neg():
-    """
-    Test that a multiplication by -1 or -1.0 yields the appropriate data type
-    """
-    a = T.imatrix()
-    f1 = theano.function([a], -1 * a)
-    f2 = theano.function([a], -1.0 * a)
-    aval = numpy.random.randint(0, 10, (2, 2)).astype('int32')
-    if config.cast_policy == 'custom':
-        assert f1(aval).dtype == a.dtype
-        assert f2(aval).dtype == 'float64'
-    elif config.cast_policy == 'numpy':
-        assert f1(aval).dtype == str(numpy.array(0).dtype)
-        assert f2(aval).dtype == 'float64'
-    elif config.cast_policy == 'numpy+floatX':
-        assert f1(aval).dtype == str(numpy.array(0).dtype)
-        assert f2(aval).dtype == config.floatX
-    else:
-        raise NotImplementedError(config.cast_policy)
-
-
 def test_local_add_specialize():
     # test of non-zero dimension
     a = tensor.vector()
