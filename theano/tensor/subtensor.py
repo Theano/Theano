@@ -318,11 +318,11 @@ class Subtensor(Op):
         if (isinstance(entry, gof.Variable)
                 and entry.type in tensor_types
                 and numpy.all(entry.type.broadcastable)):
-            return scal.Scalar(entry.type.dtype)
+            return scal.get_scalar_type(entry.type.dtype)
         elif (isinstance(entry, gof.Type)
                 and entry in tensor_types
                 and numpy.all(entry.broadcastable)):
-            return scal.Scalar(entry.dtype)
+            return scal.get_scalar_type(entry.dtype)
         elif slice_ok and isinstance(entry, slice):
             a = entry.start
             b = entry.stop

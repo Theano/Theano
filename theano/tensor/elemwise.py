@@ -8,7 +8,7 @@ import theano
 from theano import gof
 from theano.gof import Apply, Op
 from theano import scalar
-from theano.scalar import Scalar
+from theano.scalar import Scalar, get_scalar_type
 from theano.printing import pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
@@ -515,7 +515,7 @@ class Elemwise(Op):
         """
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
-                *[Scalar(dtype=i.type.dtype)() for i in inputs])
+                *[get_scalar_type(dtype=i.type.dtype)() for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -718,7 +718,7 @@ class Elemwise(Op):
             def as_scalar(t):
                 if isinstance(t.type, (NullType, DisconnectedType)):
                     return t
-                return Scalar(t.type.dtype)()
+                return get_scalar_type(t.type.dtype)()
 
             scalar_inputs = map(as_scalar, inputs)
             scalar_ograds = map(as_scalar, ograds)
@@ -1039,9 +1039,9 @@ class Elemwise(Op):
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                      [Scalar(dtype=input.type.dtype)()
+                      [get_scalar_type(dtype=input.type.dtype)()
                           for input in node.inputs],
-                      [Scalar(dtype=output.type.dtype)()
+                      [get_scalar_type(dtype=output.type.dtype)()
                           for output in node.outputs]),
                 nodename + '_scalar_',
                 ["%s_i" % s for s in _inames],
@@ -1161,11 +1161,11 @@ class Elemwise(Op):
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [Scalar(dtype=input.type.dtype)() for input in node.inputs],
-                [Scalar(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1531,9 +1531,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         task1_code = self.scalar_op.c_code(
                 Apply(
                     self.scalar_op,
-                    [Scalar(dtype=input.type.dtype)()
+                    [get_scalar_type(dtype=input.type.dtype)()
                         for input in (node.inputs * 2)],
-                    [Scalar(dtype=output.type.dtype)()
+                    [get_scalar_type(dtype=output.type.dtype)()
                         for input in node.outputs]),
                 None,
                 ["%s_i" % aname, "%s_i" % inames[0]],
@@ -1583,11 +1583,11 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [Scalar(dtype=input.type.dtype)() for input in node.inputs],
-                [Scalar(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:

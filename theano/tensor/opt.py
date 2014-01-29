@@ -3583,7 +3583,7 @@ def local_pow_specialize_device(node):
             # 512 is too small for the cpu and too big for some gpu!
             if abs(y) == int(abs(y)) and abs(y) <= 512:
                 pow2 = [xsym]
-                pow2_scal = [theano.scalar.Scalar(xsym.dtype)()]
+                pow2_scal = [theano.scalar.get_scalar_type(xsym.dtype)()]
                 y_to_do = abs(y)
                 for i in xrange(int(numpy.log2(y_to_do))):
                     pow2.append(T.sqr(pow2[i]))
@@ -4638,7 +4638,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                         elif ii in tmp_input:
                             tmp_s_input.append(tmp_scalar[tmp_input.index(ii)])
                         else:
-                            tmp = scalar.Scalar(ii.dtype).make_variable()
+                            tmp = scalar.get_scalar_type(ii.dtype).make_variable()
                             try:
                                 tmp.tag.test_value = gof.op.get_test_value(ii).flatten()[0]
                             except AttributeError:
@@ -4692,7 +4692,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
                 if inputs.count(i) == node.inputs.count(i):
                     s = s_inputs[inputs.index(i)]
                 else:
-                    s = scalar.Scalar(i.dtype).make_variable()
+                    s = scalar.get_scalar_type(i.dtype).make_variable()
                     try:
                         if theano.config.compute_test_value != 'off':
                             v = gof.op.get_test_value(i)
