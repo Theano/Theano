@@ -36,7 +36,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
                                                gpu_alloc, gpu_from_cuda,
                                                cuda_from_gpu, HostFromGpu,
                                                GpuFromHost, GpuReshape,
-                                               GpuEye, GpuShape)
+                                               GpuEye)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -307,7 +307,7 @@ def test_shape():
     topo = f.maker.fgraph.toposort()
     assert numpy.all(f(v) == (3, 4, 5))
     assert len(topo) == 1
-    assert isinstance(topo[0].op, GpuShape)
+    assert isinstance(topo[0].op, T.Shape)
 
 
 class G_reshape(T_reshape):
