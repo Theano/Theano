@@ -2838,7 +2838,7 @@ def test_local_mul_specialize():
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     print nodes
     theano.printing.debugprint(f)
-    assert nodes == [T.mul, inplace.neg_inplace]
+    assert nodes == [T.mul]
 
     f = function([v, m], v * 0 * (-m), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -2847,6 +2847,12 @@ def test_local_mul_specialize():
     assert nodes == [Shape_i(0), T.alloc]
 
     f = function([v, m], v * (-1) * (-m), mode=mode)
+    nodes = [node.op for node in f.maker.fgraph.toposort()]
+    print nodes
+    theano.printing.debugprint(f)
+    assert nodes == [T.mul]
+
+    f = function([v, m], v * (-1) * m, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     print nodes
     theano.printing.debugprint(f)
