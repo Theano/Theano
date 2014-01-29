@@ -5,6 +5,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 import theano
 from theano.gof.python25 import all, any
@@ -454,6 +455,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
                              test_nan=True, tensor_op=tensor.all)
 
+    @attr('slow')
     def test_c(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
@@ -624,6 +626,7 @@ class test_Prod(unittest.TestCase):
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
 
+    @attr('slow')
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
         x_val1 = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]],
@@ -753,6 +756,7 @@ class T_sum_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_sum_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a sum.
@@ -853,6 +857,7 @@ class T_mean_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_mean_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a mean.
@@ -960,6 +965,7 @@ class T_prod_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_prod_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a prod.
@@ -991,6 +997,7 @@ class T_prod_dtype(unittest.TestCase):
                 tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')
 
+    @attr('slow')
     def test_prod_custom_acc_dtype(self):
         """
         Test the ability to provide your own acc_dtype for a prod.
@@ -1079,6 +1086,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_prod_without_zeros_custom_dtype(self):
         """
         Test ability to provide your own output dtype for a ProdWithoutZeros().
@@ -1102,6 +1110,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 data = data.astype(input_dtype)
                 f(data)
 
+    @attr('slow')
     def test_prod_without_zeros_custom_acc_dtype(self):
         """
         Test ability to provide your own acc_dtype for a ProdWithoutZeros().

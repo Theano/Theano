@@ -16,6 +16,7 @@ if cuda_available:
 import unittest
 from theano.tests import unittest_tools as utt
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 #TODO: test gpu
 # Done in test_consistency_GPU_{serial,parallel}
@@ -445,6 +446,7 @@ def test_uniform():
                   allow_01=True, inputs=input)
 
 
+@attr('slow')
 def test_binomial():
 #TODO: test size=None, ndim=X
 #TODO: test size=X, ndim!=X.ndim
@@ -532,6 +534,7 @@ def test_binomial():
                       inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
+@attr('slow')
 def test_normal0():
 
     steps = 50

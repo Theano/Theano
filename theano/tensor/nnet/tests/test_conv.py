@@ -1,6 +1,7 @@
 import time
 
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 
 import theano
@@ -246,6 +247,7 @@ class TestConv2D(utt.InferShapeTester):
                       N_image_shape=(2, 3, 3, 3),  N_filter_shape=(5, 3, 2, 2),
                       should_raise=True)
 
+    @attr('slow')
     def test_subsample(self):
         """
         Tests convolution where subsampling != (1,1)
@@ -282,6 +284,7 @@ class TestConv2D(utt.InferShapeTester):
                           (3, 2, 8, 8), (4, 3, 5, 5),
                           'valid')
 
+    @attr('slow')
     def test_invalid_input_shape(self):
         """
         Tests that when the shape gived at build time is not the same as

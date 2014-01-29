@@ -1,8 +1,14 @@
+from nose.plugins.attrib import attr
+
 import numpy
 from theano import tensor, function
 
+import unittest
 
-class TestKeepDims:
+# this tests other ops to ensure they keep the dimensions of their
+# inputs correctly
+@attr('slow')
+class TestKeepDims(unittest.TestCase):
 
     def makeKeepDims_local(self, x, y, axis):
         x = tensor.as_tensor_variable(x)
@@ -95,7 +101,3 @@ class TestKeepDims:
 
             assert numpy.allclose(keep_param(a), keep_synth(a))
             assert keep_param(a).shape == keep_synth(a).shape
-
-
-if __name__ == '__main__':
-    TestKeepDims().test_keepdims()

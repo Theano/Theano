@@ -1620,6 +1620,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
+    @attr('slow')
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -2601,6 +2602,7 @@ class T_Scan(unittest.TestCase):
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
 
+    @attr('slow')
     def test_rop2(self):
         seed = utt.fetch_seed()
         rng = numpy.random.RandomState(seed)

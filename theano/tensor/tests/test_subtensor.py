@@ -4,6 +4,7 @@ import sys
 import unittest
 
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 
 import theano
@@ -499,6 +500,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         self.assertTrue(numpy.allclose(f([0]), ones[0] * 5))
 
+    @attr('slow')
     def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 
@@ -756,6 +758,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         except TypeError:
             pass
 
+    @attr('slow')
     def test_grad_list(self):
         data = rand(4)
         data = numpy.asarray(data, dtype=self.dtype)

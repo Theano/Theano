@@ -12,6 +12,7 @@ import theano.sparse
 if theano.sparse.enable_sparse:
     from scipy import sparse
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 
@@ -222,6 +223,7 @@ class TestConv3D(utt.InferShapeTester):
         self.randomize()
         self.check_c_against_python(self.V.get_value(borrow=True).shape[1:4])
 
+    @attr('slow')
     def test_c_against_mat_mul(self):
         # Use a filter of the same size as the image, so the convolution is
         # just a dense matrix multiply.

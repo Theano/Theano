@@ -408,6 +408,7 @@ class test_canonize(unittest.TestCase):
             assert(len(f.maker.fgraph.toposort()) == nb_elemwise)
             assert(out_dtype == out.dtype)
 
+    @attr('slow')
     def test_multiple_case(self):
         """ test those case take from the comment in Canonizer
         x / x -> 1
@@ -1135,6 +1136,7 @@ class test_fusion(unittest.TestCase):
             'local_elemwise_fusion', 'canonicalize')
         self.do(mode, shared, shp)
 
+    @attr('slow')
     def test_elemwise_fusion_4d(self):
         shp = (3, 3, 3, 3)
         mode = copy.copy(compile.mode.get_default_mode())
@@ -1159,6 +1161,7 @@ class test_fusion(unittest.TestCase):
 
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
+    @attr('slow')
     def test_gpu_fusion_Xd(self):
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
@@ -1859,6 +1862,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                     self.assertRaises(IndexError, f, x_val, idx)
                     self.assertRaises(IndexError, g, x_val, idx)
 
+    @attr('slow')
     def test_const2(self):
         # var[::-1][const] -> var[-1]
         x = tensor.matrix('x')
@@ -3156,6 +3160,7 @@ class T_local_switch_sink(unittest.TestCase):
                         resm[idx])).sum() == self.resm[idx].size
                 idx += 1
 
+    @attr('slow')
     def test_local_div_switch_sink(self):
         c = T.dscalar()
         idx = 0
