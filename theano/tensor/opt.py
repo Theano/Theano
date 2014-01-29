@@ -3715,9 +3715,6 @@ def local_add_specialize(node):
         return False
 register_specialize(local_add_specialize)
 
-# neg_to_mul = out2in(gof.LocalOptGroup(local_neg_to_mul))
-# mul_to_neg = out2in(gof.LocalOptGroup(local_mul_to_neg))
-
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
                                          local_fill_sink),
                        name='mul_canonizer_groups')
