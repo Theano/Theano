@@ -249,7 +249,12 @@ def local_gpua_careduce(node):
         isinstance(node.op.scalar_op, scalar.basic.Mul)):
         x, = node.inputs
         greduce = GpuCAReduce(node.op.scalar_op, axis=node.op.axis)
-        if greduce.supports_c_code([gpu_from_host(x)]):
+        if x.dtype != "float32":
+            return
+        gvar = greduce(x)
+        #We need to have the make node called, otherwise the mask can
+        #be None
+        if gvar.owner.op.supports_c_code([gpu_from_host(x)]):
             return greduce
         else:
             # Try to make a simpler pattern based on reshaping
