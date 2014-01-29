@@ -1252,7 +1252,7 @@ class NavigatorOptimizer(Optimizer):
                     pruner(node)
             if chin is not None:
                 def on_change_input(self, fgraph, node, i, r, new_r, reason):
-                    chin(node, i, r, new_r)
+                    chin(node, i, r, new_r, reason)
 
         u = Updater()
         fgraph.attach_feature(u)
