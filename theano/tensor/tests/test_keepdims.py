@@ -7,7 +7,6 @@ import unittest
 
 # this tests other ops to ensure they keep the dimensions of their
 # inputs correctly
-@attr('slow')
 class TestKeepDims(unittest.TestCase):
 
     def makeKeepDims_local(self, x, y, axis):
@@ -34,6 +33,7 @@ class TestKeepDims(unittest.TestCase):
 
         return tensor.DimShuffle(y.type.broadcastable, new_dims)(y)
 
+    @attr('slow')
     def test_keepdims(self):
 
         x = tensor.dtensor3()
