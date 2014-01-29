@@ -1665,7 +1665,7 @@ class CAReduceDtype(CAReduce):
 
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         """
-        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None)
+        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None, acc_dtype=None)
 
         :param scalar_op: a binary scalar op with only one output.
                      It must be commutative and associative.

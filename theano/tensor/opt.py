@@ -2789,9 +2789,9 @@ class Canonizer(gof.LocalOptimizer):
         pairs = [self.get_num_denum(input2) for input2 in parent.inputs]
 
         if parent.op == self.main:
-            # If we have main(x, y), numx, denumx, numy and denumy
-            # then num is concat(numx, numy) and denum is
-            # concat(denumx, denumy) note that main() can have any
+            # If we have main(x, y, ...), numx, denumx, numy, denumy, ...
+            # then num is concat(numx, numy, num...) and denum is
+            # concat(denumx, denumy, denum...) note that main() can have any
             # number of arguments >= 0 concat is list concatenation
             num = reduce(list.__iadd__, map(operator.itemgetter(0), pairs))
             denum = reduce(list.__iadd__, map(operator.itemgetter(1), pairs))
