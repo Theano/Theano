@@ -217,7 +217,8 @@ class Shape(gof.Op):
     def make_node(self, x):
         # Must work for all type that have a shape attribute.
         # This will fail at execution time.
-
+        if not isinstance(x, theano.Variable):
+            x = theano.tensor.as_tensor_variable(x)
         return gof.Apply(self, [x], [theano.tensor.lvector()])
 
     def perform(self, node, inp, out_):

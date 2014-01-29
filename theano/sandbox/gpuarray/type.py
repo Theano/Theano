@@ -298,7 +298,7 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
     Py_XINCREF(%(oname)s);
 """, version=(0,))
 
-# Register TensorType C code for Shape Op.
+# Register GpuArrayType C code for Shape Op.
 theano.compile.register_shape_c_code(
     GpuArrayType,
     """
