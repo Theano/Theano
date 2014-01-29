@@ -10,7 +10,6 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      FillDiagonal, fill_diagonal)
 from theano import tensor as T
 from theano import config, tensor, function
-from theano.compile import DebugMode
 
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
@@ -27,11 +26,11 @@ class TestCumsumOp(utt.InferShapeTester):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
-        f = theano.function([x], cumsum(x), mode=DebugMode(check_preallocated_output="ALL"))
+        f = theano.function([x], cumsum(x))
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
         for axis in range(len(a.shape)):
-            f = theano.function([x], cumsum(x, axis=axis), mode=DebugMode(check_preallocated_output="ALL"))
+            f = theano.function([x], cumsum(x, axis=axis))
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
 
@@ -71,11 +70,11 @@ class TestCumprodOp(utt.InferShapeTester):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
-        f = theano.function([x], cumprod(x), mode=DebugMode(check_preallocated_output="ALL"))
+        f = theano.function([x], cumprod(x))
         assert np.allclose(np.cumprod(a), f(a))  # Test axis=None
 
         for axis in range(len(a.shape)):
-            f = theano.function([x], cumprod(x, axis=axis), mode=DebugMode(check_preallocated_output="ALL"))
+            f = theano.function([x], cumprod(x, axis=axis))
             assert np.allclose(np.cumprod(a, axis=axis), f(a))
 
     def test_infer_shape(self):
