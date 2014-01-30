@@ -10,7 +10,7 @@ from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, GpuDimShuffle,
-                                              GpuCAReduce, GpuCAReduceCPY)
+                                              GpuCAReduceCuda, GpuCAReduceCPY)
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from pygpu.array import gpuarray
@@ -71,7 +71,7 @@ class test_GpuCAReduceCPY(test_CAReduce):
             test_CAReduce.test_infer_shape(self, dtype)
 
 
-class test_GpuCAReduce(test_GpuCAReduceCPY):
+class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
     bin_dtypes = []
@@ -141,7 +141,7 @@ class test_GpuCAReduce(test_GpuCAReduceCPY):
 #             ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
 #             ((5,4,3,10,11),[1,2]),
         ]
-    op = GpuCAReduce
+    op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul]
 
     def test_perform(self):

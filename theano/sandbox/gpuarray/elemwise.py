@@ -521,8 +521,8 @@ class GpuDimShuffle(HideC, DimShuffle):
         return (4,)
 
 
-class GpuCAReduce(HideC, CAReduce):
-    """GpuCAReduce is a Reduction along some dimensions by a scalar op.
+class GpuCAReduceCuda(HideC, CAReduce):
+    """GpuCAReduceCuda is a Reduction along some dimensions by a scalar op.
 
     The dimensions along which to reduce is specified by the
     `reduce_mask` that you pass to the constructor.  The `reduce_mask`
@@ -584,12 +584,12 @@ class GpuCAReduce(HideC, CAReduce):
         ax = ''
         if self.axis is not None:
             ax = '{%s}' % (', '.join(str(x) for x in self.axis),)
-        return "GpuCAReduce{%s}%s" % (str(self.scalar_op), ax)
+        return "GpuCAReduceCuda{%s}%s" % (str(self.scalar_op), ax)
 
     def make_node(self, x):
         x = as_gpuarray_variable(x)
         assert x.dtype == "float32"
-        ret = super(GpuCAReduce, self).make_node(x)
+        ret = super(GpuCAReduceCuda, self).make_node(x)
         self = copy.copy(self)
         self.axis = ret.op.axis
         if self.reduce_mask is None:
@@ -762,7 +762,7 @@ class GpuCAReduce(HideC, CAReduce):
             scalar_op = self.scalar_op
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
-                         "GpuCAReduce not implemented when input shape is 0"
+                         "GpuCAReduceCuda not implemented when input shape is 0"
                          " for this scalar_op: %(scalar_op)s");
             %(fail)s;
             """ % locals()
@@ -1162,7 +1162,7 @@ class GpuCAReduce(HideC, CAReduce):
         else:
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
-                         "GpuCAReduce not implemented when input shape is 0 for this scalar_op");
+                         "GpuCAReduceCuda not implemented when input shape is 0 for this scalar_op");
             %(fail)s;
             """ % locals()
 
@@ -2567,3 +2567,5 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         else:
             output[0] = pygpu.gpuarray.array(input, copy=True,
                                              dtype=node.outputs[0].type.dtype)
+# To allow reloading old pickled files
+GpuCAReduce = GpuCAReduceCPY

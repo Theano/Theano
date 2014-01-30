@@ -22,7 +22,7 @@ from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
-                                              GpuDimShuffle, GpuCAReduce)
+                                              GpuDimShuffle, GpuCAReduceCuda)
 from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
 from theano.sandbox.gpuarray.type import GpuArrayConstant
 
@@ -248,7 +248,7 @@ def local_gpua_careduce(node):
     if (isinstance(node.op.scalar_op, scalar.basic.Add) or
         isinstance(node.op.scalar_op, scalar.basic.Mul)):
         x, = node.inputs
-        greduce = GpuCAReduce(node.op.scalar_op, axis=node.op.axis)
+        greduce = GpuCAReduceCuda(node.op.scalar_op, axis=node.op.axis)
         if x.dtype != "float32":
             return
         gvar = greduce(x)
@@ -284,7 +284,7 @@ def local_gpua_careduce(node):
                     new_mask.append(reduce_mask[i])
                     new_in_shp.append(x_shape[i])
 
-            new_greduce = GpuCAReduce(new_mask, scalar_op)
+            new_greduce = GpuCAReduceCuda(new_mask, scalar_op)
             reshaped_x = x.reshape(tensor.stack(*new_in_shp))
             gpu_reshaped_x = gpu_from_host(reshaped_x)
             reshaped_gpu_inputs = [gpu_reshaped_x]
