@@ -4,6 +4,8 @@ import StringIO
 import sys
 import traceback
 
+import numpy
+
 import theano
 from theano.gof import utils
 from theano.gof import graph
@@ -120,15 +122,26 @@ def raise_with_op(op, thunk=None, exc_info=None):
                       for ipt in thunk.inputs]
             strides = [getattr(ipt[0], 'strides', 'No strides')
                        for ipt in thunk.inputs]
+            scalar_values = []
+            for ipt in thunk.inputs:
+                if (isinstance(ipt[0], (numpy.ndarray, numpy.number)) and
+                    ipt[0].size == 1):
+
+                    if getattr(ipt[0], "size", -1) == 1:
+                        scalar_values.append(ipt[0].item(0))
+                        continue
+                scalar_values.append("not scalar")
         else:
             shapes = "The thunk don't have an inputs attributes."
-            strides = "So we can't access the storage inputs value"
+            strides = "So we can't access the strides of inputs values"
+            scalar_values = "And can't print its inputs scalar value"
 
         types = [getattr(ipt, 'type', 'No type')
                  for ipt in op.inputs]
         detailed_err_msg += ("\nInputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
-                             "\nInputs types: %s" % types)
+                             "\nInputs types: %s" % types +
+                             "\nInputs scalar values: %s" % scalar_values)
     else:
         detailed_err_msg += ("\nUse another linker then the c linker to"
                              " have the inputs shapes and strides printed.")
