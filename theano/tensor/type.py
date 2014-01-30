@@ -611,6 +611,25 @@ theano.compile.register_view_op_c_code(
         """,
         version=1)
 
+
+# Register TensorType C code for Shape Op.
+theano.compile.register_shape_c_code(
+    TensorType,
+    """
+    npy_intp shape[] = {PyArray_NDIM(%(iname)s)};
+    if(%(oname)s == NULL || (PyArray_DIMS(%(oname)s)[0] != shape[0]))
+    {
+        Py_XDECREF(%(oname)s);
+        %(oname)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
+    }
+    for(int i=0;i<shape[0];i++)
+    {
+        ((npy_int64*)PyArray_GETPTR1(%(oname)s, i))[0] = PyArray_DIMS(%(iname)s)[i];
+    }
+    """,
+    version=1)
+
+
 # Register TensorType C code for ViewOp.
 theano.compile.register_shape_i_c_code(
         TensorType,

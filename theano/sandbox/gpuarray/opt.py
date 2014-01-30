@@ -14,9 +14,7 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                gpu_from_host,
                                                gpu_alloc,
-                                               gpu_shape,
                                                GpuAlloc,
-                                               GpuShape,
                                                GpuReshape,
                                                GpuEye)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
@@ -24,7 +22,7 @@ from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
-                                              GpuDimShuffle, GpuCAReduce)
+                                              GpuDimShuffle, GpuCAReduceCuda)
 from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
 from theano.sandbox.gpuarray.type import GpuArrayConstant
 
@@ -249,9 +247,57 @@ def local_gpua_incsubtensor(node):
 def local_gpua_careduce(node):
     if (isinstance(node.op.scalar_op, scalar.basic.Add) or
         isinstance(node.op.scalar_op, scalar.basic.Mul)):
-        return GpuCAReduce(node.op.scalar_op, axis=node.op.axis,
-                           dtype=getattr(node.op, 'dtype', None),
-                           acc_dtype=getattr(node.op, 'acc_dtype', None))
+        x, = node.inputs
+        greduce = GpuCAReduceCuda(node.op.scalar_op, axis=node.op.axis)
+        if x.dtype != "float32":
+            return
+        gvar = greduce(x)
+        #We need to have the make node called, otherwise the mask can
+        #be None
+        if gvar.owner.op.supports_c_code([gpu_from_host(x)]):
+            return greduce
+        else:
+            # Try to make a simpler pattern based on reshaping
+            # The principle is that if two adjacent dimensions have
+            # the same value in the reduce_mask, then we can reshape
+            # to make them a single dimension, do the reduction, and
+            # then reshape to get them back.
+
+            if node.op.axis is None:
+                reduce_mask = [1] * x.type.ndim
+            else:
+                reduce_mask = [0] * x.type.ndim
+                for a in node.op.axis:
+                    assert reduce_mask[a] == 0
+                    reduce_mask[a] = 1
+
+            shape_of = node.fgraph.shape_feature.shape_of
+
+            x_shape = shape_of[x]
+
+            new_in_shp = [x_shape[0]]
+            new_mask = [reduce_mask[0]]
+            for i in xrange(1, x.type.ndim):
+                if reduce_mask[i] == reduce_mask[i - 1]:
+                    new_in_shp[-1] *= x_shape[i]
+                else:
+                    new_mask.append(reduce_mask[i])
+                    new_in_shp.append(x_shape[i])
+
+            new_greduce = GpuCAReduceCuda(new_mask, scalar_op)
+            reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+            gpu_reshaped_x = gpu_from_host(reshaped_x)
+            reshaped_gpu_inputs = [gpu_reshaped_x]
+            if new_greduce.supports_c_code(reshaped_gpu_inputs):
+                reduce_reshaped_x = host_from_gpu(
+                    new_greduce(gpu_reshaped_x))
+
+                if reduce_reshaped_x.ndim != node.outputs[0].ndim:
+                    unreshaped_reduce = reduce_reshaped_x.reshape(
+                        tensor.stack(*shape_of[node.outputs[0]]))
+                else:
+                    unreshaped_reduce = reduce_reshaped_x
+                return [unreshaped_reduce]
 
 
 @register_opt()
@@ -294,20 +340,6 @@ def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
     return GpuCrossentropySoftmax1HotWithBiasDx()
-
-
-@register_opt()
-@local_optimizer([tensor.Shape])
-def local_gpua_shape(node):
-    """
-    Can't use op_lifter as the output is on the GPU.
-    """
-    if isinstance(node.op, tensor.Shape):
-        x, = node.inputs
-        if x.owner and x.owner.op == host_from_gpu:
-            gpu_x, = x.owner.inputs
-            return [gpu_shape(gpu_x)]
-    return False
 
 
 @register_opt()

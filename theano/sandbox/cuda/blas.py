@@ -523,21 +523,21 @@ class GpuConv(GpuOp):
             imshp=None,
             max_threads_dim0=None):
         """
-        :param version: each version of c_code implement many kernel for the
+        :param version: each version of c_code implements many kernel for the
                         convolution. By default we try to guess the best one.
                         You can force one version with this parameter. This
                         parameter is used by the tests.
         :param verbose: for value of 1,2 and 3. Print more information during
                         the execution of the convolution. Mostly used for
                         optimization or debugging.
-        :param kshp:    The size of the kernel. If provided, can genera
+        :param kshp:    The size of the kernel. If provided, can generate
                         faster code. If the GpuConv op is automatically
                         inserted,
                         we take its value automatically from the Conv op.
         :param imshp:   The size of the image. Not used for code generation but
-                        allow to select an experimental new version in another
+                        allows to select an experimental new version in another
                         repo.
-        :param max_threads_dim0: The maximum number of thread for the
+        :param max_threads_dim0: The maximum number of threads for the
                         block size dimensions 0 (blockDim.x) used by the
                         GPU function.
 

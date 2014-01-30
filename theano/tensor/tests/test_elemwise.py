@@ -284,24 +284,26 @@ class test_Broadcast(unittest.TestCase):
 
 class test_CAReduce(unittest_tools.InferShapeTester):
     op = CAReduce
+    cases = [((5, 6), None),
+             ((5, 6), (0, 1)),
+             ((5, 6), (0, )),
+             ((5, 6), (1, )),
+             ((5, 6), (-1, )),
+             ((5, 6), (-2, )),
+             ((5, 6), ()),
+             ((2, 3, 4, 5), (0, 1, 3)),
+             ((2, 3, 4, 5), (-2, -3)),
+             ((5, 0), None),
+             ((5, 0), (0, )),
+             ((5, 0), (1, )),
+             ((5, 0), ()),
+             ((), None),
+             ((), ())
+         ]
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((5, 6), ()),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())]:
+        for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
@@ -400,29 +402,38 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 if scalar_op in [scalar.and_, scalar.or_]:
                     zv = numpy.asarray(zv, dtype='int8')
                 if test_nan:
-                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv),
-                                                                       zv),
-                                    (f(xv), zv))
+                    try:
+                        self.assertTrue(
+                            theano.tensor.TensorType.values_eq(f(xv), zv),
+                            (f(xv), zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
                 else:
-                    f_xv = f(xv)
-                    self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
-                    self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    try:
+                        f_xv = f(xv)
+                        self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                        self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
 
-            #test CAReduce.infer_shape
-            #the Shape op don't implement c_code!
-            if isinstance(linker, gof.PerformLinker):
-                x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
-                if tensor_op is None:
-                    e = self.op(scalar_op, axis=tosum)(x)
-                else:
-                    e = tensor_op(x, axis=tosum)
-                if tosum is None:
-                    tosum = range(len(xsh))
-                f = copy(linker).accept(FunctionGraph([x],
-                     [e.shape])).make_function()
-                if not(scalar_op in [scalar.maximum, scalar.minimum] and
-                       ((xsh == () or numpy.prod(xsh) == 0))):
+            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            if tensor_op is None:
+                e = self.op(scalar_op, axis=tosum)(x)
+            else:
+                e = tensor_op(x, axis=tosum)
+            if tosum is None:
+                tosum = range(len(xsh))
+            f = copy(linker).accept(FunctionGraph([x],
+                                                  [e.shape])).make_function()
+            if not(scalar_op in [scalar.maximum, scalar.minimum] and
+                   ((xsh == () or numpy.prod(xsh) == 0))):
+                try:
                     assert all(f(xv) == zv.shape)
+                except NotImplementedError:
+                    # GpuCAReduce don't implement all cases when size is 0
+                    assert xv.size == 0
 
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
@@ -487,30 +498,19 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
-    def test_infer_shape(self):
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 6), ()),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())]:
+    def test_infer_shape(self, dtype=None):
+        if dtype is None:
             dtype = theano.config.floatX
+        for xsh, tosum in self.cases:
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [self.op(scalar.add, axis=tosum)(x)],
-                            [xv], self.op, ["local_cut_useless_reduce"])
+                                    [self.op(scalar.add, axis=tosum)(x)],
+                                    [xv], self.op,
+                                    ["local_cut_useless_reduce"],
+                                    warn=0 not in xsh)
 
 
 class test_Prod(unittest.TestCase):

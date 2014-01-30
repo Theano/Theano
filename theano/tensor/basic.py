@@ -25,6 +25,8 @@ from theano.gof.python25 import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
+from theano.compile import Shape, shape  #For history
+
 
 # We use these exceptions as well.
 import theano.scalar.sharedvar
@@ -1125,83 +1127,6 @@ def cast(x, dtype):
 ##########################
 
 
-class Shape(Op):
-    """
-    L{Op} to return the shape of a matrix.
-
-    @note: Non-differentiable.
-    """
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, x):
-        # Must work for all type that have a shape attribute.
-        # This will fail at execution time.
-        x = as_tensor_variable(x)
-        # Each type variable should implement their .shape attribute
-        # and have the fct infer_shape() implemented in the op that convert
-        # the type to TensorVariable to have the optimization working
-        # correctly.
-        return Apply(self, [x], [lvector()])
-
-    def perform(self, node, inp, out_):
-        x, = inp
-        out, = out_
-        out[0] = theano._asarray(x.shape, dtype='int64')
-
-    def infer_shape(self, node, in_shapes):
-        return [[len(in_shapes[0])]]
-
-    def connection_pattern(self, node):
-        # the grad returns the gradient with respect to the
-        # elements of a tensor variable
-        # the elements of the tensor variable do not participate
-        # in the computation of the shape, so they are not really
-        # part of the graph
-        return [[False]]
-
-    def grad(self, inp, grads):
-        # the grad returns the gradient with respect to the
-        # elements of a tensor variable
-        # the elements of the tensor variable do not participate
-        # in the computation of the shape, so they are not really
-        # part of the graph
-        return [DisconnectedType()()]
-
-    def R_op(self, inputs, eval_points):
-        return [None]
-
-    def c_code(self, node, nodename, inp, out, sub):
-        x, = inp
-        z, = out
-        if isinstance(node.inputs[0].type, TensorType):
-            return """
-            npy_intp shape[] = {PyArray_NDIM(%(x)s)};
-            if(%(z)s == NULL || (PyArray_DIMS(%(z)s)[0] != shape[0]))
-            {
-                Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
-            }
-            for(int i=0;i<shape[0];i++)
-            {
-                ((npy_int64*)PyArray_GETPTR1(%(z)s, i))[0] = PyArray_DIMS(%(x)s)[i];
-            }
-            """ % locals()
-        else:
-            #TODO: if your type is not listed here, make a damn registry of
-            #      shape_i ops for various types of variables.
-            #      Do not continue this madness.
-            return super(Shape, self).c_code(node, nodename, (x,), (out,), sub)
-
-    def c_code_cache_version(self):
-        return (1,)
-
 @constructor
 def old_shape(a):
     """
@@ -1222,10 +1147,6 @@ def old_shape(a):
         # all shape components are known at compile time, so we return
         # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
         return va.type.shape
-
-shape = Shape()
-_shape = shape  # was used in the past, now use shape directly.
-pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 
 class SpecifyShape(Op):

@@ -1,4 +1,4 @@
-// REMEMBER TO RAISE c_code_cache_version when changing this file
+// REMEMBER TO INCREASE c_code_cache_version when changing this file
 //
 enum { ConvMode_FULL, ConvMode_VALID };
 PyObject * CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern, CudaNdarray * out, const int mode, const int subsample_rows, const int subsample_cols, const int version, const int verbose);
