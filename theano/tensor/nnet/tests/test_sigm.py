@@ -162,7 +162,7 @@ class T_sigmoid_opts(unittest.TestCase):
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
             assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+                    T.mul]
             f(data)
             f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
@@ -238,7 +238,7 @@ class T_sigmoid_opts(unittest.TestCase):
                  tensor.exp(x * y) * tensor.exp(y)),
                 mode=m)
         match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
-                  tensor.mul, tensor.neg])
+                  tensor.mul])
 
     def test_perform_sigm_times_exp(self):
         """
