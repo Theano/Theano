@@ -2992,10 +2992,11 @@ class Canonizer(gof.LocalOptimizer):
         for c, c_idx in out.clients:
             if c == 'output':
                 continue
-            while (isinstance(c.op, DimShuffle) and
+            while (isinstance(getattr(c, 'op', None), DimShuffle) and
                    len(c.outputs[0].clients) <= 1):
                 c = c.outputs[0].clients[0][0]
-            if c.op in [self.main, self.inverse, self.reciprocal]:
+            if getattr(c, 'op', '') in [self.main, self.inverse,
+                                        self.reciprocal]:
                 return False
 
         # Here we make the canonical version of the graph around this node
