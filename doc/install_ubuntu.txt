@@ -166,9 +166,10 @@ yourself. Here is some code that will help you.
     cd OpenBLAS
     make FC=gfortran
     sudo make PREFIX=/usr/local/ install
-    cd /usr/local/lib
-    ln -s libopenblas.so /usr/lib/libblas.so
-    ln -s libopenblas.so.0 /usr/lib/libblas.so.3gf
+    # Tell Theano to use OpenBLAS.
+    # This work only for the current user.
+    # Each Theano user on that computer should run that line.
+    echo -e "\n[blas]\nldflags = -lopenblas\n" >> ~/.theanorc
 
 
 Contributed GPU instruction
