@@ -787,8 +787,8 @@ class ProfileStats(object):
         if self.variable_shape or self.variable_strides:
             self.summary_memory(file, n_apply_to_print)
         if self.optimizer_profile:
-            print "Optimizer Profile"
-            print "-----------------"
+            print >> file, "Optimizer Profile"
+            print >> file, "-----------------"
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
 

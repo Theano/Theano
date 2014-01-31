@@ -76,11 +76,11 @@ class GpuElemwise(HideC, Elemwise):
         try:
             inps = [make_argument(i, 'i%d' % (n,)) for n, i in
                     enumerate(node.inputs)]
-            scal_ins = [scalar.Scalar(i.dtype) for i in node.inputs]
+            scal_ins = [scalar.get_scalar_type(i.dtype) for i in node.inputs]
 
             outs = [make_argument(o, 'o%d' % (n,)) for n, o in
                     enumerate(node.outputs) if not n in self.inplace_pattern]
-            scal_out = [scalar.Scalar(o.dtype) for o in node.outputs]
+            scal_out = [scalar.get_scalar_type(o.dtype) for o in node.outputs]
 
             fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
                               [o() for o in scal_out])
@@ -103,11 +103,11 @@ class GpuElemwise(HideC, Elemwise):
     def generate_kernel(self, node, nodename):
         inps = [make_argument(i, 'i%d' % (n,)) for n, i in
                 enumerate(node.inputs)]
-        scal_ins = [scalar.Scalar(i.dtype) for i in node.inputs]
+        scal_ins = [scalar.get_scalar_type(i.dtype) for i in node.inputs]
 
         outs = [make_argument(o, 'o%d' % (n,)) for n, o in
                 enumerate(node.outputs) if not n in self.inplace_pattern]
-        scal_out = [scalar.Scalar(o.dtype) for o in node.outputs]
+        scal_out = [scalar.get_scalar_type(o.dtype) for o in node.outputs]
 
         fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
                           [o() for o in scal_out])

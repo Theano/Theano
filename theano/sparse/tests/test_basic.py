@@ -1113,8 +1113,11 @@ class test_structureddot(unittest.TestCase):
             utt.assert_allclose(scipy_result, theano_result)
             if (not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and
                 theano.config.cxx):
-                    self.assertFalse(theano_time > overhead_rtol * scipy_time +
-                                     overhead_tol)
+                    self.assertFalse(
+                        theano_time > overhead_rtol * scipy_time + overhead_tol,
+                        (theano_time,
+                         overhead_rtol * scipy_time + overhead_tol,
+                         scipy_time, overhead_rtol, overhead_tol))
 
 
 class DotTests(utt.InferShapeTester):

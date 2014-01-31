@@ -993,7 +993,7 @@ class ScalarFromTensor(Op):
         assert t.type.broadcastable == ()
         return Apply(self,
                      [t],
-                     [scal.Scalar(dtype=t.type.dtype).make_variable()])
+                     [scal.get_scalar_type(dtype=t.type.dtype).make_variable()])
 
     def perform(self, node, inp, out_):
         s, = inp

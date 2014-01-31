@@ -59,7 +59,7 @@ def safe_new(x, tag='', dtype=None):
     # making the pushout optimization fail
     elif isinstance(x, scalar.ScalarVariable):
         if dtype:
-            nw_x = scalar.Scalar(dtype=dtype)()
+            nw_x = scalar.get_scalar_type(dtype=dtype)()
         else:
             nw_x = x.type()
         nw_x.name = nw_name

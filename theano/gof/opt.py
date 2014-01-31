@@ -1252,7 +1252,7 @@ class NavigatorOptimizer(Optimizer):
                     pruner(node)
             if chin is not None:
                 def on_change_input(self, fgraph, node, i, r, new_r, reason):
-                    chin(node, i, r, new_r)
+                    chin(node, i, r, new_r, reason)
 
         u = Updater()
         fgraph.attach_feature(u)
@@ -1701,7 +1701,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                          lopt))
 
         count_opt = []
-        not_used = 0
+        not_used = []
         not_used_time = 0
         process_count = {}
         for o in opt.global_optimizers + list(opt.get_local_optimizers()):
@@ -1713,7 +1713,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             if count > 0:
                 count_opt.append((time_opts[opt], count, opt))
             else:
-                not_used += 1
+                not_used.append((time_opts[opt], opt))
                 not_used_time += time_opts[opt]
 
         if count_opt:
@@ -1724,7 +1724,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 print >> stream, blanc, '  %.3fs - %d - %s' % (
                     t, count, opt)
             print >> stream, blanc, '  %.3fs - in %d optimization that where not used' % (
-                not_used_time, not_used)
+                not_used_time, len(not_used))
+            not_used.sort()
+            for (t, opt) in not_used[::-1]:
+                print >> stream, blanc + "  ", '  %.3fs - %s' % (t, opt)
             print >> stream
 
     @staticmethod

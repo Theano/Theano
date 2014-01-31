@@ -69,6 +69,18 @@ def upcast(dtype, *dtypes):
         return rval
 
 
+def get_scalar_type(dtype):
+    """
+    Return an Scalar(dtype) object.
+
+    This cache objects to save allocation and run time.
+    """
+    if dtype not in get_scalar_type.cache:
+        get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
+    return get_scalar_type.cache[dtype]
+get_scalar_type.cache = {}
+
+
 def as_scalar(x, name=None):
     if isinstance(x, gof.Apply):
         if len(x.outputs) != 1:
@@ -91,7 +103,7 @@ def constant(x):
     # purpose typically.
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
-        return ScalarConstant(Scalar(str(x.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
     if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -99,7 +111,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(Scalar(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
     if isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -107,7 +119,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(Scalar(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
     if isinstance(x, builtin_complex):
         #TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
@@ -457,18 +469,18 @@ theano.compile.register_view_op_c_code(
     1)
 
 
-int8 = Scalar('int8')
-int16 = Scalar('int16')
-int32 = Scalar('int32')
-int64 = Scalar('int64')
-uint8 = Scalar('uint8')
-uint16 = Scalar('uint16')
-uint32 = Scalar('uint32')
-uint64 = Scalar('uint64')
-float32 = Scalar('float32')
-float64 = Scalar('float64')
-complex64 = Scalar('complex64')
-complex128 = Scalar('complex128')
+int8 = get_scalar_type('int8')
+int16 = get_scalar_type('int16')
+int32 = get_scalar_type('int32')
+int64 = get_scalar_type('int64')
+uint8 = get_scalar_type('uint8')
+uint16 = get_scalar_type('uint16')
+uint32 = get_scalar_type('uint32')
+uint64 = get_scalar_type('uint64')
+float32 = get_scalar_type('float32')
+float64 = get_scalar_type('float64')
+complex64 = get_scalar_type('complex64')
+complex128 = get_scalar_type('complex128')
 
 int_types = int8, int16, int32, int64
 uint_types = uint8, uint16, uint32, uint64
@@ -584,7 +596,7 @@ class _scalar_py_operators:
         # The second is needed for Elemwise ops to work right
         if dtype is None:
             dtype = str(self.type.dtype)
-        return second(self, ScalarConstant(Scalar(dtype), 0))
+        return second(self, ScalarConstant(get_scalar_type(dtype), 0))
 
     def astype(self, dtype):
         return cast(self, dtype)
@@ -628,7 +640,8 @@ complexs128 = _multi(complex128)
 # necessary to use this same mechanism in other places as well in the future.
 class upcast_out(object):
     def __new__(self, *types):
-        return Scalar(dtype=Scalar.upcast(*types)),
+        dtype = Scalar.upcast(*types)
+        return get_scalar_type(dtype),
 
 
 class upgrade_to_float(object):
@@ -644,7 +657,7 @@ class upgrade_to_float(object):
                 uint16: float32,
                 uint32: float64,
                 uint64: float64}
-        return Scalar(Scalar.upcast(*[conv.get(type, type)
+        return get_scalar_type(Scalar.upcast(*[conv.get(type, type)
                                       for type in types])),
 
 
@@ -656,7 +669,7 @@ class same_out(object):
 def upcast_out_no_complex(*types):
     if any([type in complex_types for type in types]):
         raise TypeError('complex type are not supported')
-    return Scalar(dtype=Scalar.upcast(*types)),
+    return get_scalar_type(dtype=Scalar.upcast(*types)),
 
 
 def same_out_float_only(type):
@@ -1455,7 +1468,7 @@ def div_proxy(x, y):
 class TrueDiv(BinaryScalarOp):
     def output_types(self, types):
         if all(t in discrete_types for t in types):
-            return [Scalar(config.floatX)]
+            return [get_scalar_type(config.floatX)]
         else:
             return super(TrueDiv, self).output_types(types)
 
