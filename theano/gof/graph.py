@@ -424,6 +424,10 @@ class Variable(Node):
 
         return rval
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d.pop("_fn", None)
+        return d
     env = property(env_getter, env_setter, env_deleter)
 
 
