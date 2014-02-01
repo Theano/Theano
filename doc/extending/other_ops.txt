@@ -85,8 +85,8 @@ Another difference is that you need to use ``SparseVariable`` and
 ``SparseType`` instead of ``TensorVariable`` and ``TensorType``.
 
 Do not forget that we support only sparse matrices (so only 2 dimensions)
-and they do not support broadcasting operations by default, whereas SciPy sparse
-matrix class does (but a few Ops do it when called manually). Also, we support only two
+and (like in SciPy) they do not support broadcasting operations by default
+(although a few Ops do it when called manually). Also, we support only two
 formats for sparse type: ``csr`` and ``csc``. So in ``make_mode()``,
 you can create output variables like this:
 
