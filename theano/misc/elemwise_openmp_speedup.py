@@ -14,6 +14,7 @@ def runScript():
     return map(float, out.split(" "))
 
 if __name__ == '__main__':
+    os.environ['THEANO_FLAGS'] = 'openmp=false'
     (cheapTime, costlyTime) = runScript()
     os.environ['THEANO_FLAGS'] = 'openmp=true'
     (cheapTimeOpenmp, costlyTimeOpenmp) = runScript()
@@ -32,6 +33,6 @@ if __name__ == '__main__':
         costlySpeed = (costlyTimeOpenmp - costlyTime) / costlyTimeOpenmp
         costlySpeedstring = "slowdown"
 
-    print "Cheap op time without openmp %fs with openmp %fs %s %2.2f%%" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed*100)
+    print "Fast op time without openmp %fs with openmp %fs %s %2.2f%%" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed*100)
     
-    print "Costly op time without openmp %fs with openmp %fs %s %2.2f%%" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed*100)
+    print "Slow op time without openmp %fs with openmp %fs %s %2.2f%%" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed*100)

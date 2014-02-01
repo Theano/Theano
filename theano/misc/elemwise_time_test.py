@@ -7,7 +7,7 @@ from optparse import OptionParser
 import sys
 
 parser = OptionParser(usage='%prog <options>\n Compute time for'
-                      'cheap and costly elemwise operations')
+                      ' fast and slow elemwise operations')
 parser.add_option('-N', '--N', action='store', dest='N',
                   default=theano.config.openmp_elemwise_minsize, type="int",
                   help="Number of vector element")
@@ -37,10 +37,10 @@ def ElemwiseOpTime(N, script=False, loops=1000):
     if not script:
         if theano.config.openmp:
             print "With openmp:"
-        print "Cheap op ",
+        print "Fast op ",
     ceapTime = evalTime(f, v, script=script, loops=loops)
     if not script:
-        print "Costly op ",
+        print "Slow op ",
     costlyTime = evalTime(f1, v, script=script, loops=loops)
     return (ceapTime, costlyTime)
 
