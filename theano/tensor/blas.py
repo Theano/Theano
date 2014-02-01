@@ -239,9 +239,6 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
             for sub in p2:
                 if not os.path.exists(os.path.join(p, sub, subsub)):
                     p2.remove(sub)
-            assert len(p2) == 1, ("Canopy changed the location of MKL",
-                                   p, p2, [os.listdir(os.path.join(p, sub))
-                                           for sub in p2])
             if sys.platform == "linux2":
                 p2 = os.path.join(p, p2[0], "lib")
                 assert os.path.exists(p2), "Canopy changed the location of MKL"
