@@ -645,7 +645,10 @@ class Subtensor(Op):
 
         len_subtensor_spec = spec_pos()
 
-        is_slice_init = ",".join([str(s) for s in is_slice])
+        if is_slice:
+            is_slice_init = "int is_slice[] = {" + ",".join([str(s) for s in is_slice]) + "};"
+        else:
+            is_slice_init = "int* is_slice = NULL;"
         subtensor_init = "\n".join(init_cmds)
 
         x, = inputs[:1]
@@ -673,7 +676,7 @@ class Subtensor(Op):
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
 
-        int is_slice[] = {%(is_slice_init)s};
+        %(is_slice_init)s
         npy_intp subtensor_spec[%(len_subtensor_spec)s];
         %(subtensor_init)s;
         int spec_pos = 0; //position in subtensor_spec
