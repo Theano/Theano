@@ -342,7 +342,7 @@ class ProfileStats(object):
         es += ['   %2s ']
 
         hs += ['<#call>']
-        es += ['  %4d  ']
+        es += ['  %5d  ']
 
         hs += ['<#apply>']
         es += ['  %4d  ']
@@ -362,9 +362,12 @@ class ProfileStats(object):
                 continue
             tot += t
             ftot = tot * 100 / local_time
+            # Remove the useless start and end of the class name:
+            # "<class 'theano.sandbox.cuda.blas.GpuDot22'>" -> "theano.sandbox.cuda.blas.GpuDot22"
+            class_name = str(a)[8:-2][:maxlen]
             print >> file, format_str % (f, ftot, t, t / nb_call,
                                          impl, nb_call,
-                                         nb_apply, str(a)[:maxlen])
+                                         nb_apply, class_name)
             # While this carries over less information, it is arranged such
             # that it way more readeable that the previous output of the
             # profiler
