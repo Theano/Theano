@@ -1800,6 +1800,11 @@ class GCC_compiler(object):
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
             try:
+                # Python3 compatibility: try to cast Py3 strings as Py2 strings
+                try:
+                    src_code = b(src_code)
+                except:
+                    pass
                 os.write(fd, src_code)
                 os.close(fd)
                 fd = None
