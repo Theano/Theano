@@ -644,8 +644,14 @@ class Subtensor(Op):
         len_is_slice = len(is_slice)
 
         len_subtensor_spec = spec_pos()
+        subensor_spec = "npy_intp subtensor_spec[%(len_subtensor_spec)s];" % locals()
+        if len_subtensor_spec == 0:
+            subensor_spec = "npy_intp * subtensor_spec = NULL;"
 
-        is_slice_init = ",".join([str(s) for s in is_slice])
+        if is_slice:
+            is_slice_init = "int is_slice[] = {" + ",".join([str(s) for s in is_slice]) + "};"
+        else:
+            is_slice_init = "int* is_slice = NULL;"
         subtensor_init = "\n".join(init_cmds)
 
         x, = inputs[:1]
@@ -673,8 +679,8 @@ class Subtensor(Op):
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
 
-        int is_slice[] = {%(is_slice_init)s};
-        npy_intp subtensor_spec[%(len_subtensor_spec)s];
+        %(is_slice_init)s
+        %(subensor_spec)s
         %(subtensor_init)s;
         int spec_pos = 0; //position in subtensor_spec
         int inner_ii = 0; // the current dimension of zview
