@@ -255,6 +255,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     # TODO: add some error checking to make sure storage_<x> are
     # 1-element lists and __ERROR is a 3-elements list.
     struct_code = """
+    namespace {
     struct %(name)s {
         PyObject* __ERROR;
 
@@ -287,6 +288,7 @@ def struct_gen(args, struct_builders, blocks, sub):
             %(do_return)s
         }
     };
+    }
     """ % sub
 
     return struct_code
@@ -1285,22 +1287,22 @@ class CLinker(link.Linker):
         # instantiate.
         if PY3:
             static = """
-        int {struct_name}_executor({struct_name} *self) {{
+        static int {struct_name}_executor({struct_name} *self) {{
             return self->run();
         }}
 
-        void {struct_name}_destructor(PyObject *capsule) {{
+        static void {struct_name}_destructor(PyObject *capsule) {{
             {struct_name} *self = ({struct_name} *)PyCapsule_GetContext(capsule);
             delete self;
         }}
         """.format(struct_name=self.struct_name)
         else:
             static = """
-        int %(struct_name)s_executor(%(struct_name)s* self) {
+        static int %(struct_name)s_executor(%(struct_name)s* self) {
             return self->run();
         }
 
-        void %(struct_name)s_destructor(void* executor, void* self) {
+        static void %(struct_name)s_destructor(void* executor, void* self) {
             delete ((%(struct_name)s*)self);
         }
         """ % dict(struct_name=self.struct_name)

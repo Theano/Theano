@@ -51,7 +51,7 @@ def compile_cutils():
                                            'op': complexadd % {'type': t}}
                         for t in complex_types])
 
-    fn_array = ("inplace_map_binop addition_funcs[] = {" +
+    fn_array = ("static inplace_map_binop addition_funcs[] = {" +
             ''.join(["""
             #if defined(%(typen)s)
             %(type)s_inplace_add,
@@ -61,7 +61,7 @@ def compile_cutils():
             """NULL};
             """)
 
-    type_number_array = ("int type_numbers[] = {" +
+    type_number_array = ("static int type_numbers[] = {" +
             ''.join(["""
             #if defined(%(typen)s)
             %(typen)s,
