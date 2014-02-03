@@ -3950,7 +3950,7 @@ def local_greedy_distributor(node):
     The following expressions are simplified:
     1. ((a/x + b/y) * x * y) --> a*y + b*x
     2. ((a/x + b) * x) --> a + b*x
-    3. There other form too where node is a true_div.
+    3. There are other forms too where node is a true_div.
 
     The following expressions are not simplified:
     4. ((a + b) * x) -/-> a*x + b*x

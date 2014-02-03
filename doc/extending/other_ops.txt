@@ -1,11 +1,11 @@
 .. _other_ops:
 
-=============================
-Implementing some specific Op
-=============================
+==============================
+Implementing some specific Ops
+==============================
 
 This page is a guide on the implementation of some specific types of Ops,
-and point to some examples of such implementations.
+and points to some examples of such implementations.
 
 For the random number generating Ops, it explains different possible
 implementation strategies.
@@ -18,10 +18,10 @@ Scalar/Elemwise/Reduction Ops
 
 Implementing a Theano scalar Op allows that scalar operation to be reused
 by our elemwise operations on tensors. If the scalar operation has C code, the
-elemwise implementation it will automaticaly have C code too. This
+elemwise implementation will automatically have C code too. This
 will enable the fusion of elemwise operations using your new scalar
 operation. It can also reuse the GPU elemwise code. It is similar for
-reduction operation.
+reduction operations.
 
 For examples of how to add new scalar operations, you can have a look at
 those 2 pull requests, that add `GammaLn and Psi
@@ -84,11 +84,11 @@ instead of ``as_tensor_variable(x)``.
 Another difference is that you need to use ``SparseVariable`` and
 ``SparseType`` instead of ``TensorVariable`` and ``TensorType``.
 
-Don't forget that we support only sparse matrices (so only 2 dimensions)
-and they don't support broadcasting operation by default, as SciPy sparse
-matrix class does (but a few Ops do it when called manually). Also, we support 2
+Do not forget that we support only sparse matrices (so only 2 dimensions)
+and (like in SciPy) they do not support broadcasting operations by default
+(although a few Ops do it when called manually). Also, we support only two
 formats for sparse type: ``csr`` and ``csc``. So in ``make_mode()``,
-you can create outputs variables like this:
+you can create output variables like this:
 
 .. code-block:: python
 
@@ -97,11 +97,11 @@ you can create outputs variables like this:
 
 See the sparse :class:`theano.sparse.basic.Cast` op `code
 <https://github.com/Theano/Theano/blob/master/theano/sparse/basic.py#L753>`_
-for a good example for a sparse op with Python code.
+for a good example of a sparse op with Python code.
 
 .. note::
 
-   From the definition of CSR and CSC format, CSR column indices are
+   From the definition of CSR and CSC formats, CSR column indices are
    not necessarily sorted. Likewise for CSC row indices. Use
    :class:`EnsureSortedIndices
    <theano.sparse.basic.EnsureSortedIndices>` if your code does not
@@ -129,7 +129,7 @@ Sparse C code
 -------------
 
 Theano does not have a native C code interface for sparse matrices. The
-reason is simple, we use the SciPy sparse matrix object and they don't
+reason is simple: we use the SciPy sparse matrix objects and they don't
 have a C object. So we use a simple trick: a sparse matrix is made of
 4 fields that are NumPy vector arrays: ``data``, ``indices``, ``indptr``
 and ``shape``. So to make
@@ -183,17 +183,17 @@ distributions here::
 
 2) Extend MRG implementation by reusing existing Theano Op. Look into
    the ``theano/sandbox/rng_mrg.py`` file and grep for all code about
-   binomal(). This distribution uses the output of the uniform
+   binomial(). This distribution uses the output of the uniform
    distribution and converts it to a binomial distribution with
    existing Theano operations. The tests go in
    ``theano/sandbox/test_rng_mrg.py``
 
-3) Extend MRG implementation with a new Op that takes an uniform as
+3) Extend MRG implementation with a new Op that takes a uniform sample as
    input. Look in the ``theano/sandbox/{rng_mrg,multinomial}.py`` file
    and its test in ``theano/sandbox/test_multinomal.py``. This is
    recommended when current Theano ops aren't well suited to modify
    the uniform to the target distribution. This can happen in
-   particular is there is a loop or complicated condition.
+   particular if there is a loop or complicated condition.
 
 .. note::
 
@@ -214,16 +214,16 @@ the ``__init__()`` method, it must have an ``openmp=None`` parameter
 and must call ``super(MyOpClass, self).__init__(openmp=openmp)``.
 
 The ``OpenMPOp`` class also implements ``c_compile_args`` and
-``make_thunk``. This makes it add the correct g++ flag to compile with
+``make_thunk``. This makes it add the correct g++ flags to compile with
 OpenMP. It also disables OpenMP and prints a warning if the version of
-g++ don't support it.
+g++ does not support it.
 
-The Theano flag ``openmp`` is currently False by default as we don't
-have code that gets speed up with it. The only current implementation
+The Theano flag ``openmp`` is currently False by default as we do not
+have code that gets sped up with it. The only current implementation
 is ConvOp. It speeds up some cases, but slows down others. That is why
 we disable it by default. But we have all the code to have it enabled
-by default if there is more then 1 core and that the environment
-variable OMP_NUM_THREADS isn't 1. This allows Theano to respect the
+by default if there is more than 1 core and the environment
+variable OMP_NUM_THREADS is not 1. This allows Theano to respect the
 current convention.
 
 .. note:

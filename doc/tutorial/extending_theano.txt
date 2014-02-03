@@ -467,10 +467,10 @@ Final Note
 ==========
 
 A more extensive discussion of this section's content may be found in
-the advanced tutorial :ref:`Extending Theano<extending>`
+the advanced tutorial :ref:`Extending Theano<extending>`.
 
-The section :ref:`Other ops <other_ops>` include more instruction for
-specific case:
+The section :ref:`Other ops <other_ops>` includes more instructions for
+the following specific cases:
 
  - :ref:`scalar_ops`
  - :ref:`scipy_ops`

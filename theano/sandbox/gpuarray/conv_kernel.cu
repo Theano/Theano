@@ -1,4 +1,4 @@
-// REMEMBER TO RAISE c_code_cache_version when changing this file
+// REMEMBER TO INCREASE c_code_cache_version when changing this file
 //
 //implement the valid convolution only
 
