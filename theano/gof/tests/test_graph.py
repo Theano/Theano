@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 from theano import tensor
@@ -292,7 +293,6 @@ class TestIsSameGraph(unittest.TestCase):
             debug=False)
 
 
-
 ################
 # eval         #
 ################
@@ -305,3 +305,6 @@ def test_eval():
     result = z.eval({x : 1., y : 2.})
 
     assert result == 3.
+
+    # We don't want to pickle the tmp function.
+    assert not hasattr(pickle.loads(pickle.dumps(z)), '_fn')

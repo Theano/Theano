@@ -410,6 +410,13 @@ AddConfigVar('compute_test_value_opt',
              EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
              in_c_key=False)
 
+AddConfigVar('unpickle_function',
+             ("Replace unpickled Theano function with None",
+              "This is useful to unpickle old graph that pickled"
+              " them when it shouldn't"),
+             BoolParam(True),
+             in_c_key=False)
+
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
     method when exception_verbosity == 'low'. When exception_verbosity

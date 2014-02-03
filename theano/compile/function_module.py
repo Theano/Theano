@@ -709,6 +709,8 @@ def _pickle_Function(f):
     return rval
 
 def _constructor_Function(maker, input_storage, inputs_data):
+    if not theano.config.unpickle_function:
+        return None
     f = maker.create(input_storage, trustme = True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
@@ -1204,7 +1206,10 @@ def _pickle_FunctionMaker(self):
 
 
 def _constructor_FunctionMaker(kwargs):
-    return FunctionMaker(**kwargs)
+    if theano.config.unpickle_function:
+        return FunctionMaker(**kwargs)
+    else:
+        return None
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
