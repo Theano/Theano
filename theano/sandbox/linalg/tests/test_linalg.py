@@ -94,8 +94,6 @@ def test_cholesky_grad():
                                    rng, eps=eps))
 
 
-# This is possibly redundant since we already have a test for the op
-# and its grad above.
 @attr('slow')
 def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
