@@ -629,6 +629,7 @@ def poisson_helper(random_state, lam, size):
     This is a generalization of numpy.random.poisson to the case where 
     `lam` is a tensor.
     """
+
     return random_state.poisson(lam, size)
 
 def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
@@ -637,8 +638,7 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
 
     The Poisson distribution is the limit of the Binomial distribution for large N.
     
-    :param lam: float
-
+    :param lam: float or ndarray-like of the same shape as size parameter
         Expectation of interval, should be >= 0.
 
     :param size: int or tuple of ints, optional
@@ -927,6 +927,18 @@ class RandomStreamsBase(object):
         information.
         """
         return self.gen(choice, size, a, replace, p, ndim=ndim, dtype=dtype)
+
+    def poisson(self, size=None, lam=None, ndim=None, dtype='int64'):
+        """
+        Draw samples from a Poisson distribution.
+  
+        The Poisson distribution is the limit of the Binomial distribution for large N.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+        """
+        return self.gen(poisson, size, lam, ndim=ndim, dtype=dtype)
 
     def permutation(self, size=None, n=1, ndim=None, dtype='int64'):
         """
