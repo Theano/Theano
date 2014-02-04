@@ -476,7 +476,7 @@ class GpuSoftmax (Op):
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (PyGpuArray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -648,12 +648,12 @@ class GpuSoftmaxWithBias (GpuOp):
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (PyGpuArray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error input");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (PyGpuArray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rank error for the bias");
             %(fail)s;
