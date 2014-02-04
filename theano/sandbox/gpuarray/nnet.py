@@ -471,6 +471,7 @@ class GpuSoftmax (Op):
         return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out, sub):
+        dtype = self.dtype
         x, = inp
         z, = out
         fail = sub['fail']
@@ -503,7 +504,7 @@ class GpuSoftmax (Op):
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
-                                     2 * sizeof(float);
+                                     2 * sizeof(npy_%(dtype)s);
 
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
@@ -533,7 +534,7 @@ class GpuSoftmax (Op):
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(float)
+                        n_threads * sizeof(npy_%(dtype)s)
                     >>>(
                             CudaNdarray_HOST_DIMS(%(x)s)[0],
                             CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -567,11 +568,11 @@ class GpuSoftmax (Op):
     def c_support_code_apply(self, node, nodename):
         ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                    'const npy_%(dtype)s * x', 'const int sx0', 'const int sx1',
+                    'npy_%(dtype)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ float buf[]",
-                    "float * buf2 = buf + N",
+                    "extern __shared__ npy_%(dtype)s buf[]",
+                    "npy_%(dtype)s * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
@@ -590,14 +591,14 @@ class GpuSoftmax (Op):
                 ])
         ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                    'const npy_%(dtype)s * x', 'const int sx0', 'const int sx1',
+                    'npy_%(dtype)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ float buf[]",
+                    "extern __shared__ npy_%(dtype)s buf[]",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
-                      "const float *x_ptr = &x[blockIDX * sx0]",
-                      "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                      "const npy_%(dtype)s *x_ptr = &x[blockIDX * sx0]",
+                      "npy_%(dtype)s *sm_ptr = &sm[blockIDX * sm_s0]",
                       inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
                                                   'sm_ptr', 'sm_s1',
                                                   'threadIdx.x', 'blockDim.x'),
@@ -642,6 +643,7 @@ class GpuSoftmaxWithBias (GpuOp):
         return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out, sub):
+        dtype = self.dtype
         x, b = inp
         z, = out
         fail = sub['fail']
@@ -688,7 +690,7 @@ class GpuSoftmaxWithBias (GpuOp):
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
-                                     2 * sizeof(float);
+                                     2 * sizeof(npy_%(dtype)s);
             if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
             {
               if(n_shared_bytes < (32 * 1024 - 500)){
@@ -717,7 +719,7 @@ class GpuSoftmaxWithBias (GpuOp):
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(float)
+                        n_threads * sizeof(npy_%(dtype)s)
                     >>>(
                         CudaNdarray_HOST_DIMS(%(x)s)[0],
                         CudaNdarray_HOST_DIMS(%(x)s)[1],
@@ -750,14 +752,15 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
+        dtype = self.dtype
         ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
                 params=['int M', 'int N',
-                        'const float * x', 'const int sx0', 'const int sx1',
-                        'const float * b', 'const int sb0',
-                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                        'const npy_%(dtype)s * x', 'const int sx0', 'const int sx1',
+                        'const npy_%(dtype)s * b', 'const int sb0',
+                        'npy_%(dtype)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ float buf[]",
-                    "float * buf2 = buf + N",
+                    "extern __shared__ npy_%(dtype)s buf[]",
+                    "npy_%(dtype)s * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
@@ -776,17 +779,17 @@ class GpuSoftmaxWithBias (GpuOp):
                     ])
         ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
                            params=['int M', 'int N',
-                                   'const float * x',
+                                   'const npy_%(dtype)s * x',
                                    'const int sx0', 'const int sx1',
-                                   'const float * b', 'const int sb0',
-                                   'float * sm',
+                                   'const npy_%(dtype)s * b', 'const int sb0',
+                                   'npy_%(dtype)s * sm',
                                    'const int sm_s0', 'const int sm_s1'],
                            body=[
-                               "extern __shared__ float buf[]",
+                               "extern __shared__ npy_%(dtype)s buf[]",
                                "for (int blockIDX = blockIdx.x; blockIDX < M;"
                                "     blockIDX += gridDim.x){",
-                               "const float *x_ptr = &x[blockIDX * sx0]",
-                               "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                               "const npy_%(dtype)s *x_ptr = &x[blockIDX * sx0]",
+                               "npy_%(dtype)s *sm_ptr = &sm[blockIDX * sm_s0]",
                                inline_softmax_fixed_shared('N', 'buf',
                                                            'x_ptr', 'sx1',
                                                            'sm_ptr', 'sm_s1',
