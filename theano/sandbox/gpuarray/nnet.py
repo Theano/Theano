@@ -442,7 +442,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 
-class GpuSoftmax (GpuOp):
+class GpuSoftmax (Op):
     """
     Implement Softmax on the gpu.
     """
@@ -463,6 +463,12 @@ class GpuSoftmax (GpuOp):
 
     def c_code_cache_version(self):
         return (9,) + inline_softmax.code_version
+        
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -628,6 +634,12 @@ class GpuSoftmaxWithBias (GpuOp):
     def c_code_cache_version(self):
         #return ()
         return (8,) + inline_softmax.code_version
+        
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
