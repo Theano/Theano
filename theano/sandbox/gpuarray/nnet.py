@@ -522,12 +522,12 @@ class GpuSoftmax (Op):
                             PyGpuArray_DIMS(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(x)s),
-                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                            PyGpuArray_STRIDES(%(x)s)[0],
+                            PyGpuArray_STRIDES(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(z)s),
-                            CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                            PyGpuArray_STRIDES(%(z)s)[0],
+                            PyGpuArray_STRIDES(%(z)s)[1]
                     );
               }else{
                 kSoftmax_fixed_shared%(nodename)s
@@ -540,12 +540,12 @@ class GpuSoftmax (Op):
                             PyGpuArray_DIMS(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(x)s),
-                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                            PyGpuArray_STRIDES(%(x)s)[0],
+                            PyGpuArray_STRIDES(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(z)s),
-                            CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                            PyGpuArray_STRIDES(%(z)s)[0],
+                            PyGpuArray_STRIDES(%(z)s)[1]
                     );
               }
               CNDA_THREAD_SYNC;
@@ -704,15 +704,15 @@ class GpuSoftmaxWithBias (GpuOp):
                         PyGpuArray_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                        PyGpuArray_STRIDES(%(x)s)[0],
+                        PyGpuArray_STRIDES(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(b)s),
-                        CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                        PyGpuArray_STRIDES(%(b)s)[0],
 
                         CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                        PyGpuArray_STRIDES(%(z)s)[0],
+                        PyGpuArray_STRIDES(%(z)s)[1]
                     );
               }else{
                 kSoftmaxWithBias_fixed_shared%(nodename)s
@@ -725,15 +725,15 @@ class GpuSoftmaxWithBias (GpuOp):
                         PyGpuArray_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
-                        CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                        PyGpuArray_STRIDES(%(x)s)[0],
+                        PyGpuArray_STRIDES(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(b)s),
-                        CudaNdarray_HOST_STRIDES(%(b)s)[0],
+                        PyGpuArray_STRIDES(%(b)s)[0],
 
                         CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                        CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                        PyGpuArray_STRIDES(%(z)s)[0],
+                        PyGpuArray_STRIDES(%(z)s)[1]
                     );
               }
                 CNDA_THREAD_SYNC;
