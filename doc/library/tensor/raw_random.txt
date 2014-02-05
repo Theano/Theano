@@ -57,6 +57,28 @@ Reference
         dimensions, the first argument may be a plain integer
         to supplement the missing information.
 
+    .. method:: choice(self, size=(), a=2, replace=True, p=None, ndim=None, dtype='int64'):
+
+        Choose values from `a` with or without replacement. `a` can be a 1-D
+        array or a positive scalar. If `a` is a scalar, the samples are drawn
+        from the range 0,...,a-1.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+
+    .. method:: poisson(self, size=(), lam=None, ndim=None, dtype='int64'):
+
+        Usage: poisson(random_state, size, lam=5)
+
+        Draw samples from a Poisson distribution.
+  
+        The Poisson distribution is the limit of the Binomial distribution for large N.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+
     .. method:: permutation(self, size=(), n=1, ndim=None):
 
         Returns permutations of the integers between 0 and n-1, as many times

@@ -622,6 +622,40 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
                                                          broadcastable=bcast))
     return op(random_state, size, a, replace, p)
 
+def poisson_helper(random_state, lam, size):
+    """
+    Helper function to draw random numbers using numpy's poisson function.
+
+    This is a generalization of numpy.random.poisson to the case where 
+    `lam` is a tensor.
+    """
+
+    return random_state.poisson(lam, size)
+
+def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
+    """
+    Draw samples from a Poisson distribution.
+
+    The Poisson distribution is the limit of the Binomial distribution for large N.
+    
+    :param lam: float or ndarray-like of the same shape as size parameter
+        Expectation of interval, should be >= 0.
+
+    :param size: int or tuple of ints, optional
+        Output shape. If the given shape is, e.g., (m, n, k), then m * n * k samples are drawn.
+
+    :param dtype: the dtype of the return value (which will represent counts)
+
+    size or ndim must be given
+    """
+    lam = tensor.as_tensor_variable(lam)
+    
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size)
+
+    op = RandomFunction(poisson_helper, tensor.TensorType(dtype=dtype,
+                                                     broadcastable=bcast))
+    return op(random_state, size, lam)
+
 
 def permutation_helper(random_state, n, shape):
     """Helper function to generate permutations from integers.
@@ -893,6 +927,18 @@ class RandomStreamsBase(object):
         information.
         """
         return self.gen(choice, size, a, replace, p, ndim=ndim, dtype=dtype)
+
+    def poisson(self, size=None, lam=None, ndim=None, dtype='int64'):
+        """
+        Draw samples from a Poisson distribution.
+  
+        The Poisson distribution is the limit of the Binomial distribution for large N.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+        """
+        return self.gen(poisson, size, lam, ndim=ndim, dtype=dtype)
 
     def permutation(self, size=None, n=1, ndim=None, dtype='int64'):
         """

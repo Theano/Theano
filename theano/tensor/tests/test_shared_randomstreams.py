@@ -205,6 +205,23 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
 
+    def test_poisson(self):
+        """Test that RandomStreams.poisson generates the same results as numpy"""
+        
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.poisson(lam=5, size=(11, 8)))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.poisson(lam=5, size=(11, 8))
+        numpy_val1 = rng.poisson(lam=5, size=(11, 8))
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
     def test_permutation(self):
         """Test that RandomStreams.permutation generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
