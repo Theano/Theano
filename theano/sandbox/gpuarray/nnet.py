@@ -482,16 +482,16 @@ class GpuSoftmax (Op):
             %(fail)s;
         }
         if ((NULL == %(z)s) ||
-            (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
-             CudaNdarray_HOST_DIMS(%(x)s)[0]) ||
-            (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
-             CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            (PyGpuArray_DIMS(%(z)s)[0] !=
+             PyGpuArray_DIMS(%(x)s)[0]) ||
+            (PyGpuArray_DIMS(%(z)s)[1] !=
+             PyGpuArray_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
             %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 2,
-                                                CudaNdarray_HOST_DIMS(%(x)s)))
+                                                PyGpuArray_DIMS(%(x)s)))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
@@ -499,14 +499,14 @@ class GpuSoftmax (Op):
             }
         }
         {
-            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],
+            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
                                     32 * 1024);
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
-            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
+            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(dtype)s);
 
-            if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
+            if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
               //Those numbers are based on not too recent GPU
               //to make them compatible with more GPU.
@@ -518,8 +518,8 @@ class GpuSoftmax (Op):
                         n_threads,
                         n_shared_bytes
                     >>>(
-                            CudaNdarray_HOST_DIMS(%(x)s)[0],
-                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+                            PyGpuArray_DIMS(%(x)s)[0],
+                            PyGpuArray_DIMS(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(x)s),
                             CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -536,8 +536,8 @@ class GpuSoftmax (Op):
                         n_threads,
                         n_threads * sizeof(npy_%(dtype)s)
                     >>>(
-                            CudaNdarray_HOST_DIMS(%(x)s)[0],
-                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+                            PyGpuArray_DIMS(%(x)s)[0],
+                            PyGpuArray_DIMS(%(x)s)[1],
 
                             CudaNdarray_DEV_DATA(%(x)s),
                             CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -658,27 +658,27 @@ class GpuSoftmaxWithBias (GpuOp):
             PyErr_SetString(PyExc_ValueError, "rank error for the bias");
             %(fail)s;
         }
-        if ((CudaNdarray_HOST_DIMS(%(x)s)[1] !=
-            CudaNdarray_HOST_DIMS(%(b)s)[0]))
+        if ((PyGpuArray_DIMS(%(x)s)[1] !=
+            PyGpuArray_DIMS(%(b)s)[0]))
         {
             PyErr_Format(PyExc_ValueError,
                          "number of columns in x (%%ld)"
                          " does not match length of b (%%ld)",
-                         (long int)CudaNdarray_HOST_DIMS(%(x)s)[1],
-                         (long int)CudaNdarray_HOST_DIMS(%(b)s)[0]);
+                         (long int)PyGpuArray_DIMS(%(x)s)[1],
+                         (long int)PyGpuArray_DIMS(%(b)s)[0]);
             %(fail)s;
         }
         if ((NULL == %(z)s)
-            || (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
-                CudaNdarray_HOST_DIMS(%(x)s)[0])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[1] !=
-                CudaNdarray_HOST_DIMS(%(x)s)[1]))
+            || (PyGpuArray_DIMS(%(z)s)[0] !=
+                PyGpuArray_DIMS(%(x)s)[0])
+            || (PyGpuArray_DIMS(%(z)s)[1] !=
+                PyGpuArray_DIMS(%(x)s)[1]))
         {
             Py_XDECREF(%(z)s);
             %(z)s = (CudaNdarray*)CudaNdarray_New();
             if ((NULL == %(z)s)
                 || CudaNdarray_alloc_contiguous(%(z)s, 2,
-                       CudaNdarray_HOST_DIMS(%(x)s)))
+                       PyGpuArray_DIMS(%(x)s)))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
@@ -686,12 +686,12 @@ class GpuSoftmaxWithBias (GpuOp):
             }
         }
         {
-            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0],32*1024);
+            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],32*1024);
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1], 512);
-            int n_shared_bytes = CudaNdarray_HOST_DIMS(%(x)s)[1] *
+            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(dtype)s);
-            if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0)
+            if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
               if(n_shared_bytes < (32 * 1024 - 500)){
                 kSoftmaxWithBias_%(nodename)s
@@ -700,8 +700,8 @@ class GpuSoftmaxWithBias (GpuOp):
                         n_threads,
                         n_shared_bytes
                     >>>(
-                        CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1],
+                        PyGpuArray_DIMS(%(x)s)[0],
+                        PyGpuArray_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -721,8 +721,8 @@ class GpuSoftmaxWithBias (GpuOp):
                         n_threads,
                         n_threads * sizeof(npy_%(dtype)s)
                     >>>(
-                        CudaNdarray_HOST_DIMS(%(x)s)[0],
-                        CudaNdarray_HOST_DIMS(%(x)s)[1],
+                        PyGpuArray_DIMS(%(x)s)[0],
+                        PyGpuArray_DIMS(%(x)s)[1],
 
                         CudaNdarray_DEV_DATA(%(x)s),
                         CudaNdarray_HOST_STRIDES(%(x)s)[0],
