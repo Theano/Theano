@@ -521,11 +521,11 @@ class GpuSoftmax (Op):
                             PyGpuArray_DIMS(%(x)s)[0],
                             PyGpuArray_DIMS(%(x)s)[1],
 
-                            CudaNdarray_DEV_DATA(%(x)s),
+                            PyArray_DATA(%(x)s),
                             PyGpuArray_STRIDES(%(x)s)[0],
                             PyGpuArray_STRIDES(%(x)s)[1],
 
-                            CudaNdarray_DEV_DATA(%(z)s),
+                            PyArray_DATA(%(z)s),
                             PyGpuArray_STRIDES(%(z)s)[0],
                             PyGpuArray_STRIDES(%(z)s)[1]
                     );
@@ -539,11 +539,11 @@ class GpuSoftmax (Op):
                             PyGpuArray_DIMS(%(x)s)[0],
                             PyGpuArray_DIMS(%(x)s)[1],
 
-                            CudaNdarray_DEV_DATA(%(x)s),
+                            PyArray_DATA(%(x)s),
                             PyGpuArray_STRIDES(%(x)s)[0],
                             PyGpuArray_STRIDES(%(x)s)[1],
 
-                            CudaNdarray_DEV_DATA(%(z)s),
+                            PyArray_DATA(%(z)s),
                             PyGpuArray_STRIDES(%(z)s)[0],
                             PyGpuArray_STRIDES(%(z)s)[1]
                     );
@@ -703,14 +703,14 @@ class GpuSoftmaxWithBias (GpuOp):
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(x)s),
+                        PyArray_DATA(%(x)s),
                         PyGpuArray_STRIDES(%(x)s)[0],
                         PyGpuArray_STRIDES(%(x)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(b)s),
+                        PyArray_DATA(%(b)s),
                         PyGpuArray_STRIDES(%(b)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(z)s),
+                        PyArray_DATA(%(z)s),
                         PyGpuArray_STRIDES(%(z)s)[0],
                         PyGpuArray_STRIDES(%(z)s)[1]
                     );
@@ -724,14 +724,14 @@ class GpuSoftmaxWithBias (GpuOp):
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(x)s),
+                        PyArray_DATA(%(x)s),
                         PyGpuArray_STRIDES(%(x)s)[0],
                         PyGpuArray_STRIDES(%(x)s)[1],
 
-                        CudaNdarray_DEV_DATA(%(b)s),
+                        PyArray_DATA(%(b)s),
                         PyGpuArray_STRIDES(%(b)s)[0],
 
-                        CudaNdarray_DEV_DATA(%(z)s),
+                        PyArray_DATA(%(z)s),
                         PyGpuArray_STRIDES(%(z)s)[0],
                         PyGpuArray_STRIDES(%(z)s)[1]
                     );
