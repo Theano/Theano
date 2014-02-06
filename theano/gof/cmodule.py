@@ -1746,6 +1746,7 @@ class GCC_compiler(object):
             cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
             cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
             cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            cxxflags.append("-D NPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up

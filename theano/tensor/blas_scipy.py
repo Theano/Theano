@@ -51,6 +51,7 @@ class ScipyGer(Ger):
             else:
                 A = local_ger(calpha[0], cx[0], cy[0], a=A,
                         overwrite_a=int(self.destructive))
+            compute_map[node.outputs[0]][0] = True
             cZ[0] = A
             for o in node_output_compute:
                 o[0] = True
