@@ -20,7 +20,9 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
 from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
-                                          GpuCrossentropySoftmax1HotWithBiasDx)
+                                          GpuCrossentropySoftmax1HotWithBiasDx,
+                                          GpuSoftmaxWithBias,
+                                          GpuSoftmax)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduceCuda)
 from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
@@ -340,7 +342,16 @@ def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
     return GpuCrossentropySoftmax1HotWithBiasDx()
+    
+@register_opt()
+@op_lifter([tensor.nnet.GpuSoftmax])
+def local_gpua_softmax(node):
+    return GpuSoftmax()
 
+@register_opt()
+@op_lifter([tensor.nnet.GpuSoftmaxWithBias])
+def local_gpua_softmaxwithbias(node):
+    return GpuSoftmaxWithBias()
 
 @register_opt()
 @op_lifter([gpu_from_host, ConvOp])

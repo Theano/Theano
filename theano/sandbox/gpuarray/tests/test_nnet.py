@@ -178,7 +178,7 @@ def test_softmax_with_bias():
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
-                      cuda.nnet.GpuSoftmaxWithBias)
+                      theano.sandbox.gpuarray.nnet.GpuSoftmaxWithBias)
 
     def cmp(n, m):
         #print "test_softmax",n,m
@@ -219,7 +219,7 @@ def test_softmax():
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
-                      cuda.nnet.GpuSoftmax)
+                      theano.sandbox.gpuarray.nnet.GpuSoftmax)
 
     def cmp(n, m):
         #print "test_softmax",n,m
