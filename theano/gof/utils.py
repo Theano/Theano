@@ -16,12 +16,6 @@ def add_tag_trace(thing):
     return thing
 
 
-def hashgen():
-    hashgen.next += 1
-    return  hashgen.next
-hashgen.next = 0
-
-
 def hashtype(self):
     t = type(self)
     return hash(t.__name__) ^ hash(t.__module__)
