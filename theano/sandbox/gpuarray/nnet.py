@@ -1,8 +1,7 @@
 import numpy
 
-from theano import Op, Apply
+from theano import Op, Apply, config
 from theano.compat.six import StringIO
-
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 
@@ -14,6 +13,10 @@ except ImportError:
 
 from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
 from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.kernel_codegen import (nvcc_kernel,
+                                                   inline_softmax,
+                                                   inline_softmax_fixed_shared)
+
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
@@ -456,16 +459,17 @@ class GpuSoftmax (Op):
         return self.__class__.__name__
 
     def make_node(self, x):
+        x = as_gpuarray_variable(x)
         return Apply(self, [x], [x.type()])
 
     def infer_shape(self, node, shape):
         return shape
 
     def c_code_cache_version(self):
-        return (9,) + inline_softmax.code_version
+        return (10,) + inline_softmax.code_version
         
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -474,11 +478,16 @@ class GpuSoftmax (Op):
         return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, nodename, inp, out, sub):
-        dtype = self.dtype
-        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        dtype_x = node.inputs[0].dtype
+        dtype_z = node.outputs[0].dtype
+        typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         x, = inp
         z, = out
         fail = sub['fail']
+        if config.gpuarray.sync:
+            cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
+        else:
+            cnda_thread_sync = ""  
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {
@@ -496,17 +505,17 @@ class GpuSoftmax (Op):
                                 %(typecode)s,
                                 GA_C_ORDER,
                                 pygpu_default_context(), Py_None);
-            if (!%(nll)s) {
+            if (!%(z)s) {
                 %(fail)s
             } 
         }
         {
-            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
+            int n_blocks = std::min((int)PyGpuArray_DIMS(%(x)s)[0],
                                     32 * 1024);
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_threads = std::min((int)PyGpuArray_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
-                                     2 * sizeof(npy_%(dtype)s);
+                                     2 * sizeof(npy_%(dtype_x)s);
 
             if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
@@ -523,38 +532,42 @@ class GpuSoftmax (Op):
                             PyGpuArray_DIMS(%(x)s)[0],
                             PyGpuArray_DIMS(%(x)s)[1],
 
-                            (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
-                                           %(x)s->ga.offset),
-                            PyGpuArray_STRIDES(%(x)s)[0],
-                            PyGpuArray_STRIDES(%(x)s)[1],
+                            (npy_%(dtype_x)s*)(
+                                    ((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                                    %(x)s->ga.offset),
+                            PyGpuArray_STRIDES(%(x)s)[0] / 4,
+                            PyGpuArray_STRIDES(%(x)s)[1] / 4,
 
-                            (dtype_%(z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                                           %(z)s->ga.offset);
-                            PyGpuArray_STRIDES(%(z)s)[0],
-                            PyGpuArray_STRIDES(%(z)s)[1]
+                            (npy_%(dtype_z)s*)(
+                                    ((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                                    %(z)s->ga.offset),
+                            PyGpuArray_STRIDES(%(z)s)[0] / 4,
+                            PyGpuArray_STRIDES(%(z)s)[1] / 4
                     );
               }else{
                 kSoftmax_fixed_shared%(nodename)s
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(npy_%(dtype)s)
+                        n_threads * sizeof(npy_%(dtype_x)s)
                     >>>(
                             PyGpuArray_DIMS(%(x)s)[0],
                             PyGpuArray_DIMS(%(x)s)[1],
 
-                            (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
-                                           %(x)s->ga.offset),
-                            PyGpuArray_STRIDES(%(x)s)[0],
-                            PyGpuArray_STRIDES(%(x)s)[1],
+                            (npy_%(dtype_x)s*)(
+                                    ((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                                    %(x)s->ga.offset),
+                            PyGpuArray_STRIDES(%(x)s)[0] / 4,
+                            PyGpuArray_STRIDES(%(x)s)[1] / 4,
 
-                            (dtype_%(z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                                           %(z)s->ga.offset);
-                            PyGpuArray_STRIDES(%(z)s)[0],
-                            PyGpuArray_STRIDES(%(z)s)[1]
+                            (npy_%(dtype_z)s*)(
+                                    ((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                                    %(z)s->ga.offset),
+                            PyGpuArray_STRIDES(%(z)s)[0] / 4,
+                            PyGpuArray_STRIDES(%(z)s)[1] / 4
                     );
               }
-              CNDA_THREAD_SYNC;
+              %(cnda_thread_sync)s
               cudaError_t err = cudaGetLastError();
               if( cudaSuccess != err)
               {
@@ -572,6 +585,7 @@ class GpuSoftmax (Op):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
+        dtype = node.inputs[0].dtype
         ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
                     'const npy_%(dtype)s * x', 'const int sx0', 'const int sx1',
@@ -612,12 +626,12 @@ class GpuSoftmax (Op):
                     "}",
                     ])
         ret3 = "CUdeviceptr (*cuda_get_ptr)(gpudata *g);"
-        return ret1 + "\n" + ret2 + "\n"= ret3
+        return (ret1 + "\n" + ret2 + "\n" + ret3) % locals()
 
 gpu_softmax = GpuSoftmax()
 
 
-class GpuSoftmaxWithBias (GpuOp):
+class GpuSoftmaxWithBias (Op):
     """
     Implement SoftmaxWithBias on the gpu.
     """
@@ -634,17 +648,18 @@ class GpuSoftmaxWithBias (GpuOp):
         return self.__class__.__name__
 
     def make_node(self, x, b):
+        x = as_gpuarray_variable(x)
+        b = as_gpuarray_variable(b)
         return Apply(self, [x, b], [x.type()])
 
     def infer_shape(self, node, shape):
         return  [shape[0]]
 
     def c_code_cache_version(self):
-        #return ()
-        return (8,) + inline_softmax.code_version
+        return (9,) + inline_softmax.code_version
         
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<compyte/numpy_compat.h>']
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -653,11 +668,17 @@ class GpuSoftmaxWithBias (GpuOp):
         return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, nodename, inp, out, sub):
-        dtype = self.dtype
-        typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
+        dtype_x = node.inputs[0].dtype
+        dtype_b = node.inputs[1].dtype
+        dtype_z = node.outputs[0].dtype
+        typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         x, b = inp
         z, = out
         fail = sub['fail']
+        if config.gpuarray.sync:
+            cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
+        else:
+            cnda_thread_sync = "" 
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {
@@ -690,16 +711,16 @@ class GpuSoftmaxWithBias (GpuOp):
                                 %(typecode)s,
                                 GA_C_ORDER,
                                 pygpu_default_context(), Py_None);
-            if (!%(nll)s) {
+            if (!%(z)s) {
                 %(fail)s
             } 
         }
         {
-            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],32*1024);
+            int n_blocks = std::min((int)PyGpuArray_DIMS(%(x)s)[0], 32*1024);
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_threads = std::min((int)PyGpuArray_DIMS(%(x)s)[1], 512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
-                                     2 * sizeof(npy_%(dtype)s);
+                                     2 * sizeof(npy_%(dtype_x)s);
             if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
               if(n_shared_bytes < (32 * 1024 - 500)){
@@ -712,46 +733,50 @@ class GpuSoftmaxWithBias (GpuOp):
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
 
-                        (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
-                                           %(x)s->ga.offset),
-                        PyGpuArray_STRIDES(%(x)s)[0],
-                        PyGpuArray_STRIDES(%(x)s)[1],
+                        (npy_%(dtype_x)s*)(
+                                    ((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                                    %(x)s->ga.offset),
+                        PyGpuArray_STRIDES(%(x)s)[0] / 4,
+                        PyGpuArray_STRIDES(%(x)s)[1] / 4,
 
-                        (dtype_%(b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
+                        (npy_%(dtype_b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
                                            %(b)s->ga.offset),
-                        PyGpuArray_STRIDES(%(b)s)[0],
+                        PyGpuArray_STRIDES(%(b)s)[0] / 4,
 
-                        (dtype_%(z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                        (npy_%(dtype_z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
                                            %(z)s->ga.offset),
-                        PyGpuArray_STRIDES(%(z)s)[0],
-                        PyGpuArray_STRIDES(%(z)s)[1]
+                        PyGpuArray_STRIDES(%(z)s)[0] / 4,
+                        PyGpuArray_STRIDES(%(z)s)[1] / 4
                     );
               }else{
                 kSoftmaxWithBias_fixed_shared%(nodename)s
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(npy_%(dtype)s)
+                        n_threads * sizeof(npy_%(dtype_x)s)
                     >>>(
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
 
-                        (dtype_%(x)s*)(((char *)cuda_get_ptr(%(x)s->ga.data)) +
-                                           %(x)s->ga.offset),
-                        PyGpuArray_STRIDES(%(x)s)[0],
-                        PyGpuArray_STRIDES(%(x)s)[1],
+                        (npy_%(dtype_x)s*)(
+                                    ((char *)cuda_get_ptr(%(x)s->ga.data)) +
+                                    %(x)s->ga.offset),
+                        PyGpuArray_STRIDES(%(x)s)[0] / 4,
+                        PyGpuArray_STRIDES(%(x)s)[1] / 4,
 
-                        (dtype_%(b)s*)(((char *)cuda_get_ptr(%(b)s->ga.data)) +
-                                           %(b)s->ga.offset),
-                        PyGpuArray_STRIDES(%(b)s)[0],
+                        (npy_%(dtype_b)s*)(
+                                    ((char *)cuda_get_ptr(%(b)s->ga.data)) +
+                                    %(b)s->ga.offset),
+                        PyGpuArray_STRIDES(%(b)s)[0] / 4,
 
-                        (dtype_%(z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                                           %(z)s->ga.offset),
-                        PyGpuArray_STRIDES(%(z)s)[0],
-                        PyGpuArray_STRIDES(%(z)s)[1]
+                        (npy_%(dtype_z)s*)(
+                                    ((char *)cuda_get_ptr(%(z)s->ga.data)) +
+                                    %(z)s->ga.offset),
+                        PyGpuArray_STRIDES(%(z)s)[0] / 4,
+                        PyGpuArray_STRIDES(%(z)s)[1] / 4
                     );
               }
-                CNDA_THREAD_SYNC;
+                %(cnda_thread_sync)s
                 cudaError_t err = cudaGetLastError();
                 if( cudaSuccess != err)
                 {
@@ -767,7 +792,7 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        dtype = self.dtype
+        dtype = node.inputs[0].dtype
         ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
                 params=['int M', 'int N',
                         'const npy_%(dtype)s * x', 'const int sx0', 'const int sx1',
@@ -815,6 +840,6 @@ class GpuSoftmaxWithBias (GpuOp):
                                "}",
                            ])
         ret3 = "CUdeviceptr (*cuda_get_ptr)(gpudata *g);"
-        return ret1 + "\n" + ret2 + "\n"= ret3
+        return (ret1 + "\n" + ret2 + "\n" + ret3) % locals()
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
