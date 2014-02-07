@@ -292,6 +292,9 @@ def type_guard(type1):
 
 
 def flatten(a):
+    """
+    Recursively flatten tuple, list and set in a list.
+    """
     if isinstance(a, (tuple, list, set)):
         l = []
         for item in a:
