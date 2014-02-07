@@ -16,12 +16,6 @@ def add_tag_trace(thing):
     return thing
 
 
-def hashgen():
-    hashgen.next += 1
-    return  hashgen.next
-hashgen.next = 0
-
-
 def hashtype(self):
     t = type(self)
     return hash(t.__name__) ^ hash(t.__module__)
@@ -133,7 +127,7 @@ def uniq(seq):
 
 def difference(seq1, seq2):
     """
-    Returns all elements in seq1 which are not in seq2: i.e seq1\seq2
+    Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``
     """
     try:
         # try to use O(const * len(seq1)) algo
@@ -148,52 +142,6 @@ def difference(seq1, seq2):
         return [x for x in seq1 if x not in seq2]
 
 
-def partition(f, seq):
-    seqt = []
-    seqf = []
-    for elem in seq:
-        if f(elem):
-            seqt.append(elem)
-        else:
-            seqf.append(elem)
-    return seqt, seqf
-
-
-def attr_checker(*attrs):
-    def f(candidate):
-        for attr in attrs:
-            if not hasattr(candidate, attr):
-                return False
-        return True
-
-    f.__doc__ = ("Checks that the candidate has the following attributes: %s"
-                  % ", ".join(["'%s'" % attr for attr in attrs]))
-    return f
-
-
-def all_bases(cls, accept):
-    rval = set([cls])
-    for base in cls.__bases__:
-        rval.update(all_bases(base, accept))
-    return [cls for cls in rval if accept(cls)]
-
-
-def all_bases_collect(cls, raw_name):
-    rval = set()
-    name = "__%s__" % raw_name
-    if name in cls.__dict__:  # don't use hasattr
-        rval.add(getattr(cls, name))
-    cut = "__%s_override__" % raw_name
-    if not cls.__dict__.get(cut, False):
-        for base in cls.__bases__:
-            rval.update(all_bases_collect(base, raw_name))
-    return rval
-
-
-def camelcase_to_separated(string, sep="_"):
-    return re.sub('(.)([A-Z])', '\\1%s\\2' % sep, string).lower()
-
-
 def to_return_values(values):
     if len(values) == 1:
         return values[0]
@@ -206,21 +154,6 @@ def from_return_values(values):
         return values
     else:
         return [values]
-
-
-class ClsInit(type):
-    """Class initializer for L{Op} subclasses"""
-    def __init__(cls, name, bases, dct):
-        """
-        Validate and initialize the L{Op} subclass 'cls'
-
-        This function:
-          - changes class attributes input_names and output_names to be lists
-            if they are single strings.
-        """
-        type.__init__(cls, name, bases, dct)
-
-        cls.__clsinit__(cls, name, bases, dct)
 
 
 def toposort(prereqs_d):
@@ -259,21 +192,6 @@ def toposort(prereqs_d):
                         "prereqs_d does not have a key for each element or "
                         "some orderings contain invalid elements.")
     return seq
-
-
-def print_for_dot(self):
-    #TODO: popen2("dot -Tpng | display") and actually make the graph window
-    #pop up
-    print ("digraph unix { size = '6,6'; node [color = lightblue2;"
-           "style = filled];")
-    for op in self.order:
-        for input in op.inputs:
-            if input.owner:
-                print ' '.join((
-                    input.owner.__class__.__name__ + str(abs(id(input.owner))),
-                    " -> ",
-                    op.__class__.__name__ + str(abs(id(op))),
-                    ";"))
 
 
 class Keyword:
@@ -374,6 +292,9 @@ def type_guard(type1):
 
 
 def flatten(a):
+    """
+    Recursively flatten tuple, list and set in a list.
+    """
     if isinstance(a, (tuple, list, set)):
         l = []
         for item in a:
