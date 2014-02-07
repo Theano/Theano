@@ -45,3 +45,4 @@ you out.
     extending_theano
     faq
     python-memory-management
+    multi_cores
