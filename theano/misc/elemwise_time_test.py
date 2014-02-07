@@ -1,10 +1,11 @@
-import theano
-import theano.tensor as T
-import numpy as np
-
-import time
 from optparse import OptionParser
 import sys
+import time
+
+import numpy as np
+
+import theano
+import theano.tensor as T
 
 parser = OptionParser(usage='%prog <options>\n Compute time for'
                       ' fast and slow elemwise operations')
@@ -56,4 +57,3 @@ if __name__ == '__main__':
     if options.script:
         sys.stdout.write("%2.9f %2.9f\n" % (cheapTime, costlyTime))
         sys.stdout.flush()
-
