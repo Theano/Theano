@@ -242,6 +242,11 @@ From here, the easiest way to get started is (this requires setuptools_ or distr
     cd Theano
     python setup.py develop
 
+.. note::
+
+   "python setup.py develop ..." don't work on Python 3 as it don't call
+   the converter from Python2 code to Python 3 code.
+
 This will install a ``.pth`` file in your ``site-packages`` directory that
 tells Python where to look for your Theano installation (i.e. in the
 directory your just checked out of Github). Using ``develop`` mode is
