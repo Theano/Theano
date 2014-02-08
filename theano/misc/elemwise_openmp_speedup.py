@@ -41,7 +41,7 @@ if __name__ == '__main__':
         cheapSpeed = (cheapTimeOpenmp - cheapTime) / cheapTimeOpenmp
         cheapSpeedstring = "slowdown"
 
-    if cheapTime > cheapTimeOpenmp:
+    if costlyTime > costlyTimeOpenmp:
         costlySpeed = (costlyTime - costlyTimeOpenmp) / costlyTime
         costlySpeedstring = "speedup"
     else:
