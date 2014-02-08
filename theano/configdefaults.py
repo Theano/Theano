@@ -417,8 +417,8 @@ AddConfigVar('compute_test_value_opt',
              in_c_key=False)
 
 AddConfigVar('unpickle_function',
-             ("Replace unpickled Theano function with None",
-              "This is useful to unpickle old graph that pickled"
+             ("Replace unpickled Theano functions with None. "
+              "This is useful to unpickle old graphs that pickled"
               " them when it shouldn't"),
              BoolParam(True),
              in_c_key=False)
