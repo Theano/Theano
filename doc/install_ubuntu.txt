@@ -167,7 +167,7 @@ yourself. Here is some code that will help you.
     make FC=gfortran
     sudo make PREFIX=/usr/local/ install
     # Tell Theano to use OpenBLAS.
-    # This work only for the current user.
+    # This works only for the current user.
     # Each Theano user on that computer should run that line.
     echo -e "\n[blas]\nldflags = -lopenblas\n" >> ~/.theanorc
 
