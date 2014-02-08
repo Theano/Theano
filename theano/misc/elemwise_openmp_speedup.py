@@ -29,9 +29,10 @@ if __name__ == '__main__':
     if hasattr(options, "help"):
         print options.help
         sys.exit(0)
-    os.environ['THEANO_FLAGS'] = 'openmp=false'
+    orig_flags = os.environ.get('THEANO_FLAGS', '')
+    os.environ['THEANO_FLAGS'] = orig_flags + ',openmp=false'
     (cheapTime, costlyTime) = runScript(N=options.N)
-    os.environ['THEANO_FLAGS'] = 'openmp=true'
+    os.environ['THEANO_FLAGS'] = orig_flags + ',openmp=true'
     (cheapTimeOpenmp, costlyTimeOpenmp) = runScript(N=options.N)
 
     if cheapTime > cheapTimeOpenmp:
