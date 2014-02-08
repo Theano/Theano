@@ -449,7 +449,7 @@ class Elemwise(OpenMPOp):
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
-            nfunc_spec=None,openmp=None):
+                 nfunc_spec=None, openmp=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
