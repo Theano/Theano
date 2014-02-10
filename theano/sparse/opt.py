@@ -8,7 +8,8 @@ from theano import gof, scalar, tensor
 from theano.tensor import blas
 from theano.sparse import (CSC, CSR, csm_properties,
                            register_specialize,
-                           csm_grad, usmm)
+                           csm_grad, usmm, csm_indices, csm_indptr,
+                           csm_data)
 from theano.sparse import basic as sparse
 
 _is_sparse_variable = sparse._is_sparse_variable
@@ -49,28 +50,146 @@ theano.compile.optdb.register('local_inplace_remove0',
                               gof.TopoOptimizer(local_inplace_remove0,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
+
+
+class AddSD_ccode(gof.op.Op):
+    """Add a sparse and a dense matrix.
+
+    :param x: A sparse matrix.
+    :param y: A dense matrix
+
+    :return: `x`+`y`
+
+    :note: The grad implemented is structured on `x`.
+    """
+    def __init__(self, format, inplace=False, *args, **kwargs):
+        gof.Op.__init__(self, *args, **kwargs)
+        #Should we do inplace addition or not ?
+        self.inplace = inplace
+        self.format = format
+        if self.inplace:
+            self.destroy_map = {0: [3]}
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.inplace == other.inplace and
+                self.format == other.format)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace) ^ hash(self.format)
+
+    def __str__(self):
+        inp = ''
+        if self.inplace:
+            inp = ',inplace'
+        return "%s{%s%s}" % (self.__class__.__name__,
+                             self.format, inp)
+
+    def make_node(self, x, y):
+        x, y = sparse.as_sparse_variable(x), tensor.as_tensor_variable(y)
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if self.inplace:
+            assert out_dtype == y.dtype
+
+        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
+        # We either use CSC or CSR depending on the format of input
+        assert self.format == x.type.format
+        # The magic number two here arises because L{scipy.sparse}
+        # objects must be matrices (have dimension 2)
+        assert y.type.ndim == 2
+        out = tensor.TensorType(dtype=out_dtype,
+                                broadcastable=y.type.broadcastable)()
+        return gof.Apply(self,
+                         [data, indices, indptr, y],
+                         [out])
+
+    def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
+        inplace = int(self.inplace)
+        format = {'csc': 0, 'csr': 1}[self.format]
+        out_typenum = node.outputs[0].type.dtype_specs()[2]
+        code = """
+                Py_XDECREF(%(z)s);
+                if (!%(inplace)s){
+                    if(PyArray_TYPE(%(y)s) != %(out_typenum)s){
+                        %(z)s = (PyArrayObject *) PyArray_FromArray(%(y)s,  PyArray_DescrFromType(%(out_typenum)s), 0);
+                    }else{
+                        %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
+                    }
+                }else{
+                  %(z)s = %(y)s;
+                  Py_XINCREF(%(z)s);
+                }
+
+                npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
+                const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
+                const npy_int32 * __restrict__ indices = (npy_int32*)PyArray_DATA(%(_indices)s);
+                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)PyArray_DATA(%(_data)s);
+
+                dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+                dtype_%(z)s* zdata = (dtype_%(z)s*)PyArray_DATA(%(z)s);
+                int Yi = PyArray_STRIDES(%(y)s)[0]/PyArray_DESCR(%(y)s)->elsize;
+                int Yj = PyArray_STRIDES(%(y)s)[1]/PyArray_DESCR(%(y)s)->elsize;
+
+                npy_int32 pos;
+                if (%(format)s == 0){
+                for (npy_int32 col = 0; col < N; ++col){
+                  for (npy_int32 ind = indptr[col]; ind < indptr[col+1]; ++ind){
+                    npy_int32 row = indices[ind];
+                    pos = row * Yi + col * Yj;
+                    zdata[pos] = ydata[pos] + data[ind];
+                  }
+                }
+                }else{
+                for (npy_int32 row = 0; row < N; ++row){
+                  for (npy_int32 ind = indptr[row]; ind < indptr[row+1]; ++ind){
+                    npy_int32 col = indices[ind];
+                    pos = row * Yi + col * Yj;
+                    zdata[pos] = ydata[pos] + data[ind];
+                  }
+                 }
+                }
+             """ % dict(locals(), **sub)
+        return code
+
+    def infer_shape(self, node, shapes):
+        return [shapes[3]]
+
+    def c_code_cache_version(self):
+        return (1,)
+
+
 @gof.local_optimizer([sparse.AddSD])
-def local_inplace_addsd(node):
+def local_inplace_addsd_ccode(node):
     """
     Optimization to insert inplace versions of AddSD.
     """
-    if isinstance(node.op, sparse.AddSD) and not node.op.inplace:
-        inputs = node.inputs[:3] + [node.inputs[3].shape]
-        fmt = node.op.format
-        if fmt == 'csc':
-            x = sparse.CSC(*inputs)
-        elif fmt == 'csr':
-            x = sparse.CSR(*inputs)
-        else:
-            raise NotImplementedError('Sparse format %s is not supported' % fmt)
-        new_op = node.op.__class__(inplace=True)
-        new_node = new_op(x, node.inputs[3])
+    if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
+        out_dtype = scalar.upcast(*node.inputs)
+        if out_dtype != node.inputs[1].dtype:
+            return
+        new_node = AddSD_ccode(format=node.inputs[0].type.format,
+                               inplace=True)(*node.inputs)
         return [new_node]
     return False
-theano.compile.optdb.register('local_inplace_addsd',
-                              gof.TopoOptimizer(local_inplace_addsd,
+theano.compile.optdb.register('local_inplace_addsd_ccode',
+                              gof.TopoOptimizer(local_inplace_addsd_ccode,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
+
+
+@gof.local_optimizer([sparse.AddSD])
+def local_addsd_ccode(node):
+    """
+    Convert AddSD to faster AddSD_ccode.
+    """
+    if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
+        new_node = AddSD_ccode(format=node.inputs[0].type.format)(*node.inputs)
+        return [new_node]
+    return False
+theano.compile.optdb.register('local_addsd_ccode',
+                              gof.TopoOptimizer(local_addsd_ccode),
+                              #Must be after local_inplace_addsd_ccode at 60
+                              61, 'fast_run')
 
 
 class StructuredDotCSC(gof.Op):
@@ -1139,6 +1258,9 @@ def local_mul_s_d(node):
             mul_s_d_csx = mul_s_d_csr
         else:
             raise NotImplemented()
+        if x.dtype != y.dtype:
+            #mul_s_d_csx don't support that case
+            return
 
         c_data = mul_s_d_csx(sparse.csm_data(svar),
                              sparse.csm_indices(svar),
