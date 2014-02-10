@@ -588,11 +588,17 @@ class T_AddMul(unittest.TestCase):
                     self.assertTrue(numpy.all(val == (array1 + b)))
                     ans = numpy.array([[1., 2], [3, 4], [5, 6]])
                     self.assertTrue(numpy.all(val == ans))
+                    if isinstance(a, theano.Constant):
+                        a = a.data
+                    verify_grad_sparse(op, [a, b], structured=True)
                 elif op is mul:
                     self.assertTrue(_is_sparse_variable(apb))
                     self.assertTrue(numpy.all(val.todense() == (b.multiply(array1))))
                     self.assertTrue(numpy.all(val.todense() == numpy.array(
                         [[1, 0], [9, 0], [0, 36]])))
+                    if isinstance(a, theano.Constant):
+                        a = a.data
+                    verify_grad_sparse(op, [a, b], structured=False)
 
     def _testDS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
@@ -616,11 +622,17 @@ class T_AddMul(unittest.TestCase):
                     self.assertTrue(numpy.all(val == (a + array2)))
                     ans = numpy.array([[1., 2], [3, 4], [5, 6]])
                     self.assertTrue(numpy.all(val == ans))
+                    if isinstance(b, theano.Constant):
+                        b = b.data
+                    verify_grad_sparse(op, [a, b], structured=True)
                 elif op is mul:
                     self.assertTrue(_is_sparse_variable(apb))
                     ans = numpy.array([[1, 0], [9, 0], [0, 36]])
                     self.assertTrue(numpy.all(val.todense() == (a.multiply(array2))))
                     self.assertTrue(numpy.all(val.todense() == ans))
+                    if isinstance(b, theano.Constant):
+                        b = b.data
+                    verify_grad_sparse(op, [a, b], structured=False)
 
     def test_upcast(self):
         array1 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='float32')

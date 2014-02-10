@@ -1742,22 +1742,16 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-    def __init__(self, inplace=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
-        #Should we do inplace addition or not ?
-        self.inplace = inplace
-        if self.inplace:
-            self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        return (type(self) == type(other)) and self.inplace == other.inplace
+        return (type(self) == type(other))
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
+        return hash(type(self))
 
     def __str__(self):
-        if self.inplace:
-            return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
 
     def make_node(self, x, y):
@@ -1769,69 +1763,17 @@ class AddSD(gof.op.Op):
                 " You passed %s and %s inputs dtype." % (x.type.dtype,
                                                          y.type.dtype))
 
-        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
-
-        # We either use CSC or CSR depending on the format of input
-        self.format = x.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
         return gof.Apply(self,
-                         [data, indices, indptr, y],
+                         [x, y],
                          [tensor.TensorType(dtype=y.type.dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
-        inplace = int(self.inplace)
-        format = {'csc': 0, 'csr': 1}[self.format]
-        code = """
-                Py_XDECREF(%(z)s);
-                if (!%(inplace)s){
-                  %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
-                }else{
-                  %(z)s = %(y)s;
-                  Py_XINCREF(%(z)s);
-                }
-
-                npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
-                const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
-                const npy_int32 * __restrict__ indices = (npy_int32*)PyArray_DATA(%(_indices)s);
-                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)PyArray_DATA(%(_data)s);
-
-                dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
-                dtype_%(z)s* zdata = (dtype_%(z)s*)PyArray_DATA(%(z)s);
-                int Yi = PyArray_STRIDES(%(y)s)[0]/PyArray_DESCR(%(y)s)->elsize;
-                int Yj = PyArray_STRIDES(%(y)s)[1]/PyArray_DESCR(%(y)s)->elsize;
-
-                npy_int32 pos;
-                if (%(format)s == 0){
-                for (npy_int32 col = 0; col < N; ++col){
-                  for (npy_int32 ind = indptr[col]; ind < indptr[col+1]; ++ind){
-                    npy_int32 row = indices[ind];
-                    pos = row * Yi + col * Yj;
-                    zdata[pos] = ydata[pos] + data[ind];
-                  }
-                }
-                }else{
-                for (npy_int32 row = 0; row < N; ++row){
-                  for (npy_int32 ind = indptr[row]; ind < indptr[row+1]; ++ind){
-                    npy_int32 col = indices[ind];
-                    pos = row * Yi + col * Yj;
-                    zdata[pos] = ydata[pos] + data[ind];
-                  }
-                 }
-                }
-             """ % dict(locals(), **sub)
-        return code
-
-    def perform(self, node, (data, indices, indptr,  y), (out, )):
+    def perform(self, node, (x,  y), (out, )):
         assert _is_dense(y)
-
-        if self.format == 'csr':
-            x = scipy.sparse.csr_matrix((data, indices, indptr), shape=y.shape)
-        elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix((data, indices, indptr), shape=y.shape)
 
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
@@ -1843,10 +1785,8 @@ class AddSD(gof.op.Op):
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
-        return [shapes[3]]
+        return [shapes[1]]
 
-    def c_code_cache_version(self):
-        return (1,)
 add_s_d = AddSD()
 
 
