@@ -142,7 +142,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 dim3 dimBlock(blockSize, 1, 1);
                 dim3 dimGrid(dimGridX, 1, 1);
 
-                blockCumSum_1D_%(nodename)s<<<dimGrid, dimBlock>>>
+                blockCumSum_1D_%(nodename)s<<<dimGrid, dimBlock, (2*blockSize) * sizeof(float)>>>
                 (
                     CudaNdarray_DEV_DATA(%(x)s),
                     CudaNdarray_DEV_DATA(%(z)s),
@@ -154,7 +154,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                     cudaThreadSynchronize();
                     dim3 dimGridBlockSum(1, 1, 1);
                     dim3 dimBlockBlockSum(dimGridX-1, 1, 1);
-                    blockCumSum_1D_%(nodename)s<<<dimGridBlockSum, dimBlockBlockSum, (2*blockSize) * sizeof(float)>>>
+                    blockCumSum_1D_%(nodename)s<<<dimGridBlockSum, dimBlockBlockSum, (2*(dimGridX-1)) * sizeof(float)>>>
                     (
                         CudaNdarray_DEV_DATA(deviceBlockSum),
                         CudaNdarray_DEV_DATA(deviceBlockSum),
