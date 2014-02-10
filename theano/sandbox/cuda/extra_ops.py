@@ -15,6 +15,7 @@ if cuda_available:
 class GpuCumsum(CumsumOp, GpuOp):
     def __init__(self, axis=None):
         self.axis = axis
+        self.max_threads_dim0 = None
 
     def make_node(self, x):
         assert x.dtype == 'float32'
@@ -53,7 +54,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         return ()
 
     def c_support_code_apply(self, node, nodename):
-        mode = self.mode
+        axis = self.axis
         return """
         static __global__ void k_cumsum_1D_%(nodename)s(float* g_idata,
                                                         float* g_odata,
@@ -68,7 +69,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
             for (int d = n/2; d > 0; d /= 2)
             {
-                CNDA_THREAD_SYNC;
+                __syncthreads();
 
                 if (threadIdx.x < d)
                 {
@@ -84,7 +85,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
             for (int d = 1; d < n; d *= 2)
             {
-                CNDA_THREAD_SYNC;
+                __syncthreads();
 
                 if (threadIdx.x < d)
                 {
@@ -97,7 +98,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 }
             }
 
-            CNDA_THREAD_SYNC;
+            __syncthreads();
             g_odata[2*threadIdx.x]   = temp[2*threadIdx.x];
             g_odata[2*threadIdx.x+1] = temp[2*threadIdx.x+1];
         }
@@ -131,11 +132,11 @@ class GpuCumsum(CumsumOp, GpuOp):
             if (!%(z)s)
                 %(fail)s;
             {
-                dim3 dim_block( min(shape[0], %(max_threads_dim0)s) );
+                dim3 dim_block( min((int)shape[0], %(max_threads_dim0)s) );
                 dim3 dim_grid(1);
 
                 if (dim_block.x < shape[0])
-                    dim_grid.x = (shape[0]-1 / dim_block.x) + 1;  # Ceil
+                    dim_grid.x = (shape[0]-1 / dim_block.x) + 1;  // Ceil
 
 
                 void (*f)(float*, float*, int);
@@ -144,7 +145,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 f<<<dim_grid,dim_block>>>(CudaNdarray_DEV_DATA(%(x)s),
                                           CudaNdarray_DEV_DATA(%(z)s),
                                           shape[0]);
-
+                
                 CNDA_THREAD_SYNC;
                 cudaError_t sts = cudaGetLastError();
                 if (cudaSuccess != sts)
@@ -166,3 +167,17 @@ class GpuCumsum(CumsumOp, GpuOp):
         """ % locals()
 
         return code
+
+
+def gpu_cumsum(x, axis=None):
+    return GpuCumsum(axis)(x)
+
+
+@local_optimizer([CumsumOp])
+def use_gpu_cumsum(node):
+    if type(node.op) is CumsumOp and node.inputs[0].dtype == 'float32':
+        return [host_from_gpu(gpu_cumsum(gpu_from_host(node.inputs[0]),
+                                         axis=node.op.axis))]
+
+if cuda_available:
+    register_gpu_opt()(use_gpu_cumsum)
