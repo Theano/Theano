@@ -87,12 +87,9 @@ class AddSD_ccode(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = sparse.as_sparse_variable(x), tensor.as_tensor_variable(y)
-
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError(
-                "AddSD support inputs with the same dtype only."
-                " You passed %s and %s inputs dtype." % (x.type.dtype,
-                                                         y.type.dtype))
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if self.inplace:
+            assert out_dtype == y.dtype
 
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
         # We either use CSC or CSR depending on the format of input
@@ -100,7 +97,7 @@ class AddSD_ccode(gof.op.Op):
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
-        out = tensor.TensorType(dtype=y.type.dtype,
+        out = tensor.TensorType(dtype=out_dtype,
                                 broadcastable=y.type.broadcastable)()
         return gof.Apply(self,
                          [data, indices, indptr, y],
@@ -109,10 +106,15 @@ class AddSD_ccode(gof.op.Op):
     def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
         inplace = int(self.inplace)
         format = {'csc': 0, 'csr': 1}[self.format]
+        out_typenum = node.outputs[0].type.dtype_specs()[2]
         code = """
                 Py_XDECREF(%(z)s);
                 if (!%(inplace)s){
-                  %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
+                    if(PyArray_TYPE(%(y)s) != %(out_typenum)s){
+                        %(z)s = (PyArrayObject *) PyArray_FromArray(%(y)s,  PyArray_DescrFromType(%(out_typenum)s), 0);
+                    }else{
+                        %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
+                    }
                 }else{
                   %(z)s = %(y)s;
                   Py_XINCREF(%(z)s);
@@ -162,6 +164,9 @@ def local_inplace_addsd_ccode(node):
     Optimization to insert inplace versions of AddSD.
     """
     if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
+        out_dtype = scalar.upcast(*node.inputs)
+        if out_dtype != node.inputs[1].dtype:
+            return
         new_node = AddSD_ccode(format=node.inputs[0].type.format,
                                inplace=True)(*node.inputs)
         return [new_node]
@@ -178,7 +183,6 @@ def local_addsd_ccode(node):
     Convert AddSD to faster AddSD_ccode.
     """
     if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
-        #import pdb;pdb.set_trace()
         new_node = AddSD_ccode(format=node.inputs[0].type.format)(*node.inputs)
         return [new_node]
     return False
@@ -1254,6 +1258,9 @@ def local_mul_s_d(node):
             mul_s_d_csx = mul_s_d_csr
         else:
             raise NotImplemented()
+        if x.dtype != y.dtype:
+            #mul_s_d_csx don't support that case
+            return
 
         c_data = mul_s_d_csx(sparse.csm_data(svar),
                              sparse.csm_indices(svar),

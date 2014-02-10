@@ -1755,19 +1755,14 @@ class AddSD(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
-
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError(
-                "AddSD support inputs with the same dtype only."
-                " You passed %s and %s inputs dtype." % (x.type.dtype,
-                                                         y.type.dtype))
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
 
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
         return gof.Apply(self,
                          [x, y],
-                         [tensor.TensorType(dtype=y.type.dtype,
+                         [tensor.TensorType(dtype=out_dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
@@ -1975,23 +1970,25 @@ class MulSD(gof.op.Op):
 
         # upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
-        if y.type.dtype != dtype:
-            y = tensor.cast(y, dtype)
 
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError(
-                "MulSD not implemented for different input dtypes. "
-                "Got %s and %s." % (x.type.dtype, y.type.dtype))
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         # Broadcasting of the sparse matrix is not supported.
-        assert y.type.ndim <= 2
-        return gof.Apply(self, [x, y], [x.type()])
+        # We support nd == 0 used by grad of SpSum()
+        assert y.type.ndim in [0, 2]
+        out = SparseType(dtype=dtype,
+                         format=x.type.format)()
+        return gof.Apply(self, [x, y], [out])
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         if len(y.shape) == 0:
-            out[0] = x.copy()
+            out_dtype = node.outputs[0].dtype
+            if x.dtype == out_dtype:
+                z = x.copy()
+            else:
+                z = x.astype(out_dtype)
+            out[0] = z
             out[0].data *= y
         elif len(y.shape) == 1:
             raise NotImplementedError()  # RowScale / ColScale
@@ -2001,12 +1998,16 @@ class MulSD(gof.op.Op):
             # TODO: change runtime from O(M*N) to O(nonzeros)
             M, N = x.shape
             assert x.shape == y.shape
+            out_dtype = node.outputs[0].dtype
 
             if x.format == 'csc':
                 x_data = x.data
                 indices = x.indices
                 indptr = x.indptr
-                z = x.copy()
+                if x.dtype == out_dtype:
+                    z = x.copy()
+                else:
+                    z = x.astype(out_dtype)
                 z_data = z.data
 
                 for j in xrange(0, N):
@@ -2018,7 +2019,10 @@ class MulSD(gof.op.Op):
                 x_data = x.data
                 indices = x.indices
                 indptr = x.indptr
-                z = x.copy()
+                if x.dtype == out_dtype:
+                    z = x.copy()
+                else:
+                    z = x.astype(out_dtype)
                 z_data = z.data
 
                 for i in xrange(0, M):
