@@ -8,7 +8,8 @@ from theano import gof, scalar, tensor
 from theano.tensor import blas
 from theano.sparse import (CSC, CSR, csm_properties,
                            register_specialize,
-                           csm_grad, usmm)
+                           csm_grad, usmm, csm_indices, csm_indptr,
+                           csm_data)
 from theano.sparse import basic as sparse
 
 _is_sparse_variable = sparse._is_sparse_variable
@@ -51,22 +52,6 @@ theano.compile.optdb.register('local_inplace_remove0',
                               60, 'fast_run', 'inplace')
 
 
-@gof.local_optimizer([sparse.AddSD])
-def local_inplace_addsd(node):
-    """
-    Optimization to insert inplace versions of AddSD.
-    """
-    if isinstance(node.op, AddSD_ccode) and not node.op.inplace:
-        new_op = node.op.__class__(inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
-theano.compile.optdb.register('local_inplace_addsd_ccode',
-                              gof.TopoOptimizer(local_inplace_addsd,
-    failure_callback=gof.TopoOptimizer.warn_inplace),
-                              60, 'fast_run', 'inplace')
-
-
 class AddSD_ccode(gof.op.Op):
     """Add a sparse and a dense matrix.
 
@@ -77,26 +62,31 @@ class AddSD_ccode(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-    def __init__(self, inplace=False, *args, **kwargs):
+    def __init__(self, format, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
         #Should we do inplace addition or not ?
         self.inplace = inplace
+        self.format = format
         if self.inplace:
             self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        return (type(self) == type(other)) and self.inplace == other.inplace
+        return (type(self) == type(other) and
+                self.inplace == other.inplace and
+                self.format == other.format)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
+        return hash(type(self)) ^ hash(self.inplace) ^ hash(self.format)
 
     def __str__(self):
+        inp = ''
         if self.inplace:
-            return self.__class__.__name__ + '{inplace}'
-        return self.__class__.__name__
+            inp = ',inplace'
+        return "%s{%s%s}" % (self.__class__.__name__,
+                             self.format, inp)
 
     def make_node(self, x, y):
-        x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+        x, y = sparse.as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError(
@@ -105,17 +95,16 @@ class AddSD_ccode(gof.op.Op):
                                                          y.type.dtype))
 
         indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
-
         # We either use CSC or CSR depending on the format of input
-        self.format = x.format
+        assert self.format == x.type.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
+        out = tensor.TensorType(dtype=y.type.dtype,
+                                broadcastable=y.type.broadcastable)()
         return gof.Apply(self,
                          [data, indices, indptr, y],
-                         [tensor.TensorType(dtype=y.type.dtype,
-                                            broadcastable=y.type.broadcastable
-                                           ).make_variable()])
+                         [out])
 
     def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
         inplace = int(self.inplace)
@@ -160,23 +149,43 @@ class AddSD_ccode(gof.op.Op):
              """ % dict(locals(), **sub)
         return code
 
-    def perform(self, node, (data, indices, indptr,  y), (out, )):
-        assert _is_dense(y)
-
-        if self.format == 'csr':
-            x = scipy.sparse.csr_matrix((data, indices, indptr), shape=y.shape)
-        elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix((data, indices, indptr), shape=y.shape)
-
-        # The asarray is needed as in some case, this return a
-        # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
-        out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
-
     def infer_shape(self, node, shapes):
         return [shapes[3]]
 
     def c_code_cache_version(self):
         return (1,)
+
+
+@gof.local_optimizer([sparse.AddSD])
+def local_inplace_addsd_ccode(node):
+    """
+    Optimization to insert inplace versions of AddSD.
+    """
+    if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
+        new_node = AddSD_ccode(format=node.inputs[0].type.format,
+                               inplace=True)(*node.inputs)
+        return [new_node]
+    return False
+theano.compile.optdb.register('local_inplace_addsd_ccode',
+                              gof.TopoOptimizer(local_inplace_addsd_ccode,
+    failure_callback=gof.TopoOptimizer.warn_inplace),
+                              60, 'fast_run', 'inplace')
+
+
+@gof.local_optimizer([sparse.AddSD])
+def local_addsd_ccode(node):
+    """
+    Convert AddSD to faster AddSD_ccode.
+    """
+    if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
+        #import pdb;pdb.set_trace()
+        new_node = AddSD_ccode(format=node.inputs[0].type.format)(*node.inputs)
+        return [new_node]
+    return False
+theano.compile.optdb.register('local_addsd_ccode',
+                              gof.TopoOptimizer(local_addsd_ccode),
+                              #Must be after local_inplace_addsd_ccode at 60
+                              61, 'fast_run')
 
 
 class StructuredDotCSC(gof.Op):
