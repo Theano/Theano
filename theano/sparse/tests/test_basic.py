@@ -536,35 +536,38 @@ class T_AddMul(unittest.TestCase):
     def _testSS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(array1)
-            aR = as_sparse_variable(a)
-            self.assertFalse(aR.data is a)
-            self.assertTrue(_is_sparse(a))
-            self.assertTrue(_is_sparse_variable(aR))
+            for dtype1, dtype2 in [('float64', 'int8'),
+                                   ('int8', 'float64'),
+                               ]:
+                a = mtype(array1).astype(dtype1)
+                aR = as_sparse_variable(a)
+                self.assertFalse(aR.data is a)
+                self.assertTrue(_is_sparse(a))
+                self.assertTrue(_is_sparse_variable(aR))
 
-            b = mtype(array2)
-            bR = as_sparse_variable(b)
-            self.assertFalse(bR.data is b)
-            self.assertTrue(_is_sparse(b))
-            self.assertTrue(_is_sparse_variable(bR))
+                b = mtype(array2).astype(dtype2)
+                bR = as_sparse_variable(b)
+                self.assertFalse(bR.data is b)
+                self.assertTrue(_is_sparse(b))
+                self.assertTrue(_is_sparse_variable(bR))
 
-            apb = op(aR, bR)
-            self.assertTrue(_is_sparse_variable(apb))
+                apb = op(aR, bR)
+                self.assertTrue(_is_sparse_variable(apb))
 
-            self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.format == aR.type.format, apb.type.format)
-            self.assertTrue(apb.type.format == bR.type.format, apb.type.format)
+                self.assertTrue(apb.type.format == aR.type.format, apb.type.format)
+                self.assertTrue(apb.type.format == bR.type.format, apb.type.format)
 
-            val = eval_outputs([apb])
-            self.assertTrue(val.shape == (3, 2))
-            if op is add:
-                self.assertTrue(numpy.all(val.todense() == (array1 + array2)))
-                verify_grad_sparse(op, [a, b], structured=False)
-            elif op is mul:
-                self.assertTrue(numpy.all(val.todense()
-                                          == (array1 * array2)))
-                verify_grad_sparse(op, [a, b], structured=False)
+                val = eval_outputs([apb])
+                self.assertTrue(val.shape == (3, 2))
+                if op is add:
+                    self.assertTrue(numpy.all(val.todense() == (array1 + array2)))
+                    if dtype1.startswith('float') and dtype2.startswith('float'):
+                        verify_grad_sparse(op, [a, b], structured=False)
+                elif op is mul:
+                    self.assertTrue(numpy.all(val.todense()
+                                              == (array1 * array2)))
+                    if dtype1.startswith('float') and dtype2.startswith('float'):
+                        verify_grad_sparse(op, [a, b], structured=False)
 
     def _testSD(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
@@ -639,29 +642,7 @@ class T_AddMul(unittest.TestCase):
         array2 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int32')
         array3 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int8')
 
-        # AddSS and MulSS
-        for mtype in _mtypes:
-            a = mtype(array1)
-            aR = as_sparse_variable(a)
-            b = mtype(array2)
-            bR = as_sparse_variable(b)
-            c = mtype(array3)
-            cR = as_sparse_variable(c)
-
-            # Ops that do not upcast
-            self.assertRaises(NotImplementedError, add, aR, bR)
-            self.assertRaises(NotImplementedError, add, bR, aR)
-            self.assertRaises(NotImplementedError, add, bR, cR)
-            self.assertRaises(NotImplementedError, add, cR, bR)
-            self.assertRaises(NotImplementedError, add, aR, cR)
-            self.assertRaises(NotImplementedError, add, cR, aR)
-
-            self.assertRaises(NotImplementedError, mul, aR, bR)
-            self.assertRaises(NotImplementedError, mul, bR, aR)
-            self.assertRaises(NotImplementedError, mul, bR, cR)
-            self.assertRaises(NotImplementedError, mul, cR, bR)
-            self.assertRaises(NotImplementedError, mul, aR, cR)
-            self.assertRaises(NotImplementedError, mul, cR, aR)
+        # AddSS and MulSS upcated tested in _testSS
 
         # AddSD and MulSD
         for mtype in _mtypes:

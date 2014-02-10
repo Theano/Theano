@@ -1654,13 +1654,12 @@ class AddSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if x.type.format != y.type.format:
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
-                         [SparseType(dtype=x.type.dtype,
+                         [SparseType(dtype=out_dtype,
                                      format=x.type.format
                                     ).make_variable()])
 
@@ -1923,11 +1922,16 @@ class MulSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
-        if x.type != y.type:
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if x.type.format != y.type.format:
             raise NotImplementedError(
                     "MulSS not supported for differing types. "
                     "Got %s and %s." % (str(x.type), str(y.type)))
-        return gof.Apply(self, [x, y], [x.type()])
+        return gof.Apply(self, [x, y],
+                         [SparseType(dtype=out_dtype,
+                                     format=x.type.format
+                                    )()])
+
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
