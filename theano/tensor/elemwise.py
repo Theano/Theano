@@ -6,7 +6,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Apply, Op
+from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar, get_scalar_type
 from theano.printing import pprint
@@ -419,7 +419,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
 ### Elemwise ###
 ################
 
-class Elemwise(Op):
+class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
 
@@ -449,7 +449,7 @@ class Elemwise(Op):
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
-            nfunc_spec=None):
+                 nfunc_spec=None, openmp=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -487,6 +487,7 @@ class Elemwise(Op):
 
         #precompute the hash of this node
         self._rehash()
+        super(Elemwise,self).__init__(openmp=openmp)
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -1028,14 +1029,6 @@ class Elemwise(Op):
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
-        # We declare the scalar variables used in the inner loop to do
-        # the element-wise computation. Aliased scalar variables need
-        # not be declared, as they are #defined in defines
-        task_decl = "".join([
-            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                for name, dtype in izip(inames + list(real_onames),
-                                       idtypes + list(real_odtypes))])
-
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
@@ -1050,11 +1043,13 @@ class Elemwise(Op):
         code = """
         {
             %(defines)s
-            %(task_decl)s
             %(task_code)s
             %(undefs)s
         }
         """ % locals()
+
+        loop_orders = orders + [range(nnested)] * len(real_onames)
+        dtypes = (idtypes + list(real_odtypes))
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1063,19 +1058,47 @@ class Elemwise(Op):
                 all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
             else:
                 all_code = [code]
+            if len(all_code) == 1:
+                #No loops
+                task_decl = "".join([
+                    "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
+                    for name, dtype in izip(inames + list(real_onames),
+                                            idtypes + list(real_odtypes))])
 
-            loop = cgen.make_loop(
-                loop_orders=orders + [range(nnested)] * len(real_onames),
-                dtypes=(idtypes + list(real_odtypes)),
-                loop_tasks=all_code,
-                sub=sub)
+                preloops = {}
+                for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
+                    for j, index in enumerate(loop_order):
+                        if index != 'x':
+                            preloops.setdefault(j, "")
+                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            break
+                    else:  # all broadcastable
+                            preloops.setdefault(0, "")
+                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+
+                init_array = preloops.get(0, " ")
+                loop = """
+                {
+                  %(defines)s
+                  %(init_array)s
+                  %(task_decl)s
+                  %(task_code)s
+                  %(undefs)s
+                }
+                """ % locals()
+            else:
+                loop = cgen.make_loop(
+                    loop_orders=loop_orders,
+                    dtypes=dtypes,
+                    loop_tasks=all_code,
+                    sub=sub, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
-                init_loop_orders=orders + [range(nnested)] * len(real_onames),
+                init_loop_orders=loop_orders,
                 olv_index=olv_index,
-                dtypes=(idtypes + list(real_odtypes)),
+                dtypes=dtypes,
                 inner_task=code,
-                sub=sub)
+                sub=sub, openmp=self.openmp)
 
         # If all inputs and outputs are contiguous
         # and the scalar op define optimized code for that case
@@ -1117,7 +1140,8 @@ class Elemwise(Op):
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
-
+                    if self.openmp:
+                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
@@ -1166,6 +1190,7 @@ class Elemwise(Op):
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+        version.append(('openmp', self.openmp))
         if all(version):
             return tuple(version)
         else:
@@ -1557,7 +1582,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
                         + [("", code1), ""])
         else:
             all_code = [task0_decl + code1]
-        loop = cgen.make_loop(
+        loop = cgen.make_loop_careduce(
                 [order, range(nnested) + ['x'] * len(axis)],
                 [idtype, adtype], all_code, sub)
 

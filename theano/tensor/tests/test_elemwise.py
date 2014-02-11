@@ -16,7 +16,7 @@ from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
-
+import math
 
 def FunctionGraph(i, o):
     e = gof.FunctionGraph(i, o)
@@ -145,6 +145,9 @@ class test_Broadcast(unittest.TestCase):
     ctype = TensorType
     cop = Elemwise
 
+    openmp_minsize = 2*config.openmp_elemwise_minsize
+    openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
+
     def rand_val(self, shp):
         return numpy.asarray(numpy.random.rand(*shp))
 
@@ -160,6 +163,8 @@ class test_Broadcast(unittest.TestCase):
                          ((3, 5), (3, 1)),
                          ((1, 5), (5, 1)),
                          ((1, 1), (1, 1)),
+                         ((self.openmp_minsize,), (self.openmp_minsize,)),
+                         ((self.openmp_minsize_sqrt, self.openmp_minsize_sqrt), (self.openmp_minsize_sqrt, self.openmp_minsize_sqrt)),
                          ((2, 3, 4, 5), (2, 3, 4, 5)),
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),

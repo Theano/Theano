@@ -1,0 +1,31 @@
+=============================
+Multi cores support in Theano
+=============================
+
+Parallel element wise op with openmp
+====================================
+
+Beacuse element wise ops work on every tensor entry indipedently they can be
+easly parallelized using openmp.
+
+To use openmp you must set the openmp flag in Theano configuration.
+
+Yuo can use the flag openmp_elemwise_minsize to set the minimum tensor size
+for which the operation is parallelized because for short tensor using opemp
+can slow down the operation.
+
+If it is no specified the default value (200000) is used.
+
+For simple(fast) operation you can obtain a speed up for very long tensor
+while for more complex operation you ca obtain a good speed up also for not
+too long tensor. 
+There is a script (elemwise_openmp_speedup.py in theano/misc/) which you can
+use to choose that value for your machine.
+The script run two elemwise operation (a fast and a slow one) for a vector of
+size openmp_elemwise_minsize with and without openmp and show the time
+difference between the two cases.
+
+
+
+
+
