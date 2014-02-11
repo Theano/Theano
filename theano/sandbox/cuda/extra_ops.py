@@ -25,7 +25,8 @@ class GpuCumsum(CumsumOp, GpuOp):
         out_type = x.type()
 
         if self.axis is None and x.ndim > 1:
-            out_type = CudaNdarrayType(broadcastable=(False,), dtype=x.dtype)
+            out_type = CudaNdarrayType(broadcastable=(False,), dtype=x.dtype)()
+
         return theano.Apply(self, [x], [out_type])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
@@ -56,28 +57,38 @@ class GpuCumsum(CumsumOp, GpuOp):
         axis = self.axis
         return """
         __global__
-        void finalCumSum_1D_%(nodename)s(float * output, float * blockSum) {
+        void finalCumSum_1D_%(nodename)s(float* output, float* blockSum, int numElements) {
             int globalThreadID = (blockIdx.x + 1) * blockDim.x + threadIdx.x;
 
-            const float currentBlockSum = blockSum[blockIdx.x];
+            if (globalThreadID < ceil(numElements/2.0)) {
+                const float currentBlockSum = blockSum[blockIdx.x];
 
-            output[globalThreadID * 2] += currentBlockSum;
-            output[(globalThreadID * 2) + 1] += currentBlockSum;
+                output[globalThreadID*2]     += currentBlockSum;
+                output[globalThreadID*2 + 1] += currentBlockSum;
+            }
         }
 
 
         __global__
-        void blockCumSum_1D_%(nodename)s(float * input, float * output, int numElements, float * blockSum) {
+        void cumadd_%(nodename)s(float* input, float* output, int beforeLastElementIdx, int lastElementIdx) {
+            output[lastElementIdx] = input[lastElementIdx] + output[beforeLastElementIdx];
+        }
+
+
+        __global__
+        void blockCumSum_1D_%(nodename)s(float* input, float* output, int numElements, float* blockSum) {
             int globalThreadID = blockIdx.x * blockDim.x + threadIdx.x;
 
-            if (globalThreadID < numElements/2) {
+            if (globalThreadID < ceil(numElements/2.0)) {
                 extern __shared__ float partialCumSum[];
+
                 // Load data in shared memory
-                partialCumSum[threadIdx.x*2] = input[globalThreadID*2];
-                partialCumSum[(threadIdx.x *2) +1] = input[(globalThreadID * 2) + 1];
+                partialCumSum[threadIdx.x*2]     = input[globalThreadID*2];
+                partialCumSum[threadIdx.x*2 + 1] = input[globalThreadID*2 + 1];
 
                 // Reduction Phase
-                for (int stride = 1; stride < blockDim.x*2; stride *= 2) {
+                int stride;
+                for (stride = 1; stride <= blockDim.x; stride *= 2) {
                     __syncthreads();
                     int index = (threadIdx.x + 1) * (stride * 2) - 1;
                     if(index < blockDim.x*2) {
@@ -86,7 +97,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 }
 
                 // Reverse Phase
-                for (int stride = blockDim.x*2/2; stride > 0; stride /= 2) {
+                for (; stride > 0; stride /= 2) {
                     __syncthreads();
                     int index = (threadIdx.x + 1) * (stride * 2) - 1;
                     if(index + stride < blockDim.x*2) {
@@ -96,10 +107,13 @@ class GpuCumsum(CumsumOp, GpuOp):
 
                 // Wtite the final output to global memory
                 __syncthreads();
-                output[globalThreadID * 2] = partialCumSum[threadIdx.x * 2];
-                output[(globalThreadID * 2) + 1] = partialCumSum[(threadIdx.x * 2) + 1];
-                if (threadIdx.x == blockDim.x - 1) {
-                    blockSum[blockIdx.x] = partialCumSum[(threadIdx.x * 2) + 1];
+                output[globalThreadID*2]     = partialCumSum[threadIdx.x*2];
+                output[globalThreadID*2 + 1] = partialCumSum[threadIdx.x*2 + 1];
+
+                if (blockSum != NULL){
+                    if (threadIdx.x == blockDim.x - 1) {
+                        blockSum[blockIdx.x] = partialCumSum[threadIdx.x*2 + 1];
+                    }
                 }
             }
         }
@@ -134,46 +148,95 @@ class GpuCumsum(CumsumOp, GpuOp):
             }
 
             { // Namespace for kernel calls //
-                int blockSize = min((int)shape[0], %(max_threads_dim0)s/2);
+                int numElements = shape[0] - (shape[0] %% 2);
+                int blockSize = ceil( min(numElements, 2*%(max_threads_dim0)s) / 2.);
                 int dimGridX = ceil(shape[0] / (2.0*blockSize));
-                npy_intp WARDFRT[1] = { dimGridX };
-                CudaNdarray * deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(1, WARDFRT);
+                npy_intp shapeBlockSum[1] = { dimGridX };
+                CudaNdarray * deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(1, shapeBlockSum);
 
                 dim3 dimBlock(blockSize, 1, 1);
                 dim3 dimGrid(dimGridX, 1, 1);
+                int sharedBytes = (2*blockSize) * sizeof(float);
 
-                blockCumSum_1D_%(nodename)s<<<dimGrid, dimBlock, (2*blockSize) * sizeof(float)>>>
+/*
+                printf("N: %%d (%%d)\\n", shape[0], numElements);
+                printf("max_threads_dim0: %%d\\n", %(max_threads_dim0)s);
+                printf("N_sum: %%d\\n", shapeBlockSum[0]);
+                printf("dimGridX: %%d\\n", dimGridX);
+                printf("dimBlock: (%%d, %%d, %%d)\\n", dimBlock.x, dimBlock.y, dimBlock.z);
+                printf("dimGrid: (%%d, %%d)\\n", dimGrid.x, dimGrid.y);
+                printf("sharedBytes: %%d bytes\\n", sharedBytes);
+*/
+
+                blockCumSum_1D_%(nodename)s<<<dimGrid, dimBlock, sharedBytes>>>
                 (
                     CudaNdarray_DEV_DATA(%(x)s),
                     CudaNdarray_DEV_DATA(%(z)s),
-                    shape[0],
+                    numElements,
                     CudaNdarray_DEV_DATA(deviceBlockSum)
                 );
 
+                cudaError_t sts = cudaGetLastError();
+                if (cudaSuccess != sts)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %%s: %%s. (grid: %%i x %%i;"
+                                 " block: %%i x %%i x %%i; shared: %%i)\\n",
+                        "blockCumSum_1D_%(nodename)s",
+                        cudaGetErrorString(sts),
+                        dimGrid.x,
+                        dimGrid.y,
+                        dimBlock.x,
+                        dimBlock.y,
+                        dimBlock.z,
+                        sharedBytes);
+                    %(fail)s;
+                }
+
                 if (dimGridX > 1) {
+                    dim3 dimBlockBlockSum(ceil(dimGridX/2.0), 1, 1);
+                    dim3 dimGridBlockSum(1, 1, 1);  // Suppose we only had less than 2048 grids initially.
+                    int sharedBytesBlockSum = (2*dimBlockBlockSum.x) * sizeof(float);
+
+                    //printf("dimBlockBlockSum: (%%d, %%d, %%d)\\n", dimBlockBlockSum.x, dimBlockBlockSum.y, dimBlockBlockSum.z);
+                    //printf("dimGridBlockSum: (%%d, %%d)\\n", dimGridBlockSum.x, dimGridBlockSum.y);
+                    //printf("sharedBytesBlockSum: %%d bytes\\n", sharedBytesBlockSum);
+
                     cudaThreadSynchronize();
-                    dim3 dimGridBlockSum(1, 1, 1);
-                    dim3 dimBlockBlockSum(dimGridX-1, 1, 1);
-                    blockCumSum_1D_%(nodename)s<<<dimGridBlockSum, dimBlockBlockSum, (2*(dimGridX-1)) * sizeof(float)>>>
+
+                    blockCumSum_1D_%(nodename)s<<<dimGridBlockSum, dimBlockBlockSum, sharedBytesBlockSum>>>
                     (
                         CudaNdarray_DEV_DATA(deviceBlockSum),
                         CudaNdarray_DEV_DATA(deviceBlockSum),
-                        dimGridX-1,
+                        dimGridX,
                         NULL
                     );
 
                     cudaThreadSynchronize();
+
                     dim3 dimGrid(dimGridX-1, 1, 1);
                     dim3 dimBlock(blockSize, 1, 1);
                     finalCumSum_1D_%(nodename)s<<<dimGrid, dimBlock>>>
                     (
                         CudaNdarray_DEV_DATA(%(z)s),
-                        CudaNdarray_DEV_DATA(deviceBlockSum)
+                        CudaNdarray_DEV_DATA(deviceBlockSum),
+                        numElements
                     );
                 }
 
-                cudaDeviceSynchronize();
+                // If shape[0] is odd, the last element is compute manually
+                if (shape[0] != numElements){
+                    cudaThreadSynchronize();
+                    cumadd_%(nodename)s<<<dim3(1,1,1), dim3(1,1,1)>>>
+                    (
+                        CudaNdarray_DEV_DATA(%(x)s),
+                        CudaNdarray_DEV_DATA(%(z)s),
+                        shape[0]-2,
+                        shape[0]-1
+                    );
+                }
 
+                cudaThreadSynchronize();
             }
         """ % locals()
 
@@ -183,12 +246,17 @@ class GpuCumsum(CumsumOp, GpuOp):
 def gpu_cumsum(x, axis=None):
     return GpuCumsum(axis)(x)
 
+from theano.sandbox.cuda import GpuFlatten
 
 @local_optimizer([CumsumOp])
 def use_gpu_cumsum(node):
     if type(node.op) is CumsumOp and node.inputs[0].dtype == 'float32':
-        return [host_from_gpu(gpu_cumsum(gpu_from_host(node.inputs[0]),
-                                         axis=node.op.axis))]
+
+        x = gpu_from_host(node.inputs[0])
+        if node.op.axis is None and x.ndim > 1:
+            x = GpuFlatten()(x)
+
+        return [host_from_gpu(gpu_cumsum(x, axis=node.op.axis))]
 
 if cuda_available:
     register_gpu_opt()(use_gpu_cumsum)
