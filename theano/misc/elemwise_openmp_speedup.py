@@ -36,19 +36,19 @@ if __name__ == '__main__':
     (cheapTimeOpenmp, costlyTimeOpenmp) = runScript(N=options.N)
 
     if cheapTime > cheapTimeOpenmp:
-        cheapSpeed = (cheapTime - cheapTimeOpenmp) / cheapTime
+        cheapSpeed = cheapTime / cheapTimeOpenmp
         cheapSpeedstring = "speedup"
     else:
-        cheapSpeed = (cheapTimeOpenmp - cheapTime) / cheapTimeOpenmp
+        cheapSpeed = cheapTimeOpenmp / cheapTime
         cheapSpeedstring = "slowdown"
 
     if costlyTime > costlyTimeOpenmp:
-        costlySpeed = (costlyTime - costlyTimeOpenmp) / costlyTime
+        costlySpeed = costlyTime / costlyTimeOpenmp
         costlySpeedstring = "speedup"
     else:
-        costlySpeed = (costlyTimeOpenmp - costlyTime) / costlyTimeOpenmp
+        costlySpeed = costlyTimeOpenmp / costlyTime
         costlySpeedstring = "slowdown"
 
-    print "Fast op time without openmp %fs with openmp %fs %s %2.2f%%" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed*100)
+    print "Fast op time without openmp %fs with openmp %fs %s %2.2f" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed)
     
-    print "Slow op time without openmp %fs with openmp %fs %s %2.2f%%" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed*100)
+    print "Slow op time without openmp %fs with openmp %fs %s %2.2f" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed)
