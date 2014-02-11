@@ -510,10 +510,10 @@ class GpuSoftmax (Op):
             } 
         }
         {
-            int n_blocks = std::min((int)PyGpuArray_DIMS(%(x)s)[0],
-                                    32 * 1024);
+            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
+                                    (size_t)(32 * 1024));
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min((int)PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(dtype_x)s);
 
@@ -716,9 +716,9 @@ class GpuSoftmaxWithBias (Op):
             } 
         }
         {
-            int n_blocks = std::min((int)PyGpuArray_DIMS(%(x)s)[0], 32*1024);
+            int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)(32*1024));
 //TODO, detect the maximum number of thread per block.
-            int n_threads = std::min((int)PyGpuArray_DIMS(%(x)s)[1], 512);
+            int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(dtype_x)s);
             if (PyGpuArray_DIMS(%(x)s)[0] > 0)
