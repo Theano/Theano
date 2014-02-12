@@ -19,6 +19,8 @@ import theano
 from theano import config
 from theano.tensor.extra_ops import cumsum
 
+from mlpython.misc.utils import Timer
+
 class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     mode = mode_with_gpu
     op = GpuCumsum
@@ -28,30 +30,47 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         ### Test 1D case ###
         x = T.vector('x')
         f = theano.function([x], cumsum(x))
-
+        
         # Even number of elements
         a = np.random.random((18,)).astype(config.floatX)
+        print "\nEven number of elements"
+        print f(a)
+        print np.cumsum(a)
         assert np.allclose(np.cumsum(a), f(a))
 
         # Odd number of elements
         a = np.random.random((7,)).astype(config.floatX)
+        print "\nOdd number of elements"
+        print f(a)
+        print np.cumsum(a)
         assert np.allclose(np.cumsum(a), f(a))
 
         # Use multiple GPU threadblocks
         a = np.random.random((2048+1,)).astype(config.floatX)
+        print "\nUse multiple GPU threadblocks"
+        print f(a)
+        print np.cumsum(a)
+        assert np.allclose(np.cumsum(a), f(a))
+
+        # Use multiple GPU threadblocks
+        a = np.random.random((2048*80+1,)).astype(config.floatX)
+        print "\nUse multiple GPU threadblocks 2"
+        print f(a)
+        print np.cumsum(a)
         assert np.allclose(np.cumsum(a), f(a))
 
         # Use multiple GPU gridblocks
-        a = np.random.random((2048*2048+1,)).astype(config.floatX)
+        #a = (np.random.random((2048*2048+1,)).astype(config.floatX) - 0.5) * 10.
+        a = np.floor(np.random.random((2048*2048+1,)) * 10).astype(config.floatX)
+        #a = np.ones((2048*2048+1,)).astype(config.floatX)
+        print "\nUse multiple GPU gridblocks"
+        print f(a)
+        print np.cumsum(a)
         assert np.allclose(np.cumsum(a), f(a))
 
-        # #x = T.tensor3('x')
-        # #a = np.random.random((3, 5, 2)).astype(config.floatX)
         # x = T.vector('x')
-        # a = np.random.random((6,)).astype(config.floatX)
-
         # f = theano.function([x], cumsum(x))
-        # a = (np.ones(2048*2048+1)+1).astype(config.floatX)
+        # a = (np.ones(0)+1).astype(config.floatX)
         # print ""
         # print f(a)
         # print np.cumsum(a)
@@ -60,10 +79,13 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
         # #for i in range(3000-1,3000*2):
         # #for i in range(3,2048*100,2048):
-        # i = 145000;
+        # i = 150000;
+        # import time
+        # start = time.time()
         # while True:
         #     #a = np.random.random((i,)).astype(config.floatX)
         #     a = np.ones((i,), dtype=config.floatX)
+
         #     fa = f(a)
         #     npa = np.cumsum(a)
 
@@ -74,6 +96,12 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         #         assert False
 
         #     if i % 1000 == 0:
-        #        print i
+        #         print i
+        #         print time.time() - start
+        #         start = time.time()
+        #         #i-=1000
+
+        #     if i == 80000:
+        #         f = theano.function([x], cumsum(x))
 
         #     i += 1
