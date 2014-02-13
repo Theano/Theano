@@ -124,12 +124,13 @@ def inline_reduce_prod(N, buf, pos, count):
 
 @code_version((2,) + inline_reduce_max.code_version +
               inline_reduce_sum.code_version)
-def inline_softmax(N, buf, buf2, threadPos, threadCount):
+def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
     """
 
     :param N: length of the buffer
     :param threadPos: index of executing thread
     :param threadCount: number of executing threads
+    :param dtype: dtype of the softmax's output
 
     :Precondition: buf and buf2 contain two identical copies of the input
         to softmax
@@ -144,7 +145,7 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
             #get max of buf (trashing all but buf[0])
             inline_reduce_max(N, buf, threadPos, threadCount),
             '__syncthreads()',
-            'float row_max = ' + buf + '[0]',
+            ('npy_%s row_max = ' + buf + '[0]') % dtype,
             '__syncthreads()',
             'for(int __i=' + threadPos + '; __i<' + N +
                   '; __i+=' + threadCount + '){',
@@ -154,7 +155,7 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
             '__syncthreads()',
             inline_reduce_sum(N, buf, threadPos, threadCount),
             '__syncthreads()',
-            'float row_sum = ' + buf + '[0]',
+            ('npy_%s row_sum = ' + buf + '[0]') % dtype,
             '__syncthreads()',
             # divide each exp() result by the sum to complete the job.
             'for(int __i=' + threadPos + '; __i<' + N +
@@ -168,15 +169,16 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
 @code_version((1,))
 def inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
                                manner_fn, manner_init,
-                               b='', stride_b=''):
+                               b='', stride_b='', dtype='float32'):
     """Return C++ code for a function that reduces a contiguous buffer.
 
     :param N: length of the buffer
-    :param buf: buffer pointer of size warpSize * sizeof(float)
+    :param buf: buffer pointer of size warpSize * sizeof(dtype)
     :param pos: index of executing thread
     :param count: number of executing threads
     :param b: Optional, pointer to the bias
     :param stride_b: Optional, the stride of b if b is provided
+    :param dtype: Optional, the dtype of the output
 
     :param manner_fn: a function that accepts strings of arguments a
         and b, and returns c code for their reduction. (Example:
@@ -214,7 +216,7 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
     {
         // This function trashes buf[1..n_threads],
         // leaving the reduction result in buf[0].
-        float red = %(init)s;
+        npy_%(dtype)s red = %(init)s;
         #pragma unroll 16
         for (int i = %(pos)s + %(count)s; i<%(N)s; i += %(count)s){
           red = %(loop_line)s;
@@ -248,11 +250,11 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
 
 @code_version(inline_reduce_fixed_shared.code_version)
 def inline_reduce_fixed_shared_max(N, buf, x, stride_x, pos, count,
-                                   b='', stride_b=''):
+                                   b='', stride_b='', dtype='float32'):
     return inline_reduce_fixed_shared(N, buf, x, stride_x, pos, count,
                                       lambda a, b: "max(%s, %s)" % (a, b),
                                       lambda a: a,
-                                      b, stride_b)
+                                      b, stride_b, dtype)
 
 
 @code_version((1,) + inline_reduce_max.code_version +
@@ -260,11 +262,11 @@ def inline_reduce_fixed_shared_max(N, buf, x, stride_x, pos, count,
 def inline_softmax_fixed_shared(N, buf, x, stride_x,
                                 sm, sm_stride,
                                 threadPos, threadCount,
-                                b='', stride_b=''):
+                                b='', stride_b='', dtype="float32"):
     """
 
     :param N: length of the buffer, atleast waprSize(32).
-    :param buf: a shared memory buffer of size warpSize * sizeof(float)
+    :param buf: a shared memory buffer of size warpSize * sizeof(dtype)
     :param x: a ptr to the gpu memory where the row is stored
     :param stride_x: the stride between each element in x
     :param sm: a ptr to the gpu memory to store the result
@@ -273,6 +275,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x,
     :param threadCount: number of executing threads
     :param b: Optional, pointer to the bias
     :param stride_b: Optional, the stride of b if b is provided
+    :param dtype: Optional, the dtype of the softmax's output if not float32
 
     :Precondition: buf is empty
     :Postcondition: buf[0] contains the softmax,
@@ -285,16 +288,17 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x,
     ret = [
         #get max of buf (trashing all but buf[0])
         inline_reduce_fixed_shared_max(N, buf, x, stride_x,
-                                       threadPos, threadCount, b, stride_b),
+                                       threadPos, threadCount, b, stride_b,
+                                       dtype),
         '__syncthreads()',
-        'float row_max = ' + buf + '[0]',
+        ('npy_%s row_max = ' + buf + '[0]') % dtype,
         '__syncthreads()',
         inline_reduce_fixed_shared(N, buf, x, stride_x, threadPos, threadCount,
                                    lambda a, b: "%s + %s" % (a, b),
                                    lambda a: "exp(%s - row_max)" % a,
-                                   b, stride_b),
+                                   b, stride_b, dtype),
         '__syncthreads()',
-        'float row_sum = ' + buf + '[0]',
+        ('npy_%s row_sum = ' + buf + '[0]') % dtype,
         '__syncthreads()',
         "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
         ]
