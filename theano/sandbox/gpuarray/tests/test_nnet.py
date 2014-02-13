@@ -237,7 +237,7 @@ def test_softmax_float32():
     softmax_unittest_template('float32')
 
 def test_softmax_float64():
-    softmax_unittest_template('float32')
+    softmax_unittest_template('float64')
 
 def softmax_unittest_template(dtypeInput):
     """
