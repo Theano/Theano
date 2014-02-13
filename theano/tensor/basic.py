@@ -646,7 +646,7 @@ def get_scalar_constant_value(v):
                 # We put this check in case there is change in the future
                 python_all(var.ndim == 0 for var in
                            v.owner.inputs[0].owner.inputs) and
-                len(v.owner.op.idx_list) == 1 and
+                len(v.owner.op.idx_list) == 1):
                 idx = v.owner.op.idx_list[0]
                 if isinstance(idx, gof.Type):
                     idx = get_scalar_constant_value(v.owner.inputs[1])
