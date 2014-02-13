@@ -593,13 +593,13 @@ def get_scalar_constant_value(v):
             if isinstance(v.owner.inputs[0], TensorConstant):
                 indices = list(reversed(list(v.owner.inputs[1:])))
                 def conv(e):
-                    if isintance(e, gof.Type):
-                        return get_constant_scalar_value(indices.pop())
+                    if isinstance(e, gof.Type):
+                        return get_scalar_constant_value(indices.pop())
                     elif isinstance(e, slice):
                         return slice(conv(e.start),
                                      conv(e.stop),
                                      conv(e.step))
-                    elif isintance(e, (int, long, numpy.integer)):
+                    elif isinstance(e, (int, long, numpy.integer)):
                         return int(e)
                     else:
                         raise NotScalarConstantError(v)
