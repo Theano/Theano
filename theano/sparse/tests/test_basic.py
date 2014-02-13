@@ -1226,6 +1226,7 @@ class UsmmTests(unittest.TestCase):
         self.z = numpy.asarray(self.rng.uniform(-1, 1, z_size),
                                dtype=theano.config.floatX)
 
+    # this is slow, but it's the only test for the op.
     def test(self):
         def mat(format, name, dtype):
             if format == 'dense':
@@ -2069,6 +2070,7 @@ class CastTester(utt.InferShapeTester):
     def setUp(self):
         super(CastTester, self).setUp()
 
+    # slow but only test
     def test_cast(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:

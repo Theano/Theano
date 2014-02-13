@@ -407,13 +407,6 @@ class TestBartlett(utt.InferShapeTester):
         self._compile_and_check([x], [self.op(x)], [1], self.op_class)
 
 
-if __name__ == "__main__":
-    t = TestBartlett('setUp')
-    t.setUp()
-    t.test_perform()
-    t.test_infer_shape()
-
-
 class TestFillDiagonal(utt.InferShapeTester):
 
     rng = numpy.random.RandomState(43)
@@ -470,11 +463,3 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class,
                                 warn=False)
-
-if __name__ == "__main__":
-    utt.unittest.main()
-    t = TestFillDiagonal('setUp')
-    t.setUp()
-    t.test_perform()
-    t.test_gradient()
-    t.test_infer_shape()

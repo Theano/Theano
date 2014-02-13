@@ -885,9 +885,9 @@ if 0: # old code still to be ported from ProfileMode
         print 'Theano fct call %.3fs %.1f%%' % (total_fct_time,
                                                 total_fct_time / total_time *
                                                 100)
-        print '   Theano Op time (included in fct call, Time spent running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)' % (local_time,
-                                                                                                                                  local_time / total_time * 100,
-                                                                                                                                  time_pr_in_fct)
+        print ('   Theano Op time (included in fct call, Time spent '
+               'running thunks) %.3fs %.1f%%(of total) %.1f%%(of fct call)' %
+               (local_time, local_time / total_time * 100, time_pr_in_fct))
         print 'Other time since import %.3fs %.1f%%'%(other_time,other_time/total_time*100)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
 

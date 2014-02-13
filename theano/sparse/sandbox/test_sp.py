@@ -1,4 +1,5 @@
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import sys
 import time
 import unittest
@@ -128,6 +129,7 @@ class TestSP(unittest.TestCase):
         #profmode.print_summary()
 
 
+    @attr('slow')
     def test_sparse(self):
 
 #        print '\n\n*************************************************'

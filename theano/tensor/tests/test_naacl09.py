@@ -12,6 +12,8 @@ import sys
 from theano.tests import unittest_tools
 from numpy.testing.noseclasses import KnownFailureTest
 
+from nose.plugins.attrib import attr
+
 
 def cross_entropy(target, output, axis=1):
     """
@@ -557,6 +559,7 @@ def create_realistic(window_size=3,  # 7,
     return model
 
 
+@attr('slow')
 def test_naacl_model(iters_per_unsup=3, iters_per_sup=3,
         optimizer=None, realistic=False):
     #print "BUILDING MODEL"
@@ -643,13 +646,7 @@ def jtest_main():
     test_naacl_model(optimizer, 10, 10, realistic=False)
 
 
-def real_main():
-    test_naacl_model()
-
-
 def profile_main():
-    # This is the main function for profiling
-    # We've renamed our original main() above to real_main()
     import cProfile
     import pstats
     from theano.compat.six import StringIO
@@ -664,5 +661,4 @@ def profile_main():
     # stats.print_callers()
 
 if __name__ == '__main__':
-    #real_main()
     profile_main()
