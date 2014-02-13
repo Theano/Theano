@@ -169,13 +169,19 @@ class GpuElemwise(HideC, Elemwise):
         return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
 
     def c_headers(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
                 '<compyte/ext_cuda.h>']
 
     def c_compiler(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         return NVCC_compiler
 
     def c_support_code_apply(self, node, nodename):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         # This is useless by itself, but will serve an eventual c_code
         # implementation
         k = self.generate_kernel(node, nodename)
@@ -214,9 +220,13 @@ class GpuElemwise(HideC, Elemwise):
         return '\n'.join(res)
 
     def c_init_code(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         nd = node.outputs[0].ndim
         fail = sub["fail"]
         initial_dims = ','.join('1' for i in xrange(nd))
