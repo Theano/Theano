@@ -1022,7 +1022,12 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         # Try to apply inc_subtensor on inner_x.
         # If it works, there is no need to reshape, as the inc_subtensor
         # will have the same shape as inner_x, which is what we want.
-        inner_incsubtensor = inc_subtensor(inner_x, y.flatten(),
+
+        # We need to have a shape that is equal or lower to inner_x
+        if inner_x.ndim < y.ndim:
+            y = y.reshape(inner_x.shape)
+
+        inner_incsubtensor = inc_subtensor(inner_x, y,
                 inplace=inplace,
                 set_instead_of_inc=set_instead_of_inc,
                 tolerate_inplace_aliasing=tolerate_inplace_aliasing)
