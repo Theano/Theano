@@ -805,6 +805,12 @@ class OpenMPOp(Op):
             openmp = theano.config.openmp
         self.openmp = openmp
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        # If we unpickle old op
+        if not hasattr(self, "openmp"):
+            self.openmp = False
+
     def c_compile_args(self):
         self.update_self_openmp()
         if self.openmp:

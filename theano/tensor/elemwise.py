@@ -498,7 +498,7 @@ class Elemwise(OpenMPOp):
         return d
 
     def __setstate__(self, d):
-        self.__dict__.update(d)
+        super(Elemwise, self).__setstate__(d)
         self.ufunc = None
         self.nfunc = None
         if getattr(self, 'nfunc_spec', None):
