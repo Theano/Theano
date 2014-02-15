@@ -2,6 +2,7 @@
 """
 import os
 import copy_reg
+import warnings
 
 import numpy
 
@@ -487,7 +488,13 @@ theano.compile.register_deep_copy_op_c_code(
 # equal the pickled version, and the cmodule cache is not happy with
 # the situation.
 def CudaNdarray_unpickler(npa):
-    return cuda.CudaNdarray(npa)
+    if cuda:
+        return cuda.CudaNdarray(npa)
+    else:
+        # directly return numpy array
+        warnings.warn("CUDA not found. Unpickling CudaNdarray as numpy.ndarray")
+        return npa
+
 copy_reg.constructor(CudaNdarray_unpickler)
 
 
