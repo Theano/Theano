@@ -1,8 +1,6 @@
 import unittest
-import cPickle
 import numpy
 from numpy.testing.decorators import skipif
-import os.path
 
 import theano
 from theano import tensor
@@ -11,9 +9,6 @@ from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
 import theano.sandbox.cuda as cuda
 
-
-if cuda_available:
-    from theano.sandbox.cuda import CudaNdarray
 
 @skipif(not cuda_available, msg='Optional package cuda disabled')
 def test_float32_shared_constructor():
@@ -126,20 +121,3 @@ class T_updates(unittest.TestCase):
         output_func = theano.function(inputs=[], outputs=[],
                                       updates=[(output_var, up)])
         output_func()
-
-
-def test_unpickle_cudandarray_as_numpy_ndarray():
-    # testfile created on cuda enabled machine using
-    # >>> with open('CudaNdarray.pkl', 'wb') as fp:
-    # >>> cPickle.dump(theano.sandbox.cuda.CudaNdarray(np.array([-42.0], dtype=np.float32)), fp)
-
-    testfile_dir = os.path.dirname(os.path.realpath(__file__))
-    with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
-        mat = cPickle.load(fp)
-
-        if cuda_available:
-            assert isinstance(mat, CudaNdarray)
-        else:
-            assert isinstance(mat, numpy.ndarray)
-
-        assert mat[0] == -42.0
