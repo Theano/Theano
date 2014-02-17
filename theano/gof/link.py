@@ -114,6 +114,9 @@ def raise_with_op(node, thunk=None, exc_info=None):
 
     detailed_err_msg = "\nApply node that caused the error: " + str(node)
 
+    types = [getattr(ipt, 'type', 'No type') for ipt in node.inputs]
+    detailed_err_msg += "\nInputs types: %s\n" % types
+
     if thunk is not None:
         if hasattr(thunk, 'inputs'):
             shapes = [getattr(ipt[0], 'shape', 'No shapes')
@@ -131,11 +134,8 @@ def raise_with_op(node, thunk=None, exc_info=None):
             strides = "So we can't access the strides of inputs values"
             scalar_values = "And can't print its inputs scalar value"
 
-        types = [getattr(ipt, 'type', 'No type')
-                 for ipt in node.inputs]
-        detailed_err_msg += ("\nInputs shapes: %s" % shapes +
+        detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
-                             "\nInputs types: %s" % types +
                              "\nInputs scalar values: %s\n" % scalar_values)
     else:
         detailed_err_msg += ("\nHINT: Use another linker then the c linker to"
