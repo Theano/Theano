@@ -138,7 +138,7 @@ def raise_with_op(node, thunk=None, exc_info=None):
                              "\nInputs types: %s" % types +
                              "\nInputs scalar values: %s" % scalar_values)
     else:
-        detailed_err_msg += ("\nUse another linker then the c linker to"
+        detailed_err_msg += ("\nHINT: Use another linker then the c linker to"
                              " have the inputs shapes and strides printed.")
 
     if theano.config.exception_verbosity == 'high':
@@ -147,7 +147,8 @@ def raise_with_op(node, thunk=None, exc_info=None):
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n" + f.getvalue()
     else:
-        detailed_err_msg += ("\nUse the Theano flag 'exception_verbosity=high'"
+        detailed_err_msg += ("\nHINT: Use the Theano flag"
+                             " 'exception_verbosity=high'"
                              " for a debugprint of this apply node.")
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg)
