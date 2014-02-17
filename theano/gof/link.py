@@ -136,16 +136,30 @@ def raise_with_op(node, thunk=None, exc_info=None):
         detailed_err_msg += ("\nInputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
                              "\nInputs types: %s" % types +
-                             "\nInputs scalar values: %s" % scalar_values)
+                             "\nInputs scalar values: %s\n" % scalar_values)
     else:
         detailed_err_msg += ("\nHINT: Use another linker then the c linker to"
                              " have the inputs shapes and strides printed.")
+
+    # Print node backtrace
+    tr = getattr(node.tag, 'trace', None)
+    if tr:
+        sio = StringIO.StringIO()
+        traceback.print_list(tr, sio)
+        tr = sio.getvalue()
+        detailed_err_msg += "\nBacktrace when the node is created:"
+        detailed_err_msg += str(tr)
+    else:
+        detailed_err_msg += (
+            "\nHINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags optimizer=fast_compile\n")
 
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
-        detailed_err_msg += "\nDebugprint of the apply node: \n" + f.getvalue()
+        detailed_err_msg += "\nDebugprint of the apply node: \n"
+        detailed_err_msg += f.getvalue()
+
     else:
         detailed_err_msg += ("\nHINT: Use the Theano flag"
                              " 'exception_verbosity=high'"
