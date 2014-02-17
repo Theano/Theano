@@ -557,7 +557,7 @@ def get_scalar_constant_value(v):
             data = v.data
         return numpy_scalar(data)
 
-    if v.owner:
+    if getattr(v, 'owner', None):
         if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                    compile.ops.OutputGuard,
                                    compile.DeepCopyOp)):

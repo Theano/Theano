@@ -406,29 +406,28 @@ class Subtensor(Op):
         # infer the broadcasting pattern
         padded = (idx_list
                 + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
+        idx_padded = get_idx_list((None,)+inputs, padded)
         broadcastable = []
-        for i, (p, bc) in enumerate(izip(padded, x.type.broadcastable)):
+        for i, (p, bc) in enumerate(izip(idx_padded, x.type.broadcastable)):
             if isinstance(p, slice):
-                if bc and p.start in [None, 0]:
-                    # No need to check step when there is only
-                    # one element.
-                    # We could call get_canonical_form_slice() to
-                    # catch more broadcast case. I let this to
-                    # later.
+                # figure out the value of start and stop (if they are constant)
+                try:
+                    if p.start is None:
+                        start = 0
+                    else:
+                        start = get_scalar_constant_value(p.start)
                     if p.stop is None:
-                        broadcastable.append(bc)
-                        continue
-                    try:
-                        if p.start is None:
-                            start = 0
-                        else:
-                            start = get_scalar_constant_value(p.start)
+                        stop = 1
+                    else:
                         stop = get_scalar_constant_value(p.stop)
-                        if stop > start:
-                            broadcastable.append(True)
-                            continue
-                    except theano.tensor.NotScalarConstantError:
-                        pass
+                except theano.tensor.NotScalarConstantError:
+                    start = None
+                    stop = None
+
+                if bc and start == 0 and stop > start:
+                    broadcastable.append(True)
+                    continue
+
                 broadcastable.append(False)
 
         return gof.Apply(self,
