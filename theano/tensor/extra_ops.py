@@ -72,6 +72,7 @@ class CumsumOp(theano.Op):
                     %(fail)s;
                 {
                     PyArray_CumSum(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
         else:
@@ -86,13 +87,14 @@ class CumsumOp(theano.Op):
                     %(fail)s;
                 {
                     PyArray_CumSum(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -179,6 +181,7 @@ class CumprodOp(theano.Op):
                     %(fail)s;
                 {
                     PyArray_CumProd(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
         else:
@@ -193,13 +196,14 @@ class CumprodOp(theano.Op):
                     %(fail)s;
                 {
                     PyArray_CumProd(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
