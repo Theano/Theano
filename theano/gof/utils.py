@@ -12,7 +12,13 @@ def add_tag_trace(thing):
     limit = config.traceback.limit
     if limit == -1:
         limit = None
-    thing.tag.trace = traceback.extract_stack(limit=limit)[:-1]
+    tr = traceback.extract_stack(limit=limit)[:-1]
+    # Different python version use different sementic for
+    # limit. python 2.7 include the call to extrack_stack. The -1 get
+    # rid of it.  We also want to get rid of the add_tag_trace call.
+    if tr and "add_tag_trace" in tr[-1][-1]:
+        tr = tr[:-1]
+    thing.tag.trace = tr
     return thing
 
 

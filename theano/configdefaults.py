@@ -259,7 +259,9 @@ AddConfigVar('gpuelemwise.sync',
 
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
-             IntParam(5),
+# We default to 6 to be able to know where v1 + v2 is created in the
+# user script. The bigger this number is, the more run time it takes.
+             IntParam(6),
              in_c_key=False)
 
 AddConfigVar('experimental.mrg',
