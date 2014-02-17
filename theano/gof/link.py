@@ -56,14 +56,14 @@ sys.excepthook = thunk_hook
 
 
 # TODO: Make this work with linker defined schedule
-def raise_with_op(op, thunk=None, exc_info=None):
+def raise_with_op(node, thunk=None, exc_info=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.
 
     Parameters
     ----------
-    op : Apply node
+    node : Apply node
         The Apply node object that resulted in the raised exception.
     exc_info : tuple, optional
         A tuple containing the exception type, exception object and
@@ -94,16 +94,16 @@ def raise_with_op(op, thunk=None, exc_info=None):
         # print a simple traceback from KeyboardInterrupt
         raise exc_type, exc_value, exc_trace
     try:
-        trace = op.tag.trace
+        trace = node.tag.trace
     except AttributeError:
         try:
-            trace = op.op.tag.trace
+            trace = node.op.tag.trace
         except AttributeError:
             trace = ()
     exc_value.__thunk_trace__ = trace
-    exc_value.__op_instance__ = op
-    if op in op.fgraph.toposort():
-        exc_value.__applynode_index__ = op.fgraph.toposort().index(op)
+    exc_value.__op_instance__ = node
+    if node in node.fgraph.toposort():
+        exc_value.__applynode_index__ = node.fgraph.toposort().index(node)
     else:
         exc_value.__applynode_index__ = None
 
@@ -112,7 +112,7 @@ def raise_with_op(op, thunk=None, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
-    detailed_err_msg = "\nApply node that caused the error: " + str(op)
+    detailed_err_msg = "\nApply node that caused the error: " + str(node)
 
     if thunk is not None:
         if hasattr(thunk, 'inputs'):
@@ -132,7 +132,7 @@ def raise_with_op(op, thunk=None, exc_info=None):
             scalar_values = "And can't print its inputs scalar value"
 
         types = [getattr(ipt, 'type', 'No type')
-                 for ipt in op.inputs]
+                 for ipt in node.inputs]
         detailed_err_msg += ("\nInputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
                              "\nInputs types: %s" % types +
@@ -143,7 +143,7 @@ def raise_with_op(op, thunk=None, exc_info=None):
 
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
-        theano.printing.debugprint(op, file=f, stop_on_name=True,
+        theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n" + f.getvalue()
     else:
