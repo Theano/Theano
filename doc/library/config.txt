@@ -216,7 +216,7 @@ import theano and print the config variable, as in:
    Positive int value, default: 200000.
 
    This specifies the vectors minimum size for which elemwise ops
-   use openmp, if openmp is enable.
+   use openmp, if openmp is enabled.
 
 .. attribute:: cast_policy
 
