@@ -46,6 +46,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
             node_.op.max_threads_dim0 = prop['maxThreadsDim0']
+            node_.op.max_grid_size1 = prop['maxGridSize1']
         return super(GpuCumsum, node_.op).make_thunk(node_, storage_map,
                                                      compute_map, no_recycling)
 
@@ -56,149 +57,74 @@ class GpuCumsum(CumsumOp, GpuOp):
     def c_support_code_apply(self, node, nodename):
         axis = self.axis
         return """
-        __global__
-        void k_finalCumSum_1D_%(nodename)s(float* output, float* blockSum, int numElements) {
-            int globalThreadID = (blockIdx.x + 1) * blockDim.x + threadIdx.x;
-
-            if (globalThreadID < ceil(numElements/2.0)) {
-                const float currentBlockSum = blockSum[blockIdx.x];
-
-                output[globalThreadID*2]     += currentBlockSum;
-                output[globalThreadID*2 + 1] += currentBlockSum;
-            }
-        }
-
-        __global__
-        void k_cumadd_%(nodename)s(float* input, float* output, int beforeLastElementIdx, int lastElementIdx) {
-            output[lastElementIdx] = input[lastElementIdx] + output[beforeLastElementIdx];
-        }
-
-        __global__
-        void k_blockCumSum_1D_%(nodename)s(float* input, float* output, int numElements, float* blockSum) {
-            int globalThreadID = blockIdx.x * blockDim.x + threadIdx.x;
-
-            if (globalThreadID < ceil(numElements/2.0)) {
-                extern __shared__ float partialCumSum[];
-
-                // Load data in shared memory
-                partialCumSum[threadIdx.x*2]     = input[globalThreadID*2];
-                partialCumSum[threadIdx.x*2 + 1] = input[globalThreadID*2 + 1];
-
-                // Reduction Phase
-                int stride;
-                for (stride = 1; stride <= blockDim.x; stride *= 2) {
-                    __syncthreads();
-                    int index = (threadIdx.x + 1) * (stride * 2) - 1;
-                    if(index < blockDim.x*2) {
-                        partialCumSum[index] += partialCumSum[index - stride];
-                    }
-                }
-
-                // Reverse Phase
-                for (; stride > 0; stride /= 2) {
-                    __syncthreads();
-                    int index = (threadIdx.x + 1) * (stride * 2) - 1;
-                    if(index + stride < blockDim.x*2) {
-                        partialCumSum[index + stride] += partialCumSum[index];
-                    }
-                }
-
-                // Write the final output to global memory
+        __device__
+        void k_reductionPhase_%(nodename)s(float* partialCumSum) {
+            for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
                 __syncthreads();
-                output[globalThreadID*2]     = partialCumSum[threadIdx.x*2];
-                output[globalThreadID*2 + 1] = partialCumSum[threadIdx.x*2 + 1];
-
-                if (blockSum != NULL){
-                    if (threadIdx.x == blockDim.x - 1) {
-                        blockSum[blockIdx.x] = partialCumSum[threadIdx.x*2 + 1];
-                    }
+                unsigned int index = (threadIdx.x + 1) * (stride * 2) - 1;
+                if(index < blockDim.x*2) {
+                    partialCumSum[index] += partialCumSum[index - stride];
                 }
             }
         }
 
-        void cumSum_1D_%(nodename)s(CudaNdarray* input, CudaNdarray* output, npy_intp* shape, int maxThreads) {
-
-            if (shape[0] <= 1) {
-                CudaNdarray_CopyFromCudaNdarray(output, input);
-                return;
+        __device__
+        void k_reversePhase_%(nodename)s(float* partialCumSum) {
+            for (unsigned int stride = exp2(ceil(log2((float)blockDim.x))); stride > 0; stride /= 2) {
+                __syncthreads();
+                unsigned int index = (threadIdx.x + 1) * (stride * 2) - 1;
+                if(index + stride < blockDim.x*2) {
+                    partialCumSum[index + stride] += partialCumSum[index];
+                }
             }
-
-            int numElements = shape[0] - (shape[0] %% 2);
-            int blockSize = ceil( min(numElements, 2*maxThreads) / 2.0);
-            int dimGridX = ceil(numElements / (2.0*blockSize));
-            npy_intp shapeBlockSum[1] = { dimGridX };
-            CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(1, shapeBlockSum);
-
-            dim3 dimBlock(blockSize, 1, 1);
-            dim3 dimGrid(dimGridX, 1, 1);
-            int sharedBytes = (2*blockSize) * sizeof(float);
-
-            cudaThreadSynchronize();
-            k_blockCumSum_1D_%(nodename)s<<<dimGrid, dimBlock, sharedBytes>>>
-            (
-                CudaNdarray_DEV_DATA(input),
-                CudaNdarray_DEV_DATA(output),
-                numElements,
-                CudaNdarray_DEV_DATA(deviceBlockSum)
-            );
-
-            if (dimGridX > 1) {
-                // Do a cumsum over the blockSum (recursive).
-                cumSum_1D_%(nodename)s(deviceBlockSum, deviceBlockSum, shapeBlockSum, maxThreads);
-
-                dim3 dimGrid(dimGridX-1, 1, 1);
-                dim3 dimBlock(blockSize, 1, 1);
-                k_finalCumSum_1D_%(nodename)s<<<dimGrid, dimBlock>>>
-                (
-                    CudaNdarray_DEV_DATA(output),
-                    CudaNdarray_DEV_DATA(deviceBlockSum),
-                    numElements
-                );
-            }
-
-            // If shape[0] is odd, the last element is compute manually
-            if (shape[0] != numElements){
-                cudaThreadSynchronize();
-                k_cumadd_%(nodename)s<<<dim3(1,1,1), dim3(1,1,1)>>>
-                (
-                    CudaNdarray_DEV_DATA(input),
-                    CudaNdarray_DEV_DATA(output),
-                    shape[0]-2,
-                    shape[0]-1
-                );
-            }
-
-            cudaFree(CudaNdarray_DEV_DATA(deviceBlockSum));
-            cudaThreadSynchronize();
         }
 
+        __device__
+        void k_fetchData_%(nodename)s(float* partialCumSum, float* input, int globalThreadID, dim3 dataStrides, int dataOffset) {
+            // blockIdx.y represents the # of the current independent cumsum
+            partialCumSum[threadIdx.x*2]     = input[(globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y];
+            partialCumSum[threadIdx.x*2 + 1] = input[(globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y];
+        }
+
+        __device__
+        void k_pushData_%(nodename)s(float* partialCumSum, float* output, int globalThreadID, dim3 dataStrides, int dataOffset) {
+            __syncthreads();
+            // blockIdx.y represents the # of the current independent cumsum
+            output[(globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y] = partialCumSum[threadIdx.x*2];
+            output[(globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y] = partialCumSum[threadIdx.x*2 + 1];
+        }
 
         __global__
-        void k_finalCumSum_2D_axis1_%(nodename)s(float* output, float* blockSum, int numElements, dim3 dataStrides) {
-            int globalThreadID = (blockIdx.y + 1) * blockDim.y + threadIdx.y;
+        void k_cumadd_%(nodename)s(float* input, float* output, dim3 dataStrides, int dataOffset, int beforeLastElementIdx, int lastElementIdx) {
+            int dataOffsetY = (blockIdx.y + dataOffset) * dataStrides.y;
+            output[lastElementIdx*dataStrides.x + dataOffsetY] = input[lastElementIdx*dataStrides.x + dataOffsetY]
+                                                               + output[beforeLastElementIdx*dataStrides.x + dataOffsetY];
+        }
+
+        __global__
+        void k_finalCumSum_%(nodename)s(float* output, float* blockSum, int numElements, dim3 dataStrides, int dataOffset) {
+            int globalThreadID = (blockIdx.x + 1) * blockDim.x + threadIdx.x;
 
             // Check if current has data to process.
             if (globalThreadID >= ceil(numElements/2.0)) {
                 return;
             }
 
-            const float currentBlockSum = blockSum[blockIdx.x*gridDim.y + blockIdx.y];
+            const float currentBlockSum = blockSum[blockIdx.x*gridDim.y + blockIdx.y + dataOffset];
 
-            output[globalThreadID*2     + blockIdx.x*dataStrides.x] += currentBlockSum;
-            output[globalThreadID*2 + 1 + blockIdx.x*dataStrides.x] += currentBlockSum;
+            int dataOffsetY = (blockIdx.y + dataOffset) * dataStrides.y;
+            output[(globalThreadID*2    ) * dataStrides.x + dataOffsetY] += currentBlockSum;
+            output[(globalThreadID*2 + 1) * dataStrides.x + dataOffsetY] += currentBlockSum;
         }
 
         __global__
-        void k_cumadd_2D_axis1_%(nodename)s(float* input, float* output, int beforeLastElementIdx, int lastElementIdx) {
-            output[blockIdx.x*(lastElementIdx+1) + lastElementIdx] = input[blockIdx.x*(lastElementIdx+1) + lastElementIdx]
-                                                                     + output[blockIdx.x*(lastElementIdx+1) + beforeLastElementIdx];
-        }
+        void k_blockCumSum_%(nodename)s(float* input, float* output, int numElements, dim3 dataStrides, int dataOffset, float* blockSum) {
+            // Regarding blockIdx and threadIdx, 'Cumsum' is always perform along the X axis.
+            // The Y axis will contain all the independent cumsums of the 2D case.
 
-        __global__
-        void k_blockCumSum_2D_axis1_%(nodename)s(float* input, float* output, int numElements, dim3 dataStrides, float* blockSum) {
-            int globalThreadID = blockIdx.y * blockDim.y + threadIdx.y;
+            int globalThreadID = blockIdx.x * blockDim.x + threadIdx.x;
 
-            // Check if current has data to process.
+            // Check if current thread has data to process.
             if (globalThreadID >= ceil(numElements/2.0)) {
                 return;
             }
@@ -206,101 +132,108 @@ class GpuCumsum(CumsumOp, GpuOp):
             extern __shared__ float partialCumSum[];
 
             // Load data in shared memory
-            partialCumSum[threadIdx.y*2]     = input[globalThreadID*2     + blockIdx.x*dataStrides.x];
-            partialCumSum[threadIdx.y*2 + 1] = input[globalThreadID*2 + 1 + blockIdx.x*dataStrides.x];
-
-            // Reduction Phase
-            int stride;
-            for (stride = 1; stride <= blockDim.y; stride *= 2) {
-                __syncthreads();
-                int index = (threadIdx.y + 1) * (stride * 2) - 1;
-                if(index < blockDim.y*2) {
-                    partialCumSum[index] += partialCumSum[index - stride];
-                }
-            }
-
-            // Reverse Phase
-            for (; stride > 0; stride /= 2) {
-                __syncthreads();
-                int index = (threadIdx.y + 1) * (stride * 2) - 1;
-                if(index + stride < blockDim.y*2) {
-                    partialCumSum[index + stride] += partialCumSum[index];
-                }
-            }
+            k_fetchData_%(nodename)s(partialCumSum, input, globalThreadID, dataStrides, dataOffset);
+            
+            k_reductionPhase_%(nodename)s(partialCumSum);
+            k_reversePhase_%(nodename)s(partialCumSum);
 
             // Write the final output to global memory
-            __syncthreads();
-            output[globalThreadID*2     + blockIdx.x*dataStrides.x] = partialCumSum[threadIdx.y*2];
-            output[globalThreadID*2 + 1 + blockIdx.x*dataStrides.x] = partialCumSum[threadIdx.y*2 + 1];
+            k_pushData_%(nodename)s(partialCumSum, output, globalThreadID, dataStrides, dataOffset);
 
             if (blockSum != NULL){
-                if (threadIdx.y == blockDim.y - 1) {
-                    blockSum[blockIdx.x*gridDim.y + blockIdx.y] = partialCumSum[threadIdx.y*2 + 1];
+                if (threadIdx.x == blockDim.x - 1) {
+                    blockSum[blockIdx.x*gridDim.y + blockIdx.y + dataOffset] = partialCumSum[threadIdx.x*2 + 1];
                 }
             }
         }
 
-        void cumSum_2D_axis1_%(nodename)s(CudaNdarray* input, CudaNdarray* output, const int* shape, int maxThreads) {
-            int axis = 1; // Convert into a parameter
+        void cumSum_%(nodename)s(CudaNdarray* input, CudaNdarray* output, int maxThreads, int axis, int maxGridY) {
+            int shape[2] = { 1, 1 };
+            dim3 dataStrides(0,0,0);
+
+            switch (CudaNdarray_NDIM(input))
+            {
+            case 1:
+                shape[0] = CudaNdarray_HOST_DIMS(input)[0];
+                dataStrides.x = CudaNdarray_HOST_STRIDES(input)[0];
+                break;
+            case 2:
+                shape[0] = CudaNdarray_HOST_DIMS(input)[0];
+                shape[1] = CudaNdarray_HOST_DIMS(input)[1];
+                dataStrides.x = CudaNdarray_HOST_STRIDES(input)[0];
+                dataStrides.y = CudaNdarray_HOST_STRIDES(input)[1];
+                break;
+            default: printf("Only 1D and 2D cumsum is implemented yet.\\n");
+            }
 
             if (shape[axis] <= 1) {
                 CudaNdarray_CopyFromCudaNdarray(output, input);
                 return;
             }
 
+            if (axis == 1) {
+                int tmp = dataStrides.x;
+                dataStrides.x = dataStrides.y;
+                dataStrides.y = tmp;
+            }
+
             int numElements = shape[axis] - (shape[axis] %% 2);
             int blockSize = ceil( min(numElements, 2*maxThreads) / 2.0);
-            int dimGridX = shape[0];
-            int dimGridY = ceil(numElements / (2.0*blockSize));
+            int dimGridX = ceil(numElements / (2.0*blockSize));  // Nb. of elements to perform cumsum on.
+            int dimGridY = shape[1-axis];                        // Nb. of independent cumsums.
             const int shapeBlockSum[2] = { dimGridX, dimGridY };
 
             //CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(2, shapeBlockSum);
             CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_ZEROS(2, (int*)shapeBlockSum);
             
+            for (int dataOffset = 0; dataOffset < dimGridY; dataOffset += maxGridY){
+                int localDimGridY = min(dimGridY - dataOffset, maxGridY);
+                dim3 dimBlock(blockSize, 1, 1);
+                dim3 dimGrid(dimGridX, localDimGridY, 1);
+                int sharedBytes = (2*blockSize) * sizeof(float);
 
-            dim3 dimBlock(1, blockSize, 1);
-            dim3 dimGrid(dimGridX, dimGridY, 1);
-            int sharedBytes = (2*blockSize) * sizeof(float);
-
-            dim3 dataStrides(CudaNdarray_HOST_STRIDES(input)[0], CudaNdarray_HOST_STRIDES(input)[1], 0);
-
-            cudaThreadSynchronize();
-            k_blockCumSum_2D_axis1_%(nodename)s<<<dimGrid, dimBlock, sharedBytes>>>
-            (
-                CudaNdarray_DEV_DATA(input),
-                CudaNdarray_DEV_DATA(output),
-                numElements,
-                dataStrides,
-                CudaNdarray_DEV_DATA(deviceBlockSum)
-            );
-
-            if (dimGridY > 1) {
-                // Do a cumsum over the blockSum (recursive).
-                cumSum_2D_axis1_%(nodename)s(deviceBlockSum, deviceBlockSum, shapeBlockSum, maxThreads);
-
-                dim3 dimGrid(dimGridX, dimGridY, 1);
-                dim3 dimBlock(1, blockSize, 1);
-                k_finalCumSum_2D_axis1_%(nodename)s<<<dimGrid, dimBlock>>>
-                (
-                    CudaNdarray_DEV_DATA(output),
-                    CudaNdarray_DEV_DATA(deviceBlockSum),
-                    numElements,
-                    dataStrides
-                );
-            }
-
-            // If shape[axis] is odd, the last element is compute manually
-            if (shape[axis] != numElements){
                 cudaThreadSynchronize();
-                dim3 dimGrid(dimGridX, 1, 1);
-                dim3 dimBlock(1, 1, 1);
-                k_cumadd_2D_axis1_%(nodename)s<<<dimGrid, dimBlock>>>
+                k_blockCumSum_%(nodename)s<<<dimGrid, dimBlock, sharedBytes>>>
                 (
                     CudaNdarray_DEV_DATA(input),
                     CudaNdarray_DEV_DATA(output),
-                    shape[axis]-2,
-                    shape[axis]-1
+                    numElements,
+                    dataStrides,
+                    dataOffset,
+                    CudaNdarray_DEV_DATA(deviceBlockSum)
                 );
+
+                if (dimGridX > 1) {
+                    // Do a cumsum over the blockSum (recursive).
+                    cumSum_%(nodename)s(deviceBlockSum, deviceBlockSum, maxThreads, 0, maxGridY);
+
+                    dim3 dimGrid(dimGridX, dimGridY, 1);
+                    dim3 dimBlock(blockSize, 1, 1);
+                    k_finalCumSum_%(nodename)s<<<dimGrid, dimBlock>>>
+                    (
+                        CudaNdarray_DEV_DATA(output),
+                        CudaNdarray_DEV_DATA(deviceBlockSum),
+                        numElements,
+                        dataStrides,
+                        dataOffset
+                    );
+                }
+
+                // If shape[axis] is odd, the last element is compute manually
+                if (shape[axis] != numElements){
+                    cudaThreadSynchronize();
+                    dim3 dimGrid(1, localDimGridY, 1);
+                    dim3 dimBlock(1, 1, 1);
+                    k_cumadd_%(nodename)s<<<dimGrid, dimBlock>>>
+                    (
+                        CudaNdarray_DEV_DATA(input),
+                        CudaNdarray_DEV_DATA(output),
+                        dataStrides,
+                        dataOffset,
+                        shape[axis]-2,
+                        shape[axis]-1
+                    );
+                }
             }
 
             cudaFree(CudaNdarray_DEV_DATA(deviceBlockSum));
@@ -316,18 +249,17 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         sub = sub.copy()
         max_threads_dim0 = self.max_threads_dim0
-        if max_threads_dim0 is None:
+        max_grid_size1 = self.max_grid_size1
+        if max_threads_dim0 is None or max_grid_size1 is None:
             raise NotImplementedError("GpuConv.c_code should not be called "
                                       "directly. It should be called by "
                                       "make_thunk() that add some information "
                                       "related to the selected GPU.")
         sub.update(locals())
 
-        #Right now, only the 1D case works.
-
         if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
             code = """
-                npy_intp shape[1] = { CudaNdarray_SIZE(%(x)s) };
+                const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
                 if(! (%(z)s && CudaNdarray_HOST_DIMS(%(z)s)[0] == shape[0]) ) {
                     Py_XDECREF(%(z)s);
                     %(z)s = (CudaNdarray*) CudaNdarray_NewDims(1, shape);
@@ -338,7 +270,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 }
 
                 { // Namespace for kernel calls //
-                    cumSum_1D_%(nodename)s(%(x)s, %(z)s, shape, %(max_threads_dim0)s);
+                    cumSum_%(nodename)s(%(x)s, %(z)s, %(max_threads_dim0)s, 0, %(max_grid_size1)s);
 
                     cudaError_t sts = cudaGetLastError();
                     if (cudaSuccess != sts)
@@ -351,7 +283,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                     }
                 }
             """ % locals()
-        elif node.inputs[0].ndim == 2 and self.axis == 1: 
+        elif node.inputs[0].ndim == 2: 
             code = """
                 const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
                 bool needAllocation = !%(z)s || CudaNdarray_NDIM(%(x)s) != CudaNdarray_NDIM(%(z)s);
@@ -375,7 +307,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                 }
 
                 { // Namespace for kernel calls //
-                    cumSum_2D_axis1_%(nodename)s(%(x)s, %(z)s, shape, %(max_threads_dim0)s);
+                    cumSum_%(nodename)s(%(x)s, %(z)s, %(max_threads_dim0)s, %(axis)s, %(max_grid_size1)s);
 
                     cudaError_t sts = cudaGetLastError();
                     if (cudaSuccess != sts)
