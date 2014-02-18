@@ -112,6 +112,7 @@ def raise_with_op(node, thunk=None, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
+    hints = []
     detailed_err_msg = "\nApply node that caused the error: " + str(node)
 
     types = [getattr(ipt, 'type', 'No type') for ipt in node.inputs]
@@ -138,8 +139,9 @@ def raise_with_op(node, thunk=None, exc_info=None):
                              "\nInputs strides: %s" % strides +
                              "\nInputs scalar values: %s\n" % scalar_values)
     else:
-        detailed_err_msg += ("\nHINT: Use another linker then the c linker to"
-                             " have the inputs shapes and strides printed.")
+        hints.append(
+            "HINT: Use another linker then the c linker to"
+            " have the inputs shapes and strides printed.")
 
     # Print node backtrace
     tr = getattr(node.tag, 'trace', None)
@@ -150,8 +152,11 @@ def raise_with_op(node, thunk=None, exc_info=None):
         detailed_err_msg += "\nBacktrace when the node is created:"
         detailed_err_msg += str(tr)
     else:
-        detailed_err_msg += (
-            "\nHINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags optimizer=fast_compile\n")
+        hints.append(
+            "HINT: Re-running with most Theano optimization disabled could"
+            " give you a back-traces when this node was created. This can"
+            " be done with by setting the Theano flags"
+            " optimizer=fast_compile")
 
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
@@ -161,11 +166,12 @@ def raise_with_op(node, thunk=None, exc_info=None):
         detailed_err_msg += f.getvalue()
 
     else:
-        detailed_err_msg += ("\nHINT: Use the Theano flag"
-                             " 'exception_verbosity=high'"
-                             " for a debugprint of this apply node.")
+        hints.append(
+            "HINT: Use the Theano flag 'exception_verbosity=high'"
+            " for a debugprint of this apply node.")
 
-    exc_value = exc_type(str(exc_value) + detailed_err_msg)
+    exc_value = exc_type(str(exc_value) + detailed_err_msg +
+                         '\n' + '\n'.join(hints))
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
