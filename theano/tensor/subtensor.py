@@ -362,6 +362,37 @@ class Subtensor(Op):
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
+    def get_constant_idx(self, inputs, allow_partial=False):
+        """
+        Return the idx_list with constant inputs replaced by their
+        python scalar equivalent.  May raise
+        `theano.tensor.NotScalarConstantError` if the idx contains
+        non-constant entries.
+
+        If allow_partial is True, then entries that are not constant
+        will stay as their input variable rather than raising an
+        exception.
+
+        None entries are always left as-is.
+        """
+        real_idx = get_idx_list(inputs, self.idx_list)
+        def conv(val):
+            if val is None:
+                return None
+            elif isinstance(val, slice):
+                return slice(conv(val.start),
+                             conv(val.stop),
+                             conv(val.step))
+            else:
+                try:
+                    return get_scalar_constant_value(val)
+                except theano.tensor.NotScalarConstantError:
+                    if allow_partial:
+                        return val
+                    else:
+                        raise
+        return map(conv, real_idx)
+
     def __init__(self, idx_list):
         self.idx_list = tuple(map(self.convert, idx_list))
         self.perform_cache_cdata = None
@@ -404,29 +435,18 @@ class Subtensor(Op):
                     % (input.type, expected_type))
 
         # infer the broadcasting pattern
-        padded = (idx_list
-                + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
-        idx_padded = get_idx_list((None,)+inputs, padded)
+        padded = (self.get_constant_idx((None,)+inputs, allow_partial=True)
+                  + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
         broadcastable = []
-        for i, (p, bc) in enumerate(izip(idx_padded, x.type.broadcastable)):
+        for i, (p, bc) in enumerate(izip(padded, x.type.broadcastable)):
             if isinstance(p, slice):
-                # figure out the value of start and stop (if they are constant)
-                try:
-                    if p.start is None:
+                if bc and p.start in [None, 0]:
+                    start = p.start
+                    if start is None:
                         start = 0
-                    else:
-                        start = get_scalar_constant_value(p.start)
-                    if p.stop is None:
-                        stop = 1
-                    else:
-                        stop = get_scalar_constant_value(p.stop)
-                except theano.tensor.NotScalarConstantError:
-                    start = None
-                    stop = None
-
-                if bc and start == 0 and stop > start:
-                    broadcastable.append(True)
-                    continue
+                    if p.stop is None or p.stop > start:
+                        broadcastable.append(True)
+                        continue
 
                 broadcastable.append(False)
 

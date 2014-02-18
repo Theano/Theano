@@ -591,20 +591,7 @@ def get_scalar_constant_value(v):
             return ret[0][0]
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
             if isinstance(v.owner.inputs[0], TensorConstant):
-                indices = list(reversed(list(v.owner.inputs[1:])))
-                def conv(e):
-                    if isinstance(e, gof.Type):
-                        return get_scalar_constant_value(indices.pop())
-                    elif isinstance(e, slice):
-                        return slice(conv(e.start),
-                                     conv(e.stop),
-                                     conv(e.step))
-                    elif isinstance(e, (int, long, numpy.integer)):
-                        return int(e)
-                    else:
-                        raise NotScalarConstantError(v)
-                cdata = tuple(map(conv, v.owner.op.idx_list))
-
+                cdata = v.owner.op.get_constant_idx(v.owner.inputs)
                 try:
                     return v.owner.inputs[0].data.__getitem__(cdata)
                 except IndexError:

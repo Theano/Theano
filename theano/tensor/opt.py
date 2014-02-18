@@ -1625,32 +1625,17 @@ def local_useless_subtensor(node):
         if not hasattr(node.fgraph, 'shape_feature'):
             return
         shape_of = node.fgraph.shape_feature.shape_of
-        idx_vals = get_idx_list(node.inputs, node.op.idx_list)
-        for pos, idx in enumerate(idx_vals):
+        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True)
+        for pos, idx in enumerate(cdata):
             if not isinstance(idx, slice):
                 # If idx is not a slice, this means we remove this dimension
                 # from the output, so the subtensor is not useless
                 return False
-
-            # Grab the values for start/stop/step
-            try:
-                start = get_scalar_constant_value(idx.start)
-            except NotScalarConstantError:
-                start = idx.start
-            try:
-                stop = get_scalar_constant_value(idx.stop)
-            except NotScalarConstantError:
-                stop = idx.stop
-            try:
-                step = get_scalar_constant_value(idx.step)
-            except NotScalarConstantError:
-                step = idx.step
-
-            if start not in [0, None]:
+            if idx.start not in [0, None]:
                 # If the start of the slice is different from 0, or is a
                 # variable, then we assume the subtensor is not useless
                 return False
-            if step not in [1, None]:
+            if idx.step not in [1, None]:
                 # If we are going backwards, or skipping elements, then this
                 # is not a useless subtensor
                 return False
@@ -1663,11 +1648,11 @@ def local_useless_subtensor(node):
             except NotScalarConstantError:
                 pass
 
-            if isinstance(stop, (int, numpy.integer)):
+            if isinstance(idx.stop, (int, numpy.integer)):
                 if stop < length_pos_data:
                     return False
-            elif isinstance(stop, gof.Variable):
-                length_pos_shape_i = stop
+            elif isinstance(idx.stop, gof.Variable):
+                length_pos_shape_i = idx.stop
                 # length_pos is a tensor variable, but length_pos_shape_i
                 # is a scalar variable. We try to see if they represent
                 # the same underlying variable.
@@ -1694,7 +1679,7 @@ def local_useless_subtensor(node):
                 # length_pos_shape_i cannot be None
                 if length_pos_shape_i != length_pos:
                     return False
-            elif stop is None:
+            elif idx.stop is None:
                 pass
             else:
                 return False
