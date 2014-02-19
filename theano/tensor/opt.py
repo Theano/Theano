@@ -1649,7 +1649,7 @@ def local_useless_subtensor(node):
                 pass
 
             if isinstance(idx.stop, (int, numpy.integer)):
-                if stop < length_pos_data:
+                if idx.stop < length_pos_data:
                     return False
             elif isinstance(idx.stop, gof.Variable):
                 length_pos_shape_i = idx.stop

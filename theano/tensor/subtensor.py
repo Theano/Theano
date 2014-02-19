@@ -374,6 +374,16 @@ class Subtensor(Op):
         exception.
 
         None entries are always left as-is.
+
+        Example usage (where v, a are appropriately typed theano variables):
+
+            >>> b = a[v, 1:3]
+            >>> b.owner.op.idx_list
+            (Scalar(int64), slice(Scalar(int64), Scalar(int64), None))
+            >>> b.owner.op.get_constant_idx(b.owner.inputs, allow_partial=True)
+            [v, slice(1, 3, None)]
+            >>> b.owner.op.get_constant_idx(b.owner.inputs)
+            NotScalarConstantError: v
         """
         real_idx = get_idx_list(inputs, self.idx_list)
         def conv(val):
@@ -444,7 +454,9 @@ class Subtensor(Op):
                     start = p.start
                     if start is None:
                         start = 0
-                    if p.stop is None or p.stop > start:
+                    if (p.stop is None or
+                        (isinstance(p.stop, (int, numpy.integer)) and
+                         p.stop > start)):
                         broadcastable.append(True)
                         continue
 
