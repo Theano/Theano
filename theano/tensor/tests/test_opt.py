@@ -2395,6 +2395,16 @@ class Test_alloc_zero(unittest.TestCase):
                     assert numpy.all([ not isinstance(x.op, tensor.Dot) for x in
                                       f.maker.fgraph.toposort() ])
 
+    def test_dot_allocs_0_err(self):
+        #test that we don't remove errors
+        m1 = tensor.matrix('m1')
+        vm = numpy.asarray([[1, 2, 3], [4, 5, 6]],
+                           dtype=theano.config.floatX)
+        z = numpy.zeros((3, 3), dtype=theano.config.floatX)
+        o = tensor.dot(z, m1)
+        f = theano.function([m1], o, mode=self.mode)
+        self.assertRaises((ValueError, AssertionError), f, vm)
+
 
 def test_local_subtensor_of_alloc():
 

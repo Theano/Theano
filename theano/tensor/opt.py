@@ -370,10 +370,16 @@ def local_0_dot_x(node):
     if replace:
         constant_zero = T.constant(0, dtype=node.outputs[0].type.dtype)
         if x.ndim == 2 and y.ndim == 2:
+            constant_zero = assert_(constant_zero,
+                                    T.eq(x.shape[1], y.shape[0]))
             return [T.alloc(constant_zero, x.shape[0], y.shape[1])]
         elif x.ndim == 1 and y.ndim == 2:
+            constant_zero = assert_(constant_zero,
+                                    T.eq(x.shape[0], y.shape[0]))
             return [T.alloc(constant_zero, y.shape[1])]
         elif x.ndim == 2 and y.ndim == 1:
+            constant_zero = assert_(constant_zero,
+                                    T.eq(x.shape[1], y.shape[1]))
             return [T.alloc(constant_zero, x.shape[0])]
         elif x.ndim == 1 and y.ndim == 1:
             return [constant_zero]
