@@ -2377,11 +2377,14 @@ class Test_alloc_zero(unittest.TestCase):
         v2 = tensor.vector('v2')
         m1 = tensor.matrix('m1')
         m2 = tensor.matrix('m2')
-        vv = numpy.asarray([0, 1, 2], dtype=theano.config.floatX)
-        vm = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                           dtype=theano.config.floatX)
-        for _e1 in [(v1, vv), (m1, vm)]:
-            for _e2 in [(v2, vv), (m2, vm)]:
+        vv2 = numpy.asarray([0, 1], dtype=theano.config.floatX)
+        vm2 = numpy.asarray([[1, 2], [4, 5]],
+                            dtype=theano.config.floatX)
+        vv3 = numpy.asarray([0, 1, 2], dtype=theano.config.floatX)
+        vm3 = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                            dtype=theano.config.floatX)
+        for _e1 in [(v1, vv2, vv3), (m1, vm2, vm3)]:
+            for _e2 in [(v2, vv2, vv3), (m2, vm2, vm3)]:
                 for p in [0, 1]:
                     if p == 0:
                         e1 = tensor.zeros_like(_e1[0])
@@ -2392,18 +2395,15 @@ class Test_alloc_zero(unittest.TestCase):
                     o = tensor.dot(e1, e2)
                     f = theano.function([_e1[0], _e2[0]], o, mode=self.mode)
                     f(_e1[1], _e2[1])
-                    assert numpy.all([ not isinstance(x.op, tensor.Dot) for x in
+                    f(_e1[2], _e2[2])
+                    assert numpy.all([not isinstance(x.op, tensor.Dot) for x in
                                       f.maker.fgraph.toposort() ])
 
-    def test_dot_allocs_0_err(self):
-        #test that we don't remove errors
-        m1 = tensor.matrix('m1')
-        vm = numpy.asarray([[1, 2, 3], [4, 5, 6]],
-                           dtype=theano.config.floatX)
-        z = numpy.zeros((3, 3), dtype=theano.config.floatX)
-        o = tensor.dot(z, m1)
-        f = theano.function([m1], o, mode=self.mode)
-        self.assertRaises((ValueError, AssertionError), f, vm)
+                    #test that we don't remove shape errors
+                    self.assertRaises((ValueError, AssertionError), f,
+                                      _e1[1], _e2[2])
+                    self.assertRaises((ValueError, AssertionError), f,
+                                      _e1[2], _e2[1])
 
 
 def test_local_subtensor_of_alloc():
