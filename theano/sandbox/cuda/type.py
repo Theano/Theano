@@ -7,6 +7,7 @@ import warnings
 import numpy
 
 import theano
+from theano import config
 from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
@@ -488,12 +489,15 @@ theano.compile.register_deep_copy_op_c_code(
 # equal the pickled version, and the cmodule cache is not happy with
 # the situation.
 def CudaNdarray_unpickler(npa):
-    if cuda:
+
+    if config.experimental.unpickle_gpu_on_cpu:
+        # directly return numpy array
+        warnings.warn("config.experimental.unpickle_gpu_on_cpu is set to True. Unpickling CudaNdarray as numpy.ndarray")
+        return npa
+    elif cuda:
         return cuda.CudaNdarray(npa)
     else:
-        # directly return numpy array
-        warnings.warn("CUDA not found. Unpickling CudaNdarray as numpy.ndarray")
-        return npa
+        raise ImportError("Cuda not found. Cannot unpickle CudaNdarray")
 
 copy_reg.constructor(CudaNdarray_unpickler)
 
