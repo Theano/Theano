@@ -591,7 +591,7 @@ def get_scalar_constant_value(v):
             return ret[0][0]
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
             if isinstance(v.owner.inputs[0], TensorConstant):
-                cdata = v.owner.op.get_constant_idx(v.owner.inputs)
+                cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                 try:
                     return v.owner.inputs[0].data.__getitem__(cdata)
                 except IndexError:
