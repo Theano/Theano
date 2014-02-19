@@ -28,7 +28,7 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
 
     if cuda_available:
         assert isinstance(mat, CudaNdarray)
-        assert mat[0] == -42.0
+        assert numpy.asarray(mat)[0] == -42.0
 
     config.experimental.unpickle_gpu_on_cpu = oldflag
 
