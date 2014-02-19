@@ -1,6 +1,6 @@
 import unittest
 import numpy
-from numpy.testing.decorators import skipif
+from nose.plugins.skip import SkipTest
 
 import theano
 from theano import tensor
@@ -8,10 +8,13 @@ from theano import tensor
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
 import theano.sandbox.cuda as cuda
+# Skip test if cuda_ndarray is not available.
+if cuda_available == False:
+    raise SkipTest('Optional package cuda disabled')
 
 
-@skipif(not cuda_available, msg='Optional package cuda disabled')
 def test_float32_shared_constructor():
+
     npy_row = numpy.zeros((1, 10), dtype='float32')
 
     def eq(a, b):
@@ -37,7 +40,7 @@ def test_float32_shared_constructor():
             f32sc(numpy.zeros((2, 3, 4, 5), dtype='float32')).type,
             CudaNdarrayType((False,) * 4))
 
-@skipif(not cuda_available, msg='Optional package cuda disabled')
+
 def test_givens():
     # Test that you can use a TensorType expression to replace a
     # CudaNdarrayType in the givens dictionary.
@@ -53,7 +56,6 @@ class T_updates(unittest.TestCase):
     # Test that you can use a TensorType expression to update a
     # CudaNdarrayType in the updates dictionary.
 
-    @skipif(not cuda_available, msg='Optional package cuda disabled')
     def test_1(self):
         data = numpy.float32([1, 2, 3, 4])
         x = f32sc(data)
@@ -65,7 +67,6 @@ class T_updates(unittest.TestCase):
         f = theano.function([], y, updates=[(x, cuda.gpu_from_host(x + 1))])
         f()
 
-    @skipif(not cuda_available, msg='Optional package cuda disabled')
     def test_2(self):
         # This test case uses code mentionned in #698
         data = numpy.random.rand(10, 10).astype('float32')
@@ -79,7 +80,6 @@ class T_updates(unittest.TestCase):
                 updates=output_updates, givens=output_givens)
         output_func()
 
-    @skipif(not cuda_available, msg='Optional package cuda disabled')
     def test_err_ndim(self):
         # Test that we raise a good error message when we don't
         # have the same number of dimensions.
@@ -92,7 +92,6 @@ class T_updates(unittest.TestCase):
                           updates=[(output_var,
                                    output_var.sum())])
 
-    @skipif(not cuda_available, msg='Optional package cuda disabled')
     def test_err_broadcast(self):
         # Test that we raise a good error message when we don't
         # have the same number of dimensions.
@@ -105,7 +104,6 @@ class T_updates(unittest.TestCase):
                           updates=[(output_var,
                                    output_var.sum().dimshuffle('x', 'x'))])
 
-    @skipif(not cuda_available, msg='Optional package cuda disabled')
     def test_broadcast(self):
         # Test that we can rebroadcast
         data = numpy.random.rand(10, 10).astype('float32')
