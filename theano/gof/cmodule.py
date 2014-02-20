@@ -308,12 +308,13 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname, err=True):
+def module_name_from_dir(dirname, err=True, files=None):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
-    files = os.listdir(dirname)
+    if files is None:
+        files = os.listdir(dirname)
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -654,7 +655,7 @@ class ModuleCache(object):
                             msg="delete.me found in dir")
                 elif 'key.pkl' in files:
                     try:
-                        entry = module_name_from_dir(root)
+                        entry = module_name_from_dir(root, files=files)
                     except ValueError:  # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
