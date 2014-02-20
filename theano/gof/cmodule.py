@@ -308,12 +308,13 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname, err=True):
+def module_name_from_dir(dirname, err=True, files=None):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
-    files = os.listdir(dirname)
+    if files is None:
+        files = os.listdir(dirname)
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -640,18 +641,21 @@ class ModuleCache(object):
             time_now = time.time()
             # Go through directories in alphabetical order to ensure consistent
             # behavior.
-            root_dirs_files = sorted(os.walk(self.dirname),
-                                     key=operator.itemgetter(0))
-            for root, dirs, files in root_dirs_files:
+            subdirs = sorted(os.listdir(self.dirname))
+            for root in subdirs:
+                root = os.path.join(self.dirname, root)
                 key_pkl = os.path.join(root, 'key.pkl')
                 if key_pkl in self.loaded_key_pkl:
                     continue
-                elif 'delete.me' in files or not files:
+                if not os.path.isdir(root):
+                    continue
+                files = os.listdir(root)
+                if 'delete.me' in files or not files:
                     _rmtree(root, ignore_nocleanup=True,
                             msg="delete.me found in dir")
                 elif 'key.pkl' in files:
                     try:
-                        entry = module_name_from_dir(root)
+                        entry = module_name_from_dir(root, files=files)
                     except ValueError:  # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
@@ -814,8 +818,7 @@ class ModuleCache(object):
                 # We do nothing here.
 
             # Clean up the name space to prevent bug.
-            if root_dirs_files:
-                del root, dirs, files
+            del root, files, subdirs
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
