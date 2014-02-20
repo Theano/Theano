@@ -242,15 +242,13 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
             assert len(p2) == 1, ("Canopy changed the location of MKL",
                                    p, p2, [os.listdir(os.path.join(p, sub))
                                            for sub in p2])
+            p2 = os.path.join(p, p2[0], subsub)
+            assert os.path.exists(p2), "Canopy changed the location of MKL"
             if sys.platform == "linux2":
-                p2 = os.path.join(p, p2[0], "lib")
-                assert os.path.exists(p2), "Canopy changed the location of MKL"
                 return ' '.join(
                     ['-L%s' % p2] +
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
-                p2 = os.path.join(p, p2[0], "Scripts")
-                assert os.path.exists(p2), "Canopy changed the location of MKL"
                 return ' '.join(
                     ['-L%s' % p2] +
                     # Why on Windows, the library used are not the
