@@ -975,10 +975,24 @@ class FunctionMaker(object):
             raise TypeError(
                     'profile passed via both "mode" and "profile" arguments')
         self.profile = profile = profile or mode_profile
-        if profile:
-            # We preload the cache here to don't have its timming
-            # included in optimization that compile function.
-            theano.gof.cc.get_module_cache()
+        if profile or theano.config.cxx:
+            # This is very important:
+            # 1) We preload the cache here to don't have its timming
+            #    included in optimization that compile function.
+            # 2) If other repo that import Theano have Theano ops defined,
+            #    we need to refresh the cache here. Otherwise, their is import
+            #    order problems.
+            #    When device=gpu, we compile during Theano import. This trigger
+            #    the loading of the cache. But unpickling the cache ask that the
+            #    other repos Ops are completly loaded, which isn't always the
+            #    case!
+            #    If a module isn't completly loaded and their unpickling fail,
+            #    it mean it is safe for this function compilation to skip them,
+            #    but not for futur compilation. So reloading the cache at each
+            #    compilation fix this problem.
+            # 3) This help propagate knowledge of newly compiled module to
+            #    concurrent process.
+            theano.gof.cc.get_module_cache().refresh()
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         self.orig_outputs = outputs
         unpack_single = False
