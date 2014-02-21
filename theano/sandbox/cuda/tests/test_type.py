@@ -21,30 +21,34 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
     oldflag = config.experimental.unpickle_gpu_on_cpu
     config.experimental.unpickle_gpu_on_cpu = False
 
-    testfile_dir = os.path.dirname(os.path.realpath(__file__))
-    with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
+    try:
+        testfile_dir = os.path.dirname(os.path.realpath(__file__))
+        with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
+            if cuda_available:
+                mat = cPickle.load(fp)
+            else:
+                assert_raises(ImportError, cPickle.load, fp)
+
         if cuda_available:
-            mat = cPickle.load(fp)
-        else:
-            assert_raises(ImportError, cPickle.load, fp)
+            assert isinstance(mat, CudaNdarray)
+            assert numpy.asarray(mat)[0] == -42.0
 
-    if cuda_available:
-        assert isinstance(mat, CudaNdarray)
-        assert numpy.asarray(mat)[0] == -42.0
-
-    config.experimental.unpickle_gpu_on_cpu = oldflag
+    finally:
+        config.experimental.unpickle_gpu_on_cpu = oldflag
 
 
 def test_unpickle_cudandarray_as_numpy_ndarray_flag1():
     oldflag = config.experimental.unpickle_gpu_on_cpu
     config.experimental.unpickle_gpu_on_cpu = True
 
-    testfile_dir = os.path.dirname(os.path.realpath(__file__))
+    try:
+        testfile_dir = os.path.dirname(os.path.realpath(__file__))
 
-    with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
-        mat = cPickle.load(fp)
+        with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
+            mat = cPickle.load(fp)
 
-    assert isinstance(mat, numpy.ndarray)
-    assert mat[0] == -42.0
+        assert isinstance(mat, numpy.ndarray)
+        assert mat[0] == -42.0
 
-    config.experimental.unpickle_gpu_on_cpu = oldflag
+    finally:
+        config.experimental.unpickle_gpu_on_cpu = oldflag
