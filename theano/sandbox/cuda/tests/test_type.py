@@ -13,7 +13,9 @@ if cuda_available:
 # >>> cPickle.dump(theano.sandbox.cuda.CudaNdarray(np.array([-42.0], dtype=np.float32)), fp)
 
 def test_unpickle_flag_is_false_by_default():
-    assert not config.experimental.unpickle_gpu_on_cpu
+    assert not config.experimental.unpickle_gpu_on_cpu, "Config flag experimental.unpickle_gpu_on_cpu is " \
+                                                      + "set to true. Make sure the default value stays false " \
+                                                      + "and that you have not set the flag manually."
 
 def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
     oldflag = config.experimental.unpickle_gpu_on_cpu
