@@ -2,7 +2,20 @@
 Multi cores support in Theano
 =============================
 
-Parallel element wise op with openmp
+BLAS operation
+==============
+
+BLAS is an interface for many operations (e.g.dot product between
+vector/matrix and matrix/matrix) and their is many different
+implementation of that interface. Many of those implementation are
+parallel.
+
+Theano try to use that interface as frequently as possible. So if you
+Theano link to such parallel implementation, those operation will run
+in parallel in Theano.
+
+
+Parallel element wise op with OpenMP
 ====================================
 
 Beacuse element wise ops work on every tensor entry indipedently they can be
