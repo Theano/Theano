@@ -185,7 +185,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         parameter
 
     :type root: object
-    :param root: used for recusive calls -- do not provide an argument for
+    :param root: used for recursive calls -- do not provide an argument for
         this parameter.
 
     :type in_c_key: boolean

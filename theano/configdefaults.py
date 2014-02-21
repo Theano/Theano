@@ -268,6 +268,19 @@ AddConfigVar('experimental.mrg',
              "Another random number generator that work on the gpu",
              BoolParam(False))
 
+AddConfigVar('experimental.unpickle_gpu_on_cpu',
+             "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
+             "This is useful, if you want to open a CudaNdarray without "
+             "having cuda installed."
+             "If you have cuda installed, this will force unpickling to"
+             "be done on the cpu to numpy.ndarray."
+             "Please be aware that this may get you access to the data,"
+             "however, trying to unpicke gpu functions will not succeed."
+             "This flag is experimental and may be removed any time, when"
+             "gpu<>cpu transparency is solved.",
+             BoolParam(default=False),
+             in_c_key=False)
+
 AddConfigVar('numpy.seterr_all',
              ("Sets numpy's behaviour for floating-point errors, ",
               "see numpy.seterr. "
