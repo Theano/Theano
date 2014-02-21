@@ -623,16 +623,6 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
                                                          broadcastable=bcast))
     return op(random_state, size, a, replace, p)
 
-def poisson_helper(random_state, lam, size):
-    """
-    Helper function to draw random numbers using numpy's poisson function.
-
-    This is a generalization of numpy.random.poisson to the case where 
-    `lam` is a tensor.
-    """
-
-    return random_state.poisson(lam, size)
-
 def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     """
     Draw samples from a Poisson distribution.
@@ -653,7 +643,7 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     
     ndim, size, bcast = _infer_ndim_bcast(ndim, size)
 
-    op = RandomFunction(poisson_helper, tensor.TensorType(dtype=dtype,
+    op = RandomFunction("poisson", tensor.TensorType(dtype=dtype,
                                                      broadcastable=bcast))
     return op(random_state, size, lam)
 
