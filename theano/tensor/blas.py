@@ -222,35 +222,38 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                     ['-l%s' % l for l in blas_info['libraries']])
         #Canopy
         if "Canopy" in sys.prefix:
-            if sys.platform == "darwin":
-                p2 = os.path.join(sys.base_prefix, "lib")
-                assert os.path.exists(p2), "Canopy changed the location of MKL"
-                return ' '.join(
-                    ['-L%s' % p2] +
-                    ['-l%s' % l for l in blas_info['libraries']])
-
-            p = os.path.join(sys.base_prefix, "..", "..", "appdata")
-            assert os.path.exists(p), "Canopy changed the location of MKL"
-            p2 = os.listdir(p)
             subsub = 'lib'
             if sys.platform == 'win32':
                 subsub = 'Scripts'
-            # Try to remove subdir that can't contain MKL
-            for sub in p2:
-                if not os.path.exists(os.path.join(p, sub, subsub)):
-                    p2.remove(sub)
-            assert len(p2) == 1, ("Canopy changed the location of MKL",
-                                   p, p2, [os.listdir(os.path.join(p, sub))
-                                           for sub in p2])
-            p2 = os.path.join(p, p2[0], subsub)
-            assert os.path.exists(p2), "Canopy changed the location of MKL"
-            if sys.platform == "linux2":
+            lib_path = os.path.join(sys.base_prefix, subsub)
+            if not os.path.exists(lib_path):
+                # Old logic to find the path. I don't think we still
+                # need it, but I don't have the time to test all
+                # installation configuration. So I keep this as a fall
+                # back in case the current expectation don't work.
+
+                # This old logic don't work when multiple version of
+                # Canopy is installed.
+                p = os.path.join(sys.base_prefix, "..", "..", "appdata")
+                assert os.path.exists(p), "Canopy changed the location of MKL"
+                lib_paths = os.listdir(p)
+                # Try to remove subdir that can't contain MKL
+                for sub in lib_paths:
+                    if not os.path.exists(os.path.join(p, sub, subsub)):
+                        lib_paths.remove(sub)
+                assert len(lib_paths) == 1, (
+                    "Unexpected case when looking for Canopy MKL libraries",
+                    p, lib_paths, [os.listdir(os.path.join(p, sub))
+                                   for sub in lib_paths])
+                lib_path = os.path.join(p, lib_paths[0], subsub)
+                assert os.path.exists(lib_path), "Canopy changed the location of MKL"
+            if sys.platform == "linux2" or sys.platform == "darwin":
                 return ' '.join(
-                    ['-L%s' % p2] +
+                    ['-L%s' % lib_path] +
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % p2] +
+                    ['-L%s' % lib_path] +
                     # Why on Windows, the library used are not the
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
