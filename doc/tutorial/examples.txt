@@ -450,6 +450,10 @@ Other Random Distributions
 
 There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
 
+Other Implementation
+--------------------
+
+Their is 2 other implementation based on :class:`CURAND <theano.sandbox.cuda.rng_curand>` and :ref:`MRG31k3p <libdoc_rng_mrg>`
 
 .. _logistic_regression:
 
