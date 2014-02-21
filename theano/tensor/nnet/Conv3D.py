@@ -566,6 +566,10 @@ conv3D = Conv3D()
     :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` that is faster
     on GPU.
 
+:see: Someone made a script that show how to swap the axis between
+      both 3d convolution implementation in Theano. See the last
+      `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+
 """
 
 def computeH(V,W,b,d):

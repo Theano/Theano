@@ -178,6 +178,10 @@ def conv3d(signals, filters,
            Another way to define signals: (batch,  time, in channel, row, column)
            Another way to define filters: (out channel,time,in channel, row, column)
 
+    :see: Someone made a script that show how to swap the axis between
+          both 3d convolution implementation in Theano. See the last
+          `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+
     """
 
     if isinstance(border_mode, str):
