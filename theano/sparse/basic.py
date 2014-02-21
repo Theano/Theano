@@ -2623,11 +2623,13 @@ class TrueDot(gof.op.Op):
         self.grad_preserves_dense = grad_preserves_dense
 
     def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.grad_preserves_dense == other.grad_preserves_dense)
+        # The grad_preserves_dense attribute don't change the
+        # execution behavior.  To have Theano merge optimizer merging
+        # them, we shouldn't compare it here.
+        return type(self) == type(other)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.grad_preserves_dense)
+        return hash(type(self))
 
     def __ne__(self, other):
         return not (self == other)
