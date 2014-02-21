@@ -30,6 +30,8 @@ Reference
         If the size argument is ambiguous on the number of dimensions, the first argument may be a
         plain integer to supplement the missing information.
 
+	This wrap numpy implementation, so it have the same behavior.
+
     .. method:: uniform(self,  size=(), low=0.0, high=1.0, ndim=None):
 
         Sample a tensor of given size whose element from a uniform distribution between low and high.
@@ -37,6 +39,9 @@ Reference
         If the size argument is ambiguous on the number of
         dimensions, the first argument may be a plain integer
         to supplement the missing information.
+
+	This wrap numpy implementation, so it have the same bound:
+	include the low bound, but exclude the high bound.
 
     .. method:: normal(self, size=(), avg=0.0, std=1.0, ndim=None):
 
@@ -48,6 +53,8 @@ Reference
         dimensions, the first argument may be a plain integer
         to supplement the missing information.
 
+	This wrap numpy implementation, so it have the same behavior.
+
     .. method:: random_integers(self, size=(), low=0, high=1, ndim=None):
 
         Usage: random_integers(random_state, size, low=0, high=1)
@@ -56,6 +63,9 @@ Reference
         If the size argument is ambiguous on the number of
         dimensions, the first argument may be a plain integer
         to supplement the missing information.
+
+	This is a generalization of numpy.random.random_integers to
+        the case where low and high are tensors. Otherwise it behave the same.
 
     .. method:: choice(self, size=(), a=2, replace=True, p=None, ndim=None, dtype='int64'):
 
@@ -66,6 +76,8 @@ Reference
         If the size argument is ambiguous on the number of dimensions,
         ndim may be a plain integer to supplement the missing
         information.
+
+	This wrap numpy implementation, so it have the same behavior.
 
     .. method:: poisson(self, size=(), lam=None, ndim=None, dtype='int64'):
 
@@ -79,6 +91,8 @@ Reference
         ndim may be a plain integer to supplement the missing
         information.
 
+	This wrap numpy implementation, so it have the same behavior.
+
     .. method:: permutation(self, size=(), n=1, ndim=None):
 
         Returns permutations of the integers between 0 and n-1, as many times
@@ -86,11 +100,15 @@ Reference
         will be generated, and the output shape will be (p,q,n), because each
         permutation is of size n.
 
-        Theano tries to infer the number of dimensions from the length of the size argument, but you
-        may always specify it with the `ndim` parameter.
+        Theano tries to infer the number of dimensions from the length
+        of the size argument, but you may always specify it with the
+        `ndim` parameter.
 
         .. note:: 
             Note that the output will then be of dimension ndim+1.
+
+	This is a generalization of numpy.random.permutation to
+        the generate many permutation. Otherwise it behave the same.
 
     .. method:: multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
 
@@ -100,6 +118,10 @@ Reference
 
         Theano tries to infer the number of dimensions from the length of the size argument, but you
         may always specify it with the `ndim` parameter.
+
+	This is a generalization of numpy.random.multinomial to the
+        case where n and pvals are tensors. Otherwise it behave the
+        same.
 
         .. note:: 
             Note that the output will then be of dimension ndim+1.
