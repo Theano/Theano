@@ -218,9 +218,11 @@ List of Implemented Operations
         - The first input is sparse, the second can be sparse or dense.
         - The grad implemented is regular.
         - No C code for perform and no C code for grad.
-        - Return a Sparse for perform and a Sparse for grad.
-        - Flags trough constructor can change the output of
-          grad to be dense if the second input of the op is dense.
+        - Return a Sparse for perform.
+        - Return a Sparse for grad for sparse inputs and by default a
+          dense for dense inputs. The parameter
+          ``grad_preserves_dense`` can be set to False to return a
+          sparse grad for dense inputs.
     - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and
       ``sampling_dot``.
 
