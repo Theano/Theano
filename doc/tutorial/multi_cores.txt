@@ -5,14 +5,18 @@ Multi cores support in Theano
 BLAS operation
 ==============
 
-BLAS is an interface for many operations (e.g.dot product between
-vector/matrix and matrix/matrix) and their is many different
-implementation of that interface. Many of those implementation are
-parallel.
+BLAS is an interface for some mathematics operations between vectors,
+vector and matrix and matrices (e.g. the dot product between vector/matrix
+and matrix/matrix). Many different implementations exist of that
+interface and some of them are parallel.
 
-Theano try to use that interface as frequently as possible. So if you
-Theano link to such parallel implementation, those operation will run
-in parallel in Theano.
+Theano try to use that interface as frequently as possible for
+performance reason. So if Theano link to one parallel implementation,
+those operation will run in parallel in Theano.
+
+The most frequent way to control the number of threads used is via the
+``OMP_NUM_THREADS`` environment variable. Set it to the number of threads
+you want to use before starting the python process.
 
 
 Parallel element wise op with OpenMP
@@ -33,8 +37,8 @@ For simple(fast) operation you can obtain a speed up for very long tensor
 while for more complex operation you ca obtain a good speed up also for not
 too long tensor. 
 
-There is a script ``elemwise_openmp_speedup.py`` in ``theano/misc/`` which you can
-use to choose that value for your machine.
+There is a script ``elemwise_openmp_speedup.py`` in ``theano/misc/`` which you
+can use to choose that value for your machine.
 The script run two elemwise operation (a fast and a slow one) for a vector of
 size ``openmp_elemwise_minsize`` with and without OpenMP and show the time
 difference between the two cases.
