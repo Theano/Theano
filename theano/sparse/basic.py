@@ -2717,12 +2717,14 @@ def true_dot(x, y, grad_preserves_dense=True):
     one or all operands is sparse. Supported format are CSC and CSR.
     The output of the operation is sparse.
 
-    :param x: Matrix variable.
-    :param y: Matrix variable.
+    :param x: Sparse matrix or 2d tensor variable.
+    :param y: Sparse matrix or 2d tensor variable.
     :param grad_preserves_dense: if True and one on the input is dense,
-        make the output dense.
+        make the grad dense on that input.
 
     :return: The dot product `x`.`y` in a sparse format.
+
+    :note: one of ``x`` or ``y`` must be sparse.
     """
     # TODO
     # Maybe the triple-transposition formulation
