@@ -291,10 +291,10 @@ class TestRepeatOp(utt.InferShapeTester):
         self.op = RepeatOp()
         # uint64 always fails
         # int64 and uint32 also fail if python int are 32-bit
-        int_bitwidth = theano.gof.python_int_bitwidth()
-        if int_bitwidth == 64:
+        ptr_bitwidth = theano.gof.local_bitwidth()
+        if ptr_bitwidth == 64:
             self.numpy_unsupported_dtypes = ('uint64',)
-        if int_bitwidth == 32:
+        if ptr_bitwidth == 32:
             self.numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
 
     def test_repeatOp(self):
