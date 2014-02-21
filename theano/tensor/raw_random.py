@@ -576,11 +576,12 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
 
 def choice_helper(random_state, a, replace, p, size):
-    """
-    Helper function to draw random numbers using numpy's choice function.
+    """Helper function to draw random numbers using numpy's choice function.
 
-    This is a generalization of numpy.random.choice to the case where `a`,
-    `replace` and `p` are tensors.
+    This is a generalization of numpy.random.choice that coerce
+    `replace` to a bool and replace `p` to None when p is a vector of
+    0 elements.
+
     """
     if a.ndim > 1:
         raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
@@ -668,6 +669,9 @@ def permutation_helper(random_state, n, shape):
 
     If you wish to perform a permutation of the elements of an existing vector,
     see shuffle_row_elements.
+
+    This is a generalization of numpy.random.permutation to
+    the generate many permutation. Otherwise it behave the same.
     """
     # n should be a 0-dimension array
     assert n.shape == ()
