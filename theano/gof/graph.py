@@ -418,13 +418,12 @@ class Variable(Node):
         if not hasattr(self, '_fn_cache'):
             self._fn_cache = dict()
 
-        input_list = list(inputs_to_values.keys())
-        input_set = frozenset(input_list)
-        if not input_set in self._fn_cache:
-            self._fn_cache[input_set] = theano.function(input_list, self)
-        args = [inputs_to_values[param] for param in input_list]
+        inputs = tuple(sorted(inputs_to_values.keys(), key=id))
+        if not inputs in self._fn_cache:
+            self._fn_cache[inputs] = theano.function(inputs, self)
+        args = [inputs_to_values[param] for param in inputs]
 
-        rval = self._fn_cache[input_set](*args)
+        rval = self._fn_cache[inputs](*args)
 
         return rval
 
