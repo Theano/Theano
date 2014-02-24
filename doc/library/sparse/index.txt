@@ -208,9 +208,8 @@ List of Implemented Operations
         - The first input is sparse, the second can be sparse or dense.
         - The grad implemented is structured.
         - C code for perform and grad.
-        - When not using C code, it returns a sparse output if both
-          inputs are sparse and dense one if one of the inputs is
-          dense.
+        - It returns a sparse output if both inputs are sparse and
+          dense one if one of the inputs is dense.
         - Returns a sparse grad for sparse inputs and dense grad for
           dense inputs.
     - :class:`TrueDot <theano.sparse.basic.TrueDot>` and
