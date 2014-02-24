@@ -578,10 +578,9 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 def choice_helper(random_state, a, replace, p, size):
     """Helper function to draw random numbers using numpy's choice function.
 
-    This is a generalization of numpy.random.choice that coerce
-    `replace` to a bool and replace `p` to None when p is a vector of
-    0 elements.
-
+    This is a generalization of numpy.random.choice that coerces
+    `replace` to a bool and replaces `p` with None when p is a vector
+    of 0 elements.
     """
     if a.ndim > 1:
         raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
@@ -660,8 +659,8 @@ def permutation_helper(random_state, n, shape):
     If you wish to perform a permutation of the elements of an existing vector,
     see shuffle_row_elements.
 
-    This is a generalization of numpy.random.permutation to
-    the generate many permutation. Otherwise it behave the same.
+    This is a generalization of numpy.random.permutation to tensors.
+    Otherwise it behaves the same.
     """
     # n should be a 0-dimension array
     assert n.shape == ()
@@ -863,7 +862,7 @@ class RandomStreamsBase(object):
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  prob=None):
         """
-        Sample n times with probability of success prob for each trial,
+        Sample n times with probability of success p for each trial and
         return the number of successes.
 
         If the size argument is ambiguous on the number of dimensions,
