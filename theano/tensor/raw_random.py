@@ -576,11 +576,11 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
 
 def choice_helper(random_state, a, replace, p, size):
-    """
-    Helper function to draw random numbers using numpy's choice function.
+    """Helper function to draw random numbers using numpy's choice function.
 
-    This is a generalization of numpy.random.choice to the case where `a`,
-    `replace` and `p` are tensors.
+    This is a generalization of numpy.random.choice that coerces
+    `replace` to a bool and replaces `p` with None when p is a vector
+    of 0 elements.
     """
     if a.ndim > 1:
         raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
@@ -622,16 +622,6 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
                                                          broadcastable=bcast))
     return op(random_state, size, a, replace, p)
 
-def poisson_helper(random_state, lam, size):
-    """
-    Helper function to draw random numbers using numpy's poisson function.
-
-    This is a generalization of numpy.random.poisson to the case where 
-    `lam` is a tensor.
-    """
-
-    return random_state.poisson(lam, size)
-
 def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     """
     Draw samples from a Poisson distribution.
@@ -652,7 +642,7 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     
     ndim, size, bcast = _infer_ndim_bcast(ndim, size)
 
-    op = RandomFunction(poisson_helper, tensor.TensorType(dtype=dtype,
+    op = RandomFunction("poisson", tensor.TensorType(dtype=dtype,
                                                      broadcastable=bcast))
     return op(random_state, size, lam)
 
@@ -668,6 +658,9 @@ def permutation_helper(random_state, n, shape):
 
     If you wish to perform a permutation of the elements of an existing vector,
     see shuffle_row_elements.
+
+    This is a generalization of numpy.random.permutation to tensors.
+    Otherwise it behaves the same.
     """
     # n should be a 0-dimension array
     assert n.shape == ()
@@ -680,7 +673,7 @@ def permutation_helper(random_state, n, shape):
         shape = ()
     out_shape = list(shape)
     out_shape.append(n)
-    out = numpy.zeros(out_shape, int)
+    out = numpy.empty(out_shape, int)
     for i in numpy.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
@@ -869,7 +862,7 @@ class RandomStreamsBase(object):
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  prob=None):
         """
-        Sample n times with probability of success prob for each trial,
+        Sample n times with probability of success p for each trial and
         return the number of successes.
 
         If the size argument is ambiguous on the number of dimensions,

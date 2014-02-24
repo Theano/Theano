@@ -5,13 +5,13 @@
 More Examples
 =============
 
-At this point it would be wise to begin familiarizing yourself 
-more systematically with Theano's fundamental objects and operations by browsing
-this section of the library: :ref:`libdoc_basic_tensor`.
+At this point it would be wise to begin familiarizing yourself more
+systematically with Theano's fundamental objects and operations by
+browsing this section of the library: :ref:`libdoc_basic_tensor`.
 
-As the tutorial unfolds, you should also gradually acquaint yourself with the other
-relevant areas of the library and with the relevant subjects of the documentation
-entrance page.
+As the tutorial unfolds, you should also gradually acquaint yourself
+with the other relevant areas of the library and with the relevant
+subjects of the documentation entrance page.
 
 
 Logistic Function
@@ -30,12 +30,12 @@ the logistic curve, which is given by:
     A plot of the logistic function, with x on the x-axis and s(x) on the
     y-axis.
 
-You want to compute the function :ref:`elementwise <libdoc_tensor_elementwise>` on matrices of
-doubles, which means that you want to apply this function to each
-individual element of the matrix.
+You want to compute the function :ref:`elementwise
+<libdoc_tensor_elementwise>` on matrices of doubles, which means that
+you want to apply this function to each individual element of the
+matrix.
 
 Well, what you do is this:
-
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_1
@@ -450,6 +450,10 @@ Other Random Distributions
 
 There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
 
+Other Implementations
+---------------------
+
+There is 2 other implementations based on :class:`CURAND <theano.sandbox.cuda.rng_curand>` and :ref:`MRG31k3p <libdoc_rng_mrg>`
 
 .. _logistic_regression:
 
@@ -457,7 +461,8 @@ There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 A Real Example: Logistic Regression
 ===================================
 
-The preceding elements are featured in this more realistic example.  It will be used repeatedly.  
+The preceding elements are featured in this more realistic example.
+It will be used repeatedly.
 
 .. code-block:: python
 
