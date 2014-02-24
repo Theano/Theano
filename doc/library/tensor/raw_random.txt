@@ -65,7 +65,7 @@ Reference
         to supplement the missing information.
 
 	This is a generalization of numpy.random.random_integers to
-        the case where low and high are tensors. Otherwise it behave the same.
+        the case where low and high are tensors. Otherwise it behaves the same.
 
     .. method:: choice(self, size=(), a=2, replace=True, p=None, ndim=None, dtype='int64'):
 
@@ -108,7 +108,7 @@ Reference
             Note that the output will then be of dimension ndim+1.
 
 	This is a generalization of numpy.random.permutation to
-        the generate many permutation. Otherwise it behave the same.
+        the generate many permutation. Otherwise it behaves the same.
 
     .. method:: multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
 
@@ -120,7 +120,7 @@ Reference
         may always specify it with the `ndim` parameter.
 
 	This is a generalization of numpy.random.multinomial to the
-        case where n and pvals are tensors. Otherwise it behave the
+        case where n and pvals are tensors. Otherwise it behaves the
         same.
 
         .. note:: 
