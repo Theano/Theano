@@ -674,7 +674,7 @@ def permutation_helper(random_state, n, shape):
         shape = ()
     out_shape = list(shape)
     out_shape.append(n)
-    out = numpy.zeros(out_shape, int)
+    out = numpy.empty(out_shape, int)
     for i in numpy.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
