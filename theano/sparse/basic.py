@@ -2623,9 +2623,10 @@ class TrueDot(gof.op.Op):
         self.grad_preserves_dense = grad_preserves_dense
 
     def __eq__(self, other):
-        # The grad_preserves_dense attribute don't change the
-        # execution behavior.  To have Theano merge optimizer merging
-        # them, we shouldn't compare it here.
+        # The grad_preserves_dense attribute doesn't change the
+        # execution behavior.  To let the optimizer merge nodes with
+        # different values of this attribute we shouldn't compare it
+        # here.
         return type(self) == type(other)
 
     def __hash__(self):
@@ -2714,13 +2715,13 @@ class TrueDot(gof.op.Op):
 def true_dot(x, y, grad_preserves_dense=True):
     """
     Operation for efficiently calculating the dot product when
-    one or all operands is sparse. Supported format are CSC and CSR.
+    one or all operands are sparse. Supported formats are CSC and CSR.
     The output of the operation is sparse.
 
     :param x: Sparse matrix or 2d tensor variable.
     :param y: Sparse matrix or 2d tensor variable.
-    :param grad_preserves_dense: if True and one on the input is dense,
-        make the grad dense on that input.
+    :param grad_preserves_dense: if True (default), makes the grad of
+        dense inputs dense.  Otherwise the grad is always sparse.
 
     :return: The dot product `x`.`y` in a sparse format.
 
