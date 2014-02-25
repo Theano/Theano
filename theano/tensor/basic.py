@@ -557,7 +557,7 @@ def get_scalar_constant_value(v):
             data = v.data
         return numpy_scalar(data)
 
-    if v.owner:
+    if getattr(v, 'owner', None):
         if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                    compile.ops.OutputGuard,
                                    compile.DeepCopyOp)):
@@ -590,14 +590,10 @@ def get_scalar_constant_value(v):
             v.owner.op.perform(v.owner, const, ret)
             return ret[0][0]
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
-            # This condition depends on Subtensor always embedding constant
-            # indices in the Op rather than making them inputs to the Apply
-            # node.
-            if isinstance(v.owner.inputs[0], TensorConstant) and \
-                len(v.owner.inputs) == 1:
+            if isinstance(v.owner.inputs[0], TensorConstant):
+                cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                 try:
-                    return v.owner.inputs[0].data.__getitem__(
-                    tuple(v.owner.op.idx_list))
+                    return v.owner.inputs[0].data.__getitem__(cdata)
                 except IndexError:
                     raise IndexError(
                             str(tuple(v.owner.op.idx_list)) +
@@ -620,10 +616,12 @@ def get_scalar_constant_value(v):
                            v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1):
 
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Note the '+ 1' is because the first argument to Join is the
                 # axis.
-                ret = v.owner.inputs[0].owner.inputs[
-                    v.owner.op.idx_list[0] + 1]
+                ret = v.owner.inputs[0].owner.inputs[idx + 1]
                 ret = get_scalar_constant_value(ret)
                 # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
@@ -635,14 +633,13 @@ def get_scalar_constant_value(v):
                 # We put this check in case there is change in the future
                 python_all(var.ndim == 0 for var in
                            v.owner.inputs[0].owner.inputs) and
-                len(v.owner.op.idx_list) == 1 and
-                #idx_list can contain Scalar Type object.
-                isinstance(v.owner.op.idx_list[0], (int, long,
-                                                    numpy.integer))):
-
+                len(v.owner.op.idx_list) == 1):
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Python 2.4 does not support indexing with numpy.integer
                 # So we cast it.
-                idx = int(v.owner.op.idx_list[0])
+                idx = int(idx)
                 ret = v.owner.inputs[0].owner.inputs[idx]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
@@ -658,6 +655,8 @@ def get_scalar_constant_value(v):
                 op = owner.op
                 idx_list = op.idx_list
                 idx = idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(owner.inputs[1])
                 grandparent = leftmost_parent.owner.inputs[0]
                 gp_broadcastable = grandparent.type.broadcastable
                 ndim = grandparent.type.ndim

@@ -1633,8 +1633,8 @@ def local_useless_subtensor(node):
         if not hasattr(node.fgraph, 'shape_feature'):
             return
         shape_of = node.fgraph.shape_feature.shape_of
-        node_input_idx = 1
-        for pos, idx in enumerate(node.op.idx_list):
+        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True)
+        for pos, idx in enumerate(cdata):
             if not isinstance(idx, slice):
                 # If idx is not a slice, this means we remove this dimension
                 # from the output, so the subtensor is not useless
@@ -1659,8 +1659,8 @@ def local_useless_subtensor(node):
             if isinstance(idx.stop, (int, numpy.integer)):
                 if idx.stop < length_pos_data:
                     return False
-            elif isinstance(idx.stop, theano.scalar.Scalar):
-                length_pos_shape_i = node.inputs[node_input_idx]
+            elif isinstance(idx.stop, gof.Variable):
+                length_pos_shape_i = idx.stop
                 # length_pos is a tensor variable, but length_pos_shape_i
                 # is a scalar variable. We try to see if they represent
                 # the same underlying variable.
@@ -1683,9 +1683,6 @@ def local_useless_subtensor(node):
                 assert str(length_pos.type.dtype) == "int64"
                 assert str(length_pos_shape_i.type.dtype) in ["int8", "int16",
                                                               "int32", "int64"]
-                # We already know that start and step are not variables
-                # and so they don't appear in the input of the node
-                node_input_idx += 1
 
                 # length_pos_shape_i cannot be None
                 if length_pos_shape_i != length_pos:
@@ -1745,8 +1742,7 @@ def local_subtensor_lift(node):
                 return [u.owner.op(*new_inputs)]
 
         if isinstance(u.owner.op, T.Rebroadcast):
-            # make sure that Subtensor and Rebroadcast only have 1 input/output
-            assert len(node.inputs) == 1
+            # make sure that Rebroadcast has only 1 input
             assert len(u.owner.inputs) == 1
 
             # Subtensor might reduce dim., adapt broadcast pattern accordingly
@@ -1768,7 +1764,7 @@ def local_subtensor_lift(node):
                 new_axis += [(j, u.broadcastable[i])]
                 j += 1
 
-            subt_x = Subtensor(node.op.idx_list)(u.owner.inputs[0])
+            subt_x = node.op(u.owner.inputs[0], *node.inputs[1:])
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
 
             return [rbcast_subt_x]
