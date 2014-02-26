@@ -131,6 +131,9 @@ class FromFunctionOptimizer(Optimizer):
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
+    def __str__(self):
+        return self.__name__
+
 
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
