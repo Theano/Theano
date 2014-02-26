@@ -7,11 +7,12 @@ Tensor optimizations addressing the ops in basic.py
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import operator
 import itertools
-import sys
-import traceback
 from itertools import izip
+import operator
+import sys
+import time
+import traceback
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
@@ -4779,8 +4780,14 @@ class FusionOptimizer(Optimizer):
 
     def apply(self, fgraph):
         did_something = True
+        nb_iter = 0
+        nb_replacement = 0
+        nb_inconsistency_replace = 0
+        time_toposort = 0
         while did_something:
+            t0 = time.time()
             nodelist = list(fgraph.toposort())
+            time_toposort += time.time() - t0
             nodelist.reverse()
             did_something = False
             for node in nodelist:
@@ -4794,8 +4801,24 @@ class FusionOptimizer(Optimizer):
                                 zip(node.outputs, new_outputs),
                                 reason=self.__class__.__name__)
                             did_something = True
+                            nb_replacement += 1
                         except InconsistencyError:
+                            nb_inconsistency_replace += 1
                             pass
+            nb_iter += 1
+        return (self, nb_iter, nb_replacement,
+                nb_inconsistency_replace,
+                time_toposort)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        print >> stream, blanc, "FusionOptimizer"
+        print >> stream, blanc, " nb_iter", prof[1]
+        print >> stream, blanc, " nb_replacement", prof[2]
+        print >> stream, blanc, " nb_inconsistency_replace", prof[3]
+        print >> stream, blanc, " time_toposort", prof[4]
+
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
