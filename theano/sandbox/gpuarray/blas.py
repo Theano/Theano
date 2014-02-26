@@ -61,7 +61,7 @@ class GpuGemv(BlasOp, Gemv):
                              ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
                              %(A)s, %(x)s,
                              ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
-                             %(out)s) == NULL) {
+                             %(out)s, 0) == -1) {
             %(fail)s
         }
         """ % vars
@@ -72,7 +72,7 @@ class GpuGemv(BlasOp, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
@@ -117,7 +117,7 @@ class GpuGemm(BlasOp, Gemm):
                              ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
                              %(A)s, %(B)s,
                              ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
-                             %(out)s) == NULL) {
+                             %(out)s, 0) == -1) {
             %(fail)s
         }
         """ % vars
@@ -128,7 +128,7 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
@@ -176,7 +176,7 @@ class GpuDot22(BlasOp, Dot22):
                              one,
                              %(A)s, %(B)s,
                              zero,
-                             %(out)s) == NULL) {
+                             %(out)s, 0) == -1) {
             %(fail)s
         }
         """ % vars
@@ -187,7 +187,7 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()
