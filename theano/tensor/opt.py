@@ -4791,6 +4791,10 @@ class FusionOptimizer(Optimizer):
         nb_replacement = 0
         nb_inconsistency_replace = 0
         time_toposort = 0
+        if fgraph.profile:
+            validate_before = fgraph.profile.validate_time
+            callbacks_before = fgraph.execute_callbacks_times.copy()
+            callback_before = fgraph.execute_callbacks_time
         while did_something:
             t0 = time.time()
             nodelist = list(fgraph.toposort())
@@ -4813,8 +4817,23 @@ class FusionOptimizer(Optimizer):
                             nb_inconsistency_replace += 1
                             pass
             nb_iter += 1
+
+        if fgraph.profile:
+            validate_time = fgraph.profile.validate_time - validate_before
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            callbacks_time = {}
+            for k, v in fgraph.execute_callbacks_times.iteritems():
+                if k in callbacks_before:
+                    callbacks_time[k] = v - callbacks_before[k]
+                else:
+                    callbacks_time[k] = v
+        else:
+            validate_time = None
+            callback_time = None
+            callbacks_time = {}
         return (self, nb_iter, nb_replacement,
                 nb_inconsistency_replace,
+                validate_time, callback_time, callbacks_time,
                 time_toposort)
 
     @staticmethod
@@ -4824,7 +4843,10 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " nb_iter", prof[1]
         print >> stream, blanc, " nb_replacement", prof[2]
         print >> stream, blanc, " nb_inconsistency_replace", prof[3]
-        print >> stream, blanc, " time_toposort", prof[4]
+        print >> stream, blanc, " validate_time", prof[4]
+        print >> stream, blanc, " callback_time", prof[5]
+        print >> stream, blanc, " callbacks_time", prof[6]
+        print >> stream, blanc, " time_toposort", prof[7]
 
 
 if config.tensor.local_elemwise_fusion:
