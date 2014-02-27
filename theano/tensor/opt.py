@@ -26,7 +26,8 @@ from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
-                                     Subtensor, IncSubtensor, AdvancedIncSubtensor1)
+                                     Subtensor, IncSubtensor, make_constant,
+                                     AdvancedIncSubtensor1)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -1956,6 +1957,7 @@ def local_subtensor_merge(node):
             else:
                 merged_slices += slices1[pos_1:]
 
+            merged_slices = make_constant(merged_slices)
             subtens = Subtensor(merged_slices)
             sl_ins = Subtensor.collapse(
                 merged_slices,

@@ -4,8 +4,7 @@ import numpy
 
 import theano
 from theano.compat import all, PY3
-from theano.scalar import (ComplexError, IntegerDivisionError,
-                           ScalarConstant, int64)
+from theano.scalar import ComplexError, IntegerDivisionError
 from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
@@ -350,18 +349,7 @@ class _tensor_py_operators:
         if not isinstance(args, tuple):
             args = args,
         # Convert python literals to theano constants
-        def conv(a):
-            if a is None:
-                return a
-            elif isinstance(a, slice):
-                return slice(conv(a.start),
-                             conv(a.stop),
-                             conv(a.step))
-            elif isinstance(a, (int, long, numpy.integer)):
-                return ScalarConstant(int64, a)
-            else:
-                return a
-        args = tuple(map(conv, args))
+        args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
