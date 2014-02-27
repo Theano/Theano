@@ -1902,31 +1902,3 @@ def pre_greedy_local_optimizer(list_optimizations, out):
     final_outs, optimized_nodes = local_recursive_function(
         list_optimizations, out, {}, 0)
     return final_outs[out_index]
-
-
-############
-### Misc ###
-############
-
-class InplaceOptimizer(Optimizer):
-
-    def __init__(self, inplace):
-        self.inplace = inplace
-
-    def apply(self, fgraph):
-        self.inplace(fgraph)
-
-    def add_requirements(self, fgraph):
-        fgraph.attach_feature(dh.DestroyHandler())
-
-
-class PureThenInplaceOptimizer(Optimizer):
-
-    def __init__(self, pure, inplace):
-        self.pure = pure
-        self.inplace = inplace
-
-    def apply(self, fgraph):
-        self.pure(fgraph)
-        fgraph.attach_feature(dh.DestroyHandler())
-        self.inplace(fgraph)
