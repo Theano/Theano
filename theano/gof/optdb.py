@@ -194,7 +194,6 @@ class EquilibriumDB(DB):
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         return opt.EquilibriumOptimizer(opts,
-                max_depth=5,
                 max_use_ratio=config.optdb.max_use_ratio,
                 failure_callback=opt.NavigatorOptimizer.warn_inplace)
 

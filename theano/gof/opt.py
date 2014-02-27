@@ -1496,7 +1496,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
                  optimizers,
                  failure_callback=None,
-                 max_depth=None,
                  max_use_ratio=None):
         """
         :param optimizers:  list or set of local or global optimizations to
@@ -1504,8 +1503,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         :param max_use_ratio: each optimizer can be applied at most
             (size of graph * this number) times
-
-        :param max_depth: TODO what does this do? (EquilibriumDB sets it to 5)
 
         """
 
@@ -1526,7 +1523,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         self.local_optimizers_map.setdefault(c, []).append(opt)
             else:
                 self.global_optimizers.append(opt)
-        self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
