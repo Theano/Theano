@@ -62,7 +62,7 @@ optdb.register('gpu_opt',
 # inside the elemwise. When there is no float64 op, this is working.
 optdb.register('gpu_after_fusion',
                ProxyDB(gpu_seqopt),
-               optdb.__position__.get('elemwise_fusion', 71) + .1,
+               optdb.__position__.get('elemwise_fusion', 49) + .1,
                'gpu')
 
 
@@ -1338,9 +1338,10 @@ gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
         max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
+    #Must be after cpu fusion at 40, gpu at 48.5 and before AddDestroyHandler at 49.5
     optdb.register('gpu_elemwise_fusion',
                    tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
-                   71.00, 'fast_run', 'fusion',
+                   49, 'fast_run', 'fusion',
                    'local_elemwise_fusion', 'gpu')
 else:
     _logger.debug(("not enabling optimization fusion of gpu elemwise in "

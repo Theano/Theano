@@ -1505,6 +1505,12 @@ class GemmOptimizer(Optimizer):
             callbacks_before = fgraph.execute_callbacks_times.copy()
             callback_before = fgraph.execute_callbacks_time
 
+        class Updater:
+            def on_import(self, fgraph, new_node, reason):
+                if new_node is not node:
+                    nodelist.append(new_node)
+        u = Updater()
+        fgraph.attach_feature(u)
         while did_something:
             nb_iter += 1
             t0 = time.time()
@@ -1551,6 +1557,7 @@ class GemmOptimizer(Optimizer):
                     except ReplacementDidntRemovedError, e:
                         nb_replacement_didn_t_remove += 1
                         self.warned = True
+        fgraph.remove_feature(u)
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
