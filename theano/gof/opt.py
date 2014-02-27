@@ -1726,11 +1726,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             for (t, count, opt) in count_opt[::-1]:
                 print >> stream, blanc, '  %.3fs - %d - %s' % (
                     t, count, opt)
-            print >> stream, blanc, '  %.3fs - in %d optimization that where not used' % (
+            print >> stream, blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used))
             not_used.sort()
             for (t, opt) in not_used[::-1]:
-                print >> stream, blanc + "  ", '  %.3fs - %s' % (t, opt)
+                if t > 0:
+                    # Skip opt that have 0 times, they probably wasn't even tried.
+                    print >> stream, blanc + "  ", '  %.3fs - %s' % (t, opt)
             print >> stream
 
     @staticmethod
