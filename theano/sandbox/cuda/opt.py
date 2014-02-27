@@ -14,7 +14,7 @@ import theano.ifelse
 
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
-                        Optimizer, toolbox, DestroyHandler)
+                        Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
     device_properties, gpu_eye,
@@ -88,7 +88,6 @@ class InputToGpuOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         for input in fgraph.inputs:

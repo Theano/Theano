@@ -36,7 +36,7 @@ from theano.gof.python25 import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
-from theano.gof import toolbox, DestroyHandler
+from theano.gof import toolbox
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
 from theano.compat.six import StringIO
 
@@ -4783,7 +4783,6 @@ class FusionOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True

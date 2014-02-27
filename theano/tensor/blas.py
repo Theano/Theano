@@ -139,7 +139,7 @@ except ImportError:
     pass
 
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof import (utils, Op, view_roots, DestroyHandler,
+from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,
                         EquilibriumOptimizer, Apply,
@@ -1488,7 +1488,6 @@ class GemmOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True
