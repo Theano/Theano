@@ -1502,7 +1502,7 @@ class GemmOptimizer(Optimizer):
         time_toposort = 0
         while did_something:
             t0 = time.time()
-            nodelist = list(fgraph.toposort())
+            nodelist = theano.gof.graph.io_toposort(fgraph.inputs, fgraph.outputs)
             time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
