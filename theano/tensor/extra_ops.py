@@ -729,14 +729,14 @@ def fill_diagonal(a, val):
 
 class ConsiderConstant(ViewOp):
     def grad(self, args, g_outs):
-        return [tensor.zeros_like(g_out) for g_out in g_outs]
+        return [g_out.zeros_like(g_out) for g_out in g_outs]
 consider_constant_ = ConsiderConstant()
 
 
 # Although the op just returns its input, it should be removed from
 # the graph to make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(consider_constant_),
-    name='remove_consider_constant')
+    'fast_compile', name='remove_consider_constant')
 
 
 #I create a function only to have the doc show well.

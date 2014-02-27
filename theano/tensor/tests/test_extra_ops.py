@@ -482,11 +482,10 @@ class TestConsiderConstant(unittest.TestCase):
             [node.op for node in f.maker.fgraph.toposort()]
         
     def test_grad(self):
-        a = numpy.asarray(self.rng.randn(50, 50),
+        a = numpy.asarray(self.rng.randn(5, 5),
             dtype=config.floatX)
         
         x = T.matrix('x')
-        y = x * consider_constant(x)
 
         expressions_gradients = [
             (x * consider_constant(x), x),
