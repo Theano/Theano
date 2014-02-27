@@ -1847,17 +1847,15 @@ blas_optdb.register('local_gemm_to_gemv',
         15, 'fast_run')
 
 
-# After destroyhandler is in but before we try to make elemwise things inplace
-# Try to make gemm inplace
-# Also, need to make the gemm optimisation(step 70) happen before the
-# fusion of elemwise(step 71)
+# After destroyhandler(49.5) but before we try to make elemwise things
+# inplace (75)
 blas_opt_inplace = in2out(local_inplace_gemm,
                           local_inplace_gemv,
                           local_inplace_ger,
                           name="blas_opt_inplace")
 optdb.register('InplaceBlasOpt',
-        blas_opt_inplace,
-        70.0, 'fast_run', 'inplace')
+               blas_opt_inplace,
+               70.0, 'fast_run', 'inplace', 'blas_opt_inplace')
 
 
 class Dot22Scalar(GemmRelated):
