@@ -18,7 +18,7 @@ those operations will run in parallel in Theano.
 The most frequent way to control the number of threads used is via the
 ``OMP_NUM_THREADS`` environment variable. Set it to the number of
 threads you want to use before starting the python process. Some BLAS
-implementation support other enviroment variable.
+implementations support other enviroment variables.
 
 
 Parallel element wise ops with OpenMP
@@ -27,8 +27,8 @@ Parallel element wise ops with OpenMP
 Because element wise ops work on every tensor entry independently they
 can be easily parallelized using OpenMP.
 
-To use OpenMP you must set the ``openmp`` flag to ``True`` in Theano
-configuration.
+To use OpenMP you must set the ``openmp`` :ref:`flag <libdoc_config>`
+to ``True``.
 
 You can use the flag ``openmp_elemwise_minsize`` to set the minimum
 tensor size for which the operation is parallelized because for short

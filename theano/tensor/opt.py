@@ -7,11 +7,12 @@ Tensor optimizations addressing the ops in basic.py
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import operator
 import itertools
-import sys
-import traceback
 from itertools import izip
+import operator
+import sys
+import time
+import traceback
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
@@ -35,7 +36,7 @@ from theano.gof.python25 import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
-from theano.gof import toolbox, DestroyHandler
+from theano.gof import toolbox
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
 from theano.compat.six import StringIO
 
@@ -4072,20 +4073,22 @@ local_one_plus_erf = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint=_is_1),
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_one_plus_erf, name='local_one_plus_erf')
-register_stabilize(local_one_plus_erf, name='local_one_plus_erf')
-register_specialize(local_one_plus_erf, name='local_one_plus_erf')
+                                    allow_multiple_clients=True,
+                                    name='local_one_plus_erf')
+register_canonicalize(local_one_plus_erf)
+register_stabilize(local_one_plus_erf)
+register_specialize(local_one_plus_erf)
 
 #1-erf(x)=>erfc(x)
 local_one_minus_erf = gof.PatternSub((T.sub,
-                                     dict(pattern='y', constraint=_is_1),
-                                     (T.erf, 'x')),
-                                    (T.erfc, 'x'),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_one_minus_erf, name='local_one_minus_erf')
-register_stabilize(local_one_minus_erf, name='local_one_minus_erf')
-register_specialize(local_one_minus_erf, name='local_one_minus_erf')
+                                      dict(pattern='y', constraint=_is_1),
+                                      (T.erf, 'x')),
+                                     (T.erfc, 'x'),
+                                     allow_multiple_clients=True,
+                                     name='local_one_minus_erf',)
+register_canonicalize(local_one_minus_erf)
+register_stabilize(local_one_minus_erf)
+register_specialize(local_one_minus_erf)
 
 local_one_minus_erf2 = gof.PatternSub((T.add,
                                       1,
@@ -4100,34 +4103,37 @@ register_specialize(local_one_minus_erf2)
 #1+(-erf(x))=>erfc(x) This is a different graph then the previous as
 #the canonicalize don't work completly
 local_one_plus_neg_erf = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_1),
-                                     (T.neg, (T.erf, 'x'))),
-                                    (T.erfc, 'x'),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
-register_stabilize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
-register_specialize(local_one_plus_neg_erf, name='local_one_plus_neg_erf')
+                                         dict(pattern='y', constraint=_is_1),
+                                         (T.neg, (T.erf, 'x'))),
+                                        (T.erfc, 'x'),
+                                        allow_multiple_clients=True,
+                                        name='local_one_plus_neg_erf')
+register_canonicalize(local_one_plus_neg_erf)
+register_stabilize(local_one_plus_neg_erf)
+register_specialize(local_one_plus_neg_erf)
 
 #(-1)+erf(x) => -erfc(x) don't need erf(x)+(-1) as the canonicalize
 #will put the -1 as the first argument.
 local_erf_minus_one = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_minus1),
-                                     (T.erf, 'x')),
-                                    (T.neg, (T.erfc, 'x')),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_erf_minus_one, name='local_erf_minus_one')
-register_stabilize(local_erf_minus_one, name='local_erf_minus_one')
-register_specialize(local_erf_minus_one, name='local_erf_minus_one')
+                                      dict(pattern='y', constraint=_is_minus1),
+                                      (T.erf, 'x')),
+                                     (T.neg, (T.erfc, 'x')),
+                                     allow_multiple_clients=True,
+                                     name='local_erf_minus_one')
+register_canonicalize(local_erf_minus_one)
+register_stabilize(local_erf_minus_one)
+register_specialize(local_erf_minus_one)
 
 #1-erfc(x) => erf(x)
 local_one_minus_erfc = gof.PatternSub((T.sub,
-                                     dict(pattern='y', constraint=_is_1),
-                                     (T.erfc, 'x')),
-                                    (T.erf, 'x'),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_one_minus_erfc, name='local_one_minus_erfc')
-register_stabilize(local_one_minus_erfc, name='local_one_minus_erfc')
-register_specialize(local_one_minus_erfc, name='local_one_minus_erfc')
+                                       dict(pattern='y', constraint=_is_1),
+                                       (T.erfc, 'x')),
+                                      (T.erf, 'x'),
+                                      allow_multiple_clients=True,
+                                      name='local_one_minus_erfc')
+register_canonicalize(local_one_minus_erfc)
+register_stabilize(local_one_minus_erfc)
+register_specialize(local_one_minus_erfc)
 
 local_one_minus_erfc2 = gof.PatternSub((T.add,
                                         1,
@@ -4152,30 +4158,32 @@ register_specialize(local_one_minus_erfc3)
 #1+(-erfc(x)) => erf(x) This is a different graph then the previous as
 #the canonicalize don't work completly
 local_one_add_neg_erfc = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_1),
-                                     (T.neg, (T.erfc, 'x'))),
-                                    (T.erf, 'x'),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
-register_stabilize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
-register_specialize(local_one_add_neg_erfc, name='local_one_add_neg_erfc')
+                                         dict(pattern='y', constraint=_is_1),
+                                         (T.neg, (T.erfc, 'x'))),
+                                        (T.erf, 'x'),
+                                        allow_multiple_clients=True,
+                                        name='local_one_add_neg_erfc')
+register_canonicalize(local_one_add_neg_erfc)
+register_stabilize(local_one_add_neg_erfc)
+register_specialize(local_one_add_neg_erfc)
 
 #(-1)+erfc(-x)=>erf(x)
 local_erf_neg_minus_one = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_minus1),
-                                     (T.erfc, (T.neg, 'x'))),
-                                    (T.erf, 'x'),
-                                    allow_multiple_clients=True,)
-register_canonicalize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
-register_stabilize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
-register_specialize(local_erf_neg_minus_one, name='local_erf_neg_minus_one')
+                                          dict(pattern='y', constraint=_is_minus1),
+                                          (T.erfc, (T.neg, 'x'))),
+                                         (T.erf, 'x'),
+                                         allow_multiple_clients=True,
+                                         name='local_erf_neg_minus_one')
+register_canonicalize(local_erf_neg_minus_one)
+register_stabilize(local_erf_neg_minus_one)
+register_specialize(local_erf_neg_minus_one)
 
 #(-1)+erfc(-1*x)=>erf(x)
 local_erf_neg_minus_one2 = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_minus1),
-                                     (T.erfc, (T.mul, -1, 'x'))),
-                                    (T.erf, 'x'),
-                                    allow_multiple_clients=True,
+                                           dict(pattern='y', constraint=_is_minus1),
+                                           (T.erfc, (T.mul, -1, 'x'))),
+                                          (T.erf, 'x'),
+                                          allow_multiple_clients=True,
                                           name='local_erf_neg_minus_one2')
 register_canonicalize(local_erf_neg_minus_one2)
 register_stabilize(local_erf_neg_minus_one2)
@@ -4775,12 +4783,21 @@ class FusionOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True
+        nb_iter = 0
+        nb_replacement = 0
+        nb_inconsistency_replace = 0
+        time_toposort = 0
+        if fgraph.profile:
+            validate_before = fgraph.profile.validate_time
+            callbacks_before = fgraph.execute_callbacks_times.copy()
+            callback_before = fgraph.execute_callbacks_time
         while did_something:
+            t0 = time.time()
             nodelist = list(fgraph.toposort())
+            time_toposort += time.time() - t0
             nodelist.reverse()
             did_something = False
             for node in nodelist:
@@ -4794,18 +4811,56 @@ class FusionOptimizer(Optimizer):
                                 zip(node.outputs, new_outputs),
                                 reason=self.__class__.__name__)
                             did_something = True
+                            nb_replacement += 1
                         except InconsistencyError:
+                            nb_inconsistency_replace += 1
                             pass
+            nb_iter += 1
+
+        if fgraph.profile:
+            validate_time = fgraph.profile.validate_time - validate_before
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            callbacks_time = {}
+            for k, v in fgraph.execute_callbacks_times.iteritems():
+                if k in callbacks_before:
+                    callbacks_time[k] = v - callbacks_before[k]
+                else:
+                    callbacks_time[k] = v
+        else:
+            validate_time = None
+            callback_time = None
+            callbacks_time = {}
+        return (self, nb_iter, nb_replacement,
+                nb_inconsistency_replace,
+                validate_time, callback_time, callbacks_time,
+                time_toposort)
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        print >> stream, blanc, "FusionOptimizer"
+        print >> stream, blanc, " nb_iter", prof[1]
+        print >> stream, blanc, " nb_replacement", prof[2]
+        print >> stream, blanc, " nb_inconsistency_replace", prof[3]
+        print >> stream, blanc, " validate_time", prof[4]
+        print >> stream, blanc, " callback_time", prof[5]
+        print >> stream, blanc, " callbacks_time"
+        for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+            if i[1] > 0:
+                print i
+        print >> stream, blanc, " time_toposort", prof[7]
+
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
+    #Must be after gpu(48.5) and before AddDestroyHandler(49.5)
     compile.optdb.register('elemwise_fusion',
-                           FusionOptimizer(local_elemwise_fusion), 71.00,
+                           FusionOptimizer(local_elemwise_fusion), 49,
                            'fast_run', 'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
 else:
     _logger.debug("not enabling optimization fusion elemwise in fast_run")
     compile.optdb.register('elemwise_fusion',
-                           FusionOptimizer(local_elemwise_fusion), 71.00,
+                           FusionOptimizer(local_elemwise_fusion), 49,
                            'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
