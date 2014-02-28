@@ -58,9 +58,8 @@ def shared(*args, **kw):
 from theano.tensor import nnet  # used for softmax, sigmoid, etc.
 
 from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
-    jacobian, hessian
+    jacobian, hessian, consider_constant
 
 from theano.tensor.sort import sort, argsort
 from theano.tensor.extra_ops import (DiffOp, bincount, squeeze,
-                       repeat, bartlett, fill_diagonal, cumsum, cumprod,
-                       consider_constant)
+                       repeat, bartlett, fill_diagonal, cumsum, cumprod)

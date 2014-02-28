@@ -4809,3 +4809,13 @@ else:
                            FusionOptimizer(local_elemwise_fusion), 71.00,
                            'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
+
+
+# ############################
+# # Remove consider_constant #
+# ############################
+
+# Although the op just returns its input, it should be removed from
+# the graph to make sure all possible optimizations can be applied.
+register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
+    'fast_compile', name='remove_consider_constant')

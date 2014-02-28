@@ -5,6 +5,7 @@
 import unittest
 import theano
 from theano import gof
+from theano.tests import unittest_tools as utt
 
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
@@ -553,6 +554,46 @@ def test_disconnected_cost_grad():
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
+
+
+class TestConsiderConstant(unittest.TestCase):
+
+    def setUp(self):
+        utt.seed_rng()
+        self.rng = np.random.RandomState(seed=utt.fetch_seed())
+
+    def test_op_removed(self):
+        x = theano.tensor.matrix('x')
+        y = x * gradient.consider_constant(x)
+        f = theano.function([x], y)
+        # need to refer to theano.gradient.consider_constant_ here,
+        # theano.gradient.consider_constant is a wrapper function!
+        assert gradient.consider_constant_ not in \
+            [node.op for node in f.maker.fgraph.toposort()]
+        
+    def test_grad(self):
+        T = theano.tensor
+        a = np.asarray(self.rng.randn(5, 5),
+            dtype=config.floatX)
+        
+        x = T.matrix('x')
+
+        expressions_gradients = [
+            (x * gradient.consider_constant(x), x),
+            (x * gradient.consider_constant(T.exp(x)), T.exp(x)),
+            (gradient.consider_constant(x), T.constant(0.)),
+            (x**2 * gradient.consider_constant(x), 2 * x**2),
+        ]
+
+        for expr, expr_grad in expressions_gradients:
+            g = gradient.grad(expr.sum(), x)
+            # gradient according to theano
+            f = theano.function([x], g, on_unused_input='ignore')
+            # desired gradient
+            f2 = theano.function([x], expr_grad, on_unused_input='ignore')
+
+            assert np.allclose(f(a), f2(a))
+
 
 if __name__ == '__main__':
     unittest.main()

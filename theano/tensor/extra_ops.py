@@ -6,8 +6,6 @@ from theano.tensor import basic
 from theano import gof, scalar
 tensor = basic
 from theano.gradient import DisconnectedType
-from theano.compile import ViewOp
-from theano.tensor.opt import register_canonicalize
 
 
 class CumsumOp(theano.Op):
@@ -725,35 +723,3 @@ def fill_diagonal(a, val):
     .. versionadded:: 0.6
     """
     return fill_diagonal_(a, val)
-
-
-class ConsiderConstant(ViewOp):
-    def grad(self, args, g_outs):
-        return [g_out.zeros_like(g_out) for g_out in g_outs]
-consider_constant_ = ConsiderConstant()
-
-
-# Although the op just returns its input, it should be removed from
-# the graph to make sure all possible optimizations can be applied.
-register_canonicalize(gof.OpRemove(consider_constant_),
-    'fast_compile', name='remove_consider_constant')
-
-
-#I create a function only to have the doc show well.
-def consider_constant(x):
-    """ Consider an expression constant when computing gradients.
-
-    The expression itself is unaffected, but when its gradient is
-    computed, or the gradient of another expression that this
-    expression is a subexpression of, it will not be backpropagated
-    through. In other words, the gradient of the expression is
-    truncated to 0.
-
-    :param x: A Theano expression whose gradient should be truncated.
-
-    :return: The expression is returned unmodified, but its gradient
-        is now truncated to 0.
-
-    .. versionadded:: 0.6.1
-    """
-    return consider_constant_(x)

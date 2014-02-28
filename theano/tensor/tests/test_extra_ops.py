@@ -8,7 +8,7 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
                                      squeeze, RepeatOp, repeat, Bartlett, bartlett,
-                                     FillDiagonal, fill_diagonal, consider_constant)
+                                     FillDiagonal, fill_diagonal)
 from theano import tensor as T
 from theano import config, tensor, function
 
@@ -464,40 +464,3 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class,
                                 warn=False)
-
-
-class TestConsiderConstant(unittest.TestCase):
-
-    def setUp(self):
-        utt.seed_rng()
-        self.rng = np.random.RandomState(seed=utt.fetch_seed())
-
-    def test_op_removed(self):
-        x = T.matrix('x')
-        y = x * consider_constant(x)
-        f = theano.function([x], y)
-        # need to refer to T.extra_ops.consider_constant_ here,
-        # T.consider_constant is a wrapper function!
-        assert T.extra_ops.consider_constant_ not in \
-            [node.op for node in f.maker.fgraph.toposort()]
-        
-    def test_grad(self):
-        a = numpy.asarray(self.rng.randn(5, 5),
-            dtype=config.floatX)
-        
-        x = T.matrix('x')
-
-        expressions_gradients = [
-            (x * consider_constant(x), x),
-            (x * consider_constant(T.exp(x)), T.exp(x)),
-            (consider_constant(x), T.constant(0.)),
-            (x**2 * consider_constant(x), 2 * x**2),
-        ]
-
-        for expr, expr_grad in expressions_gradients:
-            g = T.grad(expr.sum(), x)
-            f = theano.function([x], g, on_unused_input='ignore') # grad according to theano
-            f2 = theano.function([x], expr_grad, on_unused_input='ignore') # desired grad
-
-            assert np.allclose(f(a), f2(a))
-
