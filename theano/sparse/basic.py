@@ -2623,11 +2623,14 @@ class TrueDot(gof.op.Op):
         self.grad_preserves_dense = grad_preserves_dense
 
     def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.grad_preserves_dense == other.grad_preserves_dense)
+        # The grad_preserves_dense attribute doesn't change the
+        # execution behavior.  To let the optimizer merge nodes with
+        # different values of this attribute we shouldn't compare it
+        # here.
+        return type(self) == type(other)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.grad_preserves_dense)
+        return hash(type(self))
 
     def __ne__(self, other):
         return not (self == other)
@@ -2712,15 +2715,17 @@ class TrueDot(gof.op.Op):
 def true_dot(x, y, grad_preserves_dense=True):
     """
     Operation for efficiently calculating the dot product when
-    one or all operands is sparse. Supported format are CSC and CSR.
+    one or all operands are sparse. Supported formats are CSC and CSR.
     The output of the operation is sparse.
 
-    :param x: Matrix variable.
-    :param y: Matrix variable.
-    :param grad_preserves_dense: if True and one on the input is dense,
-        make the output dense.
+    :param x: Sparse matrix or 2d tensor variable.
+    :param y: Sparse matrix or 2d tensor variable.
+    :param grad_preserves_dense: if True (default), makes the grad of
+        dense inputs dense.  Otherwise the grad is always sparse.
 
     :return: The dot product `x`.`y` in a sparse format.
+
+    :note: one of ``x`` or ``y`` must be sparse.
     """
     # TODO
     # Maybe the triple-transposition formulation

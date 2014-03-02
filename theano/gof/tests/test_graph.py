@@ -297,14 +297,17 @@ class TestIsSameGraph(unittest.TestCase):
 # eval         #
 ################
 
-def test_eval():
-    x = tensor.scalar()
-    y = tensor.scalar()
-    z = x + y
+class TestEval(unittest.TestCase):
 
-    result = z.eval({x : 1., y : 2.})
+    def setUp(self):
+        self.x, self.y = tensor.scalars('x', 'y')
+        self.z = self.x + self.y
+        self.w = 2 * self.z
 
-    assert result == 3.
-
-    # We don't want to pickle the tmp function.
-    assert not hasattr(pickle.loads(pickle.dumps(z)), '_fn')
+    def test_eval(self):
+        self.assertEquals(self.w.eval({self.x : 1., self.y : 2.}), 6.)
+        self.assertEquals(self.w.eval({self.z : 3}), 6.)
+        self.assertTrue(hasattr(self.w, "_fn_cache"),
+                "variable must have cache after eval")
+        self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
+                "temporary functions must not be serialized")

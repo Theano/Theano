@@ -557,7 +557,7 @@ def get_scalar_constant_value(v):
             data = v.data
         return numpy_scalar(data)
 
-    if v.owner:
+    if getattr(v, 'owner', None):
         if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                    compile.ops.OutputGuard,
                                    compile.DeepCopyOp)):
@@ -590,14 +590,10 @@ def get_scalar_constant_value(v):
             v.owner.op.perform(v.owner, const, ret)
             return ret[0][0]
         if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
-            # This condition depends on Subtensor always embedding constant
-            # indices in the Op rather than making them inputs to the Apply
-            # node.
-            if isinstance(v.owner.inputs[0], TensorConstant) and \
-                len(v.owner.inputs) == 1:
+            if isinstance(v.owner.inputs[0], TensorConstant):
+                cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                 try:
-                    return v.owner.inputs[0].data.__getitem__(
-                    tuple(v.owner.op.idx_list))
+                    return v.owner.inputs[0].data.__getitem__(cdata)
                 except IndexError:
                     raise IndexError(
                             str(tuple(v.owner.op.idx_list)) +
@@ -620,10 +616,12 @@ def get_scalar_constant_value(v):
                            v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1):
 
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Note the '+ 1' is because the first argument to Join is the
                 # axis.
-                ret = v.owner.inputs[0].owner.inputs[
-                    v.owner.op.idx_list[0] + 1]
+                ret = v.owner.inputs[0].owner.inputs[idx + 1]
                 ret = get_scalar_constant_value(ret)
                 # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
@@ -635,14 +633,13 @@ def get_scalar_constant_value(v):
                 # We put this check in case there is change in the future
                 python_all(var.ndim == 0 for var in
                            v.owner.inputs[0].owner.inputs) and
-                len(v.owner.op.idx_list) == 1 and
-                #idx_list can contain Scalar Type object.
-                isinstance(v.owner.op.idx_list[0], (int, long,
-                                                    numpy.integer))):
-
+                len(v.owner.op.idx_list) == 1):
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Python 2.4 does not support indexing with numpy.integer
                 # So we cast it.
-                idx = int(v.owner.op.idx_list[0])
+                idx = int(idx)
                 ret = v.owner.inputs[0].owner.inputs[idx]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
@@ -658,6 +655,8 @@ def get_scalar_constant_value(v):
                 op = owner.op
                 idx_list = op.idx_list
                 idx = idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(owner.inputs[1])
                 grandparent = leftmost_parent.owner.inputs[0]
                 gp_broadcastable = grandparent.type.broadcastable
                 ndim = grandparent.type.ndim
@@ -3106,6 +3105,48 @@ def batched_dot(x, y):
             non_sequences=None)
     return result
 
+
+def batched_tensordot(x, y, axes=2):
+    """
+    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor (excluding the first 
+                 (batch) dimension):
+                     axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 4]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 5th axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 5th axis of b.
+    :type axes: int or array-like of length 2
+    
+    A hybrid of batch_dot and tensordot, this function computes the 
+    tensordot product between the two tensors, by iterating over the 
+    first dimension using scan to perform a sequence of tensordots.    
+    """
+    if isinstance(axes, (list, numpy.ndarray)):
+        if isinstance(axes, list):
+            axes = numpy.asarray(axes)
+        else:
+            axes = axes.copy()
+        assert numpy.greater(axes,0).all(), "All axes should be greater than one, as the first axis is iterated over (batch-wise scan)"
+        axes -= 1
+    
+    result, updates = theano.scan(fn=lambda x_mat, y_mat:
+            theano.tensor.tensordot(x_mat, y_mat, axes),
+            outputs_info=None,
+            sequences=[x, y],
+            non_sequences=None)
+    return result
+   
 
 def split(x, splits_size, n_splits, axis=0):
     the_split = Split(n_splits)

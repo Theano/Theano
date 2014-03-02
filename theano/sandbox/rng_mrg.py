@@ -734,9 +734,11 @@ class MRG_RandomStreams(object):
 
         :param low: Lower bound of the interval on which values are sampled.
         If the ``dtype`` arg is provided, ``low`` will be cast into dtype.
+        This bound is excluded.
 
         :param high: Higher bound of the interval on which values are sampled.
         If the ``dtype`` arg is provided, ``high`` will be cast into dtype.
+        This bound is excluded.
 
         :param size: Can be a list of integer or Theano variable
                 (ex: the shape of other Theano Variable)

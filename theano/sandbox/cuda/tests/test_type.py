@@ -1,7 +1,10 @@
 import cPickle
+import os.path
+import sys
+
 from nose.tools import assert_raises
 import numpy
-import os.path
+
 from theano import config
 from theano.sandbox.cuda import cuda_available
 
@@ -12,10 +15,13 @@ if cuda_available:
 # >>> with open('CudaNdarray.pkl', 'wb') as fp:
 # >>> cPickle.dump(theano.sandbox.cuda.CudaNdarray(np.array([-42.0], dtype=np.float32)), fp)
 
+
 def test_unpickle_flag_is_false_by_default():
-    assert not config.experimental.unpickle_gpu_on_cpu, "Config flag experimental.unpickle_gpu_on_cpu is " \
-                                                      + "set to true. Make sure the default value stays false " \
-                                                      + "and that you have not set the flag manually."
+    assert not config.experimental.unpickle_gpu_on_cpu, (
+        "Config flag experimental.unpickle_gpu_on_cpu is "
+        "set to true. Make sure the default value stays false "
+        "and that you have not set the flag manually.")
+
 
 def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
     oldflag = config.experimental.unpickle_gpu_on_cpu
@@ -23,7 +29,11 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
 
     try:
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
-        with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
+        fname = 'CudaNdarray.pkl'
+        if sys.version_info[0] == 3:
+            fname = 'CudaNdarray_py3.pkl'
+
+        with open(os.path.join(testfile_dir, fname), 'rb') as fp:
             if cuda_available:
                 mat = cPickle.load(fp)
             else:

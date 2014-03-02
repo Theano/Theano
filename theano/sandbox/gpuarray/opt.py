@@ -5,7 +5,7 @@ from theano import tensor, scalar
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, ProxyDB,
-                        Optimizer, toolbox, DestroyHandler,
+                        Optimizer, toolbox,
                         InconsistencyError, EquilibriumOptimizer)
 
 from theano.gof.python25 import all, any
@@ -90,7 +90,6 @@ class InputToGpuOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         for input in fgraph.inputs:

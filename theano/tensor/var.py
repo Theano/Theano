@@ -348,6 +348,8 @@ class _tensor_py_operators:
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,
+        # Convert python literals to theano constants
+        args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
