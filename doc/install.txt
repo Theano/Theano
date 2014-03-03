@@ -129,19 +129,11 @@ by typing
 
 You may need to add ``sudo``  before this command to install into your
 system's ``site-packages`` directory. If you do not have administrator access
-to your machine, you can install to an alternate prefix using
+to your machine, you can install Theano locally (to ~/.local) using
 
 .. code-block:: bash
 
     pip install Theano --user
-
-which on e.g. Python 2.4 would
-install Theano into ``.local/lib/python2.4/site-packages`` inside your home
-directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
-listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
-``~/.local`` is
-automatically searched and does *not* need to be explicitly included in
-``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
 
 Alternatively you can use virtualenv_ to create an isolated ``site-packages``
 directory; see the `virtualenv documentation`_ for details.
