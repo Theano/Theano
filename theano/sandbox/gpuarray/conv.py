@@ -3,7 +3,7 @@ import os
 
 import theano
 from theano import config, gof
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.sandbox.gpuarray.comp import NVCC_compiler
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
 

@@ -2,7 +2,7 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.compat.six import StringIO
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.sandbox.gpuarray.comp import NVCC_compiler
 
 
 try:

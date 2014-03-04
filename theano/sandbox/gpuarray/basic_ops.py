@@ -12,7 +12,6 @@ from theano.gof.python25 import any
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 try:
     import pygpu
     from pygpu import gpuarray, elemwise
