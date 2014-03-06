@@ -26,18 +26,8 @@ if cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
 
-
 def matVecModM(A, s, m):
-    # return (A * s) % m
-    x = numpy.zeros_like(s)
-    for i in xrange(len(x)):
-        for j in xrange(len(s)):
-            r = numpy.int32((numpy.int64(A[i][j]) * s[j] + x[i]) % m)
-            if r >= 0:
-                x[i] = r
-            else:
-                x[i] = r + m
-    return x
+    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
