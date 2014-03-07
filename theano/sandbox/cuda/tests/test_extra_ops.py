@@ -17,157 +17,75 @@ from theano import tensor as T
 import numpy as np
 import theano
 from theano import config
-from theano.tensor.extra_ops import cumsum, diff
-
-from mlpython.misc.utils import Timer
+from theano.tensor.extra_ops import cumsum
 
 class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     mode = mode_with_gpu
     op = GpuCumsum
     dtypes = ['float32']
 
-    def test_benchmark_1D_vs_2D(self):
-        print "\nBenchmark:"
+    def setUp(self):
+        super(TestGpuCumsum, self).setUp()
 
-        from theano import sandbox, Out
-        import time
+        # Fetch some useful properties on the device 
+        cuda = theano.sandbox.cuda
+        device_id = cuda.use.device_number
+        cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
+        prop = cuda_ndarray.device_properties(device_id)
+        self.max_threads_dim0 = prop['maxThreadsDim0']
+        self.max_grid_size1 = prop['maxGridSize1']
 
-        vlen = 40 * 1024 * 2048  # 10 x # cores x # threads per core
-        iters = 25
+    def test_GpuCumsum1D(self):
+        block_max_size = self.max_threads_dim0 * 2
 
-        x = theano.shared(np.ones((vlen,), dtype=config.floatX), borrow=False)
-        res = Out(sandbox.cuda.basic_ops.gpu_from_host(cumsum(x)), borrow=True)
-        f = theano.function([], res)
-
-        print f.maker.fgraph.toposort()
-        t0 = time.time()
-        for i in xrange(iters):
-            r = f()
-        t1 = time.time()
-        
-        print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-        print 'Result is', r
-        print 'Numpy result is', np.asarray(r)
-        
-
-        # x = theano.shared(np.ones((1,vlen), dtype=config.floatX), borrow=True)
-        # f = theano.function([], Out(sandbox.cuda.basic_ops.gpu_from_host(cumsum(x,axis=1)), borrow=True))
-
-        # print f.maker.fgraph.toposort()
-        # t0 = time.time()
-        # for i in xrange(iters):
-        #     r = f()
-        # t1 = time.time()
-        
-        # print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-        # print 'Result is', r
-        # print 'Numpy result is', np.asarray(r)
-
-        # print 'Used the', config.device
-
-
-    def test_GpuCumsum(self):
-        ### Test 1D case ###
         x = T.vector('x')
         f = theano.function([x], cumsum(x))
-        
-        # Even number of elements
-        a = np.random.random((18,)).astype(config.floatX)
-        print f(a)
-        print np.cumsum(a)
-        assert np.allclose(np.cumsum(a), f(a))
 
-        # Odd number of elements
-        a = np.random.random((7,)).astype(config.floatX)
-        assert np.allclose(np.cumsum(a), f(a))
+        # Extensive testing for the first 1k sizes
+        a = np.ones((int(1e3),), dtype=config.floatX)
+        for i in xrange(a.shape[0]):
+            assert np.allclose(np.cumsum(a[:i]), f(a[:i]))
 
         # Use multiple GPU threadblocks
-        a = np.random.random((2048+2,)).astype(config.floatX)
+        a = np.random.random((block_max_size+2,)).astype(config.floatX)
         assert np.allclose(np.cumsum(a), f(a))
 
-        # Use multiple GPU threadblocks
-        a = np.random.random((2048*75+2,)).astype(config.floatX)
+        # Use recursive cumsum
+        a = np.ones((block_max_size*(block_max_size+1)+2,)).astype(config.floatX)
         assert np.allclose(np.cumsum(a), f(a))
 
-        # Use multiple GPU gridblocks
-        a = np.ones((2048*2048+2,)).astype(config.floatX)
-        assert np.allclose(np.cumsum(a), f(a))
+    def test_GpuCumsum2D(self):
+        block_max_size = self.max_threads_dim0 * 2
 
-
-        # Extensive testing
-        for i in xrange(int(1e3)*5):
-            a = np.ones((i,), dtype=config.floatX)
-
-            fa = f(a)
-            npa = np.cumsum(a)
-
-            if not np.allclose(npa, fa):
-                print i, np.allclose(npa, fa)  # Test axis=None
-                print fa
-                print npa
-                assert False
-
-            if i % 1000 == 0:
-                print i
-
-
-        #for axis in xrange(2):
         for axis in xrange(2):
-            ### Test 2D case - axis=1 ###
             x = T.matrix('x')
             f = theano.function([x], cumsum(x, axis=axis))
-            
-            # Even number of elements
-            print "\n# Even number of elements (axis={0})".format(axis)
-            a = np.random.random((18,18)).astype(config.floatX)
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
-            # Odd number of elements
-            print "\n# Odd number of elements (axis={0})".format(axis)
-            a = np.random.random((21,21)).astype(config.floatX)
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
-
-            # Use two GPU threadblocks
-            print "\n# Use two GPU threadblocks (axis={0})".format(axis)
-            a = np.random.random((2048+2,2048+2)).astype(config.floatX)
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
+            # Extensive testing for the first 1k sizes
+            a_shape = [11, 11]
+            a_shape[axis] = int(1e3)
+            a = np.ones(a_shape, dtype=config.floatX)
+            slices = [slice(None), slice(None)]
+            for i in xrange(a.shape[axis]):
+                slices[axis] = slice(i)
+                fa = f(a[slices])
+                npa = np.cumsum(a[slices], axis=axis)
+                assert np.allclose(npa, fa)
 
             # Use multiple GPU threadblocks
-            print "\n# Use multiple GPU threadblocks (axis={0})".format(axis)
-            a = np.ones((10,2048*75+3)).astype(config.floatX)
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
-            
-            a = np.ones((2048*75+3,10)).astype(config.floatX)
+            a_shape = [11, 11]
+            a_shape[axis] = block_max_size+2
+            a = np.ones(a_shape, dtype=config.floatX)
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks
-            print "\n# Use multiple GPU gridblocks (axis={0})".format(axis)
-            a = np.ones((11,2048*2048+3)).astype(config.floatX)
+            a_shape = [11, 11]
+            a_shape[1-axis] = self.max_grid_size1+1
+            a = np.ones(a_shape, dtype=config.floatX)
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
-            a = np.ones((2048*2048+3,11)).astype(config.floatX)
+
+            # Use recursive cumsum
+            a_shape = [11, 11]
+            a_shape[axis] = block_max_size*(block_max_size+1)+2
+            a = np.ones(a_shape, dtype=config.floatX)
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
-
-            # Extensive testing for the first 10k sizes
-            for i in xrange(int(1e3)*5):
-                a = np.ones((11,i), dtype=config.floatX)
-                fa = f(a)
-                npa = np.cumsum(a, axis=axis)
-
-                if not np.allclose(npa, fa):
-                    print i, np.allclose(npa, fa)  # Test axis=None
-                    print fa
-                    print npa
-                    assert False
-
-                a = np.ones((i,11), dtype=config.floatX)
-                fa = f(a)
-                npa = np.cumsum(a, axis=axis)
-
-                if not np.allclose(npa, fa):
-                    print i, np.allclose(npa, fa)  # Test axis=None
-                    print fa
-                    print npa
-                    assert False
-
-                if i % 1000 == 0:
-                    print i

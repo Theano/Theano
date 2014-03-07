@@ -13,21 +13,27 @@ if cuda_available:
 
 
 class GpuCumsum(CumsumOp, GpuOp):
-    def __init__(self, axis=None):
+    SUPPORTED_NDIMS = 2
+
+    def __init__(self, axis):
+        """
+        ``axis`` can not be None. If you want the array flatten, do it before.
+        """
         self.axis = axis
         self.max_threads_dim0 = None
 
     def make_node(self, x):
         assert x.dtype == 'float32'
         if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError('x must be cudandarray', x)
+            raise TypeError('x must be a CudaNdarrayType', x)
 
-        out_type = x.type()
+        if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
+            raise NotImplementedError('Only cumsum on 1D and 2D array are supported right now!')
 
-        if self.axis is None and x.ndim > 1:
-            out_type = CudaNdarrayType(broadcastable=(False,), dtype=x.dtype)()
+        if self.axis >= x.ndim:
+            raise ValueError('axis(={1}) out of bounds'.format(self.axis))
 
-        return theano.Apply(self, [x], [out_type])
+        return theano.Apply(self, [x], [x.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
@@ -55,7 +61,6 @@ class GpuCumsum(CumsumOp, GpuOp):
         return ()
 
     def c_support_code_apply(self, node, nodename):
-        axis = self.axis
         return """
         __device__
         void k_reductionPhase_%(nodename)s(float* partialCumSum) {
@@ -244,7 +249,7 @@ class GpuCumsum(CumsumOp, GpuOp):
     def c_code(self, node, nodename, inames, onames, sub):
         x, = inames
         z, = onames
-        axis = self.axis
+        axis = self.axis if self.axis is not None else 0
         fail = sub['fail']
 
         sub = sub.copy()
@@ -257,89 +262,63 @@ class GpuCumsum(CumsumOp, GpuOp):
                                       "related to the selected GPU.")
         sub.update(locals())
 
-        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
-            code = """
-                const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
-                if(! (%(z)s && CudaNdarray_HOST_DIMS(%(z)s)[0] == shape[0]) ) {
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (CudaNdarray*) CudaNdarray_NewDims(1, shape);
-                }
+        code = """
+            const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
+            bool needAllocation = !%(z)s || CudaNdarray_NDIM(%(x)s) != CudaNdarray_NDIM(%(z)s);
 
-                if (!%(z)s) {
+            // If output is already allocated, check if its shape matches the input's one.
+            if (!needAllocation) {
+                for (int i= 0; i < CudaNdarray_NDIM(%(x)s); ++i) {
+                    if (CudaNdarray_HOST_DIMS(%(x)s)[i] == CudaNdarray_HOST_DIMS(%(z)s)[i]) {
+                        needAllocation = true;
+                    }
+                }
+            }
+
+            if (needAllocation){
+                Py_XDECREF(%(z)s);
+                %(z)s = (CudaNdarray*) CudaNdarray_NewDims(CudaNdarray_NDIM(%(x)s), shape);
+            }
+
+            if (!%(z)s) {
+                %(fail)s;
+            }
+
+            { // Namespace for kernel calls //
+                cumSum_%(nodename)s(%(x)s, %(z)s, %(max_threads_dim0)s, %(axis)s, %(max_grid_size1)s);
+
+                cudaError_t sts = cudaGetLastError();
+                if (cudaSuccess != sts)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %%s: %%s.\\n",
+                        "cumSum_%(nodename)s",
+                        cudaGetErrorString(sts));
                     %(fail)s;
                 }
-
-                { // Namespace for kernel calls //
-                    cumSum_%(nodename)s(%(x)s, %(z)s, %(max_threads_dim0)s, 0, %(max_grid_size1)s);
-
-                    cudaError_t sts = cudaGetLastError();
-                    if (cudaSuccess != sts)
-                    {
-                        PyErr_Format(PyExc_RuntimeError,
-                                     "Cuda error: %%s: %%s.\\n",
-                            "cumSum_1D_%(nodename)s",
-                            cudaGetErrorString(sts));
-                        %(fail)s;
-                    }
-                }
-            """ % locals()
-        elif node.inputs[0].ndim == 2: 
-            code = """
-                const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
-                bool needAllocation = !%(z)s || CudaNdarray_NDIM(%(x)s) != CudaNdarray_NDIM(%(z)s);
-
-                // If output is already allocated, check if its shape matches the input's one.
-                if (!needAllocation) {
-                    for (int i= 0; i < CudaNdarray_NDIM(%(x)s); ++i) {
-                        if (CudaNdarray_HOST_DIMS(%(x)s)[i] == CudaNdarray_HOST_DIMS(%(z)s)[i]) {
-                            needAllocation = true;
-                        }
-                    }
-                }
-
-                if (needAllocation){
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (CudaNdarray*) CudaNdarray_NewDims(CudaNdarray_NDIM(%(x)s), shape);
-                }
-
-                if (!%(z)s) {
-                    %(fail)s;
-                }
-
-                { // Namespace for kernel calls //
-                    cumSum_%(nodename)s(%(x)s, %(z)s, %(max_threads_dim0)s, %(axis)s, %(max_grid_size1)s);
-
-                    cudaError_t sts = cudaGetLastError();
-                    if (cudaSuccess != sts)
-                    {
-                        PyErr_Format(PyExc_RuntimeError,
-                                     "Cuda error: %%s: %%s.\\n",
-                            "cumSum_2D_axis1_%(nodename)s",
-                            cudaGetErrorString(sts));
-                        %(fail)s;
-                    }
-                }
-            """ % locals()
-        else:
-            raise NotImplementedError('Only 1D case and 2D (axis=1) are supported right now!')
+            }
+        """ % locals()
 
         return code
-
-
-def gpu_cumsum(x, axis=None):
-    return GpuCumsum(axis)(x)
 
 from theano.sandbox.cuda import GpuFlatten
 
 @local_optimizer([CumsumOp])
 def use_gpu_cumsum(node):
-    if type(node.op) is CumsumOp and node.inputs[0].dtype == 'float32':
+    if node.inputs[0].ndim > GpuCumsum.SUPPORTED_NDIMS:
+       return None
 
+    if type(node.op) is CumsumOp and node.inputs[0].dtype == 'float32':
         x = gpu_from_host(node.inputs[0])
-        if node.op.axis is None and x.ndim > 1:
+        axis = node.op.axis
+        if axis is None and x.ndim > 1:
             x = GpuFlatten()(x)
 
-        return [host_from_gpu(gpu_cumsum(x, axis=node.op.axis))]
+        # ``gpu_cumsum`` assume array has been flattened if needed.
+        if axis is None:
+            axis = 0
+
+        return [host_from_gpu(GpuCumsum(axis)(x))]
 
 if cuda_available:
     register_gpu_opt()(use_gpu_cumsum)
