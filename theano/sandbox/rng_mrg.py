@@ -27,7 +27,7 @@ if cuda_available:
                                      float32_shared_constructor)
 
 def matVecModM(A, s, m):
-    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
+    return numpy.int32(numpy.sum((numpy.int64(A)*s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
@@ -101,7 +101,7 @@ class DotModulo(Op):
                 
                 for (npy_int32 j = 0; j < N; ++j)
                 {
-                    npy_intp r = (Dz[i * Sz] + (npy_int64)(Ds[j * Ss] * Ak[j * SA])) %% m;
+                    npy_intp r = (Dz[i * Sz] + (npy_int64)(Ds[j * Ss]) * (npy_int64)(Ak[j * SA])) %% m;
                     
                     if (r >= 0) {
                         Dz[i * Sz] = r;
