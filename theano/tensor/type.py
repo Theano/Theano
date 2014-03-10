@@ -164,7 +164,8 @@ class TensorType(Type):
                             " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
-                            "object strides", data.strides)
+                            "object strides", data.strides,
+                            "object dtype", data.dtype)
 
         i = 0
         for b in self.broadcastable:
